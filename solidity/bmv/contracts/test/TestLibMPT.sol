@@ -25,11 +25,11 @@ contract TestLibMPT {
         return src.matchNibbles(dst);
     }
 
-    function prove(
+   /*  function prove(
         bytes32 root,
         bytes memory key,
         bytes[] memory proofs
     ) public returns (bytes memory) {
         return root.prove(key, proofs);
-    }
+    } */
 }

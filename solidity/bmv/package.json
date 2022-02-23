@@ -8,7 +8,9 @@
     "@truffle/hdwallet-provider": "^1.4.0"
   },
   "devDependencies": {
+    "@nomiclabs/hardhat-truffle5": "^2.0.4",
     "chai": "^4.3.4",
+    "hardhat": "^2.8.4",
     "husky": "^6.0.0",
     "js-sha3": "^0.8.0",
     "lodash": "^4.17.21",

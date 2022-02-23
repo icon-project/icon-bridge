@@ -6,7 +6,6 @@ import "../DataValidator.sol";
 import "../libraries/String.sol";
 import "../libraries/Bytes.sol";
 import "../libraries/MessageDecoder.sol";
-import "../libraries/Verifier.sol";
 
 contract MockDataValidator is DataValidator {
     using String for string;
@@ -14,7 +13,6 @@ contract MockDataValidator is DataValidator {
     using MessageDecoder for bytes;
     using MessageDecoder for string;
     using MessageDecoder for Types.EventLog;
-    using Verifier for Types.ReceiptProof;
     using String for uint256;
 
     function validateReceipt(
@@ -34,8 +32,8 @@ contract MockDataValidator is DataValidator {
         (, string memory contractAddr) = _prev.splitBTPAddress();
         if (msgs.length > 0) delete msgs;
         for (uint256 i = 0; i < receiptProofs.length; i++) {
-            receipt = receiptProofs[i].verifyMPTProof(_receiptHash);
-            for (uint256 j = 0; j < receipt.eventLogs.length; j++) {
+            //receipt = receiptProofs[i].verifyMPTProof(_receiptHash);
+            /*for (uint256 j = 0; j < receipt.eventLogs.length; j++) {
                 if (!receipt.eventLogs[j].addr.compareTo(contractAddr))
                     continue;
                 messageEvent = receipt.eventLogs[j].toMessageEvent();
@@ -52,8 +50,8 @@ contract MockDataValidator is DataValidator {
                         msgs.push(messageEvent.message);
                         nextSeq += 1;
                     }
-                }
-            }
+                } 
+            }*/
             // bytes32 msg1=msgs[0].bytesToBytes32();
             // revert(bytes32ToString(msg1));
         }

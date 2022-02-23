@@ -181,6 +181,7 @@ type ReceiptProof struct {
 	Index       int
 	Proof       []byte
 	EventProofs []*module.EventProof
+	Events      []byte
 }
 
 type ConsensusStates struct {

@@ -98,6 +98,7 @@ library Types {
         bytes mptKey;
         bytes[] mptProofs;
         EventProof[] eventProofs;
+        MessageEvent[] events;
     }
 
     struct BlockProof {

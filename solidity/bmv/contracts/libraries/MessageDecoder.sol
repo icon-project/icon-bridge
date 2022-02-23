@@ -6,7 +6,6 @@ import "./RLPDecode.sol";
 import "./Types.sol";
 import "./String.sol";
 import "./Bytes.sol";
-import "./Hash.sol";
 
 library MessageDecoder {
     using RLPDecode for RLPDecode.RLPItem;
@@ -17,7 +16,6 @@ library MessageDecoder {
     using Bytes for bytes;
     using MessageDecoder for bytes;
     using MessageDecoder for RLPDecode.RLPItem;
-    using Hash for bytes;
 
     uint8 private constant LIST_SHORT_START = 0xc0;
     uint8 private constant LIST_LONG_START = 0xf7;
@@ -32,7 +30,7 @@ library MessageDecoder {
         if (ls[10].toBytes().length == 0) {
             return
                 Types.BlockHeader(
-                    _rlp.sha3FIPS256(),
+                    "",
                     ls[0].toUint(),
                     ls[1].toUint(),
                     ls[2].toUint(),
@@ -56,7 +54,7 @@ library MessageDecoder {
         }
         return
             Types.BlockHeader(
-                _rlp.sha3FIPS256(),
+                "",
                 ls[0].toUint(),
                 ls[1].toUint(),
                 ls[2].toUint(),
@@ -168,7 +166,7 @@ library MessageDecoder {
             RLPDecode.RLPItem[] memory _rlpItems =
                 ls[2].toBytes().toRlpItem().toList();
             _rlpBytes = ls[2].toBytes();
-            _validatorsHash = _rlpBytes.sha3FIPS256();
+            //_validatorsHash = _rlpBytes.sha3FIPS256();
             _validators = new address[](_rlpItems.length);
             for (uint256 i = 0; i < _rlpItems.length; i++) {
                 _validators[i] = _rlpItems[i]
@@ -177,6 +175,7 @@ library MessageDecoder {
                     .bytesToAddress();
             }
         }
+        _bh.blockHash = ls[3].toBytes().bytesToBytes32();
         return
             Types.BlockUpdate(
                 _bh,
@@ -188,7 +187,7 @@ library MessageDecoder {
     }
 
     function decodeReceiptProof(bytes memory _rlp)
-        internal
+        internal        
         pure
         returns (Types.ReceiptProof memory)
     {
@@ -207,13 +206,20 @@ library MessageDecoder {
         for (uint256 i = 0; i < ls[2].toList().length; i++) {
             eventProofs[i] = ls[2].toList()[i].toRlpBytes().decodeEventProof();
         }
+        Types.MessageEvent[] memory events =
+            new Types.MessageEvent[](ls[3].toBytes().toRlpItem().toList().length);
+
+        for (uint256 i = 0; i < ls[3].toBytes().toRlpItem().toList().length; i++) {
+            events[i] =ls[3].toBytes().toRlpItem().toList()[i].toRlpBytes().toMessageEvent();
+        }
 
         return
             Types.ReceiptProof(
                 ls[0].toUint(),
                 ls[0].toRlpBytes(),
                 mptProofs,
-                eventProofs
+                eventProofs,
+                events
             );
     }
 
@@ -297,7 +303,7 @@ library MessageDecoder {
     }
 
     function decodeReceiptProofs(bytes memory _rlp)
-        internal
+        internal        
         pure
         returns (Types.ReceiptProof[] memory _rp)
     {
@@ -310,7 +316,7 @@ library MessageDecoder {
         }
     }
 
-    function decodeValidators(
+    /* function decodeValidators(
         Types.Validators storage validators,
         bytes memory _rlp
     ) internal {
@@ -326,7 +332,7 @@ library MessageDecoder {
         }
         validators.validatorAddrs = newVals;
     }
-
+    
     function toMessageEvent(Types.EventLog memory eventLog)
         internal
         pure
@@ -342,5 +348,20 @@ library MessageDecoder {
                 );
         }
         return Types.MessageEvent("", 0, "");
+    }
+    */
+     
+    function toMessageEvent(bytes memory _rlp)
+        internal
+        pure
+        returns (Types.MessageEvent memory)
+    {
+         RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
+            return
+                Types.MessageEvent(
+                    string(ls[0].toBytes()),
+                    ls[1].toUint(),
+                    ls[2].toBytes()
+                );
     }
 }

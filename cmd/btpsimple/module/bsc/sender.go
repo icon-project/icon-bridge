@@ -142,10 +142,15 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 			msg.height = rm.BlockProof.BlockWitness.Height
 		}
 		size += len(rp.Proof)
+		var eventBytes []byte
+		if eventBytes, err = codec.RLP.MarshalToBytes(rp.Events); err != nil {
+			return nil, err
+		}
 		trp := &ReceiptProof{
 			Index:       rp.Index,
 			Proof:       rp.Proof,
 			EventProofs: make([]*module.EventProof, 0),
+			Events:      eventBytes,
 		}
 		for j, ep := range rp.EventProofs {
 			if s.isOverLimit(len(ep.Proof)) {
@@ -243,7 +248,7 @@ func (s *sender) Relay(segment *module.Segment) (module.GetResultParam, error) {
 	}
 	thp := &TransactionHashParam{}
 	thp.Hash = tx.Hash()
-	//s.l.Debugf("HandleRelayMessage tx hash:%s, prev %s, msg: %s", thp.Hash, rmp.Prev, base64.URLEncoding.EncodeToString([]byte(rmp.Messages)))
+	s.l.Debugf("HandleRelayMessage tx hash:%s, prev %s, msg: %s", thp.Hash, rmp.Prev, base64.URLEncoding.EncodeToString([]byte(rmp.Messages)))
 	return thp, nil
 }
 

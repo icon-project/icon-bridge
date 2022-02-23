@@ -56,14 +56,14 @@ const (
 )
 
 const (
-	ResultStatusSuccess = "0x1"
+	ResultStatusSuccess           = "0x1"
 	ResultStatusFailureCodeRevert = 32
-	ResultStatusFailureCodeEnd = 99
+	ResultStatusFailureCodeEnd    = 99
 )
 
 const (
-	BMCRelayMethod       = "handleRelayMessage"
-	BMCGetStatusMethod   = "getStatus"
+	BMCRelayMethod     = "handleRelayMessage"
+	BMCGetStatusMethod = "getStatus"
 )
 
 type BlockHeader struct {
@@ -354,6 +354,7 @@ type BlockUpdate struct {
 	BlockHeader []byte
 	Votes       []byte
 	Validators  []byte
+	BlockHash   HexBytes
 }
 
 type RelayMessage struct {
@@ -371,6 +372,7 @@ type ReceiptProof struct {
 	Index       int
 	Proof       []byte
 	EventProofs []*module.EventProof
+	Events      []byte
 }
 
 type Block struct {

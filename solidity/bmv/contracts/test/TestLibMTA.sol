@@ -52,14 +52,14 @@ contract TestLibMTA {
         return mta.getRootIndexByHeight(height);
     }
 
-    function verify(
+   /*  function verify(
         bytes32[] calldata proof,
         bytes32 leaf,
         uint256 height,
         uint256 at
     ) public {
         mta.verify(proof, leaf, height, at);
-    }
+    } */
 
     function toRlpBytes() public view returns (bytes memory) {
         return mta.toBytes();

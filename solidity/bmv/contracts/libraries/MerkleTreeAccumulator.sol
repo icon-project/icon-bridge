@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 import "./RLPDecode.sol";
 import "./RLPEncode.sol";
 import "./Bytes.sol";
-import "./Hash.sol";
 
 library MerkleTreeAccumulator {
     using RLPEncode for bytes;
@@ -16,8 +15,6 @@ library MerkleTreeAccumulator {
     using RLPDecode for bytes;
 
     using Bytes for bytes;
-
-    using Hash for bytes;
 
     struct MTA {
         uint256 height;
@@ -109,7 +106,7 @@ library MerkleTreeAccumulator {
     }
 
     function add(MTA storage mta, bytes32 _hash) internal {
-        putCache(mta, _hash);
+        /* putCache(mta, _hash);
         if (mta.height == 0) mta.roots.push(_hash);
         else if (mta.roots.length == 0) mta.roots.push(_hash);
         else {
@@ -135,7 +132,7 @@ library MerkleTreeAccumulator {
             }
 
             if (root == 0) mta.roots.push(_hash);
-        }
+        } */
         mta.height += 1;
     }
 
@@ -165,7 +162,7 @@ library MerkleTreeAccumulator {
         return rootIdx;
     }
 
-    function verify(
+   /*  function verify(
         bytes32[] memory witness,
         bytes32 root,
         bytes32 leaf,
@@ -183,7 +180,7 @@ library MerkleTreeAccumulator {
         }
 
         require(hash == root, "BMVRevertInvalidBlockWitness: invalid witness");
-    }
+    } 
 
     function verify(
         MTA storage mta,
@@ -223,7 +220,7 @@ library MerkleTreeAccumulator {
             }
         }
     }
-
+*/
     function toBytes(MTA storage mta) internal view returns (bytes memory) {
         bytes memory rlpBytes;
         bytes memory rlpTemp;

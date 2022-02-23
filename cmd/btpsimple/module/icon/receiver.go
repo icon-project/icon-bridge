@@ -84,6 +84,7 @@ func (r *receiver) newBlockUpdate(v *BlockNotification) (*module.BlockUpdate, er
 
 	var update BlockUpdate
 	update.BlockHeader = bh.serialized
+	update.BlockHash = v.Hash
 	vb, vbErr := r.c.GetVotesByHeight(&BlockHeightParam{Height: v.Height})
 	if vbErr != nil {
 		return nil, mapError(vbErr)

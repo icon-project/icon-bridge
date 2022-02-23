@@ -10,7 +10,6 @@ import "../libraries/MerkleTreeAccumulator.sol";
 import "../libraries/String.sol";
 import "../libraries/Types.sol";
 import "../libraries/MessageDecoder.sol";
-import "../libraries/Verifier.sol";
 
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
@@ -23,8 +22,6 @@ contract BMVV2 is IBMV, Initializable {
     using Base64 for string;
     using MessageDecoder for bytes;
     using MessageDecoder for Types.Validators;
-    using Verifier for Types.BlockUpdate;
-    using Verifier for Types.BlockProof;
 
     address private bmcAddr;
     address private subBmvAddr;
@@ -45,7 +42,7 @@ contract BMVV2 is IBMV, Initializable {
         bmcAddr = _bmcAddr;
         subBmvAddr = _subBmvAddr;
         netAddr = _netAddr;
-        validators.decodeValidators(_rlpValidators);
+        //validators.decodeValidators(_rlpValidators);
         mta.setOffset(_offset);
         lastBlockHash = _lastBlockHash;
     }
@@ -118,18 +115,18 @@ contract BMVV2 is IBMV, Initializable {
                 lastBlockHash = relayMsg.blockUpdates[i].blockHeader.blockHash;
             }
 
-            if (relayMsg.blockUpdates[i].nextValidators.length > 0) {
+           /*  if (relayMsg.blockUpdates[i].nextValidators.length > 0) {
                 delete validators;
                 validators.decodeValidators(
                     relayMsg.blockUpdates[i].nextValidatorsRlp
                 );
-            }
+            } */
 
             mta.add(relayMsg.blockUpdates[i].blockHeader.blockHash);
         }
 
         if (relayMsg.blockProof.blockWitness.witnesses.length != 0) {
-            relayMsg.blockProof.verifyMTAProof(mta);
+            //relayMsg.blockProof.verifyMTAProof(mta);
             receiptHash = relayMsg.blockProof.blockHeader.result.receiptHash;
             lastHeight = relayMsg.blockProof.blockHeader.height;
         }
