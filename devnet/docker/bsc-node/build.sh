@@ -5,7 +5,7 @@ FROM golang:1.16-alpine3.13
 RUN apk add --no-cache make gcc musl-dev linux-headers git
 
 # Checkout latest version on Feb 8th 2021
-RUN cd / && git clone https://github.com/web3labs/bsc \
+RUN cd / && git clone https://github.com/bnb-chain/bsc.git \
     && cd ./bsc && git checkout master && make geth
 
 # Update btcd version entry to fix checksum issue
