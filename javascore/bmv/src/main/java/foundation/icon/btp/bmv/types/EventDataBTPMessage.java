@@ -2,6 +2,8 @@ package foundation.icon.btp.bmv.types;
 
 import foundation.icon.btp.bmv.lib.HexConverter;
 import foundation.icon.btp.bmv.lib.TypeDecoder;
+import score.Context;
+import score.ObjectReader;
 
 import java.math.BigInteger;
 
@@ -53,6 +55,20 @@ public class EventDataBTPMessage {
         //msg
         byte[] msg = TypeDecoder.getBytes();
         return new EventDataBTPMessage(next_bmc, seq, msg);
+    }
+
+    /**
+     * Method to extract raw data directly from the reader without the TypeDecoder
+     * @param reader
+     * @return
+     */
+    public static EventDataBTPMessage fromRLPBytes(ObjectReader reader) {
+        reader.beginList();
+        String _nxt_bmc = reader.readString();
+        BigInteger _seq = reader.readBigInteger();
+        byte[] _msg = reader.readByteArray();
+        reader.end();
+        return new EventDataBTPMessage(_nxt_bmc, _seq, _msg);
     }
 
     public String getNext_bmc() {

@@ -15,10 +15,8 @@
  */
 package foundation.icon.btp.bmv.types;
 
-import foundation.icon.btp.bmv.lib.HexConverter;
 import foundation.icon.btp.bmv.lib.mpt.MPTException;
 import foundation.icon.btp.bmv.lib.mpt.Trie;
-import score.ByteArrayObjectWriter;
 import score.Context;
 import score.ObjectReader;
 import scorex.util.ArrayList;
@@ -32,14 +30,16 @@ public class ReceiptProof {
     private final int index;
     private final byte[] mptKey;
     private final List<EventProof> eventProofs;
-    private final List<ReceiptEventLog> events;
+    private final List<ReceiptEventLog> eventLogs;
     private final List<byte[]> mptProofs;
+    private final List<EventDataBTPMessage> events;
 
-    public ReceiptProof(int index, byte[] mptKey, List<byte[]> mptProofs, List<EventProof> eventProofs, List<ReceiptEventLog> events) {
+    public ReceiptProof(int index, byte[] mptKey, List<byte[]> mptProofs, List<EventProof> eventProofs, List<ReceiptEventLog> eventLogs, List<EventDataBTPMessage> events) {
         this.index = index;
         this.mptKey = mptKey;
         this.mptProofs = mptProofs;
         this.eventProofs = eventProofs;
+        this.eventLogs = eventLogs;
         this.events = events;
     }
 
@@ -72,12 +72,19 @@ public class ReceiptProof {
         List<EventProof> eventProofs = readEventProofs(reader);
 
         //Event Logs
-        List<ReceiptEventLog> eventLogs = new ArrayList<>();
+        List<ReceiptEventLog> eventsFromProofs = new ArrayList<>();
         for (EventProof ef : eventProofs) {
-            eventLogs.add(ReceiptEventLog.fromBytes(ef.getProof()));
+            eventsFromProofs.add(ReceiptEventLog.fromBytes(ef.getProof()));
         }
+        List<EventDataBTPMessage> eventsLogs = new ArrayList<>();
 
-        return new ReceiptProof(index, mptKey, mptProofs, eventProofs, eventLogs);
+        ObjectReader eventLogReader = Context.newByteArrayObjectReader(RLPn, reader.readByteArray());
+        eventLogReader.beginList();
+        while(eventLogReader.hasNext()){
+            eventsLogs.add(EventDataBTPMessage.fromRLPBytes(eventLogReader));
+        }
+        eventLogReader.end();
+        return new ReceiptProof(index, mptKey, mptProofs, eventProofs, eventsFromProofs, eventsLogs);
     }
 
     public static List<byte[]> readByteArrayListFromRLP(byte[] serialized) {
@@ -113,13 +120,6 @@ public class ReceiptProof {
         return eventProofs;
     }
 
-    public Receipt prove(byte[] receiptRootHash) throws MPTException {
-        //byte[] leaf = MerklePatriciaTree.prove(receiptRootHash, this.mptKey, this.mptProofs);
-        byte[] leaf = Trie.verifyProof(receiptRootHash, this.mptKey, this.mptProofs);
-        //receipt.setEventLogsWithProofs(eventProofs);//TODO: check this
-        return Receipt.fromBytes(leaf);
-    }
-
     public int getIndex() {
         return index;
     }
@@ -136,7 +136,11 @@ public class ReceiptProof {
         return eventProofs;
     }
 
-    public List<ReceiptEventLog> getEvents() {
+    public List<ReceiptEventLog> getEventLogs() {
+        return eventLogs;
+    }
+
+    public List<EventDataBTPMessage> getEvents() {
         return events;
     }
 }

@@ -188,7 +188,7 @@ public class ClassDecoderUtil {
         while (reader.hasNext())
             eventProofs.add(decodeEventProof(reader.readByteArray()));
 
-        return new ReceiptProof(index, mptKey, mptProofs, eventProofs, new java.util.ArrayList<>());
+        return new ReceiptProof(index, mptKey, mptProofs, eventProofs, new java.util.ArrayList<>(), new java.util.ArrayList<>());
     }
 
     public static EventProof decodeEventProof(byte[] serialized) {

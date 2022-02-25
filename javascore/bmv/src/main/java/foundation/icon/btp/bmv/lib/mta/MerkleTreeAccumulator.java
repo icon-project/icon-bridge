@@ -100,7 +100,7 @@ public class MerkleTreeAccumulator {
     }
 
     public void add(byte[] hash) {
-        this.putCache(hash);
+       /* this.putCache(hash);
         if (this.height == 0 || roots.size() == 0)
             roots.add(hash);
         else {
@@ -127,7 +127,7 @@ public class MerkleTreeAccumulator {
                 root = hash;
                 this.roots.add(root);
             }
-        }
+        }*/
         this.height += 1;
         Context.require(this.height >= 0);
         //AccumulatorUpdate(Context.getCaller(), BigInteger.valueOf(this.height), hash);

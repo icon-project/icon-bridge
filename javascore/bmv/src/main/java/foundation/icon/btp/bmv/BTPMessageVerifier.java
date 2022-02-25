@@ -85,26 +85,9 @@ public class BTPMessageVerifier {
         byte[] receiptRootHash = (byte[]) result.get(0);
         BigInteger lastHeight = (BigInteger) result.get(1);
         BigInteger nextSeq = seq.add(BigInteger.ONE);// nextSeq= seq + 1
-        for (ReceiptProof receiptProof : relayMessage.getReceiptProofs()) {
-            Receipt receipt = null;
-            try {
-                receipt = receiptProof.prove(receiptRootHash);
-            } catch(MPTException ex) {
-                Context.revert(BMVErrorCodes.INVALID_RECEIPT_PROOFS, "ReceiptProof.prove: Invalid receipt proofs "
-                        + HexConverter.bytesToHex(receiptRootHash) + " " + msg);
-            }
-            for (ReceiptEventLog eventLog : receipt.getLogs()) {
-                //TODO: check better way, now the event log address doesnt have the prefix
-                if (!prevBMCAddress.getContract().equalsIgnoreCase("0x" + HexConverter.bytesToHex(eventLog.getAddress()))) {
-                    continue;
-                }
-                //skip : if the 0th of the topic(which has the method signature) doesnt match the signature of keccak(Message(string,uint256,bytes))
-                if (!Arrays.equals(messageEventSignature, eventLog.getTopics().get(0))) {
-                    continue;
-                }
-                //TODO: check why _next value is indexed? and remove later
-                EventDataBTPMessage messageEvent = EventDataBTPMessage.fromBytes(eventLog.getData());
-                //TODO: remove seq comment , just for testing e2e
+        for (ReceiptProof receiptProof : relayMessage.getReceiptProofs()) {           
+            for (EventDataBTPMessage event : receiptProof.getEvents()) {
+                EventDataBTPMessage messageEvent = event;
                 if (messageEvent.getSeq().compareTo(nextSeq) != 0) {
                     Context.revert(BMVErrorCodes.INVALID_SEQ_NUMBER, "Invalid sequence No:" + messageEvent.getSeq() + ", Expected: " + nextSeq);
                 } else {
@@ -155,9 +138,6 @@ public class BTPMessageVerifier {
         for (BlockUpdate blockUpdate : relayMessage.getBlockUpdates()) {
             int nextHeight = (int) (mta.getHeight() + 1);
             if (BigInteger.valueOf(nextHeight).compareTo(blockUpdate.getBlockHeader().getNumber()) == 0) {
-                if (!BlockHeader.verifyValidatorSignature(blockUpdate.getBlockHeader(),blockUpdate.getEvmHeader())) {
-                    Context.revert(BMVErrorCodes.INVALID_COINBASE_SIGNATURE, "Invalid validator signature");
-                }
                 mta.add(blockUpdate.getBlockHeader().getHash());
                 this.mtaUpdated.set(true);
                 receiptRoot = blockUpdate.getBlockHeader().getReceiptsRoot();
@@ -170,7 +150,6 @@ public class BTPMessageVerifier {
         }
         BlockProof blockProof = relayMessage.getBlockProof();
         if (blockProof != null) {
-            blockProof.verify(mta);
             receiptRoot = blockProof.getBlockHeader().getReceiptsRoot();
             lastHeight = blockProof.getBlockHeader().getNumber();
         }

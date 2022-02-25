@@ -435,11 +435,11 @@ public class MessageDecoderTests {
         assertEquals(eventProofIndex, rp.getEventProofs().get(0).getIndex());
         assertEquals(Hex.toHexString(proof), Hex.toHexString(rp.getEventProofs().get(0).getProof()));
         // check event logs
-        assertEquals(1, rp.getEvents().size());
-        assertEquals(Hex.toHexString(address), Hex.toHexString(rp.getEvents().get(0).getAddress()));
-        assertEquals(1, rp.getEvents().get(0).getTopics().size());
-        assertEquals(Hex.toHexString(topic), Hex.toHexString(rp.getEvents().get(0).getTopics().get(0)));
-        assertEquals(Hex.toHexString(data), Hex.toHexString(rp.getEvents().get(0).getData()));
+        assertEquals(1, rp.getEventLogs().size());
+        assertEquals(Hex.toHexString(address), Hex.toHexString(rp.getEventLogs().get(0).getAddress()));
+        assertEquals(1, rp.getEventLogs().get(0).getTopics().size());
+        assertEquals(Hex.toHexString(topic), Hex.toHexString(rp.getEventLogs().get(0).getTopics().get(0)));
+        assertEquals(Hex.toHexString(data), Hex.toHexString(rp.getEventLogs().get(0).getData()));
         // check mpt proofs
         assertEquals(2, rp.getMptProofs().size());
         assertEquals(Hex.toHexString(mptProof1), Hex.toHexString(rp.getMptProofs().get(0)));

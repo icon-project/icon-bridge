@@ -55,21 +55,4 @@ public class BlockProof {
         return blockWitness;
     }
 
-    /**
-     * Verifies a given block hash if the following conditions are met:
-     * <p>
-     * 1. Valid witness exists - none fails / throws invalid wintness
-     * 2. Given block update height is not above MTA height
-     */
-    public void verify(MerkleTreeAccumulator mta) {
-        if (this.blockWitness == null) {
-            Context.revert(BMVErrorCodes.INVALID_BLOCK_PROOF_NO_WITNESS, "Invalid block proof with non-existing block witness");
-        }
-        if (blockHeader.getNumber().compareTo(BigInteger.valueOf(mta.getHeight())) > 0) {
-            Context.revert(BMVErrorCodes.INVALID_BLOCK_UPDATE_HEIGHT_HIGH, "Invalid block proof with higher height than MTA");
-        }
-        blockWitness.verify(mta, blockHeader.getHash(), blockHeader.getNumber());
-        //Context.require(blockHeader.getNumber().compareTo(BigInteger.valueOf(mta.getHeight()))<=0); // Block update height should've been previously added to MTA
-        //return true;
-    }
 }
