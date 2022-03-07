@@ -20,8 +20,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"io"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -250,16 +251,16 @@ func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallbac
 		func(v *BlockNotification) error {
 			var bu *module.BlockUpdate
 			var rps []*module.ReceiptProof
-			if bu, err = r.newBlockUpdate(v); err != nil {
+			/* if bu, err = r.newBlockUpdate(v); err != nil {
 				return err
-			}
+			} */
 			if rps, err = r.newReceiptProofs(v); err != nil {
 				return err
 			} else if r.isFoundOffsetBySeq {
 				cb(bu, rps)
-			} else {
+			} /* else {
 				cb(bu, nil)
-			}
+			} */
 			return nil
 		},
 	)

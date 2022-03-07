@@ -76,14 +76,14 @@ public class BTPMessageVerifier {
             Context.revert(BMVErrorCodes.INVALID_RELAY_MSG, "Failed to decode relay message");
         }
         RelayMessage relayMessage = RelayMessage.fromBytes(_msg);
-        if (relayMessage.getBlockUpdates().length == 0
+        /*if (relayMessage.getBlockUpdates().length == 0
                 && (relayMessage.getBlockProof() == null
                 || (relayMessage.getBlockProof() != null && relayMessage.getBlockProof().getBlockHeader() == null))) {
             Context.revert(BMVErrorCodes.FAILED_TO_DECODE, "Invalid relay message");
-        }
-        List<Object> result = lastReceiptRootHash(relayMessage);
+        }*/
+        /*List<Object> result = lastReceiptRootHash(relayMessage);
         byte[] receiptRootHash = (byte[]) result.get(0);
-        BigInteger lastHeight = (BigInteger) result.get(1);
+        BigInteger lastHeight = (BigInteger) result.get(1);*/
         BigInteger nextSeq = seq.add(BigInteger.ONE);// nextSeq= seq + 1
         for (ReceiptProof receiptProof : relayMessage.getReceiptProofs()) {           
             for (EventDataBTPMessage event : receiptProof.getEvents()) {
@@ -97,9 +97,9 @@ public class BTPMessageVerifier {
                 }
             }
         }
-        if (msgList.size() > 0) {
+       /* if (msgList.size() > 0) {
             this.lastHeight.set(lastHeight);
-        }
+        }*/
         return msgList;
     }
 

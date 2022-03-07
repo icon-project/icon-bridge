@@ -37,8 +37,8 @@ import (
 )
 
 const (
-	txMaxDataSize                 = 524288 //512 * 1024 // 512kB
-	txOverheadScale               = 0.37   //base64 encoding overhead 0.36, rlp and other fields 0.01
+	txMaxDataSize                 = 32768 //512 * 1024 // 512kB
+	txOverheadScale               = 0.37  //base64 encoding overhead 0.36, rlp and other fields 0.01
 	txSizeLimit                   = txMaxDataSize / (1 + txOverheadScale)
 	DefaultGetRelayResultInterval = time.Second
 	DefaultRelayReSendInterval    = time.Second
@@ -94,7 +94,7 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 	size := 0
 	//TODO rm.BlockUpdates[len(rm.BlockUpdates)-1].Height <= s.bmcStatus.Verifier.Height
 	//	using only rm.BlockProof
-	for _, bu := range rm.BlockUpdates {
+	/* 	for _, bu := range rm.BlockUpdates {
 		if bu.Height <= height {
 			continue
 		}
@@ -121,26 +121,26 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 		msg.BlockUpdates = append(msg.BlockUpdates, bu.Proof)
 		msg.height = bu.Height
 		msg.numberOfBlockUpdate += 1
-	}
+	} */
 
-	var bp []byte
+	/* var bp []byte
 	if bp, err = codec.RLP.MarshalToBytes(rm.BlockProof); err != nil {
 		return nil, err
 	}
 	if s.isOverLimit(len(bp)) {
 		return nil, fmt.Errorf("invalid BlockProof size")
-	}
+	} */
 
 	var b []byte
 	for _, rp := range rm.ReceiptProofs {
-		if s.isOverLimit(len(rp.Proof)) {
+		/* if s.isOverLimit(len(rp.Proof)) {
 			return nil, fmt.Errorf("invalid ReceiptProof.Proof size")
-		}
-		if len(msg.BlockUpdates) == 0 {
+		} */
+		/* if len(msg.BlockUpdates) == 0 {
 			size += len(bp)
 			msg.BlockProof = bp
 			msg.height = rm.BlockProof.BlockWitness.Height
-		}
+		} */
 		size += len(rp.Proof)
 		var eventBytes []byte
 		if eventBytes, err = codec.RLP.MarshalToBytes(rp.Events); err != nil {
@@ -152,7 +152,7 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 			EventProofs: make([]*module.EventProof, 0),
 			Events:      eventBytes,
 		}
-		for j, ep := range rp.EventProofs {
+		/* for j, ep := range rp.EventProofs {
 			if s.isOverLimit(len(ep.Proof)) {
 				return nil, fmt.Errorf("invalid EventProof.Proof size")
 			}
@@ -191,12 +191,13 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 			trp.EventProofs = append(trp.EventProofs, ep)
 			msg.eventSequence = rp.Events[j].Sequence
 			msg.numberOfEvent += 1
-		}
+		} */
 
 		if b, err = codec.RLP.MarshalToBytes(trp); err != nil {
 			return nil, err
 		}
 		msg.ReceiptProofs = append(msg.ReceiptProofs, b)
+
 	}
 	//
 	segment := &module.Segment{
@@ -208,6 +209,7 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 	if segment.TransactionParam, err = s.newTransactionParam(rm.From.String(), msg); err != nil {
 		return nil, err
 	}
+	s.l.Debugf("Segmentation Done")
 	segments = append(segments, segment)
 	return segments, nil
 }

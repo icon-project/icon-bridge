@@ -20,6 +20,11 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -28,10 +33,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/icon-project/btp/cmd/btpsimple/module/bsc/systemcontracts"
 	"github.com/icon-project/btp/common/wallet"
-	"math/big"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/icon-project/btp/common/log"
 )
@@ -228,10 +229,10 @@ func (c *Client) Poll(p *BlockRequest, cb func(b *BlockNotification) error) erro
 					//l.sysErr <- ErrFatalPolling
 					return
 				}
-
+				c.log.Debug("Monitoring Block: ", current)
 				latestHeader, err := c.ethClient.HeaderByNumber(context.Background(), current) // c.GetHeaderByHeight(current)
 				if err != nil {
-					c.log.Error("Unable to get latest block ", current, err)
+					//c.log.Error("Unable to get latest block ", current, err)
 					retry--
 					<-time.After(BlockRetryInterval)
 					continue

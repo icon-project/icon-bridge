@@ -73,6 +73,8 @@ func (s *sender) newTransactionParam(prev string, rm *RelayMessage) (*Transactio
 		Prev:     prev,
 		Messages: base64.URLEncoding.EncodeToString(b),
 	}
+
+	s.l.Debugf("HandleRelayMessage prev %s, msg: %s", rmp.Prev, rmp.Messages)
 	p := &TransactionParam{
 		Version:     NewHexInt(JsonrpcApiVersion),
 		FromAddress: Address(s.w.Address()),
@@ -101,7 +103,7 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 	size := 0
 	//TODO rm.BlockUpdates[len(rm.BlockUpdates)-1].Height <= s.bmcStatus.Verifier.Height
 	//	using only rm.BlockProof
-	for _, bu := range rm.BlockUpdates {
+	/* for _, bu := range rm.BlockUpdates {
 		if bu.Height <= height {
 			continue
 		}
@@ -128,26 +130,26 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 		msg.BlockUpdates = append(msg.BlockUpdates, bu.Proof)
 		msg.height = bu.Height
 		msg.numberOfBlockUpdate += 1
-	}
+	} */
 
-	var bp []byte
+	/* var bp []byte
 	if bp, err = codec.RLP.MarshalToBytes(rm.BlockProof); err != nil {
 		return nil, err
 	}
 	if s.isOverLimit(len(bp)) {
 		return nil, fmt.Errorf("invalid BlockProof size")
 	}
-
+	*/
 	var b []byte
 	for _, rp := range rm.ReceiptProofs {
-		if s.isOverLimit(len(rp.Proof)) {
+		/* 	if s.isOverLimit(len(rp.Proof)) {
 			return nil, fmt.Errorf("invalid ReceiptProof.Proof size")
 		}
 		if len(msg.BlockUpdates) == 0 {
 			size += len(bp)
 			msg.BlockProof = bp
 			msg.height = rm.BlockProof.BlockWitness.Height
-		}
+		} */
 		size += len(rp.Proof)
 		var eventBytes []byte
 		if eventBytes, err = codec.RLP.MarshalToBytes(rp.Events); err != nil {
@@ -159,7 +161,7 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 			EventProofs: make([]*module.EventProof, 0),
 			Events:      eventBytes,
 		}
-		for j, ep := range rp.EventProofs {
+		/* for j, ep := range rp.EventProofs {
 			if s.isOverLimit(len(ep.Proof)) {
 				return nil, fmt.Errorf("invalid EventProof.Proof size")
 			}
@@ -198,7 +200,7 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 			trp.EventProofs = append(trp.EventProofs, ep)
 			msg.eventSequence = rp.Events[j].Sequence
 			msg.numberOfEvent += 1
-		}
+		} */
 
 		if b, err = codec.RLP.MarshalToBytes(trp); err != nil {
 			return nil, err

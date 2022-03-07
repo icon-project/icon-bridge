@@ -114,12 +114,15 @@ func (s *SimpleChain) _relay() {
 	defer s.rmsMtx.RUnlock()
 	var err error
 	for _, rm := range s.rms {
-		if (len(rm.BlockUpdates) == 0 && len(rm.ReceiptProofs) == 0) ||
-			s._hasWait(rm) || (!s._skippable(rm) && !s._relayble(rm)) {
+		if ( /* len(rm.BlockUpdates) == 0 && */
+		len(rm.ReceiptProofs) == 0) ||
+			s._hasWait(rm) ||
+			(!s._skippable(rm) /* && !s._relayble(rm) */) {
 			break
 		} else {
 			if len(rm.Segments) == 0 {
-				if rm.Segments, err = s.s.Segment(rm, s.bs.Verifier.Height); err != nil {
+				//TODO: change the segment method signature
+				if rm.Segments, err = s.s.Segment(rm, 0); err != nil {
 					s.l.Panicf("fail to segment err:%+v", err)
 				}
 			}
@@ -133,6 +136,7 @@ func (s *SimpleChain) _relay() {
 
 				if segment.GetResultParam == nil {
 					segment.TransactionResult = nil
+					s._log("Going to relay now", rm, segment, j)
 					if segment.GetResultParam, err = s.s.Relay(segment); err != nil {
 						s.l.Panicf("fail to Relay err:%+v", err)
 					}
@@ -198,13 +202,13 @@ func (s *SimpleChain) addRelayMessage(bu *module.BlockUpdate, rps []*module.Rece
 	s.rmsMtx.Lock()
 	defer s.rmsMtx.Unlock()
 
-	if s.lastBlockUpdate != nil {
+	/* if s.lastBlockUpdate != nil {
 		//TODO consider remained bu when reconnect
 		if s.lastBlockUpdate.Height+1 != bu.Height {
 			s.l.Panicf("invalid bu")
 		}
 	}
-	s.lastBlockUpdate = bu
+	s.lastBlockUpdate = bu */
 	rm := s.rms[len(s.rms)-1]
 	if len(rm.Segments) > 0 {
 		rm = s._rm()
@@ -212,33 +216,33 @@ func (s *SimpleChain) addRelayMessage(bu *module.BlockUpdate, rps []*module.Rece
 	if len(rps) > 0 {
 		rm.BlockUpdates = append(rm.BlockUpdates, bu)
 		rm.ReceiptProofs = rps
-		rm.HeightOfDst = s.monitorHeight()
+		/* rm.HeightOfDst = s.monitorHeight()
 		if s.bs.BlockIntervalDst > 0 {
 			scale := float64(s.bs.BlockIntervalSrc) / float64(s.bs.BlockIntervalDst)
 			guessHeightOfDst := s.bs.RxHeight + int64(math.Ceil(float64(bu.Height-s.bs.RxHeightSrc)/scale)) - 1
 			if guessHeightOfDst < rm.HeightOfDst {
 				rm.HeightOfDst = guessHeightOfDst
 			}
-		}
-		s.l.Debugf("addRelayMessage rms:%d bu:%d rps:%d HeightOfDst:%d", len(s.rms), bu.Height, len(rps), rm.HeightOfDst)
+		} */
+		s.l.Debugf("addRelayMessage rms:%d rps:%d HeightOfDst:%d", len(s.rms), len(rps), rm.HeightOfDst)
 		rm = s._rm()
-	} else {
+	} /* else {
 		if bu.Height <= s.bs.Verifier.Height {
 			return
 		}
 		rm.BlockUpdates = append(rm.BlockUpdates, bu)
 		s.l.Debugf("addRelayMessage rms:%d bu:%d ~ %d", len(s.rms), rm.BlockUpdates[0].Height, bu.Height)
-	}
+	} */
 }
 
-func (s *SimpleChain) updateRelayMessage(h int64, seq int64) (err error) {
+func (s *SimpleChain) updateRelayMessage(seq int64) (err error) {
 	s.rmsMtx.Lock()
 	defer s.rmsMtx.Unlock()
 
-	s.l.Debugf("updateRelayMessage h:%d seq:%d monitorHeight:%d", h, seq, s.monitorHeight())
+	s.l.Debugf("updateRelayMessage seq:%d monitorHeight:%d", seq, s.monitorHeight())
 
 	rrm := 0
-rmLoop:
+	//rmLoop:
 	for i, rm := range s.rms {
 		if len(rm.ReceiptProofs) > 0 {
 			rrp := 0
@@ -251,9 +255,8 @@ rmLoop:
 				if revt >= int64(len(rp.Events)) {
 					rrp = j + 1
 				} else {
-					s.l.Debugf("updateRelayMessage rm:%d bu:%d rp:%d removeEventProofs %d ~ %d",
+					s.l.Debugf("updateRelayMessage rm:%d rp:%d removeEventProofs %d ~ %d",
 						rm.Seq,
-						rm.BlockUpdates[len(rm.BlockUpdates)-1].Height,
 						rp.Index,
 						rp.Events[0].Sequence,
 						rp.Events[revt-1].Sequence)
@@ -264,15 +267,18 @@ rmLoop:
 				}
 			}
 			if rrp > 0 {
-				s.l.Debugf("updateRelayMessage rm:%d bu:%d removeReceiptProofs %d ~ %d",
+				s.l.Debugf("updateRelayMessage rm:%d removeReceiptProofs %d ~ %d",
 					rm.Seq,
-					rm.BlockUpdates[len(rm.BlockUpdates)-1].Height,
 					rm.ReceiptProofs[0].Index,
 					rm.ReceiptProofs[rrp-1].Index)
 				rm.ReceiptProofs = rm.ReceiptProofs[rrp:]
 			}
 		}
-		if rm.BlockProof != nil {
+
+		if len(rm.ReceiptProofs) <= 0 {
+			rrm = i + 1
+		}
+		/* if rm.BlockProof != nil {
 			if len(rm.ReceiptProofs) > 0 {
 				if rm.BlockProof, err = s.newBlockProof(rm.BlockProof.BlockWitness.Height, rm.BlockProof.Header); err != nil {
 					return
@@ -303,7 +309,7 @@ rmLoop:
 					rm.BlockUpdates[rbu-1].Height)
 				rm.BlockUpdates = rm.BlockUpdates[rbu:]
 			}
-		}
+		} */
 	}
 	if rrm > 0 {
 		s.l.Debugf("updateRelayMessage rms:%d removeRelayMessage %d ~ %d",
@@ -336,13 +342,15 @@ func (s *SimpleChain) updateMTA(bu *module.BlockUpdate) {
 func (s *SimpleChain) OnBlockOfDst(height int64) error {
 	s.l.Tracef("OnBlockOfDst height:%d", height)
 	atomic.StoreInt64(&s.heightOfDst, height)
-	h, seq := s.bs.Verifier.Height, s.bs.RxSeq
+	//h = s.bs.Verifier.Height
+	seq := s.bs.RxSeq
 	if err := s.RefreshStatus(); err != nil {
 		return err
 	}
-	if h != s.bs.Verifier.Height || seq != s.bs.RxSeq {
-		h, seq = s.bs.Verifier.Height, s.bs.RxSeq
-		if err := s.updateRelayMessage(h, seq); err != nil {
+	if /*  h != s.bs.Verifier.Height || */ seq != s.bs.RxSeq {
+		//h = s.bs.Verifier.Height
+		seq = s.bs.RxSeq
+		if err := s.updateRelayMessage(seq); err != nil {
 			return err
 		}
 		s.relayCh <- nil
@@ -351,8 +359,8 @@ func (s *SimpleChain) OnBlockOfDst(height int64) error {
 }
 
 func (s *SimpleChain) OnBlockOfSrc(bu *module.BlockUpdate, rps []*module.ReceiptProof) {
-	s.l.Tracef("OnBlockOfSrc height:%d, bu.Height:%d", s.acc.Height(), bu.Height)
-	s.updateMTA(bu)
+	s.l.Tracef("OnBlockOfSrc")
+	//s.updateMTA(bu)
 	s.addRelayMessage(bu, rps)
 	s.relayCh <- nil
 }
@@ -420,9 +428,9 @@ func (s *SimpleChain) prepareDatabase(offset int64) error {
 }
 
 func (s *SimpleChain) _skippable(rm *module.RelayMessage) bool {
-	bs := s.bs
+	//bs := s.bs
 	if len(rm.ReceiptProofs) > 0 {
-		if bs.RotateTerm > 0 {
+		/* if bs.RotateTerm > 0 {
 			rotate := 0
 			relaybleHeightStart := bs.RotateHeight - int64(bs.RotateTerm+1)
 			if rm.HeightOfDst > bs.RotateHeight {
@@ -447,7 +455,8 @@ func (s *SimpleChain) _skippable(rm *module.RelayMessage) bool {
 			return (relaybleIndex == s.bmrIndex) && (prevFinalizeHeight <= s.monitorHeight())
 		} else {
 			return true
-		}
+		} */
+		return true
 	}
 	return false
 }
@@ -502,7 +511,7 @@ func (s *SimpleChain) RefreshStatus() error {
 		return err
 	}
 	s.bs = bmcStatus
-	s._rotate()
+	//s._rotate()
 	return nil
 }
 

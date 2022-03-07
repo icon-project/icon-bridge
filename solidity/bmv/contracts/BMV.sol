@@ -212,21 +212,21 @@ contract BMV is IBMV, Initializable {
         bytes memory _serializedMsg = bytes(_msg);
         Types.RelayMessage memory relayMsg = _serializedMsg
             .decodeRelayMessage();
-        require(
+        /* require(
             relayMsg.blockUpdates.length != 0 || !relayMsg.isBPEmpty,
             "BMVRevert: Invalid relay message"
-        );        
-        (bytes32 _receiptHash, uint256 _lastHeight) = getLastReceiptHash(
+        );   */      
+        /* (bytes32 _receiptHash, uint256 _lastHeight) = getLastReceiptHash(
             relayMsg
-        );
+        ); */
         bytes[] memory msgs = IDataValidator(subBmvAddr).validateReceipt(
             _bmc,
             _prev,
             _seq,
             _serializedMsg,
-            _receiptHash
+            ""
         );
-        if (msgs.length > 0) lastBlockHeight = _lastHeight;
+        //if (msgs.length > 0) lastBlockHeight = _lastHeight;
         return msgs;
     }
 }
