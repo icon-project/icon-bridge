@@ -29,17 +29,17 @@ public class ReceiptProof {
 
     private final int index;
     private final byte[] mptKey;
-    private final List<EventProof> eventProofs;
+  /*  private final List<EventProof> eventProofs;
     private final List<ReceiptEventLog> eventLogs;
-    private final List<byte[]> mptProofs;
+    private final List<byte[]> mptProofs;*/
     private final List<EventDataBTPMessage> events;
 
-    public ReceiptProof(int index, byte[] mptKey, List<byte[]> mptProofs, List<EventProof> eventProofs, List<ReceiptEventLog> eventLogs, List<EventDataBTPMessage> events) {
+    public ReceiptProof(int index, byte[] mptKey,/* List<byte[]> mptProofs, List<EventProof> eventProofs, List<ReceiptEventLog> eventLogs, */List<EventDataBTPMessage> events) {
         this.index = index;
         this.mptKey = mptKey;
-        this.mptProofs = mptProofs;
+       /* this.mptProofs = mptProofs;
         this.eventProofs = eventProofs;
-        this.eventLogs = eventLogs;
+        this.eventLogs = eventLogs;*/
         this.events = events;
     }
 
@@ -55,7 +55,7 @@ public class ReceiptProof {
         if(index > 0)
            mptKey = new byte[]{(byte)index};
 
-        List<byte[]> mptProofs = new ArrayList<>();
+        /*List<byte[]> mptProofs = new ArrayList<>();
         //mptProofs.add(reader.readNullable(byte[].class));
         ObjectReader mptProofReader = Context.newByteArrayObjectReader(RLPn, reader.readNullable(byte[].class));
         try {
@@ -75,7 +75,7 @@ public class ReceiptProof {
         List<ReceiptEventLog> eventsFromProofs = new ArrayList<>();
         for (EventProof ef : eventProofs) {
             eventsFromProofs.add(ReceiptEventLog.fromBytes(ef.getProof()));
-        }
+        }*/
         List<EventDataBTPMessage> eventsLogs = new ArrayList<>();
 
         ObjectReader eventLogReader = Context.newByteArrayObjectReader(RLPn, reader.readByteArray());
@@ -84,7 +84,7 @@ public class ReceiptProof {
             eventsLogs.add(EventDataBTPMessage.fromRLPBytes(eventLogReader));
         }
         eventLogReader.end();
-        return new ReceiptProof(index, mptKey, mptProofs, eventProofs, eventsFromProofs, eventsLogs);
+        return new ReceiptProof(index, mptKey,/* mptProofs, eventProofs, eventsFromProofs,*/ eventsLogs);
     }
 
     public static List<byte[]> readByteArrayListFromRLP(byte[] serialized) {
@@ -128,7 +128,7 @@ public class ReceiptProof {
         return mptKey;
     }
 
-    public List<byte[]> getMptProofs() {
+    /*public List<byte[]> getMptProofs() {
         return mptProofs;
     }
 
@@ -138,7 +138,7 @@ public class ReceiptProof {
 
     public List<ReceiptEventLog> getEventLogs() {
         return eventLogs;
-    }
+    }*/
 
     public List<EventDataBTPMessage> getEvents() {
         return events;

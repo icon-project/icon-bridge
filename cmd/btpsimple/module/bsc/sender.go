@@ -91,7 +91,7 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 		BlockUpdates:  make([][]byte, 0),
 		ReceiptProofs: make([][]byte, 0),
 	}
-	size := 0
+	//size := 0
 	//TODO rm.BlockUpdates[len(rm.BlockUpdates)-1].Height <= s.bmcStatus.Verifier.Height
 	//	using only rm.BlockProof
 	/* 	for _, bu := range rm.BlockUpdates {
@@ -141,16 +141,16 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 			msg.BlockProof = bp
 			msg.height = rm.BlockProof.BlockWitness.Height
 		} */
-		size += len(rp.Proof)
+		//size += len(rp.Proof)
 		var eventBytes []byte
 		if eventBytes, err = codec.RLP.MarshalToBytes(rp.Events); err != nil {
 			return nil, err
 		}
 		trp := &ReceiptProof{
-			Index:       rp.Index,
-			Proof:       rp.Proof,
-			EventProofs: make([]*module.EventProof, 0),
-			Events:      eventBytes,
+			Index: rp.Index,
+			//Proof:       rp.Proof,
+			//EventProofs: make([]*module.EventProof, 0),
+			Events: eventBytes,
 		}
 		/* for j, ep := range rp.EventProofs {
 			if s.isOverLimit(len(ep.Proof)) {

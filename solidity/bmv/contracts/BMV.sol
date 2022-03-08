@@ -210,8 +210,8 @@ contract BMV is IBMV, Initializable {
         checkAccessible(_bmc, _prev);        
         //bytes memory _serializedMsg = _msg.decode();
         bytes memory _serializedMsg = bytes(_msg);
-        Types.RelayMessage memory relayMsg = _serializedMsg
-            .decodeRelayMessage();
+       /*  Types.RelayMessage memory relayMsg = _serializedMsg
+            .decodeRelayMessage(); */
         /* require(
             relayMsg.blockUpdates.length != 0 || !relayMsg.isBPEmpty,
             "BMVRevert: Invalid relay message"

@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/icon-project/btp/cmd/btpsimple/module"
 	"github.com/icon-project/btp/common/jsonrpc"
 )
 
@@ -369,10 +368,10 @@ type RelayMessage struct {
 }
 
 type ReceiptProof struct {
-	Index       int
-	Proof       []byte
-	EventProofs []*module.EventProof
-	Events      []byte
+	Index int /*
+		Proof       []byte
+		EventProofs []*module.EventProof */
+	Events []byte
 }
 
 type Block struct {

@@ -17,23 +17,10 @@
 package bsc
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
-	"io"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
-	"github.com/ethereum/go-ethereum/light"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/btp/cmd/btpsimple/module"
 	"github.com/icon-project/btp/cmd/btpsimple/module/bsc/binding"
-	"github.com/icon-project/btp/common/codec"
 
 	"math/big"
 
@@ -54,74 +41,6 @@ type receiver struct {
 	consensusStates    ConsensusStates
 	evtReq             *BlockRequest
 	isFoundOffsetBySeq bool
-}
-
-func (r *receiver) newBlockUpdate(v *BlockNotification) (*module.BlockUpdate, error) {
-	var err error
-
-	bu := &module.BlockUpdate{
-		BlockHash: v.Hash.Bytes(),
-		Height:    v.Height.Int64(),
-	}
-
-	header := MakeHeader(v.Header)
-	bu.Header, err = codec.RLP.MarshalToBytes(*header)
-	if err != nil {
-		return nil, err
-	}
-
-	encodedHeader, _ := rlp.EncodeToBytes(v.Header)
-	if !bytes.Equal(v.Header.Hash().Bytes(), crypto.Keccak256(encodedHeader)) {
-		return nil, fmt.Errorf("mismatch block hash with BlockNotification")
-	}
-
-	/*proof, err := r.c.GetProof(v.Height, HexToAddress(r.src.ContractAddress()))
-	if err != nil {
-		return nil, err
-	}*/
-
-	if (v.Height.Int64() % EPOCH) == 0 {
-		r.consensusStates, err = r.c.GetLatestConsensusState()
-	}
-
-	update := &BlockUpdate{}
-	update.BlockHeader, _ = codec.RLP.MarshalToBytes(*header)
-	update.Validators = r.consensusStates.NextValidatorSet
-	buf := new(bytes.Buffer)
-	encodeSigHeader(buf, v.Header)
-	update.EvmHeader = buf.Bytes()
-
-	bu.Proof, err = codec.RLP.MarshalToBytes(update)
-	if err != nil {
-		return nil, err
-	}
-
-	return bu, nil
-}
-
-func encodeSigHeader(w io.Writer, header *types.Header) {
-	err := rlp.Encode(w, []interface{}{
-		big.NewInt(97),
-		header.ParentHash,
-		header.UncleHash,
-		header.Coinbase,
-		header.Root,
-		header.TxHash,
-		header.ReceiptHash,
-		header.Bloom,
-		header.Difficulty,
-		header.Number,
-		header.GasLimit,
-		header.GasUsed,
-		header.Time,
-		header.Extra[:len(header.Extra)-65], // Yes, this will panic if extra is too short
-		header.MixDigest,
-		header.Nonce,
-	})
-
-	if err != nil {
-		panic("can't encode: " + err.Error())
-	}
 }
 
 func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProof, error) {
@@ -148,7 +67,7 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 
 	srcContractAddress := HexToAddress(r.src.ContractAddress())
 
-	receiptTrie, err := trieFromReceipts(receipts) // receiptTrie.Hash() == block.ReceiptHash
+	//receiptTrie, err := trieFromReceipts(receipts) // receiptTrie.Hash() == block.ReceiptHash
 
 	for _, receipt := range receipts {
 		rp := &module.ReceiptProof{}
@@ -166,34 +85,35 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 				})
 			}
 
-			proof, err := codec.RLP.MarshalToBytes(*MakeLog(eventLog))
+			/* proof, err := codec.RLP.MarshalToBytes(*MakeLog(eventLog))
 			if err != nil {
 				return nil, err
 			}
 			rp.EventProofs = append(rp.EventProofs, &module.EventProof{
 				Index: int(eventLog.Index),
 				Proof: proof,
-			})
+			}) */
 		}
 
 		if len(rp.Events) > 0 {
-			key, err := rlp.EncodeToBytes(receipt.TransactionIndex)
+			/* key, err := rlp.EncodeToBytes(receipt.TransactionIndex)
 			r.log.Debugf("newReceiptProofs: height:%d hash:%s key:%d", v.Height, block.ReceiptHash(), key)
 			proofs, err := receiptProof(receiptTrie, key)
 			if err != nil {
 				return nil, err
-			}
+			} */
 			rp.Index = int(receipt.TransactionIndex)
-			rp.Proof, err = codec.RLP.MarshalToBytes(proofs)
-			if err != nil {
+			//rp.Proof, err = codec.RLP.MarshalToBytes(proofs)
+			/* if err != nil {
 				return nil, err
-			}
+			} */
 			rps = append(rps, rp)
 		}
 	}
 	return rps, nil
 }
 
+/*
 func trieFromReceipts(receipts []*types.Receipt) (*trie.Trie, error) {
 	tr, _ := trie.New(common.Hash{}, trie.NewDatabase(memorydb.New()))
 
@@ -218,8 +138,8 @@ func trieFromReceipts(receipts []*types.Receipt) (*trie.Trie, error) {
 	}
 
 	return tr, nil
-}
-
+} */
+/*
 func receiptProof(receiptTrie *trie.Trie, key []byte) ([][]byte, error) {
 	proofSet := light.NewNodeSet()
 	err := receiptTrie.Prove(key, 0, proofSet)
@@ -233,7 +153,7 @@ func receiptProof(receiptTrie *trie.Trie, key []byte) ([][]byte, error) {
 	}
 	return proofs, nil
 }
-
+*/
 func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallback, scb func()) error {
 	r.log.Debugf("ReceiveLoop connected")
 	br := &BlockRequest{
@@ -251,16 +171,11 @@ func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallbac
 		func(v *BlockNotification) error {
 			var bu *module.BlockUpdate
 			var rps []*module.ReceiptProof
-			/* if bu, err = r.newBlockUpdate(v); err != nil {
-				return err
-			} */
 			if rps, err = r.newReceiptProofs(v); err != nil {
 				return err
 			} else if r.isFoundOffsetBySeq {
 				cb(bu, rps)
-			} /* else {
-				cb(bu, nil)
-			} */
+			}
 			return nil
 		},
 	)
@@ -285,11 +200,4 @@ func NewReceiver(src, dst module.BtpAddress, endpoint string, opt map[string]int
 	}
 	r.c = NewClient(endpoint, l)
 	return r
-}
-
-func (r *receiver) GetBlockUpdate(height int64) (*module.BlockUpdate, error) {
-	var bu *module.BlockUpdate
-	v := &BlockNotification{Height: big.NewInt(height)}
-	bu, err := r.newBlockUpdate(v)
-	return bu, err
 }

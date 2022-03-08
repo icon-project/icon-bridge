@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"math/big"
+	"strings"
+
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -12,9 +16,6 @@ import (
 	"github.com/icon-project/btp/common/codec"
 	"github.com/icon-project/btp/common/log"
 	"github.com/icon-project/btp/common/wallet"
-	"io/ioutil"
-	"math/big"
-	"strings"
 )
 
 func test_SenderReceiver() {
@@ -30,10 +31,10 @@ func test_SenderReceiver() {
 		fmt.Println(err)
 	}
 
-	receiver := icon.NewReceiver(src, dst, "http://localhost:9080/api/v3/src", nil, log.GlobalLogger())
+	_ = icon.NewReceiver(src, dst, "http://localhost:9080/api/v3/src", nil, log.GlobalLogger())
 	sender := bsc.NewSender(src, dst, wallet, "ws://localhost:8545/", nil, log.GlobalLogger())
 
-	bu, err := receiver.GetBlockUpdate(112)
+	//bu, err := receiver.GetBlockUpdate(112)
 	//fmt.Println(bu, err)
 	rm := &module.RelayMessage{
 		From:         src,
@@ -41,7 +42,7 @@ func test_SenderReceiver() {
 		Seq:          1,
 	}
 
-	rm.BlockUpdates = append(rm.BlockUpdates, bu)
+	//rm.BlockUpdates = append(rm.BlockUpdates, bu)
 	//fmt.Println(rm.BlockUpdates[0])
 	segments, err := sender.Segment(rm, 111)
 	if err != nil {

@@ -261,9 +261,9 @@ func (s *SimpleChain) updateRelayMessage(seq int64) (err error) {
 						rp.Events[0].Sequence,
 						rp.Events[revt-1].Sequence)
 					rp.Events = rp.Events[revt:]
-					if len(rp.EventProofs) > 0 {
+					/* if len(rp.EventProofs) > 0 {
 						rp.EventProofs = rp.EventProofs[revt:]
-					}
+					} */
 				}
 			}
 			if rrp > 0 {

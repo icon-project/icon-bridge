@@ -192,7 +192,10 @@ library MessageDecoder {
         returns (Types.ReceiptProof memory)
     {
         RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
-        RLPDecode.RLPItem[] memory serializedMptProofs =
+        bytes[] memory mptProofs = new bytes[](0);
+        Types.EventProof[] memory eventProofs =
+            new Types.EventProof[](0);
+        /* RLPDecode.RLPItem[] memory serializedMptProofs =
             ls[1].toBytes().toRlpItem().toList();
 
         bytes[] memory mptProofs = new bytes[](serializedMptProofs.length);
@@ -205,12 +208,12 @@ library MessageDecoder {
 
         for (uint256 i = 0; i < ls[2].toList().length; i++) {
             eventProofs[i] = ls[2].toList()[i].toRlpBytes().decodeEventProof();
-        }
+        } */
         Types.MessageEvent[] memory events =
-            new Types.MessageEvent[](ls[3].toBytes().toRlpItem().toList().length);
+            new Types.MessageEvent[](ls[1].toBytes().toRlpItem().toList().length);
 
-        for (uint256 i = 0; i < ls[3].toBytes().toRlpItem().toList().length; i++) {
-            events[i] =ls[3].toBytes().toRlpItem().toList()[i].toRlpBytes().toMessageEvent();
+        for (uint256 i = 0; i < ls[1].toBytes().toRlpItem().toList().length; i++) {
+            events[i] =ls[1].toBytes().toRlpItem().toList()[i].toRlpBytes().toMessageEvent();
         }
 
         return

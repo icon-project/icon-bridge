@@ -15,10 +15,10 @@ type BlockProof struct {
 	BlockWitness *BlockWitness
 }
 type ReceiptProof struct {
-	Index       int
-	Proof       []byte
-	EventProofs []*EventProof
-	Events      []*Event
+	Index int
+	/* Proof       []byte
+	EventProofs []*EventProof */
+	Events []*Event
 }
 type EventProof struct {
 	Index int
@@ -102,5 +102,5 @@ type ReceiveCallback func(bu *BlockUpdate, rps []*ReceiptProof)
 type Receiver interface {
 	ReceiveLoop(height int64, seq int64, cb ReceiveCallback, scb func()) error
 	StopReceiveLoop()
-	GetBlockUpdate(height int64) (*BlockUpdate, error)
+	//GetBlockUpdate(height int64) (*BlockUpdate, error)
 }

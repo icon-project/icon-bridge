@@ -2,11 +2,11 @@ package bsc
 
 import (
 	"fmt"
-	"github.com/icon-project/btp/cmd/btpsimple/module"
-	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/log"
 	"math/big"
 	"testing"
+
+	"github.com/icon-project/btp/cmd/btpsimple/module"
+	"github.com/icon-project/btp/common/log"
 )
 
 func TestReceiver_GetReceiptProofs(t *testing.T) {
@@ -19,7 +19,7 @@ func TestReceiver_GetReceiptProofs(t *testing.T) {
 
 	r := NewReceiver(src, dst, "http://localhost:8545", nil, log.New())
 
-	blockNotification := &BlockNotification{Height: big.NewInt(191)}
+	/* blockNotification := &BlockNotification{Height: big.NewInt(191)}
 	receiptProofs, err := r.(*receiver).newReceiptProofs(blockNotification)
 
 	//fmt.Println(receiptProofs[0].Proof)
@@ -29,7 +29,7 @@ func TestReceiver_GetReceiptProofs(t *testing.T) {
 
 	if err != nil {
 		return
-	}
+	} */
 
 	block, err := r.(*receiver).c.GetBlockByHeight(big.NewInt(191))
 	fmt.Println(block.ReceiptHash())

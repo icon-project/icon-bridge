@@ -26,7 +26,6 @@ import (
 	"github.com/icon-project/btp/cmd/btpsimple/module"
 	"github.com/icon-project/btp/common"
 	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/crypto"
 	"github.com/icon-project/btp/common/log"
 	"github.com/icon-project/btp/common/mpt"
 )
@@ -72,47 +71,6 @@ func (r *receiver) getBlockHeader(height HexInt) (*BlockHeader, error) {
 	return &bh, nil
 }
 
-func (r *receiver) newBlockUpdate(v *BlockNotification) (*module.BlockUpdate, error) {
-	bh, err := r.getBlockHeader(v.Height)
-	if err != nil {
-		return nil, err
-	}
-	blkHash, _ := v.Hash.Value()
-	if !bytes.Equal(blkHash, crypto.SHA3Sum256(bh.serialized)) {
-		return nil, fmt.Errorf("mismatch block hash with BlockNotification")
-	}
-
-	var update BlockUpdate
-	update.BlockHeader = bh.serialized
-	update.BlockHash = v.Hash
-	vb, vbErr := r.c.GetVotesByHeight(&BlockHeightParam{Height: v.Height})
-	if vbErr != nil {
-		return nil, mapError(vbErr)
-	}
-	update.Votes = vb
-
-	if r.bh == nil || !bytes.Equal(bh.NextValidatorsHash, r.bh.NextValidatorsHash) {
-		dp := &DataHashParam{Hash: NewHexBytes(bh.NextValidatorsHash)}
-		nvb, err := r.c.GetDataByHash(dp)
-		if err != nil {
-			return nil, mapError(err)
-		}
-		update.Validators = nvb
-	}
-
-	bu := &module.BlockUpdate{
-		BlockHash: blkHash,
-		Height:    bh.Height,
-		Header:    bh.serialized,
-	}
-	bu.Proof, err = codec.RLP.MarshalToBytes(&update)
-	if err != nil {
-		return nil, err
-	}
-	r.bh = bh
-	return bu, nil
-}
-
 func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProof, error) {
 	nextEp := 0
 	rps := make([]*module.ReceiptProof, 0)
@@ -148,26 +106,26 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 			}
 			idx, _ := index.Value()
 			rp := &module.ReceiptProof{
-				Index:       int(idx),
-				EventProofs: make([]*module.EventProof, 0),
+				Index: int(idx),
+				//EventProofs: make([]*module.EventProof, 0),
 			}
-			if rp.Proof, err = codec.RLP.MarshalToBytes(proofs[0]); err != nil {
+			/* if rp.Proof, err = codec.RLP.MarshalToBytes(proofs[0]); err != nil {
 				return nil, err
-			}
+			} */
 			for k := nextEp; k < len(p.Events); k++ {
-				eIdx, _ := p.Events[k].Value()
+				/* eIdx, _ := p.Events[k].Value()
 				ep := &module.EventProof{
 					Index: int(eIdx),
 				}
 				if ep.Proof, err = codec.RLP.MarshalToBytes(proofs[k+1]); err != nil {
 					return nil, err
-				}
+				} */
 				var evt *module.Event
 				if evt, err = r.toEvent(proofs[k+1]); err != nil {
 					return nil, err
 				}
 				rp.Events = append(rp.Events, evt)
-				rp.EventProofs = append(rp.EventProofs, ep)
+				//rp.EventProofs = append(rp.EventProofs, ep)
 			}
 			rps = append(rps, rp)
 			nextEp = 0
@@ -286,6 +244,7 @@ func NewReceiver(src, dst module.BtpAddress, endpoint string, opt map[string]int
 	return r
 }
 
+/*
 func (r *receiver) GetBlockUpdate(height int64) (*module.BlockUpdate, error) {
 	var v *BlockNotification
 	var bu *module.BlockUpdate
@@ -299,4 +258,4 @@ func (r *receiver) GetBlockUpdate(height int64) (*module.BlockUpdate, error) {
 		return nil, err
 	}
 	return bu, nil
-}
+} */

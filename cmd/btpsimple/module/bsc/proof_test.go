@@ -3,19 +3,19 @@ package bsc
 import (
 	"bytes"
 	"fmt"
+	"math/big"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
-	"github.com/ethereum/go-ethereum/light"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/btp/cmd/btpsimple/module"
 	"github.com/icon-project/btp/cmd/btpsimple/module/bsc/binding"
 	"github.com/icon-project/btp/common/codec"
 	"github.com/icon-project/btp/common/log"
-	"math/big"
-	"testing"
 )
 
 // LogProof contains everything that's necessary
@@ -74,23 +74,23 @@ func GenerateReceiptProof_(height int64) ([]*module.ReceiptProof, error) {
 					Sequence: bmcMsg.Seq.Int64(),
 				})
 			}
-			proof, err := codec.RLP.MarshalToBytes(*MakeLog(eventLog))
+			/* 	proof, err := codec.RLP.MarshalToBytes(*MakeLog(eventLog))
 			if err != nil {
 				return nil, err
 			}
 			rp.EventProofs = append(rp.EventProofs, &module.EventProof{
 				Index: int(eventLog.Index),
 				Proof: proof,
-			})
+			}) */
 		}
 
 		if len(rp.Events) > 0 {
 			//fmt.Println("newReceiptProofs:", rp.Events[0].Message)
 			rp.Index = int(receipt.TransactionIndex)
-			rp.Proof, err = codec.RLP.MarshalToBytes(*MakeReceipt(receipt))
+			/* rp.Proof, err = codec.RLP.MarshalToBytes(*MakeReceipt(receipt))
 			if err != nil {
 				return nil, err
-			}
+			} */
 			rps = append(rps, rp)
 			idx = receipt.TransactionIndex
 		}
@@ -147,6 +147,7 @@ func GenerateReceiptProof1(height int64) error {
 	return nil
 }
 
+/*
 func GenerateReceiptProof(height int64) (*LogProof, error) {
 	client := NewClient("http://localhost:8545", log.New())
 
@@ -158,15 +159,6 @@ func GenerateReceiptProof(height int64) (*LogProof, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	receiptTrie, err := trieFromReceipts(receipts)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println(receiptTrie.Hash())
-	fmt.Println(block.ReceiptHash())
-
 	// Generate MTP.
 	proof := memorydb.New()
 
@@ -193,17 +185,7 @@ func GenerateReceiptProof(height int64) (*LogProof, error) {
 		fmt.Println(err)
 	}
 
-	/*keyBuf.Reset()
-	err = rlp.Encode(keyBuf, uint(txIndex))
-	if err != nil {
-		return nil, 0, fmt.Errorf("rlp encode returns an error: %v", err)
-	}
-	Logger.Println("Start proving receipt trie...")
-	err = receiptTrie.Prove(keyBuf.Bytes(), 0, proof)
-	if err != nil {
-		return nil, 0, err
-	}
-	Logger.Println("Finish proving receipt trie.")*/
+
 
 	proofs := make([]interface{}, 0)
 	if it := trie.NewIterator(receiptTrie.NodeIterator(key)); it.Next() && bytes.Equal(key, it.Key) {
@@ -243,7 +225,7 @@ func GenerateReceiptProof(height int64) (*LogProof, error) {
 
 	return logProof, nil
 }
-
+*/
 func VerifyLogProof(p *LogProof) (bool, error) {
 	var header types.Header
 	if err := rlp.DecodeBytes(p.Header, &header); err != nil {
@@ -296,7 +278,7 @@ func logFromReceipt(r []byte, i uint) ([]byte, error) {
 }
 
 func TestReceiver_GetReceiptProof(t *testing.T) {
-	GenerateReceiptProof(772)
+	//GenerateReceiptProof(772)
 
 	//fmt.Println(VerifyLogProof(proof))
 }
