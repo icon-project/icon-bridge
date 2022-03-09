@@ -17,17 +17,13 @@
 package chain
 
 import (
-	"encoding/base64"
-	"encoding/hex"
 	"fmt"
-	"math"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/icon-project/btp/cmd/btpsimple/module"
-	"github.com/icon-project/btp/common/codec"
 	"github.com/icon-project/btp/common/db"
 	"github.com/icon-project/btp/common/errors"
 	"github.com/icon-project/btp/common/log"
@@ -70,15 +66,6 @@ type SimpleChain struct {
 	relaybleHeight int64
 }
 
-func (s *SimpleChain) _relayble(rm *module.RelayMessage) bool {
-	return s.relayble && (s._overMaxAggregation(rm) || s._lastRelaybleHeight())
-}
-func (s *SimpleChain) _overMaxAggregation(rm *module.RelayMessage) bool {
-	return len(rm.BlockUpdates) >= s.bs.MaxAggregation
-}
-func (s *SimpleChain) _lastRelaybleHeight() bool {
-	return s.relaybleHeight == (s.monitorHeight() + 1)
-}
 func (s *SimpleChain) _hasWait(rm *module.RelayMessage) bool {
 	for _, segment := range rm.Segments {
 		if segment != nil && segment.GetResultParam != nil && segment.TransactionResult == nil {
@@ -114,10 +101,9 @@ func (s *SimpleChain) _relay() {
 	defer s.rmsMtx.RUnlock()
 	var err error
 	for _, rm := range s.rms {
-		if ( /* len(rm.BlockUpdates) == 0 && */
-		len(rm.ReceiptProofs) == 0) ||
+		if (len(rm.ReceiptProofs) == 0) ||
 			s._hasWait(rm) ||
-			(!s._skippable(rm) /* && !s._relayble(rm) */) {
+			(!s._skippable(rm)) {
 			break
 		} else {
 			if len(rm.Segments) == 0 {
@@ -166,10 +152,6 @@ func (s *SimpleChain) result(rm *module.RelayMessage, segment *module.Segment) {
 						break
 					}
 				}
-			case module.BMVRevertInvalidBlockWitnessOld:
-				rm.BlockProof, err = s.newBlockProof(rm.BlockProof.BlockWitness.Height, rm.BlockProof.Header)
-				s.s.UpdateSegment(rm.BlockProof, segment)
-				segment.GetResultParam = nil
 			case module.BMVRevertInvalidSequenceHigher, module.BMVRevertInvalidBlockUpdateHigher, module.BMVRevertInvalidBlockProofHigher:
 				segment.GetResultParam = nil
 			case module.BMCRevertUnauthorized:
@@ -202,13 +184,6 @@ func (s *SimpleChain) addRelayMessage(bu *module.BlockUpdate, rps []*module.Rece
 	s.rmsMtx.Lock()
 	defer s.rmsMtx.Unlock()
 
-	/* if s.lastBlockUpdate != nil {
-		//TODO consider remained bu when reconnect
-		if s.lastBlockUpdate.Height+1 != bu.Height {
-			s.l.Panicf("invalid bu")
-		}
-	}
-	s.lastBlockUpdate = bu */
 	rm := s.rms[len(s.rms)-1]
 	if len(rm.Segments) > 0 {
 		rm = s._rm()
@@ -216,23 +191,9 @@ func (s *SimpleChain) addRelayMessage(bu *module.BlockUpdate, rps []*module.Rece
 	if len(rps) > 0 {
 		rm.BlockUpdates = append(rm.BlockUpdates, bu)
 		rm.ReceiptProofs = rps
-		/* rm.HeightOfDst = s.monitorHeight()
-		if s.bs.BlockIntervalDst > 0 {
-			scale := float64(s.bs.BlockIntervalSrc) / float64(s.bs.BlockIntervalDst)
-			guessHeightOfDst := s.bs.RxHeight + int64(math.Ceil(float64(bu.Height-s.bs.RxHeightSrc)/scale)) - 1
-			if guessHeightOfDst < rm.HeightOfDst {
-				rm.HeightOfDst = guessHeightOfDst
-			}
-		} */
 		s.l.Debugf("addRelayMessage rms:%d rps:%d HeightOfDst:%d", len(s.rms), len(rps), rm.HeightOfDst)
 		rm = s._rm()
-	} /* else {
-		if bu.Height <= s.bs.Verifier.Height {
-			return
-		}
-		rm.BlockUpdates = append(rm.BlockUpdates, bu)
-		s.l.Debugf("addRelayMessage rms:%d bu:%d ~ %d", len(s.rms), rm.BlockUpdates[0].Height, bu.Height)
-	} */
+	}
 }
 
 func (s *SimpleChain) updateRelayMessage(seq int64) (err error) {
@@ -242,7 +203,6 @@ func (s *SimpleChain) updateRelayMessage(seq int64) (err error) {
 	s.l.Debugf("updateRelayMessage seq:%d monitorHeight:%d", seq, s.monitorHeight())
 
 	rrm := 0
-	//rmLoop:
 	for i, rm := range s.rms {
 		if len(rm.ReceiptProofs) > 0 {
 			rrp := 0
@@ -261,9 +221,6 @@ func (s *SimpleChain) updateRelayMessage(seq int64) (err error) {
 						rp.Events[0].Sequence,
 						rp.Events[revt-1].Sequence)
 					rp.Events = rp.Events[revt:]
-					/* if len(rp.EventProofs) > 0 {
-						rp.EventProofs = rp.EventProofs[revt:]
-					} */
 				}
 			}
 			if rrp > 0 {
@@ -278,38 +235,6 @@ func (s *SimpleChain) updateRelayMessage(seq int64) (err error) {
 		if len(rm.ReceiptProofs) <= 0 {
 			rrm = i + 1
 		}
-		/* if rm.BlockProof != nil {
-			if len(rm.ReceiptProofs) > 0 {
-				if rm.BlockProof, err = s.newBlockProof(rm.BlockProof.BlockWitness.Height, rm.BlockProof.Header); err != nil {
-					return
-				}
-			} else {
-				rrm = i + 1
-			}
-		}
-		if len(rm.BlockUpdates) > 0 {
-			rbu := h - rm.BlockUpdates[0].Height + 1
-			if rbu < 1 {
-				break rmLoop
-			}
-			if rbu >= int64(len(rm.BlockUpdates)) {
-				if len(rm.ReceiptProofs) > 0 {
-					lbu := rm.BlockUpdates[len(rm.BlockUpdates)-1]
-					if rm.BlockProof, err = s.newBlockProof(lbu.Height, lbu.Header); err != nil {
-						return
-					}
-					rm.BlockUpdates = rm.BlockUpdates[:0]
-				} else {
-					rrm = i + 1
-				}
-			} else {
-				s.l.Debugf("updateRelayMessage rm:%d removeBlockUpdates %d ~ %d",
-					rm.Seq,
-					rm.BlockUpdates[0].Height,
-					rm.BlockUpdates[rbu-1].Height)
-				rm.BlockUpdates = rm.BlockUpdates[rbu:]
-			}
-		} */
 	}
 	if rrm > 0 {
 		s.l.Debugf("updateRelayMessage rms:%d removeRelayMessage %d ~ %d",
@@ -324,31 +249,14 @@ func (s *SimpleChain) updateRelayMessage(seq int64) (err error) {
 	return nil
 }
 
-func (s *SimpleChain) updateMTA(bu *module.BlockUpdate) {
-	next := s.acc.Height() + 1
-	if next < bu.Height {
-		s.l.Panicf("found missing block next:%d bu:%d", next, bu.Height)
-	}
-	if next == bu.Height {
-		s.acc.AddHash(bu.BlockHash)
-		if err := s.acc.Flush(); err != nil {
-			//TODO MTA Flush error handling
-			s.l.Panicf("fail to MTA Flush err:%+v", err)
-		}
-		//s.l.Debugf("updateMTA %d", bu.Height)
-	}
-}
-
 func (s *SimpleChain) OnBlockOfDst(height int64) error {
 	s.l.Tracef("OnBlockOfDst height:%d", height)
 	atomic.StoreInt64(&s.heightOfDst, height)
-	//h = s.bs.Verifier.Height
 	seq := s.bs.RxSeq
 	if err := s.RefreshStatus(); err != nil {
 		return err
 	}
-	if /*  h != s.bs.Verifier.Height || */ seq != s.bs.RxSeq {
-		//h = s.bs.Verifier.Height
+	if seq != s.bs.RxSeq {
 		seq = s.bs.RxSeq
 		if err := s.updateRelayMessage(seq); err != nil {
 			return err
@@ -360,29 +268,8 @@ func (s *SimpleChain) OnBlockOfDst(height int64) error {
 
 func (s *SimpleChain) OnBlockOfSrc(bu *module.BlockUpdate, rps []*module.ReceiptProof) {
 	s.l.Tracef("OnBlockOfSrc")
-	//s.updateMTA(bu)
 	s.addRelayMessage(bu, rps)
 	s.relayCh <- nil
-}
-
-func (s *SimpleChain) newBlockProof(height int64, header []byte) (*module.BlockProof, error) {
-	//at := s.bs.Verifier.Height
-	//w, err := s.acc.WitnessForWithAccLength(height-s.acc.Offset(), at-s.bs.Verifier.Offset)
-	at, w, err := s.acc.WitnessForAt(height, s.bs.Verifier.Height, s.bs.Verifier.Offset)
-	if err != nil {
-		return nil, err
-	}
-
-	s.l.Debugf("newBlockProof height:%d, at:%d, w:%d", height, at, len(w))
-	bp := &module.BlockProof{
-		Header: header,
-		BlockWitness: &module.BlockWitness{
-			Height:  at,
-			Witness: mta.WitnessesToHashes(w),
-		},
-	}
-	dumpBlockProof(s.acc, height, bp)
-	return bp, nil
 }
 
 func (s *SimpleChain) prepareDatabase(offset int64) error {
@@ -406,103 +293,19 @@ func (s *SimpleChain) prepareDatabase(offset int64) error {
 	}
 	s.acc = mta.NewExtAccumulator(k, bk, offset)
 	if bk.Has(k) {
-		//offset will be ignore
 		if err = s.acc.Recover(); err != nil {
 			return errors.Wrapf(err, "fail to acc.Recover cause:%v", err)
 		}
 		s.l.Debugf("recover Accumulator offset:%d, height:%d", s.acc.Offset(), s.acc.Height())
-
-		//TODO [TBD] sync offset
-		//if s.acc.Offset() > offset {
-		//	hashes := make([][]byte, s.acc.Offset() - offset)
-		//	for i := 0; i < len(hashes); i++ {
-		//		hashes[i] = getBlockHashByHeight(offset)
-		//		offset++
-		//	}
-		//	s.acc.AddHashesToHead(hashes)
-		//} else if s.acc.Offset() < offset {
-		//	s.acc.RemoveHashesFromHead(offset-s.acc.Offset())
-		//}
 	}
 	return nil
 }
 
 func (s *SimpleChain) _skippable(rm *module.RelayMessage) bool {
-	//bs := s.bs
 	if len(rm.ReceiptProofs) > 0 {
-		/* if bs.RotateTerm > 0 {
-			rotate := 0
-			relaybleHeightStart := bs.RotateHeight - int64(bs.RotateTerm+1)
-			if rm.HeightOfDst > bs.RotateHeight {
-				rotate = int(math.Ceil(float64(rm.HeightOfDst-bs.RotateHeight) / float64(bs.RotateTerm)))
-				if rotate > 0 {
-					relaybleHeightStart += int64(bs.RotateTerm * (rotate - 1))
-				}
-			}
-			skip := int(math.Ceil(float64(s.monitorHeight()+1-rm.HeightOfDst)/float64(bs.DelayLimit))) - 1
-			if skip > 0 {
-				rotate += skip
-				relaybleHeightStart = rm.HeightOfDst + int64(bs.DelayLimit*skip)
-			}
-			relaybleIndex := bs.BMRIndex
-			if rotate > 0 {
-				relaybleIndex += rotate
-				if relaybleIndex >= len(bs.BMRs) {
-					relaybleIndex = relaybleIndex % len(bs.BMRs)
-				}
-			}
-			prevFinalizeHeight := relaybleHeightStart + int64(s.s.FinalizeLatency())
-			return (relaybleIndex == s.bmrIndex) && (prevFinalizeHeight <= s.monitorHeight())
-		} else {
-			return true
-		} */
 		return true
 	}
 	return false
-}
-
-func (s *SimpleChain) _rotate() {
-	bs := s.bs
-	a := s.w.Address()
-	if bs.RotateTerm > 0 {
-		//update own bmrIndex of BMRs
-		bmrIndex := -1
-		for i, bmr := range bs.BMRs {
-			if bmr.Address == a {
-				bmrIndex = i
-				break
-			}
-		}
-		s.bmrIndex = bmrIndex
-
-		//predict index and height of rotate on next block
-		rotate := int(math.Ceil(float64(s.monitorHeight()+1-bs.RotateHeight) / float64(bs.RotateTerm)))
-		relaybleIndex := bs.BMRIndex
-		relaybleHeightEnd := bs.RotateHeight
-		if rotate > 0 {
-			relaybleIndex += rotate
-			if relaybleIndex >= len(bs.BMRs) {
-				relaybleIndex = relaybleIndex % len(bs.BMRs)
-			}
-			relaybleHeightEnd += int64(bs.RotateTerm * rotate)
-		}
-		prevFinalizeHeight := relaybleHeightEnd - int64(s.bs.RotateTerm) + int64(s.s.FinalizeLatency())
-		s.relayble = (relaybleIndex == s.bmrIndex) && (prevFinalizeHeight <= s.monitorHeight())
-		s.relaybleIndex = relaybleIndex
-		s.relaybleHeight = relaybleHeightEnd
-		//b7214314876a73397c07}]
-		s.l.Debugf("RefreshStatus %d si:%d status[i:%d rh:%d rxh:%d rxhs:%d] relayble[%v i:%d rh:%d r:%d]",
-			s.monitorHeight(),
-			s.bmrIndex,
-			bs.BMRIndex,
-			bs.RotateHeight,
-			bs.RxHeight,
-			bs.RxHeightSrc,
-			s.relayble,
-			relaybleIndex,
-			relaybleHeightEnd,
-			rotate)
-	}
 }
 
 func (s *SimpleChain) RefreshStatus() error {
@@ -511,7 +314,6 @@ func (s *SimpleChain) RefreshStatus() error {
 		return err
 	}
 	s.bs = bmcStatus
-	//s._rotate()
 	return nil
 }
 
@@ -538,23 +340,24 @@ func (s *SimpleChain) init() error {
 			}
 		}()
 	}
-	s.l.Debugf("_init height:%d, dst(%s, height:%d, seq:%d, last:%d), receive:%d",
-		s.acc.Height(), s.dst, s.bs.Verifier.Height, s.bs.RxSeq, s.bs.Verifier.LastHeight, s.receiveHeight())
+	s.l.Debugf("_init height:%d, dst(%s, seq:%d), receive:%d",
+		s.acc.Height(), s.dst, s.bs.RxSeq, s.receiveHeight())
 	return nil
 }
 
 func (s *SimpleChain) receiveHeight() int64 {
+	//TODO: check this logic
 	//min(max(s.acc.Height(), s.bs.Verifier.Offset), s.bs.Verifier.LastHeight)
 	max := s.acc.Height()
-	if max < s.bs.Verifier.Offset {
+	/* if max < s.bs.Verifier.Offset {
 		max = s.bs.Verifier.Offset
-	}
+	} */
 	max += 1
-	min := s.bs.Verifier.LastHeight
+	/* min := s.bs.Verifier.LastHeight
 	if max < min {
 		min = max
-	}
-	return min
+	} */
+	return max
 }
 
 func (s *SimpleChain) monitorHeight() int64 {
@@ -622,20 +425,4 @@ func NewChain(cfg *Config, w wallet.Wallet, l log.Logger) (*SimpleChain, error) 
 		return nil, err
 	}
 	return s, nil
-}
-
-func dumpBlockProof(acc *mta.ExtAccumulator, height int64, bp *module.BlockProof) {
-	if n, err := acc.GetNode(height); err != nil {
-		fmt.Printf("height:%d, accLen:%d, err:%+v", height, acc.Len(), err)
-	} else {
-		fmt.Printf("height:%d, accLen:%d, hash:%s\n", height, acc.Len(), hex.EncodeToString(n.Hash()))
-	}
-
-	fmt.Print("dumpBlockProof.height:", bp.BlockWitness.Height, ",witness:[")
-	for _, w := range bp.BlockWitness.Witness {
-		fmt.Print(hex.EncodeToString(w), ",")
-	}
-	fmt.Println("]")
-	b, _ := codec.RLP.MarshalToBytes(bp)
-	fmt.Println(base64.URLEncoding.EncodeToString(b))
 }

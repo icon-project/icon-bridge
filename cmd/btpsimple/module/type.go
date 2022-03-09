@@ -54,19 +54,8 @@ type Segment struct {
 }
 
 type BMCLinkStatus struct {
-	TxSeq    int64
-	RxSeq    int64
-	Verifier struct {
-		Height     int64
-		Offset     int64
-		LastHeight int64
-	}
-	//BMR rotate
-	BMRs []struct {
-		Address      string
-		BlockCount   int64
-		MessageCount int64
-	}
+	TxSeq            int64
+	RxSeq            int64
 	BMRIndex         int
 	RotateHeight     int64
 	RotateTerm       int
@@ -87,7 +76,6 @@ type MonitorCallback func(height int64) error
 
 type Sender interface {
 	Segment(rm *RelayMessage, height int64) ([]*Segment, error)
-	UpdateSegment(bp *BlockProof, segment *Segment) error
 	Relay(segment *Segment) (GetResultParam, error)
 	GetResult(p GetResultParam) (TransactionResult, error)
 	GetStatus() (*BMCLinkStatus, error)

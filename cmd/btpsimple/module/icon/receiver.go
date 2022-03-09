@@ -107,25 +107,13 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 			idx, _ := index.Value()
 			rp := &module.ReceiptProof{
 				Index: int(idx),
-				//EventProofs: make([]*module.EventProof, 0),
 			}
-			/* if rp.Proof, err = codec.RLP.MarshalToBytes(proofs[0]); err != nil {
-				return nil, err
-			} */
 			for k := nextEp; k < len(p.Events); k++ {
-				/* eIdx, _ := p.Events[k].Value()
-				ep := &module.EventProof{
-					Index: int(eIdx),
-				}
-				if ep.Proof, err = codec.RLP.MarshalToBytes(proofs[k+1]); err != nil {
-					return nil, err
-				} */
 				var evt *module.Event
 				if evt, err = r.toEvent(proofs[k+1]); err != nil {
 					return nil, err
 				}
 				rp.Events = append(rp.Events, evt)
-				//rp.EventProofs = append(rp.EventProofs, ep)
 			}
 			rps = append(rps, rp)
 			nextEp = 0
@@ -199,16 +187,11 @@ func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallbac
 			var err error
 			var bu *module.BlockUpdate
 			var rps []*module.ReceiptProof
-			/* if bu, err = r.newBlockUpdate(v); err != nil {
-				return err
-			} */
 			if rps, err = r.newReceiptProofs(v); err != nil {
 				return err
 			} else if r.isFoundOffsetBySeq {
 				cb(bu, rps)
-			} /* else {
-				cb(bu, nil)
-			} */
+			}
 			return nil
 		},
 		func(conn *websocket.Conn) {
@@ -243,19 +226,3 @@ func NewReceiver(src, dst module.BtpAddress, endpoint string, opt map[string]int
 	r.c = NewClient(endpoint, l)
 	return r
 }
-
-/*
-func (r *receiver) GetBlockUpdate(height int64) (*module.BlockUpdate, error) {
-	var v *BlockNotification
-	var bu *module.BlockUpdate
-	h, err := r.getBlockHeader(NewHexInt(height))
-	if err != nil {
-		return nil, err
-	}
-	v = &BlockNotification{Height: NewHexInt(height), Hash: NewHexBytes(crypto.SHA3Sum256(h.serialized))}
-	bu, err = r.newBlockUpdate(v)
-	if err != nil {
-		return nil, err
-	}
-	return bu, nil
-} */

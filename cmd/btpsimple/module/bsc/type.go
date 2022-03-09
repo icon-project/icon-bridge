@@ -113,18 +113,8 @@ type BMCRelayMethodParams struct {
 }
 
 type BMCStatus struct {
-	TxSeq    HexInt `json:"tx_seq"`
-	RxSeq    HexInt `json:"rx_seq"`
-	Verifier struct {
-		Height     HexInt `json:"height"`
-		Offset     HexInt `json:"offset"`
-		LastHeight HexInt `json:"last_height"`
-	} `json:"verifier"`
-	BMRs []struct {
-		Address      Address `json:"address"`
-		BlockCount   HexInt  `json:"block_count"`
-		MessageCount HexInt  `json:"msg_count"`
-	} `json:"relays"`
+	TxSeq            HexInt `json:"tx_seq"`
+	RxSeq            HexInt `json:"rx_seq"`
 	BMRIndex         HexInt `json:"relay_idx"`
 	RotateHeight     HexInt `json:"rotate_height"`
 	RotateTerm       HexInt `json:"rotate_term"`

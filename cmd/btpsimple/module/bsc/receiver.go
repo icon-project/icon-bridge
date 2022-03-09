@@ -67,8 +67,6 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 
 	srcContractAddress := HexToAddress(r.src.ContractAddress())
 
-	//receiptTrie, err := trieFromReceipts(receipts) // receiptTrie.Hash() == block.ReceiptHash
-
 	for _, receipt := range receipts {
 		rp := &module.ReceiptProof{}
 
@@ -84,76 +82,16 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 					Sequence: bmcMsg.Seq.Int64(),
 				})
 			}
-
-			/* proof, err := codec.RLP.MarshalToBytes(*MakeLog(eventLog))
-			if err != nil {
-				return nil, err
-			}
-			rp.EventProofs = append(rp.EventProofs, &module.EventProof{
-				Index: int(eventLog.Index),
-				Proof: proof,
-			}) */
 		}
 
 		if len(rp.Events) > 0 {
-			/* key, err := rlp.EncodeToBytes(receipt.TransactionIndex)
-			r.log.Debugf("newReceiptProofs: height:%d hash:%s key:%d", v.Height, block.ReceiptHash(), key)
-			proofs, err := receiptProof(receiptTrie, key)
-			if err != nil {
-				return nil, err
-			} */
 			rp.Index = int(receipt.TransactionIndex)
-			//rp.Proof, err = codec.RLP.MarshalToBytes(proofs)
-			/* if err != nil {
-				return nil, err
-			} */
 			rps = append(rps, rp)
 		}
 	}
 	return rps, nil
 }
 
-/*
-func trieFromReceipts(receipts []*types.Receipt) (*trie.Trie, error) {
-	tr, _ := trie.New(common.Hash{}, trie.NewDatabase(memorydb.New()))
-
-	for i, r := range receipts {
-		path, err := rlp.EncodeToBytes(uint(i))
-
-		if err != nil {
-			return nil, err
-		}
-
-		rawReceipt, err := rlp.EncodeToBytes(r)
-		if err != nil {
-			return nil, err
-		}
-
-		tr.Update(path, rawReceipt)
-	}
-
-	_, err := tr.Commit(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return tr, nil
-} */
-/*
-func receiptProof(receiptTrie *trie.Trie, key []byte) ([][]byte, error) {
-	proofSet := light.NewNodeSet()
-	err := receiptTrie.Prove(key, 0, proofSet)
-	if err != nil {
-		return nil, err
-	}
-	proofs := make([][]byte, 0)
-	for _, node := range proofSet.NodeList() {
-		fmt.Println(hexutil.Encode(node))
-		proofs = append(proofs, node)
-	}
-	return proofs, nil
-}
-*/
 func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallback, scb func()) error {
 	r.log.Debugf("ReceiveLoop connected")
 	br := &BlockRequest{

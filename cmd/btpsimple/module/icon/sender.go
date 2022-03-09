@@ -100,57 +100,9 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 		BlockUpdates:  make([][]byte, 0),
 		ReceiptProofs: make([][]byte, 0),
 	}
-	//size := 0
-	//TODO rm.BlockUpdates[len(rm.BlockUpdates)-1].Height <= s.bmcStatus.Verifier.Height
-	//	using only rm.BlockProof
-	/* for _, bu := range rm.BlockUpdates {
-		if bu.Height <= height {
-			continue
-		}
-		buSize := len(bu.Proof)
-		if s.isOverLimit(buSize) {
-			return nil, fmt.Errorf("invalid BlockUpdate.Proof size")
-		}
-		size += buSize
-		if s.isOverLimit(size) {
-			segment := &module.Segment{
-				Height:              msg.height,
-				NumberOfBlockUpdate: msg.numberOfBlockUpdate,
-			}
-			if segment.TransactionParam, err = s.newTransactionParam(rm.From.String(), msg); err != nil {
-				return nil, err
-			}
-			segments = append(segments, segment)
-			msg = &RelayMessage{
-				BlockUpdates:  make([][]byte, 0),
-				ReceiptProofs: make([][]byte, 0),
-			}
-			size = buSize
-		}
-		msg.BlockUpdates = append(msg.BlockUpdates, bu.Proof)
-		msg.height = bu.Height
-		msg.numberOfBlockUpdate += 1
-	} */
 
-	/* var bp []byte
-	if bp, err = codec.RLP.MarshalToBytes(rm.BlockProof); err != nil {
-		return nil, err
-	}
-	if s.isOverLimit(len(bp)) {
-		return nil, fmt.Errorf("invalid BlockProof size")
-	}
-	*/
 	var b []byte
 	for _, rp := range rm.ReceiptProofs {
-		/* 	if s.isOverLimit(len(rp.Proof)) {
-			return nil, fmt.Errorf("invalid ReceiptProof.Proof size")
-		}
-		if len(msg.BlockUpdates) == 0 {
-			size += len(bp)
-			msg.BlockProof = bp
-			msg.height = rm.BlockProof.BlockWitness.Height
-		} */
-		//size += len(rp.Proof)
 		var eventBytes []byte
 		if eventBytes, err = codec.RLP.MarshalToBytes(rp.Events); err != nil {
 			return nil, err
@@ -161,6 +113,7 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 				EventProofs: make([]*module.EventProof, 0), */
 			Events: eventBytes,
 		}
+		//TODO: check the segmentation logic
 		/* for j, ep := range rp.EventProofs {
 			if s.isOverLimit(len(ep.Proof)) {
 				return nil, fmt.Errorf("invalid EventProof.Proof size")
@@ -219,22 +172,6 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 	}
 	segments = append(segments, segment)
 	return segments, nil
-}
-
-func (s *sender) UpdateSegment(bp *module.BlockProof, segment *module.Segment) error {
-	p := segment.TransactionParam.(*TransactionParam)
-	cd := p.Data.(CallData)
-	rmp := cd.Params.(BMCRelayMethodParams)
-	msg := &RelayMessage{}
-	b, err := base64.URLEncoding.DecodeString(rmp.Messages)
-	if _, err = codec.RLP.UnmarshalFromBytes(b, msg); err != nil {
-		return err
-	}
-	if msg.BlockProof, err = codec.RLP.MarshalToBytes(bp); err != nil {
-		return err
-	}
-	segment.TransactionParam, err = s.newTransactionParam(rmp.Prev, msg)
-	return err
 }
 
 func (s *sender) Relay(segment *module.Segment) (module.GetResultParam, error) {
@@ -319,19 +256,6 @@ func (s *sender) GetStatus() (*module.BMCLinkStatus, error) {
 	ls := &module.BMCLinkStatus{}
 	ls.TxSeq, err = bs.TxSeq.Value()
 	ls.RxSeq, err = bs.RxSeq.Value()
-	ls.Verifier.Height, err = bs.Verifier.Height.Value()
-	ls.Verifier.Offset, err = bs.Verifier.Offset.Value()
-	ls.Verifier.LastHeight, err = bs.Verifier.LastHeight.Value()
-	ls.BMRs = make([]struct {
-		Address      string
-		BlockCount   int64
-		MessageCount int64
-	}, len(bs.BMRs))
-	for i, bmr := range bs.BMRs {
-		ls.BMRs[i].Address = string(bmr.Address)
-		ls.BMRs[i].BlockCount, err = bmr.BlockCount.Value()
-		ls.BMRs[i].MessageCount, err = bmr.MessageCount.Value()
-	}
 	ls.BMRIndex, err = bs.BMRIndex.Int()
 	ls.RotateHeight, err = bs.RotateHeight.Value()
 	ls.RotateTerm, err = bs.RotateTerm.Int()
