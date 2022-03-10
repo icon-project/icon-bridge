@@ -97,7 +97,6 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 	segments := make([]*module.Segment, 0)
 	var err error
 	msg := &RelayMessage{
-		BlockUpdates:  make([][]byte, 0),
 		ReceiptProofs: make([][]byte, 0),
 	}
 
@@ -108,9 +107,7 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 			return nil, err
 		}
 		trp := &ReceiptProof{
-			Index: rp.Index, /*
-				Proof:       rp.Proof,
-				EventProofs: make([]*module.EventProof, 0), */
+			Index:  rp.Index,
 			Events: eventBytes,
 		}
 		//TODO: check the segmentation logic
@@ -162,10 +159,9 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 	}
 	//
 	segment := &module.Segment{
-		Height:              msg.height,
-		NumberOfBlockUpdate: msg.numberOfBlockUpdate,
-		EventSequence:       msg.eventSequence,
-		NumberOfEvent:       msg.numberOfEvent,
+		Height:        msg.height,
+		EventSequence: msg.eventSequence,
+		NumberOfEvent: msg.numberOfEvent,
 	}
 	if segment.TransactionParam, err = s.newTransactionParam(rm.From.String(), msg); err != nil {
 		return nil, err

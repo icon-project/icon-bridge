@@ -311,10 +311,10 @@ library MessageDecoder {
         returns (Types.ReceiptProof[] memory _rp)
     {
         RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
-        if (ls[2].toBytes().length != 0) {
-            _rp = new Types.ReceiptProof[](ls[2].toList().length);
-            for (uint256 i = 0; i < ls[2].toList().length; i++) {
-                _rp[i] = ls[2].toList()[i].toBytes().decodeReceiptProof();
+        if (ls[0].toBytes().length != 0) {
+            _rp = new Types.ReceiptProof[](ls[0].toList().length);
+            for (uint256 i = 0; i < ls[0].toList().length; i++) {
+                _rp[i] = ls[0].toList()[i].toBytes().decodeReceiptProof();
             }
         }
     }

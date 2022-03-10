@@ -131,7 +131,7 @@ public class BTPMessageVerifier {
         }
     }
 
-    private List<Object> lastReceiptRootHash(RelayMessage relayMessage) {
+    /*private List<Object> lastReceiptRootHash(RelayMessage relayMessage) {
         byte[] receiptRoot = null;
         BigInteger lastHeight = BigInteger.ZERO;
         MerkleTreeAccumulator mta = this.mta.get();
@@ -161,7 +161,7 @@ public class BTPMessageVerifier {
         result.add(lastHeight);
         this.mta.set(mta);
         return result;
-    }
+    }*/
 /*
     @External(readonly = true)
     public BigInteger getLastHeight() {

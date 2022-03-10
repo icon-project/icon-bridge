@@ -80,18 +80,6 @@ type BlockHeader struct {
 	serialized             []byte
 }
 
-type ReceiptData struct {
-	Status             int
-	To                 []byte
-	CumulativeStepUsed []byte
-	StepUsed           []byte
-	StepPrice          []byte
-	LogsBloom          []byte
-	EventLogs          []EventLog
-	SCOREAddress       []byte
-	EventLogsHash      []byte
-}
-
 type EventLog struct {
 	Addr    []byte
 	Indexed [][]byte
@@ -135,45 +123,15 @@ type TransactionParam struct {
 	Data        interface{} `json:"data,omitempty"`
 	TxHash      HexBytes    `json:"-"`
 }
+
 type CallData struct {
 	Method string      `json:"method"`
 	Params interface{} `json:"params,omitempty"`
 }
 
-type DeployData struct {
-	ContentType string      `json:"contentType"`
-	Content     string      `json:"content"`
-	Params      interface{} `json:"params,omitempty"`
-}
-
-type DeployParamsBMC struct {
-	NetAddress string `json:"_net"`
-}
-
-type DeployParamsBMV struct {
-	BMC        Address `json:"_bmc"`
-	NetAddress string  `json:"_net"`
-	MTAOffset  HexInt  `json:"_offset"`
-	Validators string  `json:"_validators"`
-}
-
 type BMCRelayMethodParams struct {
 	Prev     string `json:"_prev"`
 	Messages string `json:"_msg"`
-}
-
-type BMCLinkMethodParams struct {
-	Target string `json:"_link"`
-}
-type BMCUnlinkMethodParams struct {
-	Target string `json:"_link"`
-}
-type BMCAddRouteMethodParams struct {
-	Destination string `json:"_dst"`
-	Link        string `json:"_link"`
-}
-type BMCRemoveRouteMethodParams struct {
-	Destination string `json:"_dst"`
 }
 
 type CallParam struct {
@@ -186,6 +144,7 @@ type CallParam struct {
 type BMCStatusParams struct {
 	Target string `json:"_link"`
 }
+
 type BMCStatus struct {
 	TxSeq            HexInt `json:"tx_seq"`
 	RxSeq            HexInt `json:"rx_seq"`
@@ -339,28 +298,16 @@ func NewAddress(b []byte) Address {
 //T_SIG
 type Signature string
 
-type BlockUpdate struct {
-	BlockHeader []byte
-	Votes       []byte
-	Validators  []byte
-	BlockHash   HexBytes
-}
-
 type RelayMessage struct {
-	BlockUpdates  [][]byte
-	BlockProof    []byte
 	ReceiptProofs [][]byte
 	//
-	height              int64
-	numberOfBlockUpdate int
-	eventSequence       int64
-	numberOfEvent       int
+	height        int64
+	eventSequence int64
+	numberOfEvent int
 }
 
 type ReceiptProof struct {
-	Index int /*
-		Proof       []byte
-		EventProofs []*module.EventProof */
+	Index  int
 	Events []byte
 }
 

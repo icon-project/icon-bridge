@@ -38,7 +38,6 @@ type receiver struct {
 	log log.Logger
 	opt struct {
 	}
-	consensusStates    ConsensusStates
 	evtReq             *BlockRequest
 	isFoundOffsetBySeq bool
 }
@@ -101,18 +100,16 @@ func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallbac
 	if seq < 1 {
 		r.isFoundOffsetBySeq = true
 	}
-	r.consensusStates, err = r.c.GetLatestConsensusState()
 	if err != nil {
 		r.log.Errorf(err.Error())
 	}
 	return r.c.MonitorBlock(br,
 		func(v *BlockNotification) error {
-			var bu *module.BlockUpdate
 			var rps []*module.ReceiptProof
 			if rps, err = r.newReceiptProofs(v); err != nil {
 				return err
 			} else if r.isFoundOffsetBySeq {
-				cb(bu, rps)
+				cb(rps)
 			}
 			return nil
 		},

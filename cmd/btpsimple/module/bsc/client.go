@@ -163,16 +163,6 @@ func (c *Client) GetHeaderByHeight(height *big.Int) (*types.Block, error) {
 	return block, nil
 }
 
-func (c *Client) GetProof(height *big.Int, addr common.Address) (StorageProof, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancel()
-	var proof StorageProof
-	if err := c.rpcClient.CallContext(ctx, &proof, "eth_getProof", addr, nil, toBlockNumArg(height)); err != nil {
-		return proof, err
-	}
-	return proof, nil
-}
-
 func (c *Client) GetBlockReceipts(block *types.Block) ([]*types.Receipt, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
@@ -191,23 +181,6 @@ func (c *Client) GetChainID() (*big.Int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
 	return c.ethClient.ChainID(ctx)
-}
-
-func (c *Client) GetLatestConsensusState() (ConsensusStates, error) {
-	callOpts := &bind.CallOpts{
-		Pending: true,
-		Context: context.Background(),
-	}
-	lastHeight, _ := c.tendermintLightClient.LatestHeight(callOpts)
-	return c.tendermintLightClient.LightClientConsensusStates(callOpts, lastHeight)
-}
-
-func (c *Client) GetConsensusState(height *big.Int) (ConsensusStates, error) {
-	callOpts := &bind.CallOpts{
-		Pending: true,
-		Context: context.Background(),
-	}
-	return c.tendermintLightClient.LightClientConsensusStates(callOpts, height.Uint64())
 }
 
 func (c *Client) MonitorBlock(p *BlockRequest, cb func(b *BlockNotification) error) error {

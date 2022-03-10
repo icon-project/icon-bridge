@@ -15,9 +15,7 @@ type BlockProof struct {
 	BlockWitness *BlockWitness
 }
 type ReceiptProof struct {
-	Index int
-	/* Proof       []byte
-	EventProofs []*EventProof */
+	Index  int
 	Events []*Event
 }
 type EventProof struct {
@@ -33,8 +31,6 @@ type Event struct {
 
 type RelayMessage struct {
 	From          BtpAddress
-	BlockUpdates  []*BlockUpdate
-	BlockProof    *BlockProof
 	ReceiptProofs []*ReceiptProof
 	Seq           uint64
 	HeightOfDst   int64
@@ -85,7 +81,7 @@ type Sender interface {
 	FinalizeLatency() int
 }
 
-type ReceiveCallback func(bu *BlockUpdate, rps []*ReceiptProof)
+type ReceiveCallback func(rps []*ReceiptProof)
 
 type Receiver interface {
 	ReceiveLoop(height int64, seq int64, cb ReceiveCallback, scb func()) error

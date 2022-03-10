@@ -77,19 +77,16 @@ func (s *SimpleChain) _hasWait(rm *module.RelayMessage) bool {
 
 func (s *SimpleChain) _log(prefix string, rm *module.RelayMessage, segment *module.Segment, segmentIdx int) {
 	if segment == nil {
-		s.l.Debugf("%s rm:%d bu:%d ~ %d rps:%d",
+		s.l.Debugf("%s rm:%d rps:%d",
 			prefix,
 			rm.Seq,
-			rm.BlockUpdates[0].Height,
-			rm.BlockUpdates[len(rm.BlockUpdates)-1].Height,
 			len(rm.ReceiptProofs))
 	} else {
-		s.l.Debugf("%s rm:%d [i:%d,h:%d,bu:%d,seq:%d,evt:%d,txh:%v]",
+		s.l.Debugf("%s rm:%d [i:%d,h:%d,seq:%d,evt:%d,txh:%v]",
 			prefix,
 			rm.Seq,
 			segmentIdx,
 			segment.Height,
-			segment.NumberOfBlockUpdate,
 			segment.EventSequence,
 			segment.NumberOfEvent,
 			segment.GetResultParam)
@@ -171,16 +168,15 @@ func (s *SimpleChain) result(rm *module.RelayMessage, segment *module.Segment) {
 
 func (s *SimpleChain) _rm() *module.RelayMessage {
 	rm := &module.RelayMessage{
-		From:         s.src,
-		BlockUpdates: make([]*module.BlockUpdate, 0),
-		Seq:          s.rmSeq,
+		From: s.src,
+		Seq:  s.rmSeq,
 	}
 	s.rms = append(s.rms, rm)
 	s.rmSeq += 1
 	return rm
 }
 
-func (s *SimpleChain) addRelayMessage(bu *module.BlockUpdate, rps []*module.ReceiptProof) {
+func (s *SimpleChain) addRelayMessage(rps []*module.ReceiptProof) {
 	s.rmsMtx.Lock()
 	defer s.rmsMtx.Unlock()
 
@@ -189,7 +185,6 @@ func (s *SimpleChain) addRelayMessage(bu *module.BlockUpdate, rps []*module.Rece
 		rm = s._rm()
 	}
 	if len(rps) > 0 {
-		rm.BlockUpdates = append(rm.BlockUpdates, bu)
 		rm.ReceiptProofs = rps
 		s.l.Debugf("addRelayMessage rms:%d rps:%d HeightOfDst:%d", len(s.rms), len(rps), rm.HeightOfDst)
 		rm = s._rm()
@@ -266,9 +261,9 @@ func (s *SimpleChain) OnBlockOfDst(height int64) error {
 	return nil
 }
 
-func (s *SimpleChain) OnBlockOfSrc(bu *module.BlockUpdate, rps []*module.ReceiptProof) {
+func (s *SimpleChain) OnBlockOfSrc(rps []*module.ReceiptProof) {
 	s.l.Tracef("OnBlockOfSrc")
-	s.addRelayMessage(bu, rps)
+	s.addRelayMessage(rps)
 	s.relayCh <- nil
 }
 

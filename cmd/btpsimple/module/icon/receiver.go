@@ -185,12 +185,11 @@ func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallbac
 	return r.c.MonitorBlock(r.evtReq,
 		func(conn *websocket.Conn, v *BlockNotification) error {
 			var err error
-			var bu *module.BlockUpdate
 			var rps []*module.ReceiptProof
 			if rps, err = r.newReceiptProofs(v); err != nil {
 				return err
 			} else if r.isFoundOffsetBySeq {
-				cb(bu, rps)
+				cb(rps)
 			}
 			return nil
 		},

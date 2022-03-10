@@ -37,9 +37,8 @@ func test_SenderReceiver() {
 	//bu, err := receiver.GetBlockUpdate(112)
 	//fmt.Println(bu, err)
 	rm := &module.RelayMessage{
-		From:         src,
-		BlockUpdates: make([]*module.BlockUpdate, 0),
-		Seq:          1,
+		From: src,
+		Seq:  1,
 	}
 
 	//rm.BlockUpdates = append(rm.BlockUpdates, bu)

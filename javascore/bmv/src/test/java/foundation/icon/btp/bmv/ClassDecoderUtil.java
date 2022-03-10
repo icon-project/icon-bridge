@@ -51,7 +51,7 @@ public class ClassDecoderUtil {
             receipts.add(decodeReceiptProof(reader.readByteArray()));
         }
 
-        return new RelayMessage(blockProof, updates, receipts);
+        return new RelayMessage(receipts);
     }
 
     public static BlockUpdate decodeBlockUpdate(byte[] serialized) {

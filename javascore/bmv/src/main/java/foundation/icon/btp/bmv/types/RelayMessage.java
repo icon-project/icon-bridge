@@ -23,16 +23,10 @@ public class RelayMessage {
 
     final static String RLPn = "RLPn";
 
-    private ArrayList<BlockUpdate> blockUpdates;
-    private BlockProof blockProof;
     private ArrayList<ReceiptProof> receiptProofs; //TODO: work on this link it with Event Logs & proof to get BTP message
 
 
-    public RelayMessage(BlockProof blockProof,
-                        ArrayList<BlockUpdate> blockUpdates,
-                        ArrayList<ReceiptProof> receiptProof) {
-        this.blockUpdates = blockUpdates;
-        this.blockProof = blockProof;
+    public RelayMessage(ArrayList<ReceiptProof> receiptProof) {
         this.receiptProofs = receiptProof;
     }
 
@@ -40,6 +34,7 @@ public class RelayMessage {
         ObjectReader reader = Context.newByteArrayObjectReader(RLPn, bytes);
 
         reader.beginList();
+/*
 
         reader.beginList();
         var blockUpdates = new ArrayList<BlockUpdate>();
@@ -48,6 +43,7 @@ public class RelayMessage {
         reader.end();
 
         BlockProof blockProof = BlockProof.fromBytes(reader.readNullable(byte[].class));
+*/
 
         reader.beginList();
         var receiptProofs = new ArrayList<ReceiptProof>();
@@ -56,17 +52,7 @@ public class RelayMessage {
         reader.end();
 
         return new RelayMessage(
-                blockProof,
-                blockUpdates,
                 receiptProofs);
-    }
-
-    public BlockUpdate[] getBlockUpdates() {
-        BlockUpdate[] tmp = new BlockUpdate[blockUpdates.size()];
-        for (int i = 0; i < tmp.length; i++) {
-            tmp[i] = blockUpdates.get(i);
-        }
-        return tmp;
     }
 
     public ReceiptProof[] getReceiptProofs() {
@@ -77,7 +63,4 @@ public class RelayMessage {
         return tmp;
     }
 
-    public BlockProof getBlockProof() {
-        return blockProof;
-    }
 }
