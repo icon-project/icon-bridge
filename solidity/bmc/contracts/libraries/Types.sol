@@ -64,8 +64,7 @@ library Types {
 
     struct ReceiptProof {
         uint256 index;
-        bytes[] txReceipts;
-        EventProof[] ep;
+        MessageEvent[] events;
     }
 
     struct BlockProof {
@@ -235,5 +234,11 @@ library Types {
     struct Tuple {
         string _prev;
         string _to;
+    }
+    
+    struct MessageEvent {
+        string nextBmc;
+        uint256 seq;
+        bytes message;
     }
 }

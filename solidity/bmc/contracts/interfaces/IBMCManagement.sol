@@ -50,21 +50,6 @@ interface IBMCManagement {
     function removeService(string calldata _svc) external;
 
     /**
-       @notice Registers BMV for the network. 
-       @dev Caller must be an operator of BTP network.
-       @param _net     Network Address of the blockchain
-       @param _addr    Address of BMV
-     */
-    function addVerifier(string calldata _net, address _addr) external;
-
-    /**
-       @notice De-registers BMV for the network.
-       @dev Caller must be an operator of BTP network.
-       @param _net     Network Address of the blockchain
-     */
-    function removeVerifier(string calldata _net) external;
-
-    /**
        @notice Initializes status information for the link.
        @dev Caller must be an operator of BTP network.
        @param _link    BTP Address of connected BMC
@@ -134,15 +119,6 @@ interface IBMCManagement {
         returns (Types.Service[] memory _servicers);
 
     /**
-       @notice Get registered verifiers.
-       @return _verifiers   An array of Verifier.
-     */
-    function getVerifiers()
-        external
-        view
-        returns (Types.Verifier[] memory _verifiers);
-
-    /**
        @notice Get registered links.
        @return _links   An array of links ( BTP Addresses of the BMCs ).
      */
@@ -170,16 +146,6 @@ interface IBMCManagement {
         @return BSH service address
      */
     function getBshServiceByName(string memory _serviceName)
-        external
-        view
-        returns (address);
-
-    /**
-        @notice Get BMV services by net. Only called by BMC periphery.
-        @param _net net of the connected network 
-        @return BMV service address
-     */
-    function getBmvServiceByNet(string memory _net)
         external
         view
         returns (address);

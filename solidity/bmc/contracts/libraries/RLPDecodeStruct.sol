@@ -275,7 +275,7 @@ library RLPDecodeStruct {
         return Types.BlockUpdate(_bh, _v, _validators);
     }
 
-    function decodeReceiptProof(bytes memory _rlp)
+    /* function decodeReceiptProof(bytes memory _rlp)
         internal
         pure
         returns (Types.ReceiptProof memory)
@@ -299,7 +299,7 @@ library RLPDecodeStruct {
         }
 
         return Types.ReceiptProof(ls[0].toUint(), txReceipts, _ep);
-    }
+    } 
 
     function decodeEventLog(bytes memory _rlp)
         internal
@@ -313,6 +313,7 @@ library RLPDecodeStruct {
         }
         return eventMptNode;
     }
+    */
 
     function decodeBlockProof(bytes memory _rlp)
         internal
@@ -384,4 +385,57 @@ library RLPDecodeStruct {
         }
         return Types.RelayMessage(_buArray, _bp, isBPEmpty, _rp, isRPEmpty);
     }
+
+    
+    function decodeReceiptProofs(bytes memory _rlp)
+        internal        
+        pure
+        returns (Types.ReceiptProof[] memory _rp)
+    {
+        RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
+        if (ls[0].toBytes().length != 0) {
+            _rp = new Types.ReceiptProof[](ls[0].toList().length);
+            for (uint256 i = 0; i < ls[0].toList().length; i++) {
+                _rp[i] = ls[0].toList()[i].toBytes().decodeReceiptProof();
+            }
+        }
+    }
+
+
+    
+    function decodeReceiptProof(bytes memory _rlp)
+        internal        
+        pure
+        returns (Types.ReceiptProof memory)
+    {
+        RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
+
+        Types.MessageEvent[] memory events =
+            new Types.MessageEvent[](ls[1].toBytes().toRlpItem().toList().length);
+
+        for (uint256 i = 0; i < ls[1].toBytes().toRlpItem().toList().length; i++) {
+            events[i] =ls[1].toBytes().toRlpItem().toList()[i].toRlpBytes().toMessageEvent();
+        }
+
+        return
+            Types.ReceiptProof(
+                ls[0].toUint(),
+                events
+            );
+    }
+
+      function toMessageEvent(bytes memory _rlp)
+        internal
+        pure
+        returns (Types.MessageEvent memory)
+    {
+         RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
+            return
+                Types.MessageEvent(
+                    string(ls[0].toBytes()),
+                    ls[1].toUint(),
+                    ls[2].toBytes()
+                );
+    }
+
 }

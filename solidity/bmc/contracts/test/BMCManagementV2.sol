@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "../interfaces/IBMCManagement.sol";
 import "../interfaces/IBMCPeriphery.sol";
-import "../interfaces/IBMV.sol";
 import "../libraries/ParseAddress.sol";
 import "../libraries/RLPEncodeStruct.sol";
 import "../libraries/String.sol";
@@ -25,11 +24,9 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
     uint256 private numOfOwner;
 
     mapping(string => address) private bshServices;
-    mapping(string => address) private bmvServices;
     mapping(address => Types.RelayStats) private relayStats;
     mapping(string => string) private routes;
     mapping(string => Types.Link) internal links; // should be private, temporarily set internal for testing
-    string[] private listBMVNames;
     string[] private listBSHNames;
     string[] private listRouteKeys;
     string[] private listLinkNames;
@@ -161,66 +158,12 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
     }
 
     /**
-       @notice Registers BMV for the network. 
-       @dev Caller must be an operator of BTP network.
-       @param _net     Network Address of the blockchain
-       @param _addr    Address of BMV
-     */
-    function addVerifier(string memory _net, address _addr)
-        external
-        override
-        hasPermission
-    {
-        require(bmvServices[_net] == address(0), "BMCRevertAlreadyExistsBMV");
-        bmvServices[_net] = _addr;
-        listBMVNames.push(_net);
-    }
-
-    /**
-       @notice Unregisters BMV for the network.
-       @dev Caller must be an operator of BTP network.
-       @param _net     Network Address of the blockchain
-     */
-    function removeVerifier(string memory _net)
-        external
-        override
-        hasPermission
-    {
-        require(bmvServices[_net] != address(0), "BMCRevertNotExistsBMV");
-        delete bmvServices[_net];
-        listBMVNames.remove(_net);
-    }
-
-    /**
-       @notice Get registered verifiers.
-       @return _verifiers   An array of Verifier.
-     */
-    function getVerifiers()
-        external
-        view
-        override
-        returns (Types.Verifier[] memory)
-    {
-        Types.Verifier[] memory verifiers =
-            new Types.Verifier[](listBMVNames.length);
-
-        for (uint256 i = 0; i < listBMVNames.length; i++) {
-            verifiers[i] = Types.Verifier(
-                listBMVNames[i],
-                bmvServices[listBMVNames[i]]
-            );
-        }
-        return verifiers;
-    }
-
-    /**
        @notice Initializes status information for the link.
        @dev Caller must be an operator of BTP network.
        @param _link    BTP Address of connected BMC
    */
     function addLink(string calldata _link) external override hasPermission {
         (string memory _net, ) = _link.splitBTPAddress();
-        require(bmvServices[_net] != address(0), "BMCRevertNotExistsBMV");
         require(
             links[_link].isConnected == false,
             "BMCRevertAlreadyExistsLink"
@@ -297,7 +240,6 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
             link.rxHeight = block.number;
             string memory _net;
             (_net, ) = _link.splitBTPAddress();
-            (link.rxHeightSrc, , ) = IBMV(bmvServices[_net]).getStatus();
         }
         links[_link] = link;
     }
@@ -565,15 +507,6 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         returns (address)
     {
         return address(0);
-    }
-
-    function getBmvServiceByNet(string memory _net)
-        external
-        view
-        override
-        returns (address)
-    {
-        return bmvServices[_net];
     }
 
     function getLink(string memory _to)

@@ -66,7 +66,7 @@ add_icon_link() {
 }
 
 add_icon_relay() {
-  echo "adding icon link $(cat $CONFIG_DIR/bmv.bsc)"
+  echo "adding icon link $(cat $CONFIG_DIR/btp.icon)"
   BSC_RELAY_USER=$(cat $CONFIG_DIR/bsc.ks.json | jq -r .address)
   cd $CONTRACTS_DIR/solidity/bmc
   tx=$(truffle exec --network bscDocker "$SCRIPTS_DIR"/bmc.js \

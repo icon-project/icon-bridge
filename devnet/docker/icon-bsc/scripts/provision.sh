@@ -66,8 +66,8 @@ provision() {
     bmc_javascore_addLink
     bmc_javascore_addRelay
 
-    deploy_solidity_bmv
-    add_icon_verifier
+    #deploy_solidity_bmv
+    #add_icon_verifier
     add_icon_link
     add_icon_relay
 

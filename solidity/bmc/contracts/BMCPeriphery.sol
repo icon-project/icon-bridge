@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 import "./interfaces/IBSH.sol";
 import "./interfaces/IBMCPeriphery.sol";
 import "./interfaces/IBMCManagement.sol";
-import "./interfaces/IBMV.sol";
 import "./libraries/ParseAddress.sol";
 import "./libraries/RLPDecodeStruct.sol";
 import "./libraries/RLPEncodeStruct.sol";
@@ -25,11 +24,11 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
 
     uint256 internal constant UNKNOWN_ERR = 0;
     uint256 internal constant BMC_ERR = 10;
-    uint256 internal constant BMV_ERR = 25;
     uint256 internal constant BSH_ERR = 40;
 
-    string private bmcBtpAddress; // a network address BMV, i.e. btp://1234.pra/0xabcd
+    string private bmcBtpAddress; // a network address, i.e. btp://1234.pra/0xabcd
     address private bmcManagement;
+    bytes[] internal msgs;
 
     function initialize(string memory _network, address _bmcManagementAddr)
         public
@@ -62,7 +61,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
     }
 
     /**
-       @notice Verify and decode RelayMessage with BMV, and dispatch BTP Messages to registered BSHs
+       @notice Verify and decode RelayMessage, and dispatch BTP Messages to registered BSHs
        @dev Caller must be a registered relayer.     
        @param _prev    BTP Address of the BMC generates the message
        @param _msg     base64 encoded string of serialized bytes of Relay Message refer RelayMessage structure
@@ -109,16 +108,8 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         string calldata _prev,
         string calldata _msg
     ) internal returns (bytes[] memory) {
-        (string memory _net, ) = _prev.splitBTPAddress();
-        address _bmvAddr = IBMCManagement(bmcManagement).getBmvServiceByNet(
-            _net
-        );
-
-        require(_bmvAddr != address(0), "BMCRevertNotExistsBMV");
-        (uint256 _prevHeight, , ) = IBMV(_bmvAddr).getStatus();
-
         // decode and verify relay message
-        bytes[] memory serializedMsgs = IBMV(_bmvAddr).handleRelayMessage(
+        bytes[] memory serializedMsgs = handleRelayMessage(
             bmcBtpAddress,
             _prev,
             IBMCManagement(bmcManagement).getLinkRxSeq(_prev),
@@ -126,11 +117,10 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         );
 
         // rotate and check valid relay
-        (uint256 _height, uint256 _lastHeight, ) = IBMV(_bmvAddr).getStatus();
         address relay = IBMCManagement(bmcManagement).rotateRelay(
             _prev,
             block.number,
-            _lastHeight,
+            block.number,
             serializedMsgs.length > 0
         );
 
@@ -147,13 +137,56 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
             relay = msg.sender;
         } else if (relay != msg.sender)
             revert("BMCRevertUnauthorized: invalid relay");
-
+        //TODO: change 0 to update latest block number by extending the relay message to include block number
         IBMCManagement(bmcManagement).updateRelayStats(
             relay,
-            _height - _prevHeight,
+            0,//TODO: change
             serializedMsgs.length
         );
         return serializedMsgs;
+    }
+
+    function handleRelayMessage(
+        string memory _bmc,
+        string memory _prev,
+        uint256 _seq,
+        string calldata _msg
+    ) internal returns (bytes[] memory) {
+        bytes memory _serializedMsg = bytes(_msg);       
+        bytes[] memory decodedMsgs = validateReceipt(_bmc, _prev, _seq, _serializedMsg);  // decode and verify relay message
+        return decodedMsgs;
+    }
+
+     function validateReceipt(
+        string memory _bmc,
+        string memory _prev,
+        uint256 _seq,
+        bytes memory _serializedMsg
+    ) internal returns (bytes[] memory) {
+        uint256 nextSeq = _seq + 1;
+        Types.MessageEvent memory messageEvent;
+        Types.ReceiptProof[] memory receiptProofs = _serializedMsg
+            .decodeReceiptProofs();
+        (, string memory contractAddr) = _prev.splitBTPAddress();
+        if (msgs.length > 0) delete msgs;
+        for (uint256 i = 0; i < receiptProofs.length; i++) {          
+            for (uint256 j = 0; j < receiptProofs[i].events.length; j++) {
+                messageEvent = receiptProofs[i].events[j];
+                if (bytes(messageEvent.nextBmc).length != 0) {                    
+                    if (messageEvent.seq > nextSeq) {
+                        //string memory concat1 = string("RevertInvalidSequenceHigher, messageeventseq").concat(messageEvent.seq.toString()).concat(", nextseq").concat(nextSeq.toString());
+                        revert("RevertInvalidSequenceHigher");
+                    } else if (messageEvent.seq < nextSeq) {
+                        //string memory concat1 = string("RevertInvalidSequence, messageeventseq").concat(messageEvent.seq.toString()).concat(", nextseq").concat(nextSeq.toString());
+                        revert("RevertInvalidSequence");
+                    } else if (messageEvent.nextBmc.compareTo(_bmc)) {
+                        msgs.push(messageEvent.message);
+                        nextSeq += 1;
+                    }
+                }
+            }
+        }
+        return msgs;
     }
 
     //  @dev Despite this function was set as external, it should be called internally
@@ -384,11 +417,6 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         //  In case BSH sends a REQUEST_COIN_TRANSFER,
         //  but '_to' is a network which is not supported by BMC
         //  revert() therein
-        if (
-            IBMCManagement(bmcManagement).getBmvServiceByNet(_to) == address(0)
-        ) {
-            revert("BMCRevertNotExistsBMV");
-        }
         (string memory _nextLink, string memory _dst) = IBMCManagement(
             bmcManagement
         ).resolveRoute(_to);
@@ -419,9 +447,6 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         uint256 _height;
         uint256 _offset;
         uint256 _lastHeight;
-        (_height, _offset, _lastHeight) = IBMV(
-            IBMCManagement(bmcManagement).getBmvServiceByNet(_net)
-        ).getStatus();
         uint256 _rotateTerm = link.maxAggregation.getRotateTerm(
             link.blockIntervalSrc.getScale(link.blockIntervalDst)
         );
@@ -429,7 +454,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
             Types.LinkStats(
                 link.rxSeq,
                 link.txSeq,
-                Types.VerifierStats(_height, _offset, _lastHeight, ""),
+                Types.VerifierStats(0, 0, 0, ""),//dummy
                 _relays,
                 link.relayIdx,
                 link.rotateHeight,

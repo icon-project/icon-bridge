@@ -297,7 +297,7 @@ library RLPEncodeStruct {
         return abi.encodePacked(addLength(_rlp.length, false), _rlp);
     }
 
-    function encodeReceiptProof(Types.ReceiptProof memory _rp)
+   /*  function encodeReceiptProof(Types.ReceiptProof memory _rp)
         internal
         pure
         returns (bytes memory)
@@ -326,7 +326,7 @@ library RLPEncodeStruct {
         );
 
         return abi.encodePacked(addLength(_rlp.length, false), _rlp);
-    }
+    } */
 
     function encodeBlockProof(Types.BlockProof memory _bp)
         internal
@@ -341,7 +341,7 @@ library RLPEncodeStruct {
         return abi.encodePacked(addLength(_rlp.length, false), _rlp);
     }
 
-    function encodeRelayMessage(Types.RelayMessage memory _rm)
+   /*  function encodeRelayMessage(Types.RelayMessage memory _rm)
         internal
         pure
         returns (bytes memory)
@@ -381,7 +381,7 @@ library RLPEncodeStruct {
         _rlp = abi.encodePacked(_rlp, receiptProof);
 
         return abi.encodePacked(addLength(_rlp.length, false), _rlp);
-    }
+    } */
 
     //  Adding LIST_HEAD_START by length
     //  There are two cases:
