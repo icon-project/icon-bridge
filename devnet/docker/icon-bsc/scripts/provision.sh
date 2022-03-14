@@ -33,7 +33,7 @@ provision() {
     source token.solidity.sh
 
     deploy_javascore_bmc
-    deploy_javascore_bmv
+    #deploy_javascore_bmv
     deploy_javascore_bsh
     deploy_javascore_irc2
 
@@ -62,7 +62,7 @@ provision() {
     token_bsc_fundBSH
     token_icon_fundBSH
 
-    bmc_javascore_addVerifier
+    #bmc_javascore_addVerifier
     bmc_javascore_addLink
     bmc_javascore_addRelay
 

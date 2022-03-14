@@ -15,16 +15,13 @@ ADD javascore ${JAVASCORE_SRC}
 #build javascore jars
 WORKDIR ${JAVASCORE_SRC}
 RUN gradle bsh:clean
-RUN gradle bmv:clean
 RUN gradle bsh:optimizedJar
-RUN gradle bmv:optimizedJar
 
 #copy jars to dist
 WORKDIR ${ROOT}
 RUN mkdir /dist
 
 RUN cp ${JAVASCORE_SRC}/bsh/build/libs/bsh-optimized.jar ${DIST_DIR}
-RUN cp ${JAVASCORE_SRC}/bmv/build/libs/bmv-optimized.jar ${DIST_DIR}
 RUN cp ${JAVASCORE_SRC}/bmc/bmc-0.1.0-optimized.jar ${DIST_DIR}/bmc-optimized.jar
 
 RUN cp ${JAVASCORE_SRC}/irc31-0.1.0-optimized.jar ${DIST_DIR}

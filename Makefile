@@ -112,7 +112,7 @@ clean-dist-py:
 clean-dist-sol:
 	rm -rf $(SOLIDITY_DIST_DIR)
 
-dist-sol: dist-sol-bmc dist-sol-bmv dist-sol-token_bsh dist-sol-native_bsh
+dist-sol: dist-sol-bmc dist-sol-token_bsh dist-sol-native_bsh
 
 dist-javascore:
 	$(BUILD_ROOT)/docker/javascore/build.sh
