@@ -416,11 +416,12 @@ library RLPDecodeStruct {
         for (uint256 i = 0; i < ls[1].toBytes().toRlpItem().toList().length; i++) {
             events[i] =ls[1].toBytes().toRlpItem().toList()[i].toRlpBytes().toMessageEvent();
         }
-
+        
         return
             Types.ReceiptProof(
                 ls[0].toUint(),
-                events
+                events,
+                ls[2].toUint()
             );
     }
 

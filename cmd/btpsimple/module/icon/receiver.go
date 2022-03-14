@@ -108,6 +108,7 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 			rp := &module.ReceiptProof{
 				Index: int(idx),
 			}
+			rp.Height, _ = v.Height.Value()
 			for k := nextEp; k < len(p.Events); k++ {
 				var evt *module.Event
 				if evt, err = r.toEvent(proofs[k+1]); err != nil {

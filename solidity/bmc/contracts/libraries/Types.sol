@@ -65,6 +65,7 @@ library Types {
     struct ReceiptProof {
         uint256 index;
         MessageEvent[] events;
+        uint256 height;
     }
 
     struct BlockProof {

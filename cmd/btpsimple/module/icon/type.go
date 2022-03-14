@@ -309,6 +309,7 @@ type RelayMessage struct {
 type ReceiptProof struct {
 	Index  int
 	Events []byte
+	Height int64
 }
 
 type Block struct {

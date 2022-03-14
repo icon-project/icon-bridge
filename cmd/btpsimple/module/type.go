@@ -17,6 +17,7 @@ type BlockProof struct {
 type ReceiptProof struct {
 	Index  int
 	Events []*Event
+	Height int64
 }
 type EventProof struct {
 	Index int

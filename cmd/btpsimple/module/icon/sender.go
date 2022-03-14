@@ -109,6 +109,7 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 		trp := &ReceiptProof{
 			Index:  rp.Index,
 			Events: eventBytes,
+			Height: rp.Height,
 		}
 		//TODO: check the segmentation logic
 		/* for j, ep := range rp.EventProofs {

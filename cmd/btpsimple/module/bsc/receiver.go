@@ -85,6 +85,7 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 
 		if len(rp.Events) > 0 {
 			rp.Index = int(receipt.TransactionIndex)
+			rp.Height = v.Height.Int64()
 			rps = append(rps, rp)
 		}
 	}

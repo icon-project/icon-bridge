@@ -117,13 +117,13 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         );
 
         // rotate and check valid relay
-        address relay = IBMCManagement(bmcManagement).rotateRelay(
+        /* address relay = IBMCManagement(bmcManagement).rotateRelay(
             _prev,
             block.number,
             block.number,
             serializedMsgs.length > 0
-        );
-
+        ); */
+        address relay = address(0);
         if (relay == address(0)) {
             address[] memory relays = IBMCManagement(bmcManagement)
                 .getLinkRelays(_prev);
@@ -167,7 +167,6 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         Types.MessageEvent memory messageEvent;
         Types.ReceiptProof[] memory receiptProofs = _serializedMsg
             .decodeReceiptProofs();
-        (, string memory contractAddr) = _prev.splitBTPAddress();
         if (msgs.length > 0) delete msgs;
         for (uint256 i = 0; i < receiptProofs.length; i++) {          
             for (uint256 j = 0; j < receiptProofs[i].events.length; j++) {
@@ -444,9 +443,6 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         Types.RelayStats[] memory _relays = IBMCManagement(bmcManagement)
             .getRelayStatusByLink(_link);
         (string memory _net, ) = _link.splitBTPAddress();
-        uint256 _height;
-        uint256 _offset;
-        uint256 _lastHeight;
         uint256 _rotateTerm = link.maxAggregation.getRotateTerm(
             link.blockIntervalSrc.getScale(link.blockIntervalDst)
         );

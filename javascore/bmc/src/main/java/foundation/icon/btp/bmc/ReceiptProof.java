@@ -19,6 +19,7 @@ import score.Context;
 import score.ObjectReader;
 import scorex.util.ArrayList;
 
+import java.math.BigInteger;
 import java.util.List;
 
 public class ReceiptProof {
@@ -26,13 +27,13 @@ public class ReceiptProof {
     final static String RLPn = "RLPn";
 
     private final int index;
-
-
     private final List<EventDataBTPMessage> events;
+    private final BigInteger height;
 
-    public ReceiptProof(int index, List<EventDataBTPMessage> events) {
+    public ReceiptProof(int index, List<EventDataBTPMessage> events, BigInteger height) {
         this.index = index;
         this.events = events;
+        this.height = height;
     }
 
     public static ReceiptProof fromBytes(byte[] serialized) {
@@ -44,11 +45,13 @@ public class ReceiptProof {
 
         ObjectReader eventLogReader = Context.newByteArrayObjectReader(RLPn, reader.readByteArray());
         eventLogReader.beginList();
-        while(eventLogReader.hasNext()){
+        while (eventLogReader.hasNext()) {
             eventsLogs.add(EventDataBTPMessage.fromRLPBytes(eventLogReader));
         }
         eventLogReader.end();
-        return new ReceiptProof(index, eventsLogs);
+
+        BigInteger height = reader.readBigInteger();
+        return new ReceiptProof(index, eventsLogs, height);
     }
 
     public int getIndex() {
@@ -57,5 +60,9 @@ public class ReceiptProof {
 
     public List<EventDataBTPMessage> getEvents() {
         return events;
+    }
+
+    public BigInteger getHeight() {
+        return height;
     }
 }

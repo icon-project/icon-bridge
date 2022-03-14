@@ -110,6 +110,7 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 		trp := &ReceiptProof{
 			Index:  rp.Index,
 			Events: eventBytes,
+			Height: rp.Height,
 		}
 		/* for j, ep := range rp.EventProofs {
 			if s.isOverLimit(len(ep.Proof)) {
