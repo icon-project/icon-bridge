@@ -31,5 +31,17 @@ subprojects {
     compileJava {
         options.compilerArgs += ['-parameters']
     }
+
+
+    ext {
+        javaeeVersion = getProperty("javaee.version")
+        scorexVersion = getProperty("scorex.version")
+        javaeeUnittestVersion = getProperty("javaee-unittest.version")
+        scoreClientVersion = getProperty("score-client.version")
+        iconsdkVersion = getProperty("iconsdk.version")
+        jacksonVersion = getProperty("jackson.version")
+        debugJar = Boolean.parseBoolean(getProperty("debugJar").toString())
+    }
+
 }
 
