@@ -21,8 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"net/url"
-	"strconv"
 	"sync"
 	"time"
 
@@ -30,9 +28,7 @@ import (
 	"github.com/icon-project/btp/cmd/btpsimple/module/bsc/binding"
 
 	"github.com/icon-project/btp/cmd/btpsimple/module"
-	"github.com/icon-project/btp/common"
 	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/jsonrpc"
 	"github.com/icon-project/btp/common/log"
 )
 
@@ -94,15 +90,6 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 	var b []byte
 	for _, rp := range rm.ReceiptProofs {
 		//TODO: segment for the events
-		/* if s.isOverLimit(len(rp.Proof)) {
-			return nil, fmt.Errorf("invalid ReceiptProof.Proof size")
-		} */
-		/* if len(msg.BlockUpdates) == 0 {
-			size += len(bp)
-			msg.BlockProof = bp
-			msg.height = rm.BlockProof.BlockWitness.Height
-		} */
-		//size += len(rp.Proof)
 		var eventBytes []byte
 		if eventBytes, err = codec.RLP.MarshalToBytes(rp.Events); err != nil {
 			return nil, err
@@ -112,46 +99,6 @@ func (s *sender) Segment(rm *module.RelayMessage, height int64) ([]*module.Segme
 			Events: eventBytes,
 			Height: rp.Height,
 		}
-		/* for j, ep := range rp.EventProofs {
-			if s.isOverLimit(len(ep.Proof)) {
-				return nil, fmt.Errorf("invalid EventProof.Proof size")
-			}
-			size += len(ep.Proof)
-			if s.isOverLimit(size) {
-				if j == 0 && len(msg.BlockUpdates) == 0 {
-					return nil, fmt.Errorf("BlockProof + ReceiptProof + EventProof > limit")
-				}
-				//
-				segment := &module.Segment{
-					Height:              msg.height,
-					NumberOfBlockUpdate: msg.numberOfBlockUpdate,
-					EventSequence:       msg.eventSequence,
-					NumberOfEvent:       msg.numberOfEvent,
-				}
-				if segment.TransactionParam, err = s.newTransactionParam(rm.From.String(), msg); err != nil {
-					return nil, err
-				}
-				segments = append(segments, segment)
-
-				msg = &RelayMessage{
-					BlockUpdates:  make([][]byte, 0),
-					ReceiptProofs: make([][]byte, 0),
-					BlockProof:    bp,
-				}
-				size = len(ep.Proof)
-				size += len(rp.Proof)
-				size += len(bp)
-
-				trp = &ReceiptProof{
-					Index:       rp.Index,
-					Proof:       rp.Proof,
-					EventProofs: make([]*module.EventProof, 0),
-				}
-			}
-			trp.EventProofs = append(trp.EventProofs, ep)
-			msg.eventSequence = rp.Events[j].Sequence
-			msg.numberOfEvent += 1
-		} */
 
 		if b, err = codec.RLP.MarshalToBytes(trp); err != nil {
 			return nil, err
@@ -284,54 +231,4 @@ func NewSender(src, dst module.BtpAddress, w Wallet, endpoint string, opt map[st
 	s.bmc, _ = binding.NewBMC(HexToAddress(s.dst.ContractAddress()), s.c.ethClient)
 
 	return s
-}
-
-func mapError(err error) error {
-	if err != nil {
-		switch re := err.(type) {
-		case *jsonrpc.Error:
-			//fmt.Printf("jrResp.Error:%+v", re)
-			switch re.Code {
-			case JsonrpcErrorCodeTxPoolOverflow:
-				return module.ErrSendFailByOverflow
-			case JsonrpcErrorCodeSystem:
-				if subEc, err := strconv.ParseInt(re.Message[1:5], 0, 32); err == nil {
-					//TODO return JsonRPC Error
-					switch subEc {
-					case ExpiredTransactionError:
-						return module.ErrSendFailByExpired
-					case FutureTransactionError:
-						return module.ErrSendFailByFuture
-					case TransactionPoolOverflowError:
-						return module.ErrSendFailByOverflow
-					}
-				}
-			case JsonrpcErrorCodePending, JsonrpcErrorCodeExecuting:
-				return module.ErrGetResultFailByPending
-			}
-		case *common.HttpError:
-			fmt.Printf("*common.HttpError:%+v", re)
-			return module.ErrConnectFail
-		case *url.Error:
-			if common.IsConnectRefusedError(re.Err) {
-				//fmt.Printf("*url.Error:%+v", re)
-				return module.ErrConnectFail
-			}
-		}
-	}
-	return err
-}
-
-func mapErrorWithTransactionResult(txr *TransactionResult, err error) error {
-	err = mapError(err)
-	if err == nil && txr != nil && txr.Status != ResultStatusSuccess {
-		fc, _ := txr.Failure.CodeValue.Value()
-		if fc < ResultStatusFailureCodeRevert || fc > ResultStatusFailureCodeEnd {
-			err = fmt.Errorf("failure with code:%s, message:%s",
-				txr.Failure.CodeValue, txr.Failure.MessageValue)
-		} else {
-			err = module.NewRevertError(int(fc - ResultStatusFailureCodeRevert))
-		}
-	}
-	return err
 }

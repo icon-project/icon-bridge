@@ -342,16 +342,8 @@ func (s *SimpleChain) init() error {
 
 func (s *SimpleChain) receiveHeight() int64 {
 	//TODO: check this logic
-	//min(max(s.acc.Height(), s.bs.Verifier.Offset), s.bs.Verifier.LastHeight)
 	max := s.acc.Height()
-	/* if max < s.bs.Verifier.Offset {
-		max = s.bs.Verifier.Offset
-	} */
 	max += 1
-	/* min := s.bs.Verifier.LastHeight
-	if max < min {
-		min = max
-	} */
 	return max
 }
 
