@@ -1,5 +1,6 @@
 
 const HDWalletProvider = require("@truffle/hdwallet-provider");
+require('dotenv').config();
 
 var privKeys = [
   "1deb607f38b0bd1390df3b312a1edc11a00a34f248b5d53f4157de054f3c71ae",
@@ -41,7 +42,18 @@ module.exports = {
       host: "localhost",
       port: 9545,
       network_id: "*", // Match any network id 
-    }
+    },
+    bscTestnet: {
+      provider: () => new HDWalletProvider({
+        privateKeys: [process.env.PRIVATE_KEY],
+        providerOrUrl: process.env.RPC_WS_URL,
+        chainId: 97,
+      }),
+      network_id: 97,
+      skipDryRun: true,
+      networkCheckTimeout: 1000000000,
+      timeoutBlocks: 200
+    },
   },
   compilers: {
     solc: {
@@ -55,5 +67,8 @@ module.exports = {
       }
     }
   },
-  plugins: ["truffle-contract-size"]
+  plugins: ["truffle-contract-size", 'truffle-plugin-verify'],
+  api_keys: {
+    bscscan: process.env.BSC_SCAN_API_KEY
+  }
 };
