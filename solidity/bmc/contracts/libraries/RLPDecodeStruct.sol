@@ -94,8 +94,8 @@ library RLPDecodeStruct {
     }
 
     function decodeServiceMessage(bytes memory _rlp)
-        internal
-        pure
+        internal    
+        pure    
         returns (Types.ServiceMessage memory)
     {
         RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
@@ -439,4 +439,30 @@ library RLPDecodeStruct {
                 );
     }
 
+    function decodeTransferAsset(bytes memory _rlp)
+        internal
+        returns (Types.TransferAssets memory)
+    {
+        RLPDecode.RLPItem memory rlpItem = _rlp.toRlpItem();
+
+        RLPDecode.RLPItem[] memory ls = rlpItem.toList();
+        Types.TokenAsset[] memory _ep = new Types.TokenAsset[](ls[2].toList().length);
+        uint256 len = ls[2].toList().length;
+        Types.TokenAsset memory _asset;
+        RLPDecode.RLPItem[] memory rlpTs = ls[2].toList();
+        for (uint256 i = 0; i < len; i++) {
+            _asset = Types.TokenAsset(
+                string(rlpTs[i].toList()[0].toBytes()),
+                rlpTs[i].toList()[1].toUint(),
+                0
+            );
+            _ep[i] = _asset;
+        }
+        return
+            Types.TransferAssets(
+                string(ls[0].toBytes()),
+                string(ls[1].toBytes()),
+                _ep
+            );
+    }
 }

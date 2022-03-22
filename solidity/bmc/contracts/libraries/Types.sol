@@ -242,4 +242,17 @@ library Types {
         uint256 seq;
         bytes message;
     }
+
+    
+    struct TransferAssets {
+        string from;
+        string to;
+        TokenAsset[] asset;
+    }
+
+    struct TokenAsset {
+        string name;
+        uint256 value;
+        uint256 fee;
+    }
 }
