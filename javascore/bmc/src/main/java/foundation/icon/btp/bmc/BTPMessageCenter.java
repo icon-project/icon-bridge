@@ -37,8 +37,8 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
     private static final Logger logger = Logger.getLogger(BTPMessageCenter.class);
     public static final int BLOCK_INTERVAL_MSEC = 2000;
     public static final String INTERNAL_SERVICE = "bmc";
-    public static final int INVALID_SEQ_NUMBER = 14;
-    public static final int INVALID_RELAY_MSG = 15;
+    public static final int INVALID_SEQ_NUMBER = 24;
+    public static final int INVALID_RELAY_MSG = 25;
     public enum Internal { Init, Link, Unlink, FeeGathering, Sack }
 
     //
