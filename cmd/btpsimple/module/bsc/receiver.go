@@ -87,6 +87,8 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 			rp.Index = int(receipt.TransactionIndex)
 			rp.Height = v.Height.Int64()
 			rps = append(rps, rp)
+			r.log.Debugf("event found for height & address:", rp.Height, srcContractAddress)
+			r.isFoundOffsetBySeq = true
 		}
 	}
 	return rps, nil
@@ -106,6 +108,7 @@ func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallbac
 	}
 	return r.c.MonitorBlock(br,
 		func(v *BlockNotification) error {
+			r.log.Debugf("onBlockOfSrc BSC %d", v.Height.Int64())
 			var rps []*module.ReceiptProof
 			if rps, err = r.newReceiptProofs(v); err != nil {
 				return err

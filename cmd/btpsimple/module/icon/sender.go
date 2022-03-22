@@ -306,7 +306,7 @@ func mapError(err error) error {
 			return module.ErrConnectFail
 		case *url.Error:
 			if common.IsConnectRefusedError(re.Err) {
-				//fmt.Printf("*url.Error:%+v", re)
+				fmt.Printf("*url.Error:%+v", re)
 				return module.ErrConnectFail
 			}
 		}

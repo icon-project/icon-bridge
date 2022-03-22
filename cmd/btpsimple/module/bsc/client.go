@@ -202,7 +202,6 @@ func (c *Client) Poll(p *BlockRequest, cb func(b *BlockNotification) error) erro
 					//l.sysErr <- ErrFatalPolling
 					return
 				}
-				c.log.Debug("Monitoring Block: ", current)
 				latestHeader, err := c.ethClient.HeaderByNumber(context.Background(), current) // c.GetHeaderByHeight(current)
 				if err != nil {
 					//c.log.Error("Unable to get latest block ", current, err)

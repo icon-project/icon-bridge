@@ -98,6 +98,8 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 							nextEp = j + 1
 							break EpLoop
 						}
+					} else {
+						r.l.Debugln("Cannot Match, seq/signature/next", r.evtLogRawFilter.seq)
 					}
 				}
 				if nextEp == 0 {
@@ -185,6 +187,8 @@ func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallbac
 	r.evtLogRawFilter.seq = common.NewHexInt(seq).Bytes()
 	return r.c.MonitorBlock(r.evtReq,
 		func(conn *websocket.Conn, v *BlockNotification) error {
+			var blockNum, _ = v.Height.Value()
+			r.l.Debugf("onBlockOfSrc icon: %d", blockNum)
 			var err error
 			var rps []*module.ReceiptProof
 			if rps, err = r.newReceiptProofs(v); err != nil {

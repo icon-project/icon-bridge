@@ -154,8 +154,9 @@ func (s *SimpleChain) result(rm *module.RelayMessage, segment *module.Segment) {
 			case module.BMCRevertUnauthorized:
 				segment.GetResultParam = nil
 			default:
-				s.l.Panicf("fail to GetResult GetResultParam:%v ErrorCoder:%+v",
-					segment.GetResultParam, ec)
+				//TODO: enable panic later
+				// s.l.Panicf("fail to GetResult GetResultParam:%v ErrorCoder:%+v",
+				// 	segment.GetResultParam, ec)
 			}
 		} else {
 			//TODO: commented temporarily to keep the relayer running
@@ -262,7 +263,6 @@ func (s *SimpleChain) OnBlockOfDst(height int64) error {
 }
 
 func (s *SimpleChain) OnBlockOfSrc(rps []*module.ReceiptProof) {
-	s.l.Tracef("OnBlockOfSrc")
 	s.addRelayMessage(rps)
 	s.relayCh <- nil
 }

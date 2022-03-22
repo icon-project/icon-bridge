@@ -71,9 +71,10 @@ func (s *sender) newTransactionParam(prev string, rm *RelayMessage) (*Transactio
 	}
 	rmp := BMCRelayMethodParams{
 		Prev: prev,
-		//Messages: base64.URLEncoding.EncodeToString(b),
+		//Messages: base64.URLEncoding.EncodeToString(b[:]),
 		Messages: string(b[:]),
 	}
+	s.l.Debugf("HandleRelayMessage msg: %s", base64.URLEncoding.EncodeToString(b))
 	p := &TransactionParam{
 		Params: rmp,
 	}
