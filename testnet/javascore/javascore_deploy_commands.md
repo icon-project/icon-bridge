@@ -416,4 +416,4 @@ https://www.icondev.io/introduction/the-icon-network/testnet
 
 
 Create a new wallet:
-`goloop ks gen --out berlinKeystore -p btpweb3labs > /dev/null 2>&1`
+`goloop ks gen --out berlinKeystore -p "password" > /dev/null 2>&1`
