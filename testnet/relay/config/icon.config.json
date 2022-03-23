@@ -1,0 +1,51 @@
+{
+  "base_dir": "../data/testnet/btp_icon_bsc",
+  "src": {
+    "address": "btp://0x7.icon/cx5bd99e9acc0c3e652cb8dbdf3c4cab4a1a6c6e98",
+    "endpoint": "https://berlin.net.solidwallet.io/api/v3/icon_dex"
+  },
+  "dst": {
+    "address": "btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7",
+    "endpoint": ""
+  },
+  "offset": 4617570,
+  "key_store": {
+    "version": 3,
+    "id": "788c568c-011c-4f9b-a27e-78a076ea568e",
+    "address": "504cf2dae0ab34aceaaeb2954673617f5b1a22a0",
+    "crypto": {
+        "ciphertext": "4cb346874d4ce0d5fdd53cf572dcc459bdc66bdcca104a81a762adf3c4296ca3",
+        "cipherparams": {
+            "iv": "3620fcd875001ff950db855c89b948ea"
+        },
+        "cipher": "aes-128-ctr",
+        "kdf": "scrypt",
+        "kdfparams": {
+            "dklen": 32,
+            "salt": "1a6559aab7c32ffce58e51daf03bc232841d2ea8bf94e0e09fa33d9200d93657",
+            "n": 262144,
+            "r": 8,
+            "p": 1
+        },
+        "mac": "975fc82c3b1f33f486538780406e7cb4fe845da2ac5b9e7158cdd09db7a53330"
+    },
+    "coinType": "evm"
+  },
+  "key_secret": "./config/bsc.secret",
+  "log_level": "trace",
+  "console_level": "trace",
+  "log_forwarder": {
+    "vendor": "",
+    "address": "",
+    "level": "info",
+    "name": ""
+  },
+  "log_writer": {
+    "filename": "../data/testnet/log/btp.log",
+    "maxsize": 100,
+    "maxage": 0,
+    "maxbackups": 0,
+    "localtime": false,
+    "compress": false
+  }
+}
