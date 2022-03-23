@@ -3,7 +3,7 @@ const util = require('ethereumjs-util')
 const fs = require('fs')
 
 const run = async () => {    
-    let wl=new Wallet(util.toBuffer("0x1deb607f38b0bd1390df3b312a1edc11a00a34f248b5d53f4157de054f3c71ae"))
+    let wl=new Wallet(util.toBuffer("PVT_KEY"))
     const publicKey = wl.getPublicKeyString();
     console.log(publicKey);
     const address = wl.getAddressString();
