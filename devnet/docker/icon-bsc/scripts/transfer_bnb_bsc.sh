@@ -21,4 +21,4 @@ bsc_init_native_btp_transfer "$TOKENS_TRANSFER_AMOUNT" >$CONFIG_DIR/tx.native.bs
 
 #Check alice balance after 20s
 printf "\n\nStep 4: Alice ETH Balance after BTP token transfer\n"
-check_alice_native_balance_with_wait $NATIVE_COIN_NAME
+check_alice_wrapped_native_balance_with_wait $NATIVE_COIN_NAME

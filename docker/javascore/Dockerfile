@@ -16,16 +16,19 @@ ADD javascore ${JAVASCORE_SRC}
 WORKDIR ${JAVASCORE_SRC}
 RUN gradle bsh:clean
 RUN gradle bsh:optimizedJar
+RUN gradle nativecoin:clean
+RUN gradle nativecoin:optimizedJar
 
 #copy jars to dist
 WORKDIR ${ROOT}
 RUN mkdir /dist
 
 RUN cp ${JAVASCORE_SRC}/bsh/build/libs/bsh-optimized.jar ${DIST_DIR}
-RUN cp ${JAVASCORE_SRC}/bmc/bmc-0.1.0-optimized.jar ${DIST_DIR}/bmc-optimized.jar
+RUN cp ${JAVASCORE_SRC}/nativecoin/build/libs/nativecoin-0.1.0-optimized.jar ${DIST_DIR}/nativecoin-optimized.jar
 
-RUN cp ${JAVASCORE_SRC}/irc31-0.1.0-optimized.jar ${DIST_DIR}
-RUN cp ${JAVASCORE_SRC}/nativecoin-0.1.0-optimized.jar ${DIST_DIR}
+RUN cp ${JAVASCORE_SRC}/lib/BMC-0.1.0-optimized.jar ${DIST_DIR}/bmc-optimized.jar
+RUN cp ${JAVASCORE_SRC}/lib/irc2Tradeable-0.1.0-optimized.jar ${DIST_DIR}/irc2Tradeable-optimized.jar
+
 
 RUN git clone https://github.com/icon-project/java-score-examples.git
 WORKDIR /goloop/java-score-examples

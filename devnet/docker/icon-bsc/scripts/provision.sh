@@ -43,12 +43,10 @@ provision() {
     bsh_javascore_register
 
     source nativeCoin.javascore.sh
-    deploy_javascore_irc31
     deploy_javascore_nativeCoin_BSH
     bmc_javascore_addNativeService
     nativeBSH_javascore_register
     nativeBSH_javascore_setFeeRatio
-    irc31_javascore_addOwner
 
     deploy_solidity_tokenBSH_BEP20
     bsc_addService

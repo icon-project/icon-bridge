@@ -34,7 +34,7 @@ nativeBSH_solidity_register() {
   echo "Register Coin Name with NativeBSH"
   cd $CONTRACTS_DIR/solidity/bsh
   tx=$(truffle exec --network bscDocker "$SCRIPTS_DIR"/bsh.nativeCoin.js \
-    --method register --name "ICX")
+    --method register --name "ICX" --symbol "ICX" --decimals 18)
   echo "$tx" >$CONFIG_DIR/tx/register.nativeCoin.bsc
 }
 
