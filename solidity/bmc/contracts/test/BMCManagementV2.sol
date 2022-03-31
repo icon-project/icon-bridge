@@ -212,6 +212,13 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         return listLinkNames;
     }
 
+    function setLinkRxHeight(
+        string calldata _link, uint256 _height) external override hasPermission {
+        require(links[_link].isConnected == true, "BMCRevertNotExistsLink");
+        require(_height > 0, "BMVRevertInvalidRxHeight");
+        links[_link].rxHeight = _height;
+    }
+
     function setLink(
         string memory _link,
         uint256 _blockInterval,
@@ -536,6 +543,15 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         return links[_prev].txSeq;
     }
 
+    function getLinkRxHeight(string calldata _prev)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return links[_prev].rxHeight;
+    }
+
     function getLinkRelays(string calldata _prev)
         external
         view
@@ -571,6 +587,14 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         onlyBMCPeriphery
     {
         links[_prev].txSeq++;
+    }
+
+    function updateLinkRxHeight(string calldata _prev, uint256 _val)
+        external
+        override
+        onlyBMCPeriphery
+    {
+        links[_prev].rxHeight += _val;
     }
 
     function updateLinkReachable(string memory _prev, string[] memory _to)
