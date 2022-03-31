@@ -218,10 +218,18 @@ func (cl *Client) CloseAllMonitor() error {
 	return nil
 }
 
+func (cl *Client) NewValidator(height uint64) (*Validator, error) {
+	return newValidator(cl, new(big.Int).SetUint64(height))
+}
+
 // MonitorBlock subscribes to the new head notifications
 func (cl *Client) MonitorBlock(startHeight uint64, fetchReceipts bool, cb func(v *BlockNotification) error) error {
 	if startHeight == 0 {
 		startHeight = 1
+	}
+	vl, err := cl.NewValidator(startHeight)
+	if err != nil {
+		return errors.Wrapf(err, "monitor block: NewValidator: %v", err)
 	}
 
 	// block notification channel (buffered: to avoid deadlock)
@@ -232,7 +240,7 @@ func (cl *Client) MonitorBlock(startHeight uint64, fetchReceipts bool, cb func(v
 	poll := time.NewTicker(time.Second)
 	defer poll.Stop()
 
-	// last few block notifications
+	// last few unverified block notifications
 	lbns := make([]*BlockNotification, 0, 1)
 
 	// start monitor loop
@@ -261,8 +269,17 @@ func (cl *Client) MonitorBlock(startHeight uint64, fetchReceipts bool, cb func(v
 			for ; bn != nil; next++ { // empty bns channel: process all notifications
 				if len(lbns) > 0 {
 					lbn := lbns[len(lbns)-1]
+					ok, err := vl.verify(lbn.Header,
+						bn.Header.LastCommitSignature, bn.Header.LastCommitBitmap)
+					if err != nil || !ok {
+						cl.log.Errorf("monitor block: invalid header: n=%v, err=%v", lbn.Header.Number, err)
+						break
+					}
 					if err := cb(lbn); err != nil {
 						return errors.Wrapf(err, "monitor block: callback: %v", err)
+					}
+					if err := vl.update(lbn.Header); err != nil {
+						return errors.Wrapf(err, "monitor block: update validator: %v", err)
 					}
 				}
 				lbns = lbns[:1]

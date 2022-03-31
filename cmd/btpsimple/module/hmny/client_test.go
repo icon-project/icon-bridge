@@ -54,6 +54,24 @@ func TestBlockAndHeaderHashMatch(t *testing.T) {
 	require.Equal(t, h.Hash(), b.Hash)
 }
 
+func TestValidator(t *testing.T) {
+	n := int64(50)
+	cl := newTestClient()
+	vl, err := cl.NewValidator(uint64(n))
+	require.NoError(t, err, "failed to get validator")
+
+	h, err := cl.GetHmyHeaderByHeight(big.NewInt(n), 0)
+	require.NoError(t, err, "failed to fetch header")
+
+	hn, err := cl.GetHmyHeaderByHeight(big.NewInt(n+1), 0)
+	require.NoError(t, err, "failed to fetch next header")
+
+	ok, err := vl.verify(h, hn.LastCommitSignature, hn.LastCommitBitmap)
+	require.NoError(t, err, "failed to verify commit signature")
+
+	require.True(t, ok)
+}
+
 func TestMonitorBlock(t *testing.T) {
 	cl := newTestClient()
 	err := cl.MonitorBlock(10, true, func(v *BlockNotification) error {
