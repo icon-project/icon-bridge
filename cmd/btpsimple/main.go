@@ -151,10 +151,10 @@ func main() {
 	}
 	rootPFlags := rootCmd.PersistentFlags()
 	rootPFlags.String("src.address", "", "BTP Address of source blockchain (PROTOCOL://NID.BLOCKCHAIN/BMC)")
-	rootPFlags.String("src.endpoint", "", "Endpoint of source blockchain")
+	rootPFlags.StringSlice("src.endpoint", nil, "Endpoint of source blockchain")
 	rootPFlags.StringToString("src.options", nil, "Options, comma-separated 'key=value'")
 	rootPFlags.String("dst.address", "", "BTP Address of destination blockchain (PROTOCOL://NID.BLOCKCHAIN/BMC)")
-	rootPFlags.String("dst.endpoint", "", "Endpoint of destination blockchain")
+	rootPFlags.StringSlice("dst.endpoint", nil, "Endpoint of destination blockchain")
 	rootPFlags.StringToString("dst.options", nil, "Options, comma-separated 'key=value'")
 	rootPFlags.Int64("offset", 0, "Offset of MTA")
 	rootPFlags.String("key_store", "", "KeyStore")

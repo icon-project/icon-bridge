@@ -3,6 +3,7 @@ package chain
 import (
 	"github.com/icon-project/btp/cmd/btpsimple/module"
 	"github.com/icon-project/btp/cmd/btpsimple/module/bsc"
+	"github.com/icon-project/btp/cmd/btpsimple/module/hmny"
 	"github.com/icon-project/btp/cmd/btpsimple/module/icon"
 	"github.com/icon-project/btp/common/log"
 	"github.com/icon-project/btp/common/wallet"
@@ -23,9 +24,11 @@ func newSenderAndReceiver(cfg *Config, w wallet.Wallet, l log.Logger) (module.Se
 
 	switch cfg.Dst.Address.BlockChain() {
 	case "icon":
-		sender = icon.NewSender(cfg.Src.Address, cfg.Dst.Address, w, cfg.Dst.Endpoint, cfg.Dst.Options, l)
+		sender = icon.NewSender(cfg.Src.Address, cfg.Dst.Address, w, cfg.Dst.Endpoint[0], cfg.Dst.Options, l)
 	case "bsc":
-		sender = bsc.NewSender(cfg.Src.Address, cfg.Dst.Address, w, cfg.Dst.Endpoint, nil, l)
+		sender = bsc.NewSender(cfg.Src.Address, cfg.Dst.Address, w, cfg.Dst.Endpoint[0], nil, l)
+	case "hmny":
+		sender = hmny.NewSender(cfg.Src.Address, cfg.Dst.Address, w, cfg.Dst.Endpoint, nil, l)
 	default:
 		l.Fatalf("Sender not supported for chain ", cfg.Dst.Address.BlockChain())
 		return nil, nil
@@ -33,9 +36,11 @@ func newSenderAndReceiver(cfg *Config, w wallet.Wallet, l log.Logger) (module.Se
 
 	switch cfg.Src.Address.BlockChain() {
 	case "icon":
-		receiver = icon.NewReceiver(cfg.Src.Address, cfg.Dst.Address, cfg.Src.Endpoint, nil, l)
+		receiver = icon.NewReceiver(cfg.Src.Address, cfg.Dst.Address, cfg.Src.Endpoint[0], nil, l)
 	case "bsc":
-		receiver = bsc.NewReceiver(cfg.Src.Address, cfg.Dst.Address, cfg.Src.Endpoint, cfg.Dst.Options, l)
+		receiver = bsc.NewReceiver(cfg.Src.Address, cfg.Dst.Address, cfg.Src.Endpoint[0], cfg.Dst.Options, l)
+	case "hmny":
+		receiver = hmny.NewReceiver(cfg.Src.Address, cfg.Dst.Address, cfg.Src.Endpoint, cfg.Dst.Options, l)
 	default:
 		l.Fatalf("Receiver not supported for chain ", cfg.Src.Address.BlockChain())
 		return nil, nil
