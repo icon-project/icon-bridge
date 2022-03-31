@@ -16,9 +16,7 @@ func init() {
 func NewBadgerDB(name string, dir string) (*BadgerDB, error) {
 
 	dbPath := filepath.Join(dir, name)
-	opts := badger.DefaultOptions
-	opts.Dir = dbPath
-	opts.ValueDir = dbPath
+	opts := badger.DefaultOptions(dbPath)
 
 	// TODO : badger.openDatabase() use os.Mkdir(). parent dirs must be created
 	db, err := badger.Open(opts)
