@@ -60,132 +60,103 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         return bmcBtpAddress;
     }
 
+    function validateRelay(string calldata _prev)
+        internal
+        view
+        returns (address)
+    {
+        address relay = address(0);
+        address[] memory relays = IBMCManagement(bmcManagement).getLinkRelays(
+            _prev
+        );
+        for (uint256 i = 0; i < relays.length; i++) {
+            if (msg.sender == relays[i]) {
+                relay = msg.sender;
+                break;
+            }
+        }
+        require(
+            relay == msg.sender,
+            "BMCRevertUnauthroized: relay not registered"
+        );
+        return relay;
+    }
+
     /**
        @notice Verify and decode RelayMessage, and dispatch BTP Messages to registered BSHs
        @dev Caller must be a registered relayer.     
        @param _prev    BTP Address of the BMC generates the message
        @param _msg     base64 encoded string of serialized bytes of Relay Message refer RelayMessage structure
      */
-    function handleRelayMessage(string calldata _prev, string calldata _msg)
+    function handleRelayMessage(string calldata _prev, bytes calldata _msg)
         external
         override
     {
-        bytes[] memory serializedMsgs = decodeMsgAndValidateRelay(_prev, _msg);
+        validateRelay(_prev);
 
-        // dispatch BTP Messages
-        Types.BMCMessage memory _message;
-        for (uint256 i = 0; i < serializedMsgs.length; i++) {
-            try this.decodeBTPMessage(serializedMsgs[i]) returns (
-                Types.BMCMessage memory _decoded
-            ) {
-                _message = _decoded;
-            } catch {
-                // ignore BTPMessage parse failure
-                continue;
+        uint256 linkRxSeq = IBMCManagement(bmcManagement).getLinkRxSeq(_prev);
+        uint256 linkRxHeight = IBMCManagement(bmcManagement).getLinkRxHeight(
+            _prev
+        );
+
+        uint256 rxSeq = linkRxSeq;
+        uint256 rxHeight = linkRxHeight;
+
+        Types.ReceiptProof[] memory rps = _msg.decodeReceiptProofs();
+
+        Types.BMCMessage memory bmsg;
+        Types.MessageEvent memory ev;
+
+        for (uint256 i = 0; i < rps.length; i++) {
+            if (rps[i].height < rxHeight) {
+                revert("RevertInvalidRxHeight: rp.height < rxHeight");
             }
-
-            if (_message.dst.compareTo(bmcBtpAddress)) {
-                handleMessage(_prev, _message);
-            } else {
-                (string memory _net, ) = _message.dst.splitBTPAddress();
+            rxHeight = rps[i].height;
+            for (uint256 j = 0; j < rps[i].events.length; j++) {
+                rxSeq++;
+                ev = rps[i].events[j];
+                if (ev.seq > rxSeq) {
+                    revert("RevertInvalidRxSeq: ev.seq > expected rxSeq");
+                }
+                if (ev.seq < rxSeq) {
+                    revert("RevertInvalidRxSeq: ev.seq < expected rxSeq");
+                }
+                if (!ev.nextBmc.compareTo(bmcBtpAddress)) {
+                    continue;
+                }
+                try this.decodeBTPMessage(ev.message) returns (
+                    Types.BMCMessage memory _decoded
+                ) {
+                    bmsg = _decoded;
+                } catch {
+                    continue;
+                }
+                if (bmsg.dst.compareTo(bmcBtpAddress)) {
+                    handleMessage(_prev, bmsg);
+                    continue;
+                }
+                (string memory _net, ) = bmsg.dst.splitBTPAddress();
                 try IBMCManagement(bmcManagement).resolveRoute(_net) returns (
                     string memory _nextLink,
                     string memory
                 ) {
-                    _sendMessage(_nextLink, serializedMsgs[i]);
+                    _sendMessage(_nextLink, ev.message);
                 } catch Error(string memory _error) {
-                    _sendError(_prev, _message, BMC_ERR, _error);
+                    _sendError(_prev, bmsg, BMC_ERR, _error);
                 }
             }
         }
-        IBMCManagement(bmcManagement).updateLinkRxSeq(
-            _prev,
-            serializedMsgs.length
-        );
-    }
 
-    function decodeMsgAndValidateRelay(
-        string calldata _prev,
-        string calldata _msg
-    ) internal returns (bytes[] memory) {
-        // decode and verify relay message
-        bytes[] memory serializedMsgs = handleRelayMessage(
-            bmcBtpAddress,
-            _prev,
-            IBMCManagement(bmcManagement).getLinkRxSeq(_prev),
-            _msg
-        );
-
-        // rotate and check valid relay
-        /* address relay = IBMCManagement(bmcManagement).rotateRelay(
-            _prev,
-            block.number,
-            block.number,
-            serializedMsgs.length > 0
-        ); */
-        address relay = address(0);
-        if (relay == address(0)) {
-            address[] memory relays = IBMCManagement(bmcManagement)
-                .getLinkRelays(_prev);
-            bool check;
-            for (uint256 i = 0; i < relays.length; i++)
-                if (msg.sender == relays[i]) {
-                    check = true;
-                    break;
-                }
-            require(check, "BMCRevertUnauthorized: not registered relay");
-            relay = msg.sender;
-        } else if (relay != msg.sender)
-            revert("BMCRevertUnauthorized: invalid relay");
-        //TODO: change 0 to update latest block number by extending the relay message to include block number
+        IBMCManagement(bmcManagement).updateLinkRxSeq(_prev, rxSeq - linkRxSeq);
         IBMCManagement(bmcManagement).updateRelayStats(
-            relay,
-            0,//TODO: change
-            serializedMsgs.length
+            msg.sender,
+            0,
+            rxSeq - linkRxSeq
         );
-        return serializedMsgs;
-    }
-
-    function handleRelayMessage(
-        string memory _bmc,
-        string memory _prev,
-        uint256 _seq,
-        string calldata _msg
-    ) internal returns (bytes[] memory) {
-        bytes memory _serializedMsg = bytes(_msg);       
-        bytes[] memory decodedMsgs = validateReceipt(_bmc, _prev, _seq, _serializedMsg);  // decode and verify relay message
-        return decodedMsgs;
-    }
-
-     function validateReceipt(
-        string memory _bmc,
-        string memory _prev,
-        uint256 _seq,
-        bytes memory _serializedMsg
-    ) internal returns (bytes[] memory) {
-        uint256 nextSeq = _seq + 1;
-        Types.MessageEvent memory messageEvent;
-        Types.ReceiptProof[] memory receiptProofs = _serializedMsg
-            .decodeReceiptProofs();
-        if (msgs.length > 0) delete msgs;
-        for (uint256 i = 0; i < receiptProofs.length; i++) {          
-            for (uint256 j = 0; j < receiptProofs[i].events.length; j++) {
-                messageEvent = receiptProofs[i].events[j];
-                if (bytes(messageEvent.nextBmc).length != 0) {                    
-                    if (messageEvent.seq > nextSeq) {
-                        //string memory concat1 = string("RevertInvalidSequenceHigher, messageeventseq").concat(messageEvent.seq.toString()).concat(", nextseq").concat(nextSeq.toString());
-                        revert("RevertInvalidSequenceHigher");
-                    } else if (messageEvent.seq < nextSeq) {
-                        //string memory concat1 = string("RevertInvalidSequence, messageeventseq").concat(messageEvent.seq.toString()).concat(", nextseq").concat(nextSeq.toString());
-                        revert("RevertInvalidSequence");
-                    } else if (messageEvent.nextBmc.compareTo(_bmc)) {
-                        msgs.push(messageEvent.message);
-                        nextSeq += 1;
-                    }
-                }
-            }
-        }
-        return msgs;
+        IBMCManagement(bmcManagement).updateLinkRxHeight(
+            _prev,
+            rxHeight - linkRxHeight
+        );
     }
 
     //  @dev Despite this function was set as external, it should be called internally
@@ -442,7 +413,6 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         require(link.isConnected == true, "BMCRevertNotExistsLink");
         Types.RelayStats[] memory _relays = IBMCManagement(bmcManagement)
             .getRelayStatusByLink(_link);
-        (string memory _net, ) = _link.splitBTPAddress();
         uint256 _rotateTerm = link.maxAggregation.getRotateTerm(
             link.blockIntervalSrc.getScale(link.blockIntervalDst)
         );
@@ -450,7 +420,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
             Types.LinkStats(
                 link.rxSeq,
                 link.txSeq,
-                Types.VerifierStats(0, 0, 0, ""),//dummy
+                Types.VerifierStats(0, 0, 0, ""), //dummy
                 _relays,
                 link.relayIdx,
                 link.rotateHeight,
