@@ -2,8 +2,9 @@
 
 # source $ixh_env
 
-localhosts=( localhost localdckr )
+localhosts=( localdckr )
 remotehosts=( localnets )
+allowedhosts=( ${localhosts[@]} ${remotehosts[@]} )
 
 docker_user="ubuntu"
 # docker_host="localdckr"
@@ -43,6 +44,7 @@ btp_hmny_gas_price=30000000000
 btp_hmny_nativecoin_symbol=ONE_DEV
 
 # fd for verbose logs
+mkdir -p $ixh_tmp_dir
 exec 3<> $ixh_tmp_dir/ixh.log
 echo $(date) >&3 # print current time
 
@@ -252,7 +254,7 @@ function deploysc() {
 
     # build dir
     mkdir -p $ixh_build_dir
-    [[ "$1" == "reset" ]] && rm -rf $ixh_tmp_dir/* # clean build when reset is enabled
+    [[ "$1" == "reset" ]] && rm -rf $ixh_build_dir/* # clean build when reset is enabled
 
     # create root wallets
     log "Wallet:"
@@ -711,6 +713,219 @@ function publish_images() {
     docker push $docker_registry/icon:latest
 }
 
+function run_test() {
+    export verbose=true
+    func=$1
+    args=( ${@:2} )
+    case "$func" in
+        iconGetBalance)
+            wallet_address=${args[0]}
+            params=$(echo '{}' | jq -c '.address = $address' --arg address $wallet_address)
+            balance=$(icon_jsonrpc icx_getBalance "$params" | jq -r .result)
+            hex2dec $balance
+            ;;
+        iconGetWrappedCoins)
+            run_jscall "$btp_icon_nativecoin_bsh" coinNames
+            ;;
+        iconRegisterWrappedCoin)
+            coinName=${args[0]}
+            run_jstxcall "$btp_icon_nativecoin_bsh" register 0 "_name=$coinName"
+            ;;
+        iconGetWrappedCoinBalance)
+            wallet_address=${args[0]}
+            coinName=${args[1]}
+            coinId=$(run_jscall "$btp_icon_nativecoin_bsh" coinId "_coinName=$coinName" | jq -r .)
+            balance=$(run_jscall "$btp_icon_irc31" balanceOf "_owner=$wallet_address" "_id=$coinId" | jq -r .)
+            hex2dec $balance
+            ;;
+        iconTransfer)
+            to=${args[1]}
+            echo "Not Implemented!" && exit 1
+            ;;
+        iconTransferNativeCoin)
+            value=${args[0]}
+            to=${args[1]}
+            run_jstxcall "$btp_icon_nativecoin_bsh" transferNativeCoin $value _to=$to
+            ;;
+        iconTransferWrappedCoin)
+            coinName=${args[0]}
+            value=${args[1]}
+            to=${args[2]}
+            run_jstxcall "$btp_icon_nativecoin_bsh" transfer 0 _coinName=$coinName _value=$value _to=$to
+            ;;
+        iconGetBMCStatus)
+            run_jscall "$btp_icon_bmc" getStatus "_link=$btp_hmny_btp_address"
+            ;;
+        iconBSHIsApprovedForAll)
+            wallet_address=${args[0]}
+            run_jscall "$btp_icon_irc31" isApprovedForAll "_owner=$wallet_address" "_operator=$btp_icon_nativecoin_bsh"
+            ;;
+        iconBSHSetApprovalForAll)
+            approved=${args[0]:-1}
+            run_jstxcall "$btp_icon_irc31" setApprovalForAll 0 "_operator=$btp_icon_nativecoin_bsh" "_approved=$approved"
+            ;;
+        hmnyGetBalance)
+            wallet_address=${args[0]}
+            hmny_jsonrpc hmyv2_getBalance "\"$wallet_address\"" | jq -r .result
+            ;;
+        hmnyGetWrappedCoins)
+            run_sol bsh.BSHCore.coinNames
+            ;;
+        hmnyRegisterWrappedCoin)
+            coinName=${args[0]}
+            run_sol bsh.BSHCore.register "'$coinName'"
+            ;;
+        hmnyGetWrappedCoinBalance)
+            wallet_address=${args[0]}
+            coinName=${args[1]}
+            run_sol bsh.BSHCore.getBalanceOf "'$wallet_address','$coinName'"
+            ;;
+        hmnyTransferNativeCoin)
+            value=$(dec2hex ${args[0]})
+            to=${args[1]}
+            run_sol bsh.BSHCore.transferNativeCoin "'$to',{value:'$value'}"
+            ;;
+        hmnyTransferWrappedCoin)
+            coinName=${args[0]}
+            value=$(dec2hex ${args[1]})
+            to=${args[2]}
+            run_sol bsh.BSHCore.transfer "'$coinName','$value','$to'"
+            ;;
+        hmnyGetBMCStatus)
+            run_sol bmc.BMCPeriphery.getStatus "'$btp_icon_btp_address'"
+            ;;
+        hmnyBSHIsApprovedForAll)
+            wallet_address=${args[0]}
+            run_sol bsh.BSHCore.isApprovedForAll "'$wallet_address','$btp_hmny_bsh_core'"
+            ;;
+        hmnyBSHSetApprovalForAll)
+            approved=${args[0]:-1}
+            approved=$([[ $approved == 0 ]] && echo false || echo true)
+            run_sol bsh.BSHCore.setApprovalForAll "'$btp_hmny_bsh_core',$approved"
+            ;;
+        hmnyChainStatus)
+            hmny_get_hmny_chain_status
+            ;;
+        *)
+            log "Invalid test command: $cmd"
+            echo "Usage: $func []"
+            exit 1 
+            ;;
+    esac
+}
+
+function run_demo() {
+    function tx_relay_wait() {
+        sleep 45
+    }
+
+    btp_icon_test_wallet=$btp_icon_wallet
+    btp_icon_test_wallet_address=$btp_icon_wallet_address
+    btp_icon_test_wallet_password=$btp_icon_wallet_password
+    btp_hmny_test_wallet=$btp_hmny_wallet
+    btp_hmny_test_wallet_address=$btp_hmny_wallet_address
+    btp_hmny_test_wallet_password=$btp_hmny_wallet_password
+
+
+    function get_icon_balance() {
+        run_test iconGetBalance $btp_icon_test_wallet_address
+    }
+
+    function get_hmny_balance() {
+        run_test hmnyGetBalance $btp_hmny_test_wallet_address
+    }
+    
+    function get_icon_wrapped_ONE_DEV() {
+        run_test iconGetWrappedCoinBalance $btp_icon_test_wallet_address ONE_DEV
+    }
+
+    function get_hmny_wrapped_ICX() {
+        hex=$(run_test hmnyGetWrappedCoinBalance $btp_hmny_test_wallet_address ICX | jq -r ._usableBalance)
+        hex2dec "0x$hex"
+    }
+
+    function show_balances() {
+        log
+        log "Balance:"
+        log "    Icon: $btp_icon_test_wallet_address"
+        export icon_balance=$(get_icon_balance)
+        log "        Native: $icon_balance"
+        export icon_wrapped_ONE_DEV=$(get_icon_wrapped_ONE_DEV)
+        log "        Wrapped (ONE_DEV): $icon_wrapped_ONE_DEV"
+        log "    Hmny: $btp_hmny_test_wallet_address"
+        export hmny_balance=$(get_hmny_balance)
+        log "        Native: $hmny_balance"
+        export hmny_wrapped_ICX=$(get_hmny_wrapped_ICX)
+        log "        Wrapped (ICX): $hmny_wrapped_ICX"
+        log
+    }
+
+    log "Icon Wrapped Coins:"
+    log "    $(run_test iconGetWrappedCoins | jq -c .)"
+
+    log "Hmny Wrapped Coins:"
+    log "    $(run_test hmnyGetWrappedCoins | jq -c .)"
+
+    show_balances
+
+    ixh_nativecoin_transfer_amount=$(python3 -c "print($icon_balance//3)")
+    log "TransferNativeCoin (Icon -> Hmny):"
+    log "    amount=$ixh_nativecoin_transfer_amount"
+    log -n "    "
+    run_test iconTransferNativeCoin $ixh_nativecoin_transfer_amount "btp://$btp_hmny_net/$btp_hmny_test_wallet_address"
+    log
+
+    tx_relay_wait
+
+    show_balances
+
+    h2i_nativecoin_transfer_amount=$(python3 -c "print($hmny_balance//3)")
+    log "TransferNativeCoin (Hmny -> Icon):"
+    log "    amount=$h2i_nativecoin_transfer_amount"
+    log -n "    "
+    run_test hmnyTransferNativeCoin $h2i_nativecoin_transfer_amount "btp://$btp_icon_net/$btp_icon_test_wallet_address"
+    log
+    
+    tx_relay_wait
+
+    show_balances
+
+    log "Approve Icon NativeCoinBSH"
+    log -n "    "
+    WALLET=$btp_icon_test_wallet PASSWORD=$btp_icon_test_wallet_password run_test iconBSHSetApprovalForAll 1
+    log
+    log "    Status: $(run_test iconBSHIsApprovedForAll $btp_icon_test_wallet_address)"
+
+    log "Approve Hmny BSHCore"
+    WALLET=$btp_hmny_test_wallet PASSWORD=$btp_hmny_test_wallet_password run_test hmnyBSHSetApprovalForAll 1
+    log "    Status: $(run_test hmnyBSHIsApprovedForAll $btp_hmny_test_wallet_address)"
+    log
+
+    h2i_wrapped_ICX_transfer_amount=$(python3 -c "print($hmny_wrapped_ICX//2)")
+    log "TransferWrappedCoin ICX (Hmny -> Icon):"
+    log "    amount=$h2i_wrapped_ICX_transfer_amount"
+    log -n "    "
+    WALLET=$btp_hmny_test_wallet PASSWORD=$btp_hmny_test_wallet_password \
+        run_test hmnyTransferWrappedCoin ICX $h2i_wrapped_ICX_transfer_amount "btp://$btp_icon_net/$btp_icon_test_wallet_address"
+
+    tx_relay_wait
+
+    show_balances
+
+    ixh_wrapped_ONE_DEV_transfer_amount=$(python3 -c "print($icon_wrapped_ONE_DEV//2)")
+    log "TransferWrapped Coin ONE_DEV (Icon -> Hmny):"
+    log "    amount=$ixh_wrapped_ONE_DEV_transfer_amount"
+    log -n "    "
+    WALLET=$btp_icon_test_wallet PASSWORD=$btp_icon_test_wallet_password \
+        run_test iconTransferWrappedCoin ONE_DEV $ixh_wrapped_ONE_DEV_transfer_amount "btp://$btp_hmny_net/$btp_hmny_test_wallet_address"
+    log
+
+    tx_relay_wait
+
+    show_balances
+}
+
+
 # trap cleanup SIGINT SIGTERM
 
 function usage() {
@@ -743,7 +958,11 @@ case "$cmd" in
         publish_images ${args[@]}
         ;;
 
-    deploysc) 
+    deploysc)
+        if [[ ! " ${allowedhosts[*]} " =~ " ${docker_host} " ]]; then
+            echo "docker_host: $docker_host not in allowedhosts!"
+            exit 1
+        fi
         deploysc ${args[@]}
         ;;
 
@@ -779,6 +998,16 @@ case "$cmd" in
         run_jstxcall ${args[@]}
         ;;
 
+    test)
+        . $ixh_env
+        run_test ${args[@]}
+        ;;
+        
+    demo)
+        . $ixh_env
+        run_demo ${args[@]}
+        ;;
+    
     *)
         log "Invalid command: $cmd"
         usage 
