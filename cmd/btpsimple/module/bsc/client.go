@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -40,7 +41,7 @@ import (
 const (
 	DefaultSendTransactionRetryInterval        = 3 * time.Second         //3sec
 	DefaultGetTransactionResultPollingInterval = 1500 * time.Millisecond //1.5sec
-	DefaultTimeout                             = 10 * time.Second        //
+	DefaultTimeout                             = 50 * time.Second        //
 	ChainID                                    = 56
 	DefaultGasLimit                            = 8000000
 	DefaultGasPrice                            = 5000000000
@@ -175,6 +176,14 @@ func (c *Client) GetBlockReceipts(block *types.Block) ([]*types.Receipt, error) 
 		receipts = append(receipts, receipt)
 	}
 	return receipts, nil
+}
+
+func (c *Client) FilterLogs(query ethereum.FilterQuery) ([]types.Log, error) {
+	logs, err := c.ethClient.FilterLogs(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	return logs, nil
 }
 
 func (c *Client) GetChainID() (*big.Int, error) {

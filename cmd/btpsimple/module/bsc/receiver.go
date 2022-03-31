@@ -19,6 +19,8 @@ package bsc
 import (
 	"encoding/json"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/icon-project/btp/cmd/btpsimple/module"
 	"github.com/icon-project/btp/cmd/btpsimple/module/bsc/binding"
 
@@ -94,6 +96,45 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 	return rps, nil
 }
 
+func (r *receiver) newBTPMessage(v *BlockNotification) ([]*module.ReceiptProof, error) {
+	rps := make([]*module.ReceiptProof, 0)
+
+	srcContractAddress := HexToAddress(r.src.ContractAddress())
+
+	query := ethereum.FilterQuery{
+		FromBlock: v.Height,
+		ToBlock:   v.Height,
+		Addresses: []common.Address{
+			srcContractAddress,
+		},
+	}
+
+	logs, err := r.c.FilterLogs(query)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, vLog := range logs {
+		rp := &module.ReceiptProof{}
+		if bmcMsg, err := binding.UnpackEventLog(vLog.Data); err == nil {
+			rp.Events = append(rp.Events, &module.Event{
+				Message:  bmcMsg.Msg,
+				Next:     module.BtpAddress(bmcMsg.Next),
+				Sequence: bmcMsg.Seq.Int64(),
+			})
+		}
+
+		if len(rp.Events) > 0 {
+			rp.Index = int(vLog.TxIndex)
+			rp.Height = vLog.BlockHash.Big().Int64()
+			rps = append(rps, rp)
+			r.log.Debugf("event found for height & address:", rp.Height, srcContractAddress)
+			r.isFoundOffsetBySeq = true
+		}
+	}
+	return rps, nil
+}
+
 func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallback, scb func()) error {
 	r.log.Debugf("ReceiveLoop connected")
 	br := &BlockRequest{
@@ -110,7 +151,7 @@ func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallbac
 		func(v *BlockNotification) error {
 			r.log.Debugf("onBlockOfSrc BSC %d", v.Height.Int64())
 			var rps []*module.ReceiptProof
-			if rps, err = r.newReceiptProofs(v); err != nil {
+			if rps, err = r.newBTPMessage(v); err != nil {
 				return err
 			} else if r.isFoundOffsetBySeq {
 				cb(rps)
