@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+
+  hmny:
+    image: ${docker_registry}/hmny:latest
+    container_name: ixh_hmny
+    restart: unless-stopped
+    ports:
+      - 9500:9500 # s0 rpc: one node
+      - 5099:5099 # s0 explorer
+      # - 9800-9809 # websocket
+
+
+  icon:
+    image: ${docker_registry}/icon:latest
+    container_name: ixh_icon
+    restart: unless-stopped
+    ports:
+      - 9080:9080
+
+  # btp_icon:
+  #   container_name: i2h_btp_icon
+  #   image: btp
+  #   build:
+  #     context: .
+  #   depends_on:
+  #     icon:
+  #       condition: service_healthy
+  #     hmny:
+  #       condition: service_healthy
