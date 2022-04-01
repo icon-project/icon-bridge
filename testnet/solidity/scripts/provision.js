@@ -86,34 +86,37 @@ const init = async () => {
   bshCore.address = address.solidity.BSHCore
   bshPeriphery.address = address.solidity.BSHPeriphery
 
- 
+
   try {
     //await bmcManagement.methods.removeService("TokenBSH").send({from:owner}) ;   
 
     let tx = await bmcManagement.methods.addService("TokenBSH", bshImpl.address).send({ from: owner });
-    console.log("Add Service TokenBSH: ",tx);
+    console.log("Add Service TokenBSH: ", tx);
 
     tx = await bmcManagement.methods.addService("nativecoin", bshPeriphery.address).send({ from: owner });
-    console.log("Add Service Nativecoin: ",tx);
+    console.log("Add Service Nativecoin: ", tx);
 
     console.log("Services #####################");
     console.log(await bmcManagement.methods.getServices().call());
 
-    tx = await bshCore.methods.register("ICX").send({ from: owner });
-    console.log("Register Native coin ICX : ",tx);
+    tx = await bshCore.methods.register("ICX", "ICX", 18).send({ from: owner });
+    console.log("Register Native coin ICX : ", tx);
+
+    coinAddress = await bshCore.methods.coinId("ICX").call();
+    console.log("ICX address: ", coinAddress);
 
     console.log("Registered Coin Names #####################");
     console.log(await bshCore.methods.coinNames().call())
 
     tx = await bmcManagement.methods.addLink(link).send({ from: owner, gas: gasAmount });
-    console.log("Add Link: ",tx);
+    console.log("Add Link: ", tx);
 
     let links = await bmcManagement.methods.getLinks().call();
     console.log("Links #####################");
     console.log(links);
 
     tx = await bmcManagement.methods.addRelay(link, [owner]).send({ from: owner, gas: gasAmount });
-    console.log("Add Relay: ",tx);
+    console.log("Add Relay: ", tx);
 
     let relays = await bmcManagement.methods.getRelays(link).call();
     console.log("Relays #####################");
@@ -122,7 +125,7 @@ const init = async () => {
     bmcPeriphery.methods.getStatus(link).call().then(console.log)
 
     tx = await bshProxy.methods.register("ETH", "ETH", 18, 100, bep20tkn.address).send({ from: owner, gas: gasAmount })
-    console.log("BSH Register Token: ",tx);
+    console.log("BSH Register Token: ", tx);
 
     console.log("Registered Tokens #####################");
     let tokens = await bshProxy.methods.tokenNames().call();
@@ -140,7 +143,7 @@ const init = async () => {
     let error = errorJson(ex)
     console.log("Transaction failed, ", error.transactionHash);
     reason(error.transactionHash)
-  } 
+  }
 }
 
 init().then(async () => {
