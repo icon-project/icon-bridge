@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/icon-project/btp/cmd/btpsimple/module"
 	"github.com/icon-project/btp/common/codec"
 	"github.com/icon-project/btp/common/errors"
@@ -118,7 +119,7 @@ func (s *sender) Relay(segment *module.Segment) (module.GetResultParam, error) {
 	} else {
 		t.GasLimit = defaultGasLimit
 	}
-	s.log.Debugf("final relay message string: %s, prev: %s", rmp.Messages, rmp.Prev)
+	s.log.Debugf("HandleRelayMessage prev %s, msg: %s", rmp.Prev, common.Bytes2Hex(rmp.Messages))
 	tx, err := s.c.bmc().HandleRelayMessage(t, rmp.Prev, rmp.Messages)
 	if err != nil {
 		s.log.Errorf("relay: bmc.handleRelayMessage: %v", err)
