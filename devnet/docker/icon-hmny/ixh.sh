@@ -1,254 +1,544 @@
-#!/bin/bash
-
-# source $ixh_env
-
-localhosts=( localdckr )
-remotehosts=( localnets )
-allowedhosts=( ${localhosts[@]} ${remotehosts[@]} )
-
-docker_user="ubuntu"
-# docker_host="localdckr"
-docker_host="localnets"
-docker_port="5000"
-docker_registry="$docker_host$([[ "$docker_port" == "" ]] && echo || echo ":$docker_port")"
-
-btp_hmny_uri="http://$docker_host:9500"
-btp_icon_uri="http://$docker_host:9080/api/v3"
-
-ixh_dir=$PWD
-ixh_tmp_dir=$ixh_dir/_ixh
-ixh_build_dir=$ixh_tmp_dir/build
-ixh_tests_dir=$ixh_tmp_dir/tests
-ixh_env=$ixh_tmp_dir/ixh.env
-ixh_src_dir=$ixh_dir/src
-
-root_dir="$ixh_dir/../../.."
-
-btp_icon_branch="v1.2.3"
-btp_hmny_branch="v4.3.7"
-
-btp_icon_config=$ixh_src_dir/icon.config.json
-btp_icon_wallet=$ixh_src_dir/icon.wallet.json
-btp_icon_wallet_password=gochain
-btp_icon_step_limit=13610920001
-btp_icon_nativecoin_symbol=ICX
-btp_icon_nativecoin_bsh_svc_name=nativecoin
-
-btp_hmny_wallet=$ixh_src_dir/hmny.wallet.json
-btp_hmny_wallet_password=
-btp_hmny_wallet_private_key=1f84c95ac16e6a50f08d44c7bde7aff8742212fda6e4321fde48bf83bef266dc
-btp_hmny_wallet_address=0xA5241513DA9F4463F1d4874b548dFBAC29D91f34
-# btp_hmny_wallet_address_one=one155jp2y76nazx8uw5sa94fr0m4s5aj8e5xm6fu3
-btp_hmny_gas_limit=3000000000
-btp_hmny_gas_price=30000000000
-btp_hmny_nativecoin_symbol=ONE_DEV
-
-# fd for verbose logs
-mkdir -p $ixh_tmp_dir
-exec 3<> $ixh_tmp_dir/ixh.log
-echo $(date) >&3 # print current time
-
-# override commands to write stderr to log file
-goloop=$(which goloop)
-ethkey=$(which ethkey)
-truffle=$(which truffle)
-function goloop() {
-    echo "goloop:" >&3 && $goloop $@ 2>&3
-}
-function ethkey() {
-    echo "ethkey:" >&3 && $ethkey $@ 2>&3
-}
-function truffle() {
-    echo "truffle:" >&3 && $truffle $@ 2>&3
-}
-
-# log message to stderr
-function log() {
-    echo -e "$@" >&2 
-}
-
-function log_status() {
-    [[ "$1" == 0 ]] && log -n " ✔" || log -n " ✘"
-}
+#!/usr/bin/env -S bash -euET -o pipefail
+#-O inherit_errexit
 
 function dec2hex() {
-    hex=$(echo "obase=16; ibase=10; ${@}"| bc)
+    hex=$(echo "obase=16; ibase=10; ${@}" | bc)
     echo "0x${hex,,}"
 }
 
 function hex2dec() {
     hex=${@#0x}
-    echo "obase=10; ibase=16; ${hex^^}"| bc
+    echo "obase=10; ibase=16; ${hex^^}" | bc
+}
+
+function repeat() {
+    for i in $(seq 1 $2); do echo -n "$1"; done
 }
 
 function rel_path() {
     realpath --relative-to="$ixh_dir" "$1"
 }
 
-function hmny_jsonrpc() {
-    curl "$btp_hmny_uri"  -s -X POST -H 'Content-Type: application/json' \
-        -d "$(printf '{"jsonrpc": "2.0","id": 1,"method": "%s","params": [%s]}' "$1" "$2")"
+# echo message to stderr
+function log() {
+    local prefix="$(date '+%Y-%m-%d %H:%M:%S') $(repeat '    ' $((${#FUNCNAME[@]} - 2)))"
+    echo -e "$prefix$@" >&2
 }
 
+function log_status() {
+    [[ "$1" == 0 ]] && log " ✔" || log " ✘"
+}
+
+function log_stack() {
+    local cmd=${FUNCNAME[1]}
+    if [[ $# > 0 ]]; then cmd="$@"; fi
+    local prefix="$(date '+%Y-%m-%d %H:%M:%S') $(repeat '    ' $((${#FUNCNAME[@]} - 3)))"
+    echo -e "$prefix$cmd():${BASH_LINENO[1]}" >&2
+}
+
+function require() {
+    log_stack
+    [[ -z "$1" ]] && log "$3" && exit 1
+    [[ -z "$2" ]] || log "$2"
+}
+
+function require_integer() {
+    log_stack
+    local integer=
+    [[ "$1" =~ ^[0-9]+$ ]] && integer=$1
+    require "$integer" "$2" "$3 (invalid integer:'$1')"
+}
+
+function require_address() {
+    log_stack
+    local address=
+    [[ "$1" =~ ^[0hc][xX][0-9a-fA-F]{40}$ ]] && address=$1
+    require "$address" "$2" "$3 (invalid address:'$1')"
+}
+
+function require_existsdir() {
+    log_stack
+    local dir=
+    [[ -d "$1" ]] && dir=$1
+    require "$dir" "$2" "$3 (dir does not exist:'$1')"
+}
+
+# override commands to write stderr to log file
+shopt -s expand_aliases
+function run() {
+    cmd="$1"
+    args=("${@:2}")
+    log_stack "$cmd"
+    # local indent="$(repeat '    ' $((${#FUNCNAME[@]} - 1)))"
+    # $cmd "${args[@]}" 2> >(sed "s/^/$indent/" >&2) | tee >(sed "s/^/$indent/" >&2)
+    local prefix="$(date '+%Y-%m-%d %H:%M:%S') $(repeat '    ' $((${#FUNCNAME[@]} - 1)))"
+    { { $cmd "${args[@]}" 2>&3 | tee >(sed "s/^/$prefix/" >&2); } 3>&1 >&4 | sed "s/^/$prefix/" >&2; } 4>&1
+}
+alias jq="run jq"
+alias yarn="run yarn"
+alias curl="run curl"
+alias gradle="run gradle"
+alias goloop="run goloop"
+alias ethkey="run ethkey"
+alias truffle="run truffle"
+alias docker="run docker"
+
+# ethkey_get_private_key() <wallet.json> <password>
+function ethkey_get_private_key() {
+    log_stack
+    if [ -z "$1" ]; then
+        log "invalid <wallet.json>"
+        exit 1
+    fi
+    ethkey inspect --json --private \
+        --passwordfile <(echo "$2") "$1" | jq -r .PrivateKey
+}
+
+# hmny_jsonrpc [method] [arguments_in_json]
+function hmny_jsonrpc() {
+    log_stack
+    curl "$btp_hmny_uri" -s -X POST \
+        -H 'Content-Type:application/json' \
+        -d "$(jq <<<{} -c \
+            '.id=1|.jsonrpc="2.0"|.method=$method|.params=$params' \
+            --arg method "$1" --argjson params "$2")"
+}
+
+# icon_jsonrpc [method] [arguments_in_json]
 function icon_jsonrpc() {
-    curl "$btp_icon_uri"  -s -X POST -H 'Content-Type: application/json' \
-        -d "$(printf '{"jsonrpc": "2.0","id": 1,"method": "%s","params": %s}' "$1" "$2")"
+    log_stack
+    curl "$btp_icon_uri" -s -X POST \
+        -H 'Content-Type:application/json' \
+        -d "$(jq <<<{} -c \
+            '.id=1|.jsonrpc="2.0"|.method=$method|.params=$params' \
+            --arg method "$1" --argjson params "$2")"
+}
+
+# WALLET=<wallet.json> \
+# PASSWORD=<password> \
+#     xxxx_transfer [address] [balance]
+function validate_transfer() {
+    log_stack
+    WALLET=${WALLET:-}
+    require "$WALLET" "WALLET='$WALLET'" "invalid WALLET='$WALLET'"
+    local address=$1
+    require_address "$address" "address='$address'" "failed"
+    local balance=$2
+    require_integer "$balance" "" "must be an integer: $balance"
 }
 
 function icon_wait_tx() {
-    local tx_hash=$1
-    [[ ! $tx_hash ]] && return
-    local uri=$btp_icon_uri
+    log_stack
     local ret=1
-    local stime=$(date +%s)
-    [[ $verbose ]] && log -n "[tx=${tx_hash}]" || log -n "[tx=${tx_hash:0:10}]"
-    for _ in $(seq 1 60); do
-        sleep 1
-        log -n "."
-        tx=$(goloop rpc --uri "$uri" txresult "$tx_hash" 2>&1)
-        status=$(2>/dev/null jq -r .status <<< $tx)
-        if [[ "$status" == '0x0' ]]; then
-            log_status 1
-            [[ $verbose ]] && echo "$tx"
-            break
-        elif [[ "$status" == '0x1' ]]; then
-            log_status 0
-            echo "$tx"
-            ret=0
-            break
-        fi
+    local tx_hash=$1
+    [[ -z $tx_hash ]] && return
+    log "[txh=${tx_hash}]"
+    while :; do
+        goloop rpc \
+            --uri "$btp_icon_uri" \
+            txresult "$tx_hash" &>/dev/null && break || sleep 1
     done
-    log -n " $(( $(date +%s) - stime ))s "
+    txr=$(goloop rpc --uri "$btp_icon_uri" txresult "$tx_hash" 2>/dev/null)
+    status=$(jq <<<"$txr" -r .status)
+    [[ "$status" == 0x0 ]] && echo $txr
+    [[ "$status" == 0x1 ]] && echo $txr && ret=0
     return $ret
 }
 
-function icon_create_wallet() {
-    local keystore=$1
-    local password=$2
-    local balance=$3
-    _=$(goloop ks gen -o "$keystore" -p "$password")
-    addr=$(jq -r .address "$keystore")
-    tx_hash=$( # add balance
-        goloop rpc \
-            --uri "$btp_icon_uri" \
-            sendtx transfer \
-            --to "$addr" \
-            --value "$balance" \
-            --key_store "$btp_icon_wallet" \
-            --key_password "$btp_icon_wallet_password" \
-            --nid "$btp_icon_nid" \
-            --step_limit "$btp_icon_step_limit" \
-        | jq -r .)
-    _=$(icon_wait_tx "$tx_hash")
-    echo "$addr"
+function icon_callsc() {
+    log_stack
+
+    address=$1
+    require_address "$address" "address: $address" "icon_callsc"
+
+    method=$2
+    require "$method" "method: $method" "invalid method: '$method'"
+
+    params=()
+    for i in "${@:3}"; do params+=("--param $i"); done
+
+    goloop rpc \
+        --uri "$btp_icon_uri" \
+        call \
+        --to "$address" \
+        --method "$method" ${params[@]}
 }
 
-function icon_deploy_sc() {
-    local sc_filepath=$1
-    local params
-    for i in "${@:2}"; do params="$params --param $i"; done
+# WALLET=<wallet.json> PASSWORD=<password> \
+#     icon_sendtx_call [address] [method] [value] [params]..."
+function icon_sendtx_call() {
+    log_stack
+
+    WALLET=${WALLET:-}
+    PASSWORD=${PASSWORD:-}
+
+    require "$WALLET" "WALLET='$WALLET'" "invalid WALLET='$WALLET'"
+
+    address="$1"
+    require_address "$address" "address: $address" "icon_sendtx_call"
+
+    method="$2"
+    require "$method" "method: $method" "invalid method: '$method'"
+
+    value="$3"
+    [[ -z "$value" ]] ||
+        require_integer "$value" "value: $value" "invalid value: '$value'"
+
+    params=()
+    for i in "${@:4}"; do params+=("--param $i"); done
+
     tx_hash=$(
         goloop rpc \
             --uri "$btp_icon_uri" \
-            sendtx deploy $sc_filepath \
-            --key_store "$btp_icon_wallet" \
-            --key_password "$btp_icon_wallet_password" \
+            sendtx call \
+            --to "$address" \
+            --key_store "$WALLET" \
+            --key_password "$PASSWORD" \
             --nid "$btp_icon_nid" \
-            --content_type application/java \
             --step_limit "$btp_icon_step_limit" \
-            $params \
-        | jq -r .)
+            --value "$value" \
+            --method "$method" \
+            ${params[@]} | jq -r .
+    )
     icon_wait_tx "$tx_hash"
 }
 
-function hmny_create_wallet() {
+# WALLET=<wallet.json> PASSWORD=<password> \
+#      icon_sendtx_deploy <sc.jar> [params]...
+function icon_sendtx_deploy() {
+    log_stack
+
+    local scfile=$1
+    require "$scfile" "$scfile" "invalid sc.jar: '$scfile'"
+
+    local params=()
+    for i in "${@:2}"; do params+=("--param $i"); done
+
+    tx_hash=$(
+        goloop rpc \
+            --uri "$btp_icon_uri" \
+            sendtx deploy $scfile \
+            --key_store "$WALLET" \
+            --key_password "$PASSWORD" \
+            --nid "$btp_icon_nid" \
+            --content_type application/java \
+            --step_limit "$btp_icon_step_limit" \
+            ${params[@]} | jq -r .
+    )
+    icon_wait_tx "$tx_hash"
+}
+
+# WALLET=<wallet.json> PASSWORD=<password> \
+#      icon_sendtx_transfer [address] [value]
+function icon_sendtx_transfer() {
+    log_stack
+
+    WALLET=${WALLET:-}
+    PASSWORD=${PASSWORD:-}
+
+    require "$WALLET" "WALLET='$WALLET'" "invalid WALLET='$WALLET'"
+
+    address="$1"
+    require_address "$address" "address: $address" "icon_sendtx_transfer"
+
+    value="$2"
+    require "$value" "value: $value" "icon_sendtx_transfer: invalid value: '$value'"
+
+    tx_hash=$(
+        goloop rpc \
+            --uri "$btp_icon_uri" \
+            sendtx transfer \
+            --to "$address" \
+            --value "$value" \
+            --key_store "$WALLET" \
+            --key_password "$PASSWORD" \
+            --nid "$btp_icon_nid" \
+            --step_limit "$btp_icon_step_limit" | jq -r .
+    )
+    icon_wait_tx "$tx_hash"
+}
+
+function icon_transfer() {
+    log_stack
+    type=icon validate_transfer "$@"
+    address=$1
+    balance=$2
+    if [ $balance == 0 ]; then return 0; fi
+    txr=$(icon_sendtx_transfer "$address" $balance)
+    status=$(jq <<<"$txr" -r .status)
+    [[ "$status" == 0x1 ]] || status=""
+    require "$status" "" "icon_transfer: failed to transfer balance to $address!"
+}
+
+function icon_deploysc() {
+    log_stack
+    icon_sendtx_deploy "$@"
+}
+
+# icon_create_wallet [keystore] [password] [balance]
+function icon_create_wallet() {
+    log_stack
+
     local keystore=$1
     local password=$2
     local balance=$3
-    { read addr; read body; read tx; } <<< $(
-        docker run --rm $docker_registry/hmny:latest bash -c "
-            to_addr=\$(hmy keys add bmr --passphrase-file <(echo '$password') | tail -n1 | cut -d: -f2 | xargs)
-            hmy keys export-ks --passphrase-file <(echo '$password') bmr / > /dev/null 2>&1
-            
-            echo \$to_addr
-            cat /\$to_addr.key && printf '\n'
 
-            # transfer funds
-            from_addr=\$(hmy keys import-private-key '$btp_hmny_wallet_private_key' root | tail -n1 | cut -d: -f2 | xargs)
-            hmy -n '$btp_hmny_uri' \
-                --no-pretty \
-                transfer \
-                --from=\$from_addr \
-                --to=\$to_addr \
-                --from-shard=0 \
-                --to-shard=0 \
-                --timeout=120 \
-                --amount='$balance'
-        "
-    )
-    cat > "$keystore" <<< $body
-    status=$(2>/dev/null  jq -r '[.[]."blockchain-receipt".status][0]' <<< $tx)
-    [[ "$status" == '0x1' ]] && log_status 0 || log_status 1
-    echo "$addr"
+    require "$keystore" "keystore: $keystore" "icon_create_wallet: invalid keystore: $keystore"
+
+    goloop &>/dev/null ks gen -o "$keystore" -p "$password"
+
+    local address=$(jq -r .address "$keystore")
+    require_address "$address" "address: $address" "icon_create_wallet: failed"
+
+    icon_transfer "$address" "$balance"
+
+    echo "$address"
 }
 
-function hmny_deploy_sc() {
-    cd $1
-    cp $ixh_src_dir/hmny.truffle-config.js truffle-config.js # replace original truffle-config.js
-    yarn > /dev/null 2>&1 # download node_modules
-    _truffle compile --all >&3 # compile all
-    
-    local stime=$(date +%s)
-    for _ in $(seq 1 20); do # repeat until successfully deployed
-        _truffle migrate --network hmny --skip-dry-run >&3
+function hmny_save_god_wallet() {
+    log_stack
+    local keystore=$1
+    local password=$2
+    local private_key=$3
+    {
+        read address
+        read keystore_content
+    } <<<$(
+        echo "
+            hmy keys import-private-key '$private_key' root
+            keystore=\$(hmy keys export-ks root / 2>/dev/null | cut -d/ -f2)
+            echo \$keystore | cut -d. -f1
+            cat /\$keystore
+        " |
+            docker run -i --rm --network=host \
+                $docker_registry/hmny:latest /bin/bash
+    )
+    cat >"$keystore" <<<$keystore_content
+    echo $address
+}
+
+function _truffle() {
+    log_stack
+    PRIVATE_KEY="${PRIVATE_KEY:-$btp_hmny_dummy_private_key}" \
+        NETWORK_ID="${NETWORK_ID:-$btp_hmny_nid}" \
+        URI="${URI:-$btp_hmny_uri}" \
+        BMC_BTP_NET="${BMC_BTP_NET:-$btp_hmny_net}" \
+        GASLIMIT="${GASLIMIT:-$btp_hmny_gas_limit}" \
+        GASPRICE="${GASPRICE:-$btp_hmny_gas_price}" \
+        truffle "$@"
+}
+
+# _truffle_exec [contract.method] [arguments]
+function _truffle_exec() {
+    log_stack
+
+    WALLET=${WALLET:-}
+    PASSWORD=${PASSWORD:-}
+
+    if [ $WALLET ]; then
+        export PRIVATE_KEY=$(ethkey_get_private_key "$WALLET" "$PASSWORD")
+    fi
+
+    scdir="$1"
+    require_existsdir "$scdir" "scdir: $scdir" "invalid scdir: '$scdir'"
+
+    IFS='.' read -ra dsm <<<"$2"
+    if [ "${#dsm[@]}" != 2 ]; then
+        log "_truffle_exec: invalid contract.method: $2"
+        return 1
+    fi
+    smc="${dsm[0]}"
+    mth="${dsm[1]}"
+
+    args="${3:-}"
+
+    cd $scdir
+    _truffle exec --network hmny <(echo "
+        const smc = artifacts.require('$smc');
+        module.exports = async function (callback) {
+            try {
+                let res = await (await smc.deployed()).$mth($args);
+                try {
+                    console.log(JSON.stringify(res, null, 2));
+                } catch(err) {
+                    console.log(res);
+                }
+            } catch(err) {
+                console.error(err);
+            } finally { callback(); }
+        }") | sed '1d' | sed '1d' # trim first 2 lines
+    cd $OLDPWD
+}
+
+function is_address() {
+    [[ "$1" =~ ^[0hc][xX][0-9a-fA-F]{40}$ ]]
+}
+
+function hmny_bech32_address() {
+    log_stack
+    local address=$1
+    if [[ "$address" =~ ^[0hc][xX][0-9a-fA-F]{40}$ ]]; then
+        address=$(
+            echo "hmy utility addr-to-bech32 $address" |
+                docker run -i --rm --network=host \
+                    $docker_registry/hmny:latest /bin/bash
+        )
+    fi
+    echo $address
+}
+
+function hmny_transfer() {
+    log_stack
+    type=hmny validate_transfer "$@"
+
+    WALLET=${WALLET:-}
+    PASSWORD=${PASSWORD:-}
+
+    local address=$(hmny_bech32_address $1)
+    local balance=$(bc <<<"scale=18;$2/10^18")
+
+    local private_key=$(ethkey_get_private_key "$WALLET" "$PASSWORD")
+    txr=$(
+        echo "
+            src_address=\$(hmy keys import-private-key \
+                '$private_key' root | tail -n1 | cut -d: -f2 | xargs)
+            hmy -n '$btp_hmny_uri' --no-pretty  \
+                transfer \
+                --from=\$src_address --to=$address \
+                --from-shard=0 --to-shard=0 --timeout=120 \
+                --amount=$balance
+        " |
+            docker run -i --rm --network=host \
+                $docker_registry/hmny:latest /bin/bash
+    )
+    status=$(jq <<<"$txr" -r '[.[]."blockchain-receipt".status][0]')
+    [[ "$status" == 0x1 ]] || status=""
+    require "$status" "" "hmny_transfer: failed to transfer balance to $address!"
+}
+
+function hmny_deploysc() {
+    log_stack
+
+    if [ $WALLET ]; then
+        export PRIVATE_KEY=$(ethkey_get_private_key "$WALLET" "$PASSWORD")
+    fi
+    require "$PRIVATE_KEY" "PRIVATE_KEY: '$PRIVATE_KEY'" "invalid PRIVATE_KEY='$PRIVATE_KEY'"
+
+    scdir=$1
+    require "$scdir" "scdir: $scdir" "hmny_deploysc: invalid scdir: '$scdir'"
+    cd $scdir
+
+    # replace original truffle-config.js
+    cp $ixh_src_dir/hmny.truffle-config.js truffle-config.js
+    yarn install --silent &>/dev/null # download node_modules
+    _truffle compile --all --quiet &>/dev/null
+
+    for _ in $(# repeat until successfully deployed
+        seq 1 20
+    ); do
+        _truffle migrate --network hmny --compile-none --skip-dry-run >/dev/null
         if [ $? == 0 ]; then
-            local imports=''
-            local waiters=''
-            for i in ${@:2}; do
+            local imports=""
+            local waiters=""
+            for i in "${@:2}"; do
                 imports="$imports const $i = artifacts.require('$i');"
                 waiters="$waiters await $i.deployed(); console.log($i.address);"
             done
             _truffle exec --network hmny <(echo "
                 $imports
                 module.exports = async function(cb) { $waiters; cb(); }
-            ") | tail -n $(( $# - 1 ))
-            log_status $?
+            ") | tail -n $(($# - 1))
             break
         fi
-        log -n "."
     done
-    log -n " $(( $(date +%s) - stime ))s "
+    cd $OLDPWD
 }
 
-function hmny_save_root_wallet() {
+# hmny_create_wallet [keystore] [password] [balance]
+function hmny_create_wallet() {
+    log_stack
+
     local keystore=$1
     local password=$2
-    local private_key=$3
-    { read addr; read body; } <<< $(
-        docker run --rm $docker_registry/hmny:latest bash -c "
-            addr=\$(hmy keys import-private-key '$private_key' root | tail -n1 | cut -d: -f2 | xargs)
-            hmy keys export-ks root / > /dev/null 2>&1
-            echo \$addr
-            cat /\$addr.key
-    ")
-    log_status $?
-    cat > "$keystore" <<< $body
-    echo $addr
+    local balance=$3
+
+    require "$keystore" "keystore: $keystore" "invalid keystore: $keystore"
+
+    {
+        read address
+        read keystore_content
+    } <<<$(
+        echo "
+            hmy keys add mykey --passphrase-file <(cat<<<'1234') 2>&1 > /dev/null
+            keystore=\$(hmy keys export-ks --passphrase-file \
+                <(cat<<<'1234') mykey / 2>/dev/null | cut -d/ -f2)
+            echo \$keystore | cut -d. -f1
+            cat /\$keystore && echo
+        " |
+            docker run -i --rm --network=host \
+                $docker_registry/hmny:latest /bin/bash
+    )
+
+    address="0x$(jq <<<$keystore_content -r .address)"
+    require_address "$address" "address=$address" "failed"
+
+    # write keystore_content to given file
+    cat <<<$keystore_content >$keystore
+
+    hmny_transfer $address $balance
+
+    echo $address
+}
+
+# run_sol [dir.contract.method] [arguments]
+function run_sol() {
+    log_stack
+    IFS='.' read -ra dsm <<<"$1"
+    if [ "${#dsm[@]}" != 3 ]; then
+        log "run_sol: invalid dir.contract.method: $1"
+        return 1
+    fi
+    _truffle_exec "$ixh_build_dir/solidity/${dsm[0]}" "${dsm[1]}.${dsm[2]}" "${@:2}"
 }
 
 function hmny_get_hmny_chain_status() {
-    local lh=$(hmny_jsonrpc hmyv2_latestHeader)
-    local bh=$(jq -r '.result.blockHash' <<< "$lh")
-    local bn=$(jq -r '.result.blockNumber' <<< "$lh")
-    local ep=$(hmny_jsonrpc hmyv2_getFullHeader "$(( $bn + 1 ))" | jq -r '.result.epoch')
-    local lb=$(hmny_jsonrpc hmyv2_epochLastBlock "$(( $ep - 1 ))" | jq -r '.result')
-    local ss=$(hmny_jsonrpc hmyv2_getFullHeader "$lb" | jq -r '.result.shardState')
-    echo -e "$bn\n$bh\n$ep\n$ss\n"
+    log_stack
+    local bn=$(hmny_jsonrpc hmyv2_blockNumber "[]" | jq -r .result)
+    ((bn--))
+    local lh=$(hmny_jsonrpc hmyv2_getBlockByNumber "[$bn,{}]" | jq -r .result.hash)
+    local ep=$(hmny_jsonrpc hmyv2_getFullHeader "[$(($bn + 1))]" | jq -r '.result.epoch')
+    local lb=$(hmny_jsonrpc hmyv2_epochLastBlock "[$(($ep - 1))]" | jq -r '.result')
+    local ss=$(hmny_jsonrpc hmyv2_getFullHeader "[$lb]" | jq -r '.result.shardState')
+    echo -e "$bn\n$lh\n$ep\n$ss\n"
+}
+
+function ensure_wallet_minimum_balance() {
+    log_stack
+    [[ -z "$btp_icon_wallet" ]] && icon_create_wallet \
+        "$btp_icon_wallet" "$btp_icon_wallet_password" $btp_icon_wallet_minimum_balance
+
+    [[ -z "$btp_hmny_wallet" ]] && hmny_create_wallet \
+        "$btp_hmny_wallet" "$btp_hmny_wallet_password" $btp_hmny_wallet_minimum_balance
+
+    ibal=$(run_exec iconGetBalance $btp_icon_wallet)
+    if [[ "$ibal" < "$btp_icon_wallet_minimum_balance" ]]; then
+        # transfer balance from god wallet
+        WALLET=$btp_icon_god_wallet PASSWORD=$btp_icon_god_wallet_password \
+            icon_transfer "$btp_icon_wallet_address" $btp_icon_wallet_minimum_balance
+        log
+    fi
+    hbal=$(run_exec hmnyGetBalance $btp_hmny_wallet)
+    if [[ "$hbal" < "$btp_hmny_wallet_minimum_balance" ]]; then
+        # transfer balance from god wallet
+        WALLET=$btp_hmny_god_wallet PASSWORD=$btp_hmny_god_wallet_password \
+            hmny_transfer "$btp_hmny_wallet_address" $btp_hmny_wallet_minimum_balance
+    fi
 }
 
 # Ensure following tools are installed
-# gradle, jdk@11.x, sdkman, goloop, docker, truffle@5.3.0, node@15.12.0, ethkey
+# gradle, jdk@11.x, sdkman, goloop, docker, truffle@5.3.0, node@15.12.0, yarn, ethkey
 function deploysc() {
+    log_stack
 
     local init_start_time=$(date +%s)
 
@@ -258,93 +548,91 @@ function deploysc() {
 
     # create root wallets
     log "Wallet:"
-    
+
     # icon
-    log -n "    icon:" && log_status 0
+    log "icon: [$(rel_path "$btp_icon_wallet")]"
     btp_icon_wallet_address=$(jq -r .address "$btp_icon_wallet")
-    log
 
     # hmny
-    log -n "    hmny: [$(rel_path "$btp_hmny_wallet")] "
-    btp_hmny_wallet_address_one=$(hmny_save_root_wallet \
-        "$btp_hmny_wallet" "$btp_hmny_wallet_password" "$btp_hmny_wallet_private_key")
+    log "hmny: [$(rel_path "$btp_hmny_wallet")]"
     btp_hmny_wallet_address="0x$(jq -r .address "$btp_hmny_wallet")"
-    log
 
     # prepare javascore build dir
     local ixh_jsc_dir=$ixh_build_dir/javascore
     cp -r $root_dir/javascore $ixh_jsc_dir
 
     # build javascores
-    log "\nBuild: "
-    log -n "    javascores:"
-    cd $ixh_jsc_dir/bmc && \
-        gradle optimizedJar > /dev/null 2>&1; log_status $?
+    log "Build: "
+    log "javascores:"
+    cd $ixh_jsc_dir/bmc
+    gradle optimizedJar >/dev/null
+    cd $OLDPWD
     # cd $ixh_jsc_dir/bsh && \
-    #     gradle optimizedJar > /dev/null 2>&1 && \
-    #     gradle optimizedJarIRC2 > /dev/null 2>&1; log_status $?
+    #     gradle optimizedJar && \
+    #     gradle optimizedJarIRC2;
     log
 
-    log "\nDeploy: "
-
-    btp_icon_nid=$(dec2hex $(cat "$btp_icon_config" | jq -r .nid))
-    btp_icon_net="$btp_icon_nid.icon"
-
-    btp_hmny_nid="0x2"
-    btp_hmny_net="$btp_hmny_nid.hmny"
+    log "Deploy: "
 
     # deploy
-    log "icon"    
+    log "icon"
 
     # bmc
-    log -n "    bmc: "
-    r=$(icon_deploy_sc \
+    log "bmc:"
+    r=$(WALLET=$btp_icon_wallet \
+        PASSWORD=$btp_icon_wallet_password \
+        icon_deploysc \
         $ixh_jsc_dir/bmc/build/libs/bmc-0.1.0-optimized.jar \
         _net="$btp_icon_net")
-    btp_icon_bmc=$(jq -r .scoreAddress <<< $r)
-    btp_icon_block_hash=$(jq -r .blockHash <<< $r)
-    btp_icon_block_height=$(hex2dec $(jq -r .blockHeight <<< $r))
-    log "$btp_icon_bmc"
+    btp_icon_bmc=$(jq -r .scoreAddress <<<$r)
+    btp_icon_block_hash=$(jq -r .blockHash <<<$r)
+    btp_icon_block_height=$(hex2dec $(jq -r .blockHeight <<<$r))
 
     # irc31
-    log -n "    irc31: "
-    r=$(icon_deploy_sc \
+    log "irc31: "
+    r=$(WALLET=$btp_icon_wallet \
+        PASSWORD=$btp_icon_wallet_password \
+        icon_deploysc \
         $ixh_jsc_dir/irc31-0.1.0-optimized.jar)
-    btp_icon_irc31=$(jq -r .scoreAddress <<< $r)
-    log "$btp_icon_irc31"
+    btp_icon_irc31=$(jq -r .scoreAddress <<<$r)
 
     # nativecoin bsh
-    log -n "    nativecoin_bsh: "
-    r=$(icon_deploy_sc \
+    log "nativecoin_bsh: "
+    r=$(WALLET=$btp_icon_wallet \
+        PASSWORD=$btp_icon_wallet_password \
+        icon_deploysc \
         $ixh_jsc_dir/nativecoin-0.1.0-optimized.jar \
         _name="$btp_icon_nativecoin_symbol" \
         _bmc="$btp_icon_bmc" \
         _irc31="$btp_icon_irc31")
-    btp_icon_nativecoin_bsh=$(jq -r .scoreAddress <<< $r)
-    log "$btp_icon_nativecoin_bsh"
+    btp_icon_nativecoin_bsh=$(jq -r .scoreAddress <<<$r)
 
     # # token bsh
-    # log -n "    bsh: "
-    # r=$(icon_deploy_sc \
+    # log -n "bsh: "
+    # r=$(WALLET=$btp_icon_wallet \
+    #     PASSWORD=$btp_icon_wallet_password \
+    #     icon_deploysc \
     #     $ixh_jsc_dir/bsh/build/libs/bsh-optimized.jar \
     #     _bmc="$btp_icon_bmc")
-    # btp_icon_token_bsh=$(jq -r .scoreAddress <<< $r)
+    # btp_icon_token_bsh=$(jq -r .scoreAddress <<<$r)
     # log "$btp_icon_token_bsh"
 
     # # irc2
-    # log -n "    irc2: "
-    # r=$(icon_deploy_sc \
+    # log -n "irc2: "
+    # r=$(WALLET=$btp_icon_wallet \
+    #     PASSWORD=$btp_icon_wallet_password \
+    #     icon_deploysc \
     #     $ixh_jsc_dir/bsh/build/libs/irc2-optimized.jar \
     #     _name="$btp_hmny_nativecoin_symbol" \
     #     _symbol="$btp_hmny_nativecoin_symbol" \
     #     _decimals=2 \
     #     _initialSupply=10000)
-    # btp_icon_irc2=$(jq -r .scoreAddress <<< $r)
+    # btp_icon_irc2=$(jq -r .scoreAddress <<<$r)
     # log "$btp_icon_irc2"
 
     # icon btp address
     btp_icon_btp_address="btp://$btp_icon_net/$btp_icon_bmc"
-    log "    btp: $btp_icon_btp_address"
+    log "btp: $btp_icon_btp_address"
 
     # hmny
     ixh_sol_dir=$ixh_build_dir/solidity
@@ -354,46 +642,64 @@ function deploysc() {
     log "hmny"
 
     # before bmc
-    { read btp_hmny_block_height; \
-        read btp_hmny_block_hash; \
-        read btp_hmny_block_epoch; \
-        read btp_hmny_shard_state; } <<< "$(hmny_get_hmny_chain_status)"
+    {
+        read btp_hmny_block_height
+        read btp_hmny_block_hash
+        read btp_hmny_block_epoch
+        read btp_hmny_shard_state
+    } <<<"$(hmny_get_hmny_chain_status)"
 
     # bmc
-    log -n "    bmc: "
-    { read btp_hmny_bmc_management; read btp_hmny_bmc_periphery; } <<< $(
-        BMC_BTP_NET="$btp_hmny_net" \
-            hmny_deploy_sc $ixh_sol_dir/bmc BMCManagement BMCPeriphery)
+    log "bmc: "
+    {
+        read btp_hmny_bmc_management
+        read btp_hmny_bmc_periphery
+    } <<<$(
+        WALLET=$btp_hmny_wallet \
+            PASSWORD=$btp_hmny_wallet_password \
+            BMC_BTP_NET="$btp_hmny_net" \
+            hmny_deploysc $ixh_sol_dir/bmc BMCManagement BMCPeriphery
+    )
     log "m=$btp_hmny_bmc_management, p=$btp_hmny_bmc_periphery"
     # TODO get hmny bmc block height and epoch in hex (0x...)
 
     # bsh
-    log -n "    bsh: "
-    { read btp_hmny_bsh_core; read btp_hmny_bsh_periphery; } <<< $(
-        BSH_COIN_URL="https://github.com/icon/btp" \
-        BSH_COIN_NAME="$btp_hmny_nativecoin_symbol" \
-        BSH_COIN_FEE=10 \
-        BSH_FIXED_FEE=500000 \
-        BMC_PERIPHERY_ADDRESS="$btp_hmny_bmc_periphery" \
-        BSH_SERVICE="$btp_icon_nativecoin_bsh_svc_name" \
-            hmny_deploy_sc $ixh_sol_dir/bsh BSHCore BSHPeriphery)
+    log "bsh: "
+    {
+        read btp_hmny_bsh_core
+        read btp_hmny_bsh_periphery
+    } <<<$(
+        WALLET=$btp_hmny_wallet \
+            PASSWORD=$btp_hmny_wallet_password \
+            BSH_COIN_URL="https://github.com/icon/btp" \
+            BSH_COIN_NAME="$btp_hmny_nativecoin_symbol" \
+            BSH_COIN_FEE=10 \
+            BSH_FIXED_FEE=500000 \
+            BMC_PERIPHERY_ADDRESS="$btp_hmny_bmc_periphery" \
+            BSH_SERVICE="$btp_icon_nativecoin_bsh_svc_name" \
+            hmny_deploysc $ixh_sol_dir/bsh BSHCore BSHPeriphery
+    )
     log "c=$btp_hmny_bsh_core, p=$btp_hmny_bsh_periphery"
 
-    # tokenbsh
-    # log -n "    tokenbsh: "
-    # { read btp_hmny_bsh_core; read btp_hmny_bsh_periphery; } <<< $(
+    # # tokenbsh
+    # log -n "tokenbsh: "
+    # {
+    #     read btp_hmny_bsh_core
+    #     read btp_hmny_bsh_periphery
+    # } <<<$(WALLET=$btp_hmny_wallet \
+    #     PASSWORD=$btp_hmny_wallet_password \
     #     BSH_TOKEN_FEE=10 \
     #     BMC_PERIPHERY_ADDRESS="$btp_hmny_bmc_periphery" \
     #     BSH_SERVICE="$btp_icon_nativecoin_bsh_svc_name" \
-    #         hmny_deploy_sc $ixh_sol_dir/bsh BSHProxy BSHImpl BEP20TKN)
+    #     hmny_deploysc $ixh_sol_dir/bsh BSHProxy BSHImpl BEP20TKN)
     # log "c=$btp_hmny_bsh_core, p=$btp_hmny_bsh_periphery"
 
     # hmny btp address
     btp_hmny_btp_address="btp://$btp_hmny_net/$btp_hmny_bmc_periphery"
-    log "    btp: $btp_hmny_btp_address"
+    log "btp: $btp_hmny_btp_address"
 
     # configuration
-    log "\nConfiguring: "
+    log "Configuring: "
 
     btp_icon_bmc_owner_wallet="$ixh_tmp_dir/bmc.owner.json"
     btp_icon_bmc_owner_wallet_password="1234"
@@ -410,63 +716,72 @@ function deploysc() {
     log "icon"
 
     # create and add bmc owner
-    log -n "    create_wallet: [$(rel_path "$btp_icon_bmc_owner_wallet")] "
+    log "create_wallet: [$(rel_path "$btp_icon_bmc_owner_wallet")] "
     btp_icon_bmc_owner=$(
-        icon_create_wallet "$btp_icon_bmc_owner_wallet" \
-        "$btp_icon_bmc_owner_wallet_password" 1000000000000000000000000000)
+        WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+            icon_create_wallet "$btp_icon_bmc_owner_wallet" \
+            "$btp_icon_bmc_owner_wallet_password" $btp_icon_bmc_owner_balance
+    )
 
-    log -n "\n    bmc_add_owner: [${btp_icon_bmc_owner:0:10}] "
-    _=$(run_jstxcall "$btp_icon_bmc" addOwner 0 "_addr=$btp_icon_bmc_owner")
+    log "bmc_add_owner: [${btp_icon_bmc_owner:0:10}] "
+    _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+        icon_sendtx_call "$btp_icon_bmc" addOwner 0 "_addr=$btp_icon_bmc_owner")
 
     # link hmny bmc to icon bmc
-    log -n "\n    bmc_link_hmny_bmc: "
-    log -n "\n        addLink: "
+    log "bmc_link_hmny_bmc: "
+    log "addLink: "
     _=$(WALLET=$btp_icon_bmc_owner_wallet \
         PASSWORD=$btp_icon_bmc_owner_wallet_password \
-            run_jstxcall "$btp_icon_bmc" addLink 0 "_link=$btp_hmny_btp_address")
-    log -n "\n        setLinkRxHeight: "
+        icon_sendtx_call "$btp_icon_bmc" addLink 0 "_link=$btp_hmny_btp_address")
+    log "setLinkRxHeight: "
     _=$(WALLET=$btp_icon_bmc_owner_wallet \
         PASSWORD=$btp_icon_bmc_owner_wallet_password \
-            run_jstxcall "$btp_icon_bmc" setLinkRxHeight 0 "_link=$btp_hmny_btp_address" "_height=$btp_hmny_block_height")
-    log -n "\n        getLinkStatus: "
-    btp_icon_rx_height=$(hex2dec $(run_jscall "$btp_icon_bmc" getStatus "_link=$btp_hmny_btp_address" | jq -r .rx_height) )
-    log -n "rxHeight=$btp_icon_rx_height"
+        icon_sendtx_call "$btp_icon_bmc" setLinkRxHeight 0 "_link=$btp_hmny_btp_address" "_height=$btp_hmny_block_height")
+    log "getLinkStatus: "
+    btp_icon_rx_height=$(hex2dec $(icon_callsc "$btp_icon_bmc" getStatus "_link=$btp_hmny_btp_address" | jq -r .rx_height))
+    log "rxHeight=$btp_icon_rx_height"
 
     # add bsh to bmc
-    log -n "\n    bmc_add_nativecoin_bsh: "
+    log "bmc_add_nativecoin_bsh: "
     _=$(WALLET=$btp_icon_bmc_owner_wallet \
         PASSWORD=$btp_icon_bmc_owner_wallet_password \
-            run_jstxcall "$btp_icon_bmc" addService 0 "_addr=$btp_icon_nativecoin_bsh" "_svc=$btp_icon_nativecoin_bsh_svc_name")
+        icon_sendtx_call "$btp_icon_bmc" addService 0 "_addr=$btp_icon_nativecoin_bsh" "_svc=$btp_icon_nativecoin_bsh_svc_name")
 
     # create and add nativecoin bsh owner
-    log -n "\n    create_wallet: [$(rel_path "$btp_icon_nativecoin_bsh_owner_wallet")] "
+    log "create_wallet: [$(rel_path "$btp_icon_nativecoin_bsh_owner_wallet")] "
     btp_icon_nativecoin_bsh_owner=$(
-        icon_create_wallet "$btp_icon_nativecoin_bsh_owner_wallet" \
-        "$btp_icon_nativecoin_bsh_owner_wallet_password" 1000000000000000000000000000)
+        WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+            icon_create_wallet "$btp_icon_nativecoin_bsh_owner_wallet" \
+            "$btp_icon_nativecoin_bsh_owner_wallet_password" $btp_icon_nativecoin_bsh_owner_balance
+    )
 
-    log -n "\n    nativecoin_bsh_add_owner: [${btp_icon_nativecoin_bsh_owner:0:10}] "
-    _=$(run_jstxcall "$btp_icon_nativecoin_bsh" addOwner 0 "_addr=$btp_icon_nativecoin_bsh_owner")
+    log "nativecoin_bsh_add_owner: [${btp_icon_nativecoin_bsh_owner:0:10}] "
+    _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+        icon_sendtx_call "$btp_icon_nativecoin_bsh" addOwner 0 "_addr=$btp_icon_nativecoin_bsh_owner")
 
     # register one_dev token
-    log -n "\n    nativecoin_bsh_register_irc31: "
+    log "nativecoin_bsh_register_irc31: "
     _=$(WALLET=$btp_icon_nativecoin_bsh_owner_wallet \
         PASSWORD=$btp_icon_nativecoin_bsh_owner_wallet_password \
-            run_jstxcall "$btp_icon_nativecoin_bsh" register 0 "_name=$btp_hmny_nativecoin_symbol")
+        icon_sendtx_call "$btp_icon_nativecoin_bsh" register 0 "_name=$btp_hmny_nativecoin_symbol")
 
     # register relay to bmc
-    log -n "\n    create_wallet: [$(rel_path "$btp_icon_bmr_owner_wallet")] "
+    log "create_wallet: [$(rel_path "$btp_icon_bmr_owner_wallet")] "
     btp_icon_bmr_owner=$(
-        icon_create_wallet "$btp_icon_bmr_owner_wallet" \
-        "$btp_icon_bmr_owner_wallet_password" 1000000000000000000000000000)
+        WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+            icon_create_wallet "$btp_icon_bmr_owner_wallet" \
+            "$btp_icon_bmr_owner_wallet_password" $btp_icon_bmr_owner_balance
+    )
 
-    log -n "\n    bmc_add_relay: "
+    log "bmc_add_relay: "
     _=$(WALLET=$btp_icon_bmc_owner_wallet \
         PASSWORD=$btp_icon_bmc_owner_wallet_password \
-            run_jstxcall "$btp_icon_bmc" addRelay 0 "_link=$btp_hmny_btp_address"  "_addr=$btp_icon_bmr_owner")
+        icon_sendtx_call "$btp_icon_bmc" addRelay 0 "_link=$btp_hmny_btp_address" "_addr=$btp_icon_bmr_owner")
 
     # set nativecoinbsh as owner of irc31 token
-    log -n "\n    irc31_add_owner: [${btp_icon_nativecoin_bsh:0:10}] "
-    _=$(run_jstxcall "$btp_icon_irc31" addOwner 0 "_addr=$btp_icon_nativecoin_bsh")
+    log "irc31_add_owner: [${btp_icon_nativecoin_bsh:0:10}] "
+    _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+        icon_sendtx_call "$btp_icon_irc31" addOwner 0 "_addr=$btp_icon_nativecoin_bsh")
     log
 
     # icon: end
@@ -474,68 +789,73 @@ function deploysc() {
     # hmny: begin
     log "hmny"
 
-    function _run_sol() {
-        run_sol $@ > /dev/null 2>&1
-        log_status $?
-    }
-
     cp $ixh_src_dir/hmny.truffle-config.js $ixh_sol_dir/bmc # replace original truffle-config.js
     cp $ixh_src_dir/hmny.truffle-config.js $ixh_sol_dir/bsh # replace original truffle-config.js
-   
+
     # bmc
     # add bsh
-    log -n "    bmc_add_bsh: "
-    _run_sol bmc.BMCManagement.addService "'$btp_icon_nativecoin_bsh_svc_name','$btp_hmny_bsh_periphery'"
+    log "bmc_add_bsh: "
+    WALLET=$btp_hmny_wallet PASSWORD= \
+        run_sol >/dev/null \
+        bmc.BMCManagement.addService \
+        "'$btp_icon_nativecoin_bsh_svc_name','$btp_hmny_bsh_periphery'"
 
     # link icon to hmny
-    log -n "\n    bmc_link_to_icon_bmc: "
-    _run_sol bmc.BMCManagement.addLink "'$btp_icon_btp_address'"
-    _run_sol bmc.BMCManagement.setLinkRxHeight "'$btp_icon_btp_address',$btp_icon_block_height"
+    log "bmc_link_to_icon_bmc: "
+    WALLET=$btp_hmny_wallet PASSWORD= \
+        run_sol >/dev/null \
+        bmc.BMCManagement.addLink \
+        "'$btp_icon_btp_address'"
+    WALLET=$btp_hmny_wallet PASSWORD= \
+        run_sol >/dev/null \
+        bmc.BMCManagement.setLinkRxHeight \
+        "'$btp_icon_btp_address',$btp_icon_block_height"
     # TODO check: response should have one raw logs ?
 
     # add relay
-    log -n "\n    create_wallet: [$(rel_path "$btp_hmny_bmr_owner_wallet")] "
-    btp_hmny_bmr_owner=$(hmny_create_wallet "$btp_hmny_bmr_owner_wallet" \
-        "$btp_hmny_bmr_owner_wallet_password" 100000000)
+    log "create_wallet: [$(rel_path "$btp_hmny_bmr_owner_wallet")] "
+    btp_hmny_bmr_owner=$(
+        WALLET=$btp_hmny_wallet PASSWORD= \
+            hmny_create_wallet "$btp_hmny_bmr_owner_wallet" \
+            "$btp_hmny_bmr_owner_wallet_password" $btp_hmny_bmr_owner_balance
+    )
 
-    btp_hmny_bmr_owner="0x$(jq -r .address < $btp_hmny_bmr_owner_wallet)"
+    btp_hmny_bmr_owner="0x$(jq -r .address <$btp_hmny_bmr_owner_wallet)"
 
-    log -n "\n    bmc_add_relay: "
-    _run_sol bmc.BMCManagement.addRelay "'$btp_icon_btp_address',['$btp_hmny_bmr_owner']"
+    log "bmc_add_relay: "
+    WALLET=$btp_hmny_wallet PASSWORD= \
+        run_sol >/dev/null \
+        bmc.BMCManagement.addRelay \
+        "'$btp_icon_btp_address',['$btp_hmny_bmr_owner']"
 
-    # bsh    
+    # bsh
     # register icon nativecoin to hmny
-    log -n "\n    bsh_register_coin: "
-    _run_sol bsh.BSHCore.register "'$btp_icon_nativecoin_symbol'"
+    log "bsh_register_coin: "
+    WALLET=$btp_hmny_wallet PASSWORD= \
+        run_sol >/dev/null \
+        bsh.BSHCore.register \
+        "'$btp_icon_nativecoin_symbol'"
 
     # hmny: end
 
     # dump relevant variables to be used later
-    echo > $ixh_env
+    echo >$ixh_env
     compgen -v | grep btp_ | while read l; do
-        echo "$l=${!l}" >> $ixh_env
+        echo "$l='${!l}'" >>$ixh_env
     done
 
     log "\n"
-    log "deploysc completed in $(( $(date +%s) - $init_start_time ))s."
+    log "deploysc completed in $(($(date +%s) - $init_start_time))s."
     log "important variables have been written to $ixh_env"
 
     # generate btp configs
     generate_relay_configs
 }
 
-function _truffle() {
-    URI="${URI:-$btp_hmny_uri}" \
-    BMC_BTP_NET="${BMC_BTP_NET:-$btp_hmny_net}" \
-    PRIVATE_KEY="${PRIVATE_KEY:-$btp_hmny_wallet_private_key}" \
-    GASLIMIT="${GASLIMIT:-$btp_hmny_gas_limit}" \
-    GASPRICE="${GASPRICE:-$btp_hmny_gas_price}" \
-        truffle $@
-}
-
 function generate_relay_configs() {
-    btp_icon_link_status_rx_height=$btp_hmny_block_height
-    btp_hmny_link_status_rx_height=$btp_icon_block_height
+    log_stack
+    local btp_icon_link_status_rx_height=$btp_hmny_block_height
+    local btp_hmny_link_status_rx_height=$btp_icon_block_height
 
     # harmony to icon
     generate_relay_config \
@@ -546,9 +866,9 @@ function generate_relay_configs() {
         "$btp_hmny_btp_address" \
         "$btp_hmny_uri" \
         "$btp_icon_btp_address" \
-        "$btp_icon_uri/default" \
-        "$btp_icon_link_status_rx_height" \
-            > "$btp_h2i_relay_config"
+        "$btp_icon_uri" \
+        "$btp_icon_link_status_rx_height" >"$btp_h2i_relay_config"
+
     # icon to harmony
     generate_relay_config \
         i2h \
@@ -556,265 +876,347 @@ function generate_relay_configs() {
         "$btp_hmny_bmr_owner_wallet" \
         "$btp_hmny_bmr_owner_wallet_password" \
         "$btp_icon_btp_address" \
-        "$btp_icon_uri/default" \
+        "$btp_icon_uri" \
         "$btp_hmny_btp_address" \
         "$btp_hmny_uri" \
-        "$btp_hmny_link_status_rx_height" \
-            > "$btp_i2h_relay_config"
+        "$btp_hmny_link_status_rx_height" >"$btp_i2h_relay_config"
 }
 
 function generate_relay_config() {
-    prefix="$1"
-    cointype="$2"
-    keystore_filename="$3"
-    key_password="$4"
-    src_address="$5"
-    src_endpoint="$6"
-    dst_address="$7"
-    dst_endpoint="$8"
-    offset="$9"
+    log_stack
+    local prefix="$1"
+    local cointype="$2"
+    local key_store="$3"
+    local key_password="$4"
+    local src_address="$5"
+    local src_endpoint="$6"
+    local dst_address="$7"
+    local dst_endpoint="$8"
+    local offset="$9"
 
-    echo "{}" | jq '
-        .base_dir = $base_dir |
-        .log_level = "debug" |
-        .console_level = "trace" |
-        .log_forwarder.level = "info" |
-        .log_writer.filename = $log_writer_filename |
-        .key_store = $key_store |
-        .key_store.coinType = $cointype |
-        .key_password = $key_password |
-        .offset = $offset |
-        .src.address = $src_address |
-        .src.endpoint = [ $src_endpoint ] |
-        .dst.address = $dst_address |
-        .dst.endpoint = [ $dst_endpoint ]' \
-            --arg base_dir "run/$prefix" \
-            --arg log_writer_filename "run/$prefix.log" \
-            --argfile key_store "$keystore_filename" \
-            --arg cointype "$cointype" \
-            --arg key_password "$key_password" \
-            --arg src_address "$src_address" \
-            --arg src_endpoint "$src_endpoint" \
-            --arg dst_address "$dst_address" \
-            --arg dst_endpoint "$dst_endpoint" \
-            --argjson offset "$offset"
+    jq <<<{} '
+    .base_dir = $base_dir |
+    .log_level = "debug" |
+    .console_level = "trace" |
+    .log_forwarder.level = "info" |
+    .log_writer.filename = $log_writer_filename |
+    .key_store = $key_store |
+    .key_store.coinType = $cointype |
+    .key_password = $key_password |
+    .offset = $offset |
+    .src.address = $src_address |
+    .src.endpoint = [ $src_endpoint ] |
+    .dst.address = $dst_address |
+    .dst.endpoint = [ $dst_endpoint ]' \
+        --arg base_dir "run/$prefix" \
+        --arg log_writer_filename "run/$prefix.log" \
+        --argfile key_store "$key_store" \
+        --arg cointype "$cointype" \
+        --arg key_password "$key_password" \
+        --arg src_address "$src_address" \
+        --arg src_endpoint "$src_endpoint" \
+        --arg dst_address "$dst_address" \
+        --arg dst_endpoint "$dst_endpoint" \
+        --argjson offset "$offset"
 }
 
-function run_sol() {
-    if [ $WALLET ]; then
-        export PRIVATE_KEY=$(
-            ethkey inspect --json --private --passwordfile <(echo "$PASSWORD") "$WALLET" \
-        | jq -r .PrivateKey)
-    fi
-
-    dsm="$1"
-    args="$2"
-    IFS='.' read -ra dsm <<< "$dsm"
-    cd "$ixh_build_dir/solidity/${dsm[0]}"
-    smc="${dsm[1]}"
-    mth="${dsm[2]}"
-    _truffle exec --network hmny <(echo "
-        const smc = artifacts.require('$smc');
-        module.exports = async function (callback) {
-            try {
-                let res = await (await smc.deployed()).$mth($args);
-                try {
-                    console.log(JSON.stringify(res, null, 2));
-                } catch(err) {
-                    console.log(res);
-                }
-            } catch(err) {
-                console.error(err);
-            } finally { callback(); }
-        }") | sed '1d' | sed '1d' # trim first 2 lines
-    cd - > /dev/null
-}
-
-function run_jscall() {
-    scaddr="$1"
-    method="$2"
-    params=""
-    for i in "${@:3}"; do params="$params --param $i"; done
-    goloop rpc \
-        --uri "$btp_icon_uri" \
-        call \
-        --to "$scaddr" \
-        --method "$method" $params
-}
-
-function run_jstxcall() {
-    key_store=${WALLET:-$btp_icon_wallet}
-    key_password=${PASSWORD:-$btp_icon_wallet_password}
-
-    scaddr=$1
-    method=$2
-    value=$3
-    params=""
-    for i in "${@:4}"; do params="$params --param $i"; done
-    tx_hash=$(goloop rpc \
-        --uri "$btp_icon_uri" \
-        sendtx call \
-        --to "$scaddr" \
-        --key_store "$key_store" \
-        --key_password "$key_password" \
-        --nid "$btp_icon_nid" \
-        --step_limit "$btp_icon_step_limit" \
-        --value "$value" \
-        --method "$method" $params | jq -r .)
-    icon_wait_tx $tx_hash
-}
-
+# exposed commands
 function docker_compose() {
-    if [[ ! " ${localhosts[*]} " =~ " ${docker_host} " ]]; then
+    log_stack
+    if [ "$docker_host" != "localhost" ]; then
         export DOCKER_HOST="ssh://$docker_user@$docker_host"
     fi
     env_file=$(mktemp /tmp/ixh.env.XXXXX)
-    echo "docker_registry=$docker_registry" > $env_file
-    docker-compose -f $ixh_src_dir/docker-compose.yml --env-file $env_file $@
+    echo "docker_registry=$docker_registry" >$env_file
+    # docker-compose -f $ixh_src_dir/docker-compose.yml --env-file $env_file "$@"
+    docker-compose -f $ixh_src_dir/docker-compose.yml --env-file <(cat <<<docker_registry=$docker_registry) "$@"
     rm $env_file
 }
 
 function stop() {
+    log_stack
     docker_compose down
 }
 
 function start() {
-    if [[ ! " ${localhosts[*]} " =~ " ${docker_host} " ]]; then
+    log_stack
+    if [ "$docker_host" != "localhost" ]; then
         docker_compose pull
     fi
-    docker_compose up $@
+    docker_compose up "$@"
 }
 
 function build_images() {
+    log_stack
     repos_dir=$ixh_tmp_dir/repos
     mkdir -p $repos_dir
-    
+
     log "building hmny"
     cd $repos_dir
-    # git clone --single-branch --branch ${btp_icon_branch:-main} https://github.com/harmony-one/harmony
-    cd $ixh_dir && docker build --build-arg SHARDING_HOST="$docker_host" \
-        -f $ixh_src_dir/hmny.Dockerfile -t $docker_registry/hmny:latest .
+    # git clone --single-branch \
+    #     --branch ${btp_icon_branch:-main} \
+    #     https://github.com/harmony-one/harmony
+    # cd harmony
+    docker <$ixh_src_dir/hmny.Dockerfile \
+        build \
+        --build-arg SHARDING_HOST="$docker_host" \
+        -t $docker_registry/hmny:latest -
 
     log "building icon"
     cd $repos_dir
-    git clone --single-branch --branch ${btp_icon_branch:-master} https://github.com/icon-project/goloop
-    cd goloop && make gochain-icon-image
-    cd $ixh_dir && docker build --build-arg CONFIG_JSON="$(cat $btp_icon_config)" \
-        -f $ixh_src_dir/icon.Dockerfile -t $docker_registry/icon:latest .
-    
+    git clone --single-branch \
+        --branch ${btp_icon_branch:-master} \
+        https://github.com/icon-project/goloop
+    cd goloop
+    make gochain-icon-image
+    docker <$ixh_src_dir/icon.Dockerfile \
+        build \
+        --build-arg CONFIG_JSON="$(cat $btp_icon_config)" \
+        -t $docker_registry/icon:latest -
+
     cd $ixh_dir
 }
 
 function publish_images() {
+    log_stack
     log "publishing hmny to $docker_registry"
     docker push $docker_registry/hmny:latest
-    
+
     log "publishing icon to $docker_registry"
     docker push $docker_registry/icon:latest
 }
 
-function run_test() {
+function run_exec() {
+    log_stack
     export verbose=true
     func=$1
-    args=( ${@:2} )
+    args=("${@:2}")
     case "$func" in
-        iconGetBalance)
-            wallet_address=${args[0]}
-            params=$(echo '{}' | jq -c '.address = $address' --arg address $wallet_address)
-            balance=$(icon_jsonrpc icx_getBalance "$params" | jq -r .result)
-            hex2dec $balance
-            ;;
-        iconGetWrappedCoins)
-            run_jscall "$btp_icon_nativecoin_bsh" coinNames
-            ;;
-        iconRegisterWrappedCoin)
-            coinName=${args[0]}
-            run_jstxcall "$btp_icon_nativecoin_bsh" register 0 "_name=$coinName"
-            ;;
-        iconGetWrappedCoinBalance)
-            wallet_address=${args[0]}
-            coinName=${args[1]}
-            coinId=$(run_jscall "$btp_icon_nativecoin_bsh" coinId "_coinName=$coinName" | jq -r .)
-            balance=$(run_jscall "$btp_icon_irc31" balanceOf "_owner=$wallet_address" "_id=$coinId" | jq -r .)
-            hex2dec $balance
-            ;;
-        iconTransfer)
-            to=${args[1]}
-            echo "Not Implemented!" && exit 1
-            ;;
-        iconTransferNativeCoin)
-            value=${args[0]}
-            to=${args[1]}
-            run_jstxcall "$btp_icon_nativecoin_bsh" transferNativeCoin $value _to=$to
-            ;;
-        iconTransferWrappedCoin)
-            coinName=${args[0]}
-            value=${args[1]}
-            to=${args[2]}
-            run_jstxcall "$btp_icon_nativecoin_bsh" transfer 0 _coinName=$coinName _value=$value _to=$to
-            ;;
-        iconGetBMCStatus)
-            run_jscall "$btp_icon_bmc" getStatus "_link=$btp_hmny_btp_address"
-            ;;
-        iconBSHIsApprovedForAll)
-            wallet_address=${args[0]}
-            run_jscall "$btp_icon_irc31" isApprovedForAll "_owner=$wallet_address" "_operator=$btp_icon_nativecoin_bsh"
-            ;;
-        iconBSHSetApprovalForAll)
-            approved=${args[0]:-1}
-            run_jstxcall "$btp_icon_irc31" setApprovalForAll 0 "_operator=$btp_icon_nativecoin_bsh" "_approved=$approved"
-            ;;
-        hmnyGetBalance)
-            wallet_address=${args[0]}
-            hmny_jsonrpc hmyv2_getBalance "\"$wallet_address\"" | jq -r .result
-            ;;
-        hmnyGetWrappedCoins)
-            run_sol bsh.BSHCore.coinNames
-            ;;
-        hmnyRegisterWrappedCoin)
-            coinName=${args[0]}
-            run_sol bsh.BSHCore.register "'$coinName'"
-            ;;
-        hmnyGetWrappedCoinBalance)
-            wallet_address=${args[0]}
-            coinName=${args[1]}
-            run_sol bsh.BSHCore.getBalanceOf "'$wallet_address','$coinName'"
-            ;;
-        hmnyTransferNativeCoin)
-            value=$(dec2hex ${args[0]})
-            to=${args[1]}
-            run_sol bsh.BSHCore.transferNativeCoin "'$to',{value:'$value'}"
-            ;;
-        hmnyTransferWrappedCoin)
-            coinName=${args[0]}
-            value=$(dec2hex ${args[1]})
-            to=${args[2]}
-            run_sol bsh.BSHCore.transfer "'$coinName','$value','$to'"
-            ;;
-        hmnyGetBMCStatus)
-            run_sol bmc.BMCPeriphery.getStatus "'$btp_icon_btp_address'"
-            ;;
-        hmnyBSHIsApprovedForAll)
-            wallet_address=${args[0]}
-            run_sol bsh.BSHCore.isApprovedForAll "'$wallet_address','$btp_hmny_bsh_core'"
-            ;;
-        hmnyBSHSetApprovalForAll)
-            approved=${args[0]:-1}
-            approved=$([[ $approved == 0 ]] && echo false || echo true)
-            run_sol bsh.BSHCore.setApprovalForAll "'$btp_hmny_bsh_core',$approved"
-            ;;
-        hmnyChainStatus)
-            hmny_get_hmny_chain_status
-            ;;
-        *)
-            log "Invalid test command: $cmd"
-            echo "Usage: $func []"
-            exit 1 
-            ;;
+    iconGetBalance)
+        wallet_address=${args[0]}
+        params=$(jq <<<{} -c '.address=$address' --arg address $wallet_address)
+        balance=$(icon_jsonrpc icx_getBalance "$params" | jq -r .result)
+        hex2dec $balance
+        ;;
+    iconGetWrappedCoins)
+        icon_callsc "$btp_icon_nativecoin_bsh" coinNames
+        ;;
+    iconRegisterWrappedCoin)
+        coinName=${args[0]}
+        icon_sendtx_call "$btp_icon_nativecoin_bsh" register 0 "_name=$coinName"
+        ;;
+    iconGetWrappedCoinBalance)
+        wallet_address=${args[0]}
+        coinName=${args[1]}
+        coinId=$(icon_callsc "$btp_icon_nativecoin_bsh" coinId "_coinName=$coinName" | jq -r .)
+        balance=$(icon_callsc "$btp_icon_irc31" balanceOf "_owner=$wallet_address" "_id=$coinId" | jq -r .)
+        hex2dec $balance
+        ;;
+    iconTransfer)
+        to=${args[1]}
+        echo "Not Implemented!" && exit 1
+        ;;
+    iconTransferNativeCoin)
+        value=${args[0]}
+        to=${args[1]}
+        icon_sendtx_call "$btp_icon_nativecoin_bsh" transferNativeCoin $value "_to=$to"
+        ;;
+    iconTransferWrappedCoin)
+        coinName=${args[0]}
+        value=${args[1]}
+        to=${args[2]}
+        icon_sendtx_call "$btp_icon_nativecoin_bsh" transfer 0 "_coinName=$coinName" "_value=$value" "_to=$to"
+        ;;
+    iconGetBMCStatus)
+        icon_callsc "$btp_icon_bmc" getStatus "_link=$btp_hmny_btp_address"
+        ;;
+    iconBSHIsApprovedForAll)
+        wallet_address=${args[0]}
+        icon_callsc "$btp_icon_irc31" isApprovedForAll "_owner=$wallet_address" "_operator=$btp_icon_nativecoin_bsh"
+        ;;
+    iconBSHSetApprovalForAll)
+        approved=${args[0]:-1}
+        icon_sendtx_call "$btp_icon_irc31" setApprovalForAll 0 "_operator=$btp_icon_nativecoin_bsh" "_approved=$approved"
+        ;;
+    hmnyGetBalance)
+        wallet_address=${args[0]}
+        hmny_jsonrpc hmyv2_getBalance "[\"$wallet_address\"]" | python -c 'import json;print(json.loads(input())["result"])'
+        ;;
+    hmnyGetWrappedCoins)
+        run_sol bsh.BSHCore.coinNames
+        ;;
+    hmnyRegisterWrappedCoin)
+        coinName=${args[0]}
+        run_sol bsh.BSHCore.register "'$coinName'"
+        ;;
+    hmnyGetWrappedCoinBalance)
+        wallet_address=${args[0]}
+        coinName=${args[1]}
+        run_sol bsh.BSHCore.getBalanceOf "'$wallet_address','$coinName'"
+        ;;
+    hmnyTransferNativeCoin)
+        value=$(dec2hex ${args[0]})
+        to=${args[1]}
+        run_sol bsh.BSHCore.transferNativeCoin "'$to',{value:'$value'}"
+        ;;
+    hmnyTransferWrappedCoin)
+        coinName=${args[0]}
+        value=$(dec2hex ${args[1]})
+        to=${args[2]}
+        run_sol bsh.BSHCore.transfer "'$coinName','$value','$to'"
+        ;;
+    hmnyGetBMCStatus)
+        run_sol bmc.BMCPeriphery.getStatus "'$btp_icon_btp_address'"
+        ;;
+    hmnyBSHIsApprovedForAll)
+        wallet_address=${args[0]}
+        run_sol bsh.BSHCore.isApprovedForAll "'$wallet_address','$btp_hmny_bsh_core'"
+        ;;
+    hmnyBSHSetApprovalForAll)
+        approved=${args[0]:-1}
+        approved=$([[ $approved == 0 ]] && echo false || echo true)
+        run_sol bsh.BSHCore.setApprovalForAll "'$btp_hmny_bsh_core',$approved"
+        ;;
+    hmnyChainStatus)
+        hmny_get_hmny_chain_status
+        ;;
+    *)
+        log "invalid run command: $func"
+        exit 1
+        ;;
     esac
 }
 
+function run_test() {
+    log_stack
+
+    local test_dir="/tmp/btp_test"
+    mkdir -p $test_dir
+    # rm -rf $test_dir/* # cleanup
+
+    local func=$1
+    local args=("${@:2}")
+
+    # . $ixh_env
+
+    case "$func" in
+    icon_transfer)
+        address=${args[0]}
+        ibal=$(run_exec iconGetBalance $address)
+        WALLET=$btp_icon_god_wallet \
+            PASSWORD=$btp_icon_god_wallet_password \
+            icon_transfer $address 1
+        nbal=$(run_exec iconGetBalance $address)
+        [[ "$nbal" == "$(bc <<<"$ibal+1")" ]] && echo "success" || echo "failed"
+        ;;
+
+    hmny_transfer)
+        address=${args[0]}
+        ibal=$(run_exec hmnyGetBalance $address)
+        WALLET=$btp_hmny_god_wallet \
+            PASSWORD=$btp_hmny_god_wallet_password \
+            hmny_transfer $address 1
+        nbal=$(run_exec hmnyGetBalance $address)
+        [[ "$nbal" == "$(bc <<<"$ibal+1")" ]] && echo "success" || echo "failed"
+        ;;
+
+    icon_create_wallet)
+        wallet="$test_dir/icon.wallet.json"
+        address=$(
+            WALLET=$btp_icon_god_wallet \
+                PASSWORD=$btp_icon_god_wallet_password \
+                icon_create_wallet $wallet 1234 1
+        )
+        require_address "$address" "" "success: $address ($wallet)" "failed!"
+        ;;
+
+    hmny_create_wallet)
+        wallet="$test_dir/hmny.wallet.json"
+        address=$(
+            WALLET=$btp_hmny_god_wallet \
+                PASSWORD=$btp_hmny_god_wallet_password \
+                hmny_create_wallet $wallet 1234 1
+        )
+        require_address "$address" "success: $address ($wallet)" "failed!"
+        ;;
+
+    icon_deploysc)
+        scfile="$ixh_src_dir/testsc/HelloWorld.jar"
+        address=$(
+            WALLET=$btp_icon_god_wallet \
+                PASSWORD=$btp_icon_god_wallet_password \
+                icon_deploysc $scfile "name=icon" | jq -r .scoreAddress
+        )
+        log
+        require_address "$address" "" "failed"
+        name=$(icon_callsc "$address" name | jq -r .)
+        [[ $name == icon ]] || name=""
+        require "$name" "success" "failed"
+        ;;
+
+    hmny_deploysc)
+        scdir="$ixh_tmp_dir/HelloWorld"
+        rm -rf $scdir &&
+            cp -r "$ixh_src_dir/testsc/HelloWorld" $scdir
+        address=$(WALLET=$btp_hmny_god_wallet \
+            PASSWORD=$btp_hmny_god_wallet_password \
+            NAME="hmny" \
+            hmny_deploysc $scdir HelloWorld)
+        require_address "$address" "sc: $address" "failed to deploy"
+        name=$(_truffle_exec $scdir HelloWorld.name | jq -r .)
+        [[ "$name" == hmny ]] || name=""
+        require "$name" "success" "failed"
+        ;;
+
+    hmny_drain_wallets)
+        address=${args[0]}
+        hmny_wallets_dir=$ixh_dir/testnet/hmny_wallets
+        for i in $(ls $hmny_wallets_dir); do
+            wallet="$hmny_wallets_dir/$i"
+            from=$(echo $i | cut -d. -f1)
+            if [[ "$from" == "one1a57qzygzqjpu2lpdwa9r3qa72jauytqkzsh95u" ]]; then
+                echo $from
+                run_exec hmnyGetBalance $from 2>/dev/null
+                WALLET=$wallet PASSWORD=1234 \
+                    hmny_transfer $address 9999370000000000000
+            fi
+        done
+        ;;
+
+    hmny_create_wallets)
+        count=${args[0]}
+        hmny_wallets_dir=$ixh_dir/testnet/hmny_wallets
+        mkdir -p $hmny_wallets_dir
+        wallets=$(
+            echo "
+            for (( i = 0; i < $count; i++ )); do
+                hmy keys add "key\$i" --passphrase-file <(cat<<<'1234') 2>&1 > /dev/null
+                keystore=\$(hmy keys export-ks --passphrase-file \
+                    <(cat<<<'1234') "key\$i" / 2>/dev/null | cut -d/ -f2)
+                echo \$keystore | cut -d. -f1
+                cat /\$keystore && echo
+            done
+        " | docker run -i --rm --network=host \
+                $docker_registry/hmny:latest /bin/bash
+        )
+        local address=
+        for i in $wallets; do
+            [[ -z $address ]] && address=$i || {
+                echo "$i" >"$hmny_wallets_dir/$address.json"
+                address=
+            }
+        done
+        ;;
+
+    *)
+        log "invalid test: $func"
+        ;;
+    esac
+
+}
+
 function run_demo() {
+    log_stack
     function tx_relay_wait() {
         sleep 45
     }
@@ -826,193 +1228,308 @@ function run_demo() {
     btp_hmny_test_wallet_address=$btp_hmny_wallet_address
     btp_hmny_test_wallet_password=$btp_hmny_wallet_password
 
-
     function get_icon_balance() {
-        run_test iconGetBalance $btp_icon_test_wallet_address
+        run_exec iconGetBalance $btp_icon_test_wallet_address
     }
 
     function get_hmny_balance() {
-        run_test hmnyGetBalance $btp_hmny_test_wallet_address
+        run_exec hmnyGetBalance $btp_hmny_test_wallet_address
     }
-    
+
     function get_icon_wrapped_ONE_DEV() {
-        run_test iconGetWrappedCoinBalance $btp_icon_test_wallet_address ONE_DEV
+        run_exec iconGetWrappedCoinBalance $btp_icon_test_wallet_address ONE_DEV
     }
 
     function get_hmny_wrapped_ICX() {
-        hex=$(run_test hmnyGetWrappedCoinBalance $btp_hmny_test_wallet_address ICX | jq -r ._usableBalance)
+        hex=$(run_exec hmnyGetWrappedCoinBalance $btp_hmny_test_wallet_address ICX | jq -r ._usableBalance)
         hex2dec "0x$hex"
     }
 
     function show_balances() {
-        log
-        log "Balance:"
-        log "    Icon: $btp_icon_test_wallet_address"
-        export icon_balance=$(get_icon_balance)
-        log "        Native: $icon_balance"
-        export icon_wrapped_ONE_DEV=$(get_icon_wrapped_ONE_DEV)
-        log "        Wrapped (ONE_DEV): $icon_wrapped_ONE_DEV"
-        log "    Hmny: $btp_hmny_test_wallet_address"
-        export hmny_balance=$(get_hmny_balance)
-        log "        Native: $hmny_balance"
-        export hmny_wrapped_ICX=$(get_hmny_wrapped_ICX)
-        log "        Wrapped (ICX): $hmny_wrapped_ICX"
-        log
+        echo
+        echo "Balance:"
+        echo "    Icon: $btp_icon_test_wallet_address"
+        icon_balance=$(get_icon_balance)
+        echo "        Native: $icon_balance"
+        icon_wrapped_ONE_DEV=$(get_icon_wrapped_ONE_DEV)
+        echo "        Wrapped (ONE_DEV): $icon_wrapped_ONE_DEV"
+        echo "    Hmny: $btp_hmny_test_wallet_address"
+        hmny_balance=$(get_hmny_balance)
+        echo "        Native: $hmny_balance"
+        hmny_wrapped_ICX=$(get_hmny_wrapped_ICX)
+        echo "        Wrapped (ICX): $hmny_wrapped_ICX"
+        echo
     }
 
-    log "Icon Wrapped Coins:"
-    log "    $(run_test iconGetWrappedCoins | jq -c .)"
+    echo "Icon Wrapped Coins:"
+    echo "    $(run_exec iconGetWrappedCoins | jq -c .)"
 
-    log "Hmny Wrapped Coins:"
-    log "    $(run_test hmnyGetWrappedCoins | jq -c .)"
+    echo "Hmny Wrapped Coins:"
+    echo "    $(run_exec hmnyGetWrappedCoins | jq -c .)"
 
     show_balances
 
-    ixh_nativecoin_transfer_amount=$(python3 -c "print($icon_balance//3)")
-    log "TransferNativeCoin (Icon -> Hmny):"
-    log "    amount=$ixh_nativecoin_transfer_amount"
-    log -n "    "
-    run_test iconTransferNativeCoin $ixh_nativecoin_transfer_amount "btp://$btp_hmny_net/$btp_hmny_test_wallet_address"
-    log
+    # i2h_nativecoin_transfer_amount=$(python3 -c "print($icon_balance//3)")
+    i2h_nativecoin_transfer_amount=1000000000000000000 # 1 ICX
+    echo "TransferNativeCoin (Icon -> Hmny):"
+    echo "    amount=$i2h_nativecoin_transfer_amount"
+    echo -n "    "
+    WALLET=$btp_icon_test_wallet \
+        PASSWORD=$btp_icon_test_wallet_password \
+        run_exec iconTransferNativeCoin \
+        $i2h_nativecoin_transfer_amount \
+        "btp://$btp_hmny_net/$btp_hmny_test_wallet_address" >/dev/null
+    echo
 
     tx_relay_wait
 
     show_balances
 
-    h2i_nativecoin_transfer_amount=$(python3 -c "print($hmny_balance//3)")
-    log "TransferNativeCoin (Hmny -> Icon):"
-    log "    amount=$h2i_nativecoin_transfer_amount"
-    log -n "    "
-    run_test hmnyTransferNativeCoin $h2i_nativecoin_transfer_amount "btp://$btp_icon_net/$btp_icon_test_wallet_address"
-    log
-    
-    tx_relay_wait
-
-    show_balances
-
-    log "Approve Icon NativeCoinBSH"
-    log -n "    "
-    WALLET=$btp_icon_test_wallet PASSWORD=$btp_icon_test_wallet_password run_test iconBSHSetApprovalForAll 1
-    log
-    log "    Status: $(run_test iconBSHIsApprovedForAll $btp_icon_test_wallet_address)"
-
-    log "Approve Hmny BSHCore"
-    WALLET=$btp_hmny_test_wallet PASSWORD=$btp_hmny_test_wallet_password run_test hmnyBSHSetApprovalForAll 1
-    log "    Status: $(run_test hmnyBSHIsApprovedForAll $btp_hmny_test_wallet_address)"
-    log
-
-    h2i_wrapped_ICX_transfer_amount=$(python3 -c "print($hmny_wrapped_ICX//2)")
-    log "TransferWrappedCoin ICX (Hmny -> Icon):"
-    log "    amount=$h2i_wrapped_ICX_transfer_amount"
-    log -n "    "
-    WALLET=$btp_hmny_test_wallet PASSWORD=$btp_hmny_test_wallet_password \
-        run_test hmnyTransferWrappedCoin ICX $h2i_wrapped_ICX_transfer_amount "btp://$btp_icon_net/$btp_icon_test_wallet_address"
+    # h2i_nativecoin_transfer_amount=$(python3 -c "print($hmny_balance//3)")
+    h2i_nativecoin_transfer_amount=1000000000000000000 # 1 ONE_DEV
+    echo "TransferNativeCoin (Hmny -> Icon):"
+    echo "    amount=$h2i_nativecoin_transfer_amount"
+    echo -n "    "
+    WALLET=$btp_hmny_test_wallet \
+        PASSWORD=$btp_hmny_test_wallet_password \
+        run_exec hmnyTransferNativeCoin \
+        $h2i_nativecoin_transfer_amount \
+        "btp://$btp_icon_net/$btp_icon_test_wallet_address" >/dev/null
+    echo
 
     tx_relay_wait
 
     show_balances
 
-    ixh_wrapped_ONE_DEV_transfer_amount=$(python3 -c "print($icon_wrapped_ONE_DEV//2)")
-    log "TransferWrapped Coin ONE_DEV (Icon -> Hmny):"
-    log "    amount=$ixh_wrapped_ONE_DEV_transfer_amount"
-    log -n "    "
+    echo "Approve Icon NativeCoinBSH"
+    WALLET=$btp_icon_test_wallet \
+        PASSWORD=$btp_icon_test_wallet_password \
+        run_exec iconBSHSetApprovalForAll 1 >/dev/null
+    echo "    Status: $(run_exec iconBSHIsApprovedForAll $btp_icon_test_wallet_address)"
+
+    echo "Approve Hmny BSHCore"
+    WALLET=$btp_hmny_test_wallet \
+        PASSWORD=$btp_hmny_test_wallet_password \
+        run_exec hmnyBSHSetApprovalForAll 1 >/dev/null
+    echo "    Status: $(run_exec hmnyBSHIsApprovedForAll $btp_hmny_test_wallet_address)"
+    echo
+
+    # h2i_wrapped_ICX_transfer_amount=$(python3 -c "print($hmny_wrapped_ICX//2)")
+    h2i_wrapped_ICX_transfer_amount=500000000000000000 # 0.5 ICX
+    echo "TransferWrappedCoin ICX (Hmny -> Icon):"
+    echo "    amount=$h2i_wrapped_ICX_transfer_amount"
+    echo -n "    "
+    WALLET=$btp_hmny_test_wallet \
+        PASSWORD=$btp_hmny_test_wallet_password \
+        run_exec hmnyTransferWrappedCoin \
+        ICX \
+        $h2i_wrapped_ICX_transfer_amount \
+        "btp://$btp_icon_net/$btp_icon_test_wallet_address" >/dev/null
+
+    tx_relay_wait
+
+    show_balances
+
+    # i2h_wrapped_ONE_DEV_transfer_amount=$(python3 -c "print($icon_wrapped_ONE_DEV//2)")
+    i2h_wrapped_ONE_DEV_transfer_amount=500000000000000000 # 0.5 ONE_DEV
+    echo "TransferWrapped Coin ONE_DEV (Icon -> Hmny):"
+    echo "    amount=$i2h_wrapped_ONE_DEV_transfer_amount"
+    echo -n "    "
     WALLET=$btp_icon_test_wallet PASSWORD=$btp_icon_test_wallet_password \
-        run_test iconTransferWrappedCoin ONE_DEV $ixh_wrapped_ONE_DEV_transfer_amount "btp://$btp_hmny_net/$btp_hmny_test_wallet_address"
-    log
+        run_exec iconTransferWrappedCoin \
+        ONE_DEV \
+        $i2h_wrapped_ONE_DEV_transfer_amount \
+        "btp://$btp_hmny_net/$btp_hmny_test_wallet_address" >/dev/null
+    echo
 
     tx_relay_wait
 
     show_balances
 }
-
-
-# trap cleanup SIGINT SIGTERM
 
 function usage() {
-  echo "Usage: $(basename $0) [build|publish|deploysc|start|stop]"
-  exit 1
+    echo "Usage: $(basename $0) [build|publish|deploysc|start|stop]"
+    exit 1
 }
 
-if [ $# -gt 0 ]; then cmd=$1; else usage; fi
+if [ $# -gt 0 ]; then
+    cmd=$1
+else
+    usage
+fi
+args=("${@:2}")
 
-args=( ${@:2} )
+################################## init: begin #######################################
+
+docker_user="ubuntu"
+docker_host="localnets"
+docker_port="5000"
+docker_registry="$docker_host"
+[[ -z $docker_port ]] || docker_registry+=":$docker_port"
+
+ixh_dir=$PWD
+ixh_tmp_dir=$ixh_dir/_ixh
+ixh_build_dir=$ixh_tmp_dir/build
+ixh_tests_dir=$ixh_tmp_dir/tests
+ixh_env=$ixh_tmp_dir/ixh.env
+ixh_src_dir=$ixh_dir/src
+
+root_dir="$ixh_dir/../../.."
+
+btp_icon_branch="v1.2.3"
+btp_hmny_branch="v4.3.7"
+
+# hmny dummy wallet: used for smart contract calls (zero balance)
+btp_hmny_dummy_private_key=a49152cea2bd63cc8dddebc7f7699b9f0b2bc770af67554f1c54894b683b9f4a
+
+# localnet: begin
+btp_icon_config=$ixh_src_dir/icon.config.json
+
+btp_icon_god_wallet=$ixh_src_dir/icon.god.wallet.json # at least 100 ICX
+btp_icon_god_wallet_address=$(jq <$btp_icon_god_wallet -r .address 2>/dev/null)
+btp_icon_god_wallet_password=gochain
+
+btp_hmny_god_wallet=$ixh_src_dir/hmny.god.wallet.json # at least 100 ONE
+btp_hmny_god_wallet_password=
+btp_hmny_god_wallet_private_key=1f84c95ac16e6a50f08d44c7bde7aff8742212fda6e4321fde48bf83bef266dc
+btp_hmny_god_wallet_address=0xA5241513DA9F4463F1d4874b548dFBAC29D91f34
+btp_hmny_god_wallet_address_bech32=one155jp2y76nazx8uw5sa94fr0m4s5aj8e5xm6fu3
+
+btp_icon_bmc_owner_balance=200000000000000000000            # 200 ICX
+btp_icon_nativecoin_bsh_owner_balance=200000000000000000000 # 200 ICX
+btp_icon_bmr_owner_balance=1000000000000000000000           # 1000 ICX
+btp_icon_step_limit=13610920001
+btp_icon_nativecoin_symbol=ICX
+btp_icon_nativecoin_bsh_svc_name=nativecoin
+
+btp_hmny_bmr_owner_balance=10000000000000000000 # 10 ONE
+btp_hmny_gas_limit=80000000                     # equal to block gas limit
+btp_hmny_gas_price=30000000000                  # 30 gwei
+btp_hmny_nativecoin_symbol=ONE_DEV
+
+btp_icon_nid=$(dec2hex $(cat "$btp_icon_config" | jq -r .nid 2>/dev/null))
+btp_hmny_nid=0x6357d2e0
+
+btp_hmny_uri="http://$docker_host:9500"
+btp_icon_uri="http://$docker_host:9080/api/v3/default"
+# localnet: end
+
+# # testnet: begin
+# btp_icon_god_wallet=$ixh_dir/testnet/icon.god.wallet.json # at least 100 ICX
+# btp_icon_god_wallet_address=hxff0ea998b84ab9955157ab27915a9dc1805edd35
+# btp_icon_god_wallet_password=gochain
+
+# btp_hmny_god_wallet=$ixh_dir/testnet/hmny.god.wallet.json # at least 100 ONE
+# btp_hmny_god_wallet_private_key=0xd104bd9d3acaff111d52dad5bedac0eaeba059af5c2c5fa6c4bc5e7e53cfe424
+# btp_hmny_god_wallet_address=0xedce30ac360b30134d9cc0880d621d97d3a4c517
+# btp_hmny_god_wallet_address_bech32=one1ah8rptpkpvcpxnvuczyq6csajlf6f3ghs8ekym
+# btp_hmny_god_wallet_password=
+
+# btp_icon_nid=0x7
+# btp_hmny_nid=0x6357d2e0
+
+# btp_hmny_uri="https://rpc.s0.b.hmny.io"
+# btp_icon_uri="https://berlin.net.solidwallet.io/api/v3/icon_dex"
+# # testnet: end
+
+# wallets for deploysc/tests
+btp_icon_wallet=${btp_icon_wallet:-$btp_icon_god_wallet}
+btp_icon_wallet_address=${btp_icon_wallet_address:-$btp_icon_god_wallet_address}
+btp_icon_wallet_password=${btp_icon_wallet_password:-$btp_icon_god_wallet_password}
+btp_hmny_wallet=${btp_hmny_wallet:-$btp_hmny_god_wallet}
+btp_hmny_wallet_address=${btp_hmny_wallet_address:-$btp_hmny_god_wallet_address}
+btp_hmny_wallet_password=${btp_hmny_wallet_password:-$btp_hmny_god_wallet_password}
+btp_icon_wallet_minimum_balance=100000000000000000000 #100 ICX
+btp_hmny_wallet_minimum_balance=100000000000000000000 #100 ONE
+
+# icon/hmny network ids
+btp_icon_nid=${btp_icon_nid:-}
+btp_icon_net="$btp_icon_nid.icon"
+
+btp_hmny_nid=${btp_hmny_nid:-$(hmny_jsonrpc eth_chainId '[]' | jq -r .result)}
+btp_hmny_net="$btp_hmny_nid.hmny"
+
+# create tmp dir
+mkdir -p $ixh_tmp_dir
+
+# require "$btp_icon_nid" "icon_nid: $btp_icon_nid" "invalid icon_nid: $btp_icon_nid"
+# require "$btp_hmny_nid" "hmny_nid: $btp_hmny_nid" "invalid hmny_nid: $btp_hmny_nid"
+
+################################## init: end #######################################
 
 case "$cmd" in
-    start) 
-        start ${args[@]}
-        ;;
+start)
+    start "${args[@]}"
+    ;;
 
-    stop)
-        stop ${args[@]}
-        ;;
+stop)
+    stop "${args[@]}"
+    ;;
 
-    docker_compose)
-        docker_compose ${args[@]}
-        ;;
+docker_compose)
+    docker_compose "${args[@]}"
+    ;;
 
-    build)
-        build_images ${args[@]}
-        ;;
+build)
+    build_images "${args[@]}"
+    ;;
 
-    publish) 
-        publish_images ${args[@]}
-        ;;
+publish)
+    publish_images "${args[@]}"
+    ;;
 
-    deploysc)
-        if [[ ! " ${allowedhosts[*]} " =~ " ${docker_host} " ]]; then
-            echo "docker_host: $docker_host not in allowedhosts!"
-            exit 1
-        fi
-        deploysc ${args[@]}
-        ;;
+deploysc)
+    deploysc "${args[@]}"
+    ;;
 
-    generateRelayConfigs)
-        . $ixh_env
-        generate_relay_configs
-        ;;
+generate_relay_configs)
+    . $ixh_env
+    generate_relay_configs
+    ;;
 
-    clean)
-        rm -rf $ixh_tmp_dir
-        ;;
+clean)
+    rm -rf $ixh_tmp_dir
+    ;;
 
-    fishenv)
-        cat $ixh_env | sed 's/=/ /1' | sed -E 's/(.*)/set \1/'
-        ;;
+fishenv)
+    cat $ixh_env | sed 's/=/ /1' | sed -E 's/(.*)/set \1/'
+    ;;
 
-    bashenv)
-        cat $ixh_env
-        ;;
+bashenv)
+    cat $ixh_env
+    ;;
 
-    sol)
-        . $ixh_env
-        run_sol ${args[@]}
-        ;;
+sol)
+    . $ixh_env
+    run_sol "${args[@]}"
+    ;;
 
-    jscall)
-        . $ixh_env
-        run_jscall ${args[@]}
-        ;;
+jscall)
+    . $ixh_env
+    icon_callsc "${args[@]}"
+    ;;
 
-    jstxcall)
-        . $ixh_env
-        run_jstxcall ${args[@]}
-        ;;
+jstxcall)
+    . $ixh_env
+    icon_sendtx_call "${args[@]}"
+    ;;
 
-    test)
-        . $ixh_env
-        run_test ${args[@]}
-        ;;
-        
-    demo)
-        . $ixh_env
-        run_demo ${args[@]}
-        ;;
-    
-    *)
-        log "Invalid command: $cmd"
-        usage 
-        ;;
+exec)
+    . $ixh_env
+    run_exec "${args[@]}"
+    ;;
+
+test)
+    run_test "${args[@]}"
+    ;;
+
+demo)
+    . $ixh_env
+    run_demo "${args[@]}"
+    ;;
+
+*)
+    log "Invalid command: $cmd"
+    usage
+    ;;
 esac
-
-# close log file descriptor (fd 3)
-exec 3>&-

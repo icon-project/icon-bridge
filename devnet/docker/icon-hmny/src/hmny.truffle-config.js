@@ -1,4 +1,9 @@
-const { TruffleProvider } = require("@harmony-js/core");
+const HDWalletProvider = require("@truffle/hdwallet-provider");
+
+if (process.env.PRIVATE_KEY.length == 0) {
+  throw new Error(`PRIVATE_KEY not provided!`);
+}
+
 module.exports = {
   db: { enabled: false },
   compilers: {
@@ -6,24 +11,21 @@ module.exports = {
       version: "0.7.6",
       settings: {
         evmVersion: "petersburg",
-        optimizer: { enabled: true, runs: 10 },
+        optimizer: { enabled: true, runs: 200 },
       },
     },
   },
   networks: {
     hmny: {
-      network_id: 2,
+      network_id: parseInt(process.env.NETWORK_ID),
       provider: () => {
-        const truffleProvider = new TruffleProvider(
-          process.env.URI,
-          { derivationPath: `m/44'/1023'/0'/0/` },
-          { shardID: 0, chainId: 2 },
-          { gasLimit: process.env.GASLIMIT, gasPrice: process.env.GASPRICE }
-        );
-        const newAcc = truffleProvider.addByPrivateKey(process.env.PRIVATE_KEY);
-        truffleProvider.setSigner(newAcc);
-        return truffleProvider;
+        return new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: process.env.URI,
+          derivationPath: `m/44'/1023'/0'/0/`,
+        });
       },
+      skipDryRun: true,
     },
   },
 };
