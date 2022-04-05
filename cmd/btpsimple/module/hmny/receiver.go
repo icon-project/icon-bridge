@@ -40,31 +40,30 @@ func NewReceiver(src, dst module.BtpAddress, endpoints []string, opt map[string]
 func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProof, error) {
 	sc := HexToAddress(r.src.ContractAddress())
 	rps := make([]*module.ReceiptProof, 0, len(v.Receipts))
+	var events []*module.Event
 	for i, receipt := range v.Receipts {
-		rp := module.ReceiptProof{
-			Index:  i,
-			Height: v.Height.Int64(),
-		}
+		events = events[:0]
 		for _, log := range receipt.Logs {
 			if !bytes.Equal(log.Address.Bytes(), sc.Bytes()) {
 				continue
 			}
-			ethlog := ethtypes.Log{
-				Data:   log.Data,
-				Topics: log.Topics,
-			}
-			msg, err := r.c.bmc().ParseMessage(ethlog)
+			msg, err := r.c.bmc().ParseMessage(ethtypes.Log{
+				Data: log.Data, Topics: log.Topics,
+			})
 			if err == nil {
-				rp.Events = append(rp.Events, &module.Event{
+				events = append(events, &module.Event{
 					Message:  msg.Msg,
 					Next:     module.BtpAddress(msg.Next),
 					Sequence: msg.Seq.Int64(),
 				})
 			}
 		}
-		if len(rp.Events) > 0 {
-			rps = append(rps, &rp)
-			r.log.Debugf("found event in block %d: sc=%v", rp.Height, sc)
+		if len(events) > 0 {
+			rp := &module.ReceiptProof{}
+			rp.Index, rp.Height = i, v.Height.Int64()
+			rp.Events = append(rp.Events, events...)
+			rps = append(rps, rp)
+			r.log.Debugf("received event: h=%d: sc=%v", rp.Height, sc)
 		}
 	}
 	return rps, nil
