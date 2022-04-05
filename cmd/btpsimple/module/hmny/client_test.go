@@ -16,7 +16,7 @@ import (
 func newTestClient() *Client {
 	url := "http://localnets:9500"
 	// url := "http://44.192.123.4:9500"
-	// url := "https://rpc.s0.t.hmny.io"
+	// url := "https://rpc.s0.b.hmny.io"
 	return NewClient([]string{url, url, url, url, url, url}, "", log.New())
 }
 
@@ -63,10 +63,10 @@ func TestValidator(t *testing.T) {
 	h, err := cl.GetHmyHeaderByHeight(big.NewInt(n), 0)
 	require.NoError(t, err, "failed to fetch header")
 
-	hn, err := cl.GetHmyHeaderByHeight(big.NewInt(n+1), 0)
+	next, err := cl.GetHmyHeaderByHeight(big.NewInt(n+1), 0)
 	require.NoError(t, err, "failed to fetch next header")
 
-	ok, err := vl.verify(h, hn.LastCommitSignature, hn.LastCommitBitmap)
+	ok, err := vl.verify(h, next)
 	require.NoError(t, err, "failed to verify commit signature")
 
 	require.True(t, ok)
