@@ -94,7 +94,7 @@ func (vl *Validator) update(h *Header) (err error) {
 	return nil
 }
 
-func (vl *Validator) verify(h *Header, sig, bitmap []byte) (bool, error) {
+func (vl *Validator) verify(h *Header, next *Header) (bool, error) {
 	vl.mu.RLock()
 	msk, ok := vl.smsk[h.ShardID]
 	vl.mu.RUnlock()
@@ -103,11 +103,11 @@ func (vl *Validator) verify(h *Header, sig, bitmap []byte) (bool, error) {
 	}
 	mask := *msk
 	mask.Clear()
-	if err := mask.SetMask(bitmap); err != nil {
+	if err := mask.SetMask(next.LastCommitBitmap); err != nil {
 		return false, err
 	}
 	asig := &libbls.Sign{}
-	if err := asig.Deserialize(sig); err != nil {
+	if err := asig.Deserialize(next.LastCommitSignature); err != nil {
 		return false, err
 	}
 	return asig.VerifyHash(mask.AggregatePublic, vl.payload(h)), nil
