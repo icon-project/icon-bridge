@@ -16,7 +16,8 @@ Solidity deployment:
 1. Follow the [solidity_deploy_commands.md](https://github.com/icon-project/btp/blob/btp_nobmv/testnet/solidity/solidity_deploy_commands.md) for deploying sol contracts
 2. Remember to clean up local artifacts folder before running the deploy command
 2. `npm install` in the solidity/scripts folder
-3. rename `.env_example` to `.env` & update the private key
+3. rename `.env_example` to `.env` & update the private key 
+Note: please remember to use the same wallet's private key that will be used for both deployment & running Relay
 
 
 Relay:

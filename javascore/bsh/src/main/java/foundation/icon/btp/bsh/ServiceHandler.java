@@ -48,8 +48,8 @@ public class ServiceHandler {
     private final VarDB<Address> bmcDb = Context.newVarDB("bmc", Address.class);
     private final DictDB<String, BigInteger> feeCollector = Context.newDictDB("fee_collector", BigInteger.class);
     private final DictDB<BigInteger, TransferAsset> pendingFeesDb = Context.newDictDB("pending_fees", TransferAsset.class);
-    DictDB<Address, Boolean> ownersDb = Context.newDictDB("owners", Boolean.class);
     private final VarDB<String> fromAddr = Context.newVarDB("fromAddr", String.class);
+    DictDB<Address, Boolean> ownersDb = Context.newDictDB("owners", Boolean.class);
 
     public ServiceHandler(String _bmc) {
         //register the BMC link for this BSH
@@ -128,6 +128,24 @@ public class ServiceHandler {
             tokenNames[i] = tokenNameDb.get(i);
         }
         return tokenNames;
+    }
+
+    @External
+    public void withdraw(String _tokenName, BigInteger _value) {
+        if(_value.compareTo(BigInteger.ZERO) <= 0) {
+            Context.revert(ErrorCodes.BSH_INVALID_AMOUNT, "_value must be positive");
+        }
+        String tokenAddr = this.tokenAddrDb.getOrDefault(_tokenName, null);
+        if (tokenAddr == null) {
+            Context.revert(ErrorCodes.BSH_TOKEN_NOT_REGISTERED, "Token not registered");
+        }
+        Address owner = Context.getCaller();
+        Balance balance = getBalance(owner, _tokenName);
+        if(balance.getRefundable().compareTo(_value) < 0) {
+            Context.revert(ErrorCodes.BSH_OVERDRAWN, "imbalance");
+        }
+        setBalance(owner, _tokenName, BigInteger.ZERO, BigInteger.ZERO, _value.negate());
+        Context.call(Address.fromString(tokenAddr), "transfer", owner, _value, "transfer to Receiver".getBytes());
     }
 
     /**
@@ -226,9 +244,7 @@ public class ServiceHandler {
             String tokenAddr = this.tokenAddrDb.getOrDefault(tokenName, null);
             int code = RC_OK;
             if (tokenAddr != null) {
-                //TODO: check if this needs to be deposited back to refundable or credit directly back to user?
                 Context.call(Address.fromString(tokenAddr), "transfer", dataTo, value, "transfer to Receiver".getBytes());
-                //setBalance(dataTo, tokenName, value, BigInteger.ZERO, BigInteger.ZERO);
             } else {
                 //code = RC_ERR_UNREGISTERED_TOKEN;
                 Context.revert(ErrorCodes.BSH_TOKEN_NOT_REGISTERED, "Unregistered Token");
@@ -266,7 +282,7 @@ public class ServiceHandler {
                         setBalance(pmsgFrom, _tokenName, BigInteger.ZERO, _totalAmount.negate(), BigInteger.ZERO);
                         feeCollector.set(_tokenName, feeCollector.getOrDefault(_tokenName, BigInteger.ZERO).add(_fee));
                     } else {
-                        setBalance(pmsgFrom, _tokenName, _totalAmount, _totalAmount.negate(), BigInteger.ZERO);
+                        setBalance(pmsgFrom, _tokenName, BigInteger.ZERO, _totalAmount.negate(), _totalAmount);
                     }
                 }
                 // delete pending message
@@ -333,7 +349,6 @@ public class ServiceHandler {
         deletePending(sn);
     }
 
-
     /**
      * Returns the Accumulated fees for all the assets
      */
@@ -351,7 +366,6 @@ public class ServiceHandler {
         }
         return tokens;
     }
-
 
     /**
      * @param _fa  Fee Aggregation address
@@ -425,7 +439,6 @@ public class ServiceHandler {
         return writer.toByteArray();
     }
 
-
     private void putPending(BigInteger sn, byte[] msg) {
         pendingDb.set(sn, msg);
     }
@@ -460,7 +473,7 @@ public class ServiceHandler {
         }
         writer.end();
         return writer.toByteArray();
-    }
+    }    
 
     @EventLog(indexed = 1)
     public void TransferStart(Address _from, String _to, BigInteger _sn, byte[] _assetDetails) {
