@@ -1,135 +1,200 @@
-# `ixh.sh`
+# **`ixh.sh`**
 
 This is a helper tool to auto-deploy harmony and icon localnets on local/remote host using docker. It has commands to deploy BTP smartcontracts to respective blockchain (`deploysc`), and run tests (`test`) using several subcommands. It also includes a command to run a demo (`demo`).
 
 Please go through the `ixh.sh` file and see other commands at the bottom of the script and their syntax.
 
-## Requirements:
+## Requirements
 
-Ensure following tools are installed.
+Make sure that following tools are installed on your system for `ixh.sh` to work without any issue.
 
-    gradle, jdk@11.x, sdkman, goloop, docker, truffle@5.3.0, node@15.12.0, ethkey
+1.  ### Docker
 
-## Run a demo:
+    To build, publish, run blockchains (icon/hmny) locally or remote docker host. Download and install docker from https://docs.docker.com/engine/install/ubuntu/
 
-1. **Build images**
+    After installing, make sure that the user account used to run docker (_default is ubuntu_) is added to `docker` group.
 
-   `./ixh.sh build`
+        $ sudo groupadd docker
+        $ sudo usermod -aG docker $USER
+        $ newgrp docker
 
-2. **Publish images**
+    Fully logout, and log back in to be able apply the changes.
 
-   `./ixh.sh publish`
+2.  ### SdkMan
 
-3. **Deploy blockchains**
+    To install gradle and java.
 
-   `./ixh.sh start -d`
+    1. _`fish`_
 
-   NOTE:
+       https://github.com/reitzig/sdkman-for-fish
 
-   If you're using a remote docker host, please allow ssh connection either password less or with key added to local ssh-agent. It needs the ablility to ssh into the remote host non-interactively. You also need a local docker registry on the remote host running at 0.0.0.0:5000, to publish necessary docker images of respective blockchains, so that it could be used on that host. Please add remote host to `remotehosts` variable in `ixh.sh` file. If its a hostname and not an IP, and you need to map the hostname to IP in `/etc/hosts` in a linux system, corresponding files in windows/macos system.
+    2. _`bash`_
 
-   If you're using a local docker host, you cannot use `localhost` as a hostname as the `deploysc` script uses a docker container to create wallets and transfer balances. It will not be able to resolve to your system's host, and will instead to docker container's internal host. So the balance transfer will fail.
-   What you can do instead is to map `localdckr` to 127.0.0.1 in your `/etc/hosts` file and use it as a local hostname.
+       https://sdkman.io/install
 
-   Sample output:
+3.  ### Java and Gradle
 
-   ```
-   Wallet:
-       icon: ✔
-       hmny: [src/hmny.wallet.json]  ✔
+    To build javascores.
 
-   Build:
-       javascores: ✔
+    1. _`Java`_
 
-   Deploy:
-   icon
-       bmc: [tx=0xe10b0835]... ✔ 4s cx88c30f9c8fa3a73ea95e8946d123eb09573b8718
-       irc31: [tx=0x6bfeb227]... ✔ 5s cx549e2ba448845431ec0613eed14640e5584d177d
-       nativecoin_bsh: [tx=0x9663bfa0]... ✔ 4s cx2b817726ddc4fa92fb14dd9c4a55ab46184c3b59
-       btp: btp://0x5b9a77.icon/cx88c30f9c8fa3a73ea95e8946d123eb09573b8718
-   hmny
-       bmc:  ✔ 110s m=0x77549beEa2e2342e8a7E1689ed644547479Cc7FC, p=0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B
-       bsh:  ✔ 111s c=0xdc16d7140009A16FDa7AcEB5b928B7aC7Cc2829d, p=0x95671B83c1958204647954502D2fB3Eb0b210001
-       btp: btp://0x2.hmny/0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B
+       `sdk install java 11.0.11.hs-adpt`
 
-   Configuring:
-   icon
-       create_wallet: [_ixh/bmc.owner.json] [tx=0x10e9c7b9]... ✔ 4s
-       bmc_add_owner: [hx523609cf] [tx=0x7da58c9b].. ✔ 3s
-       bmc_link_hmny_bmc:
-           addLink: [tx=0x4c699fac]... ✔ 4s
-           setLinkRxHeight: [tx=0x717f4945]... ✔ 4s
-           getLinkStatus: rxHeight=7928
-       bmc_add_nativecoin_bsh: [tx=0x67e04d66].. ✔ 3s
-       create_wallet: [_ixh/nativecoin.icon.owner.json] [tx=0x03477b23].. ✔ 3s
-       nativecoin_bsh_add_owner: [hx6840cbc3] [tx=0x1e9139f0].. ✔ 3s
-       nativecoin_bsh_register_irc31: [tx=0x21b2160b].. ✔ 3s
-       create_wallet: [_ixh/bmr.icon.json] [tx=0xc79ea9d2]... ✔ 4s
-       bmc_add_relay: [tx=0x6a731b19]... ✔ 4s
-       irc31_add_owner: [cx2b817726] [tx=0x45223e18].. ✔ 3s
-   hmny
-       bmc_add_bsh:  ✔
-       bmc_link_to_icon_bmc:  ✔ ✔
-       create_wallet: [_ixh/bmr.hmny.json]  ✔
-       bmc_add_relay:  ✔
-       bsh_register_coin:  ✔
+    2. _`gradle`_
 
-   deploysc completed in 420s.
-   important variables have been written to ./_ixh/ixh.env
-   ```
+       `sdk install gradle 6.7.1`
 
-4. **Deploy smartcontracts**
+4.  ### Goloop
 
-   `./ixh.sh deploysc reset`
+    https://github.com/icon-project/goloop
 
-   It deploys necessary smartcontracts and generates configurations for Relayers (`_ixh/i2h.config.json` and `_ixh/h2i.config.json`) along with an environment file (`_ixh/ixh.env`) that has all necessary environment variables.
+    To interact with icon blockchain using RPC calls and generate keystores.
 
-   NOTE: _Wait for 1 minute or more after the first step to do this._
+    `go install github.com/icon-project/goloop/cmd/goloop`
 
-5. **Start Relayers**
+    If `go install` doesn't work use `go get` instead.
 
-   Open two separate command prompts, and go to the `cmd/btpsimple` directory on each. And run following commands:
+5.  ### NodeJS
 
-   ```
-   # First shell: harmony -> icon
-   cd cmd/btpsimple
-   go run . -c ../../devnet/docker/icon-hmny/_ixh/h2i.config.json start
+    To build and deploy solidity smartcontracts.
 
-   ...
-   D|23:55:44.335355|a6a4|-|hmny|receiver.go:77 receive loop: block notification: height=8033
-   D|23:55:44.337270|a6a4|-|hmny|receiver.go:77 receive loop: block notification: height=8034
-   D|23:55:44.337342|a6a4|-|hmny|receiver.go:67 found event in block 8033: sc=0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B
-   D|23:55:44.337387|a6a4|0x5b9a77|chain|chain.go:187 addRelayMessage rms:1 rps:1 HeightOfDst:0
-   D|23:55:44.337523|a6a4|-|icon|sender.go:77 HandleRelayMessage prev btp://0x2.hmny/0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B, msg: -N_43bjb-NkAuNP40fjPuD5idHA6Ly8weDViOWE3Ny5pY29uL2N4ODhjMzBmOWM4ZmEzYTczZWE5NWU4OTQ2ZDEyM2ViMDk1NzNiODcxOAG4jPiKuDlidHA6Ly8weDIuaG1ueS8weERkMzM0YTJFNkRBZmEyM2U0NUIyRkY4MDM1QzdEZUU4N0YyOTM3NUK4PmJ0cDovLzB4NWI5YTc3Lmljb24vY3g4OGMzMGY5YzhmYTNhNzNlYTk1ZTg5NDZkMTIzZWIwOTU3M2I4NzE4g2JtYwCJyIRJbml0gsHAgh9h
-   D|23:55:44.337634|a6a4|0x5b9a77|chain|chain.go:82 Going to relay now rm:0 [i:0,h:0,seq:0,evt:0,txh:<nil>]
-   D|23:55:44.339240|a6a4|-|hmny|receiver.go:77 receive loop: block notification: height=8035
-   D|23:55:44.341086|a6a4|-|hmny|receiver.go:77 receive loop: block notification: height=8036
-   ...
-   ```
+    1. _`fish`_
 
-   ```
-   # Second shell: icon -> harmony
-   cd cmd/btpsimple
-   go run . -c ../../devnet/docker/icon-hmny/_ixh/i2h.config.json start
+       `nvm`: https://github.com/jorgebucaran/nvm.fish
 
-   ...
-   D|23:55:45.182028|531d|-|icon|receiver.go:191 onBlockOfSrc icon: 13146
-   D|23:55:45.713797|531d|-|hmny|sender.go:121 final relay message string: ���ظ��������ʸ9btp://0x2.hmny/0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B�����>btp://0x5b9a77.icon/cx88c30f9c8fa3a73ea95e8946d123eb09573b8718�9btp://0x2.hmny/0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B�bmc�ȄInit����2#, prev: btp://0x5b9a77.icon/cx88c30f9c8fa3a73ea95e8946d123eb09573b8718
-   D|23:55:45.894896|531d|-|hmny|sender.go:182 monitor loop: block notification: height=8202
-   D|23:55:46.208687|531d|0x2|chain|chain.go:82 after relay rm:0 [i:0,h:0,seq:0,evt:0,txh:&{0x279a807a07dcdfcf19e858c4c99b42820babf04df5dcfac80705e9ea84331024}]
-   D|23:55:46.446369|531d|-|icon|receiver.go:191 onBlockOfSrc icon: 13147
-   ...
-   ```
+       ```
+       $ fisher install jorgebucaran/nvm.fish
+       $ nvm install v15.12.0
+       $ set --universal nvm_default_version v15.12.0
+       $ nvm use v15.12.0
+       $ node --version > ~/.nvmrc
+       ```
 
-6. **Run demo**
+    2. _`bash`_
 
-   `./ixh.sh demo > _ixh/demo.log`
+       https://github.com/nvm-sh/nvm
 
-   After both Relayers have started and forwarded the first BTP messages to other chains, run the demo in separate shell using above command. It will dump all the transaction details into the `_ixh/demo.log` file for debugging purpose. And it will print the transfer stats on the console via stderr.
+       ```
+       $ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+       $ nvm install v15.12.0
+       $ nvm use v15.12.0
+       $ node --version > ~/.nvmrc
+       ```
 
-   Here is the sample output:
+6.  ### Truffle
 
-   ```
+    https://trufflesuite.com/docs/truffle/getting-started/installation.html
+
+    `npm install -g truffle@5.5.5`
+
+7.  ### Ethkey
+
+    `go get github.com/ethereum/go-ethereum/cmd/ethkey`
+
+## Build
+
+    ./ixh.sh build
+
+## Publish images
+
+    ./ixh.sh publish
+
+## Deploy Blockchains
+
+    ./ixh.sh start -d
+
+NOTE:
+
+If you're using a remote docker host, please allow ssh connection either password less or with key added to local ssh-agent. It needs the ablility to ssh into the remote host non-interactively. You also need a local docker registry on the remote host running at 0.0.0.0:5000, to publish necessary docker images of respective blockchains, so that it could be used on that host. If hostname is used instead of an IP address, you need to map the hostname to IP in `/etc/hosts` in a linux system, corresponding files in windows/macos system.
+
+## Deploy Smart Contracts
+
+    ./ixh.sh deploysc reset
+
+It deploys necessary smart contracts and generates configurations for Relayers (`_ixh/i2h.config.json` and `_ixh/h2i.config.json`) along with an environment file (`_ixh/ixh.env`) that has all necessary environment variables.
+
+NOTE: _Wait for 1 minute or more after the first step to do this._
+
+## Start Relayers
+
+Open two separate command prompts, and go to the `cmd/btpsimple` directory on each. And run following commands:
+
+```
+
+# First shell: harmony -> icon
+
+cd cmd/btpsimple
+go run . -c ../../devnet/docker/icon-hmny/\_ixh/h2i.config.json start
+
+...
+I|12:58:50.253553|----|-|main|main.go:228   ____ _____ ____    ____      _
+I|12:58:50.253617|----|-|main|main.go:228  | __ )_   _|  _ \  |  _ \ ___| | __ _ _   _
+I|12:58:50.253624|----|-|main|main.go:228  |  _ \ | | | |_) | | |_) / _ \ |/ _` | | | |
+I|12:58:50.253629|----|-|main|main.go:228  | |_) || | |  __/  |  _ <  __/ | (_| | |_| |
+I|12:58:50.253635|----|-|main|main.go:228  |____/ |_| |_|     |_| \_\___|_|\__,_|\__, |
+I|12:58:50.253640|----|-|main|main.go:228                                        |___/
+I|12:58:50.253646|----|-|main|main.go:230 Version : unknown
+I|12:58:50.253652|----|-|main|main.go:231 Build   : unknown
+D|12:58:50.378114|a8e2|-|main|main.go:316 LogForwarderConfig vendor and address is empty string, will be ignore
+D|12:58:50.378203|a8e2|-|main|main.go:242 /home/bbist/works/ibriz/code/github.com/icon-project/icon-bridge/devnet/docker/icon-hmny/_ixh/h2i.config.json run/h2i
+D|12:58:51.079655|a8e2|0x7|chain|chain.go:321 _init height:0, dst(btp://0x7.icon/cxa2cc386e9db2a72ea6724cbfd12f936a90ba63d2, seq:10), receive:8033
+D|12:58:51.079807|a8e2|0x7|chain|chain.go:306 start relayLoop
+D|12:58:51.906155|a8e2|-|icon|client.go:221 MonitorBlock WSEvent 192.168.207.251:35580 WSEventInit
+D|12:58:51.906322|a8e2|-|icon|sender.go:244 MonitorLoop connected 192.168.207.251:35580
+D|12:58:51.906371|a8e2|0x7|chain|chain.go:348 Connect MonitorLoop
+D|12:58:55.118300|a8e2|-|hmny|receiver.go:76 receive loop: block notification: height=8033
+D|23:55:44.337342|a6a4|-|hmny|receiver.go:67 found event in block 8033: sc=0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B
+D|23:55:44.337387|a6a4|0x5b9a77|chain|chain.go:187 addRelayMessage rms:1 rps:1 HeightOfDst:0
+D|23:55:44.337523|a6a4|-|icon|sender.go:77 HandleRelayMessage prev btp://0x2.hmny/0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B, msg: -N_43bjb-NkAuNP40fjPuD5idHA6Ly8weDViOWE3Ny5pY29uL2N4ODhjMzBmOWM4ZmEzYTczZWE5NWU4OTQ2ZDEyM2ViMDk1NzNiODcxOAG4jPiKuDlidHA6Ly8weDIuaG1ueS8weERkMzM0YTJFNkRBZmEyM2U0NUIyRkY4MDM1QzdEZUU4N0YyOTM3NUK4PmJ0cDovLzB4NWI5YTc3Lmljb24vY3g4OGMzMGY5YzhmYTNhNzNlYTk1ZTg5NDZkMTIzZWIwOTU3M2I4NzE4g2JtYwCJyIRJbml0gsHAgh9h
+D|23:55:44.337634|a6a4|0x5b9a77|chain|chain.go:82 Going to relay now rm:0 [i:0,h:0,seq:0,evt:0,txh:<nil>]
+D|23:55:44.339240|a6a4|-|hmny|receiver.go:77 receive loop: block notification: height=8035
+D|23:55:44.341086|a6a4|-|hmny|receiver.go:77 receive loop: block notification: height=8036
+...
+
+```
+
+```
+
+# Second shell: icon -> harmony
+
+cd cmd/btpsimple
+go run . -c ../../devnet/docker/icon-hmny/\_ixh/i2h.config.json start
+
+...
+I|12:58:31.276334|----|-|main|main.go:228   ____ _____ ____    ____      _
+I|12:58:31.276385|----|-|main|main.go:228  | __ )_   _|  _ \  |  _ \ ___| | __ _ _   _
+I|12:58:31.276392|----|-|main|main.go:228  |  _ \ | | | |_) | | |_) / _ \ |/ _` | | | |
+I|12:58:31.276397|----|-|main|main.go:228  | |_) || | |  __/  |  _ <  __/ | (_| | |_| |
+I|12:58:31.276403|----|-|main|main.go:228  |____/ |_| |_|     |_| \_\___|_|\__,_|\__, |
+I|12:58:31.276408|----|-|main|main.go:228                                        |___/
+I|12:58:31.276413|----|-|main|main.go:230 Version : unknown
+I|12:58:31.276420|----|-|main|main.go:231 Build   : unknown
+D|12:58:31.810368|dA9E|-|main|main.go:316 LogForwarderConfig vendor and address is empty string, will be ignore
+D|12:58:31.810531|dA9E|-|main|main.go:242 /home/bbist/works/ibriz/code/github.com/icon-project/icon-bridge/devnet/docker/icon-hmny/_ixh/i2h.config.json run/i2h
+D|12:58:34.246307|dA9E|0x6357d2e0|chain|chain.go:321 _init height:0, dst(btp://0x6357d2e0.hmny/0xeA4039A61C7de7057428F8512CddBB9BDb519278, seq:10), receive:13146
+D|12:58:34.246453|dA9E|0x6357d2e0|chain|chain.go:306 start relayLoop
+D|12:58:35.776128|dA9E|-|icon|client.go:221 MonitorBlock WSEvent 192.168.207.251:34106 WSEventInit
+D|12:58:35.776245|dA9E|-|icon|receiver.go:202 ReceiveLoop connected 192.168.207.251:34106
+D|12:58:35.776259|dA9E|0x6357d2e0|chain|chain.go:362 Connect ReceiveLoop
+D|12:58:35.953389|dA9E|-|icon|receiver.go:191 onBlockOfSrc icon: 13146
+D|23:55:45.713797|531d|-|hmny|sender.go:121 final relay message string: ���ظ��������ʸ9btp://0x2.hmny/0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B�����>btp://0x5b9a77.icon/cx88c30f9c8fa3a73ea95e8946d123eb09573b8718�9btp://0x2.hmny/0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B�bmc�ȄInit����2#, prev: btp://0x5b9a77.icon/cx88c30f9c8fa3a73ea95e8946d123eb09573b8718
+D|23:55:45.894896|531d|-|hmny|sender.go:182 monitor loop: block notification: height=8202
+D|23:55:46.208687|531d|0x2|chain|chain.go:82 after relay rm:0 [i:0,h:0,seq:0,evt:0,txh:&{0x279a807a07dcdfcf19e858c4c99b42820babf04df5dcfac80705e9ea84331024}]
+D|23:55:46.446369|531d|-|icon|receiver.go:191 onBlockOfSrc icon: 13147
+...
+
+```
+
+## Run Demo
+
+`./ixh.sh demo > _ixh/demo.log`
+
+After both Relayers have started and forwarded the first BTP messages to other chains, run the demo in separate shell using above command. It will dump all the transaction details into the `_ixh/demo.log` file for debugging purpose. And it will print the transfer stats on the console via stderr.
+
+Here is the sample output:
+
+```
+
     Icon Wrapped Coins:
         ["ICX","ONE_DEV"]
     Hmny Wrapped Coins:
@@ -195,8 +260,9 @@ Ensure following tools are installed.
         Hmny: 0xa5241513da9f4463f1d4874b548dfbac29d91f34
             Native: 6716814903659260000000000000
             Wrapped (ICX): 27089304784287839139691673607
-   ```
 
-### Disclaimer:
+```
+
+## Disclaimer:
 
 This is not a comprehensive description and is not complete. There are other requirements that are necessary to run the above demo. This document will be updated if somebody reports that they're unable to run the demo using above command.
