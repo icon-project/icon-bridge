@@ -40,6 +40,22 @@ const (
 	DefaultRelayReSendInterval      = time.Second
 )
 
+type boolLock struct {
+	val bool
+	sync.Mutex
+}
+
+func (l *boolLock) Val() bool { return l.val }
+
+// Set sets the bool val to nval if fn runs without error
+func (l *boolLock) Set(nval bool, fn func(val bool) error) {
+	l.Lock()
+	defer l.Unlock()
+	if fn(l.val) == nil {
+		l.val = nval
+	}
+}
+
 type SimpleChain struct {
 	s       module.Sender
 	r       module.Receiver
@@ -51,16 +67,12 @@ type SimpleChain struct {
 	l       log.Logger
 	cfg     *Config
 
-	rms             []*module.RelayMessage
-	rmsMtx          sync.RWMutex
-	rmSeq           uint64
-	heightOfDst     int64
-	lastBlockUpdate *module.BlockUpdate
+	rms         []*module.RelayMessage
+	rmsMtx      sync.RWMutex
+	rmSeq       uint64
+	heightOfDst int64
 
-	bmrIndex       int
-	relayble       bool
-	relaybleIndex  int
-	relaybleHeight int64
+	getBMCStatus boolLock
 }
 
 func (s *SimpleChain) _hasWait(rm *module.RelayMessage) bool {
@@ -117,9 +129,13 @@ func (s *SimpleChain) _relay() {
 				if segment.GetResultParam == nil {
 					segment.TransactionResult = nil
 					s._log("Going to relay now", rm, segment, j)
-					if segment.GetResultParam, err = s.s.Relay(segment); err != nil {
-						s.l.Panicf("fail to Relay err:%+v", err)
-					}
+					s.getBMCStatus.Set(true, func(val bool) error {
+						segment.GetResultParam, err = s.s.Relay(segment)
+						if err != nil {
+							s.l.Panicf("fail to Relay err:%+v", err)
+						}
+						return nil
+					})
 					s._log("after relay", rm, segment, j)
 					go s.result(rm, segment)
 				}
@@ -242,20 +258,26 @@ func (s *SimpleChain) updateRelayMessage(seq int64) (err error) {
 	return nil
 }
 
+var rxSeqNotChanged = errors.New("rxSeq not changed")
+
 func (s *SimpleChain) OnBlockOfDst(height int64) error {
 	s.l.Tracef("OnBlockOfDst height:%d", height)
 	atomic.StoreInt64(&s.heightOfDst, height)
-	seq := s.bs.RxSeq
-	if err := s.RefreshStatus(); err != nil {
-		return err
-	}
-	if seq != s.bs.RxSeq {
-		seq = s.bs.RxSeq
-		if err := s.updateRelayMessage(seq); err != nil {
+	s.getBMCStatus.Set(false, func(val bool) error {
+		seq := s.bs.RxSeq
+		if val {
+			s.refreshStatus() // ignore error, or MonitorLoop crashes
+		}
+		if seq == s.bs.RxSeq {
+			return rxSeqNotChanged
+		}
+		err := s.updateRelayMessage(s.bs.RxSeq)
+		if err != nil {
 			return err
 		}
 		s.relayCh <- nil
-	}
+		return nil
+	})
 	return nil
 }
 
@@ -286,7 +308,7 @@ func (s *SimpleChain) _skippable(rm *module.RelayMessage) bool {
 	return false
 }
 
-func (s *SimpleChain) RefreshStatus() error {
+func (s *SimpleChain) refreshStatus() error {
 	bmcStatus, err := s.s.GetStatus()
 	if err != nil {
 		return err
@@ -296,7 +318,7 @@ func (s *SimpleChain) RefreshStatus() error {
 }
 
 func (s *SimpleChain) init() error {
-	if err := s.RefreshStatus(); err != nil {
+	if err := s.refreshStatus(); err != nil {
 		return err
 	}
 	atomic.StoreInt64(&s.heightOfDst, s.bs.CurrentHeight)
