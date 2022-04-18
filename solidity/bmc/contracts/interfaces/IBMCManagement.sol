@@ -71,6 +71,11 @@ interface IBMCManagement {
         uint256 _delayLimit
     ) external;
 
+    function setLinkRxHeight(
+        string calldata _link,
+        uint256 _height
+    ) external;    
+
     /**
        @notice Removes the link and status information. 
        @dev Caller must be an operator of BTP network.
@@ -179,6 +184,16 @@ interface IBMCManagement {
         external
         view
         returns (uint256);
+    
+    /**
+        @notice Get link rxHeight of last received btp message's height. Only called by BMC periphery.
+        @param _prev BTP Address of the previous BMC
+        @return Rotation sequence
+     */
+    function getLinkRxHeight(string calldata _prev)
+        external
+        view
+        returns (uint256);
 
     /**
         @notice Get relays by link. Only called by BMC periphery.
@@ -212,6 +227,13 @@ interface IBMCManagement {
         @param _prev BTP Address of the previous BMC
      */
     function updateLinkTxSeq(string memory _prev) external;
+
+    /**
+        @notice Update link rxHeight of last received btp message's height. Only called by BMC periphery.
+        @param _prev BTP Address of the previous BMC
+        @param _val increment value
+     */
+    function updateLinkRxHeight(string calldata _prev, uint256 _val) external;
 
     /**
         @notice Add a reachable BTP address to link. Only called by BMC periphery.

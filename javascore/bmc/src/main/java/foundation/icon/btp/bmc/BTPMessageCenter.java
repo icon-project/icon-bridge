@@ -39,6 +39,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
     public static final String INTERNAL_SERVICE = "bmc";
     public static final int INVALID_SEQ_NUMBER = 24;
     public static final int INVALID_RELAY_MSG = 25;
+    public static final int INVALID_RX_SRC_HEIGHT = 26;
     public enum Internal { Init, Link, Unlink, FeeGathering, Sack }
 
     //
@@ -292,77 +293,73 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
     @External
     public void handleRelayMessage(String _prev, String _msg) {
         BTPAddress prev = BTPAddress.valueOf(_prev);
+
         Link link = getLink(prev);
-        // decode and verify relay message
-        byte[][] serializedMsgs = null;
-        try {
-            serializedMsgs = handleRelayMessage(btpAddr.toString(), _prev, link.getRxSeq(), _msg);
-        } catch (UserRevertedException e) {
-            logger.println("handleRelayMessage",
-                    "fail to handleRelayMessage",
-                    "code:", e.getCode(), "msg:", e.getMessage());
-            throw BTPException.of(e);
-        }
-        long msgCount = serializedMsgs.length;
 
-        // rotate and check valid relay
-        long currentHeight = Context.getBlockHeight();
-        Relays relays = link.getRelays();
-        Relay relay = null;//link.rotate(currentHeight, status.getLast_height(), msgCount > 0);
+        Relay relay = link.getRelays().get(Context.getOrigin());
         if (relay == null) {
-            //rotateRelay is disabled.
-            relay = relays.get(Context.getOrigin());
-            if (relay == null) {
-                throw BMCException.unauthorized("not registered relay");
-            }
-        } else if (!relay.getAddress().equals(Context.getOrigin())) {
-            throw BMCException.unauthorized("invalid relay");
+            throw BMCException.unauthorized("relay not registered: " + Context.getOrigin());
         }
-        //relay.setBlockCount(relay.getBlockCount() + status.getHeight() - prevStatus.getHeight());
-        relay.setMsgCount(relay.getMsgCount().add(BigInteger.valueOf(msgCount)));
-        relays.put(relay.getAddress(), relay);
 
-        link.setRxSeq(link.getRxSeq().add(BigInteger.valueOf(msgCount)));
-        putLink(link);
+        byte[] rlprm = null;
+        try {
+            rlprm = Base64.getUrlDecoder().decode(_msg.getBytes());
+        } catch (Exception e) {
+            Context.revert(INVALID_RELAY_MSG, "failed to decode base64 relay message");
+        }
+        RelayMessage rm = RelayMessage.fromBytes(rlprm);
 
-        // dispatch BTPMessages
-        for (byte[] serializedMsg : serializedMsgs) {
-            BTPMessage msg = null;
-            try {
-                //TODO [TBD] how to catch exception while processing in ByteArrayObjectReader?
-                msg = BTPMessage.fromBytes(serializedMsg);
-            } catch (Exception e) {
-                //TODO [TBD] ignore BTPMessage parse failure?
-                logger.println("handleRelayMessage","fail to parse BTPMessage err:", e.getMessage());
+        BigInteger rxSeq = link.getRxSeq();
+        long rxHeight = link.getRxHeight();
+
+        for (ReceiptProof rp : rm.getReceiptProofs()) {
+            if (rp.getHeight().longValue() < rxHeight) {
+                Context.revert(INVALID_RX_SRC_HEIGHT,
+                        "invalid rxSrcHeight: expected >= " + rxHeight + ", got " + rp.getHeight());
             }
-            if (msg != null) {
-                if (btpAddr.equals(msg.getDst())) {
-                    handleMessage(prev, msg);
-                } else {
-                    try {
-                        Link next = resolveNext(msg.getDst().net());
-                        sendMessage(next.getAddr(), msg);
-                    } catch (BTPException e) {
-                        sendError(prev, msg, e);
+            rxHeight = rp.getHeight().longValue();
+            for (EventDataBTPMessage ev : rp.getEvents()) {
+                rxSeq = rxSeq.add(BigInteger.ONE);
+                if (ev.getSeq().compareTo(rxSeq) != 0) {
+                    Context.revert(INVALID_SEQ_NUMBER,
+                            "invalid seq no: expected " + rxSeq + ", got " + ev.getSeq());
+                }
+                BTPMessage msg = null;
+                try {
+                    msg = BTPMessage.fromBytes(ev.getMsg());
+                } catch (Exception e) {
+                    // TODO: should we ignore BTPMessage parse failure?
+                    logger.println("handleRelayMessage", "failed to parse btp message:", e.getMessage());
+                }
+                if (msg != null) {
+                    if (btpAddr.equals(msg.getDst())) {
+                        handleMessage(prev, msg);
+                    } else {
+                        try {
+                            sendMessage(resolveNext(msg.getDst().net()).getAddr(), msg);
+                        } catch (BTPException e) {
+                            sendError(prev, msg, e);
+                        }
                     }
                 }
             }
         }
 
-        //sack
-        link = getLink(prev);
-        long sackTerm = link.getSackTerm();
-        long sackNext = link.getSackNext();
-        if (sackTerm > 0 && sackNext <= currentHeight) {
-            sendSack(prev, currentHeight, link.getRxSeq());
-            while(sackNext <= currentHeight) {
-                sackNext += sackTerm;
-            }
-            link.setSackNext(sackNext);
-            putLink(link);
-        }
+        link = getLink(prev); // read the updated link state
 
-        //feeGathering
+        Relays relays = link.getRelays();
+        relay = relays.get(Context.getOrigin());
+        relay.setMsgCount(relay.getMsgCount().add(rxSeq.subtract(link.getRxSeq())));
+        relays.put(relay.getAddress(), relay);
+
+        link.setRxSeq(rxSeq);
+        link.setRxHeight(rxHeight);
+
+        putLink(link);
+
+        long currentHeight = Context.getBlockHeight();
+
+        // feeGathering
         BMCProperties properties = getProperties();
         Address feeAggregator = properties.getFeeAggregator();
         long feeGatheringTerm = properties.getFeeGatheringTerm();
@@ -372,7 +369,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
                 feeGatheringNext <= currentHeight) {
             String[] svcs = ArrayUtil.toStringArray(services.keySet());
             sendFeeGathering(feeAggregator, svcs);
-            while(feeGatheringNext <= currentHeight) {
+            while (feeGatheringNext <= currentHeight) {
                 feeGatheringNext += feeGatheringTerm;
             }
             properties.setFeeGatheringNext(feeGatheringNext);
@@ -380,40 +377,6 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         }
 
         distributeRelayerReward();
-    }
-
-    private byte[][] handleRelayMessage(String bmc, String prev, BigInteger seq, String msg) {
-        List<byte[]> msgList = new ArrayList<>();
-        byte[] _msg = null;
-        try {
-            _msg = Base64.getUrlDecoder().decode(msg.getBytes());
-        } catch (Exception e) {
-            Context.revert(INVALID_RELAY_MSG, "Failed to decode relay message");
-        }
-        RelayMessage relayMessage = RelayMessage.fromBytes(_msg);
-        byte[][] ret = new byte[0][];
-        BigInteger nextSeq = seq.add(BigInteger.ONE);// nextSeq= seq + 1
-        for (ReceiptProof receiptProof : relayMessage.getReceiptProofs()) {
-            for (EventDataBTPMessage event : receiptProof.getEvents()) {
-                EventDataBTPMessage messageEvent = event;
-                if (messageEvent.getSeq().compareTo(nextSeq) != 0) {
-                    Context.revert(INVALID_SEQ_NUMBER, "Invalid sequence No:" + messageEvent.getSeq() + ", Expected: " + nextSeq);
-                } else {
-                    msgList.add(messageEvent.getMsg());
-                    //BTPMessage.fromBytes(messageEvent.getMsg());
-                    nextSeq = nextSeq.add(BigInteger.ONE);
-                }
-            }
-        }
-
-        if (msgList.size() > 0) {
-            ret = new byte[msgList.size()][];
-            int i = 0;
-            for (byte[] _obj : msgList) {
-                ret[i] = _obj;
-            }
-        }
-        return ret;
     }
 
     private void handleMessage(BTPAddress prev, BTPMessage msg) {

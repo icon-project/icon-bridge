@@ -18,7 +18,6 @@ package chain
 
 import (
 	"fmt"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -27,7 +26,6 @@ import (
 	"github.com/icon-project/btp/common/db"
 	"github.com/icon-project/btp/common/errors"
 	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/mta"
 	"github.com/icon-project/btp/common/wallet"
 )
 
@@ -47,7 +45,6 @@ type SimpleChain struct {
 	r       module.Receiver
 	w       wallet.Wallet
 	src     module.BtpAddress
-	acc     *mta.ExtAccumulator
 	dst     module.BtpAddress
 	bs      *module.BMCLinkStatus //getstatus(dst.src)
 	relayCh chan *module.RelayMessage
@@ -263,37 +260,23 @@ func (s *SimpleChain) OnBlockOfDst(height int64) error {
 }
 
 func (s *SimpleChain) OnBlockOfSrc(rps []*module.ReceiptProof) {
-	s.addRelayMessage(rps)
-	s.relayCh <- nil
-}
-
-func (s *SimpleChain) prepareDatabase(offset int64) error {
-	s.l.Debugln("open database", filepath.Join(s.cfg.AbsBaseDir(), s.cfg.Dst.Address.NetworkAddress()))
-	database, err := db.Open(s.cfg.AbsBaseDir(), string(DefaultDBType), s.cfg.Dst.Address.NetworkAddress())
-	if err != nil {
-		return errors.Wrap(err, "fail to open database")
-	}
-	defer func() {
-		if err != nil {
-			database.Close()
+	seq, _rps := s.bs.RxSeq, rps[:0]
+	for _, rp := range rps {
+		evs := rp.Events[:0]
+		for _, ev := range rp.Events {
+			if ev.Sequence > seq {
+				evs = append(evs, ev)
+			}
 		}
-	}()
-	var bk db.Bucket
-	if bk, err = database.GetBucket("Accumulator"); err != nil {
-		return err
-	}
-	k := []byte("Accumulator")
-	if offset < 0 {
-		offset = 0
-	}
-	s.acc = mta.NewExtAccumulator(k, bk, offset)
-	if bk.Has(k) {
-		if err = s.acc.Recover(); err != nil {
-			return errors.Wrapf(err, "fail to acc.Recover cause:%v", err)
+		if len(evs) > 0 {
+			rp.Events = evs
+			_rps = append(_rps, rp)
 		}
-		s.l.Debugf("recover Accumulator offset:%d, height:%d", s.acc.Offset(), s.acc.Height())
 	}
-	return nil
+	if len(_rps) > 0 {
+		s.addRelayMessage(_rps)
+		s.relayCh <- nil
+	}
 }
 
 func (s *SimpleChain) _skippable(rm *module.RelayMessage) bool {
@@ -336,15 +319,16 @@ func (s *SimpleChain) init() error {
 		}()
 	}
 	s.l.Debugf("_init height:%d, dst(%s, seq:%d), receive:%d",
-		s.acc.Height(), s.dst, s.bs.RxSeq, s.receiveHeight())
+		s.bs.RxHeightSrc, s.dst, s.bs.RxSeq, s.receiveHeight())
 	return nil
 }
 
 func (s *SimpleChain) receiveHeight() int64 {
-	//TODO: check this logic
-	max := s.acc.Height()
-	max += 1
-	return max
+	rh := s.cfg.Offset
+	if s.bs.RxHeight > rh {
+		rh = s.bs.RxHeight - 1
+	}
+	return rh
 }
 
 func (s *SimpleChain) monitorHeight() int64 {
@@ -405,11 +389,6 @@ func NewChain(cfg *Config, w wallet.Wallet, l log.Logger) (*SimpleChain, error) 
 		rms: make([]*module.RelayMessage, 0),
 	}
 	s._rm()
-
 	s.s, s.r = newSenderAndReceiver(cfg, w, l)
-
-	if err := s.prepareDatabase(cfg.Offset); err != nil {
-		return nil, err
-	}
 	return s, nil
 }

@@ -126,7 +126,7 @@ func (r *receiver) newBTPMessage(v *BlockNotification) ([]*module.ReceiptProof, 
 
 		if len(rp.Events) > 0 {
 			rp.Index = int(vLog.TxIndex)
-			rp.Height = vLog.BlockHash.Big().Int64()
+			rp.Height = int64(vLog.BlockNumber)
 			rps = append(rps, rp)
 			r.log.Debugf("event found for height & address:", rp.Height, srcContractAddress)
 			r.isFoundOffsetBySeq = true
