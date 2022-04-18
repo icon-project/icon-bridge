@@ -48,9 +48,9 @@ Verify:
 Note: Replace the Addresses from the logs, not the output files
 
 ```
- truffle run verify BMCManagement@0xa135CE1aD1B5240ff4bb3044Bbb96CAbC438CD60 --network $network
+ truffle run verify BMCManagement@0xc2655eCDDd7320665ffda10c4Bbdc02842D7EbA6 --network $network
 
- truffle run verify BMCPeriphery@0x99601b8f614b69f33bA5DE07eEE774f18D5DA051 --network $network
+ truffle run verify BMCPeriphery@0xDa1CE8349ea6aFc2aDBc8895503369A620686ef5 --network $network
 ```
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -73,7 +73,7 @@ Deploy Command:
 Note: change the BMC address in `BMC_PERIPHERY_ADDRESS`
 
 ```
-BSH_TOKEN_FEE=1 BMC_PERIPHERY_ADDRESS=0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7  BSH_SERVICE=TokenBSH truffle migrate -f 2 --to 2 --compile-all --network $network
+BSH_TOKEN_FEE=1 BMC_PERIPHERY_ADDRESS=0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9  BSH_SERVICE=TokenBSH truffle migrate -f 2 --to 2 --compile-all --network $network
 ```
 
 ```
@@ -88,9 +88,9 @@ Verify:
 Note: Replace the Addresses from the logs, not the output files
 
 ```
- truffle run verify BSHProxy@0xd943b89A2694422B35cE1fAebAF40577E79C8BE0 --network $network
+ truffle run verify BSHProxy@0xDA5eE5f3cc7a98a9615F655fEd3B1a97197a2521 --network $network
 
- truffle run verify BSHImpl@0xDe54f169f4a9721c4b7cd185B54D329c102202E6 --network $network
+ truffle run verify BSHImpl@0xEd2B59A9F160408D5a1A384e01ec1B16F7C6892E --network $network
 ```
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -110,7 +110,7 @@ Verify:
 Note: Replace the Addresses from the logs, not the output files
 
 ```
- truffle run verify BEP20TKN@0x77D94B32A15660E6A6bb587cc4c86f49456d3993 --network $network
+ truffle run verify BEP20TKN@0x0df55BeBdF518C3c2937498E4459414a4Ac124DD --network $network
 ```
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -135,7 +135,7 @@ BSH_COIN_URL=https://www.binance.com/en/ \
     BSH_COIN_NAME=BNB \
     BSH_COIN_FEE=100 \
     BSH_FIXED_FEE=50000 \
-    BMC_PERIPHERY_ADDRESS=0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7 \
+    BMC_PERIPHERY_ADDRESS=0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9 \
     BSH_SERVICE=nativecoin \
     truffle migrate --compile-all --network $network
 ```
@@ -145,6 +145,12 @@ BSH_COIN_URL=https://www.binance.com/en/ \
 
     jq -r '.networks[] | .address' build/contracts/BSHPeriphery.json > ../../testnet/solidity/var/bsh.periphery.bsc
 ```
+
+```
+ truffle run verify BSHCore@0x2fBa3e9211e5327D2e90dAEd70Ef7307c2B31C99 --network $network
+
+ truffle run verify BSHPeriphery@0xd7637F4AA7BC3648E7741Ac1e555d43d8BBd8921 --network $network
+ ```
 
 Provisioning scripts:
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

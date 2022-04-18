@@ -1,14 +1,14 @@
 {
   "base_dir": "../data/testnet/btp_icon_bsc",
   "src": {
-    "address": "btp://0x7.icon/cx5bd99e9acc0c3e652cb8dbdf3c4cab4a1a6c6e98",
+    "address": "btp://0x7.icon/cxf3f7533eead8941a5655a90379caf9d121fb2725",
     "endpoint": "https://berlin.net.solidwallet.io/api/v3/icon_dex"
   },
   "dst": {
-    "address": "btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7",
-    "endpoint": ""
+    "address": "btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9",
+    "endpoint": "https://data-seed-prebsc-1-s1.binance.org:8545/"
   },
-  "offset": 4617570,
+  "offset": 5676180,
   "key_store": {
     "version": 3,
     "id": "788c568c-011c-4f9b-a27e-78a076ea568e",
@@ -41,7 +41,7 @@
     "name": ""
   },
   "log_writer": {
-    "filename": "../data/testnet/log/btp.log",
+    "filename": "../data/testnet/log/btp-icon.log",
     "maxsize": 100,
     "maxage": 0,
     "maxbackups": 0,

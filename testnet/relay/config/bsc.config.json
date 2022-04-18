@@ -1,14 +1,14 @@
 {
   "base_dir": "../data/testnet/btp_bsc_icon",
   "src": {
-    "address": "btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7",
-    "endpoint": ""
+    "address": "btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9",
+    "endpoint": "https://data-seed-prebsc-1-s1.binance.org:8545/"
   },
   "dst": {
-    "address": "btp://0x7.icon/cx5bd99e9acc0c3e652cb8dbdf3c4cab4a1a6c6e98",
+    "address": "btp://0x7.icon/cxf3f7533eead8941a5655a90379caf9d121fb2725",
     "endpoint": "https://berlin.net.solidwallet.io/api/v3/icon_dex"
   },
-  "offset":  17784510,
+  "offset":  18558470,
   "key_store": {
     "address": "hx681a290ecf0e460998d6bebe7b3da7589ed6b3db",
     "id": "8f3ea42b-7406-48d3-a769-eacb66a2d7e6",
