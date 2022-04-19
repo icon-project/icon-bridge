@@ -3,6 +3,7 @@ Javascore Deployment:
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 1. Copy the javascore jar files from the build folder after the `make build` to artifacts folder(Skip this step if there are no javascore code changes)
+    Note: If BMC has any changes, build it separately and copy the jar file to `lib` folder under javascore folder. before running `make build`
 2. Update the proper ICON keystore wallet file with funds 
 3. Refer to [javascore_deployment_commands](https://github.com/icon-project/btp/blob/btp_nobmv/testnet/javascore/javascore_deploy_commands.md) file for java deployment commands & configurations
 4. Update the keystore file path&name on `keystore` variable & update the `password` variable with the keystore password on the commands env setup step

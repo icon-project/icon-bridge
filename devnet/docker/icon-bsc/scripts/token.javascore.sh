@@ -83,14 +83,6 @@ bmc_javascore_addLink() {
   ensure_txresult tx/addLink.icon
   echo "Added Link $(cat btp.bsc)"
 
-  echo "goloop_bmc_setLinkRotateTerm blockinterval = 3000"
-  goloop rpc sendtx call --to $(cat bmc.icon) \
-    --method setLinkRotateTerm \
-    --param _link=$(cat btp.bsc) \
-    --param _block_interval=0xBB8 \
-    --param _max_agg=0x03 |
-    jq -r . >tx/setLinkRotateTerm.icon
-  ensure_txresult tx/setLinkRotateTerm.icon
 
   echo "goloop_bmc_setLinkDelayLimit"
   goloop rpc sendtx call --to $(cat bmc.icon) \

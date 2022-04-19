@@ -273,7 +273,7 @@ cat ../solidity/var/bmc.periphery.bsc
 --key_store $keystore --key_password $password \
     --nid $nid --step_limit 13610920010 \
     --method addLink \
-    --param _link=btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7 | jq -r . > var/addLinks.tx.bmc
+    --param _link=btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9 | jq -r . > var/addLinks.tx.bmc
 
 ./goloop rpc --uri $URL  call --to $(cat var/bmc) \
     --method getLinks 
@@ -288,7 +288,7 @@ only to use this command if you want to remove the existing link from BMC
 --key_store $keystore --key_password $password \
     --nid $nid --step_limit 13610920010 \
     --method removeLink \
-    --param _link=btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7 
+    --param _link=btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9 
 ```
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -304,7 +304,7 @@ Change the proper _link & wallet _addr
 --key_store $keystore --key_password $password \
     --nid $nid --step_limit 13610920010 \
     --method addRelay \
-    --param _link=btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7 \
+    --param _link=btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9 \
     --param _addr=hx681a290ecf0e460998d6bebe7b3da7589ed6b3db  | jq -r . > var/addRelay.tx.bmc
 
 ./goloop rpc --uri $URL txresult $(cat var/addRelay.tx.bmc)
@@ -315,11 +315,11 @@ Check status after adding the relay
 ```
 ./goloop rpc --uri $URL  call --to $(cat var/bmc) \
     --method getRelays\
-    --param _link=btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7
+    --param _link=btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9
 
 ./goloop rpc --uri $URL  call --to $(cat var/bmc) \
     --method getStatus \
-    --param _link=btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7
+    --param _link=btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9
 ```
 
 Remove Relay
@@ -392,7 +392,7 @@ Important: use alice keystore from here on out
 ```
 ./goloop rpc --uri $URL  call --to $(cat var/bsh) \
     --method getBalance  \
-    --param user=$(jq -r .address data/alice.json) \
+    --param user=$(jq -r .address alice.json) \
     --param tokenName=ETH 
  
 ```

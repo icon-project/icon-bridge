@@ -67,7 +67,7 @@ module.exports = {
       }
     }
   },
-  plugins: ["truffle-contract-size", 'truffle-plugin-verify'],
+  plugins: [ 'truffle-plugin-verify'],
   api_keys: {
     bscscan: process.env.BSC_SCAN_API_KEY
   }
