@@ -21,6 +21,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -32,7 +33,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/icon-project/btp/cmd/btpsimple/module/bsc/systemcontracts"
 	"github.com/icon-project/btp/common/wallet"
 
 	"github.com/icon-project/btp/common/log"
@@ -51,6 +51,8 @@ var (
 	tendermintLightClientContractAddr = common.HexToAddress("0x0000000000000000000000000000000000001003")
 	BlockRetryInterval                = time.Second * 3
 	BlockRetryLimit                   = 5
+	ConnectionSleepInterval           = time.Second * 40
+	ConnectionSleepRetryLimit         = 4
 )
 
 type Wallet interface {
@@ -59,13 +61,12 @@ type Wallet interface {
 }
 
 type Client struct {
-	log                   log.Logger
-	subscription          *rpc.ClientSubscription
-	ethClient             *ethclient.Client
-	rpcClient             *rpc.Client
-	chainID               *big.Int
-	tendermintLightClient *systemcontracts.Tendermintlightclient
-	stop                  <-chan bool
+	log          log.Logger
+	subscription *rpc.ClientSubscription
+	ethClients   []*ethclient.Client
+	rpcClients   []*rpc.Client
+	chainID      *big.Int
+	stop         <-chan bool
 }
 
 func toBlockNumArg(number *big.Int) string {
@@ -95,7 +96,9 @@ func (c *Client) newTransactOpts(w Wallet) (*bind.TransactOpts, error) {
 	if err != nil {
 		return nil, err
 	}
-	txo.GasPrice, _ = c.ethClient.SuggestGasPrice(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancel()
+	txo.GasPrice, _ = c.ethClient().SuggestGasPrice(ctx)
 	txo.GasLimit = uint64(DefaultGasLimit)
 	return txo, nil
 }
@@ -114,7 +117,7 @@ func (c *Client) SendTransaction(tx *types.Transaction) error {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
 
-	err := c.ethClient.SendTransaction(ctx, tx)
+	err := c.ethClient().SendTransaction(ctx, tx)
 
 	if err != nil {
 		c.log.Errorf("could not send tx: %v", err)
@@ -127,7 +130,7 @@ func (c *Client) SendTransaction(tx *types.Transaction) error {
 func (c *Client) GetTransactionReceipt(hash common.Hash) (*types.Receipt, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
-	tr, err := c.ethClient.TransactionReceipt(ctx, hash)
+	tr, err := c.ethClient().TransactionReceipt(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +140,7 @@ func (c *Client) GetTransactionReceipt(hash common.Hash) (*types.Receipt, error)
 func (c *Client) GetTransaction(hash common.Hash) (*types.Transaction, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
-	tx, pending, err := c.ethClient.TransactionByHash(ctx, hash)
+	tx, pending, err := c.ethClient().TransactionByHash(ctx, hash)
 	if err != nil {
 		return nil, pending, err
 	}
@@ -147,7 +150,7 @@ func (c *Client) GetTransaction(hash common.Hash) (*types.Transaction, bool, err
 func (c *Client) GetBlockByHeight(height *big.Int) (*types.Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
-	block, err := c.ethClient.BlockByNumber(ctx, height)
+	block, err := c.ethClient().BlockByNumber(ctx, height)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +160,7 @@ func (c *Client) GetBlockByHeight(height *big.Int) (*types.Block, error) {
 func (c *Client) GetHeaderByHeight(height *big.Int) (*types.Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
-	block, err := c.ethClient.BlockByNumber(ctx, height)
+	block, err := c.ethClient().BlockByNumber(ctx, height)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +172,7 @@ func (c *Client) GetBlockReceipts(block *types.Block) ([]*types.Receipt, error) 
 	defer cancel()
 	var receipts []*types.Receipt
 	for _, tx := range block.Transactions() {
-		receipt, err := c.ethClient.TransactionReceipt(ctx, tx.Hash())
+		receipt, err := c.ethClient().TransactionReceipt(ctx, tx.Hash())
 		if err != nil {
 			return nil, err
 		}
@@ -179,7 +182,9 @@ func (c *Client) GetBlockReceipts(block *types.Block) ([]*types.Receipt, error) 
 }
 
 func (c *Client) FilterLogs(query ethereum.FilterQuery) ([]types.Log, error) {
-	logs, err := c.ethClient.FilterLogs(context.Background(), query)
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancel()
+	logs, err := c.ethClient().FilterLogs(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +194,7 @@ func (c *Client) FilterLogs(query ethereum.FilterQuery) ([]types.Log, error) {
 func (c *Client) GetChainID() (*big.Int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
-	return c.ethClient.ChainID(ctx)
+	return c.ethClient().ChainID(ctx)
 }
 
 func (c *Client) MonitorBlock(p *BlockRequest, cb func(b *BlockNotification) error) error {
@@ -200,6 +205,7 @@ func (c *Client) Poll(p *BlockRequest, cb func(b *BlockNotification) error) erro
 	go func() {
 		current := p.Height
 		var retry = BlockRetryLimit
+		var sleepRetry = ConnectionSleepRetryLimit
 		for {
 			select {
 			case <-c.stop:
@@ -209,9 +215,23 @@ func (c *Client) Poll(p *BlockRequest, cb func(b *BlockNotification) error) erro
 				if retry == 0 {
 					c.log.Error("Polling failed, retries exceeded")
 					//l.sysErr <- ErrFatalPolling
-					return
+					if sleepRetry == 0 {
+						c.log.Errorf("Cannot connect even after sleeping for %d retries each for %d Seconds", ConnectionSleepRetryLimit, ConnectionSleepInterval.Seconds())
+						return
+						//todo: switch different providers
+						//todo: stop relay panic here
+					}
+					c.log.Errorf("Going to sleep for %d seconds", ConnectionSleepInterval.Seconds())
+					sleepRetry--
+					<-time.After(ConnectionSleepInterval)
+					retry = BlockRetryLimit
+					continue
 				}
-				latestHeader, err := c.ethClient.HeaderByNumber(context.Background(), current) // c.GetHeaderByHeight(current)
+
+				ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				latestHeader, err := c.ethClient().HeaderByNumber(ctxWithTimeout, current) // c.GetHeaderByHeight(current)
+
 				if err != nil {
 					//c.log.Error("Unable to get latest block ", current, err)
 					retry--
@@ -237,6 +257,7 @@ func (c *Client) Poll(p *BlockRequest, cb func(b *BlockNotification) error) erro
 
 				current.Add(current, big.NewInt(1))
 				retry = BlockRetryLimit
+				sleepRetry = ConnectionSleepRetryLimit
 			}
 		}
 	}()
@@ -245,7 +266,7 @@ func (c *Client) Poll(p *BlockRequest, cb func(b *BlockNotification) error) erro
 
 func (c *Client) Monitor(cb func(b *BlockNotification) error) error {
 	subch := make(chan *types.Header)
-	sub, err := c.ethClient.SubscribeNewHead(context.Background(), subch)
+	sub, err := c.ethClient().SubscribeNewHead(context.Background(), subch)
 	if err != nil {
 		return err
 	}
@@ -270,37 +291,51 @@ func (c *Client) Monitor(cb func(b *BlockNotification) error) error {
 }
 
 func (c *Client) CloseMonitor() {
-	c.log.Debugf("CloseMonitor %s", c.rpcClient)
+	c.log.Debugf("CloseMonitor")
 	c.subscription.Unsubscribe()
-	c.ethClient.Close()
-	c.rpcClient.Close()
+
 }
 
 func (c *Client) CloseAllMonitor() {
 	// TODO: do we need to multiple connections?
 	c.CloseMonitor()
+	for _, eth := range c.ethClients {
+		eth.Close()
+	}
+	for _, rpc := range c.rpcClients {
+		rpc.Close()
+	}
+
 }
 
-func NewClient(uri string, log log.Logger) *Client {
+func NewClient(urls []string, log log.Logger) *Client {
 	//TODO options {MaxRetrySendTx, MaxRetryGetResult, MaxIdleConnsPerHost, Debug, Dump} }
-	rpcClient, err := rpc.Dial(uri)
-	if err != nil {
-		log.Fatal("Error creating client", err)
-	}
 	c := &Client{
-		rpcClient: rpcClient,
-		ethClient: ethclient.NewClient(rpcClient),
-		log:       log,
+		log: log,
 	}
+	if len(urls) == 0 {
+		log.Errorf("invalid client urls: %v", urls)
+	}
+	for _, url := range urls {
+		rpcCl, err := rpc.Dial(url)
+		if err != nil {
+			log.Errorf("failed to create BSC rpc client: %v", err)
+		}
+		ethCl := ethclient.NewClient(rpcCl)
+		c.rpcClients = append(c.rpcClients, rpcCl)
+		c.ethClients = append(c.ethClients, ethCl)
+	}
+
 	c.chainID, _ = c.GetChainID()
 	log.Tracef("Client Connected Chain ID: ", c.chainID)
-	c.tendermintLightClient, err = systemcontracts.NewTendermintlightclient(tendermintLightClientContractAddr, c.ethClient)
-	if err != nil {
-		c.log.Error("Error creating tendermintLightclient system contract", err)
-	}
 	opts := BinanceOptions{}
 	opts.SetBool(IconOptionsDebug, true)
 	return c
+}
+
+func (c *Client) ethClient() *ethclient.Client {
+	id := rand.Intn(len(c.ethClients))
+	return c.ethClients[id]
 }
 
 const (

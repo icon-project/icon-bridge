@@ -23,7 +23,7 @@ func newSenderAndReceiver(cfg *Config, w wallet.Wallet, l log.Logger) (module.Se
 
 	switch cfg.Dst.Address.BlockChain() {
 	case "icon":
-		sender = icon.NewSender(cfg.Src.Address, cfg.Dst.Address, w, cfg.Dst.Endpoint, cfg.Dst.Options, l)
+		sender = icon.NewSender(cfg.Src.Address, cfg.Dst.Address, w, cfg.Dst.Endpoint[0], cfg.Dst.Options, l)
 	case "bsc":
 		sender = bsc.NewSender(cfg.Src.Address, cfg.Dst.Address, w, cfg.Dst.Endpoint, nil, l)
 	default:
@@ -33,7 +33,7 @@ func newSenderAndReceiver(cfg *Config, w wallet.Wallet, l log.Logger) (module.Se
 
 	switch cfg.Src.Address.BlockChain() {
 	case "icon":
-		receiver = icon.NewReceiver(cfg.Src.Address, cfg.Dst.Address, cfg.Src.Endpoint, nil, l)
+		receiver = icon.NewReceiver(cfg.Src.Address, cfg.Dst.Address, cfg.Src.Endpoint[0], nil, l)
 	case "bsc":
 		receiver = bsc.NewReceiver(cfg.Src.Address, cfg.Dst.Address, cfg.Src.Endpoint, cfg.Dst.Options, l)
 	default:

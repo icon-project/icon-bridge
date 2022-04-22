@@ -17,7 +17,7 @@ func TestReceiver_GetReceiptProofs(t *testing.T) {
 		fmt.Println(err)
 	}
 
-	r := NewReceiver(src, dst, "http://localhost:8545", nil, log.New())
+	r := NewReceiver(src, dst, []string{"http://localhost:8545"}, nil, log.New())
 
 	/* blockNotification := &BlockNotification{Height: big.NewInt(191)}
 	receiptProofs, err := r.(*receiver).newReceiptProofs(blockNotification)

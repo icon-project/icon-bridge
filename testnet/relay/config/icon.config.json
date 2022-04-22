@@ -6,7 +6,11 @@
   },
   "dst": {
     "address": "btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9",
-    "endpoint": "https://data-seed-prebsc-1-s1.binance.org:8545/"
+    "endpoint": [
+      "https://data-seed-prebsc-1-s1.binance.org:8545",
+      "https://data-seed-prebsc-1-s2.binance.org:8545",
+      "https://data-seed-prebsc-1-s3.binance.org:8545"
+    ]
   },
   "offset": 5676180,
   "key_store": {

@@ -22,8 +22,8 @@ import (
 )
 
 type BaseConfig struct {
-	Address  module.BtpAddress `json:"address"`
-	Endpoint string `json:"endpoint"`
+	Address  module.BtpAddress      `json:"address"`
+	Endpoint []string               `json:"endpoint"`
 	Options  map[string]interface{} `json:"options,omitempty"`
 }
 

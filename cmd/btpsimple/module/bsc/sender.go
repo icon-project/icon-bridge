@@ -213,7 +213,7 @@ func (s *sender) FinalizeLatency() int {
 	return 1
 }
 
-func NewSender(src, dst module.BtpAddress, w Wallet, endpoint string, opt map[string]interface{}, l log.Logger) module.Sender {
+func NewSender(src, dst module.BtpAddress, w Wallet, endpoints []string, opt map[string]interface{}, l log.Logger) module.Sender {
 	s := &sender{
 		src: src,
 		dst: dst,
@@ -227,9 +227,9 @@ func NewSender(src, dst module.BtpAddress, w Wallet, endpoint string, opt map[st
 	if err = json.Unmarshal(b, &s.opt); err != nil {
 		l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
 	}
-	s.c = NewClient(endpoint, l)
+	s.c = NewClient(endpoints, l)
 
-	s.bmc, _ = binding.NewBMC(HexToAddress(s.dst.ContractAddress()), s.c.ethClient)
+	s.bmc, _ = binding.NewBMC(HexToAddress(s.dst.ContractAddress()), s.c.ethClient())
 
 	return s
 }

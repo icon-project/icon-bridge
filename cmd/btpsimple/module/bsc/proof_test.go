@@ -30,7 +30,7 @@ type LogProof struct {
 }
 
 func GenerateReceiptProof_(height int64) ([]*module.ReceiptProof, error) {
-	client := NewClient("http://localhost:8545", log.New())
+	client := NewClient([]string{"http://localhost:8545"}, log.New())
 
 	rps := make([]*module.ReceiptProof, 0)
 
@@ -110,7 +110,7 @@ func GenerateReceiptProof_(height int64) ([]*module.ReceiptProof, error) {
 }
 
 func GenerateReceiptProof1(height int64) error {
-	client := NewClient("http://localhost:8545", log.New())
+	client := NewClient([]string{"http://localhost:8545"}, log.New())
 
 	trieDB := trie.NewDatabase(memorydb.New())
 	trieObj, _ := trie.New(common.Hash{}, trieDB) // empty trie

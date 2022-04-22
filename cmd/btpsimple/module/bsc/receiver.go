@@ -165,7 +165,7 @@ func (r *receiver) StopReceiveLoop() {
 	r.c.CloseAllMonitor()
 }
 
-func NewReceiver(src, dst module.BtpAddress, endpoint string, opt map[string]interface{}, l log.Logger) module.Receiver {
+func NewReceiver(src, dst module.BtpAddress, endpoints []string, opt map[string]interface{}, l log.Logger) module.Receiver {
 	r := &receiver{
 		src: src,
 		dst: dst,
@@ -178,6 +178,6 @@ func NewReceiver(src, dst module.BtpAddress, endpoint string, opt map[string]int
 	if err = json.Unmarshal(b, &r.opt); err != nil {
 		l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
 	}
-	r.c = NewClient(endpoint, l)
+	r.c = NewClient(endpoints, l)
 	return r
 }
