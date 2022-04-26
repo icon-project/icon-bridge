@@ -213,35 +213,36 @@ func (s *SimpleChain) updateRelayMessage(seq int64) (err error) {
 
 	rrm := 0
 	for i, rm := range s.rms {
-		if len(rm.ReceiptProofs) > 0 {
-			rrp := 0
-		rpLoop:
-			for j, rp := range rm.ReceiptProofs {
-				revt := seq - rp.Events[0].Sequence + 1
-				if revt < 1 {
-					break rpLoop
-				}
-				if revt >= int64(len(rp.Events)) {
-					rrp = j + 1
-				} else {
-					s.l.Debugf("updateRelayMessage rm:%d rp:%d removeEventProofs %d ~ %d",
-						rm.Seq,
-						rp.Index,
-						rp.Events[0].Sequence,
-						rp.Events[revt-1].Sequence)
-					rp.Events = rp.Events[revt:]
-				}
-			}
-			if rrp > 0 {
-				s.l.Debugf("updateRelayMessage rm:%d removeReceiptProofs %d ~ %d",
-					rm.Seq,
-					rm.ReceiptProofs[0].Index,
-					rm.ReceiptProofs[rrp-1].Index)
-				rm.ReceiptProofs = rm.ReceiptProofs[rrp:]
-			}
+		if len(rm.ReceiptProofs) == 0 {
+			continue
 		}
 
-		if len(rm.ReceiptProofs) <= 0 {
+		rrp := 0
+		for j, rp := range rm.ReceiptProofs {
+			revt := seq - rp.Events[0].Sequence + 1
+			if revt < 1 {
+				break
+			}
+			if revt >= int64(len(rp.Events)) {
+				rrp = j + 1
+			} else {
+				s.l.Debugf("updateRelayMessage rm:%d rp:%d removeEventProofs %d ~ %d",
+					rm.Seq,
+					rp.Index,
+					rp.Events[0].Sequence,
+					rp.Events[revt-1].Sequence)
+				rp.Events = rp.Events[revt:]
+			}
+		}
+		if rrp > 0 {
+			s.l.Debugf("updateRelayMessage rm:%d removeReceiptProofs %d ~ %d",
+				rm.Seq,
+				rm.ReceiptProofs[0].Index,
+				rm.ReceiptProofs[rrp-1].Index)
+			rm.ReceiptProofs = rm.ReceiptProofs[rrp:]
+		}
+
+		if len(rm.ReceiptProofs) == 0 {
 			rrm = i + 1
 		}
 	}
@@ -361,6 +362,7 @@ func (s *SimpleChain) Serve() error {
 	if err := s.init(); err != nil {
 		return err
 	}
+
 	errCh := make(chan error)
 	go func() {
 		err := s.s.MonitorLoop(
@@ -389,14 +391,12 @@ func (s *SimpleChain) Serve() error {
 		default:
 		}
 	}()
-	for {
-		select {
-		case err := <-errCh:
-			if err != nil {
-				return err
-			}
+	for err := range errCh {
+		if err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
 func NewChain(cfg *Config, w wallet.Wallet, l log.Logger) (*SimpleChain, error) {
@@ -404,9 +404,8 @@ func NewChain(cfg *Config, w wallet.Wallet, l log.Logger) (*SimpleChain, error) 
 		src: cfg.Src.Address,
 		dst: cfg.Dst.Address,
 		w:   w,
-		l:   l.WithFields(log.Fields{log.FieldKeyChain:
-		//fmt.Sprintf("%s->%s", cfg.Src.Address.NetworkAddress(), cfg.Dst.Address.NetworkAddress())}),
-		fmt.Sprintf("%s", cfg.Dst.Address.NetworkID())}),
+		l: l.WithFields(log.Fields{
+			log.FieldKeyChain: fmt.Sprintf("%s", cfg.Dst.Address.NetworkID())}),
 		cfg: cfg,
 		rms: make([]*module.RelayMessage, 0),
 	}
