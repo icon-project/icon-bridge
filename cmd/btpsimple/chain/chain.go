@@ -199,7 +199,7 @@ func (s *SimpleChain) addRelayMessage(rps []*module.ReceiptProof) {
 		rm = s._rm()
 	}
 	if len(rps) > 0 {
-		rm.ReceiptProofs = rps
+		rm.ReceiptProofs = append(rm.ReceiptProofs, rps...)
 		s.l.Debugf("addRelayMessage rms:%d rps:%d HeightOfDst:%d", len(s.rms), len(rps), rm.HeightOfDst)
 		rm = s._rm()
 	}
