@@ -9,10 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/light"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/icon-project/btp/common/errors"
 )
 
 var (
@@ -61,30 +58,4 @@ func receiptProof(receiptTrie *trie.Trie, key []byte) ([][]byte, error) {
 		proofs = append(proofs, node)
 	}
 	return proofs, nil
-}
-
-func receiptsTrie(receipts []*types.Receipt) (*trie.Trie, error) {
-	mdb := mdbPool.Get().(*memorydb.Database)
-	defer mdbPool.Put(mdb)
-
-	tr, err := trie.New(common.Hash{}, trie.NewDatabase(mdb))
-	if err != nil {
-		return nil, errors.Wrapf(err, "trie.New: %v", err)
-	}
-	for i, r := range receipts {
-		path, err := rlp.EncodeToBytes(uint64(i))
-		if err != nil {
-			return nil, err
-		}
-		rcpt, err := rlp.EncodeToBytes(r)
-		if err != nil {
-			return nil, err
-		}
-		tr.Update(path, rcpt)
-	}
-	_, err = tr.Commit(nil)
-	if err != nil {
-		return nil, err
-	}
-	return tr, nil
 }
