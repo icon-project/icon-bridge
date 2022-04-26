@@ -45,3 +45,6 @@ bob_transfer_eth:
 
 bob_transfer_bnb:
 	docker-compose exec btp-icon sh /btpsimple/bin/transfer_bnb_bsc.sh
+
+bob_transfer_icx:
+	docker-compose exec btp-icon sh /btpsimple/bin/transfer_icx_bsc.sh

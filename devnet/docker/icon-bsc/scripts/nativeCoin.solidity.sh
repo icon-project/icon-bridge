@@ -47,6 +47,15 @@ bsc_init_native_btp_transfer() {
     --method transferNativeCoin --to $BTP_TO --amount $1 --from $(get_bob_address)
 }
 
+bsc_init_wrapped_native_btp_transfer() {
+  ICON_NET=$(cat $CONFIG_DIR/net.btp.icon)
+  ALICE_ADDRESS=$(get_alice_address)
+  BTP_TO="btp://$ICON_NET/$ALICE_ADDRESS"
+  cd $CONTRACTS_DIR/solidity/bsh
+  truffle exec --network bscDocker "$SCRIPTS_DIR"/bsh.nativeCoin.js \
+    --method transferWrappedNativeCoin --to $BTP_TO --coinName $1 --amount $2 --from $(get_bob_address) 
+}
+
 get_bob_ICX_balance() {
   cd $CONTRACTS_DIR/solidity/bsh
   BOB_BALANCE=$(truffle exec --network bscDocker "$SCRIPTS_DIR"/bsh.nativeCoin.js \
