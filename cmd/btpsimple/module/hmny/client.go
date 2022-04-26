@@ -14,7 +14,6 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/trie"
 	"github.com/harmony-one/harmony/core/types"
 	"github.com/icon-project/btp/common/errors"
 	"github.com/icon-project/btp/common/log"
@@ -22,9 +21,9 @@ import (
 )
 
 const (
-	BlockRetryInterval               = time.Second * 2
-	DefaultReadTimeout               = 15 * time.Second
-	BlockNotificationSyncConcurrency = 100 // number of concurrent requests to synchronize older blocks from source chain
+	BlockRetryInterval         = time.Second * 2
+	DefaultReadTimeout         = 15 * time.Second
+	MonitorBlockMaxConcurrency = 1000 // number of concurrent requests to synchronize older blocks from source chain
 )
 
 type Client struct {
@@ -120,11 +119,33 @@ func (cl *Client) GetEpochLastBlock(epoch *big.Int) (*big.Int, error) {
 	return lbn, nil
 }
 
-func (cl *Client) GetHmyBlockByHeight(height *big.Int) (*Block, error) {
+func (cl *Client) GetHmyBlockByHeight(height *big.Int) (*BlockWithTxHash, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultReadTimeout)
 	defer cancel()
-	hb := new(Block)
+	hb := new(BlockWithTxHash)
 	err := cl.rpc().CallContext(ctx, hb, "hmyv2_getBlockByNumber", height, map[string]interface{}{})
+	if err != nil {
+		return nil, err
+	}
+	return hb, nil
+}
+
+func (cl *Client) GetHmyBlockByHash(hash common.Hash) (*BlockWithTxHash, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultReadTimeout)
+	defer cancel()
+	hb := new(BlockWithTxHash)
+	err := cl.rpc().CallContext(ctx, hb, "hmy_getBlockByHash", hash, false)
+	if err != nil {
+		return nil, err
+	}
+	return hb, nil
+}
+
+func (cl *Client) GetHmyV2BlockByHash(hash common.Hash) (*BlockV2WithTxHash, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultReadTimeout)
+	defer cancel()
+	hb := new(BlockV2WithTxHash)
+	err := cl.rpc().CallContext(ctx, hb, "hmyv2_getBlockByHash", hash, map[string]interface{}{"inclStaking": true})
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +229,15 @@ func (cl *Client) GetHmyHeaderByHeight(height *big.Int, consensusThreshold float
 	return h.(*Header), nil
 }
 
-func (cl *Client) GetBlockReceipts(hash common.Hash) ([]*types.Receipt, error) {
-	return cl.getEthBlockReceipts(hash)
+func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
+	receipts, err := cl.getHmyBlockReceipts(hash)
+	if err != nil {
+		return cl.getHmyTxnReceiptsByBlockHash(hash)
+	}
+	return receipts, nil
+}
+
+func (cl *Client) getHmyBlockReceipts(hash common.Hash) (types.Receipts, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultReadTimeout)
 	defer cancel()
 	receipts := make([]*types.Receipt, 0)
@@ -220,59 +248,60 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) ([]*types.Receipt, error) {
 	return receipts, nil
 }
 
-func (cl *Client) getEthBlockByHash(hash common.Hash) (*ethtypes.Block, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultReadTimeout)
-	defer cancel()
-	block, err := cl.eth().BlockByHash(ctx, hash)
+func (cl *Client) getHmyTxnReceiptsByBlockHash(hash common.Hash) (types.Receipts, error) {
+	b, err := cl.GetHmyBlockByHash(hash)
 	if err != nil {
 		return nil, err
 	}
-	return block, nil
-}
-
-func (cl *Client) getEthBlockReceipts(hash common.Hash) ([]*types.Receipt, error) {
-	b, err := cl.getEthBlockByHash(hash)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getEthBlockByHash: %v", err)
-	}
-	txns := b.Transactions()
-	if b.GasUsed() == 0 || len(txns) == 0 {
+	txhs := append(b.Transactions, b.StakingTxs...)
+	if b.GasUsed == 0 || len(txhs) == 0 {
 		return nil, nil
 	}
 	// fetch all txn receipts concurrently
 	type rcq struct {
-		txh common.Hash
-		v   *types.Receipt
-		err error
+		txh   common.Hash
+		v     *types.Receipt
+		err   error
+		retry int
 	}
-	rch := make(chan *rcq, len(txns))
-	for _, tx := range txns {
-		rch <- &rcq{tx.Hash(), nil, nil}
+	qch := make(chan *rcq, len(txhs))
+	for _, txh := range txhs {
+		qch <- &rcq{txh, nil, nil, 3}
 	}
-	receipts := make([]*types.Receipt, 0, len(txns))
-	for r := range rch {
+	rmap := make(map[common.Hash]*types.Receipt)
+	for q := range qch {
 		switch {
-		case r.err != nil:
-			// TODO handle too many requests error
-			return nil, r.err
-		case r.v != nil:
-			receipts = append(receipts, r.v)
-			if len(receipts) == cap(receipts) {
-				close(rch)
+		case q.err != nil:
+			if q.retry == 0 {
+				return nil, q.err
+			}
+			q.retry--
+			q.err = nil
+			qch <- q
+		case q.v != nil:
+			rmap[q.txh] = q.v
+			if len(rmap) == cap(qch) {
+				close(qch)
 			}
 		default:
-			go func(r *rcq) {
-				defer func() { rch <- r }()
+			go func(q *rcq) {
+				defer func() { qch <- q }()
 				ctx, cancel := context.WithTimeout(context.Background(), DefaultReadTimeout)
 				defer cancel()
-				v := &types.Receipt{}
-				err := cl.rpc().CallContext(ctx, v, "hmy_getTransactionReceipt", r.txh)
-				if err != nil {
-					r.err = err
-					return
+				if q.v == nil {
+					q.v = &types.Receipt{}
 				}
-				r.v = v
-			}(r)
+				q.err = cl.rpc().CallContext(ctx, q.v, "hmy_getTransactionReceipt", q.txh)
+				if q.err != nil {
+					q.err = errors.Wrapf(q.err, "hmy_getTransactionReceipt: %v", q.err)
+				}
+			}(q)
+		}
+	}
+	receipts := make(types.Receipts, 0, len(txhs))
+	for _, txh := range txhs {
+		if r, ok := rmap[txh]; ok {
+			receipts = append(receipts, r)
 		}
 	}
 	return receipts, nil
@@ -283,25 +312,48 @@ func (cl *Client) CloseAllMonitor() error {
 	return nil
 }
 
-func (cl *Client) NewValidator(height uint64) (*Validator, error) {
-	return newValidator(cl, new(big.Int).SetUint64(height))
+type MonitorBlockOptions struct {
+	Concurrency     int64
+	StartHeight     int64
+	FetchReceipts   bool
+	VerifierOptions *VerifierOptions
 }
 
 // MonitorBlock subscribes to the new head notifications
-func (cl *Client) MonitorBlock(startHeight uint64, fetchReceipts bool, cb func(v *BlockNotification) error) error {
-	if startHeight == 0 {
-		startHeight = 1
+func (cl *Client) MonitorBlock(opts *MonitorBlockOptions, cb func(v *BlockNotification) error) (err error) {
+	if opts == nil {
+		return errors.New("monitor block: invalid options: <nil>")
+	}
+	if opts.Concurrency < 1 || opts.Concurrency > MonitorBlockMaxConcurrency {
+		concurrency := opts.Concurrency
+		if concurrency < 1 {
+			opts.Concurrency = 1
+		} else {
+			opts.Concurrency = MonitorBlockMaxConcurrency
+		}
+		cl.log.Warnf("monitor block: opts.Concurrency (%d): value out of range [%d, %d]: setting to default %d",
+			concurrency, 1, MonitorBlockMaxConcurrency, opts.Concurrency)
 	}
 
-	vl, err := cl.NewValidator(startHeight)
+	if opts.VerifierOptions != nil &&
+		opts.StartHeight < opts.VerifierOptions.BlockHeight {
+		return fmt.Errorf(
+			"monitor block: start height (%d) < verifier height (%d)",
+			opts.StartHeight, opts.VerifierOptions.BlockHeight,
+		)
+	}
+	vr, err := NewVerifier(cl, opts.VerifierOptions)
 	if err != nil {
-		return errors.Wrapf(err, "monitor block: NewValidator: %v", err)
+		return errors.Wrapf(err, "monitor block: NewVerifier: %v", err)
+	}
+	if err = vr.CatchUp(cl, opts.StartHeight); err != nil {
+		return errors.Wrapf(err, "monitor block: vr.CatchUp: %v", err)
 	}
 
 	// block notification channel (buffered: to avoid deadlock)
-	bnch := make(chan *BlockNotification, BlockNotificationSyncConcurrency) // increase this for faster sync
+	bnch := make(chan *BlockNotification, opts.Concurrency) // increase concurrency this for faster sync
 
-	latest, next := int64(0), int64(startHeight)
+	latest, next := int64(0), int64(opts.StartHeight)
 
 	poll := time.NewTicker(time.Second)
 	defer poll.Stop()
@@ -318,9 +370,8 @@ func (cl *Client) MonitorBlock(startHeight uint64, fetchReceipts bool, cb func(v
 		case <-poll.C:
 			n, err := cl.GetBlockNumber()
 			if err != nil {
+				cl.log.Errorf("monitor block: poll block number: %v", err)
 				continue
-				// return errors.Wrapf(err,
-				// 	"monitor block: poll block number: %v", err)
 			}
 			if int64(n) <= latest {
 				continue
@@ -336,7 +387,8 @@ func (cl *Client) MonitorBlock(startHeight uint64, fetchReceipts bool, cb func(v
 			// process all notifications
 			for ; bn != nil; next++ {
 				if lbn != nil {
-					ok, err := vl.verify(lbn.Header, bn.Header)
+					ok, err := vr.Verify(lbn.Header,
+						bn.Header.LastCommitBitmap, bn.Header.LastCommitSignature)
 					if err != nil {
 						cl.log.Errorf("monitor block: signature validation failed: h=%d, %v", lbn.Header.Number, err)
 						break
@@ -348,8 +400,8 @@ func (cl *Client) MonitorBlock(startHeight uint64, fetchReceipts bool, cb func(v
 					if err := cb(lbn); err != nil {
 						return errors.Wrapf(err, "monitor block: callback: %v", err)
 					}
-					if err := vl.update(lbn.Header); err != nil {
-						return errors.Wrapf(err, "monitor block: update validator: %v", err)
+					if err := vr.Update(lbn.Header); err != nil {
+						return errors.Wrapf(err, "monitor block: update verifier: %v", err)
 					}
 				}
 				if lbn, bn = bn, nil; len(bnch) > 0 {
@@ -382,11 +434,6 @@ func (cl *Client) MonitorBlock(startHeight uint64, fetchReceipts bool, cb func(v
 			bns := make([]*BlockNotification, 0, len(qch))
 			for q := range qch {
 				switch {
-				case q.v != nil:
-					bns = append(bns, q.v)
-					if len(bns) == cap(bns) {
-						close(qch)
-					}
 				case q.err != nil:
 					if q.retry > 0 {
 						q.retry--
@@ -398,40 +445,40 @@ func (cl *Client) MonitorBlock(startHeight uint64, fetchReceipts bool, cb func(v
 						if len(bns) == cap(bns) {
 							close(qch)
 						}
-						// return errors.Wrapf(r.err,
-						// 	"monitor block: h=%d, %v", r.h, r.err)
+					}
+				case q.v != nil:
+					bns = append(bns, q.v)
+					if len(bns) == cap(bns) {
+						close(qch)
 					}
 				default:
-					go func(q *bnq) (err error) {
+					go func(q *bnq) {
 						defer func() { qch <- q }()
-						v := &BlockNotification{Height: big.NewInt(q.h)}
-						v.Header, err = cl.GetHmyHeaderByHeight(v.Height, 0)
-						if err != nil {
-							q.err = errors.Wrapf(err, "GetHmyHeaderByHeight: %v", err)
+						if q.v == nil {
+							q.v = &BlockNotification{}
+						}
+						q.v.Height = big.NewInt(q.h)
+						q.v.Header, q.err = cl.GetHmyHeaderByHeight(q.v.Height, 0)
+						if q.err != nil {
+							q.err = errors.Wrapf(q.err, "GetHmyHeaderByHeight: %v", q.err)
 							return
 						}
-						v.Hash = v.Header.Hash()
-						q.v = v
-						if fetchReceipts && v.Header.GasUsed > 0 {
-							v.Receipts, err = cl.GetBlockReceipts(v.Hash)
-							if err == nil {
-								var tr *trie.Trie
-								tr, err = receiptsTrie(v.Receipts)
-								if err == nil {
-									if !bytes.Equal(tr.Hash().Bytes(), v.Header.ReceiptsRoot.Bytes()) {
-										err = fmt.Errorf(
-											"invalid receipts: root=%v, trie=%v",
-											v.Header.ReceiptsRoot, tr.Hash())
-									}
+						q.v.Hash = q.v.Header.Hash()
+						if opts.FetchReceipts && q.v.Header.GasUsed > 0 {
+							q.v.Receipts, q.err = cl.GetBlockReceipts(q.v.Hash)
+							if q.err == nil {
+								receiptsRoot := types.DeriveSha(q.v.Receipts)
+								if !bytes.Equal(receiptsRoot.Bytes(), q.v.Header.ReceiptsRoot.Bytes()) {
+									q.err = fmt.Errorf(
+										"invalid receipts: remote=%v, local=%v",
+										q.v.Header.ReceiptsRoot, receiptsRoot)
 								}
 							}
-							if err != nil {
-								q.err = errors.Wrapf(err, "GetBlockReceipts: %v", err)
+							if q.err != nil {
+								q.err = errors.Wrapf(q.err, "GetBlockReceipts: %v", q.err)
 								return
 							}
 						}
-						q.v = v
-						return
 					}(q)
 				}
 			}

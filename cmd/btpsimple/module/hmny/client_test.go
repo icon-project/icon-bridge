@@ -1,11 +1,14 @@
 package hmny
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"os"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/harmony-one/harmony/core/types"
@@ -20,28 +23,6 @@ func newTestClient() *Client {
 	return NewClient([]string{url, url, url, url, url, url}, "", log.New())
 }
 
-func TestGetBlockReceipts(t *testing.T) {
-	cl := newTestClient()
-
-	// TODO generate transactions and note their block numbers
-	s, e := 5, 21
-
-	// validate the receipt roots
-	for i := int64(s); i <= int64(e); i++ {
-		b, err := cl.GetHmyBlockByHeight(big.NewInt(i))
-		require.NoError(t, err, "failed to get block by height")
-
-		receipts, err := cl.GetBlockReceipts(b.Hash)
-		require.NoError(t, err, "failed to get block receipts")
-
-		tr, err := receiptsTrie(receipts)
-		require.NoError(t, err, "failed to create trie from receipts")
-
-		require.Equal(t, b.ReceiptsRoot, tr.Hash())
-	}
-
-}
-
 func TestBlockAndHeaderHashMatch(t *testing.T) {
 	n := int64(1) // block number
 	cl := newTestClient()
@@ -54,30 +35,40 @@ func TestBlockAndHeaderHashMatch(t *testing.T) {
 	require.Equal(t, h.Hash(), b.Hash)
 }
 
-func TestValidator(t *testing.T) {
-	n := int64(50)
+func TestNewVerifier(t *testing.T) {
+	n := int64(1000000)
 	cl := newTestClient()
-	vl, err := cl.NewValidator(uint64(n))
-	require.NoError(t, err, "failed to get validator")
-
-	h, err := cl.GetHmyHeaderByHeight(big.NewInt(n), 0)
-	require.NoError(t, err, "failed to fetch header")
 
 	next, err := cl.GetHmyHeaderByHeight(big.NewInt(n+1), 0)
 	require.NoError(t, err, "failed to fetch next header")
 
-	ok, err := vl.verify(h, next)
-	require.NoError(t, err, "failed to verify commit signature")
-
-	require.True(t, ok)
+	_, err = NewVerifier(cl, &VerifierOptions{
+		BlockHeight:     n,
+		CommitBitmap:    next.LastCommitBitmap,
+		CommitSignature: next.LastCommitSignature,
+	})
+	require.NoError(t, err, "failed to initialize verifier")
 }
 
 func TestMonitorBlock(t *testing.T) {
 	cl := newTestClient()
-	err := cl.MonitorBlock(10, true, func(v *BlockNotification) error {
+
+	n := int64(1000000)
+	next, err := cl.GetHmyHeaderByHeight(big.NewInt(n+1), 0)
+	require.NoError(t, err, "failed to fetch next header")
+
+	err = cl.MonitorBlock(&MonitorBlockOptions{
+		StartHeight:   n + 1000,
+		FetchReceipts: false,
+		VerifierOptions: &VerifierOptions{
+			BlockHeight:     n,
+			CommitBitmap:    next.LastCommitBitmap,
+			CommitSignature: next.LastCommitSignature,
+		},
+	}, func(v *BlockNotification) error {
 		return json.NewEncoder(os.Stdout).Encode(v.Header)
 	})
-	require.NoError(t, err)
+	require.NoError(t, err, "monitor block failed")
 }
 
 func TestBMCMessageDecode(t *testing.T) {
@@ -142,4 +133,74 @@ func TestBMCMessageDecode(t *testing.T) {
 
 		json.NewEncoder(os.Stdout).Encode(bmcMsg)
 	}
+}
+
+func TestGetBlockReceiptsByBlockHash(t *testing.T) {
+	cl := newTestClient()
+
+	// TODO generate transactions and note their block numbers
+	s, e := 5, 21
+
+	// validate the receipt roots
+	for i := int64(s); i <= int64(e); i++ {
+		b, err := cl.GetHmyBlockByHeight(big.NewInt(i))
+		require.NoError(t, err, "failed to get block by height")
+
+		receipts, err := cl.GetBlockReceipts(b.Hash)
+		require.NoError(t, err, "failed to get block receipts")
+
+		require.Equal(t, b.ReceiptsRoot, types.DeriveSha(receipts))
+	}
+
+}
+
+func TestGetBlockReceiptsByHeaderHash(t *testing.T) {
+	cl := newTestClient()
+
+	s, err := cl.GetBlockNumber()
+	require.NoError(t, err, "failed to get block number")
+
+	// validate the receipt roots
+	for i := int64(s - 100); i <= int64(s); i++ {
+		h, err := cl.GetHmyHeaderByHeight(big.NewInt(i), 0)
+		if err != nil {
+			i--
+			t.Logf("failed to get block header: h=%d", i)
+			continue
+		}
+		hash := h.Hash()
+		receipts, err := cl.GetBlockReceipts(hash)
+		if err != nil {
+			i--
+			t.Logf("failed to get block receipts: h=%d, v=%v, err=%v", i, hash, err)
+			continue
+		}
+		require.Equal(t, h.ReceiptsRoot, types.DeriveSha(receipts))
+	}
+}
+
+func TestMonitorBlock2(t *testing.T) {
+	cl := newTestClient()
+
+	startHeight, err := cl.GetBlockNumber()
+	require.NoError(t, err, "failed to get block number")
+
+	// startHeight -= 1000
+	startHeight = 24253439
+
+	emptyReceiptsRoot := common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+
+	err = cl.MonitorBlock(&MonitorBlockOptions{
+		StartHeight:   int64(startHeight),
+		FetchReceipts: true,
+	}, func(v *BlockNotification) error {
+		fmt.Printf("len(receipts):%d, n=%d, h=%v, r=%v\n", len(v.Receipts), v.Height.Int64(), v.Hash, v.Header.ReceiptsRoot)
+		if len(v.Receipts) == 0 &&
+			!bytes.Equal(v.Header.ReceiptsRoot.Bytes(), emptyReceiptsRoot.Bytes()) {
+			panic("receiptsRoot does not match emptyReceiptsRoot for empty v.Receipts")
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
 }
