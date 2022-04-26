@@ -11,13 +11,17 @@ import (
 	"github.com/icon-project/btp/common/log"
 )
 
+type receiverOptions struct {
+	Verifier *VerifierOptions `json:"verifier"`
+}
+
 type receiver struct {
 	c     *Client
 	src   module.BtpAddress
 	dst   module.BtpAddress
 	log   log.Logger
 	rxSeq uint64
-	opts  struct{}
+	opt   receiverOptions
 }
 
 func NewReceiver(src, dst module.BtpAddress, endpoints []string, opt map[string]interface{}, l log.Logger) module.Receiver {
@@ -30,7 +34,7 @@ func NewReceiver(src, dst module.BtpAddress, endpoints []string, opt map[string]
 	if err != nil {
 		l.Panicf("fail to marshal opt:%#v err:%+v", opt, err)
 	}
-	if err = json.Unmarshal(b, &r.opts); err != nil {
+	if err = json.Unmarshal(b, &r.opt); err != nil {
 		l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
 	}
 	r.c = NewClient(endpoints, src.ContractAddress(), l)
@@ -71,22 +75,25 @@ func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*module.ReceiptProo
 
 func (r *receiver) ReceiveLoop(height int64, seq int64, cb module.ReceiveCallback, scb func()) error {
 	r.rxSeq = uint64(seq)
-	var v *BlockNotification
-	if err := r.c.MonitorBlock(uint64(height), true, func(next *BlockNotification) error {
-		r.log.Debugf("receive loop: block notification: height=%d", next.Height)
-		if v != nil {
-			if next.Height.Int64() != v.Height.Int64()+1 {
-				return fmt.Errorf(
-					"receive loop: next.Height (%d) != v.Height (%d)",
-					next.Height.Int64(), v.Height.Int64())
-			}
-			rps, err := r.newReceiptProofs(v)
-			if err != nil {
-				return errors.Wrapf(err, "receipt proofs: %v", err)
-			}
-			cb(rps)
+	lastHeight := height - 1
+	if err := r.c.MonitorBlock(&MonitorBlockOptions{
+		StartHeight:     height,
+		FetchReceipts:   true,
+		VerifierOptions: r.opt.Verifier,
+		Concurrency:     100,
+	}, func(v *BlockNotification) error {
+		r.log.Debugf("receive loop: block notification: height=%d", v.Height)
+		if v.Height.Int64() != lastHeight+1 {
+			return fmt.Errorf(
+				"receive loop: expected v.Height == %d, got %d",
+				lastHeight+1, v.Height.Int64())
 		}
-		v = next
+		rps, err := r.newReceiptProofs(v)
+		if err != nil {
+			return errors.Wrapf(err, "receipt proofs: %v", err)
+		}
+		cb(rps)
+		lastHeight++
 		return nil
 	}); err != nil {
 		return errors.Wrapf(err, "receive loop: terminated: %v", err)

@@ -178,11 +178,12 @@ func (s *sender) isOverLimit(size int) bool {
 }
 
 func (s *sender) MonitorLoop(height int64, cb module.MonitorCallback, scb func()) error {
-	if err := s.c.MonitorBlock(uint64(height),
-		false, func(next *BlockNotification) error {
-			s.log.Debugf("monitor loop: block notification: height=%d", next.Height)
-			return cb(next.Height.Int64())
-		}); err != nil {
+	if err := s.c.MonitorBlock(&MonitorBlockOptions{
+		StartHeight: height,
+	}, func(next *BlockNotification) error {
+		s.log.Debugf("monitor loop: block notification: height=%d", next.Height)
+		return cb(next.Height.Int64())
+	}); err != nil {
 		return errors.Wrapf(err, "monitor loop terminated: %v", err)
 	}
 	return nil
