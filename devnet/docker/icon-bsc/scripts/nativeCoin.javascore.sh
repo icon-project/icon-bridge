@@ -84,6 +84,29 @@ transfer_ICX_from_Alice_to_Bob() {
   ensure_txresult tx/Alice2Bob.transfer
 }
 
+
+transfer_BNB_from_Alice_to_Bob() {
+  BNB_TRANSER_AMOUNT=$1
+  echo "Transfer $(wei2coin $BNB_TRANSER_AMOUNT) BNB from Alice to Bob"
+  cd ${CONFIG_DIR}
+
+  goloop rpc sendtx call \
+    --to $(cat irc2TradeableToken.icon) --method approve \
+    --param spender=$(cat nativebsh.icon) \
+    --param amount=$BNB_TRANSER_AMOUNT \
+    --key_store alice.ks.json --key_secret alice.secret |
+    jq -r . >tx/Alice2Bob.approve.BNB
+
+  goloop rpc sendtx call \
+    --to $(cat nativebsh.icon) --method transfer \
+    --param _coinName="BNB" \
+    --param _to=btp://$BSC_BMC_NET/$(get_bob_address) \
+    --param _value=$BNB_TRANSER_AMOUNT \
+    --key_store alice.ks.json --key_secret alice.secret |
+    jq -r . >tx/Alice2Bob.transfer.BNB
+  ensure_txresult tx/Alice2Bob.transfer.BNB
+}
+
 get_alice_balance() {
   balance=$(goloop rpc balance $(get_alice_address) | jq -r)
   balance=$(hex2int $balance)

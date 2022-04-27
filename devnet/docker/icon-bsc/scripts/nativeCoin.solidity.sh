@@ -86,6 +86,38 @@ get_Bob_ICX_Balance_with_wait() {
   echo "Bob's Balance after BTP Native transfer: $BOB_CURRENT_BAL"
 }
 
+
+
+get_bob_BNB_balance() {
+  cd $CONTRACTS_DIR/solidity/bsh
+  BOB_BNB_BALANCE=$(truffle exec --network bscDocker "$SCRIPTS_DIR"/bsh.nativeCoin.js \
+    --method getBalanceOf --addr $(get_bob_address) --name "BNB")
+}
+
+get_Bob_BNB_Balance_with_wait() {
+  printf "Checking Bob's Balance after BTP transfer \n"
+  get_bob_BNB_balance
+  BOB_INITIAL_BAL=$BOB_BNB_BALANCE
+  COUNTER=60
+  while true; do
+    printf "."
+    if [ $COUNTER -le 0 ]; then
+      printf "\n Error: timed out while getting Bob's Balance: Balance unchanged \n"
+      echo "$BOB_CURRENT_BAL"
+      exit 1
+    fi
+    sleep 3
+    COUNTER=$(expr $COUNTER - 3)
+    get_bob_BNB_balance
+    BOB_CURRENT_BAL=$BOB_BNB_BALANCE
+    if [ "$BOB_CURRENT_BAL" != "$BOB_INITIAL_BAL" ]; then
+      printf "\n BTP Native Transfer Successfull! \n"
+      break
+    fi
+  done
+  echo "Bob's Balance after BTP Native transfer: $BOB_CURRENT_BAL"
+}
+
 generate_native_metadata() {
   option=$1
   case "$option" in

@@ -40,6 +40,9 @@ alice_transfer_eth:
 alice_transfer_icx:
 	docker-compose exec btp-icon sh /btpsimple/bin/transfer_icx.sh
 
+alice_transfer_bnb:
+	docker-compose exec btp-icon sh /btpsimple/bin/transfer_bnb.sh
+
 bob_transfer_eth:
 	docker-compose exec btp-icon sh /btpsimple/bin/transfer_eth_bsc.sh
 
