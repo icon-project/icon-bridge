@@ -138,8 +138,8 @@ function icon_wait_tx() {
             --uri "$btp_icon_uri" \
             txresult "$tx_hash" &>/dev/null && break || sleep 1
     done
-    txr=$(goloop rpc --uri "$btp_icon_uri" txresult "$tx_hash" 2>/dev/null)
-    status=$(jq <<<"$txr" -r .status)
+    local txr=$(goloop rpc --uri "$btp_icon_uri" txresult "$tx_hash" 2>/dev/null)
+    local status=$(jq <<<"$txr" -r .status)
     [[ "$status" == 0x0 ]] && echo $txr
     [[ "$status" == 0x1 ]] && echo $txr && ret=0
     return $ret
@@ -148,13 +148,13 @@ function icon_wait_tx() {
 function icon_callsc() {
     log_stack
 
-    address=$1
+    local address=$1
     require_address "$address" "address: $address" "icon_callsc"
 
-    method=$2
+    local method=$2
     require "$method" "method: $method" "invalid method: '$method'"
 
-    params=()
+    local params=()
     for i in "${@:3}"; do params+=("--param $i"); done
 
     goloop rpc \
@@ -174,20 +174,20 @@ function icon_sendtx_call() {
 
     require "$WALLET" "WALLET='$WALLET'" "invalid WALLET='$WALLET'"
 
-    address="$1"
+    local address="$1"
     require_address "$address" "address: $address" "icon_sendtx_call"
 
-    method="$2"
+    local method="$2"
     require "$method" "method: $method" "invalid method: '$method'"
 
-    value="$3"
+    local value="$3"
     [[ -z "$value" ]] ||
         require_integer "$value" "value: $value" "invalid value: '$value'"
 
-    params=()
+    local params=()
     for i in "${@:4}"; do params+=("--param $i"); done
 
-    tx_hash=$(
+    local tx_hash=$(
         goloop rpc \
             --uri "$btp_icon_uri" \
             sendtx call \
@@ -238,13 +238,13 @@ function icon_sendtx_transfer() {
 
     require "$WALLET" "WALLET='$WALLET'" "invalid WALLET='$WALLET'"
 
-    address="$1"
+    local address="$1"
     require_address "$address" "address: $address" "icon_sendtx_transfer"
 
-    value="$2"
+    local value="$2"
     require "$value" "value: $value" "icon_sendtx_transfer: invalid value: '$value'"
 
-    tx_hash=$(
+    local tx_hash=$(
         goloop rpc \
             --uri "$btp_icon_uri" \
             sendtx transfer \
@@ -260,12 +260,12 @@ function icon_sendtx_transfer() {
 
 function icon_transfer() {
     log_stack
-    type=icon validate_transfer "$@"
-    address=$1
-    balance=$2
+    local type=icon validate_transfer "$@"
+    local address=$1
+    local balance=$2
     if [ $balance == 0 ]; then return 0; fi
-    txr=$(icon_sendtx_transfer "$address" $balance)
-    status=$(jq <<<"$txr" -r .status)
+    local txr=$(icon_sendtx_transfer "$address" $balance)
+    local status=$(jq <<<"$txr" -r .status)
     [[ "$status" == 0x1 ]] || status=""
     require "$status" "" "icon_transfer: failed to transfer balance to $address!"
 }
@@ -398,7 +398,7 @@ function hmny_transfer() {
     local balance=$(bc <<<"scale=18;$2/10^18")
 
     local private_key=$(ethkey_get_private_key "$WALLET" "$PASSWORD")
-    txr=$(
+    local txr=$(
         echo "
             src_address=\$(hmy keys import-private-key \
                 '$private_key' root | tail -n1 | cut -d: -f2 | xargs)
@@ -411,7 +411,7 @@ function hmny_transfer() {
             docker run -i --rm --network=host \
                 $docker_registry/hmny:latest /bin/bash
     )
-    status=$(jq <<<"$txr" -r '[.[]."blockchain-receipt".status][0]')
+    local status=$(jq <<<"$txr" -r '[.[]."blockchain-receipt".status][0]')
     [[ "$status" == 0x1 ]] || status=""
     require "$status" "" "hmny_transfer: failed to transfer balance to $address!"
 }
@@ -464,6 +464,9 @@ function hmny_create_wallet() {
 
     require "$keystore" "keystore: $keystore" "invalid keystore: $keystore"
 
+    local address
+    local keystore_content
+
     {
         read address
         read keystore_content
@@ -506,10 +509,13 @@ function hmny_get_hmny_chain_status() {
     local bn=$(hmny_jsonrpc hmyv2_blockNumber "[]" | jq -r .result)
     ((bn--))
     local lh=$(hmny_jsonrpc hmyv2_getBlockByNumber "[$bn,{}]" | jq -r .result.hash)
-    local ep=$(hmny_jsonrpc hmyv2_getFullHeader "[$(($bn + 1))]" | jq -r '.result.epoch')
+    local fh=$(hmny_jsonrpc hmyv2_getFullHeader "[$(($bn + 1))]")
+    local ep=$(jq <<<"$fh" -r '.result.epoch')
+    local bitmap=$(jq <<<"$fh" -r '.result.lastCommitBitmap')
+    local signature=$(jq <<<"$fh" -r '.result.lastCommitSignature')
     local lb=$(hmny_jsonrpc hmyv2_epochLastBlock "[$(($ep - 1))]" | jq -r '.result')
     local ss=$(hmny_jsonrpc hmyv2_getFullHeader "[$lb]" | jq -r '.result.shardState')
-    echo -e "$bn\n$lh\n$ep\n$ss\n"
+    echo -e "$bn\n$lh\n$ep\n$ss\n$bitmap\n$signature"
 }
 
 function ensure_wallet_minimum_balance() {
@@ -544,7 +550,7 @@ function deploysc() {
 
     # build dir
     mkdir -p $ixh_build_dir
-    [[ "$1" == "reset" ]] && rm -rf $ixh_build_dir/* # clean build when reset is enabled
+    [[ "${1:-}" == "reset" ]] && rm -rf $ixh_build_dir/* # clean build when reset is enabled
 
     # create root wallets
     log "Wallet:"
@@ -558,7 +564,6 @@ function deploysc() {
     btp_hmny_wallet_address="0x$(jq -r .address "$btp_hmny_wallet")"
 
     # prepare javascore build dir
-    local ixh_jsc_dir=$ixh_build_dir/javascore
     cp -r $root_dir/javascore $ixh_jsc_dir
 
     # build javascores
@@ -635,7 +640,6 @@ function deploysc() {
     log "btp: $btp_icon_btp_address"
 
     # hmny
-    ixh_sol_dir=$ixh_build_dir/solidity
     cp -r $root_dir/solidity $ixh_sol_dir
 
     # deploy
@@ -647,6 +651,8 @@ function deploysc() {
         read btp_hmny_block_hash
         read btp_hmny_block_epoch
         read btp_hmny_shard_state
+        read btp_hmny_verifier_commit_bitmap
+        read btp_hmny_verifier_commit_signature
     } <<<"$(hmny_get_hmny_chain_status)"
 
     # bmc
@@ -867,7 +873,9 @@ function generate_relay_configs() {
         "$btp_hmny_uri" \
         "$btp_icon_btp_address" \
         "$btp_icon_uri" \
-        "$btp_icon_link_status_rx_height" >"$btp_h2i_relay_config"
+        "$btp_icon_link_status_rx_height" \
+        "{\"verifier\":{\"blockHeight\":$btp_hmny_block_height,\"commitBitmap\":\"$btp_hmny_verifier_commit_bitmap\",\"commitSignature\":\"$btp_hmny_verifier_commit_signature\"}}" \
+        >"$btp_h2i_relay_config"
 
     # icon to harmony
     generate_relay_config \
@@ -893,6 +901,7 @@ function generate_relay_config() {
     local dst_address="$7"
     local dst_endpoint="$8"
     local offset="$9"
+    local src_options="${10:-null}"
 
     jq <<<{} '
     .base_dir = $base_dir |
@@ -906,6 +915,7 @@ function generate_relay_config() {
     .offset = $offset |
     .src.address = $src_address |
     .src.endpoint = [ $src_endpoint ] |
+    .src.options = $src_options |
     .dst.address = $dst_address |
     .dst.endpoint = [ $dst_endpoint ]' \
         --arg base_dir "run/$prefix" \
@@ -917,7 +927,8 @@ function generate_relay_config() {
         --arg src_endpoint "$src_endpoint" \
         --arg dst_address "$dst_address" \
         --arg dst_endpoint "$dst_endpoint" \
-        --argjson offset "$offset"
+        --argjson offset "$offset" \
+        --argjson src_options "$src_options"
 }
 
 # exposed commands
@@ -926,10 +937,10 @@ function docker_compose() {
     if [ "$docker_host" != "localhost" ]; then
         export DOCKER_HOST="ssh://$docker_user@$docker_host"
     fi
-    env_file=$(mktemp /tmp/ixh.env.XXXXX)
+    local env_file=$(mktemp /tmp/ixh.env.XXXXX)
     echo "docker_registry=$docker_registry" >$env_file
-    # docker-compose -f $ixh_src_dir/docker-compose.yml --env-file $env_file "$@"
-    docker-compose -f $ixh_src_dir/docker-compose.yml --env-file <(cat <<<docker_registry=$docker_registry) "$@"
+    docker-compose -f $ixh_src_dir/docker-compose.yml --env-file $env_file "$@"
+    # docker-compose -f $ixh_src_dir/docker-compose.yml --env-file <(cat <<<docker_registry=$docker_registry) "$@"
     rm $env_file
 }
 
@@ -946,44 +957,119 @@ function start() {
     docker_compose up "$@"
 }
 
+function docker_compose_bmrs() {
+    log_stack
+    if [ "$docker_host" != "localhost" ]; then
+        export DOCKER_HOST="ssh://$docker_user@$docker_host"
+    fi
+    local env_file=$(mktemp /tmp/ixh.env.XXXXX)
+    echo "docker_registry=$docker_registry" >$env_file
+    echo "h2i_config_json='$(cat $ixh_tmp_dir/h2i.config.json)'" >>$env_file
+    echo "i2h_config_json='$(cat $ixh_tmp_dir/i2h.config.json)'" >>$env_file
+    docker-compose -f $ixh_src_dir/bmrs.docker-compose.yml --env-file $env_file "$@"
+    # cat $env_file
+    rm $env_file
+}
+
+function stop_bmrs() {
+    log_stack
+    docker_compose_bmrs down
+}
+
+function start_bmrs() {
+    log_stack
+    if [ "$docker_host" != "localhost" ]; then
+        docker_compose_bmrs pull
+    fi
+    docker_compose_bmrs up "$@"
+}
+
 function build_images() {
     log_stack
+
+    image="$1"
+
     repos_dir=$ixh_tmp_dir/repos
     mkdir -p $repos_dir
 
-    log "building hmny"
-    cd $repos_dir
-    # git clone --single-branch \
-    #     --branch ${btp_icon_branch:-main} \
-    #     https://github.com/harmony-one/harmony
-    # cd harmony
-    docker <$ixh_src_dir/hmny.Dockerfile \
-        build \
-        --build-arg SHARDING_HOST="$docker_host" \
-        -t $docker_registry/hmny:latest -
+    function build_bmr() {
+        log "building bmr"
+        cd $root_dir
+        docker \
+            build \
+            -f $ixh_src_dir/bmr.Dockerfile \
+            -t $docker_registry/bmr:latest .
+        cd $ixh_dir
+    }
+    function build_icon() {
+        log "building icon"
+        cd $repos_dir
+        git clone --single-branch \
+            --branch ${btp_icon_branch:-master} \
+            https://github.com/icon-project/goloop
+        cd goloop
+        make gochain-icon-image
+        docker <$ixh_src_dir/icon.Dockerfile \
+            build \
+            --build-arg CONFIG_JSON="$(cat $btp_icon_config)" \
+            -t $docker_registry/icon:latest -
+        cd $ixh_dir
+    }
+    function build_hmny() {
+        log "building hmny"
+        cd $repos_dir
+        # git clone --single-branch \
+        #     --branch ${btp_icon_branch:-main} \
+        #     https://github.com/harmony-one/harmony
+        # cd harmony
+        docker <$ixh_src_dir/hmny.Dockerfile \
+            build \
+            --build-arg SHARDING_HOST="$docker_host" \
+            -t $docker_registry/hmny:latest -
+        cd $ixh_dir
+    }
 
-    log "building icon"
-    cd $repos_dir
-    git clone --single-branch \
-        --branch ${btp_icon_branch:-master} \
-        https://github.com/icon-project/goloop
-    cd goloop
-    make gochain-icon-image
-    docker <$ixh_src_dir/icon.Dockerfile \
-        build \
-        --build-arg CONFIG_JSON="$(cat $btp_icon_config)" \
-        -t $docker_registry/icon:latest -
-
-    cd $ixh_dir
+    case "$image" in
+    bmr) build_bmr ;;
+    icon) build_icon ;;
+    hmny) build_hmny ;;
+    *)
+        build_hmny
+        build_icon
+        build_bmr
+        ;;
+    esac
 }
 
 function publish_images() {
     log_stack
-    log "publishing hmny to $docker_registry"
-    docker push $docker_registry/hmny:latest
 
-    log "publishing icon to $docker_registry"
-    docker push $docker_registry/icon:latest
+    image="$1"
+
+    function publish_bmr() {
+        log "publishing bmr to $docker_registry"
+        docker push $docker_registry/bmr:latest
+    }
+    function publish_icon() {
+        log "publishing icon to $docker_registry"
+        docker push $docker_registry/icon:latest
+    }
+    function publish_hmny() {
+        log "publishing hmny to $docker_registry"
+        docker push $docker_registry/hmny:latest
+    }
+
+    case "$image" in
+    bmr) publish_bmr ;;
+    icon) publish_icon ;;
+    hmny) publish_hmny ;;
+    *)
+        publish_bmr
+        publish_icon
+        publish_hmny
+        ;;
+    esac
+
 }
 
 function run_exec() {
@@ -1080,6 +1166,15 @@ function run_exec() {
     hmnyChainStatus)
         hmny_get_hmny_chain_status
         ;;
+    # iconDeployWPS)
+    #     scdir="$ixh_jsc_dir/wonderland"
+    #     cd $scdir && gradle optimizedJar && cd $OLDPWD
+    #     scfile="$scdir/build/libs/wps-0.0.1-optimized.jar"
+    #     address=$(icon_deploysc $scfile "_bmc=$btp_icon_bmc" "_net=$btp_hmny_net" | jq -r .scoreAddress)
+    #     echo "icon wps: $address"
+    #     icon_sendtx_call "$btp_icon_bmc" removeService 0 "_svc=WonderlandWhitelistedPresaleService"
+    #     icon_sendtx_call "$btp_icon_bmc" addService 0 "_addr=$address" "_svc=WonderlandWhitelistedPresaleService"
+    #     ;;
     *)
         log "invalid run command: $func"
         exit 1
@@ -1373,6 +1468,8 @@ ixh_build_dir=$ixh_tmp_dir/build
 ixh_tests_dir=$ixh_tmp_dir/tests
 ixh_env=$ixh_tmp_dir/ixh.env
 ixh_src_dir=$ixh_dir/src
+ixh_sol_dir=$ixh_build_dir/solidity
+ixh_jsc_dir=$ixh_build_dir/javascore
 
 root_dir="$ixh_dir/../../.."
 
@@ -1462,12 +1559,24 @@ start)
     start "${args[@]}"
     ;;
 
+start_bmrs)
+    start_bmrs "${args[@]}"
+    ;;
+
 stop)
     stop "${args[@]}"
     ;;
 
+stop_bmrs)
+    stop_bmrs "${args[@]}"
+    ;;
+
 docker_compose)
     docker_compose "${args[@]}"
+    ;;
+
+docker_compose_bmrs)
+    docker_compose_bmrs "${args[@]}"
     ;;
 
 build)
