@@ -159,6 +159,7 @@ func (r *relay) Start(ctx context.Context) error {
 					return err
 				}
 				r.log.WithFields(log.Fields{"error": err}).Debugf("tx.Send: retrying=%d", i)
+				time.Sleep(time.Second / 2) // wait before sending tx
 			}
 			for txr, err := tx.Receipt(ctx); true; txr, err = tx.Receipt(ctx) {
 				if err == nil {
@@ -173,6 +174,7 @@ func (r *relay) Start(ctx context.Context) error {
 				if txr != nil {
 					break
 				}
+				time.Sleep(time.Second) // wait before asking for receipt
 			}
 
 		}
