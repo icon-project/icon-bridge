@@ -60,16 +60,14 @@ Terminologies
 | :----------------------------------- | :------------------------------------------------------------------------------------------------ |
 | /cmd                                 | Root of implement of BMR                                                                          |
 | /cmd/btpsimple                       | Reference implement of BMR. only provide unidirectional relay. (golang)                           |
-| /cmd/btpsimple/chain                 | Implement of common logic of BMR, use module                                                      |
-| /cmd/btpsimple/module                | BMR module interface and common codes                                                             |
-| /cmd/btpsimple/module/`<chain>`      | Implement of BMR module (`Sender`,`Receiver`), `<chain>` is name of blockchain                    |
-| /common                              | Common codes (golang)                                                                             |
+| /cmd/btpsimple/relay                 | Implement of common logic of BMR, uses chain package                                              |
+| /cmd/btpsimple/chain                 | BMR module interface, common code, and chain specific packages                                    |
+| /cmd/btpsimple/chain/`<blockchain>`  | Implement of BMR module (`Sender`,`Receiver`), `<blockchain>` is name of blockchain               |
+| /common                              | Common code (golang)                                                                              |
 | /doc                                 | Documents                                                                                         |
 | /docker                              | Docker related resources                                                                          |
 | /`<env>`                             | Root of implement of BTP smart contracts, `<env>` is name of smart contract execution environment |
 | /`<env>`/bmc                         | Implement of BMC smart contract                                                                   |
-| /`<env>`/bmv                         | Root of implement of BMV smart contract                                                           |
-| /`<env>`/bmv/`<src>`                 | Implement of BMV smart contract, `<src>` is name of source blockchain                             |
 | /`<env>`/lib                         | Library for execution environment                                                                 |
 | /`<env>`/`<svc>`                     | Root of implement of BSH smart contract, `<svc>` is name of BTP service                           |
 | /`<env>`/token_bsh                   | Reference implement of BSH smart contract for Interchain-Token transfer service                   |
