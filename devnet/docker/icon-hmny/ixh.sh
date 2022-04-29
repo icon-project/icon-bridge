@@ -855,80 +855,82 @@ function deploysc() {
     log "important variables have been written to $ixh_env"
 
     # generate btp configs
-    generate_relay_configs
-}
-
-function generate_relay_configs() {
-    log_stack
-    local btp_icon_link_status_rx_height=$btp_hmny_block_height
-    local btp_hmny_link_status_rx_height=$btp_icon_block_height
-
-    # harmony to icon
-    generate_relay_config \
-        h2i \
-        "icx" \
-        "$btp_icon_bmr_owner_wallet" \
-        "$btp_icon_bmr_owner_wallet_password" \
-        "$btp_hmny_btp_address" \
-        "$btp_hmny_uri" \
-        "$btp_icon_btp_address" \
-        "$btp_icon_uri" \
-        "$btp_icon_link_status_rx_height" \
-        "{\"verifier\":{\"blockHeight\":$btp_hmny_block_height,\"commitBitmap\":\"$btp_hmny_verifier_commit_bitmap\",\"commitSignature\":\"$btp_hmny_verifier_commit_signature\"}}" \
-        >"$btp_h2i_relay_config"
-
-    # icon to harmony
-    generate_relay_config \
-        i2h \
-        "evm" \
-        "$btp_hmny_bmr_owner_wallet" \
-        "$btp_hmny_bmr_owner_wallet_password" \
-        "$btp_icon_btp_address" \
-        "$btp_icon_uri" \
-        "$btp_hmny_btp_address" \
-        "$btp_hmny_uri" \
-        "$btp_hmny_link_status_rx_height" >"$btp_i2h_relay_config"
+    generate_relay_config >$ixh_tmp_dir/bmr.config.json
 }
 
 function generate_relay_config() {
     log_stack
-    local prefix="$1"
-    local cointype="$2"
-    local key_store="$3"
-    local key_password="$4"
-    local src_address="$5"
-    local src_endpoint="$6"
-    local dst_address="$7"
-    local dst_endpoint="$8"
-    local offset="$9"
-    local src_options="${10:-null}"
+    local btp_icon_link_status_rx_height=$btp_hmny_block_height
+    local btp_hmny_link_status_rx_height=$btp_icon_block_height
 
     jq <<<{} '
     .base_dir = $base_dir |
     .log_level = "debug" |
     .console_level = "trace" |
-    .log_forwarder.level = "info" |
     .log_writer.filename = $log_writer_filename |
-    .key_store = $key_store |
-    .key_store.coinType = $cointype |
-    .key_password = $key_password |
-    .offset = $offset |
-    .src.address = $src_address |
-    .src.endpoint = [ $src_endpoint ] |
-    .src.options = $src_options |
-    .dst.address = $dst_address |
-    .dst.endpoint = [ $dst_endpoint ]' \
-        --arg base_dir "run/$prefix" \
-        --arg log_writer_filename "run/$prefix.log" \
-        --argfile key_store "$key_store" \
-        --arg cointype "$cointype" \
-        --arg key_password "$key_password" \
-        --arg src_address "$src_address" \
-        --arg src_endpoint "$src_endpoint" \
-        --arg dst_address "$dst_address" \
-        --arg dst_endpoint "$dst_endpoint" \
-        --argjson offset "$offset" \
-        --argjson src_options "$src_options"
+    .relays = [ $h2i_relay, $i2h_relay ]' \
+        --arg base_dir "bmr" \
+        --arg log_writer_filename "bmr/bmr.log" \
+        --argjson h2i_relay "$(
+            jq <<<{} '
+            .name = "h2i" |
+            .src.address = $src_address |
+            .src.endpoint = [ $src_endpoint ] |
+            .src.options = $src_options |
+            .src.offset = $src_offset |
+            .dst.address = $dst_address |
+            .dst.endpoint = [ $dst_endpoint ] |
+            .dst.options = $dst_options |
+            .dst.tx_data_size_limit = $dst_tx_data_size_limit |
+            .dst.key_store = $dst_key_store |
+            .dst.key_store.coinType = $dst_key_store_cointype |
+            .dst.key_password = $dst_key_password ' \
+                --arg src_address "$btp_hmny_btp_address" \
+                --arg src_endpoint "$btp_hmny_uri" \
+                --argjson src_offset "$btp_icon_link_status_rx_height" \
+                --argjson src_options "$(
+                    jq <<<{} '
+                    .verifier.blockHeight = $verifier_block_height |
+                    .verifier.commitBitmap = $verifier_commit_bitmap |
+                    .verifier.commitSignature = $verifier_commit_signature ' \
+                        --argjson verifier_block_height "$btp_hmny_block_height" \
+                        --arg verifier_commit_bitmap "$btp_hmny_verifier_commit_bitmap" \
+                        --arg verifier_commit_signature "$btp_hmny_verifier_commit_signature"
+                )" \
+                --arg dst_address "$btp_icon_btp_address" \
+                --arg dst_endpoint "$btp_icon_uri" \
+                --argfile dst_key_store "$btp_icon_bmr_owner_wallet" \
+                --arg dst_key_store_cointype "icx" \
+                --arg dst_key_password "$btp_icon_bmr_owner_wallet_password" \
+                --argjson dst_tx_data_size_limit 65536 \
+                --argjson dst_options '{"step_limit":13610920010}'
+        )" \
+        --argjson i2h_relay "$(
+            jq <<<{} '
+            .name = "i2h" |
+            .src.address = $src_address |
+            .src.endpoint = [ $src_endpoint ] |
+            .src.options = $src_options |
+            .src.offset = $src_offset |
+            .dst.address = $dst_address |
+            .dst.endpoint = [ $dst_endpoint ] |
+            .dst.options = $dst_options |
+            .dst.tx_data_size_limit = $dst_tx_data_size_limit |
+            .dst.key_store = $dst_key_store |
+            .dst.key_store.coinType = $dst_key_store_cointype |
+            .dst.key_password = $dst_key_password ' \
+                --arg src_address "$btp_icon_btp_address" \
+                --arg src_endpoint "$btp_icon_uri" \
+                --argjson src_offset "$btp_hmny_link_status_rx_height" \
+                --argjson src_options "{}" \
+                --arg dst_address "$btp_hmny_btp_address" \
+                --arg dst_endpoint "$btp_hmny_uri" \
+                --argfile dst_key_store "$btp_hmny_bmr_owner_wallet" \
+                --arg dst_key_store_cointype "evm" \
+                --arg dst_key_password "$btp_hmny_bmr_owner_wallet_password" \
+                --argjson dst_tx_data_size_limit 65536 \
+                --argjson dst_options '{"gas_limit":80000000}'
+        )"
 }
 
 # exposed commands
@@ -957,31 +959,30 @@ function start() {
     docker_compose up "$@"
 }
 
-function docker_compose_bmrs() {
+function docker_compose_bmr() {
     log_stack
     if [ "$docker_host" != "localhost" ]; then
         export DOCKER_HOST="ssh://$docker_user@$docker_host"
     fi
     local env_file=$(mktemp /tmp/ixh.env.XXXXX)
     echo "docker_registry=$docker_registry" >$env_file
-    echo "h2i_config_json='$(cat $ixh_tmp_dir/h2i.config.json)'" >>$env_file
-    echo "i2h_config_json='$(cat $ixh_tmp_dir/i2h.config.json)'" >>$env_file
-    docker-compose -f $ixh_src_dir/bmrs.docker-compose.yml --env-file $env_file "$@"
+    echo "bmr_config_json='$(cat $ixh_tmp_dir/bmr.config.json)'" >>$env_file
+    docker-compose -f $ixh_src_dir/bmr.docker-compose.yml --env-file $env_file "$@"
     # cat $env_file
     rm $env_file
 }
 
-function stop_bmrs() {
+function stop_bmr() {
     log_stack
-    docker_compose_bmrs down
+    docker_compose_bmr down
 }
 
-function start_bmrs() {
+function start_bmr() {
     log_stack
     if [ "$docker_host" != "localhost" ]; then
-        docker_compose_bmrs pull
+        docker_compose_bmr pull
     fi
-    docker_compose_bmrs up "$@"
+    docker_compose_bmr up "$@"
 }
 
 function build_images() {
@@ -1559,24 +1560,24 @@ start)
     start "${args[@]}"
     ;;
 
-start_bmrs)
-    start_bmrs "${args[@]}"
+start_bmr)
+    start_bmr "${args[@]}"
     ;;
 
 stop)
     stop "${args[@]}"
     ;;
 
-stop_bmrs)
-    stop_bmrs "${args[@]}"
+stop_bmr)
+    stop_bmr "${args[@]}"
     ;;
 
 docker_compose)
     docker_compose "${args[@]}"
     ;;
 
-docker_compose_bmrs)
-    docker_compose_bmrs "${args[@]}"
+docker_compose_bmr)
+    docker_compose_bmr "${args[@]}"
     ;;
 
 build)
@@ -1591,9 +1592,9 @@ deploysc)
     deploysc "${args[@]}"
     ;;
 
-generate_relay_configs)
+generate_relay_config)
     . $ixh_env
-    generate_relay_configs
+    generate_relay_config >$ixh_tmp_dir/bmr.config.json
     ;;
 
 clean)

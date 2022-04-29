@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  bmr:
+    image: ${docker_registry}/bmr:latest
+    container_name: ixh_bmr
+    restart: unless-stopped
+    ports:
+      - 6060:6060 # golang pprof
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+    - |
+      echo '$bmr_config_json' >/config.json
+      /bin/btpsimple -config /config.json
