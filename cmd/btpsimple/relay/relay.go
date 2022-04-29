@@ -11,7 +11,7 @@ import (
 
 const (
 	relayTickerInterval       = 5 * time.Second
-	relayTriggerReceiptsCount = 50
+	relayTriggerReceiptsCount = 20
 )
 
 type Relay interface {
@@ -68,12 +68,12 @@ func (r *relay) Start(ctx context.Context) error {
 	removeProcessedMessages := func(rxHeight, rxSeq uint64) {
 		receipts := srcMsg.Receipts[:0]
 		for _, receipt := range srcMsg.Receipts {
-			if receipt.Height < link.RxHeight {
+			if receipt.Height < rxHeight {
 				continue
 			}
 			events := receipt.Events[:0]
 			for _, event := range receipt.Events {
-				if event.Sequence > link.RxSeq {
+				if event.Sequence > rxSeq {
 					events = append(events, event)
 				}
 			}
@@ -106,25 +106,23 @@ func (r *relay) Start(ctx context.Context) error {
 			relaySignal()
 
 		case msg := <-srcMessageCh:
-			var fseq, lseq uint64
+
+			var seqBegin, seqEnd uint64
 			receipts := msg.Receipts[:0]
 			for _, receipt := range msg.Receipts {
-				events := receipt.Events[:0]
-				for _, event := range receipt.Events {
-					if fseq == 0 {
-						fseq = event.Sequence
-					}
-					lseq = event.Sequence
-					events = append(events, event)
-				}
-				receipt.Events = events
 				if len(receipt.Events) > 0 {
+					if seqBegin == 0 {
+						seqBegin = receipt.Events[0].Sequence
+					}
+					seqEnd = receipt.Events[len(receipt.Events)-1].Sequence
 					receipts = append(receipts, receipt)
 				}
 			}
 			msg.Receipts = receipts
+
 			if len(msg.Receipts) > 0 {
-				r.log.WithFields(log.Fields{"seq": []uint64{fseq, lseq}}).Info("added message to queue")
+				r.log.WithFields(log.Fields{
+					"seq": []uint64{seqBegin, seqEnd}}).Info("srcMsg added")
 				srcMsg.Receipts = append(srcMsg.Receipts, msg.Receipts...)
 				if len(srcMsg.Receipts) > relayTriggerReceiptsCount {
 					relaySignal()
