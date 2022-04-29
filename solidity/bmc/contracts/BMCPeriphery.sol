@@ -60,7 +60,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         return bmcBtpAddress;
     }
 
-    function validateRelay(string calldata _prev)
+    function requireRegisteredRelay(string calldata _prev)
         internal
         view
         returns (address)
@@ -75,10 +75,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                 break;
             }
         }
-        require(
-            relay == msg.sender,
-            "BMCRevertUnauthroized: relay not registered"
-        );
+        require(relay == msg.sender, "BMCRevertUnauthroized");
         return relay;
     }
 
@@ -92,7 +89,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         external
         override
     {
-        validateRelay(_prev);
+        requireRegisteredRelay(_prev);
 
         uint256 linkRxSeq = IBMCManagement(bmcManagement).getLinkRxSeq(_prev);
         uint256 linkRxHeight = IBMCManagement(bmcManagement).getLinkRxHeight(
@@ -104,45 +101,39 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
 
         Types.ReceiptProof[] memory rps = _msg.decodeReceiptProofs();
 
-        Types.BMCMessage memory bmsg;
+        Types.BMCMessage memory bmcMsg;
         Types.MessageEvent memory ev;
 
         for (uint256 i = 0; i < rps.length; i++) {
             if (rps[i].height < rxHeight) {
-                revert("RevertInvalidRxHeight: rp.height < rxHeight");
+                continue; // skip; revert("BMCRevertRxHeightLowerThanExpected");
             }
             rxHeight = rps[i].height;
             for (uint256 j = 0; j < rps[i].events.length; j++) {
                 rxSeq++;
                 ev = rps[i].events[j];
-                if (ev.seq > rxSeq) {
-                    revert("RevertInvalidRxSeq: ev.seq > expected rxSeq");
-                }
                 if (ev.seq < rxSeq) {
-                    revert("RevertInvalidRxSeq: ev.seq < expected rxSeq");
+                    rxSeq--;
+                    continue; // skip; revert("BMCRevertRxSeqLowerThanExpected");
+                } else if (ev.seq > rxSeq) {
+                    revert("BMCRevertRxSeqHigherThanExpected");
                 }
                 if (!ev.nextBmc.compareTo(bmcBtpAddress)) {
                     continue;
                 }
-                try this.decodeBTPMessage(ev.message) returns (
-                    Types.BMCMessage memory _decoded
-                ) {
-                    bmsg = _decoded;
-                } catch {
+                bmcMsg = ev.message.decodeBMCMessage();
+                if (bmcMsg.dst.compareTo(bmcBtpAddress)) {
+                    handleMessage(_prev, bmcMsg);
                     continue;
                 }
-                if (bmsg.dst.compareTo(bmcBtpAddress)) {
-                    handleMessage(_prev, bmsg);
-                    continue;
-                }
-                (string memory _net, ) = bmsg.dst.splitBTPAddress();
+                (string memory _net, ) = bmcMsg.dst.splitBTPAddress();
                 try IBMCManagement(bmcManagement).resolveRoute(_net) returns (
                     string memory _nextLink,
                     string memory
                 ) {
                     _sendMessage(_nextLink, ev.message);
                 } catch Error(string memory _error) {
-                    _sendError(_prev, bmsg, BMC_ERR, _error);
+                    _sendError(_prev, bmcMsg, BMC_ERR, _error);
                 }
             }
         }
@@ -157,17 +148,6 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
             _prev,
             rxHeight - linkRxHeight
         );
-    }
-
-    //  @dev Despite this function was set as external, it should be called internally
-    //  since Solidity does not allow using try_catch with internal function
-    //  this solution can solve the issue
-    function decodeBTPMessage(bytes memory _rlp)
-        external
-        pure
-        returns (Types.BMCMessage memory)
-    {
-        return _rlp.decodeBMCMessage();
     }
 
     function handleMessage(string calldata _prev, Types.BMCMessage memory _msg)
@@ -254,7 +234,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                 );
             } else if (_sm.serviceType.compareTo("Sack")) {
                 // skip this case since it has been removed from internal services
-            } else revert("BMCRevert: not exists internal handler");
+            } else revert("BMCRevertNotExistsInternalHandler");
         } else {
             _bshAddr = IBMCManagement(bmcManagement).getBshServiceByName(
                 _msg.svc

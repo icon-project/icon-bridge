@@ -47,12 +47,12 @@ contract BMCManagement is IBMCManagement, Initializable {
 
     uint256 private constant BLOCK_INTERVAL_MSEC = 1000;
 
-    modifier hasPermission {
+    modifier hasPermission() {
         require(_owners[msg.sender] == true, "BMCRevertUnauthorized");
         _;
     }
 
-    modifier onlyBMCPeriphery {
+    modifier onlyBMCPeriphery() {
         require(msg.sender == bmcPeriphery, "BMCRevertUnauthorized");
         _;
     }
@@ -145,8 +145,9 @@ contract BMCManagement is IBMCManagement, Initializable {
         override
         returns (Types.Service[] memory)
     {
-        Types.Service[] memory services =
-            new Types.Service[](listBSHNames.length);
+        Types.Service[] memory services = new Types.Service[](
+            listBSHNames.length
+        );
         for (uint256 i = 0; i < listBSHNames.length; i++) {
             services[i] = Types.Service(
                 listBSHNames[i],
@@ -186,7 +187,7 @@ contract BMCManagement is IBMCManagement, Initializable {
         // propagate an event "LINK"
         propagateInternal("Link", _link);
 
-        string[] memory _links = listLinkNames; 
+        string[] memory _links = listLinkNames;
 
         listLinkNames.push(_link);
         getLinkFromNet[_net] = _link;
@@ -217,10 +218,13 @@ contract BMCManagement is IBMCManagement, Initializable {
         return listLinkNames;
     }
 
-    function setLinkRxHeight(
-        string calldata _link, uint256 _height) external override hasPermission {
+    function setLinkRxHeight(string calldata _link, uint256 _height)
+        external
+        override
+        hasPermission
+    {
         require(links[_link].isConnected == true, "BMCRevertNotExistsLink");
-        require(_height > 0, "BMVRevertInvalidRxHeight");
+        require(_height > 0, "BMCRevertInvalidRxHeight");
         links[_link].rxHeight = _height;
     }
 
@@ -281,11 +285,10 @@ contract BMCManagement is IBMCManagement, Initializable {
                 //  BMC starts guessing when an event of 'RelayMessage' was thrown by another BMC
                 //  which is 'guessHeight' and the time BMC receiving this event is 'currentHeight'
                 //  If there is any delay, 'guessHeight' is likely less than 'currentHeight'
-                uint256 _guessHeight =
-                    link.rxHeight +
-                        uint256((_relayMsgHeight - link.rxHeightSrc) * 10**6)
-                            .ceilDiv(_scale) -
-                        1;
+                uint256 _guessHeight = link.rxHeight +
+                    uint256((_relayMsgHeight - link.rxHeightSrc) * 10**6)
+                        .ceilDiv(_scale) -
+                    1;
 
                 if (_guessHeight > _currentHeight) {
                     _guessHeight = _currentHeight;
@@ -332,8 +335,9 @@ contract BMCManagement is IBMCManagement, Initializable {
                 //        => out of 'delay_limit'
                 //        => rejected and move to next Relay
                 */
-                uint256 _skipCount =
-                    (_currentHeight - _guessHeight).ceilDiv(link.delayLimit);
+                uint256 _skipCount = (_currentHeight - _guessHeight).ceilDiv(
+                    link.delayLimit
+                );
 
                 if (_skipCount > 0) {
                     _skipCount = _skipCount - 1;
@@ -352,8 +356,8 @@ contract BMCManagement is IBMCManagement, Initializable {
                         1;
                 } else {
                     _rotateCount = (_currentHeight - link.rotateHeight).ceilDiv(
-                        _rotateTerm
-                    );
+                            _rotateTerm
+                        );
                 }
                 _baseHeight =
                     link.rotateHeight +
@@ -422,7 +426,10 @@ contract BMCManagement is IBMCManagement, Initializable {
             _rlpBytes = abi.encodePacked(RLPEncodeStruct.LIST_SHORT_START);
         } else {
             for (uint256 i = 0; i < _links.length; i++)
-                _rlpBytes = abi.encodePacked(_rlpBytes, _links[i].encodeString());
+                _rlpBytes = abi.encodePacked(
+                    _rlpBytes,
+                    _links[i].encodeString()
+                );
             // encode target's reachable list
             _rlpBytes = abi.encodePacked(
                 _rlpBytes.length.addLength(false),
@@ -662,8 +669,9 @@ contract BMCManagement is IBMCManagement, Initializable {
         override
         onlyBMCPeriphery
     {
-        (string memory _net, ) =
-            links[_prev].reachable[_index].splitBTPAddress();
+        (string memory _net, ) = links[_prev]
+            .reachable[_index]
+            .splitBTPAddress();
         delete getLinkFromReachableNet[_net];
         delete links[_prev].reachable[_index];
         links[_prev].reachable[_index] = links[_prev].reachable[
