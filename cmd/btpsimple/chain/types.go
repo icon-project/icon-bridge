@@ -48,6 +48,7 @@ type BMCLinkStatus struct {
 
 // RelayTx ...
 type RelayTx interface {
+	ID() interface{}
 	Send(ctx context.Context) (err error)
 	Receipt(ctx context.Context) (txr interface{}, err error)
 }
