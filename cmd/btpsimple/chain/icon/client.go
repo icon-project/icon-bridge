@@ -30,7 +30,6 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/icon-project/btp/cmd/btpsimple/chain"
 	"github.com/icon-project/btp/common/crypto"
 	"github.com/icon-project/btp/common/jsonrpc"
 	"github.com/icon-project/btp/common/log"
@@ -121,7 +120,7 @@ txLoop:
 		txh, err := c.SendTransaction(p)
 		if err != nil {
 			switch err {
-			case chain.ErrSendFailByOverflow:
+			case ErrSendFailByOverflow:
 				//TODO Retry max
 				time.Sleep(DefaultSendTransactionRetryInterval)
 				c.log.Debugf("Retry SendTransaction")
@@ -265,7 +264,7 @@ func (c *client) Monitor(reqUrl string, reqPtr, respPtr interface{}, cb wsReadCa
 	}
 	conn, err := c.wsConnect(reqUrl, nil)
 	if err != nil {
-		return chain.ErrConnectFail
+		return ErrConnectFail
 	}
 	defer func() {
 		c.log.Debugf("Monitor finish %s", conn.LocalAddr().String())
