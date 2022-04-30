@@ -6,6 +6,10 @@ import (
 )
 
 var (
+	// Common errors
+	ErrInsufficientBalance = errors.New("InsufficientBalance")
+
+	// BMC errors
 	ErrBMCRevertLastOwner                 = errors.New("BMCRevertLastOwner")
 	ErrBMCRevertUnauthroized              = errors.New("BMCRevertUnauthorized")
 	ErrBMCRevertInvalidAddress            = errors.New("BMCRevertInvalidAddress")
