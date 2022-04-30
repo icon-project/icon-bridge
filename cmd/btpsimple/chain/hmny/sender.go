@@ -199,9 +199,16 @@ type relayTx struct {
 	cl        *client
 }
 
+func (tx *relayTx) ID() interface{} {
+	if tx.pendingTx != nil {
+		return tx.pendingTx.Hash()
+	}
+	return nil
+}
+
 func (tx *relayTx) Send(ctx context.Context) (err error) {
-	tx.cl.log.WithFields(log.Fields{"prev": tx.Prev}).Debug("handleRelayMessage: sending tx")
-	tx.cl.log.WithFields(log.Fields{"msg": btpcommon.HexBytes(tx.Message)}).Debug("handleRelayMessage: sending tx")
+	tx.cl.log.WithFields(log.Fields{
+		"prev": tx.Prev}).Debug("handleRelayMessage: send tx")
 
 	_ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeout)
 	defer cancel()
@@ -210,11 +217,17 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 
 	tx.pendingTx, err = tx.cl.bmc.HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
 	if err != nil {
-		tx.cl.log.WithFields(log.Fields{"error": err}).Debug("handleRelayMessage: failed to send tx")
+		tx.cl.log.WithFields(log.Fields{
+			"error": err}).Debug("handleRelayMessage: send tx")
+		if err.Error() == "insufficient funds for gas * price + value" {
+			return chain.ErrInsufficientBalance
+		}
 		return err
 	}
 
-	tx.cl.log.WithFields(log.Fields{"txh": tx.pendingTx.Hash()}).Debug("handleRelayMessage: tx sent")
+	tx.cl.log.WithFields(log.Fields{
+		"txh": tx.pendingTx.Hash(),
+		"msg": btpcommon.HexBytes(tx.Message)}).Debug("handleRelayMessage: tx sent")
 	return nil
 }
 
@@ -223,14 +236,14 @@ func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error)
 		return nil, fmt.Errorf("no pending tx")
 	}
 
-	for isPending := true; isPending; {
+	for i, isPending := 0, true; i < 5 && (isPending || err == ethereum.NotFound); i++ {
+		time.Sleep(time.Second)
 		_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 		defer cancel()
 		_, isPending, err = tx.cl.eth.TransactionByHash(_ctx, tx.pendingTx.Hash())
-		if err != nil {
-			return nil, err
-		}
-		time.Sleep(time.Second)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
@@ -260,6 +273,9 @@ func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error)
 
 		return nil, chain.RevertError(revertReason(data))
 	}
+
+	tx.cl.log.WithFields(log.Fields{
+		"txh": tx.pendingTx.Hash()}).Debug("handleRelayMessage: success")
 
 	return txr, nil
 }

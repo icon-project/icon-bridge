@@ -227,9 +227,17 @@ type relayTx struct {
 	w           wallet.Wallet
 }
 
+func (tx *relayTx) ID() interface{} {
+	if tx.txHashParam != nil {
+		return tx.txHashParam.Hash
+	}
+	return nil
+}
+
 func (tx *relayTx) Send(ctx context.Context) error {
-	tx.cl.log.WithFields(log.Fields{"prev": tx.Prev}).Debug("handleRelayMessage: sending tx")
-	tx.cl.log.WithFields(log.Fields{"msg": common.HexBytes(tx.Message)}).Debug("handleRelayMessage: sending tx")
+	tx.cl.log.WithFields(log.Fields{
+		"prev": tx.Prev}).Debug("handleRelayMessage: send tx")
+
 SignLoop:
 	for {
 		if err := tx.cl.SignTransaction(tx.w, tx.txParam); err != nil {
@@ -245,10 +253,13 @@ SignLoop:
 			txh, err := tx.cl.SendTransaction(tx.txParam)
 			if txh != nil {
 				tx.txHashParam = &TransactionHashParam{*txh}
-				tx.cl.log.WithFields(log.Fields{"txh": tx.txHashParam.Hash}).Debug("handleRelayMessage: tx sent")
+				tx.cl.log.WithFields(log.Fields{
+					"txh": tx.txHashParam.Hash,
+					"msg": common.HexBytes(tx.Message)}).Debug("handleRelayMessage: tx sent")
 			}
 			if err != nil {
-				tx.cl.log.WithFields(log.Fields{"error": err}).Debug("handleRelayMessage: failed to send tx")
+				tx.cl.log.WithFields(log.Fields{
+					"error": err}).Debug("handleRelayMessage: send tx")
 				if je, ok := err.(*jsonrpc.Error); ok {
 					switch je.Code {
 					case JsonrpcErrorCodeTxPoolOverflow:
@@ -274,7 +285,7 @@ SignLoop:
 
 func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error) {
 	if tx.txHashParam == nil {
-		return nil, fmt.Errorf("relayTx: not sent!")
+		return nil, fmt.Errorf("no pending tx")
 	}
 	for {
 		select {
@@ -292,6 +303,8 @@ func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error)
 				}
 			}
 		}
+		tx.cl.log.WithFields(log.Fields{
+			"txh": tx.txHashParam.Hash}).Debug("handleRelayMessage: success")
 		return txr, mapErrorWithTransactionResult(txr, err)
 	}
 }
