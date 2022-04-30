@@ -348,13 +348,13 @@ func (r *receiver) getRelayReceipts(v *BlockNotification) []*chain.Receipt {
 			rp.Index, rp.Height = uint64(i), v.Height.Uint64()
 			rp.Events = append(rp.Events, events...)
 			receipts = append(receipts, rp)
-			r.log.Debugf("received event: h=%d: sc=%v", rp.Height, sc)
 		}
 	}
 	return receipts
 }
 
 func (r *receiver) SubscribeMessage(ctx context.Context, height, seq uint64) (<-chan *chain.Message, error) {
+	seq++
 	ch := make(chan *chain.Message)
 	go func() {
 		defer close(ch)
@@ -377,15 +377,20 @@ func (r *receiver) SubscribeMessage(ctx context.Context, height, seq uint64) (<-
 
 				receipts := r.getRelayReceipts(v)
 				for _, receipt := range receipts {
+					events := receipt.Events[:0]
 					for _, event := range receipt.Events {
-						seq++
-						if event.Sequence > seq {
+						switch {
+						case event.Sequence == seq:
+							events = append(events, event)
+							seq++
+						case event.Sequence > seq:
 							r.log.WithFields(log.Fields{
 								"seq": log.Fields{"got": event.Sequence, "expected": seq},
-							}).Error("invalid event: cannot match seq")
-							return fmt.Errorf("")
+							}).Error("invalid event seq")
+							return fmt.Errorf("invalid event seq")
 						}
 					}
+					receipt.Events = events
 				}
 
 				ch <- &chain.Message{Receipts: receipts}
