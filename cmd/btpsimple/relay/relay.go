@@ -10,8 +10,11 @@ import (
 )
 
 const (
-	relayTickerInterval       = 5 * time.Second
-	relayTriggerReceiptsCount = 20
+	relayTickerInterval                  = 5 * time.Second
+	relayTriggerReceiptsCount            = 20
+	relayTxSendWaitInterval              = time.Second / 2
+	relayTxReceiptWaitInterval           = time.Second
+	relayInsufficientBalanceWaitInterval = 30 * time.Second
 )
 
 type Relay interface {
@@ -147,32 +150,42 @@ func (r *relay) Start(ctx context.Context) error {
 			tx, newMsg, err := r.dst.Segment(ctx, srcMsg, r.cfg.Dst.TxDataSizeLimit)
 			if err != nil {
 				return err
-			}
-			if tx == nil { // ignore if tx is nil
+			} else if tx == nil { // ignore if tx is nil
 				continue
 			}
-			for i, err := 1, tx.Send(ctx); err != nil; i, err = i+1, tx.Send(ctx) {
-				if errors.Is(err, context.Canceled) {
-					r.log.WithFields(log.Fields{"error": err}).Error("tx.Send: failed", i)
+
+		sendLoop:
+			for i, err := 1, tx.Send(ctx); true; i, err = i+1, tx.Send(ctx) {
+				switch {
+				case err == nil:
+					break sendLoop
+				case errors.Is(err, context.Canceled):
+					r.log.WithFields(log.Fields{"id": tx.ID(), "error": err}).Error("tx.Send failed")
 					return err
+				case errors.Is(err, chain.ErrInsufficientBalance):
+					r.log.WithFields(log.Fields{"error": err}).Error(
+						"add balance to relay account: waiting for %v", relayInsufficientBalanceWaitInterval)
+					time.Sleep(relayInsufficientBalanceWaitInterval)
+				default:
+					time.Sleep(relayTxSendWaitInterval) // wait before sending tx
+					r.log.WithFields(log.Fields{"error": err}).Debugf("tx.Send: retry=%d", i)
 				}
-				r.log.WithFields(log.Fields{"error": err}).Debugf("tx.Send: retrying=%d", i)
-				time.Sleep(time.Second / 2) // wait before sending tx
 			}
-			for txr, err := tx.Receipt(ctx); true; txr, err = tx.Receipt(ctx) {
-				if err == nil {
-					newMsg.From, srcMsg = srcMsg.From, newMsg
-					break
-				}
-				if errors.Is(err, context.Canceled) {
-					r.log.WithFields(log.Fields{"error": err}).Error("tx.Receipt: failed")
+
+		waitLoop:
+			for _, err := tx.Receipt(ctx); true; _, err = tx.Receipt(ctx) {
+				switch {
+				case err == nil:
+					newMsg.From = srcMsg.From
+					srcMsg = newMsg
+					break waitLoop
+				case errors.Is(err, context.Canceled):
+					r.log.WithFields(log.Fields{"error": err}).Error("tx.Receipt failed")
 					return err
+				default:
+					time.Sleep(relayTxReceiptWaitInterval) // wait before asking for receipt
+					r.log.WithFields(log.Fields{"error": err}).Debug("tx.Receipt: retry")
 				}
-				r.log.WithFields(log.Fields{"error": err}).Debug("tx.Receipt: retrying")
-				if txr != nil {
-					break
-				}
-				time.Sleep(time.Second) // wait before asking for receipt
 			}
 
 		}
