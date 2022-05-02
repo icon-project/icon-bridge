@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"runtime/debug"
 
 	"github.com/icon-project/btp/cmd/btpsimple/chain"
 	"github.com/icon-project/btp/cmd/btpsimple/chain/hmny"
@@ -11,7 +12,7 @@ import (
 )
 
 func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
-	mr := &multiRelay{}
+	mr := &multiRelay{log: l}
 
 	for _, rc := range cfg.Relays {
 
@@ -102,6 +103,7 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 }
 
 type multiRelay struct {
+	log    log.Logger
 	relays []Relay
 }
 
@@ -116,6 +118,12 @@ func (mr *multiRelay) Start(ctx context.Context) error {
 			return ctx.Err()
 		case r := <-rch:
 			go func(relay Relay) {
+				defer func() {
+					if r := recover(); r != nil {
+						debug.PrintStack()
+						rch <- relay
+					}
+				}()
 				if relay.Start(ctx) != nil {
 					rch <- relay
 				}
