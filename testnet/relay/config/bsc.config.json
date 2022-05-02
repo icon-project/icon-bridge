@@ -13,29 +13,10 @@
     "endpoint": "https://berlin.net.solidwallet.io/api/v3/icon_dex"
   },
   "offset":  18558470,
-  "key_store": {
-    "address": "hx681a290ecf0e460998d6bebe7b3da7589ed6b3db",
-    "id": "8f3ea42b-7406-48d3-a769-eacb66a2d7e6",
-    "version": 3,
-    "coinType": "icx",
-    "crypto": {
-      "cipher": "aes-128-ctr",
-      "cipherparams": {
-        "iv": "e9a66894c9bbbf29e2860b92bda94f15"
-      },
-      "ciphertext": "4c26a5bd98613a3a5d2b7a32e10fb57b0dc72777e1b27d911db9770a0d9b68d3",
-      "kdf": "scrypt",
-      "kdfparams": {
-        "dklen": 32,
-        "n": 65536,
-        "r": 8,
-        "p": 1,
-        "salt": "18145c31c945b1d1"
-      },
-      "mac": "6491bec1893cb3905374dfdd2d7fa0f98aa7550421f51f6c93aaae29c7200aa5"
-    }
-  },
-  "key_secret": "./config/icon.secret",
+  "key_store": {},
+  "key_secret": "",  
+  "aws_secret_name" : "testnet/icon/walletsecret",
+  "aws_region" : "us-east-1",
   "log_level": "trace",
   "console_level": "trace",
   "log_forwarder": {

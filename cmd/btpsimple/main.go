@@ -55,6 +55,9 @@ type Config struct {
 	ConsoleLevel string               `json:"console_level"`
 	LogForwarder *log.ForwarderConfig `json:"log_forwarder,omitempty"`
 	LogWriter    *log.WriterConfig    `json:"log_writer,omitempty"`
+
+	AWSSecretName string `json:"aws_secret_name,omitempty"`
+	AWSRegion     string `json:"aws_region,omitempty"`
 }
 
 func (c *Config) Wallet() (wallet.Wallet, error) {
@@ -69,10 +72,29 @@ func (c *Config) resolvePassword() ([]byte, error) {
 	if c.KeySecret != "" {
 		return ioutil.ReadFile(c.KeySecret)
 	} else {
-		if c.KeyStorePass == "" {
-			return []byte(DefaultKeyStorePass), nil
+		result, err := wallet.GetSecret(c.AWSSecretName, c.AWSRegion)
+		if err != nil {
+			return nil, err
+		}
+		if result != "" {
+			//return nil, errors.Errorf("fail to decrypt KeyStore err=%+v", result)
+			type Wallet struct {
+				KeyStore json.RawMessage `json:"key_store"`
+				Secret   string          `json:"secret"`
+			}
+			var awsWallet Wallet
+			err = json.Unmarshal([]byte(result), &awsWallet)
+			if err != nil {
+				return nil, err
+			}
+			c.KeyStoreData = awsWallet.KeyStore
+			return []byte(awsWallet.Secret), nil
 		} else {
-			return []byte(c.KeyStorePass), nil
+			if c.KeyStorePass == "" {
+				return []byte(DefaultKeyStorePass), nil
+			} else {
+				return []byte(c.KeyStorePass), nil
+			}
 		}
 	}
 }
@@ -160,6 +182,8 @@ func main() {
 	rootPFlags.String("key_store", "", "KeyStore")
 	rootPFlags.String("key_password", "", "Password of KeyStore")
 	rootPFlags.String("key_secret", "", "Secret(password) file for KeyStore")
+	rootPFlags.String("aws_secret_name", "", "Secret name from AWS secret Keystore")
+	rootPFlags.String("aws_region", "", "AWS secret Keystore region")
 	//
 	rootPFlags.String("base_dir", "", "Base directory for data")
 	rootPFlags.StringP("config", "c", "", "Parsing configuration file")
