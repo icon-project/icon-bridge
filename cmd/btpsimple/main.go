@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"flag"
 	stdlog "log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	_ "net/http/pprof"
 
 	"github.com/icon-project/btp/cmd/btpsimple/relay"
 	"github.com/icon-project/btp/common/config"
@@ -43,6 +46,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create MultiRelay: %v", err)
 	}
+
+	// for net/http/pprof
+	go func() { http.ListenAndServe("0.0.0.0:6060", nil) }()
 
 	runRelay(relay)
 }
