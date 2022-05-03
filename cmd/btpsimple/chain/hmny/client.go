@@ -48,14 +48,14 @@ func (cl *client) newVerifier(opts *VerifierOptions) (Verifier, error) {
 	if opts == nil {
 		return &dumbVerifier{}, nil
 	}
-	h, err := cl.GetHmyHeaderByHeight((&big.Int{}).SetUint64(opts.BlockHeight))
+	h, err := cl.GetHmyV2HeaderByHeight((&big.Int{}).SetUint64(opts.BlockHeight))
 	if err != nil {
 		return nil, errors.Wrapf(err, "cl.GetHeaderByHeight(%d): %v", opts.BlockHeight, err)
 	}
 	ssh := h // shard state header
 	if ssh.Epoch.Cmp(bigZero) <= 0 {
 		if ssh.Number.Cmp(bigZero) > 0 {
-			ssh, err = cl.GetHmyHeaderByHeight(bigZero)
+			ssh, err = cl.GetHmyV2HeaderByHeight(bigZero)
 			if err != nil {
 				return nil, errors.Wrapf(err, "cl.GetHeaderByHeight(%d): %v", 0, err)
 			}
@@ -66,7 +66,7 @@ func (cl *client) newVerifier(opts *VerifierOptions) (Verifier, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "cl.GetEpochLastBlock(%d): %v", epoch, err)
 		}
-		ssh, err = cl.GetHmyHeaderByHeight(elb)
+		ssh, err = cl.GetHmyV2HeaderByHeight(elb)
 		if err != nil {
 			return nil, errors.Wrapf(err, "cl.GetHeaderByHeight(%d): %v", elb, err)
 		}
@@ -83,7 +83,7 @@ func (cl *client) newVerifier(opts *VerifierOptions) (Verifier, error) {
 }
 
 func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
-	h, err := cl.GetHmyHeaderByHeight((&big.Int{}).SetUint64(height))
+	h, err := cl.GetHmyV2HeaderByHeight((&big.Int{}).SetUint64(height))
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
 		if err != nil {
 			return errors.Wrapf(err, "cl.GetEpochLastBlock: %v", err)
 		}
-		elh, err := cl.GetHmyHeaderByHeight(elb)
+		elh, err := cl.GetHmyV2HeaderByHeight(elb)
 		if err != nil {
 			return errors.Wrapf(err, "cl.GetHmyHeaderByHeight: %v", err)
 		}
@@ -156,6 +156,17 @@ func (cl *client) GetHmyBlockByHeight(height *big.Int) (*BlockWithTxHash, error)
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	hb := new(BlockWithTxHash)
+	err := cl.rpc.CallContext(ctx, hb, "hmy_getBlockByNumber", height, false)
+	if err != nil {
+		return nil, err
+	}
+	return hb, nil
+}
+
+func (cl *client) GetHmyV2BlockByHeight(height *big.Int) (*BlockV2WithTxHash, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	hb := new(BlockV2WithTxHash)
 	err := cl.rpc.CallContext(ctx, hb, "hmyv2_getBlockByNumber", height, map[string]interface{}{})
 	if err != nil {
 		return nil, err
@@ -185,7 +196,7 @@ func (cl *client) GetHmyV2BlockByHash(hash common.Hash) (*BlockV2WithTxHash, err
 	return hb, nil
 }
 
-func (cl *client) GetHmyHeaderByHeight(height *big.Int) (*Header, error) {
+func (cl *client) GetHmyV2HeaderByHeight(height *big.Int) (*Header, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	hb := new(Header)

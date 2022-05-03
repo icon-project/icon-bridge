@@ -276,7 +276,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *bnOptions, callback fu
 							q.v = &BlockNotification{}
 						}
 						q.v.Height = (&big.Int{}).SetUint64(q.h)
-						q.v.Header, q.err = r.client().GetHmyHeaderByHeight(q.v.Height)
+						q.v.Header, q.err = r.client().GetHmyV2HeaderByHeight(q.v.Height)
 						if q.err != nil {
 							q.err = errors.Wrapf(q.err, "GetHmyHeaderByHeight: %v", q.err)
 							return

@@ -11,15 +11,6 @@ import (
 	"github.com/harmony-one/harmony/core/types"
 )
 
-type Wallet interface {
-	Sign(data []byte) ([]byte, error)
-	Address() string
-}
-
-type TransactionHashParam struct {
-	Hash common.Hash
-}
-
 type BlockNotification struct {
 	Hash     common.Hash
 	Height   *big.Int
