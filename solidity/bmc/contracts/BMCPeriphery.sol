@@ -259,6 +259,8 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                      */
                     //revert(_error);
                     _sendError(_prev, _msg, BSH_ERR, _error);
+                } catch {
+                    _sendError(_prev, _msg, BSH_ERR, "panic or empty revert");
                 }
             } else {
                 Types.Response memory _errMsg = _msg.message.decodeResponse();
