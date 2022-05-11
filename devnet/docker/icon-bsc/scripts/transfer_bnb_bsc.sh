@@ -13,7 +13,7 @@ ensure_key_store alice.ks.json alice.secret
 
 #Check Alice's balance before deposit
 printf "\n\nStep 2: Alice's BNB balance before BTP Transfer\n"
-get_alice_native_balance $NATIVE_COIN_NAME
+get_alice_wrapped_native_balance $NATIVE_COIN_NAME
 
 #initiate Transfer from BSC to ICON from BSH
 printf "\n\nStep 3: BOB Initiates BTP Native coin transfer of $TOKENS_TRANSFER_AMOUNT ($NATIVE_COIN_NAME) to Alice\n"
@@ -21,4 +21,4 @@ bsc_init_native_btp_transfer "$TOKENS_TRANSFER_AMOUNT" >$CONFIG_DIR/tx.native.bs
 
 #Check alice balance after 20s
 printf "\n\nStep 4: Alice ETH Balance after BTP token transfer\n"
-check_alice_native_balance_with_wait $NATIVE_COIN_NAME
+check_alice_wrapped_native_balance_with_wait $NATIVE_COIN_NAME

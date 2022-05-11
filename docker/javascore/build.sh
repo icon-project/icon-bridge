@@ -14,12 +14,10 @@ build_image() {
     docker create -ti --name javascore-dist -i btp/javascore
 
     docker cp javascore-dist:/dist/bmc-optimized.jar ${DIST_DIR}
-    # docker cp javascore-dist:/dist/bmv-optimized.jar ${DIST_DIR}
     docker cp javascore-dist:/dist/bsh-optimized.jar ${DIST_DIR}
     docker cp javascore-dist:/dist/irc2-token-optimized.jar ${DIST_DIR}
-
-    docker cp javascore-dist:/dist/irc31-0.1.0-optimized.jar ${DIST_DIR}
-    docker cp javascore-dist:/dist/nativecoin-0.1.0-optimized.jar ${DIST_DIR}
+    docker cp javascore-dist:/dist/irc2Tradeable-optimized.jar ${DIST_DIR}
+    docker cp javascore-dist:/dist/nativecoin-optimized.jar ${DIST_DIR}
 
     docker rm -f javascore-dist
 }

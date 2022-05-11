@@ -38,22 +38,43 @@ type DstConfig struct {
 	KeyStore    json.RawMessage `json:"key_store"`
 	KeyPassword string          `json:"key_password"`
 
+	// AWS
+	AWSSecretName string `json:"aws_secret_name,omitempty"`
+	AWSRegion     string `json:"aws_region,omitempty"`
+
 	// TxSizeLimit
 	// is the maximum size of a transaction in bytes
 	TxDataSizeLimit uint64 `json:"tx_data_size_limit"`
 }
 
 func (cfg *DstConfig) Wallet() (wallet.Wallet, error) {
-	pw, err := cfg.resolvePassword()
+	keyStore, password, err := cfg.resolveKeyStore()
 	if err != nil {
 		return nil, err
 	}
-	return wallet.DecryptKeyStore(cfg.KeyStore, pw)
+	return wallet.DecryptKeyStore(keyStore, password)
 }
 
-func (cfg *DstConfig) resolvePassword() ([]byte, error) {
-	if cfg.KeyPassword == "" {
-		return []byte(DefaultKeyPassword), nil
+func (cfg *DstConfig) resolveKeyStore() (json.RawMessage, []byte, error) {
+	if cfg.AWSSecretName != "" && cfg.AWSRegion != "" {
+		result, err := wallet.GetSecret(cfg.AWSSecretName, cfg.AWSRegion)
+		if err != nil {
+			return nil, nil, err
+		}
+		if result != "" {
+			var w struct {
+				KeyStore json.RawMessage `json:"key_store"`
+				Secret   string          `json:"secret"`
+			}
+			err = json.Unmarshal([]byte(result), &w)
+			if err != nil {
+				return nil, nil, err
+			}
+			return w.KeyStore, []byte(w.Secret), nil
+		}
 	}
-	return []byte(cfg.KeyPassword), nil
+	if cfg.KeyPassword == "" {
+		return cfg.KeyStore, []byte(DefaultKeyPassword), nil
+	}
+	return cfg.KeyStore, []byte(cfg.KeyPassword), nil
 }

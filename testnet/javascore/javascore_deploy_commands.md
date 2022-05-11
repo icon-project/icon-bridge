@@ -181,28 +181,21 @@ Mint IRC2 tokens to Alice
 NativeCoin deploy & fund scenario:
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-1. deploy_javascore_irc31
+1. deploy_javascore_nativeCoin_BSH
+
 
 ```
-./goloop rpc --uri $URL sendtx deploy artifacts/irc31-0.1.0-optimized.jar \
-    --key_store $keystore --key_password $password \
-    --nid $nid --step_limit 10000000000 \
-    --content_type application/java | jq -r . > var/tx.irc31
-
-    
-./goloop rpc --uri $URL txresult  $(cat var/tx.irc31) | jq -r .scoreAddress > var/irc31
-```
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-2. deploy_javascore_nativeCoin_BSH
+IRC2_SERIALIZED_SCORE=$(xxd -p artifacts/irc2Tradeable-0.1.0-optimized.jar | tr -d '\n')
 
 ```
-./goloop rpc --uri $URL sendtx deploy artifacts/nativecoin-0.1.0-optimized.jar \
+
+```
+./goloop rpc --uri $URL sendtx deploy artifacts/nativecoin-optimized.jar \
     --key_store $keystore --key_password $password \
     --nid $nid --step_limit 13610920010 \
     --content_type application/java \
     --param _bmc=$(cat var/bmc) \
-    --param _irc31=$(cat var/irc31) \
+    --param _serializedIrc2=0x$IRC2_SERIALIZED_SCORE \
     --param _name=ICX | jq -r . > var/tx.bsh.native
 
 ./goloop rpc --uri $URL txresult $(cat var/tx.bsh.native) | jq -r .scoreAddress > var/bsh.native
@@ -234,9 +227,17 @@ NativeCoin deploy & fund scenario:
 --key_store $keystore --key_password $password \
     --nid $nid --step_limit 13610920010 \
     --method register \
-    --param _name=BNB | jq -r . > var/tx.irc31.register
+    --param _name=BNB \
+    --param _symbol=BNB \
+    --param _decimals=18 | jq -r . > var/tx.nativecoin.register
 
-./goloop rpc --uri $URL txresult $(cat var/tx.irc31.register) 
+./goloop rpc --uri $URL txresult $(cat var/tx.nativecoin.register) 
+```
+
+Get the address of the deployed IRC2 token factory by Coin Name
+```
+./goloop rpc --uri $URL  call --to $(cat var/bsh.native) \
+        --method coinAddress --param _coinName=BNB | sed -e 's/^"//' -e 's/"$//' > var/irc2TradeableToken.icon
 ```
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -252,19 +253,6 @@ NativeCoin deploy & fund scenario:
 ./goloop rpc --uri $URL txresult $(cat var/tx.setFeeRatio.nativebsh) 
 ```
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-6. irc31_javascore_addOwner
-
-```
-./goloop rpc --uri $URL  sendtx call --to $(cat var/irc31) \
---key_store $keystore --key_password $password \
-    --nid $nid --step_limit 13610920010 \
-    --method addOwner \
-    --param _addr=$(cat var/bsh.native) | jq -r . > var/tx.addowner.nativebsh 
-
-./goloop rpc --uri $URL txresult $(cat var/tx.addowner.nativebsh ) 
-
-```
 
 
 Configure BMC
@@ -285,7 +273,7 @@ cat ../solidity/var/bmc.periphery.bsc
 --key_store $keystore --key_password $password \
     --nid $nid --step_limit 13610920010 \
     --method addLink \
-    --param _link=btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7 | jq -r . > var/addLinks.tx.bmc
+    --param _link=btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9 | jq -r . > var/addLinks.tx.bmc
 
 ./goloop rpc --uri $URL  call --to $(cat var/bmc) \
     --method getLinks 
@@ -300,7 +288,7 @@ only to use this command if you want to remove the existing link from BMC
 --key_store $keystore --key_password $password \
     --nid $nid --step_limit 13610920010 \
     --method removeLink \
-    --param _link=btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7 
+    --param _link=btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9 
 ```
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -316,7 +304,7 @@ Change the proper _link & wallet _addr
 --key_store $keystore --key_password $password \
     --nid $nid --step_limit 13610920010 \
     --method addRelay \
-    --param _link=btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7 \
+    --param _link=btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9 \
     --param _addr=hx681a290ecf0e460998d6bebe7b3da7589ed6b3db  | jq -r . > var/addRelay.tx.bmc
 
 ./goloop rpc --uri $URL txresult $(cat var/addRelay.tx.bmc)
@@ -327,11 +315,11 @@ Check status after adding the relay
 ```
 ./goloop rpc --uri $URL  call --to $(cat var/bmc) \
     --method getRelays\
-    --param _link=btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7
+    --param _link=btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9
 
 ./goloop rpc --uri $URL  call --to $(cat var/bmc) \
     --method getStatus \
-    --param _link=btp://0x61.bsc/0x45a0D0cda9e9Fb8e745B91104ca6444DC151D5A7
+    --param _link=btp://0x61.bsc/0x121A1AAd623AF68162B1bD84c44234Bc3a3562a9
 ```
 
 Remove Relay
@@ -349,7 +337,7 @@ Important: only to use this command if you want to remove the existing relay fro
 
 
 
-Deposit & Initiate BTP Transfer Scenario
+Deposit & Initiate BTP Token Transfer Scenario
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -404,9 +392,29 @@ Important: use alice keystore from here on out
 ```
 ./goloop rpc --uri $URL  call --to $(cat var/bsh) \
     --method getBalance  \
-    --param user=$(jq -r .address data/alice.json) \
+    --param user=$(jq -r .address alice.json) \
     --param tokenName=ETH 
  
+```
+
+
+Deposit & Initiate BTP Native Transfer Scenario
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+1. Initiate BTP transfer on Native BSH from Alice to BOB
+
+ change the address of `to` to user address on BSC
+
+```
+./goloop rpc --uri $URL  sendtx call --to $(cat var/bsh.native) \
+--key_store ./alice.json --key_password gochain \
+    --nid $nid --step_limit 13610920010 \
+    --method transferNativeCoin  \
+    --value=0x05  \
+    --param _to=btp://0x61.bsc/0x0baEAd25fe0346B76C73e84c083bb503c14309F1  | jq -r . > var/nativetransfer_tx.bsh
+
+./goloop rpc --uri $URL txresult $(cat var/nativetransfer_tx.bsh)
 ```
 
 Notes:

@@ -7,22 +7,15 @@ source /btpsimple/bin/keystore.sh
 source utils.sh
 ensure_key_store alice.ks.json alice.secret
 
-deploy_javascore_irc31() {
-  echo "deploying javascore IRC31"
-  cd $CONFIG_DIR
-  goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/irc31-0.1.0-optimized.jar \
-    --content_type application/java | jq -r . >tx.irc31.icon
-  extract_scoreAddress tx.irc31.icon irc31.icon
-  create_contracts_address_json "javascore" "IRC31" $(cat irc31.icon)
-}
 
 deploy_javascore_nativeCoin_BSH() {
   echo "deploying javascore Native coin BSH"
   cd $CONFIG_DIR
-  goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/nativecoin-0.1.0-optimized.jar \
+  IRC2_SERIALIZED_SCORE=$(xxd -p $CONTRACTS_DIR/javascore/irc2Tradeable-optimized.jar | tr -d '\n')
+  goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/nativecoin-optimized.jar \
     --content_type application/java \
     --param _bmc=$(cat bmc.icon) \
-    --param _irc31=$(cat irc31.icon) \
+    --param _serializedIrc2=$IRC2_SERIALIZED_SCORE \
     --param _name=ICX | jq -r . >tx.nativebsh.icon
   extract_scoreAddress tx.nativebsh.icon nativebsh.icon
   create_contracts_address_json "javascore" "NativeBSH" $(cat nativebsh.icon)
@@ -43,8 +36,15 @@ nativeBSH_javascore_register() {
   cd $CONFIG_DIR
   goloop rpc sendtx call --to $(cat nativebsh.icon) \
     --method register \
-    --param _name=BNB | jq -r . >tx/register.nativeCoin.icon
+    --param _name=BNB \
+    --param _symbol=BNB \
+    --param _decimals=18 | jq -r . >tx/register.nativeCoin.icon
   ensure_txresult tx/register.nativeCoin.icon
+
+  goloop rpc call --to $(cat nativebsh.icon) \
+        --method coinAddress --param _coinName=BNB | sed -e 's/^"//' -e 's/"$//' > irc2TradeableToken.icon
+      
+  create_contracts_address_json "javascore" "IRC2" $(cat irc2TradeableToken.icon)
 }
 
 nativeBSH_javascore_setFeeRatio() {
@@ -54,15 +54,6 @@ nativeBSH_javascore_setFeeRatio() {
     --method setFeeRatio \
     --param _feeNumerator=100 | jq -r . >tx/setFeeRatio.nativebsh.icon
   ensure_txresult tx/setFeeRatio.nativebsh.icon
-}
-
-irc31_javascore_addOwner() {
-  echo "Adding Native BSH as IRC31 contract owner"
-  cd $CONFIG_DIR
-  goloop rpc sendtx call --to $(cat irc31.icon) \
-    --method addOwner \
-    --param _addr=$(cat nativebsh.icon) | jq -r . >tx/addOwner.irc31.icon
-  ensure_txresult tx/addOwner.irc31.icon
 }
 
 deposit_ICX_for_Alice() {
@@ -93,6 +84,29 @@ transfer_ICX_from_Alice_to_Bob() {
   ensure_txresult tx/Alice2Bob.transfer
 }
 
+
+transfer_BNB_from_Alice_to_Bob() {
+  BNB_TRANSER_AMOUNT=$1
+  echo "Transfer $(wei2coin $BNB_TRANSER_AMOUNT) BNB from Alice to Bob"
+  cd ${CONFIG_DIR}
+
+  goloop rpc sendtx call \
+    --to $(cat irc2TradeableToken.icon) --method approve \
+    --param spender=$(cat nativebsh.icon) \
+    --param amount=$BNB_TRANSER_AMOUNT \
+    --key_store alice.ks.json --key_secret alice.secret |
+    jq -r . >tx/Alice2Bob.approve.BNB
+
+  goloop rpc sendtx call \
+    --to $(cat nativebsh.icon) --method transfer \
+    --param _coinName="BNB" \
+    --param _to=btp://$BSC_BMC_NET/$(get_bob_address) \
+    --param _value=$BNB_TRANSER_AMOUNT \
+    --key_store alice.ks.json --key_secret alice.secret |
+    jq -r . >tx/Alice2Bob.transfer.BNB
+  ensure_txresult tx/Alice2Bob.transfer.BNB
+}
+
 get_alice_balance() {
   balance=$(goloop rpc balance $(get_alice_address) | jq -r)
   balance=$(hex2int $balance)
@@ -100,30 +114,26 @@ get_alice_balance() {
   echo "Alice's balance: $balance (ICX)"
 }
 
-get_alice_native_balance() {
+get_alice_wrapped_native_balance() {
   cd $CONFIG_DIR
 
   local EOA=$(rpceoa alice.ks.json)
-  coinId=$(goloop rpc call --to $(cat nativebsh.icon) \
-    --method coinId \
-    --param _coinName=$1 | jq -r)
-  #echo "Alice coin_id: $coinId"
 
-  balance=$(goloop rpc call --to $(cat irc31.icon) \
+  balance=$(goloop rpc call --to $(cat irc2TradeableToken.icon) \
     --method balanceOf \
-    --param _owner=$EOA --param _id=$coinId | jq -r)
+    --param _owner=$EOA | jq -r)
 
   balance=$(hex2int $balance)
   balance=$(wei2coin $balance)
   echo "$balance ($1)"
 }
 
-check_alice_native_balance_with_wait() {
+check_alice_wrapped_native_balance_with_wait() {
   echo "Checking Alice's balance..."
 
   cd $CONFIG_DIR
-  ALICE_INITIAL_BAL=$(get_alice_native_balance $1)
-  COUNTER=60
+  ALICE_INITIAL_BAL=$(get_alice_wrapped_native_balance $1)
+  COUNTER=30
   while true; do
     printf "."
     if [ $COUNTER -le 0 ]; then
@@ -133,7 +143,32 @@ check_alice_native_balance_with_wait() {
     fi
     sleep 3
     COUNTER=$(expr $COUNTER - 3)
-    ALICE_CURR_BAL=$(get_alice_native_balance $1)
+    ALICE_CURR_BAL=$(get_alice_wrapped_native_balance $1)
+    if [ "$ALICE_CURR_BAL" != "$ALICE_INITIAL_BAL" ]; then
+      printf "\nBTP Transfer Successfull! \n"
+      break
+    fi
+  done
+  echo "Alice's Balance after BTP transfer: $ALICE_CURR_BAL"
+}
+
+
+check_alice_native_balance_with_wait() {
+  echo "Checking Alice's balance..."
+
+  cd $CONFIG_DIR
+  ALICE_INITIAL_BAL=$(get_alice_balance)
+  COUNTER=30
+  while true; do
+    printf "."
+    if [ $COUNTER -le 0 ]; then
+      printf "\nError: timed out while getting Alice's Balance: Balance unchanged\n"
+      echo $ALICE_CURR_BAL
+      exit 1
+    fi
+    sleep 3
+    COUNTER=$(expr $COUNTER - 3)
+    ALICE_CURR_BAL=$(get_alice_balance)
     if [ "$ALICE_CURR_BAL" != "$ALICE_INITIAL_BAL" ]; then
       printf "\nBTP Transfer Successfull! \n"
       break

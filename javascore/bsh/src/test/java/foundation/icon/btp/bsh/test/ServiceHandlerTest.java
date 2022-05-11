@@ -239,9 +239,44 @@ class ServiceHandlerTest extends TestBase {
         Balance balanceBefore = (Balance) bsh.call("getBalance", owners[0].getAddress(), tokenName);
         bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ONE, handleBTPResponseBtpMsg(1, "Transfer Failed"));
         Balance balanceAfter = (Balance) bsh.call("getBalance", owners[0].getAddress(), tokenName);
-        assertEquals(balanceAfter.getUsable(), balanceBefore.getUsable().add(transferAmount));
+        assertEquals(balanceAfter.getRefundable(), balanceBefore.getRefundable().add(transferAmount));
     }
 
+    /**
+     * Scenario #: withdraw refund amount - invalid - failure
+     */
+    @Order(12)
+    @Test
+    public void scenario11a() {
+
+        Balance balanceBefore = (Balance) bsh.call("getBalance", owners[0].getAddress(), tokenName);
+        AssertionError thrown = assertThrows(AssertionError.class, () ->
+                bsh.invoke(owners[0], "withdraw", tokenName, transferAmount.add(BigInteger.ONE))
+        );
+        assertTrue(thrown.getMessage().contains("imbalance"));
+
+        thrown = assertThrows(AssertionError.class, () ->
+                bsh.invoke(owners[0], "withdraw", tokenName, BigInteger.ZERO)
+        );
+        assertTrue(thrown.getMessage().contains("_value must be positive"));
+
+        thrown = assertThrows(AssertionError.class, () ->
+                bsh.invoke(owners[0], "withdraw", "BNB", transferAmount)
+        );
+        assertTrue(thrown.getMessage().contains("Token not registered"));
+    }
+
+    /**
+     * Scenario #: withdraw refund amount - valid - success
+     */
+    @Order(12)
+    @Test
+    public void scenario11b() {
+        BigInteger balanceBefore = (BigInteger) token.call("balanceOf", owners[0].getAddress());
+        bsh.invoke(owners[0], "withdraw", tokenName, transferAmount);
+        BigInteger balanceAfter = (BigInteger) token.call("balanceOf", owners[0].getAddress());
+        assertEquals(balanceAfter, balanceBefore.add(transferAmount));
+    }
 
     /**
      * Scenario #:  AAll requirements are qualified and BSH receives a successful message - Success
@@ -251,6 +286,7 @@ class ServiceHandlerTest extends TestBase {
     public void scenario12() {
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         String _to = "btp://0x1.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
+        token.invoke(owners[0], "transfer", bsh.getAddress(), transferAmount, new byte[0]);
         Balance balanceBefore = (Balance) bsh.call("getBalance", owners[0].getAddress(), tokenName);
         bsh.invoke(owners[0], "transfer", tokenName, transferAmount, _to);
         Balance balanceAfter = (Balance) bsh.call("getBalance", owners[0].getAddress(), tokenName);

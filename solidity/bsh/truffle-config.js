@@ -59,4 +59,7 @@ module.exports = {
     enabled: false,
   },
   plugins: ["truffle-plugin-verify", "@chainsafe/truffle-plugin-abigen"],
+  api_keys: {
+    bscscan: process.env.BSC_SCAN_API_KEY
+  }
 };
