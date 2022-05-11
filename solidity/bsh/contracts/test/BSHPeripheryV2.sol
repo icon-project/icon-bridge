@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0;
+pragma abicoder v2;
 import "../interfaces/IBSHPeriphery.sol";
 import "../interfaces/IBSHCore.sol";
 import "../interfaces/IBMCPeriphery.sol";
@@ -9,8 +9,8 @@ import "../libraries/RLPEncodeStruct.sol";
 import "../libraries/RLPDecodeStruct.sol";
 import "../libraries/ParseAddress.sol";
 import "../libraries/String.sol";
-import "@openzeppelin/contracts-upgradeable/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
    @title Interface of BSH Coin transfer service
@@ -71,7 +71,7 @@ contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
     uint256 private serialNo; //  a counter of sequence number of service message
     uint256 private numOfPendingRequests;
 
-    modifier onlyBMC {
+    modifier onlyBMC() {
         require(msg.sender == address(bmc), "Unauthorized");
         _;
     }
@@ -121,11 +121,13 @@ contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
         //  If '_to' address is an invalid BTP Address format
         //  VM throws an error and revert(). Thus, it does not need
         //  a try_catch at this point
-        (string memory _toNetwork, string memory _toAddress) =
-            _to.splitBTPAddress();
+        (string memory _toNetwork, string memory _toAddress) = _to
+            .splitBTPAddress();
         Types.Asset[] memory _assets = new Types.Asset[](_coinNames.length);
-        Types.AssetTransferDetail[] memory _assetDetails =
-            new Types.AssetTransferDetail[](_coinNames.length);
+        Types.AssetTransferDetail[]
+            memory _assetDetails = new Types.AssetTransferDetail[](
+                _coinNames.length
+            );
         for (uint256 i = 0; i < _coinNames.length; i++) {
             _assets[i] = Types.Asset(_coinNames[i], _values[i]);
             _assetDetails[i] = Types.AssetTransferDetail(
@@ -146,13 +148,11 @@ contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
             serialNo,
             Types
                 .ServiceMessage(
-                Types
-                    .ServiceType
-                    .REQUEST_COIN_TRANSFER,
-                Types
-                    .TransferCoin(_strFrom, _toAddress, _assets)
-                    .encodeTransferCoinMsg()
-            )
+                    Types.ServiceType.REQUEST_COIN_TRANSFER,
+                    Types
+                        .TransferCoin(_strFrom, _toAddress, _assets)
+                        .encodeTransferCoinMsg()
+                )
                 .encodeServiceMessage()
         );
         //  Push pending tx into Record list
@@ -329,9 +329,9 @@ contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
             _sn,
             Types
                 .ServiceMessage(
-                _serviceType,
-                Types.Response(_code, _msg).encodeResponse()
-            )
+                    _serviceType,
+                    Types.Response(_code, _msg).encodeResponse()
+                )
                 .encodeServiceMessage()
         );
     }

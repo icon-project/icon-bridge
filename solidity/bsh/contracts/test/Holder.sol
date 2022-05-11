@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0;
+pragma abicoder v2;
 
 import "../interfaces/IBSHPeriphery.sol";
 import "../interfaces/IBSHCore.sol";
@@ -57,7 +57,7 @@ contract Holder {
     ) external {
         // int256 pos = isSendingNative(_coinNames);
         if (_native != 0) {
-            (bool success, bytes memory err) = _bsh.call{value: _native}(
+            (bool success, bytes memory err) = _bsh.call{ value: _native }(
                 abi.encodeWithSignature(
                     "transferBatch(string[],uint256[],string)",
                     _coinNames,

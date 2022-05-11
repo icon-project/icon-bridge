@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0;
+pragma abicoder v2;
 import "../BSHCore.sol";
 
 contract MockBSHCore is BSHCore {
     function mintMock(
         address _acc,
-        uint256 _erc20Address,
+        address _erc20Address,
         uint256 _value
     ) external {
         IERC20Tradable(_erc20Address).mint(_acc, _value);
@@ -14,7 +14,7 @@ contract MockBSHCore is BSHCore {
 
     function burnMock(
         address _acc,
-        uint256 _erc20Address,
+        address _erc20Address,
         uint256 _value
     ) external {
         IERC20Tradable(_erc20Address).mint(_acc, _value);

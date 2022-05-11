@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
-import "@openzeppelin/contracts-upgradeable/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+pragma solidity >=0.8.0;
+pragma abicoder v2;
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./interfaces/IBSHPeriphery.sol";
 import "./interfaces/IBSHCore.sol";
 import "./libraries/String.sol";
@@ -255,7 +255,9 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
             );
         }
         address _erc20Address = coins[_coinName];
-        _usableBalance = _erc20Address != address(0)? IERC20Tradable(_erc20Address).balanceOf(_owner) : 0;
+        _usableBalance = _erc20Address != address(0)
+            ? IERC20Tradable(_erc20Address).balanceOf(_owner)
+            : 0;
         return (
             _usableBalance,
             balances[_owner][_coinName].lockedBalance,
@@ -548,7 +550,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     }
 
     function paymentTransfer(address payable _to, uint256 _amount) private {
-        (bool sent, ) = _to.call{value: _amount}("");
+        (bool sent, ) = _to.call{ value: _amount }("");
         require(sent, "Payment transfer failed");
     }
 

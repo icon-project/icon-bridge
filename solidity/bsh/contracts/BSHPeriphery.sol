@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0;
+pragma abicoder v2;
 import "./interfaces/IBSHPeriphery.sol";
 import "./interfaces/IBSHCore.sol";
 import "./interfaces/IBMCPeriphery.sol";
@@ -9,8 +9,8 @@ import "./libraries/RLPEncodeStruct.sol";
 import "./libraries/RLPDecodeStruct.sol";
 import "./libraries/ParseAddress.sol";
 import "./libraries/String.sol";
-import "@openzeppelin/contracts-upgradeable/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
    @title BSHPeriphery contract
