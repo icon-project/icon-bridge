@@ -260,7 +260,7 @@ function icon_sendtx_transfer() {
 
 function icon_transfer() {
     log_stack
-    local type=icon validate_transfer "$@"
+    type=icon validate_transfer "$@"
     local address=$1
     local balance=$2
     if [ $balance == 0 ]; then return 0; fi
@@ -569,12 +569,26 @@ function deploysc() {
     # build javascores
     log "Build: "
     log "javascores:"
-    cd $ixh_jsc_dir/bmc
-    gradle optimizedJar >/dev/null
-    cd $OLDPWD
-    # cd $ixh_jsc_dir/bsh && \
-    #     gradle optimizedJar && \
-    #     gradle optimizedJarIRC2;
+
+    cd $ixh_jsc_dir
+    gradle clean
+    gradle bmc:optimizedJar
+    gradle nativecoin:optimizedJar
+    gradle bsh:optimizedJar
+
+    mkdir dist
+    cp lib/irc2Tradeable-0.1.0-optimized.jar dist/irc2Tradeable.jar
+    cp bmc/build/libs/bmc-0.1.0-optimized.jar dist/bmc.jar
+    cp bsh/build/libs/bsh-optimized.jar dist/bsh.jar
+    cp nativecoin/build/libs/nativecoin-0.1.0-optimized.jar dist/nativecoin.jar
+
+    cd $ixh_build_dir
+    git clone https://github.com/icon-project/java-score-examples.git
+    cd java-score-examples
+    gradle irc2-token:clean
+    gradle irc2-token:optimizedJar
+    cp irc2-token/build/libs/irc2-token-0.9.1.jar $ixh_jsc_dir/dist/irc2.jar
+
     log
 
     log "Deploy: "
@@ -587,40 +601,21 @@ function deploysc() {
     r=$(WALLET=$btp_icon_wallet \
         PASSWORD=$btp_icon_wallet_password \
         icon_deploysc \
-        $ixh_jsc_dir/bmc/build/libs/bmc-0.1.0-optimized.jar \
+        $ixh_jsc_dir/dist/bmc.jar \
         _net="$btp_icon_net")
     btp_icon_bmc=$(jq -r .scoreAddress <<<$r)
     btp_icon_block_hash=$(jq -r .blockHash <<<$r)
     btp_icon_block_height=$(hex2dec $(jq -r .blockHeight <<<$r))
 
-    # irc31
-    log "irc31: "
+    # bsh
+    log "bsh: "
     r=$(WALLET=$btp_icon_wallet \
         PASSWORD=$btp_icon_wallet_password \
         icon_deploysc \
-        $ixh_jsc_dir/irc31-0.1.0-optimized.jar)
-    btp_icon_irc31=$(jq -r .scoreAddress <<<$r)
-
-    # nativecoin bsh
-    log "nativecoin_bsh: "
-    r=$(WALLET=$btp_icon_wallet \
-        PASSWORD=$btp_icon_wallet_password \
-        icon_deploysc \
-        $ixh_jsc_dir/nativecoin-0.1.0-optimized.jar \
-        _name="$btp_icon_nativecoin_symbol" \
-        _bmc="$btp_icon_bmc" \
-        _irc31="$btp_icon_irc31")
-    btp_icon_nativecoin_bsh=$(jq -r .scoreAddress <<<$r)
-
-    # # token bsh
-    # log -n "bsh: "
-    # r=$(WALLET=$btp_icon_wallet \
-    #     PASSWORD=$btp_icon_wallet_password \
-    #     icon_deploysc \
-    #     $ixh_jsc_dir/bsh/build/libs/bsh-optimized.jar \
-    #     _bmc="$btp_icon_bmc")
-    # btp_icon_token_bsh=$(jq -r .scoreAddress <<<$r)
-    # log "$btp_icon_token_bsh"
+        $ixh_jsc_dir/dist/bsh.jar \
+        _bmc="$btp_icon_bmc")
+    btp_icon_token_bsh=$(jq -r .scoreAddress <<<$r)
+    log "$btp_icon_token_bsh"
 
     # # irc2
     # log -n "irc2: "
@@ -630,10 +625,24 @@ function deploysc() {
     #     $ixh_jsc_dir/bsh/build/libs/irc2-optimized.jar \
     #     _name="$btp_hmny_nativecoin_symbol" \
     #     _symbol="$btp_hmny_nativecoin_symbol" \
-    #     _decimals=2 \
-    #     _initialSupply=10000)
+    #     _decimals=0x12 \
+    #     _initialSupply=0xffffffff)
     # btp_icon_irc2=$(jq -r .scoreAddress <<<$r)
     # log "$btp_icon_irc2"
+
+    # irc2
+    irc2Tradeable_score=$(xxd -p $ixh_jsc_dir/dist/irc2Tradeable.jar | tr -d '\n')
+
+    # nativecoin bsh
+    log "nativecoin_bsh: "
+    r=$(WALLET=$btp_icon_wallet \
+        PASSWORD=$btp_icon_wallet_password \
+        icon_deploysc \
+        $ixh_jsc_dir/dist/nativecoin.jar \
+        _name="$btp_icon_nativecoin_symbol" \
+        _bmc="$btp_icon_bmc" \
+        _serializedIrc2="$irc2Tradeable_score")
+    btp_icon_nativecoin_bsh=$(jq -r .scoreAddress <<<$r)
 
     # icon btp address
     btp_icon_btp_address="btp://$btp_icon_net/$btp_icon_bmc"
@@ -680,7 +689,7 @@ function deploysc() {
             BSH_COIN_URL="https://github.com/icon/btp" \
             BSH_COIN_NAME="$btp_hmny_nativecoin_symbol" \
             BSH_COIN_FEE=10 \
-            BSH_FIXED_FEE=500000 \
+            BSH_FIXED_FEE=0 \
             BMC_PERIPHERY_ADDRESS="$btp_hmny_bmc_periphery" \
             BSH_SERVICE="$btp_icon_nativecoin_bsh_svc_name" \
             hmny_deploysc $ixh_sol_dir/bsh BSHCore BSHPeriphery
@@ -747,7 +756,7 @@ function deploysc() {
     btp_icon_rx_height=$(hex2dec $(icon_callsc "$btp_icon_bmc" getStatus "_link=$btp_hmny_btp_address" | jq -r .rx_height))
     log "rxHeight=$btp_icon_rx_height"
 
-    # add bsh to bmc
+    # add nativecoin bsh to bmc
     log "bmc_add_nativecoin_bsh: "
     _=$(WALLET=$btp_icon_bmc_owner_wallet \
         PASSWORD=$btp_icon_bmc_owner_wallet_password \
@@ -765,13 +774,30 @@ function deploysc() {
     _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
         icon_sendtx_call "$btp_icon_nativecoin_bsh" addOwner 0 "_addr=$btp_icon_nativecoin_bsh_owner")
 
-    # register one_dev token
-    log "nativecoin_bsh_register_irc31: "
+    # register one_dev token as ircTradeable
+    log "nativecoin_bsh_register_irc2Tradeable: "
     _=$(WALLET=$btp_icon_nativecoin_bsh_owner_wallet \
         PASSWORD=$btp_icon_nativecoin_bsh_owner_wallet_password \
-        icon_sendtx_call "$btp_icon_nativecoin_bsh" register 0 "_name=$btp_hmny_nativecoin_symbol")
+        icon_sendtx_call "$btp_icon_nativecoin_bsh" \
+        register 0 \
+        "_name=$btp_hmny_nativecoin_symbol" \
+        "_symbol=$btp_hmny_nativecoin_symbol" \
+        "_decimals=$btp_hmny_nativecoin_decimals")
 
-    # register relay to bmc
+    btp_irc2_tradeable=$(icon_callsc \
+        "$btp_icon_nativecoin_bsh" coinAddress \
+        "_coinName=$btp_hmny_nativecoin_symbol" | jq -r)
+    log "btp_irc2_tradeable: $btp_irc2_tradeable"
+
+    # set nativecoin fee ratio
+    log "nativecoin bsh set fee ratio: "
+    _=$(WALLET=$btp_icon_nativecoin_bsh_owner_wallet \
+        PASSWORD=$btp_icon_nativecoin_bsh_owner_wallet_password \
+        icon_sendtx_call "$btp_icon_nativecoin_bsh" \
+        setFeeRatio 0 \
+        "_feeNumerator=100")
+
+    # register relay in bmc
     log "create_wallet: [$(rel_path "$btp_icon_bmr_owner_wallet")] "
     btp_icon_bmr_owner=$(
         WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
@@ -783,12 +809,6 @@ function deploysc() {
     _=$(WALLET=$btp_icon_bmc_owner_wallet \
         PASSWORD=$btp_icon_bmc_owner_wallet_password \
         icon_sendtx_call "$btp_icon_bmc" addRelay 0 "_link=$btp_hmny_btp_address" "_addr=$btp_icon_bmr_owner")
-
-    # set nativecoinbsh as owner of irc31 token
-    log "irc31_add_owner: [${btp_icon_nativecoin_bsh:0:10}] "
-    _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
-        icon_sendtx_call "$btp_icon_irc31" addOwner 0 "_addr=$btp_icon_nativecoin_bsh")
-    log
 
     # icon: end
 
@@ -840,7 +860,12 @@ function deploysc() {
     WALLET=$btp_hmny_wallet PASSWORD= \
         run_sol >/dev/null \
         bsh.BSHCore.register \
-        "'$btp_icon_nativecoin_symbol'"
+        "'$btp_icon_nativecoin_symbol','$btp_icon_nativecoin_bsh',18"
+
+    log "bsh setFeeRatio:"
+    WALLET=$btp_hmny_wallet PASSWORD= \
+        run_sol >/dev/null \
+        bsh.BSHCore.setFeeRatio "100"
 
     # hmny: end
 
@@ -948,7 +973,20 @@ function docker_compose() {
 
 function stop() {
     log_stack
-    docker_compose down
+    local func=$1
+    local args=("${@:2}")
+    case "$func" in
+    bmr)
+        docker_compose down bmr "${args[@]}"
+        ;;
+    nodes)
+        docker_compose down icon hmny "${args[@]}"
+        ;;
+    *)
+        echo "stop [bmr|nodes]"
+        exit 1
+        ;;
+    esac
 }
 
 function start() {
@@ -956,33 +994,21 @@ function start() {
     if [ "$docker_host" != "localhost" ]; then
         docker_compose pull
     fi
-    docker_compose up "$@"
-}
 
-function docker_compose_bmr() {
-    log_stack
-    if [ "$docker_host" != "localhost" ]; then
-        export DOCKER_HOST="ssh://$docker_user@$docker_host"
-    fi
-    local env_file=$(mktemp /tmp/ixh.env.XXXXX)
-    echo "docker_registry=$docker_registry" >$env_file
-    echo "bmr_config_json='$(cat $ixh_tmp_dir/bmr.config.json)'" >>$env_file
-    docker-compose -f $ixh_src_dir/bmr.docker-compose.yml --env-file $env_file "$@"
-    # cat $env_file
-    rm $env_file
-}
-
-function stop_bmr() {
-    log_stack
-    docker_compose_bmr down
-}
-
-function start_bmr() {
-    log_stack
-    if [ "$docker_host" != "localhost" ]; then
-        docker_compose_bmr pull
-    fi
-    docker_compose_bmr up "$@"
+    local func=$1
+    local args=("${@:2}")
+    case "$func" in
+    bmr)
+        docker_compose up bmr "${args[@]}"
+        ;;
+    nodes)
+        docker_compose up icon hmny "${args[@]}"
+        ;;
+    *)
+        echo "start [bmr|nodes]"
+        exit 1
+        ;;
+    esac
 }
 
 function build_images() {
@@ -1005,10 +1031,16 @@ function build_images() {
     function build_icon() {
         log "building icon"
         cd $repos_dir
-        git clone --single-branch \
-            --branch ${btp_icon_branch:-master} \
-            https://github.com/icon-project/goloop
-        cd goloop
+        if [ -d goloop ]; then
+            cd goloop
+            git fetch
+            git checkout ${btp_icon_branch:-master}
+        else
+            git clone --single-branch \
+                --branch ${btp_icon_branch:-master} \
+                https://github.com/icon-project/goloop
+            cd goloop
+        fi
         make gochain-icon-image
         docker <$ixh_src_dir/icon.Dockerfile \
             build \
@@ -1095,8 +1127,7 @@ function run_exec() {
     iconGetWrappedCoinBalance)
         wallet_address=${args[0]}
         coinName=${args[1]}
-        coinId=$(icon_callsc "$btp_icon_nativecoin_bsh" coinId "_coinName=$coinName" | jq -r .)
-        balance=$(icon_callsc "$btp_icon_irc31" balanceOf "_owner=$wallet_address" "_id=$coinId" | jq -r .)
+        balance=$(icon_callsc "$btp_irc2_tradeable" balanceOf "_owner=$wallet_address" | jq -r .)
         hex2dec $balance
         ;;
     iconTransfer)
@@ -1117,13 +1148,19 @@ function run_exec() {
     iconGetBMCStatus)
         icon_callsc "$btp_icon_bmc" getStatus "_link=$btp_hmny_btp_address"
         ;;
-    iconBSHIsApprovedForAll)
-        wallet_address=${args[0]}
-        icon_callsc "$btp_icon_irc31" isApprovedForAll "_owner=$wallet_address" "_operator=$btp_icon_nativecoin_bsh"
+    iconBSHApprove)
+        coinName=${args[0]}
+        spender=${args[1]}
+        amount=${args[2]}
+        coinAddress=$(icon_callsc "$btp_icon_nativecoin_bsh" coinAddress "_coinName=$coinName" | jq -r .)
+        icon_sendtx_call "$coinAddress" approve 0 "spender=$spender" "amount=$amount"
         ;;
-    iconBSHSetApprovalForAll)
-        approved=${args[0]:-1}
-        icon_sendtx_call "$btp_icon_irc31" setApprovalForAll 0 "_operator=$btp_icon_nativecoin_bsh" "_approved=$approved"
+    iconBSHAllowance)
+        coinName=${args[0]}
+        owner=${args[1]}
+        spender=${args[2]}
+        coinAddress=$(icon_callsc "$btp_icon_nativecoin_bsh" coinAddress "_coinName=$coinName" | jq -r .)
+        icon_callsc "$coinAddress" allowance "owner=$owner" "spender=$spender"
         ;;
     hmnyGetBalance)
         wallet_address=${args[0]}
@@ -1164,17 +1201,72 @@ function run_exec() {
         approved=$([[ $approved == 0 ]] && echo false || echo true)
         run_sol bsh.BSHCore.setApprovalForAll "'$btp_hmny_bsh_core',$approved"
         ;;
+    hmnyBSHApprove)
+        coinName=${args[0]}
+        spender=${args[1]}
+        amount=${args[2]}
+        coinAddress=$(run_sol bsh.BSHCore.coinId "'$coinName'" | jq -r .)
+        WALLET=${WALLET:-}
+        PASSWORD=${PASSWORD:-}
+        if [ $WALLET ]; then
+            export PRIVATE_KEY=$(ethkey_get_private_key "$WALLET" "$PASSWORD")
+        fi
+        cd $ixh_sol_dir/bsh
+        _truffle exec --network hmny <(echo "
+        const erc20t = artifacts.require('ERC20Tradable');
+        module.exports = async function (callback) {
+            try {
+                const t = await erc20t.at('$coinAddress');
+                let res = await t.approve('$spender','$amount');
+                try {
+                    console.log(JSON.stringify(res, null, 2));
+                } catch(err) {
+                    console.log(res);
+                }
+            } catch(err) {
+                console.error(err);
+            } finally { callback(); }
+        }") | sed '1d' | sed '1d' # trim first 2 lines
+        ;;
+    hmnyBSHAllowance)
+        coinName=${args[0]}
+        owner=${args[1]}
+        spender=${args[2]}
+        coinAddress=$(run_sol bsh.BSHCore.coinId "'$coinName'" | jq -r .)
+        cd $ixh_sol_dir/bsh
+        _truffle exec --network hmny <(echo "
+        const erc20t = artifacts.require('ERC20Tradable');
+        module.exports = async function (callback) {
+            try {
+                const t = await erc20t.at('$coinAddress');
+                let res = await t.allowance('$owner','$spender');
+                try {
+                    console.log(JSON.stringify(res, null, 2));
+                } catch(err) {
+                    console.log(res);
+                }
+            } catch(err) {
+                console.error(err);
+            } finally { callback(); }
+        }") | sed '1d' | sed '1d' | jq -r . # trim first 2 lines
+        ;;
     hmnyChainStatus)
         hmny_get_hmny_chain_status
         ;;
-    # iconDeployWPS)
+    # iconDeployWTS)
+    #     # local oracle=${args[0]:-cx900e2d17c38903a340a0181523fa2f720af9a798} # sejong
+    #     local oracle=${args[0]:-cx36a55b74aca43a9db9d5a8fc876c76d04daa85a2} # berlin
     #     scdir="$ixh_jsc_dir/wonderland"
     #     cd $scdir && gradle optimizedJar && cd $OLDPWD
-    #     scfile="$scdir/build/libs/wps-0.0.1-optimized.jar"
-    #     address=$(icon_deploysc $scfile "_bmc=$btp_icon_bmc" "_net=$btp_hmny_net" | jq -r .scoreAddress)
+    #     scfile="$scdir/build/libs/wts-0.0.1-optimized.jar"
+    #     address=$(
+    #         icon_deploysc $scfile \
+    #             "_bmc=$btp_icon_bmc" "_net=$btp_hmny_net" \
+    #             "_oracle=$oracle" | jq -r .scoreAddress
+    #     )
     #     echo "icon wps: $address"
-    #     icon_sendtx_call "$btp_icon_bmc" removeService 0 "_svc=WonderlandWhitelistedPresaleService"
-    #     icon_sendtx_call "$btp_icon_bmc" addService 0 "_addr=$address" "_svc=WonderlandWhitelistedPresaleService"
+    #     icon_sendtx_call "$btp_icon_bmc" removeService 0 "_svc=WonderlandTokenSaleService"
+    #     icon_sendtx_call "$btp_icon_bmc" addService 0 "_addr=$address" "_svc=WonderlandTokenSaleService"
     #     ;;
     *)
         log "invalid run command: $func"
@@ -1332,8 +1424,8 @@ function run_demo() {
         run_exec hmnyGetBalance $btp_hmny_test_wallet_address
     }
 
-    function get_icon_wrapped_ONE_DEV() {
-        run_exec iconGetWrappedCoinBalance $btp_icon_test_wallet_address ONE_DEV
+    function get_icon_wrapped_ONE() {
+        run_exec iconGetWrappedCoinBalance $btp_icon_test_wallet_address ONE
     }
 
     function get_hmny_wrapped_ICX() {
@@ -1347,8 +1439,8 @@ function run_demo() {
         echo "    Icon: $btp_icon_test_wallet_address"
         icon_balance=$(get_icon_balance)
         echo "        Native: $icon_balance"
-        icon_wrapped_ONE_DEV=$(get_icon_wrapped_ONE_DEV)
-        echo "        Wrapped (ONE_DEV): $icon_wrapped_ONE_DEV"
+        icon_wrapped_ONE=$(get_icon_wrapped_ONE)
+        echo "        Wrapped (ONE): $icon_wrapped_ONE"
         echo "    Hmny: $btp_hmny_test_wallet_address"
         hmny_balance=$(get_hmny_balance)
         echo "        Native: $hmny_balance"
@@ -1382,7 +1474,7 @@ function run_demo() {
     show_balances
 
     # h2i_nativecoin_transfer_amount=$(python3 -c "print($hmny_balance//3)")
-    h2i_nativecoin_transfer_amount=1000000000000000000 # 1 ONE_DEV
+    h2i_nativecoin_transfer_amount=1000000000000000000 # 1 ONE
     echo "TransferNativeCoin (Hmny -> Icon):"
     echo "    amount=$h2i_nativecoin_transfer_amount"
     echo -n "    "
@@ -1397,17 +1489,23 @@ function run_demo() {
 
     show_balances
 
-    echo "Approve Icon NativeCoinBSH"
+    echo "Approve Icon NativeCoinBSH to access $btp_hmny_nativecoin_symbol"
     WALLET=$btp_icon_test_wallet \
         PASSWORD=$btp_icon_test_wallet_password \
-        run_exec iconBSHSetApprovalForAll 1 >/dev/null
-    echo "    Status: $(run_exec iconBSHIsApprovedForAll $btp_icon_test_wallet_address)"
+        run_exec iconBSHApprove "$btp_hmny_nativecoin_symbol" \
+        "$btp_icon_nativecoin_bsh" 100000000000000000000000 >/dev/null # 100000
+    echo "    Allowance: $(run_exec iconBSHAllowance \
+        $btp_hmny_nativecoin_symbol $btp_icon_test_wallet_address \
+        $btp_icon_nativecoin_bsh)"
 
-    echo "Approve Hmny BSHCore"
+    echo "Approve Hmny BSHCore to access $btp_icon_nativecoin_symbol"
     WALLET=$btp_hmny_test_wallet \
         PASSWORD=$btp_hmny_test_wallet_password \
-        run_exec hmnyBSHSetApprovalForAll 1 >/dev/null
-    echo "    Status: $(run_exec hmnyBSHIsApprovedForAll $btp_hmny_test_wallet_address)"
+        run_exec hmnyBSHApprove "$btp_icon_nativecoin_symbol" \
+        "$btp_hmny_bsh_core" 100000000000000000000000 >/dev/null # 100000
+    echo "    Allowance: $(run_exec hmnyBSHAllowance \
+        $btp_icon_nativecoin_symbol $btp_hmny_test_wallet_address \
+        $btp_hmny_bsh_core)"
     echo
 
     # h2i_wrapped_ICX_transfer_amount=$(python3 -c "print($hmny_wrapped_ICX//2)")
@@ -1418,7 +1516,7 @@ function run_demo() {
     WALLET=$btp_hmny_test_wallet \
         PASSWORD=$btp_hmny_test_wallet_password \
         run_exec hmnyTransferWrappedCoin \
-        ICX \
+        $btp_icon_nativecoin_symbol \
         $h2i_wrapped_ICX_transfer_amount \
         "btp://$btp_icon_net/$btp_icon_test_wallet_address" >/dev/null
 
@@ -1426,15 +1524,15 @@ function run_demo() {
 
     show_balances
 
-    # i2h_wrapped_ONE_DEV_transfer_amount=$(python3 -c "print($icon_wrapped_ONE_DEV//2)")
-    i2h_wrapped_ONE_DEV_transfer_amount=500000000000000000 # 0.5 ONE_DEV
-    echo "TransferWrapped Coin ONE_DEV (Icon -> Hmny):"
-    echo "    amount=$i2h_wrapped_ONE_DEV_transfer_amount"
+    # i2h_wrapped_ONE_transfer_amount=$(python3 -c "print($icon_wrapped_ONE//2)")
+    i2h_wrapped_ONE_transfer_amount=500000000000000000 # 0.5 ONE
+    echo "TransferWrapped Coin ONE (Icon -> Hmny):"
+    echo "    amount=$i2h_wrapped_ONE_transfer_amount"
     echo -n "    "
     WALLET=$btp_icon_test_wallet PASSWORD=$btp_icon_test_wallet_password \
         run_exec iconTransferWrappedCoin \
-        ONE_DEV \
-        $i2h_wrapped_ONE_DEV_transfer_amount \
+        $btp_hmny_nativecoin_symbol \
+        $i2h_wrapped_ONE_transfer_amount \
         "btp://$btp_hmny_net/$btp_hmny_test_wallet_address" >/dev/null
     echo
 
@@ -1499,11 +1597,13 @@ btp_icon_bmr_owner_balance=1000000000000000000000           # 1000 ICX
 btp_icon_step_limit=13610920001
 btp_icon_nativecoin_symbol=ICX
 btp_icon_nativecoin_bsh_svc_name=nativecoin
+btp_icon_token_bsh_svc_name=tokenbsh
 
 btp_hmny_bmr_owner_balance=10000000000000000000 # 10 ONE
 btp_hmny_gas_limit=80000000                     # equal to block gas limit
 btp_hmny_gas_price=30000000000                  # 30 gwei
-btp_hmny_nativecoin_symbol=ONE_DEV
+btp_hmny_nativecoin_symbol=ONE
+btp_hmny_nativecoin_decimals=18
 
 btp_icon_nid=$(dec2hex $(cat "$btp_icon_config" | jq -r .nid 2>/dev/null))
 btp_hmny_nid=0x6357d2e0
@@ -1523,11 +1623,13 @@ btp_icon_uri="http://$docker_host:9080/api/v3/default"
 # btp_hmny_god_wallet_address_bech32=one1ah8rptpkpvcpxnvuczyq6csajlf6f3ghs8ekym
 # btp_hmny_god_wallet_password=
 
+# # btp_icon_nid=0x53
+# # btp_icon_uri="https://sejong.net.solidwallet.io/api/v3/icon_dex"
 # btp_icon_nid=0x7
-# btp_hmny_nid=0x6357d2e0
-
-# btp_hmny_uri="https://rpc.s0.b.hmny.io"
 # btp_icon_uri="https://berlin.net.solidwallet.io/api/v3/icon_dex"
+
+# btp_hmny_nid=0x6357d2e0
+# btp_hmny_uri="https://rpc.s0.b.hmny.io"
 # # testnet: end
 
 # wallets for deploysc/tests
@@ -1560,24 +1662,12 @@ start)
     start "${args[@]}"
     ;;
 
-start_bmr)
-    start_bmr "${args[@]}"
-    ;;
-
 stop)
     stop "${args[@]}"
     ;;
 
-stop_bmr)
-    stop_bmr "${args[@]}"
-    ;;
-
 docker_compose)
     docker_compose "${args[@]}"
-    ;;
-
-docker_compose_bmr)
-    docker_compose_bmr "${args[@]}"
     ;;
 
 build)
