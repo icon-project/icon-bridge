@@ -182,6 +182,15 @@ func (r *relay) Start(ctx context.Context) error {
 				case errors.Is(err, context.Canceled):
 					r.log.WithFields(log.Fields{"error": err}).Error("tx.Receipt failed")
 					return err
+				case errors.Is(err, chain.ErrGasLimitExceeded):
+					// increase transaction gas limit
+				case errors.Is(err, chain.ErrBlockGasLimitExceeded):
+					// reduce batch size
+				case errors.Is(err, chain.ErrBMCRevertRxSeqLowerThanExpected):
+					// old messages; skip
+				case errors.Is(err, chain.ErrBMCRevertRxSeqHigherThanExpected):
+					// message skipped; refetch from src and send
+
 				default:
 					time.Sleep(relayTxReceiptWaitInterval) // wait before asking for receipt
 					r.log.WithFields(log.Fields{"error": err}).Debug("tx.Receipt: retry")

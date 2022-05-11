@@ -7,7 +7,9 @@ import (
 
 var (
 	// Common errors
-	ErrInsufficientBalance = errors.New("InsufficientBalance")
+	ErrInsufficientBalance   = errors.New("InsufficientBalance")
+	ErrGasLimitExceeded      = errors.New("GasLimitExceeded")
+	ErrBlockGasLimitExceeded = errors.New("BlockGasLimitExceeded")
 
 	// BMC errors
 	ErrBMCRevertLastOwner                 = errors.New("BMCRevertLastOwner")
