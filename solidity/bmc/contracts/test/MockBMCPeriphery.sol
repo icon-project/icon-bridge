@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.8.5;
+pragma abicoder v2;
 
 import "../interfaces/IBSH.sol";
 import "../interfaces/IBMCPeriphery.sol";
@@ -13,7 +13,7 @@ import "../libraries/Types.sol";
 import "../libraries/Utils.sol";
 import "../libraries/DecodeBase64.sol";
 
-import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract MockBMCPeriphery is IBMCPeriphery, Initializable {
     using String for string;
@@ -290,28 +290,28 @@ contract MockBMCPeriphery is IBMCPeriphery, Initializable {
     {
         Types.Link memory link = IBMCManagement(bmcManagement).getLink(_link);
         require(link.isConnected == true, "BMCRevertNotExistsLink");
-        Types.RelayStats[] memory _relays = IBMCManagement(bmcManagement)
-            .getRelayStatusByLink(_link);
-        (string memory _net, ) = _link.splitBTPAddress();
-        uint256 _rotateTerm = link.maxAggregation.getRotateTerm(
-            link.blockIntervalSrc.getScale(link.blockIntervalDst)
-        );
+        // Types.RelayStats[] memory _relays = IBMCManagement(bmcManagement)
+        //     .getRelayStatusByLink(_link);
+        // (string memory _net, ) = _link.splitBTPAddress();
+        // uint256 _rotateTerm = link.maxAggregation.getRotateTerm(
+        //     link.blockIntervalSrc.getScale(link.blockIntervalDst)
+        // );
         return
             Types.LinkStats(
                 link.rxSeq,
                 link.txSeq,
-                Types.VerifierStats(0, 0, 0, ""), //dummy
-                _relays,
-                link.relayIdx,
-                link.rotateHeight,
-                _rotateTerm,
-                link.delayLimit,
-                link.maxAggregation,
-                link.rxHeightSrc,
-                link.rxHeight,
-                link.blockIntervalSrc,
-                link.blockIntervalDst,
-                block.number
+                // Types.VerifierStats(0, 0, 0, ""), //dummy
+                // _relays,
+                // link.relayIdx,
+                // link.rotateHeight,
+                // _rotateTerm,
+                // link.delayLimit,
+                // link.maxAggregation,
+                // link.rxHeightSrc,
+                link.rxHeight
+                // link.blockIntervalSrc,
+                // link.blockIntervalDst,
+                // block.number
             );
     }
 }

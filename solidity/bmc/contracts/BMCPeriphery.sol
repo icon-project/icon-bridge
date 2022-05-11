@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.8.1 <0.8.5;
+pragma solidity >=0.8.0 <0.8.5;
 pragma abicoder v2;
 
 import "./interfaces/IBSH.sol";
@@ -27,19 +27,19 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
     uint256 internal constant BSH_ERR = 40;
     uint256 internal constant UNKNOWN_ERR = 0;
 
-    string internal constant BMCRevertUnauthorized = "BMCRevertUnauthorized";
-    string internal constant BMCRevertParseFailure = "BMCRevertParseFailure";
-    string internal constant BMCRevertNotExistsBSH = "BMCRevertNotExistsBSH";
-    string internal constant BMCRevertNotExistsLink = "BMCRevertNotExistsLink";
-    string internal constant BMCRevertInvalidSN = "BMCRevertInvalidSN";
-    string internal constant BMCRevertUnknownHandleBTPError =
-        "BMCRevertUnknownHandleBTPError";
+    string internal constant BMCRevertUnauthorized = "Unauthorized";
+    string internal constant BMCRevertParseFailure = "ParseFailure";
+    string internal constant BMCRevertNotExistsBSH = "NotExistsBSH";
+    string internal constant BMCRevertNotExistsLink = "NotExistsLink";
+    string internal constant BMCRevertInvalidSN = "InvalidSN";
     string internal constant BMCRevertRxSeqHigherThanExpected =
-        "BMCRevertRxSeqHigherThanExpected";
+        "RxSeqHigherThanExpected";
     string internal constant BMCRevertNotExistsInternalHandler =
-        "BMCRevertNotExistsInternalHandler";
+        "NotExistsInternalHandler";
+    string internal constant BMCRevertUnknownHandleBTPError =
+        "UnknownHandleBTPError";
     string internal constant BMCRevertUnknownHandleBTPMessage =
-        "BMCRevertUnknownHandleBTPMessage";
+        "UnknownHandleBTPMessage";
 
     string private bmcBtpAddress; // a network address, i.e. btp://1234.pra/0xabcd
     address private bmcManagement;
@@ -203,7 +203,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                                 _gatherFee.fa,
                                 _gatherFee.svcs[i]
                             )
-                        {} catch Panic(uint256 errorCode) {} catch {
+                        {} catch {
                             //  If BSH contract throws a revert error, ignore and continue
                         }
                     }
@@ -272,18 +272,18 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                     )
                 {} catch Error(string memory reason) {
                     _sendError(_prev, _msg, BSH_ERR, reason);
-                } catch Panic(uint256 errorCode) {
-                    _sendError(
-                        _prev,
-                        _msg,
-                        BSH_ERR,
-                        string(
-                            abi.encodePacked(
-                                "BMCPanicHandleBTPMessage:",
-                                errorCode
-                            )
-                        )
-                    );
+                    // } catch Panic(uint256 errorCode) {
+                    //     _sendError(
+                    //         _prev,
+                    //         _msg,
+                    //         BSH_ERR,
+                    //         string(
+                    //             abi.encodePacked(
+                    //                 "BMCPanicHandleBTPMessage:",
+                    //                 errorCode
+                    //             )
+                    //         )
+                    //     );
                 } catch (bytes memory) {
                     _sendError(
                         _prev,
@@ -307,12 +307,12 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                 {} catch Error(string memory reason) {
                     _errCode = BSH_ERR;
                     _errMsg = bytes(reason);
-                } catch Panic(uint256 errorCode) {
-                    _errCode = UNKNOWN_ERR;
-                    _errMsg = abi.encodePacked(
-                        "BMCPanicHandleBTPError:",
-                        errorCode
-                    );
+                    // } catch Panic(uint256 errorCode) {
+                    //     _errCode = UNKNOWN_ERR;
+                    //     _errMsg = abi.encodePacked(
+                    //         "BMCPanicHandleBTPError:",
+                    //         errorCode
+                    //     );
                 } catch (bytes memory) {
                     _errCode = UNKNOWN_ERR;
                     _errMsg = bytes(BMCRevertUnknownHandleBTPError);

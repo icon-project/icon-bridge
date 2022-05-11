@@ -88,14 +88,14 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	ls := &chain.BMCLinkStatus{}
 	ls.TxSeq = status.TxSeq.Uint64()
 	ls.RxSeq = status.RxSeq.Uint64()
-	ls.BMRIndex = uint(status.RelayIdx.Uint64())
-	ls.RotateHeight = status.RotateHeight.Uint64()
-	ls.RotateTerm = uint(status.RotateTerm.Uint64())
-	ls.DelayLimit = uint(status.DelayLimit.Uint64())
-	ls.MaxAggregation = uint(status.MaxAggregation.Uint64())
-	ls.CurrentHeight = status.CurrentHeight.Uint64()
+	// ls.BMRIndex = uint(status.RelayIdx.Uint64())
+	// ls.RotateHeight = status.RotateHeight.Uint64()
+	// ls.RotateTerm = uint(status.RotateTerm.Uint64())
+	// ls.DelayLimit = uint(status.DelayLimit.Uint64())
+	// ls.MaxAggregation = uint(status.MaxAggregation.Uint64())
+	// ls.CurrentHeight = status.CurrentHeight.Uint64()
 	ls.RxHeight = status.RxHeight.Uint64()
-	ls.RxHeightSrc = status.RxHeightSrc.Uint64()
+	// ls.RxHeightSrc = status.RxHeightSrc.Uint64()
 	return ls, nil
 }
 
@@ -269,6 +269,13 @@ func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error)
 		data, err := tx.cl.eth.CallContract(_ctx, callMsg, txr.BlockNumber)
 		if err != nil {
 			return nil, err
+		}
+
+		if txr.GasUsed >= tx.pendingTx.Gas()*63/64 { // gas limit exceeded
+			if txr.GasUsed == txr.CumulativeGasUsed { // block gas limit exceeded
+				return nil, chain.ErrBlockGasLimitExceeded
+			}
+			return nil, chain.ErrGasLimitExceeded
 		}
 
 		return nil, chain.RevertError(revertReason(data))

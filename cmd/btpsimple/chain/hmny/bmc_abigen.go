@@ -49,39 +49,13 @@ type TypesGatherFeeMessage struct {
 
 // TypesLinkStats is an auto generated low-level Go binding around an user-defined struct.
 type TypesLinkStats struct {
-	RxSeq            *big.Int
-	TxSeq            *big.Int
-	Verifier         TypesVerifierStats
-	Relays           []TypesRelayStats
-	RelayIdx         *big.Int
-	RotateHeight     *big.Int
-	RotateTerm       *big.Int
-	DelayLimit       *big.Int
-	MaxAggregation   *big.Int
-	RxHeightSrc      *big.Int
-	RxHeight         *big.Int
-	BlockIntervalSrc *big.Int
-	BlockIntervalDst *big.Int
-	CurrentHeight    *big.Int
-}
-
-// TypesRelayStats is an auto generated low-level Go binding around an user-defined struct.
-type TypesRelayStats struct {
-	Addr       common.Address
-	BlockCount *big.Int
-	MsgCount   *big.Int
-}
-
-// TypesVerifierStats is an auto generated low-level Go binding around an user-defined struct.
-type TypesVerifierStats struct {
-	HeightMTA  *big.Int
-	OffsetMTA  *big.Int
-	LastHeight *big.Int
-	Extra      []byte
+	RxSeq    *big.Int
+	TxSeq    *big.Int
+	RxHeight *big.Int
 }
 
 // BMCABI is the input ABI used to generate the binding from.
-const BMCABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"_sn\",\"type\":\"int256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_code\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_errMsg\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_svcErrCode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_svcErrMsg\",\"type\":\"string\"}],\"name\":\"ErrorOnBTPError\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_next\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_seq\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"Message\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_network\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"_bmcManagementAddr\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBmcBtpAddress\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_prev\",\"type\":\"string\"},{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"handleRelayMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_rlp\",\"type\":\"bytes\"}],\"name\":\"decodeBTPMessage\",\"outputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"src\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"dst\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"svc\",\"type\":\"string\"},{\"internalType\":\"int256\",\"name\":\"sn\",\"type\":\"int256\"},{\"internalType\":\"bytes\",\"name\":\"message\",\"type\":\"bytes\"}],\"internalType\":\"structTypes.BMCMessage\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"tryDecodeBMCService\",\"outputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"serviceType\",\"type\":\"string\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"}],\"internalType\":\"structTypes.BMCService\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"tryDecodeGatherFeeMessage\",\"outputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"fa\",\"type\":\"string\"},{\"internalType\":\"string[]\",\"name\":\"svcs\",\"type\":\"string[]\"}],\"internalType\":\"structTypes.GatherFeeMessage\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"sendMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_link\",\"type\":\"string\"}],\"name\":\"getStatus\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"rxSeq\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"txSeq\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"heightMTA\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"offsetMTA\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"lastHeight\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"extra\",\"type\":\"bytes\"}],\"internalType\":\"structTypes.VerifierStats\",\"name\":\"verifier\",\"type\":\"tuple\"},{\"components\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"blockCount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"msgCount\",\"type\":\"uint256\"}],\"internalType\":\"structTypes.RelayStats[]\",\"name\":\"relays\",\"type\":\"tuple[]\"},{\"internalType\":\"uint256\",\"name\":\"relayIdx\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"rotateHeight\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"rotateTerm\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"delayLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxAggregation\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"rxHeightSrc\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"rxHeight\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"blockIntervalSrc\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"blockIntervalDst\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"currentHeight\",\"type\":\"uint256\"}],\"internalType\":\"structTypes.LinkStats\",\"name\":\"_linkStats\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
+const BMCABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"_sn\",\"type\":\"int256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_code\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_errMsg\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_svcErrCode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_svcErrMsg\",\"type\":\"string\"}],\"name\":\"ErrorOnBTPError\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_next\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_seq\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"Message\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_network\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"_bmcManagementAddr\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBmcBtpAddress\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_prev\",\"type\":\"string\"},{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"handleRelayMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_rlp\",\"type\":\"bytes\"}],\"name\":\"tryDecodeBTPMessage\",\"outputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"src\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"dst\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"svc\",\"type\":\"string\"},{\"internalType\":\"int256\",\"name\":\"sn\",\"type\":\"int256\"},{\"internalType\":\"bytes\",\"name\":\"message\",\"type\":\"bytes\"}],\"internalType\":\"structTypes.BMCMessage\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"tryDecodeBMCService\",\"outputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"serviceType\",\"type\":\"string\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"}],\"internalType\":\"structTypes.BMCService\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"tryDecodeGatherFeeMessage\",\"outputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"fa\",\"type\":\"string\"},{\"internalType\":\"string[]\",\"name\":\"svcs\",\"type\":\"string[]\"}],\"internalType\":\"structTypes.GatherFeeMessage\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"sendMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_link\",\"type\":\"string\"}],\"name\":\"getStatus\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"rxSeq\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"txSeq\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"rxHeight\",\"type\":\"uint256\"}],\"internalType\":\"structTypes.LinkStats\",\"name\":\"_linkStats\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
 
 // BMC is an auto generated Go binding around an Ethereum contract.
 type BMC struct {
@@ -225,37 +199,6 @@ func (_BMC *BMCTransactorRaw) Transact(opts *bind.TransactOpts, method string, p
 	return _BMC.Contract.contract.Transact(opts, method, params...)
 }
 
-// DecodeBTPMessage is a free data retrieval call binding the contract method 0x2a15e32e.
-//
-// Solidity: function decodeBTPMessage(bytes _rlp) pure returns((string,string,string,int256,bytes))
-func (_BMC *BMCCaller) DecodeBTPMessage(opts *bind.CallOpts, _rlp []byte) (TypesBMCMessage, error) {
-	var out []interface{}
-	err := _BMC.contract.Call(opts, &out, "decodeBTPMessage", _rlp)
-
-	if err != nil {
-		return *new(TypesBMCMessage), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(TypesBMCMessage)).(*TypesBMCMessage)
-
-	return out0, err
-
-}
-
-// DecodeBTPMessage is a free data retrieval call binding the contract method 0x2a15e32e.
-//
-// Solidity: function decodeBTPMessage(bytes _rlp) pure returns((string,string,string,int256,bytes))
-func (_BMC *BMCSession) DecodeBTPMessage(_rlp []byte) (TypesBMCMessage, error) {
-	return _BMC.Contract.DecodeBTPMessage(&_BMC.CallOpts, _rlp)
-}
-
-// DecodeBTPMessage is a free data retrieval call binding the contract method 0x2a15e32e.
-//
-// Solidity: function decodeBTPMessage(bytes _rlp) pure returns((string,string,string,int256,bytes))
-func (_BMC *BMCCallerSession) DecodeBTPMessage(_rlp []byte) (TypesBMCMessage, error) {
-	return _BMC.Contract.DecodeBTPMessage(&_BMC.CallOpts, _rlp)
-}
-
 // GetBmcBtpAddress is a free data retrieval call binding the contract method 0x2a4011e9.
 //
 // Solidity: function getBmcBtpAddress() view returns(string)
@@ -289,7 +232,7 @@ func (_BMC *BMCCallerSession) GetBmcBtpAddress() (string, error) {
 
 // GetStatus is a free data retrieval call binding the contract method 0x22b05ed2.
 //
-// Solidity: function getStatus(string _link) view returns((uint256,uint256,(uint256,uint256,uint256,bytes),(address,uint256,uint256)[],uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256) _linkStats)
+// Solidity: function getStatus(string _link) view returns((uint256,uint256,uint256) _linkStats)
 func (_BMC *BMCCaller) GetStatus(opts *bind.CallOpts, _link string) (TypesLinkStats, error) {
 	var out []interface{}
 	err := _BMC.contract.Call(opts, &out, "getStatus", _link)
@@ -306,14 +249,14 @@ func (_BMC *BMCCaller) GetStatus(opts *bind.CallOpts, _link string) (TypesLinkSt
 
 // GetStatus is a free data retrieval call binding the contract method 0x22b05ed2.
 //
-// Solidity: function getStatus(string _link) view returns((uint256,uint256,(uint256,uint256,uint256,bytes),(address,uint256,uint256)[],uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256) _linkStats)
+// Solidity: function getStatus(string _link) view returns((uint256,uint256,uint256) _linkStats)
 func (_BMC *BMCSession) GetStatus(_link string) (TypesLinkStats, error) {
 	return _BMC.Contract.GetStatus(&_BMC.CallOpts, _link)
 }
 
 // GetStatus is a free data retrieval call binding the contract method 0x22b05ed2.
 //
-// Solidity: function getStatus(string _link) view returns((uint256,uint256,(uint256,uint256,uint256,bytes),(address,uint256,uint256)[],uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256) _linkStats)
+// Solidity: function getStatus(string _link) view returns((uint256,uint256,uint256) _linkStats)
 func (_BMC *BMCCallerSession) GetStatus(_link string) (TypesLinkStats, error) {
 	return _BMC.Contract.GetStatus(&_BMC.CallOpts, _link)
 }
@@ -347,6 +290,37 @@ func (_BMC *BMCSession) TryDecodeBMCService(_msg []byte) (TypesBMCService, error
 // Solidity: function tryDecodeBMCService(bytes _msg) pure returns((string,bytes))
 func (_BMC *BMCCallerSession) TryDecodeBMCService(_msg []byte) (TypesBMCService, error) {
 	return _BMC.Contract.TryDecodeBMCService(&_BMC.CallOpts, _msg)
+}
+
+// TryDecodeBTPMessage is a free data retrieval call binding the contract method 0x23c31a43.
+//
+// Solidity: function tryDecodeBTPMessage(bytes _rlp) pure returns((string,string,string,int256,bytes))
+func (_BMC *BMCCaller) TryDecodeBTPMessage(opts *bind.CallOpts, _rlp []byte) (TypesBMCMessage, error) {
+	var out []interface{}
+	err := _BMC.contract.Call(opts, &out, "tryDecodeBTPMessage", _rlp)
+
+	if err != nil {
+		return *new(TypesBMCMessage), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(TypesBMCMessage)).(*TypesBMCMessage)
+
+	return out0, err
+
+}
+
+// TryDecodeBTPMessage is a free data retrieval call binding the contract method 0x23c31a43.
+//
+// Solidity: function tryDecodeBTPMessage(bytes _rlp) pure returns((string,string,string,int256,bytes))
+func (_BMC *BMCSession) TryDecodeBTPMessage(_rlp []byte) (TypesBMCMessage, error) {
+	return _BMC.Contract.TryDecodeBTPMessage(&_BMC.CallOpts, _rlp)
+}
+
+// TryDecodeBTPMessage is a free data retrieval call binding the contract method 0x23c31a43.
+//
+// Solidity: function tryDecodeBTPMessage(bytes _rlp) pure returns((string,string,string,int256,bytes))
+func (_BMC *BMCCallerSession) TryDecodeBTPMessage(_rlp []byte) (TypesBMCMessage, error) {
+	return _BMC.Contract.TryDecodeBTPMessage(&_BMC.CallOpts, _rlp)
 }
 
 // TryDecodeGatherFeeMessage is a free data retrieval call binding the contract method 0x9624379f.

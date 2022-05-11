@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.8.5;
+pragma abicoder v2;
 
 import "./RLPDecode.sol";
 import "./Types.sol";
@@ -94,8 +94,8 @@ library RLPDecodeStruct {
     }
 
     function decodeServiceMessage(bytes memory _rlp)
-        internal    
-        pure    
+        internal
+        pure
         returns (Types.ServiceMessage memory)
     {
         RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
@@ -162,8 +162,10 @@ library RLPDecodeStruct {
                     isSPREmpty
                 );
         }
-        RLPDecode.RLPItem[] memory subList =
-            ls[10].toBytes().toRlpItem().toList();
+        RLPDecode.RLPItem[] memory subList = ls[10]
+            .toBytes()
+            .toRlpItem()
+            .toList();
         isSPREmpty = false;
         return
             Types.BlockHeader(
@@ -386,9 +388,8 @@ library RLPDecodeStruct {
         return Types.RelayMessage(_buArray, _bp, isBPEmpty, _rp, isRPEmpty);
     }
 
-    
     function decodeReceiptProofs(bytes memory _rlp)
-        internal        
+        internal
         pure
         returns (Types.ReceiptProof[] memory _rp)
     {
@@ -401,52 +402,56 @@ library RLPDecodeStruct {
         }
     }
 
-
-    
     function decodeReceiptProof(bytes memory _rlp)
-        internal        
+        internal
         pure
         returns (Types.ReceiptProof memory)
     {
         RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
 
-        Types.MessageEvent[] memory events =
-            new Types.MessageEvent[](ls[1].toBytes().toRlpItem().toList().length);
+        Types.MessageEvent[] memory events = new Types.MessageEvent[](
+            ls[1].toBytes().toRlpItem().toList().length
+        );
 
-        for (uint256 i = 0; i < ls[1].toBytes().toRlpItem().toList().length; i++) {
-            events[i] =ls[1].toBytes().toRlpItem().toList()[i].toRlpBytes().toMessageEvent();
+        for (
+            uint256 i = 0;
+            i < ls[1].toBytes().toRlpItem().toList().length;
+            i++
+        ) {
+            events[i] = ls[1]
+            .toBytes()
+            .toRlpItem()
+            .toList()[i].toRlpBytes().toMessageEvent();
         }
-        
-        return
-            Types.ReceiptProof(
-                ls[0].toUint(),
-                events,
-                ls[2].toUint()
-            );
+
+        return Types.ReceiptProof(ls[0].toUint(), events, ls[2].toUint());
     }
 
-      function toMessageEvent(bytes memory _rlp)
+    function toMessageEvent(bytes memory _rlp)
         internal
         pure
         returns (Types.MessageEvent memory)
     {
-         RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
-            return
-                Types.MessageEvent(
-                    string(ls[0].toBytes()),
-                    ls[1].toUint(),
-                    ls[2].toBytes()
-                );
+        RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
+        return
+            Types.MessageEvent(
+                string(ls[0].toBytes()),
+                ls[1].toUint(),
+                ls[2].toBytes()
+            );
     }
 
     function decodeTransferAsset(bytes memory _rlp)
         internal
+        pure
         returns (Types.TransferAssets memory)
     {
         RLPDecode.RLPItem memory rlpItem = _rlp.toRlpItem();
 
         RLPDecode.RLPItem[] memory ls = rlpItem.toList();
-        Types.TokenAsset[] memory _ep = new Types.TokenAsset[](ls[2].toList().length);
+        Types.TokenAsset[] memory _ep = new Types.TokenAsset[](
+            ls[2].toList().length
+        );
         uint256 len = ls[2].toList().length;
         Types.TokenAsset memory _asset;
         RLPDecode.RLPItem[] memory rlpTs = ls[2].toList();
