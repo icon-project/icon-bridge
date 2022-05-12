@@ -186,10 +186,8 @@ func (r *relay) Start(ctx context.Context) error {
 					// increase transaction gas limit
 				case errors.Is(err, chain.ErrBlockGasLimitExceeded):
 					// reduce batch size
-				case errors.Is(err, chain.ErrBMCRevertRxSeqLowerThanExpected):
-					// old messages; skip
-				case errors.Is(err, chain.ErrBMCRevertRxSeqHigherThanExpected):
-					// message skipped; refetch from src and send
+				case errors.Is(err, chain.ErrBMCRevertInvalidSeqNumber):
+					// messages skipped; refetch from source
 
 				default:
 					time.Sleep(relayTxReceiptWaitInterval) // wait before asking for receipt
