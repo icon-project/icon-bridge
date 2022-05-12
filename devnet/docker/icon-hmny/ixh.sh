@@ -1551,7 +1551,7 @@ function run_demo() {
     }
 
     show_token_names
-    # fund_demo_wallets
+    fund_demo_wallets
     show_balances
 
     # return
