@@ -327,15 +327,16 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
 
         for (ReceiptProof rp : rm.getReceiptProofs()) {
             if (rp.getHeight().longValue() < rxHeight) {
-                Context.revert(INVALID_RX_SRC_HEIGHT,
-                        "invalid rxSrcHeight: expected >= " + rxHeight + ", got " + rp.getHeight());
+                continue;
             }
             rxHeight = rp.getHeight().longValue();
             for (EventDataBTPMessage ev : rp.getEvents()) {
                 rxSeq = rxSeq.add(BigInteger.ONE);
-                if (ev.getSeq().compareTo(rxSeq) != 0) {
-                    Context.revert(INVALID_SEQ_NUMBER,
-                            "invalid seq no: expected " + rxSeq + ", got " + ev.getSeq());
+                if (ev.getSeq().compareTo(rxSeq) < 0) {
+                    rxSeq = rxSeq.subtract(BigInteger.ONE);
+                    continue;
+                } else if (ev.getSeq().compareTo(rxSeq) > 0) {
+                    throw BMCException.invalidSeqNumber();
                 }
                 BTPMessage msg = null;
                 try {

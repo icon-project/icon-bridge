@@ -12,25 +12,26 @@ var (
 	ErrBlockGasLimitExceeded = errors.New("BlockGasLimitExceeded")
 
 	// BMC errors
-	ErrBMCRevertLastOwner                 = errors.New("BMCRevertLastOwner")
-	ErrBMCRevertUnauthroized              = errors.New("BMCRevertUnauthorized")
-	ErrBMCRevertInvalidAddress            = errors.New("BMCRevertInvalidAddress")
-	ErrBMCRevertNotExistsPermission       = errors.New("BMCRevertNotExistsPermission")
-	ErrBMCRevertAlreadyExistsBSH          = errors.New("BMCRevertAlreadyExistsBSH")
-	ErrBMCRevertNotExistsBSH              = errors.New("BMCRevertNotExistsBSH")
-	ErrBMCRevertAlreadyExistsLink         = errors.New("BMCRevertAlreadyExistsLink")
-	ErrBMCRevertNotExistsLink             = errors.New("BMCRevertNotExistsLink")
-	ErrBMCRevertInvalidParam              = errors.New("BMCRevertInvalidParam")
-	ErrBTPRevertAlreadyExistRoute         = errors.New("BTPRevertAlreadyExistRoute")
-	ErrBTPRevertNotExistRoute             = errors.New("BTPRevertNotExistRoute")
-	ErrBMCRevertInvalidSN                 = errors.New("BMCRevertInvalidSN")
-	ErrBMCRevertParseFailure              = errors.New("BMCRevertParseFailure")
-	ErrBMCRevertRxSeqLowerThanExpected    = errors.New("BMCRevertRxSeqLowerThanExpected")
-	ErrBMCRevertRxSeqHigherThanExpected   = errors.New("BMCRevertRxSeqHigherThanExpected")
-	ErrBMCRevertInvalidRxHeight           = errors.New("BMCRevertRxHeightLowerThanExpected")
-	ErrBMCRevertNotExistsInternalHandler  = errors.New("BMCRevertNotExistsInternalHandler")
-	ErrBMCRevertAlreadyExistsBMCPeriphery = errors.New("BMCRevertAlreadyExistsBMCPeriphery")
-	ErrBMCRevertUnreachable               = errors.New("BMCRevertUnreachable:")
+	ErrBMCRevertLastOwner                 = errors.New("LastOwner")
+	ErrBMCRevertUnauthroized              = errors.New("Unauthorized")
+	ErrBMCRevertInvalidAddress            = errors.New("InvalidAddress")
+	ErrBMCRevertNotExistsPermission       = errors.New("NotExistsPermission")
+	ErrBMCRevertAlreadyExistsBSH          = errors.New("AlreadyExistsBSH")
+	ErrBMCRevertNotExistsBSH              = errors.New("NotExistsBSH")
+	ErrBMCRevertAlreadyExistsLink         = errors.New("AlreadyExistsLink")
+	ErrBMCRevertNotExistsLink             = errors.New("NotExistsLink")
+	ErrBMCRevertInvalidParam              = errors.New("InvalidParam")
+	ErrBMCRevertAlreadyExistRoute         = errors.New("AlreadyExistRoute")
+	ErrBMCRevertNotExistRoute             = errors.New("NotExistRoute")
+	ErrBMCRevertInvalidSn                 = errors.New("InvalidSn")
+	ErrBMCRevertParseFailure              = errors.New("ParseFailure")
+	ErrBMCRevertInvalidRxHeight           = errors.New("InvalidRxHeight")
+	ErrBMCRevertInvalidSeqNumber          = errors.New("InvalidSeqNumber")
+	ErrBMCRevertNotExistsInternalHandler  = errors.New("NotExistsInternalHandler")
+	ErrBMCRevertAlreadyExistsBMCPeriphery = errors.New("AlreadyExistsBMCPeriphery")
+	ErrBMCRevertUnknownHandleBTPError     = errors.New("UnknownHandleBTPError")
+	ErrBMCRevertUnknownHandleBTPMessage   = errors.New("UnknownHandleBTPMessage")
+	ErrBMCRevertUnreachable               = errors.New("Unreachable:")
 )
 
 func RevertError(msg string) error {
@@ -44,15 +45,16 @@ func RevertError(msg string) error {
 		ErrBMCRevertAlreadyExistsLink,
 		ErrBMCRevertNotExistsLink,
 		ErrBMCRevertInvalidParam,
-		ErrBTPRevertAlreadyExistRoute,
-		ErrBTPRevertNotExistRoute,
-		ErrBMCRevertInvalidSN,
+		ErrBMCRevertAlreadyExistRoute,
+		ErrBMCRevertNotExistRoute,
+		ErrBMCRevertInvalidSn,
 		ErrBMCRevertParseFailure,
-		ErrBMCRevertRxSeqLowerThanExpected,
-		ErrBMCRevertRxSeqHigherThanExpected,
 		ErrBMCRevertInvalidRxHeight,
+		ErrBMCRevertInvalidSeqNumber,
 		ErrBMCRevertNotExistsInternalHandler,
 		ErrBMCRevertAlreadyExistsBMCPeriphery,
+		ErrBMCRevertUnknownHandleBTPError,
+		ErrBMCRevertUnknownHandleBTPMessage,
 		ErrBMCRevertUnreachable,
 	} {
 		if strings.HasPrefix(msg, err.Error()) {

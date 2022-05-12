@@ -48,12 +48,12 @@ contract BMCManagement is IBMCManagement, Initializable {
     uint256 private constant BLOCK_INTERVAL_MSEC = 1000;
 
     modifier hasPermission() {
-        require(_owners[msg.sender] == true, "BMCRevertUnauthorized");
+        require(_owners[msg.sender] == true, "Unauthorized");
         _;
     }
 
     modifier onlyBMCPeriphery() {
-        require(msg.sender == bmcPeriphery, "BMCRevertUnauthorized");
+        require(msg.sender == bmcPeriphery, "Unauthorized");
         _;
     }
 
@@ -63,8 +63,8 @@ contract BMCManagement is IBMCManagement, Initializable {
     }
 
     function setBMCPeriphery(address _addr) external override hasPermission {
-        require(_addr != address(0), "BMCRevertInvalidAddress");
-        require(_addr != bmcPeriphery, "BMCRevertAlreadyExistsBMCPeriphery");
+        require(_addr != address(0), "InvalidAddress");
+        require(_addr != bmcPeriphery, "AlreadyExistsBMCPeriphery");
         bmcPeriphery = _addr;
     }
 
@@ -92,8 +92,8 @@ contract BMCManagement is IBMCManagement, Initializable {
        @param _owner    Address of an Owner to be removed.
      */
     function removeOwner(address _owner) external override hasPermission {
-        require(numOfOwner > 1, "BMCRevertLastOwner");
-        require(_owners[_owner] == true, "BMCRevertNotExistsPermission");
+        require(numOfOwner > 1, "LastOwner");
+        require(_owners[_owner] == true, "NotExistsPermission");
         delete _owners[_owner];
         numOfOwner--;
     }
@@ -118,8 +118,8 @@ contract BMCManagement is IBMCManagement, Initializable {
         override
         hasPermission
     {
-        require(_addr != address(0), "BMCRevertInvalidAddress");
-        require(bshServices[_svc] == address(0), "BMCRevertAlreadyExistsBSH");
+        require(_addr != address(0), "InvalidAddress");
+        require(bshServices[_svc] == address(0), "AlreadyExistsBSH");
         bshServices[_svc] = _addr;
         listBSHNames.push(_svc);
     }
@@ -130,7 +130,7 @@ contract BMCManagement is IBMCManagement, Initializable {
        @param _svc     Name of the service
    */
     function removeService(string memory _svc) external override hasPermission {
-        require(bshServices[_svc] != address(0), "BMCRevertNotExistsBSH");
+        require(bshServices[_svc] != address(0), "NotExistsBSH");
         delete bshServices[_svc];
         listBSHNames.remove(_svc);
     }
@@ -166,7 +166,7 @@ contract BMCManagement is IBMCManagement, Initializable {
         (string memory _net, ) = _link.splitBTPAddress();
         require(
             links[_link].isConnected == false,
-            "BMCRevertAlreadyExistsLink"
+            "AlreadyExistsLink"
         );
         links[_link] = Types.Link(
             new address[](0),
@@ -202,7 +202,7 @@ contract BMCManagement is IBMCManagement, Initializable {
        @param _link    BTP Address of connected BMC
    */
     function removeLink(string calldata _link) external override hasPermission {
-        require(links[_link].isConnected == true, "BMCRevertNotExistsLink");
+        require(links[_link].isConnected == true, "NotExistsLink");
         delete links[_link];
         (string memory _net, ) = _link.splitBTPAddress();
         delete getLinkFromNet[_net];
@@ -223,8 +223,8 @@ contract BMCManagement is IBMCManagement, Initializable {
         override
         hasPermission
     {
-        require(links[_link].isConnected == true, "BMCRevertNotExistsLink");
-        require(_height > 0, "BMCRevertInvalidRxHeight");
+        require(links[_link].isConnected == true, "NotExistsLink");
+        require(_height > 0, "InvalidRxHeight");
         links[_link].rxHeight = _height;
     }
 
@@ -234,10 +234,10 @@ contract BMCManagement is IBMCManagement, Initializable {
         uint256 _maxAggregation,
         uint256 _delayLimit
     ) external override hasPermission {
-        require(links[_link].isConnected == true, "BMCRevertNotExistsLink");
+        require(links[_link].isConnected == true, "NotExistsLink");
         require(
             _maxAggregation >= 1 && _delayLimit >= 1,
-            "BMCRevertInvalidParam"
+            "InvalidParam"
         );
         Types.Link memory link = links[_link];
         uint256 _scale = link.blockIntervalSrc.getScale(link.blockIntervalDst);
@@ -461,7 +461,7 @@ contract BMCManagement is IBMCManagement, Initializable {
         override
         hasPermission
     {
-        require(bytes(routes[_dst]).length == 0, "BTPRevertAlreadyExistRoute");
+        require(bytes(routes[_dst]).length == 0, "AlreadyExistRoute");
         //  Verify _dst and _link format address
         //  these two strings must follow BTP format address
         //  If one of these is failed, revert()
@@ -482,7 +482,7 @@ contract BMCManagement is IBMCManagement, Initializable {
         //  @dev No need to check if _dst is a valid BTP format address
         //  since it was checked when adding route at the beginning
         //  If _dst does not match, revert()
-        require(bytes(routes[_dst]).length != 0, "BTPRevertNotExistRoute");
+        require(bytes(routes[_dst]).length != 0, "NotExistRoute");
         delete routes[_dst];
         (string memory _net, ) = _dst.splitBTPAddress();
         delete getRouteDstFromNet[_net];
@@ -515,7 +515,7 @@ contract BMCManagement is IBMCManagement, Initializable {
         override
         hasPermission
     {
-        require(links[_link].isConnected == true, "BMCRevertNotExistsLink");
+        require(links[_link].isConnected == true, "NotExistsLink");
         links[_link].relays = _addr;
         for (uint256 i = 0; i < _addr.length; i++)
             relayStats[_addr[i]] = Types.RelayStats(_addr[i], 0, 0);
@@ -534,7 +534,7 @@ contract BMCManagement is IBMCManagement, Initializable {
     {
         require(
             links[_link].isConnected == true && links[_link].relays.length != 0,
-            "BMCRevertUnauthorized"
+            "Unauthorized"
         );
         for (uint256 i = 0; i < links[_link].relays.length; i++) {
             if (links[_link].relays[i] != _addr) {
@@ -709,7 +709,7 @@ contract BMCManagement is IBMCManagement, Initializable {
 
         require(
             bytes(res._to).length > 0,
-            string("BMCRevertUnreachable: ").concat(_dstNet).concat(
+            string("Unreachable: ").concat(_dstNet).concat(
                 " is unreachable"
             )
         );

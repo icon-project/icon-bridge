@@ -31,9 +31,9 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
     string internal constant BMCRevertParseFailure = "ParseFailure";
     string internal constant BMCRevertNotExistsBSH = "NotExistsBSH";
     string internal constant BMCRevertNotExistsLink = "NotExistsLink";
-    string internal constant BMCRevertInvalidSN = "InvalidSN";
-    string internal constant BMCRevertRxSeqHigherThanExpected =
-        "RxSeqHigherThanExpected";
+    string internal constant BMCRevertInvalidSn = "InvalidSn";
+    string internal constant BMCRevertInvalidSeqNumber =
+        "InvalidSeqNumber";
     string internal constant BMCRevertNotExistsInternalHandler =
         "NotExistsInternalHandler";
     string internal constant BMCRevertUnknownHandleBTPError =
@@ -117,7 +117,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
 
         for (uint256 i = 0; i < rps.length; i++) {
             if (rps[i].height < rxHeight) {
-                continue; // skip; revert("BMCRevertRxHeightLowerThanExpected");
+                continue; // ignore lower block height
             }
             rxHeight = rps[i].height;
             for (uint256 j = 0; j < rps[i].events.length; j++) {
@@ -125,9 +125,9 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                 ev = rps[i].events[j];
                 if (ev.seq < rxSeq) {
                     rxSeq--;
-                    continue; // skip; revert("BMCRevertRxSeqLowerThanExpected");
+                    continue;  // ignore lower sequence number
                 } else if (ev.seq > rxSeq) {
-                    revert(BMCRevertRxSeqHigherThanExpected);
+                    revert(BMCRevertInvalidSeqNumber);
                 }
                 if (!ev.nextBmc.compareTo(bmcBtpAddress)) {
                     continue;
@@ -412,7 +412,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                 msg.sender,
             BMCRevertUnauthorized
         );
-        require(_sn >= 0, BMCRevertInvalidSN);
+        require(_sn >= 0, BMCRevertInvalidSn);
         //  In case BSH sends a REQUEST_COIN_TRANSFER,
         //  but '_to' is a network which is not supported by BMC
         //  revert() therein
