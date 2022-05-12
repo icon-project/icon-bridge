@@ -1495,6 +1495,7 @@ function run_demo() {
     }
 
     function fund_demo_wallets() {
+        echo
         echo "Funding demo wallets..."
         echo -n "    ICON ($btp_icon_demo_wallet_address): "
         WALLET=$btp_icon_wallet \
@@ -1519,6 +1520,7 @@ function run_demo() {
             TokenBSH.BEP20TKN.transfer \
             "'$btp_hmny_demo_wallet_address','10000000000000000000'" # 10 ETH
         echo ", 10 ETH"
+        echo
     }
 
     function show_balances() {
@@ -1554,7 +1556,6 @@ function run_demo() {
     fund_demo_wallets
     show_balances
 
-    # return
     i2h_nativecoin_transfer_amount=2000000000000000000 # 2 ICX
     echo "TransferNativeCoin (ICON -> HMNY):"
     echo "    amount=$i2h_nativecoin_transfer_amount"
