@@ -91,6 +91,17 @@ Make sure that following tools are installed on your system for `ixh.sh` to work
 
     `go get github.com/ethereum/go-ethereum/cmd/ethkey`
 
+8. ### Local BLS Dependencies
+    You may need additional build tools to sucessfully build following libraries.
+
+    ```
+    git clone https://github.com/harmony-one/bls.git
+    git clone https://github.com/harmony-one/mcl.git
+
+    cd bls && make -j8 BLS_SWAP_G=1 && make install && cd ..
+    cd mcl && make install && cd ..
+    ```
+
 ## Build
 
     ./ixh.sh build
@@ -101,7 +112,7 @@ Make sure that following tools are installed on your system for `ixh.sh` to work
 
 ## Deploy Blockchains
 
-    ./ixh.sh start -d
+    ./ixh.sh start nodes -d
 
 NOTE:
 
@@ -111,78 +122,82 @@ If you're using a remote docker host, please allow ssh connection either passwor
 
     ./ixh.sh deploysc reset
 
-It deploys necessary smart contracts and generates configurations for Relayers (`_ixh/i2h.config.json` and `_ixh/h2i.config.json`) along with an environment file (`_ixh/ixh.env`) that has all necessary environment variables.
+It deploys necessary smart contracts and generates configuration for Relayer (`_ixh/bmr.config.json`) along with an environment file (`_ixh/ixh.env`) that has all necessary environment variables.
 
-NOTE: _Wait for 1 minute or more after the first step to do this._
+NOTE: _Wait for 1 minute or more before doing this after deploying blockchains to ensure both chains have started properly._
 
-## Start Relayers
-
-Open two separate command prompts, and go to the `cmd/btpsimple` directory on each. And run following commands:
-
-```
-
-# First shell: harmony -> icon
-
-cd cmd/btpsimple
-go run . -c ../../devnet/docker/icon-hmny/\_ixh/h2i.config.json start
-
-...
-I|12:58:50.253553|----|-|main|main.go:228   ____ _____ ____    ____      _
-I|12:58:50.253617|----|-|main|main.go:228  | __ )_   _|  _ \  |  _ \ ___| | __ _ _   _
-I|12:58:50.253624|----|-|main|main.go:228  |  _ \ | | | |_) | | |_) / _ \ |/ _` | | | |
-I|12:58:50.253629|----|-|main|main.go:228  | |_) || | |  __/  |  _ <  __/ | (_| | |_| |
-I|12:58:50.253635|----|-|main|main.go:228  |____/ |_| |_|     |_| \_\___|_|\__,_|\__, |
-I|12:58:50.253640|----|-|main|main.go:228                                        |___/
-I|12:58:50.253646|----|-|main|main.go:230 Version : unknown
-I|12:58:50.253652|----|-|main|main.go:231 Build   : unknown
-D|12:58:50.378114|a8e2|-|main|main.go:316 LogForwarderConfig vendor and address is empty string, will be ignore
-D|12:58:50.378203|a8e2|-|main|main.go:242 /home/bbist/works/ibriz/code/github.com/icon-project/icon-bridge/devnet/docker/icon-hmny/_ixh/h2i.config.json run/h2i
-D|12:58:51.079655|a8e2|0x7|chain|chain.go:321 _init height:0, dst(btp://0x7.icon/cxa2cc386e9db2a72ea6724cbfd12f936a90ba63d2, seq:10), receive:8033
-D|12:58:51.079807|a8e2|0x7|chain|chain.go:306 start relayLoop
-D|12:58:51.906155|a8e2|-|icon|client.go:221 MonitorBlock WSEvent 192.168.207.251:35580 WSEventInit
-D|12:58:51.906322|a8e2|-|icon|sender.go:244 MonitorLoop connected 192.168.207.251:35580
-D|12:58:51.906371|a8e2|0x7|chain|chain.go:348 Connect MonitorLoop
-D|12:58:55.118300|a8e2|-|hmny|receiver.go:76 receive loop: block notification: height=8033
-D|23:55:44.337342|a6a4|-|hmny|receiver.go:67 found event in block 8033: sc=0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B
-D|23:55:44.337387|a6a4|0x5b9a77|chain|chain.go:187 addRelayMessage rms:1 rps:1 HeightOfDst:0
-D|23:55:44.337523|a6a4|-|icon|sender.go:77 HandleRelayMessage prev btp://0x2.hmny/0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B, msg: -N_43bjb-NkAuNP40fjPuD5idHA6Ly8weDViOWE3Ny5pY29uL2N4ODhjMzBmOWM4ZmEzYTczZWE5NWU4OTQ2ZDEyM2ViMDk1NzNiODcxOAG4jPiKuDlidHA6Ly8weDIuaG1ueS8weERkMzM0YTJFNkRBZmEyM2U0NUIyRkY4MDM1QzdEZUU4N0YyOTM3NUK4PmJ0cDovLzB4NWI5YTc3Lmljb24vY3g4OGMzMGY5YzhmYTNhNzNlYTk1ZTg5NDZkMTIzZWIwOTU3M2I4NzE4g2JtYwCJyIRJbml0gsHAgh9h
-D|23:55:44.337634|a6a4|0x5b9a77|chain|chain.go:82 Going to relay now rm:0 [i:0,h:0,seq:0,evt:0,txh:<nil>]
-D|23:55:44.339240|a6a4|-|hmny|receiver.go:77 receive loop: block notification: height=8035
-D|23:55:44.341086|a6a4|-|hmny|receiver.go:77 receive loop: block notification: height=8036
-...
+## Start Relayer
+If you have `bls` dependencies installed in local system, you can run following commands from the project root directory to start relayer locally.
 
 ```
-
+$ cd cmd/btpsimple
+$ go run . -config ../../devnet/docker/icon-hmny/_ixh/bmr.config.json
 ```
 
-# Second shell: icon -> harmony
+If you have docker, you can chose to use docker image: `bmr` instead. Please use following command to start `bmr` container.
+```
+./ixh.sh start bmr -d && ./ixh.sh docker_compose bmr logs -f --tail=1000 | grep "^bmr*"
+```
 
-cd cmd/btpsimple
-go run . -c ../../devnet/docker/icon-hmny/\_ixh/i2h.config.json start
-
+Whichever approach you prefer from above options, you should see console logs similar to the following.
+```
 ...
-I|12:58:31.276334|----|-|main|main.go:228   ____ _____ ____    ____      _
-I|12:58:31.276385|----|-|main|main.go:228  | __ )_   _|  _ \  |  _ \ ___| | __ _ _   _
-I|12:58:31.276392|----|-|main|main.go:228  |  _ \ | | | |_) | | |_) / _ \ |/ _` | | | |
-I|12:58:31.276397|----|-|main|main.go:228  | |_) || | |  __/  |  _ <  __/ | (_| | |_| |
-I|12:58:31.276403|----|-|main|main.go:228  |____/ |_| |_|     |_| \_\___|_|\__,_|\__, |
-I|12:58:31.276408|----|-|main|main.go:228                                        |___/
-I|12:58:31.276413|----|-|main|main.go:230 Version : unknown
-I|12:58:31.276420|----|-|main|main.go:231 Build   : unknown
-D|12:58:31.810368|dA9E|-|main|main.go:316 LogForwarderConfig vendor and address is empty string, will be ignore
-D|12:58:31.810531|dA9E|-|main|main.go:242 /home/bbist/works/ibriz/code/github.com/icon-project/icon-bridge/devnet/docker/icon-hmny/_ixh/i2h.config.json run/i2h
-D|12:58:34.246307|dA9E|0x6357d2e0|chain|chain.go:321 _init height:0, dst(btp://0x6357d2e0.hmny/0xeA4039A61C7de7057428F8512CddBB9BDb519278, seq:10), receive:13146
-D|12:58:34.246453|dA9E|0x6357d2e0|chain|chain.go:306 start relayLoop
-D|12:58:35.776128|dA9E|-|icon|client.go:221 MonitorBlock WSEvent 192.168.207.251:34106 WSEventInit
-D|12:58:35.776245|dA9E|-|icon|receiver.go:202 ReceiveLoop connected 192.168.207.251:34106
-D|12:58:35.776259|dA9E|0x6357d2e0|chain|chain.go:362 Connect ReceiveLoop
-D|12:58:35.953389|dA9E|-|icon|receiver.go:191 onBlockOfSrc icon: 13146
-D|23:55:45.713797|531d|-|hmny|sender.go:121 final relay message string: ���ظ��������ʸ9btp://0x2.hmny/0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B�����>btp://0x5b9a77.icon/cx88c30f9c8fa3a73ea95e8946d123eb09573b8718�9btp://0x2.hmny/0xDd334a2E6DAfa23e45B2FF8035C7DeE87F29375B�bmc�ȄInit����2#, prev: btp://0x5b9a77.icon/cx88c30f9c8fa3a73ea95e8946d123eb09573b8718
-D|23:55:45.894896|531d|-|hmny|sender.go:182 monitor loop: block notification: height=8202
-D|23:55:46.208687|531d|0x2|chain|chain.go:82 after relay rm:0 [i:0,h:0,seq:0,evt:0,txh:&{0x279a807a07dcdfcf19e858c4c99b42820babf04df5dcfac80705e9ea84331024}]
-D|23:55:46.446369|531d|-|icon|receiver.go:191 onBlockOfSrc icon: 13147
+bmr   | I|06:16:53.751186|0xEC|relay|i2h|relay.go:61 init: link.rxSeq=0, link.rxHeight=1658
+bmr   | D|06:16:53.767850|0xEC|icon|i2h|rx_client.go:230 MonitorBlock WSEvent 127.0.0.1:41872 WSEventInit
+bmr   | D|06:16:53.767912|0xEC|icon|i2h|rx_receiver.go:252 connected local=127.0.0.1:41872
+bmr   | I|06:16:53.778151|hx44|relay|h2i|relay.go:61 init: link.rxSeq=0, link.rxHeight=1641
 ...
-
+bmr   | D|06:16:53.808659|0xEC|icon|i2h|rx_receiver.go:241 block notification height=1936
+bmr   | I|06:16:53.808712|0xEC|relay|i2h|relay.go:128 srcMsg added seq=[1 1]
+bmr   | D|06:16:53.808755|0xEC|icon|i2h|rx_receiver.go:241 block notification height=1937
+...
+bmr   | D|06:16:56.057912|hx44|hmny|h2i|rx_receiver.go:369 block notification height=1930
+bmr   | I|06:16:56.058026|hx44|relay|h2i|relay.go:128 srcMsg added seq=[1 1]
+bmr   | D|06:16:56.061405|hx44|hmny|h2i|rx_receiver.go:369 block notification height=1931
+...
+bmr   | D|06:16:58.251836|0xEC|icon|i2h|rx_receiver.go:241 block notification height=2163
+bmr   | D|06:16:58.752245|0xEC|relay|i2h|relay.go:100 relaySignal
+bmr   | D|06:16:58.755332|0xEC|hmny|i2h|tx_sender.go:211 handleRelayMessage: send tx prev=btp://0x5b9a77.icon/cxbaf6c209178820d6969316ea5b1dd4f3a91c463a
+bmr   | D|06:16:58.760923|0xEC|hmny|i2h|tx_sender.go:230 handleRelayMessage: tx sent txh=0x51f3a6286b02a0afb7bb9f2f44fc49892a68959c9258fb4a4fa7cc85db6ee937 msg=0xf8e8f8e6b8e4f8e200b8dcf8daf8d8b8406274703a2f2f307836333537643265302e686d6e792f30783761364446326132434336374233384535326432333430424632424443376339613332416145393101b893f891b83e6274703a2f2f30783562396137372e69636f6e2f637862616636633230393137383832306436393639333136656135623164643466336139316334363361b8406274703a2f2f307836333537643265302e686d6e792f30783761364446326132434336374233384535326432333430424632424443376339613332416145393183626d630089c884496e697482c1c082078f
+bmr   | D|06:16:58.779202|hx44|relay|h2i|relay.go:100 relaySignal
+bmr   | D|06:16:58.789691|hx44|icon|h2i|tx_sender.go:239 handleRelayMessage: send tx prev=btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91
+bmr   | D|06:16:58.799490|hx44|icon|h2i|tx_sender.go:258 handleRelayMessage: tx sent msg=0xf8e6f8e4b8e2f8e000b8daf8d8f8d6b83e6274703a2f2f30783562396137372e69636f6e2f63786261663663323039313738383230643639363933313665613562316464346633613931633436336101b893f891b8406274703a2f2f307836333537643265302e686d6e792f307837613644463261324343363742333845353264323334304246324244433763396133324161453931b83e6274703a2f2f30783562396137372e69636f6e2f63786261663663323039313738383230643639363933313665613562316464346633613931633436336183626d630089c884496e697482c1c082078a txh=0x9fb05de0c09b196beb7431e34ad6407e932a9129fdcd1e2d439b06b98c37b04e
+bmr   | D|06:17:00.262092|0xEC|icon|i2h|rx_receiver.go:241 block notification height=2164
+bmr   | D|06:17:00.830769|hx44|hmny|h2i|rx_receiver.go:369 block notification height=2107
+bmr   | D|06:17:01.769243|0xEC|hmny|i2h|tx_sender.go:285 handleRelayMessage: success txh=0x51f3a6286b02a0afb7bb9f2f44fc49892a68959c9258fb4a4fa7cc85db6ee937
+bmr   | D|06:17:02.256921|0xEC|icon|i2h|rx_receiver.go:241 block notification height=2165
+bmr   | D|06:17:02.805919|hx44|icon|h2i|tx_sender.go:307 handleRelayMessage: success txh=0x9fb05de0c09b196beb7431e34ad6407e932a9129fdcd1e2d439b06b98c37b04e
+bmr   | D|06:17:02.811400|hx44|hmny|h2i|rx_receiver.go:369 block notification height=2108
+...
+bmr   | D|06:19:28.308031|0xEC|icon|i2h|rx_receiver.go:241 block notification height=2238
+bmr   | D|06:19:28.771589|0xEC|relay|i2h|relay.go:100 relaySignal
+bmr   | D|06:19:28.774908|0xEC|hmny|i2h|tx_sender.go:211 handleRelayMessage: send tx prev=btp://0x5b9a77.icon/cxbaf6c209178820d6969316ea5b1dd4f3a91c463a
+bmr   | D|06:19:28.780688|0xEC|hmny|i2h|tx_sender.go:230 handleRelayMessage: tx sent txh=0xc4c3ef7b164f0061ff26d0f6ad47ca3390574a5c7b2661b504a293380b422976 msg=0xf90159f90156b90153f9015000b90149f90146f90143b8406274703a2f2f307836333537643265302e686d6e792f30783761364446326132434336374233384535326432333430424632424443376339613332416145393102b8fef8fcb83e6274703a2f2f30783562396137372e69636f6e2f637862616636633230393137383832306436393639333136656135623164643466336139316334363361b8406274703a2f2f307836333537643265302e686d6e792f3078376136444632613243433637423338453532643233343042463242444337633961333241614539318a6e6174697665636f696e01b86cf86a00b867f865aa687836393165616438386264353934356134336338613164613333316666366464383065323933366565aa307838666336363832373562346661303332333432656133303339363533643834316630363961383362cecd83494358881b7a5f826f4600008208bc
+bmr   | D|06:19:28.794036|hx44|relay|h2i|relay.go:100 relaySignal
+bmr   | D|06:19:29.830622|hx44|hmny|h2i|rx_receiver.go:369 block notification height=2182
+bmr   | D|06:19:30.308766|0xEC|icon|i2h|rx_receiver.go:241 block notification height=2239
+bmr   | D|06:19:31.789246|0xEC|hmny|i2h|tx_sender.go:285 handleRelayMessage: success txh=0xc4c3ef7b164f0061ff26d0f6ad47ca3390574a5c7b2661b504a293380b422976
+bmr   | D|06:19:31.831117|hx44|hmny|h2i|rx_receiver.go:369 block notification height=2183
+bmr   | D|06:19:32.311219|0xEC|icon|i2h|rx_receiver.go:241 block notification height=2240
+bmr   | D|06:19:33.772493|0xEC|relay|i2h|relay.go:100 relaySignal
+bmr   | D|06:19:33.794611|hx44|relay|h2i|relay.go:100 relaySignal
+bmr   | D|06:19:33.832965|hx44|hmny|h2i|rx_receiver.go:369 block notification height=2184
+bmr   | D|06:19:34.310398|0xEC|icon|i2h|rx_receiver.go:241 block notification height=2241
+bmr   | D|06:19:35.831364|hx44|hmny|h2i|rx_receiver.go:369 block notification height=2185
+bmr   | I|06:19:35.831503|hx44|relay|h2i|relay.go:128 srcMsg added seq=[2 2]
+bmr   | D|06:19:36.310873|0xEC|icon|i2h|rx_receiver.go:241 block notification height=2242
+bmr   | D|06:19:37.830611|hx44|hmny|h2i|rx_receiver.go:369 block notification height=2186
+bmr   | D|06:19:38.313039|0xEC|icon|i2h|rx_receiver.go:241 block notification height=2243
+bmr   | D|06:19:38.772564|0xEC|relay|i2h|relay.go:100 relaySignal
+bmr   | D|06:19:38.795434|hx44|relay|h2i|relay.go:100 relaySignal
+bmr   | D|06:19:38.802847|hx44|icon|h2i|tx_sender.go:239 handleRelayMessage: send tx prev=btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91
+bmr   | D|06:19:38.804125|hx44|icon|h2i|tx_sender.go:258 handleRelayMessage: tx sent txh=0xd409884e72a74da714aef0bce98308f9cf61df7f535d334afa9789b481f75dbc msg=0xf8eaf8e8b8e6f8e400b8def8dcf8dab83e6274703a2f2f30783562396137372e69636f6e2f63786261663663323039313738383230643639363933313665613562316464346633613931633436336102b897f895b8406274703a2f2f307836333537643265302e686d6e792f307837613644463261324343363742333845353264323334304246324244433763396133324161453931b83e6274703a2f2f30783562396137372e69636f6e2f6378626166366332303931373838323064363936393331366561356231646434663361393163343633618a6e6174697665636f696e0186c50283c20080820889
+bmr   | D|06:19:40.316202|0xEC|icon|i2h|rx_receiver.go:241 block notification height=2244
+bmr   | D|06:19:41.831356|hx44|hmny|h2i|rx_receiver.go:369 block notification height=2187
+bmr   | D|06:19:42.313364|0xEC|icon|i2h|rx_receiver.go:241 block notification height=2245
+bmr   | D|06:19:42.809590|hx44|icon|h2i|tx_sender.go:307 handleRelayMessage: success txh=0xd409884e72a74da714aef0bce98308f9cf61df7f535d334afa9789b481f75dbc
+bmr   | D|06:19:42.813254|hx44|hmny|h2i|rx_receiver.go:369 block notification height=2188
+...
 ```
 
 ## Run Demo
@@ -194,73 +209,114 @@ After both Relayers have started and forwarded the first BTP messages to other c
 Here is the sample output:
 
 ```
+ICON:
+    NativeCoins: ["ICX","ONE"]
+    IRC2 Tokens: ["ETH"]
+HMNY:
+    NativeCoins: ["ONE","ICX"]
+    ERC20 Tokens: ["ETH"]
 
-    Icon Wrapped Coins:
-        ["ICX","ONE_DEV"]
-    Hmny Wrapped Coins:
-        ["ONE_DEV","ICX"]
-
-    Balance:
-        Icon: hxff0ea998b84ab9955157ab27915a9dc1805edd35
-            Native: 162698527232959994832983024666
-            Wrapped (ONE_DEV): 0
-        Hmny: 0xa5241513da9f4463f1d4874b548dfbac29d91f34
-            Native: 8063401632391062000000000000
-            Wrapped (ICX): 0
-
-    TransferNativeCoin (Icon -> Hmny):
-        amount=54232842410986664944327674888
-        [tx=0x76aa8c67bfb4a8284caa10c2698bf9ee23f2145228ddefcada45d287fbb33657].. ✔ 3s
-
-    Balance:
-        Icon: hxff0ea998b84ab9955157ab27915a9dc1805edd35
-            Native: 108465684821973329888563567278
-            Wrapped (ONE_DEV): 0
-        Hmny: 0xa5241513da9f4463f1d4874b548dfbac29d91f34
-            Native: 8063401632391062000000000000
-            Wrapped (ICX): 54178609568575678279383347214
-
-    TransferNativeCoin (Hmny -> Icon):
-        amount=2687800544130354000000000000
+Funding demo wallets...
+    ICON (hx691ead88bd5945a43c8a1da331ff6dd80e2936ee): 250.00 ICX, 10.00 ETH
+    HMNY (0x8fc668275b4fa032342ea3039653d841f069a83b): 10.00 ONE, 10.00 ETH
 
 
-    Balance:
-        Icon: hxff0ea998b84ab9955157ab27915a9dc1805edd35
-            Native: 108465684821973329888563567278
-            Wrapped (ONE_DEV): 2685112743586223645999500000
-        Hmny: 0xa5241513da9f4463f1d4874b548dfbac29d91f34
-            Native: 5375601088250117000000000000
-            Wrapped (ICX): 54178609568575678279383347214
+Balance:
+    ICON: hx691ead88bd5945a43c8a1da331ff6dd80e2936ee
+        ICX: 250.00
+        ONE (Wrapped): 0
+        ETH (IRC2): 10.00
+    HMNY: 0x8fc668275b4fa032342ea3039653d841f069a83b
+        ONE: 10.00
+        ICX (Wrapped): 0
+        ETH (ERC20): 10.00
 
-    Approve Icon NativeCoinBSH
-        [tx=0x686fc59fea6ec38fad7e0bd120e8911b603ba40bacda098d51556c16e18126e0]... ✔ 5s
-        Status: "0x1"
-    Approve Hmny BSHCore
-        Status: true
+Transfer Native ICX (ICON -> HMNY):
+    amount=2.00
 
-    TransferWrappedCoin ICX (Hmny -> Icon):
-        amount=27089304784287839139691673607
 
-    Balance:
-        Icon: hxff0ea998b84ab9955157ab27915a9dc1805edd35
-            Native: 135527900301476881189099761812
-            Wrapped (ONE_DEV): 2685112743586223645999500000
-        Hmny: 0xa5241513da9f4463f1d4874b548dfbac29d91f34
-            Native: 5375601088237940000000000000
-            Wrapped (ICX): 27089304784287839139691673607
+Balance:
+    ICON: hx691ead88bd5945a43c8a1da331ff6dd80e2936ee
+        ICX: 247.99
+        ONE (Wrapped): 0
+        ETH (IRC2): 10.00
+    HMNY: 0x8fc668275b4fa032342ea3039653d841f069a83b
+        ONE: 10.00
+        ICX (Wrapped): 1.98
+        ETH (ERC20): 10.00
 
-    TransferWrapped Coin ONE_DEV (Icon -> Hmny):
-        amount=1342556371793111822999750000
-        [tx=0x5dd69708f16339cc261ba24d1f234819315092f07e0238768e658422d099ebfc]... ✔ 5s
+Transfer Native ONE (HMNY -> ICON):
+    amount=2.00
 
-    Balance:
-        Icon: hxff0ea998b84ab9955157ab27915a9dc1805edd35
-            Native: 135527900301476881189041244312
-            Wrapped (ONE_DEV): 1342556371793111822999750000
-        Hmny: 0xa5241513da9f4463f1d4874b548dfbac29d91f34
-            Native: 6716814903659260000000000000
-            Wrapped (ICX): 27089304784287839139691673607
 
+Balance:
+    ICON: hx691ead88bd5945a43c8a1da331ff6dd80e2936ee
+        ICX: 247.99
+        ONE (Wrapped): 1.98
+        ETH (IRC2): 10.00
+    HMNY: 0x8fc668275b4fa032342ea3039653d841f069a83b
+        ONE: 7.98
+        ICX (Wrapped): 1.98
+        ETH (ERC20): 10.00
+
+Approve ICON NativeCoinBSH to access ONE
+    Allowance: 100000.00
+Approve HMNY BSHCore to access ICX
+    Allowance: 100000.00
+
+Transfer Wrapped ICX (HMNY -> ICON):
+    amount=1.00
+
+Balance:
+    ICON: hx691ead88bd5945a43c8a1da331ff6dd80e2936ee
+        ICX: 248.98
+        ONE (Wrapped): 1.98
+        ETH (IRC2): 10.00
+    HMNY: 0x8fc668275b4fa032342ea3039653d841f069a83b
+        ONE: 7.96
+        ICX (Wrapped): .98
+        ETH (ERC20): 10.00
+
+Transfer Wrapped ONE (ICON -> HMNY):
+    amount=1.00
+
+
+Balance:
+    ICON: hx691ead88bd5945a43c8a1da331ff6dd80e2936ee
+        ICX: 248.98
+        ONE (Wrapped): .98
+        ETH (IRC2): 10.00
+    HMNY: 0x8fc668275b4fa032342ea3039653d841f069a83b
+        ONE: 8.95
+        ICX (Wrapped): .98
+        ETH (ERC20): 10.00
+
+Transfer irc2.ETH (ICON -> HMNY):
+    amount=1.00
+
+
+Balance:
+    ICON: hx691ead88bd5945a43c8a1da331ff6dd80e2936ee
+        ICX: 248.98
+        ONE (Wrapped): .98
+        ETH (IRC2): 9.00
+    HMNY: 0x8fc668275b4fa032342ea3039653d841f069a83b
+        ONE: 8.95
+        ICX (Wrapped): .98
+        ETH (ERC20): 10.99
+
+Transfer erc20.ETH (HMNY -> ICON):
+    amount=1.00
+
+Balance:
+    ICON: hx691ead88bd5945a43c8a1da331ff6dd80e2936ee
+        ICX: 248.98
+        ONE (Wrapped): .98
+        ETH (IRC2): 9.99
+    HMNY: 0x8fc668275b4fa032342ea3039653d841f069a83b
+        ONE: 8.93
+        ICX (Wrapped): .98
+        ETH (ERC20): 9.99
 ```
 
 ## Disclaimer:
