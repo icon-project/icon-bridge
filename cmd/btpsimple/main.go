@@ -1,318 +1,116 @@
-/*
- * Copyright 2021 ICON Foundation
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package main
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"flag"
 	stdlog "log"
+	"net/http"
 	"os"
-	"path"
-	"path/filepath"
-	"strings"
+	"os/signal"
+	"syscall"
 
-	"github.com/spf13/cobra"
+	_ "net/http/pprof"
 
-	"github.com/icon-project/btp/cmd/btpsimple/chain"
-	"github.com/icon-project/btp/common/cli"
-	"github.com/icon-project/btp/common/crypto"
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/btp/cmd/btpsimple/relay"
+	"github.com/icon-project/btp/common/config"
 	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/wallet"
 )
 
 var (
-	version = "unknown"
-	build   = "unknown"
+	cfgFile string
 )
 
-const (
-	DefaultKeyStorePass = "btpsimple"
-)
+func init() {
+	flag.StringVar(&cfgFile, "config", "", "multi-relay config.json file")
+}
 
 type Config struct {
-	chain.Config `json:",squash"` //instead of `mapstructure:",squash"`
-	KeyStoreData json.RawMessage  `json:"key_store"`
-	KeyStorePass string           `json:"key_password,omitempty"`
-	KeySecret    string           `json:"key_secret,omitempty"`
-
-	LogLevel     string               `json:"log_level"`
-	ConsoleLevel string               `json:"console_level"`
-	LogForwarder *log.ForwarderConfig `json:"log_forwarder,omitempty"`
-	LogWriter    *log.WriterConfig    `json:"log_writer,omitempty"`
-
-	AWSSecretName string `json:"aws_secret_name,omitempty"`
-	AWSRegion     string `json:"aws_region,omitempty"`
-}
-
-func (c *Config) Wallet() (wallet.Wallet, error) {
-	pw, err := c.resolvePassword()
-	if err != nil {
-		return nil, err
-	}
-	return wallet.DecryptKeyStore(c.KeyStoreData, pw)
-}
-
-func (c *Config) resolvePassword() ([]byte, error) {
-	if c.KeySecret != "" {
-		return ioutil.ReadFile(c.KeySecret)
-	} else {
-		result, err := wallet.GetSecret(c.AWSSecretName, c.AWSRegion)
-		if err != nil {
-			return nil, err
-		}
-		if result != "" {
-			//return nil, errors.Errorf("fail to decrypt KeyStore err=%+v", result)
-			type Wallet struct {
-				KeyStore json.RawMessage `json:"key_store"`
-				Secret   string          `json:"secret"`
-			}
-			var awsWallet Wallet
-			err = json.Unmarshal([]byte(result), &awsWallet)
-			if err != nil {
-				return nil, err
-			}
-			c.KeyStoreData = awsWallet.KeyStore
-			return []byte(awsWallet.Secret), nil
-		} else {
-			if c.KeyStorePass == "" {
-				return []byte(DefaultKeyStorePass), nil
-			} else {
-				return []byte(c.KeyStorePass), nil
-			}
-		}
-	}
-}
-
-func (c *Config) EnsureWallet() error {
-	pw, err := c.resolvePassword()
-	if err != nil {
-		return err
-	}
-	if len(c.KeyStoreData) < 1 {
-		priK, _ := crypto.GenerateKeyPair()
-		if ks, err := wallet.EncryptKeyAsKeyStore(priK, pw); err != nil {
-			return err
-		} else {
-			c.KeyStoreData = ks
-		}
-	} else {
-		if _, err := wallet.DecryptKeyStore(c.KeyStoreData, pw); err != nil {
-			return errors.Errorf("fail to decrypt KeyStore err=%+v", err)
-		}
-	}
-	return nil
-}
-
-var logoLines = []string{
-	"  ____ _____ ____    ____      _",
-	" | __ )_   _|  _ \\  |  _ \\ ___| | __ _ _   _",
-	" |  _ \\ | | | |_) | | |_) / _ \\ |/ _` | | | |",
-	" | |_) || | |  __/  |  _ <  __/ | (_| | |_| |",
-	" |____/ |_| |_|     |_| \\_\\___|_|\\__,_|\\__, |",
-	"                                       |___/ ",
+	config.FileConfig `json:",squash"`
+	relay.Config      `json:",squash"`
+	LogLevel          string               `json:"log_level"`
+	ConsoleLevel      string               `json:"console_level"`
+	LogWriter         *log.WriterConfig    `json:"log_writer,omitempty"`
+	LogForwarder      *log.ForwarderConfig `json:"log_forwarder,omitempty"`
 }
 
 func main() {
-	rootCmd, rootVc := cli.NewCommand(nil, nil, "btpsimple", "BTP Relay CLI")
-	cfg := &Config{}
-	rootCmd.Long = "Command Line Interface of Relay for Blockchain Transmission Protocol"
-	cli.SetEnvKeyReplacer(rootVc, strings.NewReplacer(".", "_"))
-	//rootVc.Debug()
+	flag.Parse()
 
-	rootCmd.AddCommand(&cobra.Command{
-		Use:   "version",
-		Short: "Print btpsimple version",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("btpsimple version", version, build)
-		},
-	})
-
-	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		baseDir := rootVc.GetString("base_dir")
-		logfile := rootVc.GetString("log_writer.filename")
-		cfg.FilePath = rootVc.GetString("config")
-		if cfg.FilePath != "" {
-			f, err := os.Open(cfg.FilePath)
-			if err != nil {
-				return fmt.Errorf("fail to open config file=%s err=%+v", cfg.FilePath, err)
-			}
-			rootVc.SetConfigType("json")
-			err = rootVc.ReadConfig(f)
-			if err != nil {
-				return fmt.Errorf("fail to read config file=%s err=%+v", cfg.FilePath, err)
-			}
-			cfg.FilePath, _ = filepath.Abs(cfg.FilePath)
-		}
-		if err := rootVc.Unmarshal(&cfg, cli.ViperDecodeOptJson); err != nil {
-			return fmt.Errorf("fail to unmarshall config from env err=%+v", err)
-		}
-		if baseDir != "" {
-			cfg.BaseDir = cfg.ResolveRelative(baseDir)
-		}
-		if logfile != "" {
-			cfg.LogWriter.Filename = cfg.ResolveRelative(logfile)
-		}
-		return nil
+	cfg, err := loadConfig(cfgFile)
+	if err != nil {
+		log.Fatalf("failed to load config: file=%q, err=%q", cfgFile, err)
 	}
-	rootPFlags := rootCmd.PersistentFlags()
-	rootPFlags.String("src.address", "", "BTP Address of source blockchain (PROTOCOL://NID.BLOCKCHAIN/BMC)")
-	rootPFlags.StringSlice("src.endpoint", nil, "Endpoint of source blockchain")
-	rootPFlags.StringToString("src.options", nil, "Options, comma-separated 'key=value'")
-	rootPFlags.String("dst.address", "", "BTP Address of destination blockchain (PROTOCOL://NID.BLOCKCHAIN/BMC)")
-	rootPFlags.StringSlice("dst.endpoint", nil, "Endpoint of destination blockchain")
-	rootPFlags.StringToString("dst.options", nil, "Options, comma-separated 'key=value'")
-	rootPFlags.Int64("offset", 0, "Offset of MTA")
-	rootPFlags.String("key_store", "", "KeyStore")
-	rootPFlags.String("key_password", "", "Password of KeyStore")
-	rootPFlags.String("key_secret", "", "Secret(password) file for KeyStore")
-	rootPFlags.String("aws_secret_name", "", "Secret name from AWS secret Keystore")
-	rootPFlags.String("aws_region", "", "AWS secret Keystore region")
-	//
-	rootPFlags.String("base_dir", "", "Base directory for data")
-	rootPFlags.StringP("config", "c", "", "Parsing configuration file")
-	//
-	rootPFlags.String("log_level", "debug", "Global log level (trace,debug,info,warn,error,fatal,panic)")
-	rootPFlags.String("console_level", "trace", "Console log level (trace,debug,info,warn,error,fatal,panic)")
-	//
-	rootPFlags.String("log_forwarder.vendor", "", "LogForwarder vendor (fluentd,logstash)")
-	rootPFlags.String("log_forwarder.address", "", "LogForwarder address")
-	rootPFlags.String("log_forwarder.level", "info", "LogForwarder level")
-	rootPFlags.String("log_forwarder.name", "", "LogForwarder name")
-	rootPFlags.StringToString("log_forwarder.options", nil, "LogForwarder options, comma-separated 'key=value'")
-	//
-	rootPFlags.String("log_writer.filename", "", "Log file name (rotated files resides in same directory)")
-	rootPFlags.Int("log_writer.maxsize", 100, "Maximum log file size in MiB")
-	rootPFlags.Int("log_writer.maxage", 0, "Maximum age of log file in day")
-	rootPFlags.Int("log_writer.maxbackups", 0, "Maximum number of backups")
-	rootPFlags.Bool("log_writer.localtime", false, "Use localtime on rotated log file instead of UTC")
-	rootPFlags.Bool("log_writer.compress", false, "Use gzip on rotated log file")
-	cli.BindPFlags(rootVc, rootPFlags)
-	cli.MarkAnnotationCustom(rootPFlags, "src.address", "dst.address", "src.endpoint", "dst.endpoint")
-	saveCmd := &cobra.Command{
-		Use:   "save [file]",
-		Short: "Save configuration",
-		Args:  cli.ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := cfg.EnsureWallet(); err != nil {
-				return fmt.Errorf("fail to ensure src wallet err:%+v", err)
-			} else {
-				cfg.KeyStorePass = ""
-			}
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			saveFilePath := args[0]
-			cfg.FilePath, _ = filepath.Abs(saveFilePath)
-			cfg.BaseDir = cfg.ResolveRelative(cfg.BaseDir)
 
-			if cfg.LogWriter != nil {
-				cfg.LogWriter.Filename = cfg.ResolveRelative(cfg.LogWriter.Filename)
-			}
-
-			if err := cli.JsonPrettySaveFile(saveFilePath, 0644, cfg); err != nil {
-				return err
-			}
-			cmd.Println("Save configuration to", saveFilePath)
-			if saveKeyStore, _ := cmd.Flags().GetString("save_key_store"); saveKeyStore != "" {
-				if err := cli.JsonPrettySaveFile(saveKeyStore, 0600, cfg.KeyStoreData); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+	relay, err := relay.NewMultiRelay(&cfg.Config, setLogger(cfg))
+	if err != nil {
+		log.Fatalf("failed to create MultiRelay: %v", err)
 	}
-	rootCmd.AddCommand(saveCmd)
-	saveCmd.Flags().String("save_key_store", "", "KeyStore File path to save")
 
-	startCmd := &cobra.Command{
-		Use:   "start",
-		Short: "Start server",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return cli.ValidateFlagsWithViper(rootVc, cmd.Flags())
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			for _, l := range logoLines {
-				log.Println(l)
-			}
-			log.Printf("Version : %s", version)
-			log.Printf("Build   : %s", build)
+	// for net/http/pprof
+	go func() { http.ListenAndServe("0.0.0.0:6060", nil) }()
 
-			var (
-				err error
-				w   wallet.Wallet
-			)
-			if w, err = cfg.Wallet(); err != nil {
-				return err
-			}
-			modLevels, _ := cmd.Flags().GetStringToString("mod_level")
-			l := setLogger(cfg, w, modLevels)
-			l.Debugln(cfg.FilePath, cfg.BaseDir)
-			if cfg.BaseDir == "" {
-				cfg.BaseDir = path.Join(".", ".btpsimple", cfg.Src.Address.NetworkAddress())
-			}
+	runRelay(relay)
+}
 
-			var sr *chain.SimpleChain
-			if sr, err = chain.NewChain(&cfg.Config, w, l); err != nil {
-				return err
-			}
-			return sr.Serve()
-		},
-	}
-	rootCmd.AddCommand(startCmd)
-	startFlags := startCmd.Flags()
-	startFlags.StringToString("mod_level", nil, "Set console log level for specific module ('mod'='level',...)")
-	startFlags.String("cpuprofile", "", "CPU Profiling data file")
-	startFlags.String("memprofile", "", "Memory Profiling data file")
-	startFlags.MarkHidden("mod_level")
+func runRelay(relay relay.Relay) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
 
-	cli.BindPFlags(rootVc, startFlags)
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	defer func() {
+		signal.Stop(sigCh)
+		cancel()
+	}()
 
-	genMdCmd := cli.NewGenerateMarkdownCommand(rootCmd, rootVc)
-	genMdCmd.Hidden = true
+	go func() {
+		select {
+		case <-sigCh: // first signal, cancel context
+			cancel()
+		case <-ctx.Done():
+		}
+		<-sigCh // second signal, hard exit
+		os.Exit(2)
+	}()
 
-	rootCmd.SilenceUsage = true
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Printf("%+v", err)
+	if err := relay.Start(ctx); err != nil {
+		log.Error(err)
 		os.Exit(1)
 	}
 }
 
-func setLogger(cfg *Config, w wallet.Wallet, modLevels map[string]string) log.Logger {
-	l := log.WithFields(log.Fields{log.FieldKeyWallet: w.Address()[2:]})
+func loadConfig(file string) (*Config, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	cfg := &Config{}
+	err = json.NewDecoder(f).Decode(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func setLogger(cfg *Config) log.Logger {
+	l := log.New()
 	log.SetGlobalLogger(l)
 	stdlog.SetOutput(l.WriterLevel(log.WarnLevel))
 	if cfg.LogWriter != nil {
 		if cfg.LogWriter.Filename == "" {
-			log.Debugln("LogWriterConfig filename is empty string, will be ignore")
-		} else {
-			var lwCfg log.WriterConfig
-			lwCfg = *cfg.LogWriter
-			lwCfg.Filename = cfg.ResolveAbsolute(lwCfg.Filename)
-			w, err := log.NewWriter(&lwCfg)
-			if err != nil {
-				log.Panicf("Fail to make writer err=%+v", err)
-			}
-			err = l.SetFileWriter(w)
-			if err != nil {
-				log.Panicf("Fail to set file l err=%+v", err)
-			}
+			log.Fatalln("Empty LogWriterConfig filename!")
+		}
+		var lwCfg log.WriterConfig
+		lwCfg = *cfg.LogWriter
+		lwCfg.Filename = cfg.ResolveAbsolute(lwCfg.Filename)
+		w, err := log.NewWriter(&lwCfg)
+		if err != nil {
+			log.Panicf("Fail to make writer err=%+v", err)
+		}
+		err = l.SetFileWriter(w)
+		if err != nil {
+			log.Panicf("Fail to set file l err=%+v", err)
 		}
 	}
 
@@ -327,21 +125,12 @@ func setLogger(cfg *Config, w wallet.Wallet, modLevels map[string]string) log.Lo
 		l.SetConsoleLevel(lv)
 	}
 
-	for mod, lvStr := range modLevels {
-		if lv, err := log.ParseLevel(lvStr); err != nil {
-			log.Panicf("Invalid mod_level mod=%s level=%s", mod, lvStr)
-		} else {
-			l.SetModuleLevel(mod, lv)
-		}
-	}
-
 	if cfg.LogForwarder != nil {
 		if cfg.LogForwarder.Vendor == "" && cfg.LogForwarder.Address == "" {
-			log.Debugln("LogForwarderConfig vendor and address is empty string, will be ignore")
-		} else {
-			if err := log.AddForwarder(cfg.LogForwarder); err != nil {
-				log.Fatalf("Invalid log_forwarder err:%+v", err)
-			}
+			log.Fatalln("Empty LogForwarderConfig vendor and address!")
+		}
+		if err := log.AddForwarder(cfg.LogForwarder); err != nil {
+			log.Fatalf("Invalid log_forwarder err:%+v", err)
 		}
 	}
 
