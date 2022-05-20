@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.8.5;
+pragma abicoder v2;
 
 import "../BMCManagement.sol";
 import "../libraries/Utils.sol";
@@ -29,11 +29,10 @@ contract MockBMCManagement is BMCManagement {
         uint256 _rotateCount;
         if (_rotateTerm > 0) {
             if (_hasMsg) {
-                uint256 _guessHeight =
-                    link.rxHeight +
-                        uint256((_relayMsgHeight - link.rxHeightSrc) * 10**6)
-                            .ceilDiv(_scale) -
-                        1;
+                uint256 _guessHeight = link.rxHeight +
+                    uint256((_relayMsgHeight - link.rxHeightSrc) * 10**6)
+                        .ceilDiv(_scale) -
+                    1;
 
                 if (_guessHeight > _currentHeight) {
                     _guessHeight = _currentHeight;
@@ -55,8 +54,9 @@ contract MockBMCManagement is BMCManagement {
                     link.rotateHeight +
                     ((_rotateCount - 1) * _rotateTerm);
 
-                uint256 _skipCount =
-                    (_currentHeight - _guessHeight).ceilDiv(link.delayLimit);
+                uint256 _skipCount = (_currentHeight - _guessHeight).ceilDiv(
+                    link.delayLimit
+                );
 
                 if (_skipCount > 0) {
                     _skipCount = _skipCount - 1;
@@ -75,8 +75,8 @@ contract MockBMCManagement is BMCManagement {
                         1;
                 } else {
                     _rotateCount = (_currentHeight - link.rotateHeight).ceilDiv(
-                        _rotateTerm
-                    );
+                            _rotateTerm
+                        );
                 }
                 _baseHeight =
                     link.rotateHeight +

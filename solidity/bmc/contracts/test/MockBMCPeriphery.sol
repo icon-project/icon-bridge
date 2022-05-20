@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.8.5;
+pragma abicoder v2;
 
 import "../interfaces/IBSH.sol";
 import "../interfaces/IBMCPeriphery.sol";
@@ -13,7 +13,8 @@ import "../libraries/Types.sol";
 import "../libraries/Utils.sol";
 import "../libraries/DecodeBase64.sol";
 
-import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 contract MockBMCPeriphery is IBMCPeriphery, Initializable {
     using String for string;
     using ParseAddress for address;
@@ -67,12 +68,14 @@ contract MockBMCPeriphery is IBMCPeriphery, Initializable {
        @param _prev    BTP Address of the BMC generates the message
        @param _msg     base64 encoded string of serialized bytes of Relay Message refer RelayMessage structure
      */
-    function handleRelayMessage(string calldata _prev, string calldata _msg)
+    function handleRelayMessage(string calldata _prev, bytes calldata _msg)
         external
         override
     {
-        
-        bytes[] memory serializedMsgs = decodeMsgAndValidateRelay(_prev, _msg);
+        bytes[] memory serializedMsgs = decodeMsgAndValidateRelay(
+            _prev,
+            string(_msg)
+        );
         // dispatch BTP Messages
         Types.BMCMessage memory _message;
         for (uint256 i = 0; i < serializedMsgs.length; i++) {
@@ -84,8 +87,8 @@ contract MockBMCPeriphery is IBMCPeriphery, Initializable {
                 // ignore BTPMessage parse failure
                 continue;
             }
-            //check the size of the message length here 
-                handleMessage(_prev, _message);
+            //check the size of the message length here
+            handleMessage(_prev, _message);
         }
     }
 
@@ -110,12 +113,17 @@ contract MockBMCPeriphery is IBMCPeriphery, Initializable {
         uint256 _seq,
         string calldata _msg
     ) internal returns (bytes[] memory) {
-        bytes memory _serializedMsg = DecodeBase64.decode(_msg);       
-        bytes[] memory decodedMsgs = validateReceipt(_bmc, _prev, _seq, _serializedMsg);  // decode and verify relay message
+        bytes memory _serializedMsg = DecodeBase64.decode(_msg);
+        bytes[] memory decodedMsgs = validateReceipt(
+            _bmc,
+            _prev,
+            _seq,
+            _serializedMsg
+        ); // decode and verify relay message
         return decodedMsgs;
     }
 
-     function validateReceipt(
+    function validateReceipt(
         string memory _bmc,
         string memory _prev,
         uint256 _seq,
@@ -126,12 +134,12 @@ contract MockBMCPeriphery is IBMCPeriphery, Initializable {
         Types.ReceiptProof[] memory receiptProofs = _serializedMsg
             .decodeReceiptProofs();
         if (msgs.length > 0) delete msgs;
-        for (uint256 i = 0; i < receiptProofs.length; i++) {          
+        for (uint256 i = 0; i < receiptProofs.length; i++) {
             for (uint256 j = 0; j < receiptProofs[i].events.length; j++) {
                 messageEvent = receiptProofs[i].events[j];
-                if (bytes(messageEvent.nextBmc).length != 0) {                    
-                        msgs.push(messageEvent.message);
-                        nextSeq += 1;
+                if (bytes(messageEvent.nextBmc).length != 0) {
+                    msgs.push(messageEvent.message);
+                    nextSeq += 1;
                 }
             }
         }
@@ -282,28 +290,28 @@ contract MockBMCPeriphery is IBMCPeriphery, Initializable {
     {
         Types.Link memory link = IBMCManagement(bmcManagement).getLink(_link);
         require(link.isConnected == true, "BMCRevertNotExistsLink");
-        Types.RelayStats[] memory _relays = IBMCManagement(bmcManagement)
-            .getRelayStatusByLink(_link);
-        (string memory _net, ) = _link.splitBTPAddress();
-        uint256 _rotateTerm = link.maxAggregation.getRotateTerm(
-            link.blockIntervalSrc.getScale(link.blockIntervalDst)
-        );
+        // Types.RelayStats[] memory _relays = IBMCManagement(bmcManagement)
+        //     .getRelayStatusByLink(_link);
+        // (string memory _net, ) = _link.splitBTPAddress();
+        // uint256 _rotateTerm = link.maxAggregation.getRotateTerm(
+        //     link.blockIntervalSrc.getScale(link.blockIntervalDst)
+        // );
         return
             Types.LinkStats(
                 link.rxSeq,
                 link.txSeq,
-                Types.VerifierStats(0, 0, 0, ""),//dummy
-                _relays,
-                link.relayIdx,
-                link.rotateHeight,
-                _rotateTerm,
-                link.delayLimit,
-                link.maxAggregation,
-                link.rxHeightSrc,
-                link.rxHeight,
-                link.blockIntervalSrc,
-                link.blockIntervalDst,
-                block.number
+                // Types.VerifierStats(0, 0, 0, ""), //dummy
+                // _relays,
+                // link.relayIdx,
+                // link.rotateHeight,
+                // _rotateTerm,
+                // link.delayLimit,
+                // link.maxAggregation,
+                // link.rxHeightSrc,
+                link.rxHeight
+                // link.blockIntervalSrc,
+                // link.blockIntervalDst,
+                // block.number
             );
     }
 }

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0;
+pragma abicoder v2;
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155Holder.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "./BSHPeripheryV1.sol";
 import "./BSHCoreV1.sol";
 
@@ -56,7 +56,7 @@ contract AnotherHolder is ERC1155Holder {
     ) external {
         // int256 pos = isSendingNative(_coinNames);
         if (_native != 0) {
-            (bool success, bytes memory err) = _bsh.call{value: _native}(
+            (bool success, bytes memory err) = _bsh.call{ value: _native }(
                 abi.encodeWithSignature(
                     "transferBatch(string[],uint256[],string)",
                     _coinNames,

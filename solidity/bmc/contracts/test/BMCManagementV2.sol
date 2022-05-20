@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.8.5;
+pragma abicoder v2;
 
 import "../interfaces/IBMCManagement.sol";
 import "../interfaces/IBMCPeriphery.sol";
@@ -10,7 +10,7 @@ import "../libraries/String.sol";
 import "../libraries/Types.sol";
 import "../libraries/Utils.sol";
 
-import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract BMCManagementV2 is IBMCManagement, Initializable {
     using ParseAddress for address;
@@ -43,7 +43,7 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
 
     uint256 private constant BLOCK_INTERVAL_MSEC = 1000;
 
-    modifier hasPermission {
+    modifier hasPermission() {
         //  As Soliditty Security Consideration mentioned: https://docs.soliditylang.org/en/v0.6.2/security-considerations.html
         //  tx.origin should not be used in checking authorization
         //  However, PyScore implementation have used both 'msg.sender' and 'tx.orgin'
@@ -55,7 +55,7 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         _;
     }
 
-    modifier onlyBMCPeriphery {
+    modifier onlyBMCPeriphery() {
         require(msg.sender == bmcPeriphery, "BMCRevertUnauthorized");
         _;
     }
@@ -146,8 +146,9 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         override
         returns (Types.Service[] memory)
     {
-        Types.Service[] memory services =
-            new Types.Service[](listBSHNames.length);
+        Types.Service[] memory services = new Types.Service[](
+            listBSHNames.length
+        );
         for (uint256 i = 0; i < listBSHNames.length; i++) {
             services[i] = Types.Service(
                 listBSHNames[i],
@@ -212,8 +213,11 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         return listLinkNames;
     }
 
-    function setLinkRxHeight(
-        string calldata _link, uint256 _height) external override hasPermission {
+    function setLinkRxHeight(string calldata _link, uint256 _height)
+        external
+        override
+        hasPermission
+    {
         require(links[_link].isConnected == true, "BMCRevertNotExistsLink");
         require(_height > 0, "BMVRevertInvalidRxHeight");
         links[_link].rxHeight = _height;
@@ -276,11 +280,10 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
                 //  BMC starts guessing when an event of 'RelayMessage' was thrown by another BMC
                 //  which is 'guessHeight' and the time BMC receiving this event is 'currentHeight'
                 //  If there is any delay, 'guessHeight' is likely less than 'currentHeight'
-                uint256 _guessHeight =
-                    link.rxHeight +
-                        uint256((_relayMsgHeight - link.rxHeightSrc) * 10**6)
-                            .ceilDiv(_scale) -
-                        1;
+                uint256 _guessHeight = link.rxHeight +
+                    uint256((_relayMsgHeight - link.rxHeightSrc) * 10**6)
+                        .ceilDiv(_scale) -
+                    1;
 
                 if (_guessHeight > _currentHeight) {
                     _guessHeight = _currentHeight;
@@ -327,8 +330,9 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
                 //        => out of 'delay_limit'
                 //        => rejected and move to next Relay
                 */
-                uint256 _skipCount =
-                    (_currentHeight - _guessHeight).ceilDiv(link.delayLimit);
+                uint256 _skipCount = (_currentHeight - _guessHeight).ceilDiv(
+                    link.delayLimit
+                );
 
                 if (_skipCount > 0) {
                     _skipCount = _skipCount - 1;
@@ -347,8 +351,8 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
                         1;
                 } else {
                     _rotateCount = (_currentHeight - link.rotateHeight).ceilDiv(
-                        _rotateTerm
-                    );
+                            _rotateTerm
+                        );
                 }
                 _baseHeight =
                     link.rotateHeight +
@@ -614,8 +618,9 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         override
         onlyBMCPeriphery
     {
-        (string memory _net, ) =
-            links[_prev].reachable[_index].splitBTPAddress();
+        (string memory _net, ) = links[_prev]
+            .reachable[_index]
+            .splitBTPAddress();
         delete getLinkFromReachableNet[_net];
         delete links[_prev].reachable[_index];
         links[_prev].reachable[_index] = links[_prev].reachable[

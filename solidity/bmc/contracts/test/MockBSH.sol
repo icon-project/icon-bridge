@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.8.5;
+pragma abicoder v2;
 
 import "../interfaces/IBSH.sol";
 import "../libraries/RLPDecodeStruct.sol";
-import "../Libraries/ParseAddress.sol";
+import "../libraries/ParseAddress.sol";
 import "../libraries/String.sol";
 
 contract MockBSH is IBSH {
@@ -27,8 +27,8 @@ contract MockBSH is IBSH {
             Types.TransferAssets memory _ta = _sm.data.decodeTransferAsset();
             string memory _statusMsg;
             uint256 _status;
-            
-         try this.handleRequest(_ta) {
+
+            try this.handleRequest(_ta) {
                 _statusMsg = "Transfer Success";
                 _status = 0;
             } catch Error(string memory _err) {
@@ -39,15 +39,14 @@ contract MockBSH is IBSH {
                 _statusMsg = _err;
                 _status = 1;
             }
-    }
+        }
     }
 
     function handleRequest(Types.TransferAssets memory transferAssets)
         external
     {
-        
         string memory _toAddress = transferAssets.to;
-        
+
         try this.checkParseAddress(_toAddress) {} catch {
             revert("Invalid Address");
         }
@@ -56,11 +55,10 @@ contract MockBSH is IBSH {
             // Check if the _toAddress is invalid
             uint256 _amount = _asset[i].value;
             string memory _tokenName = _asset[i].name;
-            // Check if the token is registered already          
+            // Check if the token is registered already
         }
     }
 
-    
     function checkParseAddress(string calldata _to) external pure {
         _to._toAddress();
     }

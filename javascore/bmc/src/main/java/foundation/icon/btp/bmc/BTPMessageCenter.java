@@ -40,7 +40,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
     public static final int INVALID_SEQ_NUMBER = 24;
     public static final int INVALID_RELAY_MSG = 25;
     public static final int INVALID_RX_SRC_HEIGHT = 26;
-    public enum Internal { Init, Link, Unlink, FeeGathering, Sack }
+
+    public enum Internal {
+        Init, Link, Unlink, FeeGathering, Sack
+    }
 
     //
     private final BTPAddress btpAddr;
@@ -48,8 +51,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
 
     //
     private final OwnerManager ownerManager = new OwnerManagerImpl("owners");
-    private final ArrayDB<ServiceCandidate> serviceCandidates = Context.newArrayDB("serviceCandidates", ServiceCandidate.class);
-    private final BranchDB<String, BranchDB<Address, ArrayDB<String>>> fragments = Context.newBranchDB("fragments", String.class);
+    private final ArrayDB<ServiceCandidate> serviceCandidates = Context.newArrayDB("serviceCandidates",
+            ServiceCandidate.class);
+    private final BranchDB<String, BranchDB<Address, ArrayDB<String>>> fragments = Context.newBranchDB("fragments",
+            String.class);
 
     //
     private final Services services = new Services("services");
@@ -118,7 +123,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         }
     }
 
-    //TODO flushable
+    // TODO flushable
     private Link getLink(BTPAddress link) {
         requireLink(link);
         return links.get(link);
@@ -314,15 +319,16 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
 
         for (ReceiptProof rp : rm.getReceiptProofs()) {
             if (rp.getHeight().longValue() < rxHeight) {
-                Context.revert(INVALID_RX_SRC_HEIGHT,
-                        "invalid rxSrcHeight: expected >= " + rxHeight + ", got " + rp.getHeight());
+                continue;
             }
             rxHeight = rp.getHeight().longValue();
             for (EventDataBTPMessage ev : rp.getEvents()) {
                 rxSeq = rxSeq.add(BigInteger.ONE);
-                if (ev.getSeq().compareTo(rxSeq) != 0) {
-                    Context.revert(INVALID_SEQ_NUMBER,
-                            "invalid seq no: expected " + rxSeq + ", got " + ev.getSeq());
+                if (ev.getSeq().compareTo(rxSeq) < 0) {
+                    rxSeq = rxSeq.subtract(BigInteger.ONE);
+                    continue;
+                } else if (ev.getSeq().compareTo(rxSeq) > 0) {
+                    throw BMCException.invalidSeqNumber();
                 }
                 BTPMessage msg = null;
                 try {
@@ -394,7 +400,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         try {
             internal = Internal.valueOf(bmcMsg.getType());
         } catch (IllegalArgumentException e) {
-            //TODO exception handling
+            // TODO exception handling
             logger.println("handleInternal", "not supported internal type", e.getMessage());
             return;
         }
@@ -427,7 +433,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
                     break;
             }
         } catch (BTPException e) {
-            //TODO exception handling
+            // TODO exception handling
             logger.println("handleInternal", internal, e);
         }
     }
@@ -441,7 +447,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
             }
             putLink(link);
         } catch (BMCException e) {
-            //TODO exception handling
+            // TODO exception handling
             if (!BMCException.Code.NotExistsLink.equals(e)) {
                 throw e;
             }
@@ -458,7 +464,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
                 putLink(link);
             }
         } catch (BMCException e) {
-            //TODO exception handling
+            // TODO exception handling
             if (!BMCException.Code.NotExistsLink.equals(e)) {
                 throw e;
             }
@@ -475,7 +481,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
                 putLink(link);
             }
         } catch (BMCException e) {
-            //TODO exception handling
+            // TODO exception handling
             if (!BMCException.Code.NotExistsLink.equals(e)) {
                 throw e;
             }
@@ -493,7 +499,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
     private void handleFeeGathering(BTPAddress prev, FeeGatheringMessage msg) {
         logger.println("handleFeeGathering", "prev:", prev, "msg:", msg.toString());
         if (!prev.net().equals(msg.getFa().net())) {
-            throw BMCException.unknown("not allowed GatherFeeMessage from:"+prev.net());
+            throw BMCException.unknown("not allowed GatherFeeMessage from:" + prev.net());
         }
         String[] svcs = msg.getSvcs();
         if (svcs.length < 1) {
@@ -506,15 +512,15 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
                 service.handleFeeGathering(fa, svc);
             } catch (BTPException e) {
                 if (!BMCException.Code.NotExistsBSH.equals(e)) {
-                    //TODO exception handling
+                    // TODO exception handling
                     logger.println("handleGatherFee", svc, e);
                 }
             } catch (UserRevertedException e) {
-                //TODO exception handling
+                // TODO exception handling
                 logger.println("handleGatherFee", "fail to service.handleFeeGathering",
                         "code:", e.getCode(), "msg:", e.getMessage());
             } catch (Exception e) {
-                //TODO handle uncatchable exception?
+                // TODO handle uncatchable exception?
                 logger.println("handleGatherFee", "fail to service.handleFeeGathering",
                         "Exception:", e.toString());
             }
@@ -522,8 +528,8 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
     }
 
     private void handleService(BTPAddress prev, BTPMessage msg) {
-        //TODO throttling in a tx, EOA_LIMIT, handleService_LIMIT each Link
-        //  limit in block
+        // TODO throttling in a tx, EOA_LIMIT, handleService_LIMIT each Link
+        // limit in block
         String svc = msg.getSvc();
         BigInteger sn = msg.getSn();
         if (sn.compareTo(BigInteger.ZERO) > -1) {
@@ -531,7 +537,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
                 BSHScoreInterface service = getService(svc);
                 service.handleBTPMessage(msg.getSrc().net(), svc, msg.getSn(), msg.getPayload());
             } catch (BTPException e) {
-                logger.println("handleService","fail to getService",
+                logger.println("handleService", "fail to getService",
                         "code:", e.getCode(), "msg:", e.getMessage());
                 sendError(prev, msg, e);
             } catch (UserRevertedException e) {
@@ -539,7 +545,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
                         "code:", e.getCode(), "msg:", e.getMessage());
                 sendError(prev, msg, BTPException.of(e));
             } catch (Exception e) {
-                //TODO handle uncatchable exception?
+                // TODO handle uncatchable exception?
                 logger.println("handleService", "fail to service.handleBTPMessage",
                         "Exception:", e.toString());
                 sendError(prev, msg, BTPException.unknown(e.getMessage()));
@@ -550,9 +556,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
                 ErrorMessage errorMsg = ErrorMessage.fromBytes(msg.getPayload());
                 try {
                     BSHScoreInterface service = getService(svc);
-                    service.handleBTPError(msg.getSrc().toString(), svc, sn, errorMsg.getCode(), errorMsg.getMsg() == null ? "" : errorMsg.getMsg());
+                    service.handleBTPError(msg.getSrc().toString(), svc, sn, errorMsg.getCode(),
+                            errorMsg.getMsg() == null ? "" : errorMsg.getMsg());
                 } catch (BTPException e) {
-                    logger.println("handleService","fail to getService",
+                    logger.println("handleService", "fail to getService",
                             "code:", e.getCode(), "msg:", e.getMessage());
                     ErrorOnBTPError(svc, sn, errorMsg.getCode(), errorMsg.getMsg(), e.getCode(), e.getMessage());
                 } catch (UserRevertedException e) {
@@ -586,8 +593,8 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         }
         Link link = resolveNext(_to);
 
-        //TODO (txSeq > sackSeq && (currentHeight - sackHeight) > THRESHOLD) ? revert
-        //  THRESHOLD = (delayLimit * NUM_OF_ROTATION)
+        // TODO (txSeq > sackSeq && (currentHeight - sackHeight) > THRESHOLD) ? revert
+        // THRESHOLD = (delayLimit * NUM_OF_ROTATION)
         BTPMessage btpMsg = new BTPMessage();
         btpMsg.setSrc(btpAddr);
         btpMsg.setDst(link.getAddr());
@@ -671,7 +678,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
 
     @External
     public void handleFragment(String _prev, String _msg, int _idx) {
-        logger.println("handleFragment", "_prev",_prev,"_idx:",_idx, "len(_msg):"+_msg.length());
+        logger.println("handleFragment", "_prev", _prev, "_idx:", _idx, "len(_msg):" + _msg.length());
         BTPAddress prev = BTPAddress.valueOf(_prev);
         Link link = getLink(prev);
         Relays relays = link.getRelays();
@@ -701,11 +708,11 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
             int last = Integer.parseInt(fragments.get(INDEX_LAST));
             if (_idx == 0) {
                 StringBuilder msg = new StringBuilder();
-                for(int i = 0; i < last; i++){
+                for (int i = 0; i < last; i++) {
                     msg.append(fragments.get(i + INDEX_OFFSET));
                 }
                 msg.append(_msg);
-                logger.println("handleFragment", "handleRelayMessage","fragments:",last+1, "len:"+msg.length());
+                logger.println("handleFragment", "handleRelayMessage", "fragments:", last + 1, "len:" + msg.length());
                 handleRelayMessage(_prev, msg.toString());
             } else {
                 fragments.set(INDEX_NEXT, Integer.toString(_idx - 1));
@@ -735,8 +742,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
             long currentHeight = Context.getBlockHeight();
             link.setRotateHeight(currentHeight + rotateTerm);
             link.setRxHeight(currentHeight);
-            /*BMVScoreInterface verifier = getVerifier(target.net());
-            link.setRxHeightSrc(verifier.getStatus().getHeight());*/
+            /*
+             * BMVScoreInterface verifier = getVerifier(target.net());
+             * link.setRxHeightSrc(verifier.getStatus().getHeight());
+             */
         }
         putLink(link);
     }
@@ -762,7 +771,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
             throw BMCException.unknown("invalid param");
         }
         link.setSackTerm(_value);
-        link.setSackNext(Context.getBlockHeight()+_value);
+        link.setSackNext(Context.getBlockHeight() + _value);
         putLink(link);
     }
 
@@ -873,7 +882,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
             throw BMCException.unknown("invalid param");
         }
         properties.setFeeGatheringTerm(_value);
-        properties.setFeeGatheringNext(Context.getBlockHeight()+_value);
+        properties.setFeeGatheringNext(Context.getBlockHeight() + _value);
         setProperties(properties);
     }
 
@@ -1007,11 +1016,11 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
             nextRewardDistribution += relayerTerm;
             if (nextRewardDistribution <= currentHeight) {
                 int omitted = 0;
-                while(nextRewardDistribution < currentHeight) {
+                while (nextRewardDistribution < currentHeight) {
                     nextRewardDistribution += relayerTerm;
                     omitted++;
                 }
-                logger.println("WARN","rewardDistribution was omitted", omitted, "term:", relayerTerm);
+                logger.println("WARN", "rewardDistribution was omitted", omitted, "term:", relayerTerm);
             }
             long since = nextRewardDistribution - (relayerTerm * 2);
             properties.setNextRewardDistribution(nextRewardDistribution);
@@ -1021,11 +1030,12 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
             BigInteger bond = properties.getBond();
             BigInteger current = balance.subtract(bond);
             BigInteger carryover = properties.getCarryover();
-            logger.println("distributeRelayerReward", "since:", since, "delay:",delayOfDistribution,
+            logger.println("distributeRelayerReward", "since:", since, "delay:", delayOfDistribution,
                     "balance:", balance, "distributed:", distributed, "bond:", bond, "carryover:", carryover);
             if (current.compareTo(distributed) > 0) {
                 BigInteger budget = current.subtract(distributed);
-                logger.println("distributeRelayerReward","budget:", budget, "transferred:", budget.subtract(carryover));
+                logger.println("distributeRelayerReward", "budget:", budget, "transferred:",
+                        budget.subtract(carryover));
                 carryover = budget;
                 Relayer[] filteredRelayers = relayers.getValuesBySinceAndSortAsc(since);
                 BigInteger sumOfBond = BigInteger.ZERO;
@@ -1033,34 +1043,37 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
                 for (int i = 0; i < lenOfRelayers; i++) {
                     sumOfBond = sumOfBond.add(filteredRelayers[i].getBond());
                 }
-                logger.println("distributeRelayerReward","sumOfBond:", sumOfBond, "lenOfRelayers:", lenOfRelayers);
+                logger.println("distributeRelayerReward", "sumOfBond:", sumOfBond, "lenOfRelayers:", lenOfRelayers);
                 BigInteger sumOfReward = BigInteger.ZERO;
                 for (int i = 0; i < lenOfRelayers; i++) {
                     Relayer relayer = filteredRelayers[i];
-                    double percentage = BigIntegerUtil.floorDivide(relayer.getBond(), sumOfBond, DEFAULT_REWARD_PERCENT_SCALE_FACTOR);
+                    double percentage = BigIntegerUtil.floorDivide(relayer.getBond(), sumOfBond,
+                            DEFAULT_REWARD_PERCENT_SCALE_FACTOR);
                     BigInteger reward = BigIntegerUtil.multiply(budget, percentage);
                     relayer.setReward(relayer.getReward().add(reward));
-                    logger.println("distributeRelayerReward", "relayer:",relayer.getAddr(), "percentage:",percentage, "reward:", reward);
+                    logger.println("distributeRelayerReward", "relayer:", relayer.getAddr(), "percentage:", percentage,
+                            "reward:", reward);
                     relayers.put(relayer.getAddr(), relayer);
                     carryover = carryover.subtract(reward);
                     sumOfReward = sumOfReward.add(reward);
                 }
 
-                logger.println("distributeRelayerReward","sumOfReward:", sumOfReward, "carryover:", carryover, "nextRewardDistribution:", nextRewardDistribution);
+                logger.println("distributeRelayerReward", "sumOfReward:", sumOfReward, "carryover:", carryover,
+                        "nextRewardDistribution:", nextRewardDistribution);
                 properties.setDistributed(distributed.add(sumOfReward));
                 properties.setCarryover(carryover);
             } else {
-                //reward is zero or negative
-                logger.println("WARN","transferred reward is zero or negative");
+                // reward is zero or negative
+                logger.println("WARN", "transferred reward is zero or negative");
             }
             relayers.setProperties(properties);
         }
     }
 
-    //FIXME fallback is required?
+    // FIXME fallback is required?
     @Payable
     public void fallback() {
-        logger.println("fallback","value:", Context.getValue());
+        logger.println("fallback", "value:", Context.getValue());
     }
 
     @External

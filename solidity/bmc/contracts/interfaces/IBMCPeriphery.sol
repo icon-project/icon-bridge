@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.8.5;
+pragma abicoder v2;
 
 import "../libraries/Types.sol";
 
@@ -16,7 +16,7 @@ interface IBMCPeriphery {
         @param _prev    BTP Address of the BMC generates the message
         @param _msg     base64 encoded string of serialized bytes of Relay Message refer RelayMessage structure
      */
-    function handleRelayMessage(string calldata _prev, string calldata _msg)
+    function handleRelayMessage(string calldata _prev, bytes calldata _msg)
         external;
 
     /**

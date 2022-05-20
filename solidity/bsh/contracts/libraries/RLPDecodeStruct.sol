@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0;
+pragma abicoder v2;
 
 import "./RLPDecode.sol";
 import "./Types.sol";
@@ -158,8 +158,10 @@ library RLPDecodeStruct {
                     isSPREmpty
                 );
         }
-        RLPDecode.RLPItem[] memory subList =
-            ls[10].toBytes().toRlpItem().toList();
+        RLPDecode.RLPItem[] memory subList = ls[10]
+            .toBytes()
+            .toRlpItem()
+            .toList();
         isSPREmpty = false;
         return
             Types.BlockHeader(
@@ -277,16 +279,19 @@ library RLPDecodeStruct {
         returns (Types.ReceiptProof memory)
     {
         RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
-        RLPDecode.RLPItem[] memory receiptList =
-            ls[1].toBytes().toRlpItem().toList();
+        RLPDecode.RLPItem[] memory receiptList = ls[1]
+            .toBytes()
+            .toRlpItem()
+            .toList();
 
         bytes[] memory txReceipts = new bytes[](receiptList.length);
         for (uint256 i = 0; i < receiptList.length; i++) {
             txReceipts[i] = receiptList[i].toBytes();
         }
 
-        Types.EventProof[] memory _ep =
-            new Types.EventProof[](ls[2].toList().length);
+        Types.EventProof[] memory _ep = new Types.EventProof[](
+            ls[2].toList().length
+        );
         for (uint256 i = 0; i < ls[2].toList().length; i++) {
             _ep[i] = Types.EventProof(
                 ls[2].toList()[i].toList()[0].toUint(),

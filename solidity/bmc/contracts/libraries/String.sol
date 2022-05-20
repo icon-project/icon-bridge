@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
+pragma solidity >=0.8.0 <0.8.5;
 
 /**
  * String Library
@@ -200,5 +200,28 @@ library String {
             return true;
         }
         return false;
+    }
+
+    /**
+     * toString
+     *
+     * Compares the characters of two strings, to ensure that they have an
+     * identical footprint
+     *
+     * @param _i uint256 integer to convert to string
+     * @return string string representation of _i
+     */
+    function toString(uint256 _i) internal pure returns (string memory) {
+        if (_i == 0) return "0";
+        uint256 len;
+        for (uint256 j = _i; j != 0; j /= 10) {
+            len++;
+        }
+        bytes memory bstr = new bytes(len);
+        for (uint256 k = len; k > 0; k--) {
+            bstr[k - 1] = bytes1(uint8(48 + (_i % 10)));
+            _i /= 10;
+        }
+        return string(bstr);
     }
 }

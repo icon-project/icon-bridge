@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.8.5;
+pragma abicoder v2;
 
 import "../libraries/Types.sol";
 
@@ -71,10 +71,7 @@ interface IBMCManagement {
         uint256 _delayLimit
     ) external;
 
-    function setLinkRxHeight(
-        string calldata _link,
-        uint256 _height
-    ) external;    
+    function setLinkRxHeight(string calldata _link, uint256 _height) external;
 
     /**
        @notice Removes the link and status information. 
@@ -184,7 +181,7 @@ interface IBMCManagement {
         external
         view
         returns (uint256);
-    
+
     /**
         @notice Get link rxHeight of last received btp message's height. Only called by BMC periphery.
         @param _prev BTP Address of the previous BMC
