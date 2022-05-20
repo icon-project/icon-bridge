@@ -25,7 +25,7 @@ impl Decodable for BlockResult {
             state_hash: rlp.val_at(0)?,
             patch_receipt_hash: rlp.val_at(1)?,
             receipt_hash: rlp.val_at(2)?,
-            extension_data: rlp.val_at(3).unwrap_or_default(),
+            extension_data: rlp.val_at(3)?,
         })
     }
 }
@@ -38,8 +38,11 @@ impl Encodable for BlockResult {
             .append(&self.state_hash)
             .append(&self.patch_receipt_hash)
             .append(&self.receipt_hash);
+        
         if self.extension_data.is_some() {
-            params.append(&self.extension_data);
+            params.append_internal(&rlp::encode(&self.extension_data));
+        } else {
+            params.append_null_internal();
         }
         params.finalize_unbounded_list();
         stream.append_internal(&params.out());

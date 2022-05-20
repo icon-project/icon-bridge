@@ -18,7 +18,6 @@ impl BtpMessageVerifier {
                 let next_height = self.mta.height() + 1;
                 self.ensure_have_valid_block_height(next_height, &block_update)?;
                 let mut block_header = block_update.block_header().to_owned();
-
                 block_header.previous_hash_mut().clone_from(&Nullable::new(Some(self.last_known_block_hash.clone())));
                 
                 let block_hash = Hash::new::<Sha256>(&<Vec<u8>>::from(block_header.clone()));
