@@ -190,22 +190,22 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         Link link = getLink(target);
         status.setTx_seq(link.getTxSeq());
         status.setRx_seq(link.getRxSeq());
-        status.setRelay_idx(link.getRelayIdx());
-        status.setRotate_height(link.getRotateHeight());
-        status.setRotate_term(link.rotateTerm());
-        status.setDelay_limit(link.getDelayLimit());
-        status.setMax_agg(link.getMaxAggregation());
+        //status.setRelay_idx(link.getRelayIdx());
+        //status.setRotate_height(link.getRotateHeight());
+        //status.setRotate_term(link.rotateTerm());
+        //status.setDelay_limit(link.getDelayLimit());
+        //status.setMax_agg(link.getMaxAggregation());
         status.setRx_height(link.getRxHeight());
-        status.setRx_height_src(link.getRxHeightSrc());
-        status.setBlock_interval_dst(link.getBlockIntervalDst());
-        status.setBlock_interval_src(link.getBlockIntervalSrc());
-        status.setSack_term(link.getSackTerm());
-        status.setSack_next(link.getSackNext());
-        status.setSack_height(link.getSackHeight());
-        status.setSack_seq(link.getSackSeq());
-        status.setCur_height(Context.getBlockHeight());
+        //status.setRx_height_src(link.getRxHeightSrc());
+        //status.setBlock_interval_dst(link.getBlockIntervalDst());
+        //status.setBlock_interval_src(link.getBlockIntervalSrc());
+        //status.setSack_term(link.getSackTerm());
+        //status.setSack_next(link.getSackNext());
+        //status.setSack_height(link.getSackHeight());
+        //status.setSack_seq(link.getSackSeq());
+        //status.setCur_height(Context.getBlockHeight());
 
-        Map<Address, Relay> relayMap = link.getRelays().toMap();
+       /* Map<Address, Relay> relayMap = link.getRelays().toMap();
         BMRStatus[] relays = new BMRStatus[relayMap.size()];
         int i = 0;
         for (Map.Entry<Address, Relay> entry : relayMap.entrySet()) {
@@ -216,7 +216,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
             bmrStatus.setMsg_count(relay.getMsgCount());
             relays[i++] = bmrStatus;
         }
-        status.setRelays(relays);
+        status.setRelays(relays);*/
         return status;
     }
 

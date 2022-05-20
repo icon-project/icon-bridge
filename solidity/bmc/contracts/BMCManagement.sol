@@ -253,7 +253,7 @@ contract BMCManagement is IBMCManagement, Initializable {
         uint256 _rotateTerm = _maxAggregation.getRotateTerm(_scale);
         if (resetRotateHeight && _rotateTerm > 0) {
             link.rotateHeight = block.number + _rotateTerm;
-            link.rxHeight = block.number;
+            link.rxHeight = 0;
             string memory _net;
             (_net, ) = _link.splitBTPAddress();
         }

@@ -28,7 +28,7 @@ Deploy Command
 Note: change the proper network ID in `BMC_PRA_NET`
 
 ```
-BMC_PRA_NET=0x61.bsc truffle migrate --network $network --compile-all
+BMC_BTP_NET=0x61.bsc truffle migrate --network $network --compile-all
 ```
 
 Copy the deployed address to a file
