@@ -72,8 +72,7 @@ impl Encodable for BlockHeader {
             .append(&self.patch_tx_hash)
             .append(&self.tx_hash)
             .append(&self.logs_bloom)
-            .append(&self.block_result)
-            ;
+            .append(&self.block_result);
     }
 }
 
