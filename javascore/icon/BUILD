@@ -171,7 +171,7 @@ genrule(
         "@icon//:node_url",
     ],
     outs = ["previous_known_block_hash.out"],
-    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) blockbyheight $$(($$(cat $(location :latest_block_height))-1)) | jq .block_hash | echo $$(tr -d '\"')  >$@",
+    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) blockbyheight $$(cat $(location :latest_block_height)) | jq .block_hash | echo $$(tr -d '\"')  >$@",
     executable = True,
     local = True,
     tools = [

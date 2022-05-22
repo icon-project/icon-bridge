@@ -132,7 +132,7 @@ genrule(
         ":register_wrapped_coin_native_coin_bsh",
     ],
     outs = ["set_icon_link.out"],
-    cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:encode_public_key_bmc)) set_link \\'\\{\\"link\\":\\"$$(cat $(location @icon//:btp_address))\\"\\,\\"block_interval\\":2000\\,\\"max_aggregation\\":10\\,\\"delay_limit\\":2\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:encode_public_key_bmc)) > $@""",
+    cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:encode_public_key_bmc)) set_link \\'\\{\\"link\\":\\"$$(cat $(location @icon//:btp_address))\\"\\,\\"block_interval\\":2000\\,\\"max_aggregation\\":100\\,\\"delay_limit\\":2\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:encode_public_key_bmc)) > $@""",
     executable = True,
     local = True,
     tools = [

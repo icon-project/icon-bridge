@@ -59,7 +59,7 @@ def bridge(name, chains):
         export BTPSIMPLE_DST_OPTIONS=[mtaRootSize=8]
         export BTPSIMPLE_LOG_WRITER_MAXSIZE=1024
         export BTPSIMPLE_BASE_DIR=\"./config/data\"
-        export BTPSIMPLE_OFFSET=$$(cat $(location @%s//:latest_block_height))
+        export BTPSIMPLE_OFFSET=$$(($$(cat $(location  @%s//:latest_block_height))+1))
         export BTPSIMPLE_LOG_WRITER_FILENAME=\"./config/log/btpsimple.log\"
         $(execpath @btp//cmd/btpsimple:btpsimple) --key_password $$(cat $(location @%s//cli:keysecret)) --key_store $$(cat $(location @%s//:bmr_config_dir))/keystore.json \
             --src.address $$(cat $(location @%s//:btp_address)) \
@@ -91,7 +91,7 @@ def bridge(name, chains):
         export BTPSIMPLE_DST_OPTIONS=[mtaRootSize=8]
         export BTPSIMPLE_LOG_WRITER_MAXSIZE=1024
         export BTPSIMPLE_BASE_DIR=\"./config/data\"
-        export BTPSIMPLE_OFFSET=$$(cat $(location @%s//:latest_block_height))
+        export BTPSIMPLE_OFFSET=$$(($$(cat $(location  @%s//:latest_block_height))+1))
         export BTPSIMPLE_LOG_WRITER_FILENAME=\"./config/log/btpsimple.log\"
         $(execpath @btp//cmd/btpsimple:btpsimple) --key_password $$(cat $(location @%s//cli:keysecret)) --key_store $$(cat $(location @%s//:bmr_config_dir))/keystore.json \
             --src.address $$(cat $(location @%s//:btp_address)) \
