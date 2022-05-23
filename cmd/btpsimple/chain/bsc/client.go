@@ -224,10 +224,25 @@ func (c *client) Poll(ctx context.Context, p *BlockRequest, cb func(b *BlockNoti
 				continue
 			}
 
+			query := ethereum.FilterQuery{
+				FromBlock: current,
+				ToBlock:   current,
+				Addresses: []common.Address{
+					p.SrcContractAddress,
+				},
+			}
+
+			logs, err := c.FilterLogs(query)
+			if err != nil {
+				c.log.Info("Unable to get logs ", err)
+				continue
+			}
+
 			v := &BlockNotification{
 				Height: current,
 				Hash:   latestHeader.Hash(),
 				Header: latestHeader,
+				Logs:   logs,
 			}
 			if err := cb(v); err != nil {
 				c.log.Errorf(err.Error())

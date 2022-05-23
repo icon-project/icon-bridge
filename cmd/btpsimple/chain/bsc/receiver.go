@@ -21,8 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/icon-project/btp/cmd/btpsimple/chain"
 	"github.com/icon-project/btp/cmd/btpsimple/chain/bsc/binding"
 
@@ -69,21 +67,9 @@ func (r *receiver) newBTPMessage(v *BlockNotification) ([]*chain.Receipt, error)
 	var events []*chain.Event
 	srcContractAddress := HexToAddress(r.src.ContractAddress())
 
-	query := ethereum.FilterQuery{
-		FromBlock: v.Height,
-		ToBlock:   v.Height,
-		Addresses: []common.Address{
-			srcContractAddress,
-		},
-	}
-
-	logs, err := r.cl.FilterLogs(query)
-	if err != nil {
-		return nil, err
-	}
 	var index, BlockNumber uint64
 	events = events[:0]
-	for _, vLog := range logs {
+	for _, vLog := range v.Logs {
 		if bmcMsg, err := binding.UnpackEventLog(vLog.Data); err == nil {
 			events = append(events, &chain.Event{
 				Message:  bmcMsg.Msg,
@@ -109,7 +95,8 @@ func (r *receiver) newBTPMessage(v *BlockNotification) ([]*chain.Receipt, error)
 func (r *receiver) receiveLoop(ctx context.Context, height int64, callback func(v *BlockNotification) error) error {
 	r.log.Debugf("ReceiveLoop connected")
 	br := &BlockRequest{
-		Height: big.NewInt(height),
+		Height:             big.NewInt(height),
+		SrcContractAddress: HexToAddress(r.src.ContractAddress()),
 	}
 	r.cl.MonitorBlock(ctx, br,
 		func(v *BlockNotification) error {

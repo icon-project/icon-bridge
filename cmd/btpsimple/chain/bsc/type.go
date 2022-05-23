@@ -126,8 +126,9 @@ type TransactionHashParam struct {
 }
 
 type BlockRequest struct {
-	Height       *big.Int       `json:"height"`
-	EventFilters []*EventFilter `json:"eventFilters,omitempty"`
+	Height             *big.Int       `json:"height"`
+	EventFilters       []*EventFilter `json:"eventFilters,omitempty"`
+	SrcContractAddress common.Address `json:"srcContractAddress,omitempty"`
 }
 
 type EventFilter struct {
@@ -141,6 +142,7 @@ type BlockNotification struct {
 	Hash   common.Hash
 	Height *big.Int
 	Header *types.Header
+	Logs   []types.Log
 }
 
 type RelayMessage struct {
