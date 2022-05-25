@@ -2,8 +2,7 @@
   "name": "pra-bmc",
   "version": "1.0.0",
   "license": "Apache-2.0",
-  "dependencies": {
-    "@chainsafe/truffle-plugin-abigen": "^0.0.2",
+  "dependencies": {    
     "@openzeppelin/contracts-upgradeable": "4.1.0",
     "@openzeppelin/truffle-upgrades": "^1.7.0",
     "@truffle/hdwallet-provider": "^1.4.0",
@@ -22,7 +21,8 @@
     "solhint-plugin-prettier": "^0.0.5",
     "truffle-assertions": "^0.9.2",
     "truffle-plugin-verify": "^0.5.23",
-    "urlsafe-base64": "^1.0.0"
+    "urlsafe-base64": "^1.0.0",
+    "@chainsafe/truffle-plugin-abigen": "^0.0.2"
   },
   "scripts": {
     "linter": "./node_modules/.bin/solhint -f table ./contracts/**/*.sol -f table ./contracts/*.sol",
