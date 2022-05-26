@@ -18,7 +18,6 @@ deploy_javascore_nativeCoin_BSH() {
     --param _serializedIrc2=$IRC2_SERIALIZED_SCORE \
     --param _name=ICX | jq -r . >tx.nativebsh.icon
   extract_scoreAddress tx.nativebsh.icon nativebsh.icon
-  create_contracts_address_json "javascore" "NativeBSH" $(cat nativebsh.icon)
 }
 
 bmc_javascore_addNativeService() {
@@ -43,8 +42,6 @@ nativeBSH_javascore_register() {
 
   goloop rpc call --to $(cat nativebsh.icon) \
         --method coinAddress --param _coinName=BNB | sed -e 's/^"//' -e 's/"$//' > irc2TradeableToken.icon
-      
-  create_contracts_address_json "javascore" "IRC2" $(cat irc2TradeableToken.icon)
 }
 
 nativeBSH_javascore_setFeeRatio() {
@@ -77,7 +74,7 @@ transfer_ICX_from_Alice_to_Bob() {
   echo "$(get_bob_address)"
   echo "$BSC_BMC_NET,$ICX_TRANSER_AMOUNT "
   goloop rpc sendtx call \
-    --to $(cat nativebsh.icon) --method transferNativeCoin \
+    --to "$(extractAddresses "javascore" "NativeBSH")" --method transferNativeCoin \
     --param _to=btp://$BSC_BMC_NET/$(get_bob_address) --value $ICX_TRANSER_AMOUNT \
     --key_store alice.ks.json --key_secret alice.secret |
     jq -r . >tx/Alice2Bob.transfer
@@ -91,14 +88,14 @@ transfer_BNB_from_Alice_to_Bob() {
   cd ${CONFIG_DIR}
 
   goloop rpc sendtx call \
-    --to $(cat irc2TradeableToken.icon) --method approve \
-    --param spender=$(cat nativebsh.icon) \
+    --to "$(extractAddresses "javascore" "BNB")" --method approve \
+    --param spender="$(extractAddresses "javascore" "NativeBSH")" \
     --param amount=$BNB_TRANSER_AMOUNT \
     --key_store alice.ks.json --key_secret alice.secret |
     jq -r . >tx/Alice2Bob.approve.BNB
 
   goloop rpc sendtx call \
-    --to $(cat nativebsh.icon) --method transfer \
+    --to "$(extractAddresses "javascore" "NativeBSH")" --method transfer \
     --param _coinName="BNB" \
     --param _to=btp://$BSC_BMC_NET/$(get_bob_address) \
     --param _value=$BNB_TRANSER_AMOUNT \
@@ -119,7 +116,7 @@ get_alice_wrapped_native_balance() {
 
   local EOA=$(rpceoa alice.ks.json)
 
-  balance=$(goloop rpc call --to $(cat irc2TradeableToken.icon) \
+  balance=$(goloop rpc call --to $(extractAddresses "javascore" "BNB") \
     --method balanceOf \
     --param _owner=$EOA | jq -r)
 

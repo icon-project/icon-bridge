@@ -7,17 +7,15 @@ source utils.sh
 deploy_solidity_nativeCoin_BSH() {
   echo "deploying solidity Native BSH"
   cd $CONTRACTS_DIR/solidity/bsh
+  cp $BTPSIMPLE_BASE_DIR/bin/env ./.env
   rm -rf contracts/test build .openzeppelin
-  #npm install --legacy-peer-deps
-  yarn --prod
-  sed "s|BSC_RPC_URI|$BSC_RPC_URI|" -i truffle-config.js
-  BSH_COIN_URL=https://ethereum.org/en/ \
+  NODE_ENV=docker BSH_COIN_URL=https://ethereum.org/en/ \
     BSH_COIN_NAME=BNB \
     BSH_COIN_FEE=100 \
     BSH_FIXED_FEE=50000 \
     BMC_PERIPHERY_ADDRESS=$(cat $CONFIG_DIR/bmc.periphery.bsc) \
     BSH_SERVICE=nativecoin \
-    truffle migrate --compile-all --network bscDocker
+    truffle migrate --compile-all --network bsc
 
   generate_native_metadata "BSH"
 }
@@ -25,7 +23,7 @@ deploy_solidity_nativeCoin_BSH() {
 bmc_solidity_addNativeService() {
   echo "adding ${SVC_NAME} service into BMC"
   cd $CONTRACTS_DIR/solidity/bmc
-  tx=$(truffle exec --network bscDocker "$SCRIPTS_DIR"/bmc.js \
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
     --method addService --name nativecoin --addr "$BSH_PERIPHERY_ADDRESS")
   echo "$tx" >$CONFIG_DIR/tx/addService.native.bsc
 }
@@ -33,7 +31,7 @@ bmc_solidity_addNativeService() {
 nativeBSH_solidity_register() {
   echo "Register Coin Name with NativeBSH"
   cd $CONTRACTS_DIR/solidity/bsh
-  tx=$(truffle exec --network bscDocker "$SCRIPTS_DIR"/bsh.nativeCoin.js \
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.nativeCoin.js \
     --method register --name "ICX" --symbol "ICX" --decimals 18)
   echo "$tx" >$CONFIG_DIR/tx/register.nativeCoin.bsc
 }
@@ -43,7 +41,7 @@ bsc_init_native_btp_transfer() {
   ALICE_ADDRESS=$(get_alice_address)
   BTP_TO="btp://$ICON_NET/$ALICE_ADDRESS"
   cd $CONTRACTS_DIR/solidity/bsh
-  truffle exec --network bscDocker "$SCRIPTS_DIR"/bsh.nativeCoin.js \
+  truffle exec --network bsc "$SCRIPTS_DIR"/bsh.nativeCoin.js \
     --method transferNativeCoin --to $BTP_TO --amount $1 --from $(get_bob_address)
 }
 
@@ -52,13 +50,13 @@ bsc_init_wrapped_native_btp_transfer() {
   ALICE_ADDRESS=$(get_alice_address)
   BTP_TO="btp://$ICON_NET/$ALICE_ADDRESS"
   cd $CONTRACTS_DIR/solidity/bsh
-  truffle exec --network bscDocker "$SCRIPTS_DIR"/bsh.nativeCoin.js \
+  truffle exec --network bsc "$SCRIPTS_DIR"/bsh.nativeCoin.js \
     --method transferWrappedNativeCoin --to $BTP_TO --coinName $1 --amount $2 --from $(get_bob_address) 
 }
 
 get_bob_ICX_balance() {
   cd $CONTRACTS_DIR/solidity/bsh
-  BOB_BALANCE=$(truffle exec --network bscDocker "$SCRIPTS_DIR"/bsh.nativeCoin.js \
+  BOB_BALANCE=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.nativeCoin.js \
     --method getBalanceOf --addr $(get_bob_address) --name "ICX")
 }
 
@@ -66,7 +64,7 @@ get_Bob_ICX_Balance_with_wait() {
   printf "Checking Bob's Balance after BTP transfer \n"
   get_bob_ICX_balance
   BOB_INITIAL_BAL=$BOB_BALANCE
-  COUNTER=60
+  COUNTER=30
   while true; do
     printf "."
     if [ $COUNTER -le 0 ]; then
@@ -90,7 +88,7 @@ get_Bob_ICX_Balance_with_wait() {
 
 get_bob_BNB_balance() {
   cd $CONTRACTS_DIR/solidity/bsh
-  BOB_BNB_BALANCE=$(truffle exec --network bscDocker "$SCRIPTS_DIR"/bsh.nativeCoin.js \
+  BOB_BNB_BALANCE=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.nativeCoin.js \
     --method getBalanceOf --addr $(get_bob_address) --name "BNB")
 }
 
@@ -130,10 +128,8 @@ generate_native_metadata() {
 
     wait_for_file $CONFIG_DIR/bsh.core.bsc
     wait_for_file $CONFIG_DIR/bsh.periphery.bsc
-
-    create_contracts_address_json "solidity" "BSHPeriphery" $BSH_PERIPHERY_ADDRESS
+    
     create_abi "BSHPeriphery"
-    create_contracts_address_json "solidity" "BSHCore" $(cat $CONFIG_DIR/bsh.core.bsc)
     create_abi "BSHCore"
     echo "DONE."
     ;;

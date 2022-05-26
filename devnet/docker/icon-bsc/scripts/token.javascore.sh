@@ -11,27 +11,6 @@ deploy_javascore_bmc() {
     --param _net=$(cat net.btp.icon) | jq -r . >tx.bmc.icon
   extract_scoreAddress tx.bmc.icon bmc.icon
   echo "btp://$(cat net.btp.icon)/$(cat bmc.icon)" >btp.icon
-  create_contracts_address_json "javascore" "bmc" $(cat bmc.icon)
-}
-
-deploy_javascore_bmv() {
-  echo "deploying javascore BMV"
-  eth_blocknumber >/btpsimple/config/offset.bsc
-  #TODO: check how to efficiently pass block
-  #echo 200 >/btpsimple/config/offset.bsc
-  cd $CONFIG_DIR
-  goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bmv-optimized.jar \
-    --content_type application/java \
-    --param network=$BSC_BMC_NET \
-    --param bmc=$(cat bmc.icon) \
-    --param offset=$(cat offset.bsc) \
-    --param rootSize=0x3 \
-    --param cacheSize=0xA \
-    --param isAllowNewerWitness=0x1 |
-    jq -r . >tx.bmv.icon
-  extract_scoreAddress tx.bmv.icon bmv.icon
-  create_contracts_address_json "javascore" "bmv" $(cat bmv.icon)
-  echo "BMV deployment success"
 }
 
 deploy_javascore_bsh() {
@@ -41,7 +20,6 @@ deploy_javascore_bsh() {
     --content_type application/java \
     --param _bmc=$(cat bmc.icon) | jq -r . >tx.token_bsh.icon
   extract_scoreAddress tx.token_bsh.icon token_bsh.icon
-  create_contracts_address_json "javascore" "TokenBSH" $(cat token_bsh.icon)
 }
 
 deploy_javascore_irc2() {
@@ -54,18 +32,6 @@ deploy_javascore_irc2() {
     --param _initialSupply=${TOKEN_SUPPLY} \
     --param _decimals=${TOKEN_DECIMALS} | jq -r . >tx.irc2_token.icon
   extract_scoreAddress tx.irc2_token.icon irc2_token.icon
-  create_contracts_address_json "javascore" "IRC2" $(cat irc2_token.icon)
-}
-
-bmc_javascore_addVerifier() {
-  echo "adding verifier"
-  cd $CONFIG_DIR
-  goloop rpc sendtx call --to $(cat bmc.icon) \
-    --method addVerifier \
-    --param _net=$BSC_BMC_NET \
-    --param _addr=$(cat bmv.icon) | jq -r . >tx/addVerifier.icon
-  ensure_txresult tx/addVerifier.icon
-  echo "Added verifier for $(cat bmv.icon)"
 }
 
 bmc_javascore_addLink() {
@@ -97,7 +63,7 @@ bmc_javascore_addLink() {
 
 bmc_javascore_addRelay() {
   echo "Adding bsc Relay"
-  ICON_RELAY_USER=$(cat $CONFIG_DIR/goloop.keystore.json | jq -r .address)
+  ICON_RELAY_USER=$(cat $GOLOOP_RPC_KEY_STORE | jq -r .address)
   cd $CONFIG_DIR
   goloop rpc sendtx call --to $(cat bmc.icon) \
     --method addRelay \
@@ -146,7 +112,7 @@ bsh_javascore_balance() {
 
   local EOA=$(rpceoa $1)
   echo "Balance of user $EOA"
-  goloop rpc call --to $(cat token_bsh.icon) \
+  goloop rpc call --to "$(extractAddresses "javascore" "TokenBSH")" \
     --method getBalance \
     --param user=$EOA \
     --param tokenName=$TOKEN_NAME
@@ -163,7 +129,7 @@ bsh_javascore_transfer() {
   local FROM=$(rpceoa $GOLOOP_RPC_KEY_STORE)
   echo "Transfering $VAL wei to: $EOA from: $FROM "
   TX=$(
-    goloop rpc sendtx call --to $(cat token_bsh.icon) \
+    goloop rpc sendtx call --to "$(extractAddresses "javascore" "TokenBSH")" \
       --method transfer \
       --param tokenName=${TOKEN_NAME} \
       --param value=$VAL \
@@ -179,7 +145,7 @@ irc2_javascore_balance() {
     return 1
   fi
   local EOA=$(rpceoa $1)
-  balance=$(goloop rpc call --to $(cat irc2_token.icon) \
+  balance=$(goloop rpc call --to "$(extractAddresses "javascore" "IRC2")" \
     --method balanceOf \
     --param _owner=$EOA | jq -r .)
   balance=$(hex2int $balance)
@@ -217,11 +183,11 @@ irc2_javascore_transfer() {
     return 1
   fi
   local VAL=${1:-0x10}
-  local EOA=$(rpceoa ${2:-$(cat token_bsh.icon)})
+  local EOA=$(rpceoa ${2:-"$(extractAddresses "javascore" "TokenBSH")"})
   local FROM=$(rpceoa $GOLOOP_RPC_KEY_STORE)
   echo "Transfering $VAL wei to: $EOA from: $FROM "
   TX=$(
-    goloop rpc sendtx call --to $(cat irc2_token.icon) \
+    goloop rpc sendtx call --to "$(extractAddresses "javascore" "IRC2")" \
       --method transfer \
       --param _to=$EOA \
       --param _value=$VAL | jq -r .
