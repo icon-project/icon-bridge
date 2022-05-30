@@ -253,9 +253,14 @@ SignLoop:
 			txh, err := tx.cl.SendTransaction(tx.txParam)
 			if txh != nil {
 				tx.txHashParam = &TransactionHashParam{*txh}
+				// tx.cl.log.WithFields(log.Fields{
+				// 	"txh": tx.txHashParam.Hash,
+				// 	"msg": common.HexBytes(tx.Message)}).Debug("handleRelayMessage: tx sent")
+				txBytes, _ := json.Marshal(tx.txParam)
 				tx.cl.log.WithFields(log.Fields{
 					"txh": tx.txHashParam.Hash,
-					"msg": common.HexBytes(tx.Message)}).Debug("handleRelayMessage: tx sent")
+					"tx":  string(txBytes)}).Debug("handleRelayMessage: tx sent")
+
 			}
 			if err != nil {
 				tx.cl.log.WithFields(log.Fields{
@@ -302,10 +307,11 @@ func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error)
 					continue
 				}
 			}
+			return txr, mapErrorWithTransactionResult(txr, err)
 		}
 		tx.cl.log.WithFields(log.Fields{
 			"txh": tx.txHashParam.Hash}).Debug("handleRelayMessage: success")
-		return txr, mapErrorWithTransactionResult(txr, err)
+		return txr, nil
 	}
 }
 
