@@ -87,7 +87,7 @@ func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
 	if err != nil {
 		return err
 	}
-	for epoch := vr.Epoch() + 1; epoch < h.Epoch.Uint64(); epoch++ {
+	for epoch := vr.Epoch(); epoch < h.Epoch.Uint64(); epoch++ {
 		elb, err := cl.GetEpochLastBlock((&big.Int{}).SetUint64(epoch))
 		if err != nil {
 			return errors.Wrapf(err, "cl.GetEpochLastBlock: %v", err)
