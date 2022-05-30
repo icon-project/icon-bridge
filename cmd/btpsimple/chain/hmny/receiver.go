@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"math/rand"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -20,6 +21,8 @@ import (
 )
 
 const (
+	BlockInterval              = 2 * time.Second
+	BlockHeightPollInterval    = 60 * time.Second
 	defaultReadTimeout         = 15 * time.Second
 	monitorBlockMaxConcurrency = 1000 // number of concurrent requests to synchronize older blocks from source chain
 )
@@ -173,10 +176,22 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *bnOptions, callback fu
 	// increase concurrency parameter for faster sync
 	bnch := make(chan *BlockNotification, opts.Concurrency)
 
-	latest, next := uint64(0), opts.StartHeight
+	heightTicker := time.NewTicker(BlockInterval)
+	defer heightTicker.Stop()
 
-	heightPoller := time.NewTicker(time.Second)
+	heightPoller := time.NewTicker(BlockHeightPollInterval)
 	defer heightPoller.Stop()
+
+	latestHeight := func() uint64 {
+		height, err := r.client().GetBlockNumber()
+		if err != nil {
+			r.log.WithFields(log.Fields{"error": err}).Error("receiveLoop: failed to GetBlockNumber")
+			return 0
+		}
+		return height
+	}
+
+	next, latest := opts.StartHeight, latestHeight()
 
 	// last unverified block notification
 	var lbn *BlockNotification
@@ -187,18 +202,15 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *bnOptions, callback fu
 		case <-ctx.Done():
 			return nil
 
+		case <-heightTicker.C:
+			latest++
+
 		case <-heightPoller.C:
-			height, err := r.client().GetBlockNumber()
-			if err != nil {
-				r.log.WithFields(log.Fields{"error": err}).Error("receiveLoop: failed to GetBlockNumber")
-				continue
-			}
-			if height <= latest {
-				continue
-			}
-			latest = height
-			if next > latest {
-				r.log.Debugf("receiveLoop: skipping; latest=%d, next=%d", latest, next)
+			if height := latestHeight(); height > latest {
+				latest = height
+				if next > latest {
+					r.log.Debugf("receiveLoop: skipping; latest=%d, next=%d", latest, next)
+				}
 			}
 
 		case bn := <-bnch:
@@ -233,7 +245,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *bnOptions, callback fu
 
 		default:
 			if next >= latest {
-				time.Sleep(time.Millisecond)
+				time.Sleep(10 * time.Millisecond)
 				continue
 			}
 
@@ -254,16 +266,22 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *bnOptions, callback fu
 				switch {
 				case q.err != nil:
 					if q.retry > 0 {
-						q.retry--
-						q.v, q.err = nil, nil
-						qch <- q
-					} else {
-						r.log.Errorf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash(), q.err)
-						bns = append(bns, nil)
-						if len(bns) == cap(bns) {
-							close(qch)
+						if !strings.HasSuffix(q.err.Error(), "requested block number greater than current block number") {
+							q.retry--
+							q.v, q.err = nil, nil
+							qch <- q
+							continue
+						}
+						if latest >= q.h {
+							latest = q.h - 1
 						}
 					}
+					r.log.Errorf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash(), q.err)
+					bns = append(bns, nil)
+					if len(bns) == cap(bns) {
+						close(qch)
+					}
+
 				case q.v != nil:
 					bns = append(bns, q.v)
 					if len(bns) == cap(bns) {
@@ -271,7 +289,10 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *bnOptions, callback fu
 					}
 				default:
 					go func(q *bnq) {
-						defer func() { qch <- q }()
+						defer func() {
+							time.Sleep(500 * time.Millisecond)
+							qch <- q
+						}()
 						if q.v == nil {
 							q.v = &BlockNotification{}
 						}
