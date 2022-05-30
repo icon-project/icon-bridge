@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/icon-project/btp/cmd/btpsimple/chain"
-	btpcommon "github.com/icon-project/btp/common"
 	"github.com/icon-project/btp/common/codec"
 	"github.com/icon-project/btp/common/log"
 	"github.com/icon-project/btp/common/wallet"
@@ -178,6 +178,12 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*
 	if err != nil {
 		return nil, err
 	}
+	// // add 10 % of estimated gas price
+	// txOpts.GasPrice = txOpts.GasPrice.Add(
+	// 	txOpts.GasPrice,
+	// 	(&big.Int{}).Div(txOpts.GasPrice, big.NewInt(5)),
+	// )
+
 	txOpts.GasLimit = defaultGasLimit
 	if s.opts.GasLimit > 0 {
 		txOpts.GasLimit = s.opts.GasLimit
@@ -215,6 +221,12 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	txOpts := *tx.opts
 	txOpts.Context = _ctx
 
+	nonce, err := tx.cl.eth.NonceAt(ctx, txOpts.From, nil)
+	if err != nil {
+		return err
+	}
+	txOpts.Nonce = (&big.Int{}).SetUint64(nonce)
+
 	tx.pendingTx, err = tx.cl.bmc.HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
 	if err != nil {
 		tx.cl.log.WithFields(log.Fields{
@@ -225,9 +237,13 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 		return err
 	}
 
+	// tx.cl.log.WithFields(log.Fields{
+	// 	"txh": tx.pendingTx.Hash(),
+	// 	"msg": btpcommon.HexBytes(tx.Message)}).Debug("handleRelayMessage: tx sent")
+
+	txBytes, _ := tx.pendingTx.MarshalJSON()
 	tx.cl.log.WithFields(log.Fields{
-		"txh": tx.pendingTx.Hash(),
-		"msg": btpcommon.HexBytes(tx.Message)}).Debug("handleRelayMessage: tx sent")
+		"tx": string(txBytes)}).Debug("handleRelayMessage: tx sent")
 	return nil
 }
 
