@@ -17,6 +17,7 @@
 package foundation.icon.btp.bsh;
 
 import foundation.icon.btp.bsh.types.*;
+import foundation.icon.btp.restrictions.RestrictionsScoreInterface;
 import score.*;
 import score.annotation.EventLog;
 import score.annotation.External;
@@ -50,7 +51,9 @@ public class ServiceHandler {
     private final DictDB<BigInteger, TransferAsset> pendingFeesDb = Context.newDictDB("pending_fees", TransferAsset.class);
     private final VarDB<String> fromAddr = Context.newVarDB("fromAddr", String.class);
     DictDB<Address, Boolean> ownersDb = Context.newDictDB("owners", Boolean.class);
-
+    private final VarDB<Address> bsrDb = Context.newVarDB("bsr", Address.class);
+    VarDB<Boolean> restriction = Context.newVarDB("restricton", Boolean.class);
+    RestrictionsScoreInterface restictonsInterface;
     public ServiceHandler(String _bmc) {
         //register the BMC link for this BSH
         bmcDb.set(Address.fromString(_bmc));
@@ -194,6 +197,7 @@ public class ServiceHandler {
         }
         BTPAddress _to = BTPAddress.fromString(to);
         Token _tk = tokenDb.get(Address.fromString(tokenAddr));
+        checkTransferRestrictions(tokenName, sender.toString(), _to.getContract(), value);
         setBalance(sender, tokenName, value.negate(), value, BigInteger.ZERO);
         BigInteger fee = value.multiply(_tk.getFeeNumerator()).divide(FEE_DENOMINATOR);
         value = value.subtract(fee);
@@ -241,6 +245,7 @@ public class ServiceHandler {
             Asset _asset = _ta.getAssets().get(0);//TODO: convert this to for loop to transfer all the assets value
             String tokenName = _asset.getName();
             BigInteger value = _asset.getValue();
+            checkTransferRestrictions(tokenName, _ta.getFrom(), _ta.getTo(), value);
             String tokenAddr = this.tokenAddrDb.getOrDefault(tokenName, null);
             int code = RC_OK;
             if (tokenAddr != null) {
@@ -406,6 +411,27 @@ public class ServiceHandler {
         Balance balanceBefore = getBalance(user, tokenName);
         Balance newBalance = new Balance(balanceBefore.getUsable().add(usable), balanceBefore.getLocked().add(locked), balanceBefore.getRefundable().add(refundable));
         balanceDB.at(user).set(tokenName, newBalance);
+    }
+
+    @External
+    public void addRestrictor(Address _address) {
+        onlyOwner();
+        bsrDb.set(_address);
+        restriction.set(true);
+        restictonsInterface = new RestrictionsScoreInterface(_address);
+    }
+
+    @External
+    public void disableRestrictions() {
+        onlyOwner();
+        restriction.set(false);
+    }
+
+    private void checkTransferRestrictions(String _tokenName, String _from, String _to, BigInteger _value) {
+        if (restriction.get() != null && restriction.get() && bsrDb.get() != null ) {
+            //restictonsInterface.validateRestriction(_tokenName, _from, _to, _value);
+            Context.call(bsrDb.get(), "validateRestriction", _tokenName, _from, _to, _value);
+        }
     }
 
     private byte[] createMessage(int type, Object... args) {
