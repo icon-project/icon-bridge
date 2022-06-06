@@ -6,6 +6,7 @@ dependencies {
     implementation fileTree(dir: '../lib', include: 'score-util.jar')
     implementation fileTree(dir: '../lib', include: 'lib-0.1.0.jar')
     implementation("com.github.sink772:javaee-tokens:0.6.0")
+    implementation project(':bsr')
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.7.2")

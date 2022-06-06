@@ -33,7 +33,7 @@ COIN_UNIT=$((10 ** $PRECISION))
 
 coin2wei() {
   amount=$1
-  printf '%s * %s\n' $COIN_UNIT $amount | bc
+  printf 'scale=0; %s * %s / 1\n' $COIN_UNIT $amount | bc -l
 }
 
 wei2coin() {

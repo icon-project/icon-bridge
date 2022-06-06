@@ -53,6 +53,34 @@ nativeBSH_javascore_setFeeRatio() {
   ensure_txresult tx/setFeeRatio.nativebsh.icon
 }
 
+configure_javascore_NativeBSH_restrictor(){
+  echo "configuring javascore Restrictor for TokenBSH"
+  cd $CONFIG_DIR
+  goloop rpc sendtx call --to $(cat nativebsh.icon) \
+    --method addRestrictor \
+    --param _address=$(cat restrictor.icon) | jq -r . >tx.configure.addRestrictor.nativebsh.icon
+  ensure_txresult tx.configure.addRestrictor.nativebsh.icon
+
+  
+  weiAmount=$(coin2wei 10000)
+  goloop rpc sendtx call --to $(cat restrictor.icon) \
+    --method registerTokenLimit \
+    --param _name=BNB \
+    --param _symbol=BNB \
+    --param _address=$(cat irc2TradeableToken.icon) \
+    --param _limit=$weiAmount | jq -r . >tx.configure.registerTokenLimit.nativebsh.icon
+  ensure_txresult tx.configure.registerTokenLimit.nativebsh.icon
+
+  weiAmount=$(coin2wei 10000)
+  goloop rpc sendtx call --to $(cat restrictor.icon) \
+    --method registerTokenLimit \
+    --param _name=ICX \
+    --param _symbol=ICX \
+    --param _address=$(cat nativebsh.icon) \
+    --param _limit=$weiAmount | jq -r . >tx.configure.registerTokenLimit2.nativebsh.icon
+  ensure_txresult tx.configure.registerTokenLimit2.nativebsh.icon
+}
+
 deposit_ICX_for_Alice() {
   get_alice_balance
   echo "Depositing $(wei2coin $ICX_DEPOSIT_AMOUNT) ICX to Alice"

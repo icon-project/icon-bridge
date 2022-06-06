@@ -61,7 +61,7 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
     //
     private final VarDB<Address> bsrDb = Context.newVarDB("bsr", Address.class);
     VarDB<Boolean> restriction = Context.newVarDB("restricton", Boolean.class);
-    RestrictionsScoreInterface restictonsInterface;
+    RestrictionsScoreInterface restrictionsInterface;
 
     public NativeCoinService(Address _bmc, String _name, byte[] _serializedIrc2) {
         bmc = _bmc;
@@ -697,7 +697,7 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
         requireOwnerAccess();
         bsrDb.set(_address);
         restriction.set(true);
-        restictonsInterface = new RestrictionsScoreInterface(_address);
+        restrictionsInterface = new RestrictionsScoreInterface(_address);
     }
 
     @External

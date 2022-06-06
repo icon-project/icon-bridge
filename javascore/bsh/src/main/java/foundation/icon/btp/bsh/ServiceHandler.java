@@ -53,7 +53,7 @@ public class ServiceHandler {
     DictDB<Address, Boolean> ownersDb = Context.newDictDB("owners", Boolean.class);
     private final VarDB<Address> bsrDb = Context.newVarDB("bsr", Address.class);
     VarDB<Boolean> restriction = Context.newVarDB("restricton", Boolean.class);
-    RestrictionsScoreInterface restictonsInterface;
+    RestrictionsScoreInterface restrictionsInterface;
     public ServiceHandler(String _bmc) {
         //register the BMC link for this BSH
         bmcDb.set(Address.fromString(_bmc));
@@ -418,7 +418,7 @@ public class ServiceHandler {
         onlyOwner();
         bsrDb.set(_address);
         restriction.set(true);
-        restictonsInterface = new RestrictionsScoreInterface(_address);
+        restrictionsInterface = new RestrictionsScoreInterface(_address);
     }
 
     @External

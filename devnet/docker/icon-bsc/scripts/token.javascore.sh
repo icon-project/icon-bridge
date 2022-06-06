@@ -103,6 +103,33 @@ bmc_javascore_getServices() {
     --method getServices
 }
 
+
+deploy_javascore_restrictor(){
+  echo "deploying javascore Restrictor"
+  cd $CONFIG_DIR
+  goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/restrictions-optimized.jar \
+    --content_type application/java | jq -r . >tx.restrictor.icon
+  extract_scoreAddress tx.restrictor.icon restrictor.icon
+}
+
+configure_javascore_TokenBSH_restrictor(){
+  echo "configuring javascore Restrictor for TokenBSH"
+  cd $CONFIG_DIR
+  goloop rpc sendtx call --to $(cat token_bsh.icon) \
+    --method addRestrictor \
+    --param _address=$(cat restrictor.icon) | jq -r . >tx.configure.addRestrictor.token_bsh.icon
+  ensure_txresult tx.configure.addRestrictor.token_bsh.icon
+
+  weiAmount=$(coin2wei 10000)
+  goloop rpc sendtx call --to $(cat restrictor.icon) \
+    --method registerTokenLimit \
+    --param _name=${TOKEN_NAME} \
+    --param _symbol=${TOKEN_SYM} \
+    --param _address=$(cat irc2_token.icon) \
+    --param _limit=$weiAmount | jq -r . >tx.configure.registerTokenLimit.token_bsh.icon
+  ensure_txresult tx.configure.registerTokenLimit.token_bsh.icon
+}
+
 bsh_javascore_balance() {
   cd $CONFIG_DIR
   if [ $# -lt 1 ]; then

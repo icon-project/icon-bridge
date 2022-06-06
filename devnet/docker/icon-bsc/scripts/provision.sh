@@ -63,6 +63,10 @@ provision() {
     token_bsc_fundBSH
     token_icon_fundBSH
 
+    deploy_javascore_restrictor
+    configure_javascore_TokenBSH_restrictor
+    configure_javascore_NativeBSH_restrictor
+
     bmc_javascore_addLink
     bmc_javascore_addRelay
 
