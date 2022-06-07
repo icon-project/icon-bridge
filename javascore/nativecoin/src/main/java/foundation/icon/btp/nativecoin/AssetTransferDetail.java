@@ -50,8 +50,8 @@ public class AssetTransferDetail extends Asset {
     AssetTransferDetail obj = new AssetTransferDetail();
     reader.beginList();
     obj.setCoinName(reader.readNullable(String.class));
-    obj.setAmount(reader.readNullable(BigInteger.class));
-    obj.setFee(reader.readNullable(BigInteger.class));
+    obj.setAmount(new BigInteger(1,reader.readNullable(byte[].class)));
+    obj.setFee(new BigInteger(1,reader.readNullable(byte[].class)));
     reader.end();
     return obj;
   }

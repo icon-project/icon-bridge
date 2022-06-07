@@ -94,13 +94,14 @@ class ServiceHandlerTest extends TestBase {
     @Test
     public void handleBTPMessageFromHexBytesTest() {
         String _from = "btp://0x97.bsc/0x7D66b33f2b2d2Cd565e5024E651B6c6bE491c493";
-        String _msg="d50293d200905472616e736665722053756363657373";
+        //The message with Bigint decoding issue
+        String _msg="f87c00b879f877b3307864303833393232613432373765376264626164633939363335316531653338353637336164373936000000000000000000aa687834363963396162383031663861303766663561343561636164383535643539333933343630343938d7d683455448888963dd8c2c5e000088016345785d8a0000";
         bmc.invoke(owners[0], "addService", _svc, bsh.getAddress());
         bsh.invoke(owners[0], "register", tokenName, symbol, BigInteger.valueOf(decimals), fees, token.getAddress());
         token.invoke(owners[0],"transfer",bsh.getAddress(),new BigInteger("100000000000000000000"),"transfer to Receiver".getBytes());
         bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ONE, Hex.decode(_msg));
-    }*/
-
+    }
+*/
 /*    @Order(1)
     @Test
     public void handleBTPMessageFromHexBytesTest() {
@@ -393,7 +394,7 @@ class ServiceHandlerTest extends TestBase {
         BigInteger balanceAfter = (BigInteger) token.call("balanceOf", owners[0].getAddress());
         assertEquals(balanceBefore.add(transferAmount), balanceAfter);
     }
-    
+
     /**
      * scenario #: Add remove owner - min owner - should fail
      */
