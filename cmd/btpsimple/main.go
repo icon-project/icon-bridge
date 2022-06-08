@@ -13,6 +13,7 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/icon-project/btp/cmd/btpsimple/relay"
+	"github.com/icon-project/btp/cmd/btpsimple/stat"
 	"github.com/icon-project/btp/common/config"
 	"github.com/icon-project/btp/common/log"
 )
@@ -32,6 +33,7 @@ type Config struct {
 	ConsoleLevel      string               `json:"console_level"`
 	LogWriter         *log.WriterConfig    `json:"log_writer,omitempty"`
 	LogForwarder      *log.ForwarderConfig `json:"log_forwarder,omitempty"`
+	StatConfig        *stat.StatConfig     `json:"stat,omitempty"`
 }
 
 func main() {
@@ -42,15 +44,19 @@ func main() {
 		log.Fatalf("failed to load config: file=%q, err=%q", cfgFile, err)
 	}
 
-	relay, err := relay.NewMultiRelay(&cfg.Config, setLogger(cfg))
+	l := setLogger(cfg)
+	relay, err := relay.NewMultiRelay(&cfg.Config, l)
 	if err != nil {
 		log.Fatalf("failed to create MultiRelay: %v", err)
 	}
 
 	// for net/http/pprof
 	go func() { http.ListenAndServe("0.0.0.0:6060", nil) }()
-
+	if err := runStatService(cfg.StatConfig, l.WithFields(log.Fields{log.FieldKeyChain: "StatCollector"})); err != nil {
+		log.Error("Error initializing StatCollector Service", err)
+	}
 	runRelay(relay)
+
 }
 
 func runRelay(relay relay.Relay) {
@@ -73,11 +79,15 @@ func runRelay(relay relay.Relay) {
 		<-sigCh // second signal, hard exit
 		os.Exit(2)
 	}()
-
 	if err := relay.Start(ctx); err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}
+}
+
+func runStatService(cfg *stat.StatConfig, l log.Logger) error {
+	se := stat.NewService(cfg, l)
+	return se.Start()
 }
 
 func loadConfig(file string) (*Config, error) {
