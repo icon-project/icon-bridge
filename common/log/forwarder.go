@@ -9,14 +9,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bshuster-repo/logrus-logstash-hook"
+	logrustash "github.com/bshuster-repo/logrus-logstash-hook"
 	"github.com/evalphobia/logrus_fluent"
+	"github.com/icon-project/btp/common/errors"
 	"github.com/sirupsen/logrus"
 )
 
 const (
 	HookVendorFluentd  = "fluentd"
 	HookVendorLogstash = "logstash"
+	HookVendorSlack    = "slack"
 )
 
 type ForwarderConfig struct {
@@ -158,6 +160,8 @@ func AddForwarder(c *ForwarderConfig) error {
 		h, err = newHook(c, fluentHookCreater)
 	case HookVendorLogstash:
 		h, err = newHook(c, logstashHookCreater)
+	case HookVendorSlack:
+		h, err = newHook(c, slackHookCreater)
 	default:
 		return fmt.Errorf("not supported forwarder %s", c.Vendor)
 	}
@@ -235,6 +239,18 @@ func logstashHookCreater(c *ForwarderConfig) (logrus.Hook, error) {
 		return nil, err
 	} else {
 		h.TimeFormat = c.TimeFormat
+		return h, nil
+	}
+}
+
+func slackHookCreater(c *ForwarderConfig) (logrus.Hook, error) {
+	lvs, err := c.HookLevels()
+	if err != nil {
+		return nil, errors.Wrap(err, "slackHookCreaterFunc; HookLevelsFunc; Err: ")
+	}
+	if h, err := NewSlackClient(c.Address, lvs); err != nil {
+		return nil, errors.Wrap(err, "slackHookCreaterFunc; NewSlackClientFunc; Err: ")
+	} else {
 		return h, nil
 	}
 }
