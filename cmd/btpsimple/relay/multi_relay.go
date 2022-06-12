@@ -2,7 +2,9 @@ package relay
 
 import (
 	"context"
+	"errors"
 	"runtime/debug"
+	"time"
 
 	"github.com/icon-project/btp/cmd/btpsimple/chain"
 	"github.com/icon-project/btp/cmd/btpsimple/chain/hmny"
@@ -124,8 +126,13 @@ func (mr *multiRelay) Start(ctx context.Context) error {
 						rch <- relay
 					}
 				}()
-				if relay.Start(ctx) != nil {
-					rch <- relay
+				if err := relay.Start(ctx); err != nil {
+					if !errors.Is(err, context.Canceled) {
+						mr.log.Errorf("%v", err)
+						mr.log.Info("restarting relay in 5s...")
+						time.Sleep(5 * time.Second)
+						rch <- relay
+					}
 				}
 			}(r)
 		}
