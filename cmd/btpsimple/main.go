@@ -52,7 +52,11 @@ func main() {
 
 	// for net/http/pprof
 	go func() { http.ListenAndServe("0.0.0.0:6060", nil) }()
-	if err := runStatService(cfg.StatConfig, l.WithFields(log.Fields{log.FieldKeyChain: "StatCollector"})); err != nil {
+	if err := runStatService(
+		cfg.StatConfig,
+		l.WithFields(log.Fields{
+			log.FieldKeyChain: "StatCollector",
+		})); err != nil {
 		log.Error("Error initializing StatCollector Service", err)
 	}
 	runRelay(relay)
