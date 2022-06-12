@@ -51,7 +51,8 @@ func NewSender(
 }
 
 type senderOptions struct {
-	GasLimit uint64 `json:"gas_limit"`
+	GasLimit        uint64 `json:"gas_limit"`
+	TxDataSizeLimit uint64 `json:"tx_data_size_limit"`
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
@@ -101,16 +102,15 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 
 // Segment ...
 func (s *sender) Segment(
-	ctx context.Context,
-	msg *chain.Message, txSizeLimit uint64,
+	ctx context.Context, msg *chain.Message,
 ) (tx chain.RelayTx, newMsg *chain.Message, err error) {
 	if ctx.Err() != nil {
 		return nil, msg, ctx.Err()
 	}
 
-	if txSizeLimit == 0 {
+	if s.opts.TxDataSizeLimit == 0 {
 		limit := defaultTxSizeLimit
-		txSizeLimit = uint64(limit)
+		s.opts.TxDataSizeLimit = uint64(limit)
 	}
 
 	if len(msg.Receipts) == 0 {
@@ -142,7 +142,7 @@ func (s *sender) Segment(
 			return nil, nil, err
 		}
 		newMsgSize := msgSize + uint64(len(rlpReceipt))
-		if newMsgSize > txSizeLimit {
+		if newMsgSize > s.opts.TxDataSizeLimit {
 			newMsg.Receipts = msg.Receipts[i:]
 			break
 		}
@@ -178,11 +178,11 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*
 	if err != nil {
 		return nil, err
 	}
-	// // add 10 % of estimated gas price
-	// txOpts.GasPrice = txOpts.GasPrice.Add(
-	// 	txOpts.GasPrice,
-	// 	(&big.Int{}).Div(txOpts.GasPrice, big.NewInt(5)),
-	// )
+	// add 50 % of estimated gas price
+	txOpts.GasPrice = txOpts.GasPrice.Add(
+		txOpts.GasPrice,
+		(&big.Int{}).Div(txOpts.GasPrice, big.NewInt(2)),
+	)
 
 	txOpts.GasLimit = defaultGasLimit
 	if s.opts.GasLimit > 0 {

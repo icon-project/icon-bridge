@@ -44,24 +44,37 @@ func TestSubscribeMessage(t *testing.T) {
 
 	height += 100
 
-	msgCh, err := recv.SubscribeMessage(ctx, height, 0)
+	srcMsgCh := make(chan *chain.Message)
+	srcErrCh, err := recv.Subscribe(ctx,
+		srcMsgCh,
+		chain.SubscribeOptions{
+			Seq:    0,
+			Height: height,
+		})
 	require.NoError(t, err, "failed to subscribe message")
 
 	startHeight := height
-	for msg := range msgCh {
-		t.Logf("received block: %d", height)
+	for {
+		select {
+		case err := <-srcErrCh:
+			t.Logf("subscription closed: %v", err)
+			t.FailNow()
+		case msg := <-srcMsgCh:
+			t.Logf("received block: %d", height)
 
-		// validate receipts height matches block height
-		if len(msg.Receipts) > 0 {
-			require.Equal(t,
-				msg.Receipts[0].Height, height,
-				"receipts height should match block height")
-		}
+			// validate receipts height matches block height
+			if len(msg.Receipts) > 0 {
+				require.Equal(t,
+					msg.Receipts[0].Height, height,
+					"receipts height should match block height")
+			}
 
-		// terminate the test after 10 blocks
-		height++
-		if height > startHeight+10 {
-			break
+			// terminate the test after 10 blocks
+			height++
+			if height > startHeight+10 {
+				break
+			}
 		}
 	}
+
 }

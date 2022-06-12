@@ -65,7 +65,8 @@ func NewSender(
 }
 
 type senderOptions struct {
-	StepLimit uint64 `json:"step_limit"`
+	StepLimit       uint64 `json:"step_limit"`
+	TxDataSizeLimit uint64 `json:"tx_data_size_limit"`
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
@@ -127,16 +128,15 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 }
 
 func (s *sender) Segment(
-	ctx context.Context,
-	msg *chain.Message, txSizeLimit uint64,
+	ctx context.Context, msg *chain.Message,
 ) (tx chain.RelayTx, newMsg *chain.Message, err error) {
 	if ctx.Err() != nil {
 		return nil, nil, ctx.Err()
 	}
 
-	if txSizeLimit == 0 {
+	if s.opts.TxDataSizeLimit == 0 {
 		limit := defaultTxSizeLimit
-		txSizeLimit = uint64(limit)
+		s.opts.TxDataSizeLimit = uint64(limit)
 	}
 
 	if len(msg.Receipts) == 0 {
@@ -168,7 +168,7 @@ func (s *sender) Segment(
 			return nil, nil, err
 		}
 		newMsgSize := msgSize + uint64(len(rlpReceipt))
-		if newMsgSize > txSizeLimit {
+		if newMsgSize > s.opts.TxDataSizeLimit {
 			newMsg.Receipts = msg.Receipts[i:]
 			break
 		}

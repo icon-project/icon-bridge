@@ -257,18 +257,23 @@ func (r *receiver) receiveLoop(
 		})
 }
 
-func (r *receiver) SubscribeMessage(ctx context.Context, height, seq uint64) (<-chan *chain.Message, error) {
-	ch := make(chan *chain.Message)
+func (r *receiver) Subscribe(
+	ctx context.Context, msgCh chan<- *chain.Message,
+	opts chain.SubscribeOptions) (errCh <-chan error, err error) {
+
+	_errCh := make(chan error)
 	go func() {
-		defer close(ch)
-		if err := r.receiveLoop(ctx, height, seq,
+		defer close(_errCh)
+		if err := r.receiveLoop(ctx,
+			opts.Height, opts.Seq,
 			func(rs []*chain.Receipt) error {
-				ch <- &chain.Message{Receipts: rs}
+				msgCh <- &chain.Message{Receipts: rs}
 				return nil
 			}); err != nil {
 			// TODO decide whether to ignore or handle err
 			r.log.Errorf("receiveLoop terminated: %v", err)
+			_errCh <- err
 		}
 	}()
-	return ch, nil
+	return _errCh, nil
 }

@@ -50,7 +50,8 @@ func NewReceiver(
 }
 
 type receiverOptions struct {
-	Verifier *VerifierOptions `json:"verifier"`
+	Verifier        *VerifierOptions `json:"verifier"`
+	SyncConcurrency uint64           `json:"syncConcurrency"`
 }
 
 func (opts *receiverOptions) Unmarshal(v map[string]interface{}) error {
@@ -374,17 +375,22 @@ func (r *receiver) getRelayReceipts(v *BlockNotification) []*chain.Receipt {
 	return receipts
 }
 
-func (r *receiver) SubscribeMessage(ctx context.Context, height, seq uint64) (<-chan *chain.Message, error) {
-	seq++
-	ch := make(chan *chain.Message)
+func (r *receiver) Subscribe(
+	ctx context.Context, msgCh chan<- *chain.Message,
+	opts chain.SubscribeOptions) (errCh <-chan error, err error) {
+
+	opts.Seq++
+
+	_errCh := make(chan error)
+
 	go func() {
-		defer close(ch)
-		lastHeight := height - 1
+		defer close(_errCh)
+		lastHeight := opts.Height - 1
 		if err := r.receiveLoop(ctx,
 			&bnOptions{
-				StartHeight:     height,
+				StartHeight:     opts.Height,
 				VerifierOptions: r.opts.Verifier,
-				Concurrency:     100,
+				Concurrency:     r.opts.SyncConcurrency,
 			},
 			func(v *BlockNotification) error {
 				r.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
@@ -401,12 +407,12 @@ func (r *receiver) SubscribeMessage(ctx context.Context, height, seq uint64) (<-
 					events := receipt.Events[:0]
 					for _, event := range receipt.Events {
 						switch {
-						case event.Sequence == seq:
+						case event.Sequence == opts.Seq:
 							events = append(events, event)
-							seq++
-						case event.Sequence > seq:
+							opts.Seq++
+						case event.Sequence > opts.Seq:
 							r.log.WithFields(log.Fields{
-								"seq": log.Fields{"got": event.Sequence, "expected": seq},
+								"seq": log.Fields{"got": event.Sequence, "expected": opts.Seq},
 							}).Error("invalid event seq")
 							return fmt.Errorf("invalid event seq")
 						}
@@ -414,13 +420,15 @@ func (r *receiver) SubscribeMessage(ctx context.Context, height, seq uint64) (<-
 					receipt.Events = events
 				}
 
-				ch <- &chain.Message{Receipts: receipts}
+				msgCh <- &chain.Message{Receipts: receipts}
 				lastHeight++
 				return nil
 			}); err != nil {
 			// TODO decide whether to ignore or handle err
 			r.log.Errorf("receiveLoop terminated: %v", err)
+			_errCh <- err
 		}
 	}()
-	return ch, nil
+
+	return _errCh, nil
 }
