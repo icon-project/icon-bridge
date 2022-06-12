@@ -251,7 +251,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                 );
             } else if (_sm.serviceType.compareTo("Sack")) {
                 // skip this case since it has been removed from internal services
-            } else revert();
+            } else revert(BMCRevertNotExistsInternalHandler);
         } else {
             _bshAddr = IBMCManagement(bmcManagement).getBshServiceByName(
                 _msg.svc
