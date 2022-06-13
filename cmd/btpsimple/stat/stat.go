@@ -76,10 +76,10 @@ func (s *statCollector) Start(ctx context.Context) error {
 
 	sysTicker := time.NewTicker(time.Duration(DefaultSystemMetricsLoggingInterval) * time.Second)
 	heartTicker := time.NewTicker(time.Duration(DefaultHeartBeatLoggingInterval) * time.Second)
-	if s.cfg.LoggingInterval.SystemMetrics != nil {
+	if s.cfg.LoggingInterval.SystemMetrics != nil && *s.cfg.LoggingInterval.SystemMetrics > 0 {
 		sysTicker = time.NewTicker(time.Duration(*s.cfg.LoggingInterval.SystemMetrics) * time.Second)
 	}
-	if s.cfg.LoggingInterval.HeartBeat != nil {
+	if s.cfg.LoggingInterval.HeartBeat != nil && *s.cfg.LoggingInterval.HeartBeat > 0 {
 		heartTicker = time.NewTicker(time.Duration(*s.cfg.LoggingInterval.HeartBeat) * time.Second)
 	}
 
