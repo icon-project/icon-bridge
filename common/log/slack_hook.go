@@ -149,6 +149,7 @@ func (sh *SlackHook) forward() {
 						}
 						req["Message"] = e.Message // Add the message passed to logging
 						req["Level"] = e.Level
+						req["Time"] = e.Time.UTC().String()
 						if reqBytes, err := json.Marshal(req); err == nil && reqBytes != nil {
 							reqStr += string(reqBytes) + "\n"
 						} else {
