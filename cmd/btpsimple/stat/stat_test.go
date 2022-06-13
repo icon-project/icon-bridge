@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 func TestSystemMetricsGetter(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/icon-project/btp/common/errors"
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/common/errors"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 const (

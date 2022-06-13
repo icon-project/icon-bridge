@@ -7,14 +7,14 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/icon-project/btp/cmd/btpsimple/chain"
-	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/crypto"
-	"github.com/icon-project/btp/common/log"
 	"github.com/icon-project/goloop/common"
 	vlcodec "github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/ompt"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/common/codec"
+	"github.com/icon-project/icon-bridge/common/crypto"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 type VerifierOptions struct {
@@ -219,13 +219,19 @@ func (r *receiver) verifyReceipt(header *BlockHeader, v *BlockNotification) ([]*
 				return nil, errors.Wrap(err, "ReceiptVerification; Unmarshal Events; Err:")
 			}
 
-			if bytes.Equal(el.Addr, r.evtLogRawFilter.addr) && bytes.Equal(el.Indexed[EventIndexSignature], r.evtLogRawFilter.signature) && bytes.Equal(el.Indexed[EventIndexNext], r.evtLogRawFilter.next) {
+			if bytes.Equal(el.Addr, r.evtLogRawFilter.addr) &&
+				bytes.Equal(el.Indexed[EventIndexSignature], r.evtLogRawFilter.signature) &&
+				bytes.Equal(el.Indexed[EventIndexNext], r.evtLogRawFilter.next) {
 				var seqGot common.HexInt
 				var seqExpected common.HexInt
 				seqGot.SetBytes(el.Indexed[EventIndexSequence])
 				seqExpected.SetBytes(r.evtLogRawFilter.seq)
-				if !r.isFoundOffsetBySeq && seqGot.Uint64() < seqExpected.Uint64() { // If sequence has not been found and this is not the one; continue searching
-					r.log.WithFields(log.Fields{"Height": v.Height, "got": common.HexBytes(el.Indexed[EventIndexSequence]), "expected": common.HexBytes(r.evtLogRawFilter.seq)}).Info("Searching for matching sequence...")
+				if !r.isFoundOffsetBySeq && seqGot.Uint64() < seqExpected.Uint64() {
+					// If sequence has not been found and this is not the one; continue searching
+					r.log.WithFields(log.Fields{
+						"Height":   v.Height,
+						"got":      common.HexBytes(el.Indexed[EventIndexSequence]),
+						"expected": common.HexBytes(r.evtLogRawFilter.seq)}).Info("Searching for matching sequence...")
 					continue
 				}
 				r.isFoundOffsetBySeq = true
@@ -237,20 +243,33 @@ func (r *receiver) verifyReceipt(header *BlockHeader, v *BlockNotification) ([]*
 				rp.Events = append(rp.Events, evt)
 			} else {
 				if !bytes.Equal(el.Addr, r.evtLogRawFilter.addr) {
-					r.log.WithFields(log.Fields{"Height": v.Height, "got": common.HexBytes(el.Addr), "expected": common.HexBytes(r.evtLogRawFilter.addr)}).Error("invalid event: cannot match add")
+					r.log.WithFields(log.Fields{
+						"Height":   v.Height,
+						"got":      common.HexBytes(el.Addr),
+						"expected": common.HexBytes(r.evtLogRawFilter.addr)}).Error("invalid event: cannot match add")
 				}
 				if !bytes.Equal(el.Indexed[EventIndexSignature], r.evtLogRawFilter.signature) {
-					r.log.WithFields(log.Fields{"Height": v.Height, "got": common.HexBytes(el.Indexed[EventIndexSignature]), "expected": common.HexBytes(r.evtLogRawFilter.signature)}).Error("invalid event: cannot match sig")
+					r.log.WithFields(log.Fields{
+						"Height":   v.Height,
+						"got":      common.HexBytes(el.Indexed[EventIndexSignature]),
+						"expected": common.HexBytes(r.evtLogRawFilter.signature)}).Error("invalid event: cannot match sig")
 				}
 				if !bytes.Equal(el.Indexed[EventIndexNext], r.evtLogRawFilter.next) {
-					r.log.WithFields(log.Fields{"Height": v.Height, "got": common.HexBytes(el.Indexed[EventIndexNext]), "expected": common.HexBytes(r.evtLogRawFilter.next)}).Error("invalid event: cannot match next")
+					r.log.WithFields(log.Fields{
+						"Height":   v.Height,
+						"got":      common.HexBytes(el.Indexed[EventIndexNext]),
+						"expected": common.HexBytes(r.evtLogRawFilter.next)}).Error("invalid event: cannot match next")
 				}
 			}
 		}
 		if len(rp.Events) > 0 && len(rp.Events) == len(p.Events) { //Only add if all the events were verified
 			rps = append(rps, rp)
 		} else if len(rp.Events) > 0 && len(rp.Events) != len(p.Events) {
-			r.log.WithFields(log.Fields{"Height": v.Height, "ReceiptIndex": index, "got": len(rp.Events), "expected": len(p.Events)}).Info(" Not all events were verified for receipt ")
+			r.log.WithFields(log.Fields{
+				"Height":       v.Height,
+				"ReceiptIndex": index,
+				"got":          len(rp.Events),
+				"expected":     len(p.Events)}).Info(" Not all events were verified for receipt ")
 		}
 	}
 	return rps, nil

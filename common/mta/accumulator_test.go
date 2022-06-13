@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/btp/common/crypto"
-	"github.com/icon-project/btp/common/db"
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/icon-bridge/common/crypto"
+	"github.com/icon-project/icon-bridge/common/db"
+	"github.com/icon-project/icon-bridge/common/errors"
 )
 
 func TestMTAccumulator_Basic(t *testing.T) {
@@ -68,8 +68,8 @@ func TestMTAccumulator_Extension(t *testing.T) {
 	}
 
 	accs := make([]*Accumulator, 0)
-	for i:=0; i<2; i++ {
-		name := fmt.Sprintf("acc_%d",i)
+	for i := 0; i < 2; i++ {
+		name := fmt.Sprintf("acc_%d", i)
 		bk, _ := mdb.GetBucket(db.BucketID(name))
 		acc := &Accumulator{
 			KeyForState: []byte(name),

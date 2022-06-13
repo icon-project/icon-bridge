@@ -25,12 +25,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/icon-project/btp/cmd/btpsimple/chain"
-	"github.com/icon-project/btp/common"
-	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/jsonrpc"
-	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/wallet"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/common"
+	"github.com/icon-project/icon-bridge/common/codec"
+	"github.com/icon-project/icon-bridge/common/jsonrpc"
+	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
 const (

@@ -30,9 +30,9 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/icon-project/btp/common/crypto"
-	"github.com/icon-project/btp/common/jsonrpc"
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/common/crypto"
+	"github.com/icon-project/icon-bridge/common/jsonrpc"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 const (

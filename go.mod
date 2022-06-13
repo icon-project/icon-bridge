@@ -1,4 +1,4 @@
-module github.com/icon-project/btp
+module github.com/icon-project/icon-bridge
 
 go 1.13
 

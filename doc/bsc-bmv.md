@@ -59,8 +59,8 @@ Every block header maintains structure which contains three states in Trie struc
 - Transactions trie
 - State trie
 
-BSC Relay [Receiver](https://github.com/icon-project/btp/blob/btp_web3labs/cmd/btpsimple/module/bsc/receiver.go#L150) reconstructs the proof trie encoded specification. 
-BMV Message Verifier in turn decodes the proofs which includes the receipts trie and [verifies](https://github.com/icon-project/btp/blob/btp_web3labs/javascore/bmv/src/main/java/foundation/icon/btp/bmv/BTPMessageVerifier.java#L91)
+BSC Relay [Receiver](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/cmd/btpsimple/module/bsc/receiver.go#L150) reconstructs the proof trie encoded specification. 
+BMV Message Verifier in turn decodes the proofs which includes the receipts trie and [verifies](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/javascore/bmv/src/main/java/foundation/icon/btp/bmv/BTPMessageVerifier.java#L91)
 the trie against header `ReceiptHash`. 
 
 ```go
@@ -76,7 +76,7 @@ type ReceiptProof struct {
 Binance Smart Chain relies on the extra security of Binance Chain network. Binance chain does the staking and governance parts for BSC,
 and ValidatorSet change, double sign slash of BSC is updated through interchain communication.
 
-ValidatorSet is updated after each epoch block (Epoch is set to 200 in mainnent), BMR queries ValidatorSet via the [TendermintLightClient](https://github.com/icon-project/btp/blob/btp_web3labs/cmd/btpsimple/module/bsc/receiver.go#L82) contract  
+ValidatorSet is updated after each epoch block (Epoch is set to 200 in mainnent), BMR queries ValidatorSet via the [TendermintLightClient](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/cmd/btpsimple/module/bsc/receiver.go#L82) contract  
 
 ```go
 type ConsensusStates struct {
@@ -121,7 +121,7 @@ copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
 | blockUpdates  |  list of bytes | list of RLP encoded of BlockUpdate  |
 | blockProof    |    bytes       | RLP encoded of BlockProof           |
 | receiptProofs | list of bytes  | list of RLP encoded of ReceiptProof |
-Code to decode RelayMessage implemented in [RelayMessage.java](https://github.com/icon-project/btp/blob/btp_web3labs/javascore/bmv/src/main/java/foundation/icon/btp/bmv/types/RelayMessage.java)
+Code to decode RelayMessage implemented in [RelayMessage.java](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/javascore/bmv/src/main/java/foundation/icon/btp/bmv/types/RelayMessage.java)
 ### BlockUpdate:
 | Name           |      Type      |  Description                 |
 |----------------|:--------------:|:-----------------------------|
@@ -129,13 +129,13 @@ Code to decode RelayMessage implemented in [RelayMessage.java](https://github.co
 | nextValidators | bytes of bytes | bytes of bytes               |
 | validatorList  |    bytes       | RLP encoded of ValidatorList |
 | sealedHeader   |    bytes       | BSC (EVM) encoded header bytes with the sealed validator hash in extraData     |
-Code to decode BlockUpdate implemented in [BlockUpdate.java](https://github.com/icon-project/btp/blob/btp_web3labs/javascore/bmv/src/main/java/foundation/icon/btp/bmv/types/BlockUpdate.java)
+Code to decode BlockUpdate implemented in [BlockUpdate.java](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/javascore/bmv/src/main/java/foundation/icon/btp/bmv/types/BlockUpdate.java)
 ### BlockProof:
 | Name           |      Type      |  Description                |
 |----------------|:--------------:|:----------------------------|
 | blockHeader    |    bytes       | RLP encoded of BlockHeader that want to prove by MTA|
 | blockWitness   |    bytes       | RLP encoded of BlockWitness, list of hash of leaf point to prove that block include in Merkle tree accumulator, low level leaf first |
-Code to decode BlockProof implemented in [BlockProof.java](https://github.com/icon-project/btp/blob/btp_web3labs/javascore/bmv/src/main/java/foundation/icon/btp/bmv/types/BlockProof.java)
+Code to decode BlockProof implemented in [BlockProof.java](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/javascore/bmv/src/main/java/foundation/icon/btp/bmv/types/BlockProof.java)
 ### ReceiptProof:
 | Name           |      Type      |  Description                           |
 |----------------|:--------------:|:---------------------------------------|
@@ -144,4 +144,4 @@ Code to decode BlockProof implemented in [BlockProof.java](https://github.com/ic
 | eventProofs    | list of bytes  | list of RLP encoded of EventProof      |
 | events         | list of bytes  | list of RLP encoded of ReceiptEventLog |
 | mptProofs      | list of bytes  | list of proof bytes                    |
-Code to decode ReceiptProof implemented in [ReceiptProof.java](https://github.com/icon-project/btp/blob/btp_web3labs/javascore/bmv/src/main/java/foundation/icon/btp/bmv/types/ReceiptProof.java)
+Code to decode ReceiptProof implemented in [ReceiptProof.java](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/javascore/bmv/src/main/java/foundation/icon/btp/bmv/types/ReceiptProof.java)

@@ -8,7 +8,7 @@ import (
 	"github.com/vmihailenco/msgpack/v4"
 	"github.com/vmihailenco/msgpack/v4/codes"
 
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/icon-bridge/common/errors"
 )
 
 var mpCodecObject mpCodec

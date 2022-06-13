@@ -9,8 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/harmony-one/harmony/core/types"
-	"github.com/icon-project/btp/common/errors"
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/common/errors"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 func newClients(urls []string, bmc string, l log.Logger) (cls []*client, err error) {

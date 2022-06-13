@@ -11,7 +11,7 @@ import (
 
 	logrustash "github.com/bshuster-repo/logrus-logstash-hook"
 	"github.com/evalphobia/logrus_fluent"
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/sirupsen/logrus"
 )
 

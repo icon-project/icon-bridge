@@ -12,10 +12,10 @@ import (
 
 	_ "net/http/pprof"
 
-	"github.com/icon-project/btp/cmd/btpsimple/relay"
-	"github.com/icon-project/btp/cmd/btpsimple/stat"
-	"github.com/icon-project/btp/common/config"
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/relay"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/stat"
+	"github.com/icon-project/icon-bridge/common/config"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 var (

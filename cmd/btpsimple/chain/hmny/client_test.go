@@ -14,7 +14,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/harmony-one/harmony/core/types"
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/stretchr/testify/require"
 )
 

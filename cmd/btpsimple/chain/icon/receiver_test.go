@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/icon-project/btp/cmd/btpsimple/chain"
-	"github.com/icon-project/btp/common/jsonrpc"
-	"github.com/icon-project/btp/common/log"
 	vlcodec "github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/common/jsonrpc"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 func TestReceiver(t *testing.T) {

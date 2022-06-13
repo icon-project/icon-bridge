@@ -6,7 +6,7 @@ const { deployProxy, upgradeProxy } = require('@openzeppelin/truffle-upgrades');
 
 contract('BSHCore Unit Tests - After Upgrading Contract', (accounts) => {
     let bsh_coreV1, bsh_coreV2;
-    let _native = 'PARA';       let _uri = 'https://github.com/icon-project/btp'                   
+    let _native = 'PARA';       let _uri = 'https://github.com/icon-project/icon-bridge'                   
     let _fee = 10;      let _fixed_fee = 500000;
     before(async () => {
         bsh_coreV1 = await deployProxy(BSHCoreV1, [_native, _fee, _fixed_fee]);
