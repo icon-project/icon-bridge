@@ -35,10 +35,10 @@ ExampleConfig:
 CHECK ensureConfig() for detail
 */
 var (
-	DefaultHeartBeatLoggingInterval     int = 5 * 60 // 5 minutes
-	DefaultSystemMetricsLoggingInterval     = 5 * 60 // 5 minutes
-	MinimumHeartBeatLoggingInterval         = 10     // 10 seconds
-	MinimumSystemMetricsLoggingInterval     = 10     // 10 seconds
+	DefaultHeartBeatLoggingInterval     uint = 5 * 60 // 5 minutes
+	DefaultSystemMetricsLoggingInterval uint = 5 * 60 // 5 minutes
+	MinimumHeartBeatLoggingInterval     uint = 10     // 10 seconds
+	MinimumSystemMetricsLoggingInterval uint = 10     // 10 seconds
 )
 
 var defaultConfig = StatConfig{
@@ -58,8 +58,8 @@ type StatConfig struct {
 }
 
 type LoggingInterval struct {
-	HeartBeat     *int `json:"heartbeat,omitempty"`
-	SystemMetrics *int `json:"system_metrics,omitempty"`
+	HeartBeat     *uint `json:"heartbeat,omitempty"`
+	SystemMetrics *uint `json:"system_metrics,omitempty"`
 }
 
 type Trigger struct { // Trigger Criterion: if Memory.UsedPercent > 90, then trigger alert

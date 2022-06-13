@@ -43,7 +43,7 @@ func (s *statCollector) ensureConfig(cfg *StatConfig) *StatConfig {
 		} else if cfg.LoggingInterval.HeartBeat != nil && *cfg.LoggingInterval.HeartBeat > 0 && *cfg.LoggingInterval.HeartBeat < MinimumHeartBeatLoggingInterval {
 			s.log.Infof("HeartBeat logging Interval should be at least %d seconds; Using this minimum value", MinimumHeartBeatLoggingInterval)
 			cfg.LoggingInterval.HeartBeat = &MinimumHeartBeatLoggingInterval
-		} else if cfg.LoggingInterval.HeartBeat != nil && *cfg.LoggingInterval.HeartBeat == 0 {
+		} else if cfg.LoggingInterval.HeartBeat != nil && *cfg.LoggingInterval.HeartBeat <= 0 {
 			s.log.Info("HeartBeat Logging has been disabled")
 			cfg.LoggingInterval.HeartBeat = nil
 		} else {
@@ -55,7 +55,7 @@ func (s *statCollector) ensureConfig(cfg *StatConfig) *StatConfig {
 		} else if cfg.LoggingInterval.SystemMetrics != nil && *cfg.LoggingInterval.SystemMetrics > 0 && *cfg.LoggingInterval.SystemMetrics < MinimumSystemMetricsLoggingInterval {
 			s.log.Infof("SystemMetrics logging Interval should be at least %d seconds; Using this minimum value", MinimumSystemMetricsLoggingInterval)
 			cfg.LoggingInterval.SystemMetrics = &MinimumSystemMetricsLoggingInterval
-		} else if cfg.LoggingInterval.SystemMetrics != nil && *cfg.LoggingInterval.SystemMetrics == 0 {
+		} else if cfg.LoggingInterval.SystemMetrics != nil && *cfg.LoggingInterval.SystemMetrics <= 0 {
 			s.log.Info("System Metrics Logging has been disabled")
 			cfg.LoggingInterval.SystemMetrics = nil
 		} else {

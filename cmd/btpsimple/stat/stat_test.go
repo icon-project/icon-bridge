@@ -38,7 +38,7 @@ func TestStatService(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	log.AddForwarder(&log.ForwarderConfig{Vendor: log.HookVendorSlack, Address: URL, Level: "info"})
-	h := 10
+	var h uint = 10
 	//s := 20
 	sv, _ := NewService(&StatConfig{LoggingInterval: &LoggingInterval{HeartBeat: &h, SystemMetrics: nil}, Trigger: nil}, l)
 	fmt.Println("Starting")
