@@ -23,9 +23,11 @@ import com.iconloop.testsvc.TestBase;
 import foundation.icon.btp.bsh.BMCMock;
 import foundation.icon.btp.bsh.ServiceHandler;
 import foundation.icon.btp.bsh.types.Asset;
+import foundation.icon.btp.bsh.types.BTPAddress;
 import foundation.icon.btp.bsh.types.Balance;
 import foundation.icon.btp.bsh.types.TransferAsset;
 import foundation.icon.btp.irc2.IRC2Basic;
+import foundation.icon.btp.restrictions.Restrictions;
 import org.bouncycastle.util.encoders.Hex;
 import org.junit.jupiter.api.*;
 import score.ByteArrayObjectWriter;
@@ -64,6 +66,7 @@ class ServiceHandlerTest extends TestBase {
     private static Score bmc;
     private static Score irc2Basic;
     private ServiceHandler bshSyp;
+    private static Score restrictons;
 
     @BeforeAll
     public static void setup() throws Exception {
@@ -78,6 +81,7 @@ class ServiceHandlerTest extends TestBase {
         bmc = sm.deploy(owners[0], BMCMock.class);
         bsh = sm.deploy(owners[0], ServiceHandler.class, bmc.getAddress().toString());
         token = sm.deploy(owners[0], IRC2Basic.class, tokenName, symbol, decimals, initialSupply);
+        restrictons = sm.deploy(owners[0], Restrictions.class);
 
         BigInteger balance = (BigInteger) token.call("balanceOf", owners[0].getAddress());
         assertEquals(totalSupply, balance);
@@ -90,9 +94,24 @@ class ServiceHandlerTest extends TestBase {
     @Test
     public void handleBTPMessageFromHexBytesTest() {
         String _from = "btp://0x97.bsc/0x7D66b33f2b2d2Cd565e5024E651B6c6bE491c493";
-        String _msg="d50293d200905472616e736665722053756363657373";
+        //The message with Bigint decoding issue
+        String _msg="f87c00b879f877b3307864303833393232613432373765376264626164633939363335316531653338353637336164373936000000000000000000aa687834363963396162383031663861303766663561343561636164383535643539333933343630343938d7d683455448888963dd8c2c5e000088016345785d8a0000";
         bmc.invoke(owners[0], "addService", _svc, bsh.getAddress());
         bsh.invoke(owners[0], "register", tokenName, symbol, BigInteger.valueOf(decimals), fees, token.getAddress());
+        token.invoke(owners[0],"transfer",bsh.getAddress(),new BigInteger("100000000000000000000"),"transfer to Receiver".getBytes());
+        bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ONE, Hex.decode(_msg));
+    }
+*/
+/*    @Order(1)
+    @Test
+    public void handleBTPMessageFromHexBytesTest() {
+        String _from = "btp://0x97.bsc/0x7D66b33f2b2d2Cd565e5024E651B6c6bE491c493";
+        String _msg="f87b00b878f876b3307865626362643461393334613638353130653231626132356232613832373133383234386136336535000000000000000000aa687832376131356131633361396263303933343038323939643732623965633233383036356337346137d6d583455448880dbd2fc137a30000872386f26fc10000";
+        restrictons.invoke(owners[0], "addBlacklistedUser", "0xebcbd4a934a68510e21ba25b2a827138248a63e5");
+        boolean isrest = (boolean) restrictons.call("isUserBlackListed","0xebcbd4a934a68510e21ba25b2a827138248a63e5");
+        bmc.invoke(owners[0], "addService", _svc, bsh.getAddress());
+        bsh.invoke(owners[0], "register", tokenName, symbol, BigInteger.valueOf(decimals), fees, token.getAddress());
+        bsh.invoke(owners[0], "addRestrictor", restrictons.getAddress());
         token.invoke(owners[0],"transfer",bsh.getAddress(),new BigInteger("100000000000000000000"),"transfer to Receiver".getBytes());
         bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ONE, Hex.decode(_msg));
     }*/
@@ -206,12 +225,29 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(9)
     @Test
-    public void scenario9() {
+    public void scenario9a() {
         String _to = "btp://0x1.bsc:0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         //bsh.invoke(owners[0],"transfer", tokenName, transferAmount,_to);
         assertThrows(AssertionError.class, () ->
                 bsh.invoke(owners[0], "transfer", tokenName, transferAmount, _to)
         );
+    }
+
+    /**
+     * Scenario #:  User transfers to an invalid BTP address - fail
+     */
+
+    @Order(9)
+    @Test
+    public void scenario9b() {
+        String _to = "btp://0x1.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
+        bsh.invoke(owners[0],"addRestrictor",restrictons.getAddress());
+        restrictons.invoke(owners[0], "addBlacklistedUser", BTPAddress.fromString(_to).getContract());
+        AssertionError thrown = assertThrows(AssertionError.class, () ->
+                bsh.invoke(owners[0], "transfer", tokenName, transferAmount, _to)
+        );
+        assertTrue(thrown.getMessage().contains("_to user is Blacklisted"));
+        restrictons.invoke(owners[0], "removeBlacklistedUser", BTPAddress.fromString(_to).getContract());
     }
 
 
@@ -297,13 +333,59 @@ class ServiceHandlerTest extends TestBase {
         assertEquals(balanceAfter.getLocked().add(transferAmount), balanceBefore.getLocked());
     }
 
+    /**
+     * Scenario #:  handleBTPMessage request mint balance for the user, blacklisted user: to- failed
+     */
+    @Test
+    @Order(13)
+    public void scenario13a() {
+        String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
+        restrictons.invoke(owners[0], "addBlacklistedUser", owners[1].getAddress().toString());
+        BigInteger balanceBefore = (BigInteger) token.call("balanceOf", owners[0].getAddress());
+        AssertionError thrown = assertThrows(AssertionError.class, () ->
+                bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ZERO, handleBTPRequestBtpMsg(_from, owners[1].getAddress().toString()))
+        );
+        assertTrue(thrown.getMessage().contains("_to user is Blacklisted"));
+    }
+
+    /**
+     * Scenario #:  handleBTPMessage request mint balance for the user, blacklisted user: from- failed
+     */
+    @Test
+    @Order(13)
+    public void scenario13b() {
+        String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
+        restrictons.invoke(owners[0], "addBlacklistedUser", BTPAddress.fromString(_from).getContract());
+        AssertionError thrown = assertThrows(AssertionError.class, () ->
+                bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ZERO, handleBTPRequestBtpMsg( BTPAddress.fromString(_from).getContract(), owners[0].getAddress().toString()))
+        );
+        assertTrue(thrown.getMessage().contains("_from user is Blacklisted"));
+        restrictons.invoke(owners[0], "removeBlacklistedUser", BTPAddress.fromString(_from).getContract());
+    }
+
+    /**
+     * Scenario #:  handleBTPMessage request mint balance for the user, Exceeds Transaction amount - failed
+     */
+    @Test
+    @Order(13)
+    public void scenario13c() {
+        String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
+        restrictons.invoke(owners[0], "registerTokenLimit", tokenName, tokenName, token.getAddress(), transferAmount.subtract(BigInteger.valueOf(1)));
+        AssertionError thrown = assertThrows(AssertionError.class, () ->
+                bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ZERO, handleBTPRequestBtpMsg( BTPAddress.fromString(_from).getContract(), owners[0].getAddress().toString()))
+        );
+        assertTrue(thrown.getMessage().contains("Transfer amount exceeds the transaction limit"));
+        //set restriction back to transfer amount
+        //restrictons.invoke(owners[0], "registerTokenLimit", tokenName, tokenName, token.getAddress(), transferAmount);
+        bsh.invoke(owners[0], "disableRestrictions");
+    }
 
     /**
      * Scenario #:  All requirements are qualified handleBTPMessage mints balance for the user- Success
      */
     @Test
     @Order(13)
-    public void scenario13() {
+    public void scenario13d() {
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         //Balance balanceBefore = (Balance) bsh.call("getBalance", owners[0].getAddress(), tokenName);
         BigInteger balanceBefore = (BigInteger) token.call("balanceOf", owners[0].getAddress());

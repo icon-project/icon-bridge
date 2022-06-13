@@ -18,6 +18,7 @@ build_image() {
     docker cp javascore-dist:/dist/irc2-token-optimized.jar ${DIST_DIR}
     docker cp javascore-dist:/dist/irc2Tradeable-optimized.jar ${DIST_DIR}
     docker cp javascore-dist:/dist/nativecoin-optimized.jar ${DIST_DIR}
+    docker cp javascore-dist:/dist/restrictions-optimized.jar ${DIST_DIR}
 
     docker rm -f javascore-dist
 }

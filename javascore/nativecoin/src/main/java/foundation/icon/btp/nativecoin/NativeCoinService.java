@@ -19,6 +19,7 @@ package foundation.icon.btp.nativecoin;
 import com.iconloop.score.token.irc31.IRC31Receiver;
 import foundation.icon.btp.lib.*;
 import foundation.icon.btp.nativecoin.irc2.IRC2SupplierScoreInterface;
+import foundation.icon.btp.restrictions.RestrictionsScoreInterface;
 import foundation.icon.score.util.ArrayUtil;
 import foundation.icon.score.util.Logger;
 import foundation.icon.score.util.StringUtil;
@@ -56,6 +57,11 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
     private final BranchDB<String, DictDB<Address, Balance>> balances = Context.newBranchDB("balances", Balance.class);
     private final DictDB<String, BigInteger> feeBalances = Context.newDictDB("feeBalances", BigInteger.class);
     private final DictDB<BigInteger, TransferTransaction> transactions = Context.newDictDB("transactions", TransferTransaction.class);
+
+    //
+    private final VarDB<Address> bsrDb = Context.newVarDB("bsr", Address.class);
+    VarDB<Boolean> restriction = Context.newVarDB("restricton", Boolean.class);
+    RestrictionsScoreInterface restrictionsInterface;
 
     public NativeCoinService(Address _bmc, String _name, byte[] _serializedIrc2) {
         bmc = _bmc;
@@ -173,6 +179,7 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
     public void transferNativeCoin(String _to) {
         BigInteger value = Context.getValue();
         require(value != null && value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
+        checkTransferRestrictions(name, Context.getCaller().toString(), BTPAddress.valueOf(_to).account(), value);
         sendRequest(Context.getCaller(), BTPAddress.valueOf(_to), List.of(name), List.of(value));
     }
 
@@ -182,6 +189,7 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
         require(!name.equals(_coinName) && isRegistered(_coinName), "Not supported Token");
 
         Address owner = Context.getCaller();
+        checkTransferRestrictions(_coinName, owner.toString(), BTPAddress.valueOf(_to).account(), _value);
         transferFrom(owner, Context.getAddress(), _coinName, _value);
         sendRequest(owner, BTPAddress.valueOf(_to), List.of(_coinName), List.of(_value));
     }
@@ -449,6 +457,7 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
             } else {
                 throw NCSException.unknown("Invalid Token");
             }
+            checkTransferRestrictions(coinName, from, request.getTo(), amount);
         }
 
         if (nativeCoinTransferAmount != null) {
@@ -680,6 +689,29 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
     @External(readonly = true)
     public boolean isOwner(Address _addr) {
         return ownerManager.isOwner(_addr);
+    }
+
+
+    @External
+    public void addRestrictor(Address _address) {
+        requireOwnerAccess();
+        bsrDb.set(_address);
+        restriction.set(true);
+        restrictionsInterface = new RestrictionsScoreInterface(_address);
+    }
+
+    @External
+    public void disableRestrictions(Address _address) {
+        requireOwnerAccess();
+        bsrDb.set(_address);
+        restriction.set(false);
+    }
+
+    private void checkTransferRestrictions(String _tokenName, String _from, String _to, BigInteger _value) {
+        if (restriction.get() != null && bsrDb.get() != null && restriction.get()) {
+            //restictonsInterface.validateRestriction(_tokenName, _from, _to, _value);
+            Context.call(bsrDb.get(), "validateRestriction", _tokenName, _from, _to, _value);
+        }
     }
 
 }

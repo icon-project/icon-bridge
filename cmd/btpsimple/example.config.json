@@ -9,9 +9,9 @@
         "verbose": false
     },
     "log_forwarder": {
-        "vendor":"slack",
-        "address":"https://hooks.slack.com/services/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",
-        "level":"info"
+        "vendor": "slack",
+        "address": "https://hooks.slack.com/services/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",
+        "level": "info"
     },
     "relays": [
         {

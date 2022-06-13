@@ -19,7 +19,7 @@ get_alice_wrapped_native_balance "BNB"
 
 #transfer 1 BNB from Alice to BSC BOB
 rpcks alice.ks.json alice.secret
-BNB_TRANSER_AMOUNT=$(coin2wei ${2:-1})
+BNB_TRANSER_AMOUNT=$(coin2wei ${1:-1})
 printf "\n\nStep 4: Alice Initiates BTP Native transfer of $(wei2coin $BNB_TRANSER_AMOUNT) BNB to BOB \n"
 transfer_BNB_from_Alice_to_Bob $BNB_TRANSER_AMOUNT >$CONFIG_DIR/tx.bnb.native.icon_bsc.transfer
 wait_for_file $CONFIG_DIR/tx.bnb.native.icon_bsc.transfer

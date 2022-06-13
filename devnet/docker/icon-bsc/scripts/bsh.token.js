@@ -1,11 +1,11 @@
 const BSHProxy = artifacts.require('BSHProxy')
 const BEP20TKN = artifacts.require('BEP20TKN');
-var fs = require('fs');
+const address = require('./addresses.json');
 module.exports = async function (callback) {
   try {
     var argv = require('minimist')(process.argv.slice(2), { string: ['addr', 'from'] });
-    const bshProxy = await BSHProxy.deployed();
-    const bep20tkn = await BEP20TKN.deployed();
+    const bshProxy = await BSHProxy.at(address.solidity.BSHProxy);
+    const bep20tkn = await BEP20TKN.at(address.solidity.BEP20TKN);
     let tx;
     switch (argv["method"]) {
       case "registerToken":

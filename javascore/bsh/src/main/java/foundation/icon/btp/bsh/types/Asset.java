@@ -25,7 +25,7 @@ public class Asset {
 
     public static Asset readObject(ObjectReader r) {
         r.beginList();
-        Asset result= new Asset(r.readString(),r.readBigInteger(),r.readBigInteger());
+        Asset result= new Asset(r.readString(),new BigInteger(1,r.readByteArray()),new BigInteger(1,r.readByteArray()));
         r.end();
         return result;
     }

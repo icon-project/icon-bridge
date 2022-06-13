@@ -17,6 +17,7 @@ dependencies {
     implementation 'com.github.sink772:javaee-scorex:0.5.2'
     implementation 'com.github.sink772:javaee-tokens:0.5.5'
     implementation 'org.msgpack:msgpack-core:0.8.17'
+    implementation project(':bsr')
 
     testImplementation 'foundation.icon:javaee-api:0.9.0'
     testImplementation 'foundation.icon:javaee-rt:0.9.0'
@@ -42,7 +43,7 @@ optimizedJar {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
 }
-logging.println("BMC Address   :" + System.getProperty("BMC_ADDRESS"))
+
 deployJar {
     endpoints {
         gangnam {

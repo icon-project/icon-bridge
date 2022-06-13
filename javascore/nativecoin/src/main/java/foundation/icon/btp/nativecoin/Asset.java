@@ -72,7 +72,7 @@ public class Asset {
         Asset obj = new Asset();
         reader.beginList();
         obj.setCoinName(reader.readNullable(String.class));
-        obj.setAmount(reader.readNullable(BigInteger.class));
+        obj.setAmount(new BigInteger(1,reader.readNullable(byte[].class)));
         reader.end();
         return obj;
     }

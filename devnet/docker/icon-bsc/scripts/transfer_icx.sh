@@ -21,7 +21,7 @@ get_bob_ICX_balance
 echo "$BOB_BALANCE"
 
 #transfer native 10 ICX from Alice to BSC BOB
-ICX_TRANSER_AMOUNT=$(coin2wei ${2:-10})
+ICX_TRANSER_AMOUNT=$(coin2wei ${1:-10})
 printf "\n\nStep 4: Alice Initiates BTP Native transfer of $(wei2coin $ICX_TRANSER_AMOUNT) ICX to BOB \n"
 rpcks alice.ks.json alice.secret
 transfer_ICX_from_Alice_to_Bob $ICX_TRANSER_AMOUNT >$CONFIG_DIR/tx.native.icon_bsc.transfer
