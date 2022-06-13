@@ -33,7 +33,7 @@ type Config struct {
 	ConsoleLevel      string               `json:"console_level"`
 	LogWriter         *log.WriterConfig    `json:"log_writer,omitempty"`
 	LogForwarder      *log.ForwarderConfig `json:"log_forwarder,omitempty"`
-	StatConfig        *stat.StatConfig     `json:"stat,omitempty"`
+	StatConfig        *stat.StatConfig     `json:"stat_collector,omitempty"`
 }
 
 func main() {
@@ -49,21 +49,20 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create MultiRelay: %v", err)
 	}
-
-	// for net/http/pprof
-	go func() { http.ListenAndServe("0.0.0.0:6060", nil) }()
-	if err := runStatService(
+	scollector, err := stat.NewService(
 		cfg.StatConfig,
 		l.WithFields(log.Fields{
 			log.FieldKeyChain: "StatCollector",
-		})); err != nil {
-		log.Error("Error initializing StatCollector Service", err)
+		}))
+	if err != nil {
+		log.Error("failed to create StatCollector for MultiRelay: %v", err)
 	}
-	runRelay(relay)
-
+	// for net/http/pprof
+	go func() { http.ListenAndServe("0.0.0.0:6060", nil) }()
+	runRelay(relay, scollector)
 }
 
-func runRelay(relay relay.Relay) {
+func runRelay(relay relay.Relay, sc stat.StatCollector) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -83,15 +82,15 @@ func runRelay(relay relay.Relay) {
 		<-sigCh // second signal, hard exit
 		os.Exit(2)
 	}()
+
+	if err := sc.Start(ctx); err != nil {
+		log.Error(err)
+	}
+
 	if err := relay.Start(ctx); err != nil {
 		log.Error(err)
 		os.Exit(1)
 	}
-}
-
-func runStatService(cfg *stat.StatConfig, l log.Logger) error {
-	se := stat.NewService(cfg, l)
-	return se.Start()
 }
 
 func loadConfig(file string) (*Config, error) {
