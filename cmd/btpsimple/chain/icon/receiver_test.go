@@ -29,13 +29,14 @@ func TestReceiver(t *testing.T) {
 	if recv, err := NewReceiver(chain.BTPAddress(srcAddress), chain.BTPAddress(dstAddress), srcEndpoint, opts, l); err != nil {
 		panic(err)
 	} else {
-		if msgChan, err := recv.SubscribeMessage(context.Background(), height, seq); err != nil {
+		msgCh := make(chan *chain.Message)
+		if errCh, err := recv.Subscribe(context.Background(), msgCh, chain.SubscribeOptions{Height: height, Seq: seq}); err != nil {
 			panic(err)
 		} else {
 			for {
 				select {
-				case <-msgChan:
-
+				case <-errCh:
+				case <-msgCh:
 				}
 			}
 		}
