@@ -30,7 +30,8 @@
         "contract:compile": "truffle compile --all",
         "test": "yarn test:unit && yarn test:integration",
         "test:unit": "rm -rf .openzeppelin && truffle test test/unit/*.js",
-        "test:integration": "rm -rf .openzeppelin && truffle test test/integration/*.js"
+        "test:integration": "rm -rf .openzeppelin && truffle test test/integration/*.js",
+        "abigen:BMCPeriphery": "truffle run abigen BMCPeriphery && abigen --abi=abigenBindings/abi/BMCPeriphery.abi --pkg=bmc --out=bmc_abigen.go"
     },
     "husky": {
         "hooks": {

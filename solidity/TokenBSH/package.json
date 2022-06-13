@@ -29,6 +29,7 @@
         "test-bsh": "truffle test ./test/integration/token-bsh.js --show-events",
         "test-proxy-upgrade": "truffle test ./test/integration/proxy-upgrade.js",
         "test-bsh-upgrade": "truffle test ./test/integration/token-bsh-upgrade.js",
-        "test-all": "truffle test ./test/integration/token-bsh.js ./test/integration/proxy-upgrade.js ./test/integration/token-bsh-upgrade.js"
+        "test-all": "truffle test ./test/integration/token-bsh.js ./test/integration/proxy-upgrade.js ./test/integration/token-bsh-upgrade.js",
+        "abigen:BSHProxy": "truffle run abigen BSHProxy && abigen --abi=abigenBindings/abi/BSHProxy.abi --pkg=bsh --out=bsh_proxy_abigen.go"
     }
 }
