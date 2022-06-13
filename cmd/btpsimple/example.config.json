@@ -5,8 +5,8 @@
     "log_writer": {
         "filename": "bmr/bmr.log"
     },
-    "stat": {
-        "Verbose": false
+    "stat_collector": {
+        "verbose": false
     },
     "log_forwarder": {
         "vendor":"slack",
@@ -69,7 +69,12 @@
                 "endpoint": [
                     "https://berlin.net.solidwallet.io/api/v3/icon_dex"
                 ],
-                "options": {},
+                "options": {
+                    "verifier": {
+                        "blockHeight": 50765520,
+                        "validatorHash": "wnN1T3QUaIVSP6BctSXeBaJasyo4hbzQGhfDirWJIn0="
+                    }
+                },
                 "offset": 6057269
             },
             "dst": {
