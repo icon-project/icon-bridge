@@ -4,13 +4,13 @@ pragma experimental ABIEncoderV2;
 import "../Interfaces/IBSH.sol";
 import "../Interfaces/IBMCPeriphery.sol";
 import "../Interfaces/IBMV.sol";
-import "../Libraries/ParseAddressLib.sol";
-import "../Libraries/RLPEncodeStructLib.sol";
-import "../Libraries/RLPDecodeStructLib.sol";
-import "../Libraries/StringsLib.sol";
-import "../Libraries/EncodeBase64Lib.sol";
-import "../Libraries/DecodeBase64Lib.sol";
-import "../Libraries/TypesLib.sol";
+import "../Libraries/ParseAddress.sol";
+import "../Libraries/RLPEncodeStruct.sol";
+import "../Libraries/RLPDecodeStruct.sol";
+import "../Libraries/Strings.sol";
+import "../Libraries/EncodeBase64.sol";
+import "../Libraries/DecodeBase64.sol";
+import "../Libraries/Types.sol";
 
 contract BMC is IBMCPeriphery {
     using ParseAddress for address;

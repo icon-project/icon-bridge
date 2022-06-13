@@ -4,7 +4,7 @@ pragma solidity >=0.5.0 <=0.8.0;
  *  Change supporting solidity compiler version
  *  The original code can be found via this link: https://github.com/hamdiallam/Solidity-RLP.git
  */
-import "./RLPReaderLib.sol";
+import "./RLPReader.sol";
 
 contract Helper {
     using RLPReader for bytes;
