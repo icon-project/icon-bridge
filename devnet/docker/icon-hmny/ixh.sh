@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -euET -o pipefail
+#!/usr/bin/env -S bash -eET -o pipefail
 #-O inherit_errexit
 
 function dec2hex() {
@@ -405,6 +405,7 @@ function hmny_transfer() {
             hmy -n '$btp_hmny_uri' --no-pretty  \
                 transfer \
                 --from=\$src_address --to=$address \
+                --chain-id=$btp_hmny_chain_id \
                 --from-shard=0 --to-shard=0 --timeout=120 \
                 --amount=$balance
         " |
@@ -546,11 +547,20 @@ function ensure_wallet_minimum_balance() {
 function deploysc() {
     log_stack
 
-    local init_start_time=$(date +%s)
+    export init_start_time=$(date +%s)
+    function save_important_variables() {
+        echo >>$ixh_env
+        compgen -v | grep btp_ | while read l; do
+            echo "$l='${!l}'" >>$ixh_env
+        done
+        log "\n"
+        log "deploysc completed in $(($(date +%s) - $init_start_time))s."
+        log "important variables have been written to $ixh_env"
+    }
+    trap "save_important_variables" EXIT
 
     # build dir
     mkdir -p $ixh_build_dir
-    [[ "${1:-}" == "reset" ]] && rm -rf $ixh_build_dir/* # clean build when reset is enabled
 
     # create root wallets
     log "Wallet:"
@@ -573,14 +583,18 @@ function deploysc() {
     cd $ixh_jsc_dir
     gradle clean
     gradle bmc:optimizedJar
-    gradle nativecoin:optimizedJar
+    gradle bsr:optimizedJar
     gradle bsh:optimizedJar
+    gradle nativecoin:optimizedJar
+    # gradle fee_aggregation:optimizedJar
 
-    mkdir dist
+    mkdir -p dist
     cp bmc/build/libs/bmc-0.1.0-optimized.jar dist/bmc.jar
+    cp bsr/build/libs/restrictions-0.1.0-optimized.jar dist/bsr.jar
     cp bsh/build/libs/bsh-optimized.jar dist/bsh.jar
     cp nativecoin/build/libs/nativecoin-0.1.0-optimized.jar dist/nativecoin.jar
     cp lib/irc2Tradeable-0.1.0-optimized.jar dist/irc2Tradeable.jar
+    # cp fee_aggregation/build/libs/fee_aggregation-1.0-optimized.jar dist/fee_aggregator.jar
 
     cd $ixh_build_dir
     git clone https://github.com/icon-project/java-score-examples.git
@@ -597,50 +611,84 @@ function deploysc() {
     log "icon"
 
     # bmc
-    log "bmc:"
-    r=$(WALLET=$btp_icon_wallet \
-        PASSWORD=$btp_icon_wallet_password \
-        icon_deploysc \
-        $ixh_jsc_dir/dist/bmc.jar \
-        _net="$btp_icon_net")
-    btp_icon_bmc=$(jq -r .scoreAddress <<<$r)
-    btp_icon_block_hash=$(jq -r .blockHash <<<$r)
-    btp_icon_block_height=$(hex2dec $(jq -r .blockHeight <<<$r))
+    if [ -z "$btp_icon_bmc" ]; then
+        log "bmc:"
+        r=$(WALLET=$btp_icon_wallet \
+            PASSWORD=$btp_icon_wallet_password \
+            icon_deploysc \
+            $ixh_jsc_dir/dist/bmc.jar \
+            _net="$btp_icon_net")
+        btp_icon_bmc=$(jq -r .scoreAddress <<<$r)
+        btp_icon_block_hash=$(jq -r .blockHash <<<$r)
+        btp_icon_block_height=$(hex2dec $(jq -r .blockHeight <<<$r))
+    fi
+
+    btp_icon_validators_hash=$(
+        URI=$btp_icon_uri \
+            HEIGHT=$(dec2hex $(($btp_icon_block_height - 1))) \
+            $ixh_dir/bin/iconvalidators | jq -r .hash
+    )
+
+    if [ -z "$btp_icon_bsr" ]; then
+        log "bsr:"
+        r=$(WALLET=$btp_icon_wallet \
+            PASSWORD=$btp_icon_wallet_password \
+            icon_deploysc \
+            $ixh_jsc_dir/dist/bsr.jar)
+        btp_icon_bsr=$(jq -r .scoreAddress <<<$r)
+    fi
 
     # nativecoin bsh
-    log "nativecoin_bsh: "
-    irc2Tradeable_score=$(xxd -p $ixh_jsc_dir/dist/irc2Tradeable.jar | tr -d '\n')
-    r=$(WALLET=$btp_icon_wallet \
-        PASSWORD=$btp_icon_wallet_password \
-        icon_deploysc \
-        $ixh_jsc_dir/dist/nativecoin.jar \
-        _name="$btp_icon_nativecoin_symbol" \
-        _bmc="$btp_icon_bmc" \
-        _serializedIrc2="$irc2Tradeable_score")
-    btp_icon_nativecoin_bsh=$(jq -r .scoreAddress <<<$r)
+    if [ -z "$btp_icon_nativecoin_bsh" ]; then
+        log "nativecoin_bsh: "
+        irc2Tradeable_score=$(xxd -p $ixh_jsc_dir/dist/irc2Tradeable.jar | tr -d '\n')
+        r=$(WALLET=$btp_icon_wallet \
+            PASSWORD=$btp_icon_wallet_password \
+            icon_deploysc \
+            $ixh_jsc_dir/dist/nativecoin.jar \
+            _name="$btp_icon_nativecoin_symbol" \
+            _bmc="$btp_icon_bmc" \
+            _serializedIrc2="$irc2Tradeable_score")
+        btp_icon_nativecoin_bsh=$(jq -r .scoreAddress <<<$r)
+    fi
 
     # token bsh
-    log "token bsh: "
-    r=$(WALLET=$btp_icon_wallet \
-        PASSWORD=$btp_icon_wallet_password \
-        icon_deploysc \
-        $ixh_jsc_dir/dist/bsh.jar \
-        _bmc="$btp_icon_bmc")
-    btp_icon_token_bsh=$(jq -r .scoreAddress <<<$r)
-    log "$btp_icon_token_bsh"
+    if [ -z "$btp_icon_token_bsh" ]; then
+        log "token bsh: "
+        r=$(WALLET=$btp_icon_wallet \
+            PASSWORD=$btp_icon_wallet_password \
+            icon_deploysc \
+            $ixh_jsc_dir/dist/bsh.jar \
+            _bmc="$btp_icon_bmc")
+        btp_icon_token_bsh=$(jq -r .scoreAddress <<<$r)
+        log "$btp_icon_token_bsh"
+    fi
 
     ## token bsh: irc2
-    log "irc2: "
-    r=$(WALLET=$btp_icon_wallet \
-        PASSWORD=$btp_icon_wallet_password \
-        icon_deploysc \
-        $ixh_jsc_dir/dist/irc2.jar \
-        _name="ETH" \
-        _symbol="ETH" \
-        _decimals="0x12" \
-        _initialSupply="0x186a0") # 100000 ETH
-    btp_icon_irc2=$(jq -r .scoreAddress <<<$r)
-    log "$btp_icon_irc2"
+    if [ -z "$btp_icon_irc2" ]; then
+        log "irc2: "
+        r=$(WALLET=$btp_icon_wallet \
+            PASSWORD=$btp_icon_wallet_password \
+            icon_deploysc \
+            $ixh_jsc_dir/dist/irc2.jar \
+            _name="ETH" \
+            _symbol="ETH" \
+            _decimals="0x12" \
+            _initialSupply="0x186a0") # 100000 ETH
+        btp_icon_irc2=$(jq -r .scoreAddress <<<$r)
+        log "$btp_icon_irc2"
+    fi
+
+    # # fee aggregation
+    # log "fee aggregation: "
+    # r=$(WALLET=$btp_icon_wallet \
+    #     PASSWORD=$btp_icon_wallet_password \
+    #     icon_deploysc \
+    #     $ixh_jsc_dir/dist/fee_aggregator.jar \
+    #     _cps_address="$btp_icon_cps_address" \
+    #     _band_protocol_address="$btp_icon_band_protocol_address")
+    # btp_icon_fee_aggregator=$(jq -r .scoreAddress <<<$r)
+    # log "$btp_icon_fee_aggregator"
 
     # icon btp address
     btp_icon_btp_address="btp://$btp_icon_net/$btp_icon_bmc"
@@ -663,52 +711,58 @@ function deploysc() {
     } <<<"$(hmny_get_hmny_chain_status)"
 
     # bmc
-    log "bmc: "
-    {
-        read btp_hmny_bmc_management
-        read btp_hmny_bmc_periphery
-    } <<<$(
-        WALLET=$btp_hmny_wallet \
-            PASSWORD=$btp_hmny_wallet_password \
-            BMC_BTP_NET="$btp_hmny_net" \
-            hmny_deploysc $ixh_sol_dir/bmc BMCManagement BMCPeriphery
-    )
-    log "m=$btp_hmny_bmc_management, p=$btp_hmny_bmc_periphery"
+    if [ -z "$btp_hmny_bmc_periphery" ] || [ -z "$btp_hmny_bmc_management"]; then
+        log "bmc: "
+        {
+            read btp_hmny_bmc_management
+            read btp_hmny_bmc_periphery
+        } <<<$(
+            WALLET=$btp_hmny_wallet \
+                PASSWORD=$btp_hmny_wallet_password \
+                BMC_BTP_NET="$btp_hmny_net" \
+                hmny_deploysc $ixh_sol_dir/bmc BMCManagement BMCPeriphery
+        )
+        log "m=$btp_hmny_bmc_management, p=$btp_hmny_bmc_periphery"
     # TODO get hmny bmc block height and epoch in hex (0x...)
+    fi
 
     # nativecoin bsh
-    log "nativecoin bsh: "
-    {
-        read btp_hmny_nativecoin_bsh_core
-        read btp_hmny_nativecoin_bsh_periphery
-    } <<<$(
-        WALLET=$btp_hmny_wallet \
-            PASSWORD=$btp_hmny_wallet_password \
-            BSH_COIN_URL="https://github.com/icon/btp" \
-            BSH_COIN_NAME="$btp_hmny_nativecoin_symbol" \
-            BSH_COIN_FEE=10 \
-            BSH_FIXED_FEE=0 \
-            BMC_PERIPHERY_ADDRESS="$btp_hmny_bmc_periphery" \
-            BSH_SERVICE="$btp_nativecoin_bsh_svc_name" \
-            hmny_deploysc $ixh_sol_dir/bsh BSHCore BSHPeriphery
-    )
-    log "c=$btp_hmny_nativecoin_bsh_core, p=$btp_hmny_nativecoin_bsh_periphery"
+    if [ -z "$btp_hmny_nativecoin_bsh_core" ] || [ -z "$btp_hmny_nativecoin_bsh_periphery"]; then
+        log "nativecoin bsh: "
+        {
+            read btp_hmny_nativecoin_bsh_core
+            read btp_hmny_nativecoin_bsh_periphery
+        } <<<$(
+            WALLET=$btp_hmny_wallet \
+                PASSWORD=$btp_hmny_wallet_password \
+                BSH_COIN_URL="https://github.com/icon/btp" \
+                BSH_COIN_NAME="$btp_hmny_nativecoin_symbol" \
+                BSH_COIN_FEE=10 \
+                BSH_FIXED_FEE=0 \
+                BMC_PERIPHERY_ADDRESS="$btp_hmny_bmc_periphery" \
+                BSH_SERVICE="$btp_nativecoin_bsh_svc_name" \
+                hmny_deploysc $ixh_sol_dir/bsh BSHCore BSHPeriphery
+        )
+        log "c=$btp_hmny_nativecoin_bsh_core, p=$btp_hmny_nativecoin_bsh_periphery"
+    fi
 
     # token bsh
-    log "token bsh: "
-    {
-        read btp_hmny_token_bsh_proxy
-        read btp_hmny_token_bsh_impl
-        read btp_hmny_erc20
-    } <<<$(
-        WALLET=$btp_hmny_wallet \
-            PASSWORD=$btp_hmny_wallet_password \
-            BSH_TOKEN_FEE=10 \
-            BMC_PERIPHERY_ADDRESS="$btp_hmny_bmc_periphery" \
-            BSH_SERVICE="$btp_token_bsh_svc_name" \
-            hmny_deploysc $ixh_sol_dir/TokenBSH BSHProxy BSHImpl BEP20TKN
-    )
-    log "proxy=$btp_hmny_token_bsh_proxy, impl=$btp_hmny_token_bsh_impl, erc20=$btp_hmny_erc20"
+    if [ -z "$btp_hmny_token_bsh_proxy" ] || [ -z "$btp_hmny_token_bsh_impl"]; then
+        log "token bsh: "
+        {
+            read btp_hmny_token_bsh_proxy
+            read btp_hmny_token_bsh_impl
+            read btp_hmny_erc20
+        } <<<$(
+            WALLET=$btp_hmny_wallet \
+                PASSWORD=$btp_hmny_wallet_password \
+                BSH_TOKEN_FEE=10 \
+                BMC_PERIPHERY_ADDRESS="$btp_hmny_bmc_periphery" \
+                BSH_SERVICE="$btp_token_bsh_svc_name" \
+                hmny_deploysc $ixh_sol_dir/TokenBSH BSHProxy BSHImpl BEP20TKN
+        )
+        log "proxy=$btp_hmny_token_bsh_proxy, impl=$btp_hmny_token_bsh_impl, erc20=$btp_hmny_erc20"
+    fi
 
     # hmny btp address
     btp_hmny_btp_address="btp://$btp_hmny_net/$btp_hmny_bmc_periphery"
@@ -717,31 +771,44 @@ function deploysc() {
     # configuration
     log "Configuring: "
 
-    btp_icon_bmc_owner_wallet="$ixh_tmp_dir/bmc.owner.json"
-    btp_icon_bmc_owner_wallet_password="1234"
-    btp_icon_nativecoin_bsh_owner_wallet="$ixh_tmp_dir/nativecoin.icon.owner.json"
-    btp_icon_nativecoin_bsh_owner_wallet_password="1234"
-    btp_icon_bmr_owner_wallet="$ixh_tmp_dir/bmr.icon.json"
-    btp_icon_bmr_owner_wallet_password="1234"
-    btp_hmny_bmr_owner_wallet="$ixh_tmp_dir/bmr.hmny.json"
-    btp_hmny_bmr_owner_wallet_password="1234"
-    btp_h2i_relay_config="$ixh_tmp_dir/h2i.config.json"
-    btp_i2h_relay_config="$ixh_tmp_dir/i2h.config.json"
-
     # icon: begin
     log "icon"
 
-    # create and add bmc owner
-    log "create_wallet: [$(rel_path "$btp_icon_bmc_owner_wallet")] "
-    btp_icon_bmc_owner=$(
-        WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
-            icon_create_wallet "$btp_icon_bmc_owner_wallet" \
-            "$btp_icon_bmc_owner_wallet_password" $btp_icon_bmc_owner_balance
-    )
+    if [ -z "$btp_icon_bmc_owner_wallet" ]; then
+        btp_icon_bmc_owner_wallet="$ixh_tmp_dir/bmc.owner.json"
+        btp_icon_bmc_owner_wallet_password="1234"
 
-    log "bmc_add_owner: [${btp_icon_bmc_owner:0:10}] "
-    _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
-        icon_sendtx_call "$btp_icon_bmc" addOwner 0 "_addr=$btp_icon_bmc_owner")
+        # create and add bmc owner
+        log "create_wallet: [$(rel_path "$btp_icon_bmc_owner_wallet")] "
+        btp_icon_bmc_owner=$(
+            WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+                icon_create_wallet "$btp_icon_bmc_owner_wallet" \
+                "$btp_icon_bmc_owner_wallet_password" $btp_icon_bmc_owner_balance
+        )
+    fi
+    btp_icon_bmc_owner=$(jq -r .address <$btp_icon_bmc_owner_wallet)
+
+    local is_owner=$(icon_callsc "$btp_icon_bmc" \
+        isOwner "_addr=$btp_icon_bmc_owner" | jq -r .)
+    if [ "$is_owner" == "0x0" ]; then
+        log "bmc_add_owner: [${btp_icon_bmc_owner:0:10}] "
+        _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+            icon_sendtx_call "$btp_icon_bmc" addOwner 0 "_addr=$btp_icon_bmc_owner")
+    fi
+
+    if [ ! -z "$btp_icon_fee_aggregator" ]; then
+        log "bmc_set_fee_aggregator:"
+        _=$(WALLET=$btp_icon_bmc_owner_wallet \
+            PASSWORD=$btp_icon_bmc_owner_wallet_password \
+            icon_sendtx_call \
+            "$btp_icon_bmc" setFeeAggregator 0 "_addr=$btp_icon_fee_aggregator")
+
+        log "bmc_set_fee_gathering_term:"
+        _=$(WALLET=$btp_icon_bmc_owner_wallet \
+            PASSWORD=$btp_icon_bmc_owner_wallet_password \
+            icon_sendtx_call \
+            "$btp_icon_bmc" setFeeGatheringTerm 0 "_value=1000") # every 1000 blocks
+    fi
 
     # link hmny bmc to icon bmc
     log "bmc_link_hmny_bmc: "
@@ -755,7 +822,7 @@ function deploysc() {
         icon_sendtx_call "$btp_icon_bmc" setLinkRxHeight 0 "_link=$btp_hmny_btp_address" "_height=$btp_hmny_block_height")
     log "getLinkStatus: "
     btp_icon_rx_height=$(hex2dec $(icon_callsc "$btp_icon_bmc" getStatus "_link=$btp_hmny_btp_address" | jq -r .rx_height))
-    log "rxHeight=$btp_icon_rx_height"
+    log "btp_icon_rx_height=$btp_icon_rx_height"
 
     # add nativecoin bsh to bmc
     log "bmc_add_nativecoin_bsh: "
@@ -768,22 +835,52 @@ function deploysc() {
         PASSWORD=$btp_icon_bmc_owner_wallet_password \
         icon_sendtx_call "$btp_icon_bmc" addService 0 "_addr=$btp_icon_token_bsh" "_svc=$btp_token_bsh_svc_name")
 
-    # create and add nativecoin bsh owner
-    log "create_wallet: [$(rel_path "$btp_icon_nativecoin_bsh_owner_wallet")] "
-    btp_icon_nativecoin_bsh_owner=$(
-        WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
-            icon_create_wallet "$btp_icon_nativecoin_bsh_owner_wallet" \
-            "$btp_icon_nativecoin_bsh_owner_wallet_password" $btp_icon_nativecoin_bsh_owner_balance
-    )
+    if [ -z "$btp_icon_bsh_owner_wallet" ]; then
+        btp_icon_bsh_owner_wallet="$ixh_tmp_dir/bsh.owner.json"
+        btp_icon_bsh_owner_wallet_password="1234"
 
-    log "nativecoin_bsh_add_owner: [${btp_icon_nativecoin_bsh_owner:0:10}] "
-    _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
-        icon_sendtx_call "$btp_icon_nativecoin_bsh" addOwner 0 "_addr=$btp_icon_nativecoin_bsh_owner")
+        # create and add nativecoin bsh owner
+        log "create_wallet: [$(rel_path "$btp_icon_bsh_owner_wallet")] "
+        btp_icon_bsh_owner=$(
+            WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+                icon_create_wallet "$btp_icon_bsh_owner_wallet" \
+                "$btp_icon_bsh_owner_wallet_password" $btp_icon_bsh_owner_balance
+        )
+    fi
+    btp_icon_bsh_owner=$(jq -r .address <$btp_icon_bsh_owner_wallet)
+
+    local is_owner=$(icon_callsc "$btp_icon_nativecoin_bsh" \
+        isOwner "_addr=$btp_icon_bsh_owner" | jq -r .)
+    if [ "$is_owner" == "0x0" ]; then
+        log "nativecoin_bsh_add_owner: [${btp_icon_bsh_owner:0:10}] "
+        _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+            icon_sendtx_call "$btp_icon_nativecoin_bsh" addOwner 0 "_addr=$btp_icon_bsh_owner")
+    fi
+
+    local is_owner=$(icon_callsc "$btp_icon_token_bsh" \
+        isOwner "_addr=$btp_icon_bsh_owner" | jq -r .)
+    if [ "$is_owner" == "0x0" ]; then
+        log "token_bsh_add_owner: [${btp_icon_bsh_owner:0:10}] "
+        _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+            icon_sendtx_call "$btp_icon_token_bsh" addOwner 0 "address=$btp_icon_bsh_owner")
+    fi
+
+    # set bsr in nativecoin bsh
+    log "nativecoin_bsh_set_bsr: "
+    _=$(WALLET=$btp_icon_bsh_owner_wallet \
+        PASSWORD=$btp_icon_bsh_owner_wallet_password \
+        icon_sendtx_call "$btp_icon_nativecoin_bsh" addRestrictor 0 "_address=$btp_icon_bsr")
+
+    # set bsr in token bsh
+    log "token_bsh_set_bsr: "
+    _=$(WALLET=$btp_icon_bsh_owner_wallet \
+        PASSWORD=$btp_icon_bsh_owner_wallet_password \
+        icon_sendtx_call "$btp_icon_token_bsh" addRestrictor 0 "_address=$btp_icon_bsr")
 
     # register ONE as ircTradeable in nativecoin bsh
     log "nativecoin_bsh_register_irc2Tradeable: "
-    _=$(WALLET=$btp_icon_nativecoin_bsh_owner_wallet \
-        PASSWORD=$btp_icon_nativecoin_bsh_owner_wallet_password \
+    _=$(WALLET=$btp_icon_bsh_owner_wallet \
+        PASSWORD=$btp_icon_bsh_owner_wallet_password \
         icon_sendtx_call "$btp_icon_nativecoin_bsh" \
         register 0 \
         "_name=$btp_hmny_nativecoin_symbol" \
@@ -803,8 +900,8 @@ function deploysc() {
 
     # set nativecoin fee ratio
     log "nativecoin bsh set fee ratio: "
-    _=$(WALLET=$btp_icon_nativecoin_bsh_owner_wallet \
-        PASSWORD=$btp_icon_nativecoin_bsh_owner_wallet_password \
+    _=$(WALLET=$btp_icon_bsh_owner_wallet \
+        PASSWORD=$btp_icon_bsh_owner_wallet_password \
         icon_sendtx_call "$btp_icon_nativecoin_bsh" \
         setFeeRatio 0 \
         "_feeNumerator=100")
@@ -815,12 +912,18 @@ function deploysc() {
         "_to=$btp_icon_token_bsh" "_value=10000000000000000000000") # 10000 ETH
 
     # register relay in bmc
-    log "create_wallet: [$(rel_path "$btp_icon_bmr_owner_wallet")] "
-    btp_icon_bmr_owner=$(
-        WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
-            icon_create_wallet "$btp_icon_bmr_owner_wallet" \
-            "$btp_icon_bmr_owner_wallet_password" $btp_icon_bmr_owner_balance
-    )
+    if [ -z "$btp_icon_bmr_owner" ]; then
+        btp_icon_bmr_owner_wallet="$ixh_tmp_dir/bmr.icon.json"
+        btp_icon_bmr_owner_wallet_password="1234"
+
+        log "create_wallet: [$(rel_path "$btp_icon_bmr_owner_wallet")] "
+        btp_icon_bmr_owner=$(
+            WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
+                icon_create_wallet "$btp_icon_bmr_owner_wallet" \
+                "$btp_icon_bmr_owner_wallet_password" $btp_icon_bmr_owner_balance
+        )
+        btp_icon_bmr_owner=$(jq -r .address <$btp_icon_bmr_owner_wallet)
+    fi
 
     log "bmc_add_relay: "
     _=$(WALLET=$btp_icon_bmc_owner_wallet \
@@ -832,29 +935,30 @@ function deploysc() {
     # hmny: begin
     log "hmny"
 
-    cp $ixh_src_dir/hmny.truffle-config.js $ixh_sol_dir/bmc # replace original truffle-config.js
-    cp $ixh_src_dir/hmny.truffle-config.js $ixh_sol_dir/bsh # replace original truffle-config.js
+    cp $ixh_src_dir/hmny.truffle-config.js $ixh_sol_dir/bmc      # replace original truffle-config.js
+    cp $ixh_src_dir/hmny.truffle-config.js $ixh_sol_dir/bsh      # replace original truffle-config.js
+    cp $ixh_src_dir/hmny.truffle-config.js $ixh_sol_dir/TokenBSH # replace original truffle-config.js
 
     # bmc
     log "bmc_add_nativecoin_bsh: "
-    WALLET=$btp_hmny_wallet PASSWORD= \
+    WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         bmc.BMCManagement.addService \
         "'$btp_nativecoin_bsh_svc_name','$btp_hmny_nativecoin_bsh_periphery'"
 
     log "bmc_add_token_bsh: "
-    WALLET=$btp_hmny_wallet PASSWORD= \
+    WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         bmc.BMCManagement.addService \
         "'$btp_token_bsh_svc_name','$btp_hmny_token_bsh_impl'"
 
     # link icon to hmny
-    log "bmc_link_to_icon_bmc: "
-    WALLET=$btp_hmny_wallet PASSWORD= \
+    log "bmc_link_icon_bmc: "
+    WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         bmc.BMCManagement.addLink \
         "'$btp_icon_btp_address'"
-    WALLET=$btp_hmny_wallet PASSWORD= \
+    WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         bmc.BMCManagement.setLinkRxHeight \
         "'$btp_icon_btp_address',$btp_icon_block_height"
@@ -862,67 +966,61 @@ function deploysc() {
 
     # bsh
     log "bsh_register_nativecoin: "
-    WALLET=$btp_hmny_wallet PASSWORD= \
+    WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         bsh.BSHCore.register \
         "'$btp_icon_nativecoin_symbol','$btp_icon_nativecoin_symbol',18"
 
     btp_hmny_erc20_tradeable=$(
-        WALLET=$btp_hmny_wallet PASSWORD= \
+        WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
             run_sol 2>/dev/null \
             bsh.BSHCore.coinId "'$btp_icon_nativecoin_symbol'" | jq -r .
     )
 
     log "bsh nativecoin setFeeRatio:"
-    WALLET=$btp_hmny_wallet PASSWORD= \
+    WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         bsh.BSHCore.setFeeRatio "100"
 
     log "bsh_register_token:"
-    WALLET=$btp_hmny_wallet PASSWORD= \
+    WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         TokenBSH.BSHProxy.register \
         "'ETH','ETH',18,100,'$btp_hmny_erc20'"
 
     log "bsh nativecoin setFeeRatio:"
-    WALLET=$btp_hmny_wallet PASSWORD= \
+    WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         TokenBSH.BSHProxy.setFeeRatio "100"
 
     log "funding token bsh with erc20: ETH"
-    WALLET=$btp_hmny_wallet PASSWORD= \
+    WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         TokenBSH.BEP20TKN.transfer "'$btp_hmny_token_bsh_proxy','10000000000000000000000'" # 10000 ETH
 
     # add relay
-    log "create_wallet: [$(rel_path "$btp_hmny_bmr_owner_wallet")] "
-    btp_hmny_bmr_owner=$(
-        WALLET=$btp_hmny_wallet PASSWORD= \
-            hmny_create_wallet "$btp_hmny_bmr_owner_wallet" \
-            "$btp_hmny_bmr_owner_wallet_password" $btp_hmny_bmr_owner_balance
-    )
+    if [ -z "$btp_hmny_bmr_owner" ]; then
+        btp_hmny_bmr_owner_wallet="$ixh_tmp_dir/bmr.hmny.json"
+        btp_hmny_bmr_owner_wallet_password="1234"
 
-    btp_hmny_bmr_owner="0x$(jq -r .address <$btp_hmny_bmr_owner_wallet)"
+        log "create_wallet: [$(rel_path "$btp_hmny_bmr_owner_wallet")] "
+        btp_hmny_bmr_owner=$(
+            WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
+                hmny_create_wallet "$btp_hmny_bmr_owner_wallet" \
+                "$btp_hmny_bmr_owner_wallet_password" $btp_hmny_bmr_owner_balance
+        )
+        btp_hmny_bmr_owner="0x$(jq -r .address <$btp_hmny_bmr_owner_wallet)"
+    fi
 
     log "bmc_add_relay: "
-    WALLET=$btp_hmny_wallet PASSWORD= \
+    WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         bmc.BMCManagement.addRelay \
         "'$btp_icon_btp_address',['$btp_hmny_bmr_owner']"
 
     # hmny: end
 
-    # dump relevant variables to be used later
-    echo >$ixh_env
-    compgen -v | grep btp_ | while read l; do
-        echo "$l='${!l}'" >>$ixh_env
-    done
-
-    log "\n"
-    log "deploysc completed in $(($(date +%s) - $init_start_time))s."
-    log "important variables have been written to $ixh_env"
-
-    # generate btp configs
+    # generate btp config
     generate_relay_config >$ixh_tmp_dir/bmr.config.json
 }
 
@@ -949,7 +1047,6 @@ function generate_relay_config() {
             .dst.address = $dst_address |
             .dst.endpoint = [ $dst_endpoint ] |
             .dst.options = $dst_options |
-            .dst.tx_data_size_limit = $dst_tx_data_size_limit |
             .dst.key_store = $dst_key_store |
             .dst.key_store.coinType = $dst_key_store_cointype |
             .dst.key_password = $dst_key_password ' \
@@ -958,6 +1055,7 @@ function generate_relay_config() {
                 --argjson src_offset "$btp_icon_link_status_rx_height" \
                 --argjson src_options "$(
                     jq <<<{} '
+                    .syncConcurrency = 100 |
                     .verifier.blockHeight = $verifier_block_height |
                     .verifier.commitBitmap = $verifier_commit_bitmap |
                     .verifier.commitSignature = $verifier_commit_signature ' \
@@ -970,8 +1068,7 @@ function generate_relay_config() {
                 --argfile dst_key_store "$btp_icon_bmr_owner_wallet" \
                 --arg dst_key_store_cointype "icx" \
                 --arg dst_key_password "$btp_icon_bmr_owner_wallet_password" \
-                --argjson dst_tx_data_size_limit 8192 \
-                --argjson dst_options '{"step_limit":13610920010}'
+                --argjson dst_options '{"step_limit":2500000000,"tx_data_size_limit":8192}'
         )" \
         --argjson i2h_relay "$(
             jq <<<{} '
@@ -983,21 +1080,25 @@ function generate_relay_config() {
             .dst.address = $dst_address |
             .dst.endpoint = [ $dst_endpoint ] |
             .dst.options = $dst_options |
-            .dst.tx_data_size_limit = $dst_tx_data_size_limit |
             .dst.key_store = $dst_key_store |
             .dst.key_store.coinType = $dst_key_store_cointype |
             .dst.key_password = $dst_key_password ' \
                 --arg src_address "$btp_icon_btp_address" \
                 --arg src_endpoint "$btp_icon_uri" \
                 --argjson src_offset "$btp_hmny_link_status_rx_height" \
-                --argjson src_options "{}" \
+                --argjson src_options "$(
+                    jq <<<{} '
+                    .verifier.blockHeight = $verifier_block_height |
+                    .verifier.validatorsHash = $verifier_validators_hash ' \
+                        --argjson verifier_block_height "$btp_icon_block_height" \
+                        --arg verifier_validators_hash "$btp_icon_validators_hash"
+                )" \
                 --arg dst_address "$btp_hmny_btp_address" \
                 --arg dst_endpoint "$btp_hmny_uri" \
                 --argfile dst_key_store "$btp_hmny_bmr_owner_wallet" \
                 --arg dst_key_store_cointype "evm" \
                 --arg dst_key_password "$btp_hmny_bmr_owner_wallet_password" \
-                --argjson dst_tx_data_size_limit 8192 \
-                --argjson dst_options '{"gas_limit":80000000}'
+                --argjson dst_options '{"gas_limit":80000000,"tx_data_size_limit":8192}'
         )"
 }
 
@@ -1020,6 +1121,10 @@ function docker_compose() {
 
     local env_file=$(mktemp /tmp/ixh.env.XXXXX)
     echo "docker_registry=$docker_registry" >$env_file
+    if [ -f $ixh_dir/.env ]; then
+        cat $ixh_dir/.env >>$env_file
+        echo >>$env_file
+    fi
 
     local func=$1
     local args=("${@:2}")
@@ -1490,7 +1595,7 @@ function run_demo() {
     }
 
     function get_hmny_erc20_balance() {
-        balance=$(WALLET=$btp_hmny_wallet PASSWORD= \
+        balance=$(WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
             run_sol 2>/dev/null \
             TokenBSH.BEP20TKN.balanceOf "'$btp_hmny_demo_wallet_address'" | jq -r .)
         hex2dec "0x$balance"
@@ -1755,18 +1860,18 @@ btp_hmny_branch="v4.3.7"
 btp_hmny_dummy_private_key=a49152cea2bd63cc8dddebc7f7699b9f0b2bc770af67554f1c54894b683b9f4a
 
 # common configuration
-btp_icon_bmc_owner_balance=200000000000000000000            # 200 ICX
-btp_icon_nativecoin_bsh_owner_balance=200000000000000000000 # 200 ICX
-btp_icon_bmr_owner_balance=1000000000000000000000           # 1000 ICX
-btp_icon_step_limit=13610920001
+btp_icon_bmc_owner_balance=50000000000000000000 # 50 ICX
+btp_icon_bsh_owner_balance=50000000000000000000 # 50 ICX
+btp_icon_step_limit=3500000000
 btp_icon_nativecoin_symbol=ICX
 btp_nativecoin_bsh_svc_name=nativecoin
 btp_token_bsh_svc_name=TokenBSH
+btp_hmny_nativecoin_symbol=ONE
+btp_hmny_nativecoin_decimals=18
+btp_icon_bmr_owner_balance=50000000000000000000 # 50 ICX
 btp_hmny_bmr_owner_balance=10000000000000000000 # 10 ONE
 btp_hmny_gas_limit=80000000                     # equal to block gas limit
 btp_hmny_gas_price=30000000000                  # 30 gwei
-btp_hmny_nativecoin_symbol=ONE
-btp_hmny_nativecoin_decimals=18
 
 # localnet: begin
 btp_icon_config=$ixh_src_dir/icon.config.json
@@ -1783,6 +1888,7 @@ btp_hmny_god_wallet_address_bech32=one155jp2y76nazx8uw5sa94fr0m4s5aj8e5xm6fu3
 
 btp_icon_nid=$(dec2hex $(cat "$btp_icon_config" | jq -r .nid 2>/dev/null))
 btp_hmny_nid=0x6357d2e0
+btp_hmny_chain_id=2
 
 btp_hmny_uri="http://$docker_host:9500"
 btp_icon_uri="http://$docker_host:9080/api/v3/default"
@@ -1799,13 +1905,14 @@ btp_icon_uri="http://$docker_host:9080/api/v3/default"
 # btp_hmny_god_wallet_address_bech32=one1ah8rptpkpvcpxnvuczyq6csajlf6f3ghs8ekym
 # btp_hmny_god_wallet_password=
 
-# # btp_icon_nid=0x53
-# # btp_icon_uri="https://sejong.net.solidwallet.io/api/v3/icon_dex"
-# btp_icon_nid=0x7
+# btp_icon_nid="0x7" # 0x53 (sejong)
 # btp_icon_uri="https://berlin.net.solidwallet.io/api/v3/icon_dex"
-
 # btp_hmny_nid=0x6357d2e0
 # btp_hmny_uri="https://rpc.s0.b.hmny.io"
+
+# btp_icon_cps_address=cxc32e5105c30d9bc41466779c6ca6869e2bcd6064
+# btp_icon_band_protocol_address=cx8f87a4ce573a2e1377545feabac48a960e8092bb
+
 # # testnet: end
 
 # wallets for deploysc/tests
@@ -1831,6 +1938,19 @@ mkdir -p $ixh_tmp_dir
 # require "$btp_icon_nid" "icon_nid: $btp_icon_nid" "invalid icon_nid: $btp_icon_nid"
 # require "$btp_hmny_nid" "hmny_nid: $btp_hmny_nid" "invalid hmny_nid: $btp_hmny_nid"
 
+# overrides
+# btp_icon_bmc_owner_wallet="$ixh_tmp_dir/bmc.owner.json"
+# btp_icon_bmc_owner_wallet_password="1234"
+# btp_icon_bsh_owner_wallet="$ixh_tmp_dir/nativecoin.icon.owner.json"
+# btp_icon_bsh_owner_wallet_password="1234"
+
+btp_icon_bmc_owner_wallet="$btp_icon_wallet"
+btp_icon_bmc_owner_wallet_password="$btp_icon_wallet_password"
+# btp_icon_bmr_owner="hxfaff7dfd515d7f2b43270d5977b7587a65a48972"
+# btp_hmny_bmr_owner="0x4617eae515f629867ca6b486662e3ee65888937c"
+# btp_icon_bmr_owner_wallet=
+# btp_hmny_bmr_owner_wallet=
+
 ################################## init: end #######################################
 
 case "$cmd" in
@@ -1855,12 +1975,24 @@ publish)
     ;;
 
 deploysc)
-    deploysc "${args[@]}"
+    if [ "${args[0]}" == "reset" ]; then
+        # clean build
+        rm -rf $ixh_build_dir/*
+        echo >$ixh_env
+    elif [ -f $ixh_env ]; then
+        . $ixh_env
+    fi
+    deploysc "${args[@]:2}"
     ;;
 
 generate_relay_config)
     . $ixh_env
     generate_relay_config >$ixh_tmp_dir/bmr.config.json
+    ;;
+
+aws_bmr_secrets)
+    cat $ixh_tmp_dir/bmr.config.json |
+        jq ".relays[] | { key_store: .dst.key_store, secret: .dst.key_password }"
     ;;
 
 clean)
@@ -1902,6 +2034,56 @@ test)
 demo)
     . $ixh_env
     run_demo "${args[@]}"
+    ;;
+
+set_fee_agg)
+    . $ixh_env
+
+    # # build
+    # cd $ixh_jsc_dir
+    # gradle fee_aggregation:optimizedJar
+    # mkdir -p dist
+    # cp fee_aggregation/build/libs/fee_aggregation-1.0-optimized.jar dist/fee_aggregator.jar
+
+    # # deploy
+    # log "fee aggregation: "
+    # r=$(WALLET=$btp_icon_wallet \
+    #     PASSWORD=$btp_icon_wallet_password \
+    #     icon_deploysc \
+    #     $ixh_jsc_dir/dist/fee_aggregator.jar \
+    #     _cps_address="$btp_icon_cps_address" \
+    #     _band_protocol_address="$btp_icon_band_protocol_address")
+    # btp_icon_fee_aggregator=$(jq -r .scoreAddress <<<$r)
+    # log "$btp_icon_fee_aggregator"
+
+    echo "fee_agg: $(icon_callsc "$btp_icon_bmc" getFeeAggregator)"
+
+    # configure
+    log "bmc_set_fee_aggregator:"
+    _=$(WALLET=$btp_icon_bmc_owner_wallet \
+        PASSWORD=$btp_icon_bmc_owner_wallet_password \
+        icon_sendtx_call \
+        "$btp_icon_bmc" setFeeAggregator 0 "_addr=$btp_icon_fee_aggregator")
+
+    echo "fee_agg: $(icon_callsc "$btp_icon_bmc" getFeeAggregator)"
+    echo "fee_agg: $(icon_callsc "$btp_icon_bmc" getFeeGatheringTerm)"
+
+    # log "bmc_set_fee_gathering_term:"
+    # _=$(WALLET=$btp_icon_bmc_owner_wallet \
+    #     PASSWORD=$btp_icon_bmc_owner_wallet_password \
+    #     icon_sendtx_call \
+    #     "$btp_icon_bmc" setFeeGatheringTerm 0 "_value=1000") # every 100 blocks
+    ;;
+
+send_fee_gathering)
+    . $ixh_env
+
+    log "bmc_send_fee_gathering:"
+    _=$(WALLET=$btp_icon_bmc_owner_wallet \
+        PASSWORD=$btp_icon_bmc_owner_wallet_password \
+        icon_sendtx_call \
+        "$btp_icon_bmc" sendFeeGathering 0) # every 100 blocks
+
     ;;
 
 *)

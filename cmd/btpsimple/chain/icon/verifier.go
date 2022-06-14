@@ -18,8 +18,8 @@ import (
 )
 
 type VerifierOptions struct {
-	BlockHeight   uint64 `json:"blockHeight"`
-	ValidatorHash string `json:"validatorHash"`
+	BlockHeight    uint64          `json:"blockHeight"`
+	ValidatorsHash common.HexBytes `json:"validatorsHash"`
 }
 
 type commitVoteItem struct {

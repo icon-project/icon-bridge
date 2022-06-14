@@ -18,7 +18,6 @@ package icon
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -129,12 +128,7 @@ func (r *receiver) receiveLoop(
 
 	var err error
 
-	// For the base63 encoding of previous header's NextValidatorHash
-	// fetch list of validator addresses and populate cache
-	vHash, err := base64.StdEncoding.DecodeString(r.opts.Verifier.ValidatorHash)
-	if err != nil {
-		return errors.Wrap(err, "receiveLoop; Base64Decode ValidatorHash; Err: ")
-	}
+	vHash := r.opts.Verifier.ValidatorsHash
 	vBytes, err := r.cl.GetDataByHash(&DataHashParam{Hash: NewHexBytes(vHash)})
 	if err != nil {
 		return errors.Wrap(err, "receiveLoop; GetDataByHash Validators; Err: ")
