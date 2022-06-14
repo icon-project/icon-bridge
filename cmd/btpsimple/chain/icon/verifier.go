@@ -95,7 +95,7 @@ func (r *receiver) syncVerifier(hexHeight HexInt) error {
 		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHeight": NewHexInt(int64(r.hv.height))}).Error("SyncVerifier; TargetHeight is less than known validator height")
 		return errors.New("SyncVerifier; TargetHeight is less than height for which we know the validator hash ")
 	} else if targetHeight == r.hv.height {
-		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHeight": NewHexInt(int64(r.hv.height))}).Error("SyncVerifier; Same Height so already in sync ")
+		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHeight": NewHexInt(int64(r.hv.height))}).Info("SyncVerifier; Same Height so already in sync ")
 		return nil
 	}
 	r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHeight": NewHexInt(int64(r.hv.height)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Start Sync ")
