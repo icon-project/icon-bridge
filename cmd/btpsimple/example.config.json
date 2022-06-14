@@ -72,8 +72,8 @@
                 ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 50765520,
-                        "validatorHash": "wnN1T3QUaIVSP6BctSXeBaJasyo4hbzQGhfDirWJIn0="
+                        "blockHeight": 50833960,
+                        "validatorsHash": "0x120c4d12ae3770b868e650e950200364fe138b92e872e487f50da4337bcc83c7"
                     }
                 },
                 "offset": 6057269
