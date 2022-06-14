@@ -114,7 +114,6 @@ func (r *receiver) receiveLoop(ctx context.Context, height HexInt, seq uint64, s
 	if err := r.syncVerifier(height); err != nil {
 		return errors.Wrap(err, "ReceiveLoop; ")
 	}
-
 	return r.cl.MonitorBlock(ctx, r.evtReq,
 		func(conn *websocket.Conn, v *BlockNotification) error {
 			if header, rps, err := r.verify(v); err != nil {
@@ -158,7 +157,7 @@ func (r *receiver) receiveLoop(ctx context.Context, height HexInt, seq uint64, s
 			}
 		},
 		func(conn *websocket.Conn, err error) {
-			r.log.WithFields(log.Fields{"error": err, "local": conn.LocalAddr().String()}).Info("disconnected")
+			r.log.WithFields(log.Fields{"error": err, "local": conn.LocalAddr().String()}).Warn("disconnected")
 			_ = conn.Close()
 		})
 }
@@ -167,6 +166,11 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 	if opts.Height < 1 {
 		return nil, errors.New("Height of BlockChain should be positive number")
 	}
+	if opts.Seq < 1 {
+		r.log.Warn("Received init link")
+		opts.Seq = 1
+	}
+
 	r.evtReq.Height = NewHexInt(int64(opts.Height))
 	r.evtLogRawFilter.seq = opts.Seq //common.NewHexInt(int64(opts.Seq)).Bytes()
 
@@ -210,10 +214,10 @@ func (r *receiver) getNewValidatorState(header *BlockHeader) (*headerValidator, 
 	if bytes.Equal(header.NextValidatorsHash, r.hv.validatorsHash) { // If same validatorHash, only update height to point to the next block
 		return nhv, nil
 	}
-	r.log.WithFields(log.Fields{"Height": NewHexInt(header.Height), "NewValidatorHash": common.HexBytes(header.NextValidatorsHash), "OldValidatorHash": r.hv.validatorsHash}).Info(" Updating Validator Hash ")
 	if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
 		return nil, errors.Wrap(err, "verifyHeader; ")
 	} else {
+		r.log.WithFields(log.Fields{"Height": NewHexInt(int64(nhv.height)), "NewValidatorHash": common.HexBytes(header.NextValidatorsHash), "OldValidatorHash": r.hv.validatorsHash}).Info(" Updating Validator Hash ")
 		nhv.validatorsHash = header.NextValidatorsHash
 		nhv.validators = vs
 	}

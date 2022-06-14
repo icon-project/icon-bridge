@@ -2,11 +2,13 @@ package icon
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
 	vlcodec "github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/common"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
 )
@@ -15,16 +17,16 @@ func TestReceiver(t *testing.T) {
 	srcAddress := "btp://0x7.icon/cx997849d3920d338ed81800833fbb270c785e743d"
 	dstAddress := "btp://0x63564c40.hmny/0xa69712a3813d0505bbD55AeD3fd8471Bc2f722DD"
 	srcEndpoint := []string{"https://ctz.solidwallet.io/api/v3/icon_dex"}
-	var height uint64 = 50833960 // seq 0x0a
-	var seq uint64 = 521
+	var height uint64 = 0x307f245 // seq 0x0a
+	var seq uint64 = 611
 	very := map[string]interface{}{
-		"blockHeight":    50833960,
-		"validatorsHash": "0x120c4d12ae3770b868e650e950200364fe138b92e872e487f50da4337bcc83c7",
+		"blockHeight":    0x307f24f,
+		"validatorsHash": "0xa6760c547c3f76b7071658ef383d69ec01e11ea71d695600788695b50659e409",
 	}
 	opts := map[string]interface{}{"verifier": very}
 	l := log.New()
 	log.SetGlobalLogger(l)
-	log.AddForwarder(&log.ForwarderConfig{Vendor: log.HookVendorSlack, Address: "https://hooks.slack.com/services/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", Level: "info"})
+	//log.AddForwarder(&log.ForwarderConfig{Vendor: log.HookVendorSlack, Address: "https://hooks.slack.com/services/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", Level: "info"})
 	if recv, err := NewReceiver(chain.BTPAddress(srcAddress), chain.BTPAddress(dstAddress), srcEndpoint, opts, l); err != nil {
 		panic(err)
 	} else {
@@ -44,9 +46,9 @@ func TestReceiver(t *testing.T) {
 
 func TestNextValidatorHashFetch(t *testing.T) {
 
-	// var conUrl string = "https://lisbon.net.solidwallet.io/api/v3/icon_dex" //devnet
-	var conUrl string = "https://ctz.solidwallet.io/api/v3" // mainnet
-	height := 0x307aa28
+	//var conUrl string = "https://ctz.solidwallet.io/api/v3/icon_dex" //devnet
+	var conUrl string = "http://127.0.0.1:9080/api/v3/default" // mainnet
+	height := 9999
 
 	con := jsonrpc.NewJsonRpcClient(&http.Client{Transport: &http.Transport{MaxIdleConnsPerHost: 1000}}, conUrl)
 
@@ -89,5 +91,5 @@ func TestNextValidatorHashFetch(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	fmt.Println(common.HexBytes(header.NextValidatorsHash), NewHexInt(int64(height)))
 }
