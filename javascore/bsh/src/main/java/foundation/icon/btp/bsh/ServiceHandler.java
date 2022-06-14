@@ -54,12 +54,17 @@ public class ServiceHandler {
     private final VarDB<Address> bsrDb = Context.newVarDB("bsr", Address.class);
     VarDB<Boolean> restriction = Context.newVarDB("restricton", Boolean.class);
     RestrictionsScoreInterface restrictionsInterface;
+    private final VarDB<String> net = Context.newVarDB("net", String.class);
+
     public ServiceHandler(String _bmc) {
         //register the BMC link for this BSH
         bmcDb.set(Address.fromString(_bmc));
         serialNo.set(BigInteger.ZERO);
         ownersDb.set(Context.getOwner(), true);
         numberOfOwners.set(1);
+        String _btpAddress = (String)Context.call(Address.fromString(_bmc), "getBtpAddress");
+        BTPAddress btpAddress = BTPAddress.fromString(_btpAddress);
+        net.set(btpAddress.getNet());
     }
 
     /**
@@ -258,54 +263,35 @@ public class ServiceHandler {
             byte[] res = createMessage(RESPONSE_HANDLE_SERVICE, code, "Transfer Success");
             Context.call(bmcDb.get(), "sendMessage", from, svc, sn, res);
         } else if (actionType == RESPONSE_HANDLE_SERVICE) {
-            if (!hasPending(sn) && !hasPendingFees(sn)) {
+            if (!hasPending(sn)) {
                 Context.revert(ErrorCodes.BSH_INVALID_SERIALNO, "Invalid Serial Number");
             }
             readerTa.beginList();
             int code = readerTa.readInt();
             byte[] respMsg = readerTa.readByteArray();
-            boolean feeAggregationSvc = false;
-            if (pendingFeesDb.get(sn) != null) {
-                feeAggregationSvc = true;
-            }
-            if (!feeAggregationSvc) {
-                byte[] pmsg = getPending(sn);
-                ObjectReader pmsgReader = Context.newByteArrayObjectReader(RLPn, pmsg);
-                pmsgReader.beginList();
-                pmsgReader.skip();
-                ObjectReader readerTasset = Context.newByteArrayObjectReader(RLPn, pmsgReader.readByteArray());
-                TransferAsset pendingMsg = TransferAsset.readObject(readerTasset);
-                fromAddr.set(pendingMsg.getFrom());
-                Address pmsgFrom = Address.fromString(pendingMsg.getFrom());
-                for (int i = 0; i < pendingMsg.getAssets().size(); i++) {
-                    Asset _asset = pendingMsg.getAssets().get(i);
-                    String _tokenName = _asset.getName();
-                    BigInteger _value = _asset.getValue();
-                    BigInteger _fee = _asset.getFee();
-                    BigInteger _totalAmount = _value.add(_fee);
-                    if (code == RC_OK) {
-                        setBalance(pmsgFrom, _tokenName, BigInteger.ZERO, _totalAmount.negate(), BigInteger.ZERO);
-                        feeCollector.set(_tokenName, feeCollector.getOrDefault(_tokenName, BigInteger.ZERO).add(_fee));
-                    } else {
-                        setBalance(pmsgFrom, _tokenName, BigInteger.ZERO, _totalAmount.negate(), _totalAmount);
-                    }
+            byte[] pmsg = getPending(sn);
+            ObjectReader pmsgReader = Context.newByteArrayObjectReader(RLPn, pmsg);
+            pmsgReader.beginList();
+            pmsgReader.skip();
+            ObjectReader readerTasset = Context.newByteArrayObjectReader(RLPn, pmsgReader.readByteArray());
+            TransferAsset pendingMsg = TransferAsset.readObject(readerTasset);
+            fromAddr.set(pendingMsg.getFrom());
+            Address pmsgFrom = Address.fromString(pendingMsg.getFrom());
+            for (int i = 0; i < pendingMsg.getAssets().size(); i++) {
+                Asset _asset = pendingMsg.getAssets().get(i);
+                String _tokenName = _asset.getName();
+                BigInteger _value = _asset.getValue();
+                BigInteger _fee = _asset.getFee();
+                BigInteger _totalAmount = _value.add(_fee);
+                if (code == RC_OK) {
+                    setBalance(pmsgFrom, _tokenName, BigInteger.ZERO, _totalAmount.negate(), BigInteger.ZERO);
+                    feeCollector.set(_tokenName, feeCollector.getOrDefault(_tokenName, BigInteger.ZERO).add(_fee));
+                } else {
+                    setBalance(pmsgFrom, _tokenName, BigInteger.ZERO, _totalAmount.negate(), _totalAmount);
                 }
-                // delete pending message
-                deletePending(sn);
-            } else {
-                TransferAsset _pendingFAReq = pendingFeesDb.get(sn);
-                fromAddr.set(_pendingFAReq.getFrom());
-                if (code == RC_ERR) {
-                    for (int i = 0; i < _pendingFAReq.getAssets().size(); i++) {
-                        Asset _asset = _pendingFAReq.getAssets().get(i);
-                        String _tokenName = _asset.getName();
-                        BigInteger _value = _asset.getValue();
-                        feeCollector.set(_tokenName, feeCollector.getOrDefault(_tokenName, BigInteger.ZERO).add(_value));
-                    }
-                }
-                //delete pending fee request
-                pendingFeesDb.set(sn, null);
             }
+            // delete pending message
+            deletePending(sn);
             Address _owner = Address.fromString(fromAddr.get());
             TransferEnd(_owner, sn, BigInteger.valueOf(code), respMsg);
         } else if (actionType == RESPONSE_UNKNOWN_) {
@@ -386,18 +372,31 @@ public class ServiceHandler {
             if (feeCollector.getOrDefault(tokenNameDb.get(i), BigInteger.ZERO).compareTo(BigInteger.ZERO) != 0) {
                 Asset _asset = new Asset(tokenNameDb.get(i), feeCollector.get(tokenNameDb.get(i)), BigInteger.ZERO);
                 _assets.add(_asset);
-                pendingFeesDb.set(generateSerialNumber(), new TransferAsset(Context.getCaller().toString(), _fa, _assets));
-                feeCollector.set(tokenNameDb.get(i), BigInteger.ZERO);
-                hasFeePending = true;
+                //pendingFeesDb.set(generateSerialNumber(), new TransferAsset(Context.getCaller().toString(), _fa, _assets));
+                //feeCollector.set(tokenNameDb.get(i), BigInteger.ZERO);
             }
         }
-        if (!hasFeePending) {
-            return;
+        if (_assets.size() > 0) {
+            if (_addr.getNet().equals(net.get())) {
+                for (int i = 0; i < _assets.size(); i++) {
+                    Address fa = Address.fromString(_addr.getContract());
+                    Asset _asset = _assets.get(i);
+                    String tokenName = _asset.getName();
+                    BigInteger value = _asset.getValue();
+                    String tokenAddr = this.tokenAddrDb.getOrDefault(tokenName, null);
+                    if (tokenAddr != null) {
+                        Context.call(Address.fromString(tokenAddr), "transfer", fa, value, "transfer to Receiver".getBytes());
+                        feeCollector.set(tokenName, BigInteger.ZERO);
+                    }
+                }
+            } else {
+                BigInteger sn = generateSerialNumber();
+                byte[] msg = createMessage(REQUEST_TOKEN_TRANSFER, Context.getAddress().toString(), _addr.getContract(), _assets);
+                putPending(sn, msg);
+                Context.call(bmcDb.get(), "sendMessage", _addr.getNet(), _svc, serialNo.get(), msg);
+                TransferStart(Context.getAddress(), _fa, sn, encodeToBytes(_assets));
+            }
         }
-
-        byte[] msg = createMessage(REQUEST_TOKEN_TRANSFER, Context.getCaller().toString(), _addr.getContract(), _assets);
-        Context.call(bmcDb.get(), "sendMessage", _addr.getNet(), _svc, serialNo.get(), msg);
-        //TODO: emit transfer start event
     }
 
     @External(readonly = true)
