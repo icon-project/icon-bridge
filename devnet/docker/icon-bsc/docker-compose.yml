@@ -1,0 +1,58 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  goloop:
+    container_name: goloop
+    build:
+      context: ../goloop
+      args:
+        BTPSIMPLE_VERSION: latest
+        GOLOOP_IMAGE: goloop:latest
+    ports:
+      - "9080:9080"
+    volumes:
+      - ./local/artifacts:/goloop/config
+      - ./local:/goloop/data
+    environment:
+      - GOLOOP_NODE_DIR=/goloop/data/goloop
+      - GOLOOP_LOG_WRITER_FILENAME=/goloop/data/log/goloop.log
+
+  binancesmartchain:
+    container_name: binancesmartchain
+    image: bsc-node:latest
+    ports:
+      - "8545:8545"
+      - "8546:8546"
+    volumes:
+      - ./data/bsc/node1:/bsc/node1
+
+  btp:
+    container_name: btp
+    build:
+      context: .
+    volumes:
+      - ./local/artifacts:/btpsimple/config
+      - ./local:/btpsimple/data
+      - ./local/keys:/btpsimple/keys
+    command: btpsimple --config /btpsimple/config/bmr.config.json
+    depends_on:
+      - goloop
+      - binancesmartchain
+    environment:
+      - GOLOOPCHAIN=goloop:9080
+      - GOLOOP_RPC_CHANNEL=icon
+      - BASE_DIR=/btpsimple/data/btp
+      - LOG_FILENAME=/btpsimple/data/log/btp.log
+      - CONFIG=/btpsimple/config/bmr.config.json
+      - ICON_ENDPOINT=http://goloop:9080/api/v3/icon
+      - ICON_KEY_STORE=/btpsimple/config/goloop.keystore.json
+      - ICON_SECRET=/btpsimple/config/goloop.keysecret
+      - BSC_ENDPOINT=http://binancesmartchain:8545
+      - BSC_KEY_STORE=/btpsimple/config/bsc.ks.json
+      - BSC_SECRET=/btpsimple/config/bsc.secret
+ 
+     # - binance_smart_chain
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /btpsimple/config/provision"]
+      interval: 5s
+      timeout: 5s
+      retries: 300

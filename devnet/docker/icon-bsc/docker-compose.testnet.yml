@@ -1,0 +1,32 @@
+version: "3.9" # optional since v1.27.0
+services:
+  btp_testnet:
+    container_name: btp-testnet
+    build:
+      context: .
+    volumes:      
+      - ./testnet/artifacts:/btpsimple/config
+      - ./testnet:/btpsimple/data
+      - ./testnet/keys:/btpsimple/keys
+    command: btpsimple --config /btpsimple/config/bmr.config.json
+    environment:
+      - GOLOOPCHAIN=berlin.net.solidwallet.io
+      - GOLOOP_RPC_NID=0x7
+      - GOLOOP_RPC_CHANNEL=icon_dex
+      - BASE_DIR=/btpsimple/data/btp
+      - LOG_FILENAME=/btpsimple/data/log/btp.log
+      - CONFIG=/btpsimple/config/bmr.config.json
+      - ICON_BTP_ADDRESS=/btpsimple/config/btp.icon
+      - ICON_ENDPOINT=https://berlin.net.solidwallet.io/api/v3/icon_dex
+      - ICON_KEY_STORE=/btpsimple/config/berlin.net.solidwallet.io.keystore.json
+      - ICON_SECRET=/btpsimple/config/berlin.net.solidwallet.io.keysecret
+      - BSC_ENDPOINT=https://nd-417-046-686.p2pify.com/cdb13d717192e3eeefa4535075260dd3
+      - BSC_KEY_STORE=/btpsimple/config/bsc.ks.json
+      - BSC_SECRET=/btpsimple/config/bsc.secret
+
+    # - binance_smart_chain
+    healthcheck:
+      test: [ "CMD-SHELL", "test -f /btpsimple/config/provision" ]
+      interval: 5s
+      timeout: 5s
+      retries: 300

@@ -1,0 +1,3 @@
+./btpsimple start --config ./config/icon.config.json
+
+./btpsimple start --config ./config/bsc.config.json
