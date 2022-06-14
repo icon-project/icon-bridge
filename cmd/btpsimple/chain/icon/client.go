@@ -222,11 +222,12 @@ func (c *client) GetProofForEvents(p *ProofEventsParam) ([][][]byte, error) {
 
 func (c *client) MonitorBlock(ctx context.Context, p *BlockRequest, cb func(conn *websocket.Conn, v *BlockNotification) error, scb func(conn *websocket.Conn), errCb func(*websocket.Conn, error)) error {
 	resp := &BlockNotification{}
-	return c.Monitor(ctx, "/block", p, resp, func(conn *websocket.Conn, v interface{}) {
+	return c.Monitor(ctx, "/block", p, resp, func(conn *websocket.Conn, v interface{}) error {
 		switch t := v.(type) {
 		case *BlockNotification:
 			if err := cb(conn, t); err != nil {
-				c.log.Debugf("MonitorBlock callback return err:%+v", err)
+				// c.log.Debugf("MonitorBlock callback return err:%+v", err)
+				return err
 			}
 		case WSEvent:
 			c.log.Debugf("MonitorBlock WSEvent %s %+v", conn.LocalAddr().String(), t)
@@ -234,19 +235,24 @@ func (c *client) MonitorBlock(ctx context.Context, p *BlockRequest, cb func(conn
 			case WSEventInit:
 				if scb != nil {
 					scb(conn)
+				} else {
+					return errors.New("Second Callback function (scb) is nil ")
 				}
 			}
 		case error:
 			errCb(conn, t)
+			return t
 		default:
 			errCb(conn, fmt.Errorf("not supported type %T", t))
+			return errors.New("Not supported type")
 		}
+		return nil
 	})
 }
 
 func (c *client) MonitorEvent(ctx context.Context, p *EventRequest, cb func(conn *websocket.Conn, v *EventNotification) error, errCb func(*websocket.Conn, error)) error {
 	resp := &EventNotification{}
-	return c.Monitor(ctx, "/event", p, resp, func(conn *websocket.Conn, v interface{}) {
+	return c.Monitor(ctx, "/event", p, resp, func(conn *websocket.Conn, v interface{}) error {
 		switch t := v.(type) {
 		case *EventNotification:
 			if err := cb(conn, t); err != nil {
@@ -257,6 +263,7 @@ func (c *client) MonitorEvent(ctx context.Context, p *EventRequest, cb func(conn
 		default:
 			errCb(conn, fmt.Errorf("not supported type %T", t))
 		}
+		return nil
 	})
 }
 
@@ -275,7 +282,9 @@ func (c *client) Monitor(ctx context.Context, reqUrl string, reqPtr, respPtr int
 	if err = c.wsRequest(conn, reqPtr); err != nil {
 		return err
 	}
-	cb(conn, WSEventInit)
+	if err := cb(conn, WSEventInit); err != nil {
+		return err
+	}
 	return c.wsReadJSONLoop(ctx, conn, respPtr, cb)
 }
 
@@ -291,7 +300,7 @@ func (c *client) CloseAllMonitor() {
 	}
 }
 
-type wsReadCallback func(*websocket.Conn, interface{})
+type wsReadCallback func(*websocket.Conn, interface{}) error
 
 func (c *client) _addWsConn(conn *websocket.Conn) {
 	c.mtx.Lock()
@@ -397,7 +406,9 @@ func (c *client) wsReadJSONLoop(ctx context.Context, conn *websocket.Conn, respP
 				}
 				return err
 			}
-			cb(conn, ptr)
+			if err := cb(conn, ptr); err != nil {
+				return err
+			}
 		}
 
 	}
