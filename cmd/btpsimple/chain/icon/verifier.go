@@ -90,13 +90,17 @@ func (r *receiver) syncVerifier(hexHeight HexInt) error {
 	if hterr != nil {
 		return errors.Wrapf(hterr, "syncVerifier; HexInt Conversion Error at Height %v ", hexHeight)
 	}
-	startHeight := uint64(ht)
+	targetHeight := uint64(ht)
 
-	if startHeight < r.hv.height {
-		r.log.WithFields(log.Fields{"StartHeight": startHeight, "ValidatorHeight": r.hv.height}).Error("SyncVerifier; startHeight is less than known validator height")
-		return errors.New("SyncVerifier; startHeight is less than height for which we know the validator hash ")
+	if targetHeight < r.hv.height {
+		r.log.WithFields(log.Fields{"TargetHeight": targetHeight, "ValidatorHeight": r.hv.height}).Error("SyncVerifier; TargetHeight is less than known validator height")
+		return errors.New("SyncVerifier; TargetHeight is less than height for which we know the validator hash ")
+	} else if targetHeight == r.hv.height {
+		r.log.WithFields(log.Fields{"TargetHeight": targetHeight, "ValidatorHeight": r.hv.height}).Error("SyncVerifier; Same Height so already in sync ")
+		return nil
 	}
-	for ht := r.hv.height; ht < startHeight; ht++ {
+	r.log.WithFields(log.Fields{"TargetHeight": targetHeight, "ValidatorHeight": r.hv.height, "ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Start Sync ")
+	for ht := r.hv.height; ht < targetHeight; ht++ {
 		if header, err := r.getVerifiedHeaderForHeight(ht); err != nil {
 			return errors.Wrap(err, "syncVerifier; ")
 		} else {
@@ -104,58 +108,47 @@ func (r *receiver) syncVerifier(hexHeight HexInt) error {
 				if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
 					return errors.Wrap(err, "syncVerifier; ")
 				} else {
+					r.log.WithFields(log.Fields{"ValidatorHeight": ht, "NewValidatorHash": base64.StdEncoding.EncodeToString(header.NextValidatorsHash), "OldValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Updating Validator Hash ")
 					r.hv.validatorHash = header.NextValidatorsHash
 					r.hv.validators = vs
 				}
 			}
 			r.hv.height = ht + 1
 		}
-		if ht%100 == 0 {
-			r.log.WithFields(log.Fields{"ProcessedHeight": ht, "FinalHeight": startHeight, "EncodedValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Progress Status ")
+		if ht%50 == 0 {
+			r.log.WithFields(log.Fields{"ValidatorHeight": ht, "TargetHeight": targetHeight, "ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; In Progress ")
 		}
 	}
-	r.log.WithFields(log.Fields{"NextHeightToProcess": startHeight, "EncodedValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Complete ")
+	r.log.WithFields(log.Fields{"TargetHeight": targetHeight, "ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Complete ")
 	return nil
 }
 
-func (r *receiver) verify(v *BlockNotification) ([]*chain.Receipt, error) {
-	header, err := r.verifyHeader(v)
-	if err != nil {
-		return nil, err
-	} else if header == nil {
-		return nil, errors.New("Err: verifyHeader returned nil header")
-	}
-	return r.verifyReceipt(header, v)
-}
-
-func (r *receiver) verifyHeader(v *BlockNotification) (*BlockHeader, error) {
-	r.log.WithFields(log.Fields{"Height": v.Height, "Hash": v.Hash}).Debug("verifyHeader Start")
-
+func (r *receiver) verify(v *BlockNotification) (*BlockHeader, []*chain.Receipt, error) {
+	r.log.WithFields(log.Fields{"Height": v.Height, "Hash": v.Hash}).Debug("verify Start")
 	ht, err := v.Height.Value()
 	if err != nil {
-		return nil, errors.Wrap(err, "verifyHeader; HexInt Conversion Error ")
+		return nil, nil, errors.Wrap(err, "verifyHeader; HexInt Conversion Error ")
 	}
 	header, err := r.getVerifiedHeaderForHeight(uint64(ht))
 	if err != nil {
-		return nil, errors.Wrap(err, "verifyHeader; ")
+		return nil, nil, errors.Wrap(err, "verify; ")
+	} else if header == nil {
+		return nil, nil, errors.New("verify; returned nil header")
 	}
-	if !bytes.Equal(header.NextValidatorsHash, r.hv.validatorHash) { // should update
-		if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
-			return nil, errors.Wrap(err, "verifyHeader; ")
-		} else {
-			r.hv.validatorHash = header.NextValidatorsHash
-			r.hv.validators = vs
-		}
+
+	rs, err := r.verifyReceipt(header, v)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "verify; ")
 	}
-	r.hv.height = uint64(ht + 1)
-	return header, nil
+
+	return header, rs, nil
 }
 
 func (r *receiver) verifyReceipt(header *BlockHeader, v *BlockNotification) ([]*chain.Receipt, error) {
 	// Update blockHeaders
 	if len(v.Indexes) == 0 || len(v.Events) == 0 {
 		r.log.Debug("verifyReceipt; Events and Indexes are empty; Skipping their verification", v.Height)
-		return nil, nil
+		return []*chain.Receipt{}, nil
 	}
 
 	var headerResult Result
@@ -229,7 +222,7 @@ func (r *receiver) verifyReceipt(header *BlockHeader, v *BlockNotification) ([]*
 						"got":      common.HexBytes(el.Indexed[EventIndexNext]),
 						"expected": common.HexBytes(r.evtLogRawFilter.next)}).Error("invalid event: cannot match next")
 				}
-				//return nil, errors.New("verifyReceipt; Invalid event")
+				return nil, errors.New("verifyReceipt; Invalid event")
 			}
 		}
 		if len(rp.Events) > 0 && len(rp.Events) == len(p.Events) { //Only add if all the events were verified
@@ -240,7 +233,7 @@ func (r *receiver) verifyReceipt(header *BlockHeader, v *BlockNotification) ([]*
 				"ReceiptIndex": index,
 				"got":          len(rp.Events),
 				"expected":     len(p.Events)}).Info(" Not all events were verified for receipt ")
-			//return nil, errors.New("verifyReceipt; Not all events were verified for receipt")
+			return nil, errors.New("verifyReceipt; Not all events were verified for receipt")
 		}
 	}
 	return rps, nil
@@ -291,6 +284,6 @@ func (r *receiver) getVerifiedHeaderForHeight(ht uint64) (*BlockHeader, error) {
 	if validCount < int(2*len(r.hv.validators)/3) {
 		return nil, errors.New("verifyHeader; Block not validated by >= 2/3 of validators")
 	}
-	r.log.WithFields(log.Fields{"NumValidators": len(r.hv.validators), "NumValidAddresses": validCount}).Info("Block Header Verified by Votes")
+	//r.log.WithFields(log.Fields{"NumValidators": len(r.hv.validators), "NumValidAddresses": validCount, "Height": ht}).Debug("Block Header Verified by Votes")
 	return header, nil
 }

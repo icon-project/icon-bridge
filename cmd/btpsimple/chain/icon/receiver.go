@@ -17,10 +17,10 @@
 package icon
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 
 	"github.com/gorilla/websocket"
 	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
@@ -74,9 +74,8 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]inter
 
 	var recvOpts receiverOptions
 	if err := recvOpts.Unmarshal(opts); err != nil {
-		return nil, errors.Wrap(err, "Unmarshal Error: ")
+		return nil, errors.Wrap(err, "Unmarshal recvOpts Error: ")
 	}
-	fmt.Println(*recvOpts.Verifier)
 
 	hv := headerValidator{}
 	if vHash, err := base64.StdEncoding.DecodeString(recvOpts.Verifier.ValidatorHash); err != nil {
@@ -114,29 +113,43 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]inter
 	return recvr, nil
 }
 
-func (r *receiver) receiveLoop(ctx context.Context, height HexInt, seq uint64, callback func(rs []*chain.Receipt) error) error {
+func (r *receiver) receiveLoop(ctx context.Context, height HexInt, seq uint64, sendCallback func(rs []*chain.Receipt) error) error {
 	if err := r.syncVerifier(height); err != nil {
 		return errors.Wrap(err, "ReceiveLoop; ")
 	}
+
 	return r.cl.MonitorBlock(ctx, r.evtReq,
 		func(conn *websocket.Conn, v *BlockNotification) error {
-			if rps, err := r.verify(v); err != nil {
+			if header, rps, err := r.verify(v); err != nil {
 				return errors.Wrap(err, "ReceiveLoop; Verify: ")
 			} else {
 				htNum, hterr := v.Height.Value()
 				if hterr != nil {
 					return errors.Wrapf(err, "ReceiveLoop; Conversion Error at Height %v ", v.Height)
 				}
-				if len(rps) > 0 {
-					r.log.WithFields(log.Fields{"Height": v.Height, "Length": len(rps)}).Debug("Receipt Verified")
-					if err := r.verifySequence(rps); err != nil {
-						return errors.Wrap(err, "ReceiveLoop; Verify Sequence: ")
-					} else {
-						callback(rps)
-					}
+				validatorForNextBlock, err := r.getNewValidatorState(header)
+				if err != nil {
+					return errors.Wrap(err, "ReceiveLoop; ")
 				}
-				// update height state to point to the next block; update even if len(rps) == 0; no receipts in BlockNotification
+				seqForNextEventLog := r.evtLogRawFilter.seq
+				if len(rps) > 0 {
+					seqForNextEventLog, err = r.getVerifiedSequenceNum(r.evtLogRawFilter.seq, rps)
+					if err != nil {
+						return errors.Wrap(err, "ReceiveLoop; Verify Sequence: ")
+					}
+					if err := sendCallback(rps); err != nil {
+						return errors.Wrap(err, "ReceiveLoop; sendCallback: ")
+					}
+					r.log.WithFields(log.Fields{"CurHeight": r.evtReq.Height, "ReceiptLength": len(rps), "CurSeq": r.evtLogRawFilter.seq}).Info(" Receipts Sent ")
+				}
+				// Update state now that receipts (if any) has been sent
+				// Since there isn't any error in the next code segment, state update will happen for sure
+				// As such, there won't be the case when receipt is sent but state is not updated
+				r.hv = validatorForNextBlock
+				r.evtLogRawFilter.seq = seqForNextEventLog
 				r.evtReq.Height = NewHexInt(int64(htNum + 1))
+
+				r.log.WithFields(log.Fields{"NextHeight": r.evtReq.Height, "NextSeq": r.evtLogRawFilter.seq}).Debug(" Done: Verified Receipt and Updated State")
 			}
 			return nil
 		},
@@ -153,23 +166,6 @@ func (r *receiver) receiveLoop(ctx context.Context, height HexInt, seq uint64, c
 		})
 }
 
-func (r *receiver) verifySequence(receipts []*chain.Receipt) error {
-	for _, receipt := range receipts {
-		newEvents := []*chain.Event{}
-		for _, event := range receipt.Events {
-			switch {
-			case event.Sequence == r.evtLogRawFilter.seq:
-				newEvents = append(newEvents, event)
-				r.evtLogRawFilter.seq++
-			case event.Sequence > r.evtLogRawFilter.seq:
-				return errors.New("Invalid Sequence")
-			}
-		}
-		receipt.Events = newEvents
-	}
-	return nil
-}
-
 func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, opts chain.SubscribeOptions) (errCh <-chan error, err error) {
 	if opts.Height < 1 {
 		return nil, errors.New("Height of BlockChain should be positive number")
@@ -179,21 +175,68 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 
 	_errCh := make(chan error)
 	go func() {
+		var err error
 		defer close(_errCh)
 		cb := func(rs []*chain.Receipt) error {
 			msgCh <- &chain.Message{Receipts: rs}
 			return nil
 		}
 	RetryIfEOF:
-		if err := r.receiveLoop(ctx, r.evtReq.Height, r.evtLogRawFilter.seq, cb); err != nil {
+		if err = r.receiveLoop(ctx, r.evtReq.Height, r.evtLogRawFilter.seq, cb); err != nil {
 			if isUnexpectedEOFError(err) && r.retries < MAX_RETRY {
 				r.retries++
-				r.log.WithFields(log.Fields{"Retry Count ": r.retries, "Resuming Height": r.evtReq.Height}).Info("Retrying Websocket Connection")
+				r.log.WithFields(log.Fields{
+					"Retry Count ":       r.retries,
+					"EventRequestHeight": r.evtReq.Height, "EventSequence": r.evtLogRawFilter.seq,
+					"ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash), "ValidatorHeight": NewHexInt(int64(r.hv.height)),
+				}).Warn("Retrying Websocket Connection")
 				goto RetryIfEOF
 			} else {
+				r.log.WithFields(log.Fields{
+					"EventRequestHeight": r.evtReq.Height, "EventSequence": r.evtLogRawFilter.seq,
+					"ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash), "ValidatorHeight": NewHexInt(int64(r.hv.height)),
+				}).Warn("State Info Before returning error ")
 				_errCh <- err
 			}
 		}
+		r.log.Warnf("Receive Loop Terminated; err %+v", err)
 	}()
 	return _errCh, nil
+}
+
+func (r *receiver) getNewValidatorState(header *BlockHeader) (*headerValidator, error) {
+	nhv := &headerValidator{
+		validators:    r.hv.validators,
+		validatorHash: r.hv.validatorHash,
+		height:        r.hv.height + 1, // point to the next block
+	}
+	if bytes.Equal(header.NextValidatorsHash, r.hv.validatorHash) { // If same validatorHash, only update height to point to the next block
+		return nhv, nil
+	}
+	r.log.WithFields(log.Fields{"Height": header.Height, "NewValidatorHash": base64.StdEncoding.EncodeToString(header.NextValidatorsHash), "OldValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info(" Updating Validator Hash ")
+	if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
+		return nil, errors.Wrap(err, "verifyHeader; ")
+	} else {
+		nhv.validatorHash = header.NextValidatorsHash
+		nhv.validators = vs
+	}
+	return nhv, nil
+}
+
+func (r *receiver) getVerifiedSequenceNum(expectedSeq uint64, receipts []*chain.Receipt) (uint64, error) {
+	for _, receipt := range receipts {
+		newEvents := []*chain.Event{}
+		for _, event := range receipt.Events {
+			switch {
+			case event.Sequence == expectedSeq:
+				newEvents = append(newEvents, event)
+				expectedSeq++
+			case event.Sequence > expectedSeq: // event.sequencce - expectedSeq has not been considered or is missed ?
+				r.log.WithFields(log.Fields{"Expected": event.Sequence, "Got": event.Sequence}).Error("Current event log sequence higher than expected")
+				return expectedSeq, errors.New("Invalid Sequence for event log of receipt ")
+			}
+		}
+		receipt.Events = newEvents
+	}
+	return expectedSeq, nil
 }
