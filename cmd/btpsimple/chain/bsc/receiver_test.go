@@ -1,13 +1,66 @@
 package bsc
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"testing"
 
 	"github.com/icon-project/btp/cmd/btpsimple/chain"
 	"github.com/icon-project/btp/common/log"
+	"github.com/stretchr/testify/require"
 )
+
+func newTestReceiver(t *testing.T) chain.Receiver {
+	url := "http://localhost:8545"
+	receiver, _ := NewReceiver("", "", []string{url}, nil, log.New())
+	return receiver
+}
+
+func newTestClient(t *testing.T) *client {
+	url := "http://localhost:8545"
+	cls, err := NewClient([]string{url}, "", log.New())
+	require.NoError(t, err)
+	return cls
+}
+
+func TestSubscribeMessage(t *testing.T) {
+	var src, dst chain.BTPAddress
+	err := src.Set("btp://0x97.icon/0xAaFc8EeaEE8d9C8bD3262CCE3D73E56DeE3FB776")
+	err = dst.Set("btp://0xf8aac3.icon/cxea19a7d6e9a926767d1d05eea467299fe461c0eb")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	recv := newTestReceiver(t).(*receiver)
+	recv.src = src
+	recv.dst = dst
+	height := uint64(405)
+
+	ctx, cancel := context.Background(), func() {}
+	if deadline, ok := t.Deadline(); ok {
+		ctx, cancel = context.WithDeadline(context.Background(), deadline)
+	}
+	defer cancel()
+
+	msgCh, err := recv.SubscribeMessage(ctx, height, 6)
+	require.NoError(t, err, "failed to subscribe message")
+
+	startHeight := height
+	for msg := range msgCh {
+		t.Logf("received block: %d", height)
+		if len(msg.Receipts) > 0 {
+			require.Equal(t,
+				msg.Receipts[0].Height, height,
+				"receipts height should match block height")
+		}
+
+		height++
+		if height > startHeight+10 {
+			break
+		}
+	}
+}
 
 func TestReceiver_GetReceiptProofs(t *testing.T) {
 	var src, dst chain.BTPAddress

@@ -17,6 +17,7 @@ dependencies {
     implementation 'com.github.sink772:javaee-scorex:0.5.2'
     implementation 'com.github.sink772:javaee-tokens:0.5.5'
     implementation 'org.msgpack:msgpack-core:0.8.17'
+    implementation fileTree(dir: '../lib', include: 'lib-0.1.0.jar')
     implementation project(':bsr')
 
     testImplementation 'foundation.icon:javaee-api:0.9.0'
