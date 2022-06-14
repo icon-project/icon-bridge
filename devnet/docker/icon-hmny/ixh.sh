@@ -626,7 +626,7 @@ function deploysc() {
     btp_icon_validators_hash=$(
         URI=$btp_icon_uri \
             HEIGHT=$(dec2hex $(($btp_icon_block_height - 1))) \
-            $ixh_dir/bin/iconvalidators | jq -r .hash
+            $ixh_dir/src/iconvalidators | jq -r .hash
     )
 
     if [ -z "$btp_icon_bsr" ]; then
