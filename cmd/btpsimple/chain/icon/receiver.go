@@ -213,7 +213,7 @@ func (r *receiver) getNewValidatorState(header *BlockHeader) (*headerValidator, 
 	if bytes.Equal(header.NextValidatorsHash, r.hv.validatorHash) { // If same validatorHash, only update height to point to the next block
 		return nhv, nil
 	}
-	r.log.WithFields(log.Fields{"Height": header.Height, "NewValidatorHash": base64.StdEncoding.EncodeToString(header.NextValidatorsHash), "OldValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info(" Updating Validator Hash ")
+	r.log.WithFields(log.Fields{"Height": NewHexInt(header.Height), "NewValidatorHash": base64.StdEncoding.EncodeToString(header.NextValidatorsHash), "OldValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info(" Updating Validator Hash ")
 	if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
 		return nil, errors.Wrap(err, "verifyHeader; ")
 	} else {

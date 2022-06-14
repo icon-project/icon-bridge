@@ -19,7 +19,7 @@ func TestReceiver(t *testing.T) {
 	var height uint64 = 0x307ef42 // seq 0x0a
 	var seq uint64 = 609
 	very := map[string]interface{}{
-		"blockHeight":   0x307ef42,
+		"blockHeight":   0x307ef40,
 		"validatorHash": "EgxNEq43cLho5lDpUCADZP4Ti5LocuSH9Q2kM3vMg8c=",
 	}
 	opts := map[string]interface{}{"verifier": very}

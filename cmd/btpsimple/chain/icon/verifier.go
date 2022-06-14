@@ -93,13 +93,13 @@ func (r *receiver) syncVerifier(hexHeight HexInt) error {
 	targetHeight := uint64(ht)
 
 	if targetHeight < r.hv.height {
-		r.log.WithFields(log.Fields{"TargetHeight": targetHeight, "ValidatorHeight": r.hv.height}).Error("SyncVerifier; TargetHeight is less than known validator height")
+		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorHeight": NewHexInt(int64(r.hv.height))}).Error("SyncVerifier; TargetHeight is less than known validator height")
 		return errors.New("SyncVerifier; TargetHeight is less than height for which we know the validator hash ")
 	} else if targetHeight == r.hv.height {
-		r.log.WithFields(log.Fields{"TargetHeight": targetHeight, "ValidatorHeight": r.hv.height}).Error("SyncVerifier; Same Height so already in sync ")
+		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorHeight": NewHexInt(int64(r.hv.height))}).Error("SyncVerifier; Same Height so already in sync ")
 		return nil
 	}
-	r.log.WithFields(log.Fields{"TargetHeight": targetHeight, "ValidatorHeight": r.hv.height, "ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Start Sync ")
+	r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorHeight": NewHexInt(int64(r.hv.height)), "ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Start Sync ")
 	for ht := r.hv.height; ht < targetHeight; ht++ {
 		if header, err := r.getVerifiedHeaderForHeight(ht); err != nil {
 			return errors.Wrap(err, "syncVerifier; ")
@@ -108,7 +108,7 @@ func (r *receiver) syncVerifier(hexHeight HexInt) error {
 				if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
 					return errors.Wrap(err, "syncVerifier; ")
 				} else {
-					r.log.WithFields(log.Fields{"ValidatorHeight": ht, "NewValidatorHash": base64.StdEncoding.EncodeToString(header.NextValidatorsHash), "OldValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Updating Validator Hash ")
+					r.log.WithFields(log.Fields{"ValidatorHeight": NewHexInt(int64(ht)), "NewValidatorHash": base64.StdEncoding.EncodeToString(header.NextValidatorsHash), "OldValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Updating Validator Hash ")
 					r.hv.validatorHash = header.NextValidatorsHash
 					r.hv.validators = vs
 				}
@@ -116,10 +116,10 @@ func (r *receiver) syncVerifier(hexHeight HexInt) error {
 			r.hv.height = ht + 1
 		}
 		if ht%50 == 0 {
-			r.log.WithFields(log.Fields{"ValidatorHeight": ht, "TargetHeight": targetHeight, "ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; In Progress ")
+			r.log.WithFields(log.Fields{"ValidatorHeight": NewHexInt(int64(ht)), "TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; In Progress ")
 		}
 	}
-	r.log.WithFields(log.Fields{"TargetHeight": targetHeight, "ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Complete ")
+	r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Complete ")
 	return nil
 }
 
