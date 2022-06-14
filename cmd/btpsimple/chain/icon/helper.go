@@ -28,8 +28,8 @@ func getBlockHeader(cl *client, height HexInt) (*BlockHeader, error) {
 	return &bh, nil
 }
 
-func getValidatorsFromHash(cl *client, hash []byte) ([]common.HexBytes, error) {
-	vBytes, err := cl.GetDataByHash(&DataHashParam{Hash: NewHexBytes(hash)})
+func getValidatorsFromHash(cl *client, hash common.HexBytes) ([]common.HexBytes, error) {
+	vBytes, err := cl.GetDataByHash(&DataHashParam{Hash: NewHexBytes(hash.Bytes())})
 	if err != nil {
 		return nil, errors.Wrap(err, "verifyHeader; GetDataByHash Validators; Err: ")
 	}

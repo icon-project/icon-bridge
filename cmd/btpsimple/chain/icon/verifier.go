@@ -2,7 +2,6 @@ package icon
 
 import (
 	"bytes"
-	"encoding/base64"
 
 	"github.com/pkg/errors"
 
@@ -105,7 +104,7 @@ func (r *receiver) syncVerifier(hexHeight HexInt) error {
 			return errors.Wrap(err, "syncVerifier; ")
 		} else {
 			if !bytes.Equal(header.NextValidatorsHash, r.hv.validatorsHash) { // should update
-				r.log.WithFields(log.Fields{"ValidatorsHeight": NewHexInt(int64(ht)), "NewValidatorsHash": base64.StdEncoding.EncodeToString(header.NextValidatorsHash), "OldValidatorsHash": base64.StdEncoding.EncodeToString(r.hv.validatorsHash)}).Info("Sync Verifier; Updating Validator Hash ")
+				r.log.WithFields(log.Fields{"ValidatorsHeight": NewHexInt(int64(ht)), "NewValidatorsHash": common.HexBytes(header.NextValidatorsHash), "OldValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Updating Validator Hash ")
 				if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
 					return errors.Wrap(err, "syncVerifier; ")
 				} else {
@@ -119,7 +118,7 @@ func (r *receiver) syncVerifier(hexHeight HexInt) error {
 			r.log.WithFields(log.Fields{"ValidatorsHeight": NewHexInt(int64(ht)), "TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; In Progress ")
 		}
 	}
-	r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHash": base64.StdEncoding.EncodeToString(r.hv.validatorsHash)}).Info("Sync Verifier; Complete ")
+	r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Complete ")
 	return nil
 }
 

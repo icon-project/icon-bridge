@@ -19,11 +19,11 @@ package icon
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 
 	"github.com/gorilla/websocket"
 	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/common"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
@@ -185,13 +185,13 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 				r.log.WithFields(log.Fields{
 					"Retry Count ":       r.retries,
 					"EventRequestHeight": r.evtReq.Height, "EventSequence": r.evtLogRawFilter.seq,
-					"ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorsHash), "ValidatorHeight": NewHexInt(int64(r.hv.height)),
+					"ValidatorHash": r.hv.validatorsHash, "ValidatorHeight": NewHexInt(int64(r.hv.height)),
 				}).Warn("Retrying Websocket Connection")
 				goto RetryIfEOF
 			} else {
 				r.log.WithFields(log.Fields{
 					"EventRequestHeight": r.evtReq.Height, "EventSequence": r.evtLogRawFilter.seq,
-					"ValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorsHash), "ValidatorHeight": NewHexInt(int64(r.hv.height)),
+					"ValidatorHash": r.hv.validatorsHash, "ValidatorHeight": NewHexInt(int64(r.hv.height)),
 				}).Warn("State Info Before returning error ")
 				_errCh <- err
 			}
@@ -210,7 +210,7 @@ func (r *receiver) getNewValidatorState(header *BlockHeader) (*headerValidator, 
 	if bytes.Equal(header.NextValidatorsHash, r.hv.validatorsHash) { // If same validatorHash, only update height to point to the next block
 		return nhv, nil
 	}
-	r.log.WithFields(log.Fields{"Height": NewHexInt(header.Height), "NewValidatorHash": base64.StdEncoding.EncodeToString(header.NextValidatorsHash), "OldValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorsHash)}).Info(" Updating Validator Hash ")
+	r.log.WithFields(log.Fields{"Height": NewHexInt(header.Height), "NewValidatorHash": common.HexBytes(header.NextValidatorsHash), "OldValidatorHash": r.hv.validatorsHash}).Info(" Updating Validator Hash ")
 	if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
 		return nil, errors.Wrap(err, "verifyHeader; ")
 	} else {
@@ -229,7 +229,7 @@ func (r *receiver) getVerifiedSequenceNum(expectedSeq uint64, receipts []*chain.
 				newEvents = append(newEvents, event)
 				expectedSeq++
 			case event.Sequence > expectedSeq: // event.sequencce - expectedSeq has not been considered or is missed ?
-				r.log.WithFields(log.Fields{"Expected": event.Sequence, "Got": event.Sequence}).Error("Current event log sequence higher than expected")
+				r.log.WithFields(log.Fields{"Expected": expectedSeq, "Got": event.Sequence}).Error("Current event log sequence higher than expected")
 				return expectedSeq, errors.New("Invalid Sequence for event log of receipt ")
 			}
 		}
