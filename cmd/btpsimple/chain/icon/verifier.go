@@ -105,10 +105,10 @@ func (r *receiver) syncVerifier(hexHeight HexInt) error {
 			return errors.Wrap(err, "syncVerifier; ")
 		} else {
 			if !bytes.Equal(header.NextValidatorsHash, r.hv.validatorHash) { // should update
+				r.log.WithFields(log.Fields{"ValidatorHeight": NewHexInt(int64(ht)), "NewValidatorHash": base64.StdEncoding.EncodeToString(header.NextValidatorsHash), "OldValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Updating Validator Hash ")
 				if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
 					return errors.Wrap(err, "syncVerifier; ")
 				} else {
-					r.log.WithFields(log.Fields{"ValidatorHeight": NewHexInt(int64(ht)), "NewValidatorHash": base64.StdEncoding.EncodeToString(header.NextValidatorsHash), "OldValidatorHash": base64.StdEncoding.EncodeToString(r.hv.validatorHash)}).Info("Sync Verifier; Updating Validator Hash ")
 					r.hv.validatorHash = header.NextValidatorsHash
 					r.hv.validators = vs
 				}
