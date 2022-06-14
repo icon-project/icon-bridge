@@ -16,16 +16,16 @@ func TestReceiver(t *testing.T) {
 	srcAddress := "btp://0x7.icon/cx997849d3920d338ed81800833fbb270c785e743d"
 	dstAddress := "btp://0x63564c40.hmny/0xa69712a3813d0505bbD55AeD3fd8471Bc2f722DD"
 	srcEndpoint := []string{"https://ctz.solidwallet.io/api/v3/icon_dex"}
-	var height uint64 = 50822450 // seq 0x0a
-	var seq uint64 = 0
+	var height uint64 = 0x307ef42 // seq 0x0a
+	var seq uint64 = 609
 	very := map[string]interface{}{
-		"blockHeight":   height,
+		"blockHeight":   0x307ef40,
 		"validatorHash": "EgxNEq43cLho5lDpUCADZP4Ti5LocuSH9Q2kM3vMg8c=",
 	}
 	opts := map[string]interface{}{"verifier": very}
 	l := log.New()
 	log.SetGlobalLogger(l)
-	//log.AddForwarder(&log.ForwarderConfig{Vendor: log.HookVendorSlack, Address: "https://hooks.slack.com/services/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", Level: "info"})
+	log.AddForwarder(&log.ForwarderConfig{Vendor: log.HookVendorSlack, Address: "https://hooks.slack.com/services/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", Level: "info"})
 	if recv, err := NewReceiver(chain.BTPAddress(srcAddress), chain.BTPAddress(dstAddress), srcEndpoint, opts, l); err != nil {
 		panic(err)
 	} else {
