@@ -2,7 +2,6 @@ package icon
 
 import (
 	"context"
-	"encoding/base64"
 	"net/http"
 	"testing"
 
@@ -16,11 +15,11 @@ func TestReceiver(t *testing.T) {
 	srcAddress := "btp://0x7.icon/cx997849d3920d338ed81800833fbb270c785e743d"
 	dstAddress := "btp://0x63564c40.hmny/0xa69712a3813d0505bbD55AeD3fd8471Bc2f722DD"
 	srcEndpoint := []string{"https://ctz.solidwallet.io/api/v3/icon_dex"}
-	var height uint64 = 0x307ef42 // seq 0x0a
-	var seq uint64 = 609
+	var height uint64 = 50833960 // seq 0x0a
+	var seq uint64 = 521
 	very := map[string]interface{}{
-		"blockHeight":   0x307ef40,
-		"validatorHash": "EgxNEq43cLho5lDpUCADZP4Ti5LocuSH9Q2kM3vMg8c=",
+		"blockHeight":    50833960,
+		"validatorsHash": "0x120c4d12ae3770b868e650e950200364fe138b92e872e487f50da4337bcc83c7",
 	}
 	opts := map[string]interface{}{"verifier": very}
 	l := log.New()
@@ -44,6 +43,7 @@ func TestReceiver(t *testing.T) {
 }
 
 func TestNextValidatorHashFetch(t *testing.T) {
+
 	// var conUrl string = "https://lisbon.net.solidwallet.io/api/v3/icon_dex" //devnet
 	var conUrl string = "https://ctz.solidwallet.io/api/v3" // mainnet
 	height := 0x307aa28
@@ -78,8 +78,6 @@ func TestNextValidatorHashFetch(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	log.Warn("Height ", height, " NextValidatorHash ", base64.StdEncoding.EncodeToString(header.NextValidatorsHash))
 
 	var validatorDataBytes []byte
 	_, err = getDatabyHash(&DataHashParam{Hash: NewHexBytes(header.NextValidatorsHash)}, &validatorDataBytes, con)
