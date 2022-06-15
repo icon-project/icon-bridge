@@ -113,6 +113,11 @@ public class ServiceHandler {
         return false;
     }
 
+    @External(readonly = true)
+    public boolean isOwner(Address _addr) {
+        return isAnOwner(_addr);
+    }
+
     /**
      * @param name    name of the token
      * @param address Address of the token contract
