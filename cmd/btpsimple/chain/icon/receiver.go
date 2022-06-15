@@ -35,6 +35,7 @@ const (
 	EventIndexSequence  = 2
 )
 const MAX_RETRY = 3
+const RECONNECT_ON_UNEXPECTED_HEIGHT = "Unexpected Block Height. Should Reconnect"
 
 type receiverOptions struct {
 	Verifier *VerifierOptions `json:"verifier"`
@@ -116,6 +117,10 @@ func (r *receiver) receiveLoop(ctx context.Context, height HexInt, seq uint64, s
 	}
 	return r.cl.MonitorBlock(ctx, r.evtReq,
 		func(conn *websocket.Conn, v *BlockNotification) error {
+			if v.Height != r.evtReq.Height {
+				r.log.WithFields(log.Fields{"ExpectedHeight": r.evtReq.Height, "ReceivedHeight": v.Height}).Error(" BlockNotification has height different than one expected from the requested event ")
+				return errors.New(RECONNECT_ON_UNEXPECTED_HEIGHT)
+			}
 			if header, rps, err := r.verify(v); err != nil {
 				return errors.Wrap(err, "ReceiveLoop; Verify: ")
 			} else {
@@ -150,9 +155,9 @@ func (r *receiver) receiveLoop(ctx context.Context, height HexInt, seq uint64, s
 			return nil
 		},
 		func(conn *websocket.Conn) {
-			r.log.WithFields(log.Fields{"local": conn.LocalAddr().String()}).Debug("connected")
+			r.log.WithFields(log.Fields{"local": conn.LocalAddr().String()}).Info("connected")
 			if r.retries > 0 {
-				r.log.WithFields(log.Fields{"Previous Retry Count": r.retries}).Debug("Reset to zero")
+				r.log.WithFields(log.Fields{"Previous Retry Count": r.retries}).Info("Reset to zero")
 				r.retries = 0
 			}
 		},
@@ -167,7 +172,7 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		return nil, errors.New("Height of BlockChain should be positive number")
 	}
 	if opts.Seq < 1 {
-		r.log.Warn("Received init link")
+		r.log.Warn("Received init link. Setting Sequence number to 1 ")
 		opts.Seq = 1
 	}
 
@@ -184,7 +189,7 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		}
 	RetryIfEOF:
 		if err = r.receiveLoop(ctx, r.evtReq.Height, r.evtLogRawFilter.seq, cb); err != nil {
-			if isUnexpectedEOFError(err) && r.retries < MAX_RETRY {
+			if (err.Error() == RECONNECT_ON_UNEXPECTED_HEIGHT || isUnexpectedEOFError(err)) && r.retries < MAX_RETRY {
 				r.retries++
 				r.log.WithFields(log.Fields{
 					"Retry Count ":       r.retries,
