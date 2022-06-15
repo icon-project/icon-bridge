@@ -172,7 +172,7 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		return nil, errors.New("Height of BlockChain should be positive number")
 	}
 	if opts.Seq < 1 {
-		r.log.Warn("Received init link. Setting Sequence number to 1 ")
+		r.log.Info("Received init link. Setting Sequence number to 1 ")
 		opts.Seq = 1
 	}
 
