@@ -28,7 +28,6 @@ import foundation.icon.btp.bsh.types.Balance;
 import foundation.icon.btp.bsh.types.TransferAsset;
 import foundation.icon.btp.irc2.IRC2Basic;
 import foundation.icon.btp.restrictions.Restrictions;
-import org.bouncycastle.util.encoders.Hex;
 import org.junit.jupiter.api.*;
 import score.ByteArrayObjectWriter;
 import score.Context;
@@ -64,8 +63,6 @@ class ServiceHandlerTest extends TestBase {
     private static Score bsh;
     private static Score token;
     private static Score bmc;
-    private static Score irc2Basic;
-    private ServiceHandler bshSyp;
     private static Score restrictons;
 
     @BeforeAll
@@ -78,7 +75,7 @@ class ServiceHandlerTest extends TestBase {
         String initialOwners = Arrays.stream(owners)
                 .map(a -> a.getAddress().toString())
                 .collect(Collectors.joining(","));
-        bmc = sm.deploy(owners[0], BMCMock.class);
+        bmc = sm.deploy(owners[0], BMCMock.class, "0x1.icon");
         bsh = sm.deploy(owners[0], ServiceHandler.class, bmc.getAddress().toString());
         token = sm.deploy(owners[0], IRC2Basic.class, tokenName, symbol, decimals, initialSupply);
         restrictons = sm.deploy(owners[0], Restrictions.class);
@@ -89,7 +86,7 @@ class ServiceHandlerTest extends TestBase {
        /* bshSyp = (ServiceHandler) spy(bshScore.getInstance());
         bshScore.setInstance(bshSyp);*/
     }
-/*
+    /*
     @Order(1)
     @Test
     public void handleBTPMessageFromHexBytesTest() {
@@ -101,7 +98,7 @@ class ServiceHandlerTest extends TestBase {
         token.invoke(owners[0],"transfer",bsh.getAddress(),new BigInteger("100000000000000000000"),"transfer to Receiver".getBytes());
         bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ONE, Hex.decode(_msg));
     }
-*/
+    */
 /*    @Order(1)
     @Test
     public void handleBTPMessageFromHexBytesTest() {
@@ -241,7 +238,7 @@ class ServiceHandlerTest extends TestBase {
     @Test
     public void scenario9b() {
         String _to = "btp://0x1.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
-        bsh.invoke(owners[0],"addRestrictor",restrictons.getAddress());
+        bsh.invoke(owners[0], "addRestrictor", restrictons.getAddress());
         restrictons.invoke(owners[0], "addBlacklistedUser", BTPAddress.fromString(_to).getContract());
         AssertionError thrown = assertThrows(AssertionError.class, () ->
                 bsh.invoke(owners[0], "transfer", tokenName, transferAmount, _to)
@@ -357,7 +354,7 @@ class ServiceHandlerTest extends TestBase {
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         restrictons.invoke(owners[0], "addBlacklistedUser", BTPAddress.fromString(_from).getContract());
         AssertionError thrown = assertThrows(AssertionError.class, () ->
-                bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ZERO, handleBTPRequestBtpMsg( BTPAddress.fromString(_from).getContract(), owners[0].getAddress().toString()))
+                bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ZERO, handleBTPRequestBtpMsg(BTPAddress.fromString(_from).getContract(), owners[0].getAddress().toString()))
         );
         assertTrue(thrown.getMessage().contains("_from user is Blacklisted"));
         restrictons.invoke(owners[0], "removeBlacklistedUser", BTPAddress.fromString(_from).getContract());
@@ -372,7 +369,7 @@ class ServiceHandlerTest extends TestBase {
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         restrictons.invoke(owners[0], "registerTokenLimit", tokenName, tokenName, token.getAddress(), transferAmount.subtract(BigInteger.valueOf(1)));
         AssertionError thrown = assertThrows(AssertionError.class, () ->
-                bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ZERO, handleBTPRequestBtpMsg( BTPAddress.fromString(_from).getContract(), owners[0].getAddress().toString()))
+                bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ZERO, handleBTPRequestBtpMsg(BTPAddress.fromString(_from).getContract(), owners[0].getAddress().toString()))
         );
         assertTrue(thrown.getMessage().contains("Transfer amount exceeds the transaction limit"));
         //set restriction back to transfer amount
@@ -443,13 +440,14 @@ class ServiceHandlerTest extends TestBase {
     @Order(18)
     @Test
     public void scenario18() {
-        String _fa = "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b";
+        String _fa = "btp://0x1.icon/" + owners[2].getAddress();
         List<Map<String, BigInteger>> _assets = (List<Map<String, BigInteger>>) bsh.call("getAccumulatedFees");
         BigInteger _fees = transferAmount.multiply(fees).divide(BigInteger.valueOf(10000));
         assertEquals(_assets.get(0).get(tokenName), _fees);
-        bmc.invoke(owners[1], "handleFeeGathering", _fa, _svc);
+        BigInteger balanceBefore = (BigInteger) token.call("balanceOf", bsh.getAddress());
+        assertThrows(AssertionError.class, () -> bmc.invoke(owners[1], "handleFeeGathering", _fa, _svc));
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
-        bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.valueOf(3), handleBTPResponseBtpMsg(1, "Trasnfer Failed"));
+        //bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.valueOf(3), handleBTPResponseBtpMsg(1, "Trasnfer Failed"));
         _assets = (List<Map<String, BigInteger>>) bsh.call("getAccumulatedFees");
         // should still have the fees in accumulator after failure handleresponse
         assertEquals(_assets.get(0).get(tokenName), _fees);
@@ -461,13 +459,14 @@ class ServiceHandlerTest extends TestBase {
     @Order(19)
     @Test
     public void scenario19() {
-        String _fa = "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b";
+        String _fa = "btp://0x1.icon/" + owners[2].getAddress();
         List<Map<String, BigInteger>> _assets = (List<Map<String, BigInteger>>) bsh.call("getAccumulatedFees");
         BigInteger _fees = transferAmount.multiply(fees).divide(BigInteger.valueOf(10000));
         assertEquals(_assets.get(0).get(tokenName), _fees);
+        token.invoke(owners[0], "transfer", bsh.getAddress(), transferAmount, new byte[0]);
         bmc.invoke(owners[1], "handleFeeGathering", _fa, _svc);
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
-        bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.valueOf(4), handleBTPResponseBtpMsg(0, "Trasnfer Success"));
+        //bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.valueOf(4), handleBTPResponseBtpMsg(0, "Trasnfer Success"));
         _assets = (List<Map<String, BigInteger>>) bsh.call("getAccumulatedFees");
         // Should not have any fees left in FeeAccumulator db
         assertEquals(_assets.size(), 0);
