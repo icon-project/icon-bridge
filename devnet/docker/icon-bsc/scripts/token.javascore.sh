@@ -97,6 +97,22 @@ bmc_javascore_addService() {
   ensure_txresult tx/addService.icon
 }
 
+bmc_javascore_setFeeAggregator() {
+  echo "setFeeAggregator"
+  cd $CONFIG_DIR
+  ensure_key_store fa.ks.json fa.secret
+  FA=$(cat fa.ks.json | jq -r .address)
+  goloop rpc sendtx call --to $(cat bmc.icon) \
+    --method setFeeAggregator \
+    --param _addr=${FA} | jq -r . >tx/setFeeAggregator.icon
+  ensure_txresult tx/setFeeAggregator.icon
+
+  goloop rpc sendtx call --to $(cat bmc.icon) \
+    --method setFeeGatheringTerm  \
+    --param _value=100 | jq -r . >tx/setFeeGatheringTerm.icon
+  ensure_txresult tx/setFeeGatheringTerm.icon
+}
+
 bmc_javascore_getServices() {
   cd $CONFIG_DIR
   goloop rpc call --to $(cat bmc.icon) \

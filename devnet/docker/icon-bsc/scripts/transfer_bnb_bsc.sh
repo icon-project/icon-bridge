@@ -17,8 +17,8 @@ get_alice_wrapped_native_balance $NATIVE_COIN_NAME
 
 #initiate Transfer from BSC to ICON from BSH
 printf "\n\nStep 3: BOB Initiates BTP Native coin transfer of $TOKENS_TRANSFER_AMOUNT ($NATIVE_COIN_NAME) to Alice\n"
-bsc_init_native_btp_transfer "$TOKENS_TRANSFER_AMOUNT" >$CONFIG_DIR/tx.native.bsc_icon.transfer
+bsc_init_native_btp_transfer "$TOKENS_TRANSFER_AMOUNT" >>$CONFIG_DIR/tx.native.bsc_icon.transfer
 
 #Check alice balance after 20s
-printf "\n\nStep 4: Alice ETH Balance after BTP token transfer\n"
+printf "\n\nStep 4: Alice BNB Balance after BTP token transfer\n"
 check_alice_wrapped_native_balance_with_wait $NATIVE_COIN_NAME

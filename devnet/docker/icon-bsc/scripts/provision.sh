@@ -69,7 +69,8 @@ provision() {
 
     bmc_javascore_addLink
     bmc_javascore_addRelay
-
+    bmc_javascore_setFeeAggregator
+    
     add_icon_link
     add_icon_relay
 

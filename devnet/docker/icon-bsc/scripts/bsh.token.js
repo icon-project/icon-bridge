@@ -37,7 +37,8 @@ module.exports = async function (callback) {
         break;
       case "approve":
         console.log("Approving BSH to use Bob's tokens")
-        var balance = await bep20tkn.approve(argv.addr, web3.utils.toWei("" + argv.amount, 'ether'), { from: argv.from })
+        var appTx = await bep20tkn.approve(argv.addr, web3.utils.toWei("" + argv.amount, 'ether'), { from: argv.from })
+        console.log(appTx)
         break;
       case "transfer":
         console.log("Init BTP transfer of " + web3.utils.toWei("" + argv.amount, 'ether') + " wei to " + argv.to)

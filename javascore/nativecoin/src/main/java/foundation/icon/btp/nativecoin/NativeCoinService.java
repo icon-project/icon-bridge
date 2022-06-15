@@ -170,6 +170,7 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
         if (name.equals(_coinName)) {
             Context.transfer(owner, _value);
         } else {
+            approve(Context.getAddress(), _coinName, _value);
             transferFrom(Context.getAddress(), owner, _coinName, _value);
         }
     }
@@ -369,7 +370,7 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
                     BigInteger feeAmount = feeAmounts.remove(idx);
                     Context.transfer(fa, feeAmount);
                 }
-                transferFromBatch(owner, fa, ArrayUtil.toStringArray(coinNames), ArrayUtil.toBigIntegerArray(feeAmounts));
+                transferFromBatchWithApprove(owner, fa, ArrayUtil.toStringArray(coinNames), ArrayUtil.toBigIntegerArray(feeAmounts));
             } else {
                 sendRequest(owner, from, coinNames, feeAmounts);
             }
@@ -594,6 +595,29 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
         } catch (IllegalArgumentException | RevertedException e) {
             logger.println("transferFrom", "Exception:", e.toString());
             throw NCSException.irc31Failure("Exception:" + e);
+        }
+    }
+
+    private void approve(Address from, String coinName, BigInteger amount) {
+        logger.println("approve", from, coinName, amount);
+        Address coinAddress = this.getCoinAddress(coinName);
+        IRC2SupplierScoreInterface irc2 = new IRC2SupplierScoreInterface(coinAddress);
+        try {
+            irc2.approve(from,amount);
+        } catch (UserRevertedException e) {
+            logger.println("approve", "code:", e.getCode(), "msg:", e.getMessage());
+            throw NCSException.irc31Reverted("code:" + e.getCode() + "msg:" + e.getMessage());
+        } catch (IllegalArgumentException | RevertedException e) {
+            logger.println("approve", "Exception:", e.toString());
+            throw NCSException.irc31Failure("Exception:" + e);
+        }
+    }
+
+    private void transferFromBatchWithApprove(Address from, Address to, String[] coinNames, BigInteger[] amounts) {
+        logger.println("transferFromBatch", from, to, coinNames, StringUtil.toString(amounts));
+        for (int i = 0; i < coinNames.length; i++) {
+            this.approve(from, coinNames[i], amounts[i]);
+            this.transferFrom(from, to, coinNames[i], amounts[i]);
         }
     }
 

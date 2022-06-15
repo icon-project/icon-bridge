@@ -1,5 +1,6 @@
 package foundation.icon.btp.bsh;
 
+import foundation.icon.btp.lib.BTPAddress;
 import score.Address;
 import score.Context;
 import score.DictDB;
@@ -9,9 +10,14 @@ import java.math.BigInteger;
 
 public class BMCMock {
     private final DictDB<String, Address> bshServices = Context.newDictDB("bshService", Address.class);
+    private final BTPAddress btpAddr;
+    public BMCMock(String _net) {
+        this.btpAddr = new BTPAddress("btp", _net, Context.getAddress().toString());
+    }
 
-    public BMCMock() {
-
+    @External(readonly = true)
+    public String getBtpAddress() {
+        return btpAddr.toString();
     }
 
     @External
@@ -42,6 +48,10 @@ public class BMCMock {
     @External
     public void handleFeeGathering(String _fa, String _svc) {
         Address _addr = bshServices.get(_svc);
-        Context.call(_addr, "handleFeeGathering", _fa, _svc);
+        try {
+            Context.call(_addr, "handleFeeGathering", _fa, _svc);
+        }catch (Exception e){
+            Context.revert("Error handleFeeGathering");
+        }
     }
 }
