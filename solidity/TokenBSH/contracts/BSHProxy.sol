@@ -22,15 +22,15 @@ pragma experimental ABIEncoderV2;
 import "./Interfaces/IBSHProxy.sol";
 import "./Interfaces/IBSHImpl.sol";
 import "./Interfaces/IBMC.sol";
-import "./Libraries/TypesLib.sol";
+import "./Libraries/Types.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "./Libraries/RLPEncodeStructLib.sol";
-import "./Libraries/RLPDecodeStructLib.sol";
-import "./Libraries/StringsLib.sol";
-import "./Libraries/ParseAddressLib.sol";
+import "./Libraries/RLPEncodeStruct.sol";
+import "./Libraries/RLPDecodeStruct.sol";
+import "./Libraries/Strings.sol";
+import "./Libraries/ParseAddress.sol";
 import "./Libraries/Owner.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 

@@ -2,11 +2,12 @@ package relay
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"time"
 
-	"github.com/icon-project/btp/cmd/btpsimple/chain"
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/common/errors"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 const (
@@ -46,12 +47,6 @@ func (r *relay) rxHeight(linkRxHeight uint64) uint64 {
 	return height
 }
 
-func (r *relay) createMessage() *chain.Message {
-	return &chain.Message{
-		From: r.cfg.Src.Address,
-	}
-}
-
 func (r *relay) Start(ctx context.Context) error {
 
 	link, err := r.dst.Status(ctx)
@@ -60,15 +55,22 @@ func (r *relay) Start(ctx context.Context) error {
 	}
 	r.log.Infof("init: link.rxSeq=%d, link.rxHeight=%d", link.RxSeq, link.RxHeight)
 
-	srcMessageCh, err := r.src.
-		SubscribeMessage(ctx, r.rxHeight(link.RxHeight), link.RxSeq)
+	srcMsgCh := make(chan *chain.Message)
+	srcErrCh, err := r.src.Subscribe(ctx,
+		srcMsgCh,
+		chain.SubscribeOptions{
+			Seq:    link.RxSeq,
+			Height: r.rxHeight(link.RxHeight),
+		})
 	if err != nil {
 		return err
 	}
 
-	srcMsg := r.createMessage()
+	srcMsg := &chain.Message{
+		From: r.cfg.Src.Address,
+	}
 
-	removeProcessedMessages := func(rxHeight, rxSeq uint64) {
+	filterSrcMsg := func(rxHeight, rxSeq uint64) (missingRxSeq uint64) {
 		receipts := srcMsg.Receipts[:0]
 		for _, receipt := range srcMsg.Receipts {
 			if receipt.Height < rxHeight {
@@ -77,6 +79,10 @@ func (r *relay) Start(ctx context.Context) error {
 			events := receipt.Events[:0]
 			for _, event := range receipt.Events {
 				if event.Sequence > rxSeq {
+					rxSeq++
+					if event.Sequence != rxSeq {
+						return rxSeq
+					}
 					events = append(events, event)
 				}
 			}
@@ -86,6 +92,7 @@ func (r *relay) Start(ctx context.Context) error {
 			}
 		}
 		srcMsg.Receipts = receipts
+		return 0
 	}
 
 	relayCh := make(chan struct{}, 1)
@@ -108,12 +115,12 @@ func (r *relay) Start(ctx context.Context) error {
 		case <-relayTicker.C:
 			relaySignal()
 
-		case msg := <-srcMessageCh:
+		case err := <-srcErrCh:
+			return err
+
+		case msg := <-srcMsgCh:
 
 			var seqBegin, seqEnd uint64
-			/* if msg == nil {
-				continue
-			} */
 			receipts := msg.Receipts[:0]
 			for _, receipt := range msg.Receipts {
 				if len(receipt.Events) > 0 {
@@ -148,9 +155,12 @@ func (r *relay) Start(ctx context.Context) error {
 				continue
 			}
 
-			removeProcessedMessages(link.RxHeight, link.RxSeq)
+			if missing := filterSrcMsg(link.RxHeight, link.RxSeq); missing > 0 {
+				r.log.WithFields(log.Fields{"rxSeq": missing}).Error("missing event sequence")
+				return fmt.Errorf("missing event sequence")
+			}
 
-			tx, newMsg, err := r.dst.Segment(ctx, srcMsg, r.cfg.Dst.TxDataSizeLimit)
+			tx, newMsg, err := r.dst.Segment(ctx, srcMsg)
 			if err != nil {
 				return err
 			} else if tx == nil { // ignore if tx is nil
@@ -175,8 +185,9 @@ func (r *relay) Start(ctx context.Context) error {
 				}
 			}
 
+			retryCount := 0
 		waitLoop:
-			for _, err := tx.Receipt(ctx); true; _, err = tx.Receipt(ctx) {
+			for _, err := tx.Receipt(ctx); retryCount < 30; _, err = tx.Receipt(ctx) {
 				switch {
 				case err == nil:
 					newMsg.From = srcMsg.From
@@ -194,8 +205,9 @@ func (r *relay) Start(ctx context.Context) error {
 
 				default:
 					time.Sleep(relayTxReceiptWaitInterval) // wait before asking for receipt
-					r.log.WithFields(log.Fields{"error": err}).Debug("tx.Receipt: retry")
+					r.log.WithFields(log.Fields{"error": err, "retry": retryCount + 1}).Debug("tx.Receipt: retry")
 				}
+				retryCount++
 			}
 
 		}

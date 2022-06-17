@@ -5,6 +5,14 @@
     "log_writer": {
         "filename": "bmr/bmr.log"
     },
+    "stat_collector": {
+        "verbose": false
+    },
+    "log_forwarder": {
+        "vendor": "slack",
+        "address": "https://hooks.slack.com/services/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",
+        "level": "info"
+    },
     "relays": [
         {
             "name": "h2i",
@@ -16,7 +24,8 @@
                         "blockHeight": 24629415,
                         "commitBitmap": "0xffffff07",
                         "commitSignature": "0xaa325f4ae32c183e184e4f64603cfbeb44cec12cb7654a180ed83b737d53ff86463f5c6ba20300b70b60266512ee570fba6bcfbc5085a07f39dac5a197e53d2eff450c9d8abdfa685a47a72a8bfb9d541fdf3cf02e8b3e89c4c3fa057d58dc8b"
-                    }
+                    },
+                    "syncConcurrency": 100
                 },
                 "offset": 24629946
             },
@@ -26,9 +35,9 @@
                     "https://berlin.net.solidwallet.io/api/v3/icon_dex"
                 ],
                 "options": {
-                    "step_limit": 13610920010
+                    "step_limit": 13610920010,
+                    "tx_data_size_limit": 65536
                 },
-                "tx_data_size_limit": 65536,
                 "key_store": {
                     "address": "hxca02e14958183eef1a31d405e6628d25bdb35282",
                     "id": "f94b9e44-63a8-4b10-a691-a78cf4adb143",
@@ -61,16 +70,21 @@
                 "endpoint": [
                     "https://berlin.net.solidwallet.io/api/v3/icon_dex"
                 ],
-                "options": {},
+                "options": {
+                    "verifier": {
+                        "blockHeight": 50833960,
+                        "validatorsHash": "0x120c4d12ae3770b868e650e950200364fe138b92e872e487f50da4337bcc83c7"
+                    }
+                },
                 "offset": 6057269
             },
             "dst": {
                 "address": "btp://0x6357d2e0.hmny/0x233909bE3797BBd135A837AC945bCdE3cB078969",
                 "endpoint": ["https://rpc.s0.b.hmny.io"],
                 "options": {
-                    "gas_limit": 80000000
+                    "gas_limit": 80000000,
+                    "tx_data_size_limit": 65536
                 },
-                "tx_data_size_limit": 65536,
                 "key_store": {
                     "address": "80f1b32f3d656528a9616076e42fcc4d47a5a9a3",
                     "crypto": {

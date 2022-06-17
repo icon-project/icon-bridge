@@ -372,7 +372,7 @@ contract('As a user, I want to send PRA to ICON blockchain', (accounts) => {
     let RC_OK = 0;                                  let RC_ERR = 1;    
     let _native = 'PARA';                           let deposit = 1000000000000;
     let _fee = 10;                                  let _fixed_fee = 500000;                      
-    let REPONSE_HANDLE_SERVICE = 2;                 let _uri = 'https://github.com/icon-project/btp';
+    let REPONSE_HANDLE_SERVICE = 2;                 let _uri = 'https://github.com/icon-project/icon-bridge';
 
     before(async () => {
         bsh_perif = await BSHPeriphery.new();
@@ -757,7 +757,7 @@ contract('As a user, I want to send PRA to ICON blockchain', (accounts) => {
 
 contract('As a user, I want to send ERC1155_ICX to ICON blockchain', (accounts) => {
     let bsh_perif, bsh_core, bmc, holder;
-    let service = 'Coin/WrappedCoin';           let _uri = 'https://github.com/icon-project/btp';
+    let service = 'Coin/WrappedCoin';           let _uri = 'https://github.com/icon-project/icon-bridge';
     let _native = 'PARA';                       let _fee = 10;              let _fixed_fee = 500000;  
     let _name = 'ICON';                         let _bmcICON = 'btp://1234.iconee/0x1234567812345678';
     let _net = '1234.iconee';                   let _from = '0x12345678';   let _value = 999999999999999;                       
@@ -1083,7 +1083,7 @@ contract('As a user, I want to receive PRA from ICON blockchain', (accounts) => 
     let _net = '1234.iconee';               let _to = 'btp://1234.iconee/0x12345678';
     let _native = 'PARA';                   let _fee = 10;      let _fixed_fee = 500000;   
     let RC_ERR = 1;                         let RC_OK = 0;
-    let _uri = 'https://github.com/icon-project/btp';
+    let _uri = 'https://github.com/icon-project/icon-bridge';
 
     before(async () => {
         bsh_perif = await BSHPeriphery.new();
@@ -1179,7 +1179,7 @@ contract('As a user, I want to receive PRA from ICON blockchain', (accounts) => 
 
 contract('As a user, I want to receive ERC1155_ICX from ICON blockchain', (accounts) => {
     let bmc, bsh_perif, bsh_core, holder, notpayable;
-    let service = 'Coin/WrappedCoin';                   let _uri = 'https://github.com/icon-project/btp';
+    let service = 'Coin/WrappedCoin';                   let _uri = 'https://github.com/icon-project/icon-bridge';
     let _native = 'PARA';                               let _fee = 10;          let _fixed_fee = 500000;
     let _name = 'ICON';                                 let _bmcICON = 'btp://1234.iconee/0x1234567812345678';
     let _net = '1234.iconee';                           let _from = '0x12345678';           
@@ -1278,7 +1278,7 @@ contract('As a user, I want to receive ERC1155_ICX from ICON blockchain', (accou
 
 contract('BSHs handle Gather Fee Service Requests', (accounts) => {
     let bsh_perif, bsh_core, bmc, holder;
-    let service = 'Coin/WrappedCoin';                   let _uri = 'https://github.com/icon-project/btp';
+    let service = 'Coin/WrappedCoin';                   let _uri = 'https://github.com/icon-project/icon-bridge';
     let _native = 'PARA';                               let _fee = 10;                  let _fixed_fee = 500000;
     let _name1 = 'ICON';    let _name2 = 'BINANCE';     let _name3 = 'ETHEREUM';        let _name4 = 'TRON';                                             
     let _net1 = '1234.iconee';                          let _net2 = '1234.binance';                               
@@ -1499,7 +1499,7 @@ contract('BSHs handle Gather Fee Service Requests', (accounts) => {
 
 contract('As a user, I want to receive multiple Coins/Tokens from ICON blockchain', (accounts) => {
     let bsh_perif, bsh_core, bmc, holder, refundable;
-    let service = 'Coin/WrappedCoin';                   let _uri = 'https://github.com/icon-project/btp';
+    let service = 'Coin/WrappedCoin';                   let _uri = 'https://github.com/icon-project/icon-bridge';
     let _native = 'PARA';                               let _fee = 10;                  let _fixed_fee = 500000;
     let _name1 = 'ICON';    let _name2 = 'BINANCE';     let _name3 = 'ETHEREUM';        let _name4 = 'TRON';                                             
     let _net1 = '1234.iconee';                          let _bmcICON = 'btp://1234.iconee/0x1234567812345678';                                                     
@@ -1704,7 +1704,7 @@ contract('As a user, I want to receive multiple Coins/Tokens from ICON blockchai
 
 contract('As a user, I want to send multiple coins/tokens to ICON blockchain', (accounts) => {
     let bsh_perif, bsh_core, bmc, holder;
-    let service = 'Coin/WrappedCoin';           let _uri = 'https://github.com/icon-project/btp';
+    let service = 'Coin/WrappedCoin';           let _uri = 'https://github.com/icon-project/icon-bridge';
     let _native = 'PARA';                       let _fee = 10;              let _fixed_fee = 500000;      
     let _net = '1234.iconee';                   let _from = '0x12345678';   let _value = 999999999999999;                       
     let REPONSE_HANDLE_SERVICE = 2;             let RC_OK = 0;              let RC_ERR = 1;

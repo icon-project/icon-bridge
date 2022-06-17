@@ -23,7 +23,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/icon-project/btp/common/jsonrpc"
+	"github.com/icon-project/icon-bridge/common/jsonrpc"
 )
 
 const (

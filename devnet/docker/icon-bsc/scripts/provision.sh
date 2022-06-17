@@ -16,12 +16,12 @@ goloop_lastblock() {
 }
 
 provision() {
-  
+
   cp -r $BTPSIMPLE_BASE_DIR/keys/* $BTPSIMPLE_CONFIG_DIR
   cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_BIN_DIR/env
 
   if [ ! -f $BTPSIMPLE_CONFIG_DIR/provision ]; then
-    echo "start provisioning..."    
+    echo "start provisioning..."
 
     # shellcheck disable=SC2059
 
@@ -70,7 +70,7 @@ provision() {
     bmc_javascore_addLink
     bmc_javascore_addRelay
     bmc_javascore_setFeeAggregator
-    
+
     add_icon_link
     add_icon_relay
 
@@ -79,7 +79,7 @@ provision() {
 
     cp $BTPSIMPLE_CONFIG_DIR/addresses.json $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/
     cp $BTPSIMPLE_CONFIG_DIR/addresses.json $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/
-        
+
     touch $BTPSIMPLE_CONFIG_DIR/provision
     echo "provision is now complete"
   else
@@ -87,12 +87,12 @@ provision() {
   fi
 }
 
-prepare_solidity_env(){
+prepare_solidity_env() {
 
   cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/bmc/.env
   cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/.env
   cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/.env
-  
+
   cp $BTPSIMPLE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
 
   if [ ! -f $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/build/contracts/BSHCore.json ]; then
@@ -121,7 +121,14 @@ wait_for_file() {
   done
 }
 
+btp_icon_validators_hash() {
+  URI=$ICON_ENDPOINT \
+    HEIGHT=$(decimal2Hex $(cat $CONFIG_DIR/offset.icon)) \
+    $BTPSIMPLE_BIN_DIR/iconvalidators | jq -r .hash
+}
+
 generate_relay_config() {
+  validatorsHash=$(btp_icon_validators_hash)
   jq -n '
     .base_dir = $base_dir |
     .log_level = "debug" |
@@ -163,8 +170,9 @@ generate_relay_config() {
             .name = "i2b" |
             .src.address = $src_address |
             .src.endpoint = [ $src_endpoint ] |
-            .src.options = $src_options |
             .src.offset = $src_offset |
+            .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
+            .src.options.verifier.validatorsHash = $src_options_verifier_validatorsHash |
             .dst.address = $dst_address |
             .dst.endpoint = [ $dst_endpoint ] |
             .dst.options = $dst_options |
@@ -175,7 +183,8 @@ generate_relay_config() {
         --arg src_address "$(cat $CONFIG_DIR/btp.icon)" \
         --arg src_endpoint "$ICON_ENDPOINT" \
         --argjson src_offset "$(cat $CONFIG_DIR/offset.icon)" \
-        --argjson src_options "{}" \
+        --argjson src_options_verifier_blockHeight "$(cat $CONFIG_DIR/offset.icon)" \
+        --arg src_options_verifier_validatorsHash "$validatorsHash" \
         --arg dst_address "$(cat $CONFIG_DIR/btp.bsc)" \
         --arg dst_endpoint "$BSC_ENDPOINT" \
         --argfile dst_key_store "$BSC_KEY_STORE" \
@@ -185,7 +194,6 @@ generate_relay_config() {
         --argjson dst_options '{"gas_limit":8000000}'
     )"
 }
-
 
 wait-for-it.sh $GOLOOP_RPC_ADMIN_URI
 # run provisioning

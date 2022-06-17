@@ -25,12 +25,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/icon-project/btp/cmd/btpsimple/chain"
-	"github.com/icon-project/btp/common"
-	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/jsonrpc"
-	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/wallet"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/common"
+	"github.com/icon-project/icon-bridge/common/codec"
+	"github.com/icon-project/icon-bridge/common/jsonrpc"
+	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
 const (
@@ -65,7 +65,8 @@ func NewSender(
 }
 
 type senderOptions struct {
-	StepLimit uint64 `json:"step_limit"`
+	StepLimit       uint64 `json:"step_limit"`
+	TxDataSizeLimit uint64 `json:"tx_data_size_limit"`
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
@@ -127,16 +128,15 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 }
 
 func (s *sender) Segment(
-	ctx context.Context,
-	msg *chain.Message, txSizeLimit uint64,
+	ctx context.Context, msg *chain.Message,
 ) (tx chain.RelayTx, newMsg *chain.Message, err error) {
 	if ctx.Err() != nil {
 		return nil, nil, ctx.Err()
 	}
 
-	if txSizeLimit == 0 {
+	if s.opts.TxDataSizeLimit == 0 {
 		limit := defaultTxSizeLimit
-		txSizeLimit = uint64(limit)
+		s.opts.TxDataSizeLimit = uint64(limit)
 	}
 
 	if len(msg.Receipts) == 0 {
@@ -168,7 +168,7 @@ func (s *sender) Segment(
 			return nil, nil, err
 		}
 		newMsgSize := msgSize + uint64(len(rlpReceipt))
-		if newMsgSize > txSizeLimit {
+		if newMsgSize > s.opts.TxDataSizeLimit {
 			newMsg.Receipts = msg.Receipts[i:]
 			break
 		}
@@ -253,9 +253,14 @@ SignLoop:
 			txh, err := tx.cl.SendTransaction(tx.txParam)
 			if txh != nil {
 				tx.txHashParam = &TransactionHashParam{*txh}
+				// tx.cl.log.WithFields(log.Fields{
+				// 	"txh": tx.txHashParam.Hash,
+				// 	"msg": common.HexBytes(tx.Message)}).Debug("handleRelayMessage: tx sent")
+				txBytes, _ := json.Marshal(tx.txParam)
 				tx.cl.log.WithFields(log.Fields{
 					"txh": tx.txHashParam.Hash,
-					"msg": common.HexBytes(tx.Message)}).Debug("handleRelayMessage: tx sent")
+					"tx":  string(txBytes)}).Debug("handleRelayMessage: tx sent")
+
 			}
 			if err != nil {
 				tx.cl.log.WithFields(log.Fields{
@@ -302,10 +307,11 @@ func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error)
 					continue
 				}
 			}
+			return txr, mapErrorWithTransactionResult(txr, err)
 		}
 		tx.cl.log.WithFields(log.Fields{
 			"txh": tx.txHashParam.Hash}).Debug("handleRelayMessage: success")
-		return txr, mapErrorWithTransactionResult(txr, err)
+		return txr, nil
 	}
 }
 

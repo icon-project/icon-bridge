@@ -30,10 +30,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/icon-project/btp/common/wallet"
+	"github.com/icon-project/icon-bridge/common/wallet"
 
-	"github.com/icon-project/btp/cmd/btpsimple/chain/bsc/binding"
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain/bsc/binding"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 const (

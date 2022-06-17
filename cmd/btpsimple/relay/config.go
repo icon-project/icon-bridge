@@ -3,8 +3,8 @@ package relay
 import (
 	"encoding/json"
 
-	"github.com/icon-project/btp/cmd/btpsimple/chain"
-	"github.com/icon-project/btp/common/wallet"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
 const (

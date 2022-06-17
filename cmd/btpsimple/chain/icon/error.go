@@ -19,7 +19,7 @@ package icon
 import (
 	"fmt"
 
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/icon-bridge/common/errors"
 )
 
 var (

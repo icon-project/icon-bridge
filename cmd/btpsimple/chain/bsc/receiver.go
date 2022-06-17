@@ -21,13 +21,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/icon-project/btp/cmd/btpsimple/chain"
-	"github.com/icon-project/btp/cmd/btpsimple/chain/bsc/binding"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain/bsc/binding"
 
 	"math/big"
 
-	"github.com/icon-project/btp/common/errors"
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/common/errors"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 type receiver struct {
@@ -113,16 +113,18 @@ func (r *receiver) StopReceiveLoop() {
 	r.cl.CloseAllMonitor()
 }
 
-func (r *receiver) SubscribeMessage(ctx context.Context, height, seq uint64) (<-chan *chain.Message, error) {
-	seq++
-	ch := make(chan *chain.Message)
+func (r *receiver) Subscribe(
+	ctx context.Context, msgCh chan<- *chain.Message,
+	opts chain.SubscribeOptions) (errCh <-chan error, err error) {
+
+	opts.Seq++
+
+	_errCh := make(chan error)
+
 	go func() {
-		defer func() {
-			r.log.Errorf("Closing channel")
-			close(ch)
-		}()
-		lastHeight := height - 1
-		if err := r.receiveLoop(ctx, int64(height),
+		defer close(_errCh)
+		lastHeight := opts.Height - 1
+		if err := r.receiveLoop(ctx, int64(opts.Height),
 			func(v *BlockNotification) error {
 				r.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
 
@@ -141,14 +143,14 @@ func (r *receiver) SubscribeMessage(ctx context.Context, height, seq uint64) (<-
 				for _, receipt := range receipts {
 					events := receipt.Events[:0]
 					for _, event := range receipt.Events {
-						r.log.Infof("seq no", event.Sequence, seq)
+						r.log.Infof("seq no", event.Sequence, opts.Seq)
 						switch {
-						case event.Sequence == seq:
+						case event.Sequence == opts.Seq:
 							events = append(events, event)
-							seq++
-						case event.Sequence > seq:
+							opts.Seq++
+						case event.Sequence > opts.Seq:
 							r.log.WithFields(log.Fields{
-								"seq": log.Fields{"got": event.Sequence, "expected": seq},
+								"seq": log.Fields{"got": event.Sequence, "expected": opts.Seq},
 							}).Error("invalid event seq")
 							return fmt.Errorf("invalid event seq")
 						}
@@ -156,13 +158,15 @@ func (r *receiver) SubscribeMessage(ctx context.Context, height, seq uint64) (<-
 					receipt.Events = events
 				}
 
-				ch <- &chain.Message{Receipts: receipts}
+				msgCh <- &chain.Message{Receipts: receipts}
 				lastHeight++
 				return nil
 			}); err != nil {
 			// TODO decide whether to ignore or handle err
 			r.log.Errorf("receiveLoop terminated: %v", err)
+			_errCh <- err
 		}
 	}()
-	return ch, nil
+
+	return _errCh, nil
 }

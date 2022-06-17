@@ -36,6 +36,7 @@ COPY ./*.sh /btpsimple/bin/
 COPY ./scripts/*.sh /btpsimple/bin/
 COPY ./entrypoint.sh /
 COPY ./scripts/provision.sh /
+COPY ./iconvalidators /btpsimple/bin/
 
 
 #RUN mkdir {BTPSIMPLE_SCRIPTS_DIR}

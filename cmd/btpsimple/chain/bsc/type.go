@@ -27,7 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/icon-project/btp/common/jsonrpc"
+	"github.com/icon-project/icon-bridge/common/jsonrpc"
 )
 
 const (

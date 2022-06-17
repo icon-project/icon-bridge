@@ -42,7 +42,23 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
     public static final int INVALID_RX_SRC_HEIGHT = 26;
 
     public enum Internal {
-        Init, Link, Unlink, FeeGathering, Sack
+        Init, Link, Unlink, FeeGathering, Sack;
+
+        static Internal fromString(String type) {
+            switch (type) {
+                case "Init":
+                    return Init;
+                case "Link":
+                    return Link;
+                case "Unlink":
+                    return Unlink;
+                case "FeeGathering":
+                    return FeeGathering;
+                case "Sack":
+                    return Sack;
+            }
+            throw new IllegalArgumentException();
+        }
     }
 
     //
@@ -163,6 +179,14 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         putLink(link);
 
         sendInternal(target, Internal.Init, initMsg.toBytes());
+    }
+
+    @External
+    public void setLinkRxHeight(String _link, long _height) {
+        requireOwnerAccess();
+        Link link = getLink(BTPAddress.valueOf(_link));
+        link.setRxHeight(_height);
+        putLink(link);
     }
 
     @External
@@ -398,7 +422,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         byte[] payload = bmcMsg.getPayload();
         Internal internal = null;
         try {
-            internal = Internal.valueOf(bmcMsg.getType());
+            internal = Internal.fromString(bmcMsg.getType());
         } catch (IllegalArgumentException e) {
             // TODO exception handling
             logger.println("handleInternal", "not supported internal type", e.getMessage());

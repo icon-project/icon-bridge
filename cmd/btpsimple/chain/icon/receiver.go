@@ -20,14 +20,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/gorilla/websocket"
-	"github.com/icon-project/btp/cmd/btpsimple/chain"
-	"github.com/icon-project/btp/common"
-	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/mpt"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/common"
+	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -36,8 +34,11 @@ const (
 	EventIndexNext      = 1
 	EventIndexSequence  = 2
 )
+const MAX_RETRY = 3
+const RECONNECT_ON_UNEXPECTED_HEIGHT = "Unexpected Block Height. Should Reconnect"
 
 type receiverOptions struct {
+	Verifier *VerifierOptions `json:"verifier"`
 }
 
 func (opts *receiverOptions) Unmarshal(v map[string]interface{}) error {
@@ -48,227 +49,200 @@ func (opts *receiverOptions) Unmarshal(v map[string]interface{}) error {
 	return json.Unmarshal(b, opts)
 }
 
+type eventLogRawFilter struct {
+	addr      []byte
+	signature []byte
+	next      []byte
+	seq       uint64
+}
+
 type receiver struct {
-	log  log.Logger
-	src  chain.BTPAddress
-	dst  chain.BTPAddress
-	opts receiverOptions
-	cl   *client
-
-	// src
-	evtLogRawFilter struct {
-		addr      []byte
-		signature []byte
-		next      []byte
-		seq       []byte
-	}
-	evtReq             *BlockRequest
-	bh                 *BlockHeader
-	isFoundOffsetBySeq bool
+	log             log.Logger
+	src             chain.BTPAddress
+	dst             chain.BTPAddress
+	cl              *client
+	evtLogRawFilter *eventLogRawFilter
+	evtReq          *BlockRequest
+	hv              *headerValidator
+	retries         int
 }
 
-// NewReceiver ...
-// returns a new receiver client for harmony
-func NewReceiver(
-	src, dst chain.BTPAddress, urls []string,
-	opts map[string]interface{}, l log.Logger) (chain.Receiver, error) {
-	cl := &receiver{
-		log: l,
-		src: src,
-		dst: dst,
-	}
+func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]interface{}, l log.Logger) (chain.Receiver, error) {
 	if len(urls) == 0 {
-		return nil, fmt.Errorf("empty urls: %v", urls)
+		return nil, errors.New("List of Urls is empty")
 	}
-	if err := cl.opts.Unmarshal(opts); err != nil {
-		return nil, err
-	}
-	cl.cl = newClient(urls[0], l)
-	return cl, nil
-}
+	client := newClient(urls[0], l)
 
-func (r *receiver) getBlockHeader(height HexInt) (*BlockHeader, error) {
-	p := &BlockHeightParam{Height: height}
-	b, err := r.cl.GetBlockHeaderByHeight(p)
+	var recvOpts receiverOptions
+	if err := recvOpts.Unmarshal(opts); err != nil {
+		return nil, errors.Wrap(err, "Unmarshal recvOpts Error: ")
+	}
+
+	hv := headerValidator{}
+	vHash := recvOpts.Verifier.ValidatorsHash
+	if vs, err := getValidatorsFromHash(client, vHash); err != nil {
+		return nil, errors.Wrap(err, "getValidatorsFromHash; ")
+	} else {
+		hv.validatorsHash = vHash
+		hv.validators = vs
+		hv.height = recvOpts.Verifier.BlockHeight
+	}
+
+	dstr := dst.String()
+	ef := &EventFilter{Addr: Address(src.ContractAddress()), Signature: EventSignature, Indexed: []*string{&dstr}}
+	evtReq := &BlockRequest{EventFilters: []*EventFilter{ef}} // fill height later
+
+	efAddr, err := ef.Addr.Value()
 	if err != nil {
-		return nil, mapError(err)
+		return nil, errors.Wrap(err, "Get Value from EventFilter.Addr; ")
 	}
-	var bh BlockHeader
-	_, err = codec.RLP.UnmarshalFromBytes(b, &bh)
-	if err != nil {
-		return nil, err
+
+	recvr := &receiver{
+		log:             l,
+		src:             src,
+		dst:             dst,
+		cl:              client,
+		hv:              &hv,
+		retries:         0,
+		evtReq:          evtReq,
+		evtLogRawFilter: &eventLogRawFilter{addr: efAddr, signature: []byte(EventSignature), next: []byte(dstr)}, // fill seq later
 	}
-	bh.serialized = b
-	return &bh, nil
+
+	return recvr, nil
 }
 
-func (r *receiver) toEvent(proof [][]byte) (*chain.Event, error) {
-	el, err := toEventLog(proof)
-	if err != nil {
-		return nil, err
+func (r *receiver) receiveLoop(ctx context.Context, height HexInt, seq uint64, sendCallback func(rs []*chain.Receipt) error) error {
+	if err := r.syncVerifier(height); err != nil {
+		return errors.Wrap(err, "ReceiveLoop; ")
 	}
-	if bytes.Equal(el.Addr, r.evtLogRawFilter.addr) &&
-		bytes.Equal(el.Indexed[EventIndexSignature], r.evtLogRawFilter.signature) &&
-		bytes.Equal(el.Indexed[EventIndexNext], r.evtLogRawFilter.next) {
-		var i common.HexInt
-		i.SetBytes(el.Indexed[EventIndexSequence])
-		evt := &chain.Event{
-			Next:     chain.BTPAddress(el.Indexed[EventIndexNext]),
-			Sequence: i.Uint64(),
-			Message:  el.Data[0],
-		}
-		return evt, nil
-	}
-	return nil, fmt.Errorf("invalid event")
-}
-
-func toEventLog(proof [][]byte) (*EventLog, error) {
-	mp, err := mpt.NewMptProof(proof)
-	if err != nil {
-		return nil, err
-	}
-	el := &EventLog{}
-	if _, err := codec.RLP.UnmarshalFromBytes(mp.Leaf().Data, el); err != nil {
-		return nil, fmt.Errorf("fail to parse EventLog on leaf err:%+v", err)
-	}
-	return el, nil
-}
-
-func (r *receiver) getReceipts(v *BlockNotification) ([]*chain.Receipt, error) {
-	nextEp := 0
-	rps := make([]*chain.Receipt, 0)
-	if len(v.Indexes) > 0 {
-		l := v.Indexes[0]
-	RpLoop:
-		for i, index := range l {
-			p := &ProofEventsParam{BlockHash: v.Hash, Index: index, Events: v.Events[0][i]}
-			proofs, err := r.cl.GetProofForEvents(p)
-			if err != nil {
-				return nil, mapError(err)
-			}
-			if !r.isFoundOffsetBySeq {
-			EpLoop:
-				for j := 0; j < len(p.Events); j++ {
-					if el, err := toEventLog(proofs[j+1]); err != nil {
-						return nil, err
-					} else if bytes.Equal(el.Addr, r.evtLogRawFilter.addr) &&
-						bytes.Equal(el.Indexed[EventIndexSignature], r.evtLogRawFilter.signature) &&
-						bytes.Equal(el.Indexed[EventIndexNext], r.evtLogRawFilter.next) &&
-						bytes.Equal(el.Indexed[EventIndexSequence], r.evtLogRawFilter.seq) {
-						r.isFoundOffsetBySeq = true
-						r.log.Debugln("onCatchUp found offset sequence", j, v)
-						if (j + 1) < len(p.Events) {
-							nextEp = j + 1
-							break EpLoop
-						}
-					} else {
-						r.log.WithFields(log.Fields{
-							"addr": log.Fields{
-								"got":      common.HexBytes(el.Addr),
-								"expected": common.HexBytes(r.evtLogRawFilter.addr),
-							},
-							"sig": log.Fields{
-								"got":      common.HexBytes(el.Indexed[EventIndexSignature]),
-								"expected": common.HexBytes(r.evtLogRawFilter.signature),
-							},
-							"next": log.Fields{
-								"got":      common.HexBytes(el.Indexed[EventIndexNext]),
-								"expected": common.HexBytes(r.evtLogRawFilter.next),
-							},
-							"seq": log.Fields{
-								"got":      common.HexBytes(el.Indexed[EventIndexSequence]),
-								"expected": common.HexBytes(r.evtLogRawFilter.seq),
-							},
-						}).Error("invalid event: cannot match addr/sig/next/seq")
-					}
-				}
-				if nextEp == 0 {
-					continue RpLoop
-				}
-			}
-			idx, _ := index.Value()
-			rp := &chain.Receipt{
-				Index: uint64(idx),
-			}
-			rp.Height = hexInt2Uint64(v.Height)
-			for k := nextEp; k < len(p.Events); k++ {
-				var evt *chain.Event
-				if evt, err = r.toEvent(proofs[k+1]); err != nil {
-					return nil, err
-				}
-				rp.Events = append(rp.Events, evt)
-			}
-			rps = append(rps, rp)
-			nextEp = 0
-		}
-	}
-	return rps, nil
-}
-
-func (r *receiver) receiveLoop(
-	ctx context.Context, height, seq uint64,
-	callback func(rs []*chain.Receipt) error) error {
-	s := r.dst.String()
-	ef := &EventFilter{
-		Addr:      Address(r.src.ContractAddress()),
-		Signature: EventSignature,
-		Indexed:   []*string{&s},
-	}
-	r.evtReq = &BlockRequest{
-		Height:       NewHexInt(int64(height)),
-		EventFilters: []*EventFilter{ef},
-	}
-
-	if height < 1 {
-		return fmt.Errorf("cannot catchup from zero height")
-	}
-	var err error
-	if r.bh, err = r.getBlockHeader(NewHexInt(int64(height) - 1)); err != nil {
-		return err
-	}
-	if seq < 1 {
-		r.isFoundOffsetBySeq = true
-	}
-	if r.evtLogRawFilter.addr, err = ef.Addr.Value(); err != nil {
-		r.log.Panicf("ef.Addr.Value() err:%+v", err)
-	}
-	r.evtLogRawFilter.signature = []byte(EventSignature)
-	r.evtLogRawFilter.next = []byte(s)
-	r.evtLogRawFilter.seq = common.NewHexInt(int64(seq)).Bytes()
-	return r.cl.MonitorBlock(r.evtReq,
+	return r.cl.MonitorBlock(ctx, r.evtReq,
 		func(conn *websocket.Conn, v *BlockNotification) error {
-			var blockNum, _ = v.Height.Value()
-			r.log.WithFields(log.Fields{"height": blockNum}).Debug("block notification")
-			var err error
-			var rps []*chain.Receipt
-			if rps, err = r.getReceipts(v); err != nil {
-				return err
-			} else if r.isFoundOffsetBySeq {
-				callback(rps)
+			if v.Height != r.evtReq.Height {
+				r.log.WithFields(log.Fields{"ExpectedHeight": r.evtReq.Height, "ReceivedHeight": v.Height}).Error(" BlockNotification has height different than one expected from the requested event ")
+				return errors.New(RECONNECT_ON_UNEXPECTED_HEIGHT)
+			}
+			if header, rps, err := r.verify(v); err != nil {
+				return errors.Wrap(err, "ReceiveLoop; Verify: ")
+			} else {
+				htNum, hterr := v.Height.Value()
+				if hterr != nil {
+					return errors.Wrapf(err, "ReceiveLoop; Conversion Error at Height %v ", v.Height)
+				}
+				validatorForNextBlock, err := r.getNewValidatorState(header)
+				if err != nil {
+					return errors.Wrap(err, "ReceiveLoop; ")
+				}
+				seqForNextEventLog := r.evtLogRawFilter.seq
+				if len(rps) > 0 {
+					seqForNextEventLog, err = r.getVerifiedSequenceNum(r.evtLogRawFilter.seq, rps)
+					if err != nil {
+						return errors.Wrap(err, "ReceiveLoop; Verify Sequence: ")
+					}
+					if err := sendCallback(rps); err != nil {
+						return errors.Wrap(err, "ReceiveLoop; sendCallback: ")
+					}
+					r.log.WithFields(log.Fields{"CurHeight": r.evtReq.Height, "ReceiptLength": len(rps), "CurSeq": r.evtLogRawFilter.seq}).Info(" Receipts Sent ")
+				}
+				// Update state now that receipts (if any) has been sent
+				// Since there isn't any error in the next code segment, state update will happen for sure
+				// As such, there won't be the case when receipt is sent but state is not updated
+				r.hv = validatorForNextBlock
+				r.evtLogRawFilter.seq = seqForNextEventLog
+				r.evtReq.Height = NewHexInt(int64(htNum + 1))
+
+				r.log.WithFields(log.Fields{"NextHeight": r.evtReq.Height, "NextSeq": r.evtLogRawFilter.seq}).Debug(" Done: Verified Receipt and Updated State")
 			}
 			return nil
 		},
 		func(conn *websocket.Conn) {
-			r.log.WithFields(log.Fields{"local": conn.LocalAddr().String()}).Debug("connected")
+			r.log.WithFields(log.Fields{"local": conn.LocalAddr().String()}).Info("connected")
+			if r.retries > 0 {
+				r.log.WithFields(log.Fields{"Previous Retry Count": r.retries}).Info("Reset to zero")
+				r.retries = 0
+			}
 		},
 		func(conn *websocket.Conn, err error) {
-			r.log.WithFields(log.Fields{"error": err, "local": conn.LocalAddr().String()}).Debug("disconnected")
+			r.log.WithFields(log.Fields{"error": err, "local": conn.LocalAddr().String()}).Warn("disconnected")
 			_ = conn.Close()
 		})
 }
 
-func (r *receiver) SubscribeMessage(ctx context.Context, height, seq uint64) (<-chan *chain.Message, error) {
-	ch := make(chan *chain.Message)
+func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, opts chain.SubscribeOptions) (errCh <-chan error, err error) {
+	if opts.Height < 1 {
+		return nil, errors.New("Height of BlockChain should be positive number")
+	}
+	if opts.Seq < 1 {
+		r.log.Warn("Received init link. Setting Sequence number to 1 ")
+		opts.Seq = 1
+	}
+
+	r.evtReq.Height = NewHexInt(int64(opts.Height))
+	r.evtLogRawFilter.seq = opts.Seq //common.NewHexInt(int64(opts.Seq)).Bytes()
+
+	_errCh := make(chan error)
 	go func() {
-		defer close(ch)
-		if err := r.receiveLoop(ctx, height, seq,
-			func(rs []*chain.Receipt) error {
-				ch <- &chain.Message{Receipts: rs}
-				return nil
-			}); err != nil {
-			// TODO decide whether to ignore or handle err
-			r.log.Errorf("receiveLoop terminated: %v", err)
+		var err error
+		defer close(_errCh)
+		cb := func(rs []*chain.Receipt) error {
+			msgCh <- &chain.Message{Receipts: rs}
+			return nil
 		}
+	RetryIfEOF:
+		if err = r.receiveLoop(ctx, r.evtReq.Height, r.evtLogRawFilter.seq, cb); err != nil {
+			if (err.Error() == RECONNECT_ON_UNEXPECTED_HEIGHT || isUnexpectedEOFError(err)) && r.retries < MAX_RETRY {
+				r.retries++
+				r.log.WithFields(log.Fields{
+					"Retry Count ":       r.retries,
+					"EventRequestHeight": r.evtReq.Height, "EventSequence": r.evtLogRawFilter.seq,
+					"ValidatorHash": r.hv.validatorsHash, "ValidatorHeight": NewHexInt(int64(r.hv.height)),
+				}).Warn("Retrying Websocket Connection")
+				goto RetryIfEOF
+			} else {
+				r.log.WithFields(log.Fields{
+					"EventRequestHeight": r.evtReq.Height, "EventSequence": r.evtLogRawFilter.seq,
+					"ValidatorHash": r.hv.validatorsHash, "ValidatorHeight": NewHexInt(int64(r.hv.height)),
+				}).Warn("State Info Before returning error ")
+				_errCh <- err
+			}
+		}
+		r.log.Warnf("Receive Loop Terminated; err %+v", err)
 	}()
-	return ch, nil
+	return _errCh, nil
+}
+
+func (r *receiver) getNewValidatorState(header *BlockHeader) (*headerValidator, error) {
+	nhv := &headerValidator{
+		validators:     r.hv.validators,
+		validatorsHash: r.hv.validatorsHash,
+		height:         r.hv.height + 1, // point to the next block
+	}
+	if bytes.Equal(header.NextValidatorsHash, r.hv.validatorsHash) { // If same validatorHash, only update height to point to the next block
+		return nhv, nil
+	}
+	if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
+		return nil, errors.Wrap(err, "verifyHeader; ")
+	} else {
+		r.log.WithFields(log.Fields{"Height": NewHexInt(int64(nhv.height)), "NewValidatorHash": common.HexBytes(header.NextValidatorsHash), "OldValidatorHash": r.hv.validatorsHash}).Info(" Updating Validator Hash ")
+		nhv.validatorsHash = header.NextValidatorsHash
+		nhv.validators = vs
+	}
+	return nhv, nil
+}
+
+func (r *receiver) getVerifiedSequenceNum(expectedSeq uint64, receipts []*chain.Receipt) (uint64, error) {
+	for _, receipt := range receipts {
+		newEvents := []*chain.Event{}
+		for _, event := range receipt.Events {
+			switch {
+			case event.Sequence == expectedSeq:
+				newEvents = append(newEvents, event)
+				expectedSeq++
+			case event.Sequence > expectedSeq: // event.sequencce - expectedSeq has not been considered or is missed ?
+				r.log.WithFields(log.Fields{"Expected": expectedSeq, "Got": event.Sequence}).Error("Current event log sequence higher than expected")
+				return expectedSeq, errors.New("Invalid Sequence for event log of receipt ")
+			}
+		}
+		receipt.Events = newEvents
+	}
+	return expectedSeq, nil
 }

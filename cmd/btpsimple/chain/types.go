@@ -1,6 +1,8 @@
 package chain
 
-import "context"
+import (
+	"context"
+)
 
 // RelayMessage is encoded
 type RelayMessage struct {
@@ -53,10 +55,17 @@ type RelayTx interface {
 	Receipt(ctx context.Context) (txr interface{}, err error)
 }
 
+type SubscribeOptions struct {
+	Seq    uint64
+	Height uint64
+}
+
 type Receiver interface {
-	// SubscribeMessage ...
-	// subscribes to BTP messages and block headers of the src chain
-	SubscribeMessage(ctx context.Context, height, seq uint64) (msgCh <-chan *Message, err error)
+	// Subscribe ...
+	// subscribes to BTP messages and block headers on `msgCh` of the src chain
+	// and returns an `errCh` that sends any error during subscription and terminates
+	// the subscription by closing `errCh`
+	Subscribe(ctx context.Context, msgCh chan<- *Message, opts SubscribeOptions) (errCh <-chan error, err error)
 }
 
 type Sender interface {
@@ -67,7 +76,7 @@ type Sender interface {
 	// Segment ...
 	// returns a "tx" Tx object including events upto "txSizeLimit" bytes and
 	// returns rest of the "msg" Message as "newMsg"
-	Segment(ctx context.Context, msg *Message, txSizeLimit uint64) (tx RelayTx, newMsg *Message, err error)
+	Segment(ctx context.Context, msg *Message) (tx RelayTx, newMsg *Message, err error)
 }
 
 type Relayer interface {

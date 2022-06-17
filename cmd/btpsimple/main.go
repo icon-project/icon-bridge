@@ -12,9 +12,10 @@ import (
 
 	_ "net/http/pprof"
 
-	"github.com/icon-project/btp/cmd/btpsimple/relay"
-	"github.com/icon-project/btp/common/config"
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/relay"
+	"github.com/icon-project/icon-bridge/cmd/btpsimple/stat"
+	"github.com/icon-project/icon-bridge/common/config"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 var (
@@ -32,6 +33,7 @@ type Config struct {
 	ConsoleLevel      string               `json:"console_level"`
 	LogWriter         *log.WriterConfig    `json:"log_writer,omitempty"`
 	LogForwarder      *log.ForwarderConfig `json:"log_forwarder,omitempty"`
+	StatConfig        *stat.StatConfig     `json:"stat_collector,omitempty"`
 }
 
 func main() {
@@ -42,18 +44,25 @@ func main() {
 		log.Fatalf("failed to load config: file=%q, err=%q", cfgFile, err)
 	}
 
-	relay, err := relay.NewMultiRelay(&cfg.Config, setLogger(cfg))
+	l := setLogger(cfg)
+	relay, err := relay.NewMultiRelay(&cfg.Config, l)
 	if err != nil {
 		log.Fatalf("failed to create MultiRelay: %v", err)
 	}
-
+	scollector, err := stat.NewService(
+		cfg.StatConfig,
+		l.WithFields(log.Fields{
+			log.FieldKeyChain: "StatCollector",
+		}))
+	if err != nil {
+		log.Error("failed to create StatCollector for MultiRelay: %v", err)
+	}
 	// for net/http/pprof
 	go func() { http.ListenAndServe("0.0.0.0:6060", nil) }()
-
-	runRelay(relay)
+	runRelay(relay, scollector)
 }
 
-func runRelay(relay relay.Relay) {
+func runRelay(relay relay.Relay, sc stat.StatCollector) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -73,6 +82,10 @@ func runRelay(relay relay.Relay) {
 		<-sigCh // second signal, hard exit
 		os.Exit(2)
 	}()
+
+	if err := sc.Start(ctx); err != nil {
+		log.Error(err)
+	}
 
 	if err := relay.Start(ctx); err != nil {
 		log.Error(err)

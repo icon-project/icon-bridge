@@ -1,10 +1,10 @@
 pragma solidity >=0.5.0 <=0.8.0;
 pragma experimental ABIEncoderV2;
 
-import "./RLPReaderLib.sol";
+import "./RLPReader.sol";
 import "./Helper.sol";
-import "./StringsLib.sol";
-import "./TypesLib.sol";
+import "./Strings.sol";
+import "./Types.sol";
 
 //import "./RLPEncode.sol";
 
