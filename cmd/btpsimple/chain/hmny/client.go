@@ -87,6 +87,7 @@ func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
 	if err != nil {
 		return err
 	}
+	cl.log.WithFields(log.Fields{"epoch": vr.Epoch()}).Debugf("syncVerifier: start")
 	for epoch := vr.Epoch(); epoch < h.Epoch.Uint64(); epoch++ {
 		elb, err := cl.GetEpochLastBlock((&big.Int{}).SetUint64(epoch))
 		if err != nil {
@@ -99,8 +100,11 @@ func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
 		if err = vr.Update(elh); err != nil {
 			return errors.Wrapf(err, "vr.Update: %v", err)
 		}
-		cl.log.Debugf("caught up to epoch: %d, h=%d", epoch, elb)
+		cl.log.WithFields(log.Fields{
+			"epoch": vr.Epoch(), "height": elb.Uint64()}).Debugf("syncVerifier: syncing")
 	}
+	cl.log.WithFields(log.Fields{"epoch": vr.Epoch()}).Debugf("syncVerifier: complete")
+
 	return nil
 }
 

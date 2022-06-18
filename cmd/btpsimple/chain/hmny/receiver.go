@@ -419,12 +419,12 @@ func (r *receiver) Subscribe(
 					}
 					receipt.Events = events
 				}
-
-				msgCh <- &chain.Message{Receipts: receipts}
+				if len(receipts) > 0 {
+					msgCh <- &chain.Message{Receipts: receipts}
+				}
 				lastHeight++
 				return nil
 			}); err != nil {
-			// TODO decide whether to ignore or handle err
 			r.log.Errorf("receiveLoop terminated: %v", err)
 			_errCh <- err
 		}
