@@ -189,7 +189,8 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 					rqch <- q
 					continue
 				}
-				r.log.WithFields(log.Fields{"height": q.height, "error": q.err}).Debug("syncVerifier: req error")
+				r.log.WithFields(log.Fields{
+					"height": q.height, "error": q.err.Error()}).Debug("syncVerifier: req error")
 				sres = append(sres, nil)
 				if len(sres) == cap(sres) {
 					close(rqch)
