@@ -9,37 +9,7 @@ import (
 	vlcodec "github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/ompt"
-	"github.com/icon-project/icon-bridge/common/codec"
-	"github.com/pkg/errors"
 )
-
-func getBlockHeader(cl *client, height HexInt) (*BlockHeader, error) {
-	p := &BlockHeightParam{Height: height}
-	b, err := cl.GetBlockHeaderByHeight(p)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	var bh BlockHeader
-	_, err = codec.RLP.UnmarshalFromBytes(b, &bh)
-	if err != nil {
-		return nil, err
-	}
-	bh.serialized = b
-	return &bh, nil
-}
-
-func getValidatorsFromHash(cl *client, hash common.HexBytes) ([]common.HexBytes, error) {
-	vBytes, err := cl.GetDataByHash(&DataHashParam{Hash: NewHexBytes(hash.Bytes())})
-	if err != nil {
-		return nil, errors.Wrap(err, "verifyHeader; GetDataByHash Validators; Err: ")
-	}
-	var vs []common.HexBytes
-	_, err = vlcodec.BC.UnmarshalFromBytes(vBytes, &vs)
-	if err != nil {
-		return nil, errors.Wrap(err, "verifyHeader; Unmarshal Validators; Err: ")
-	}
-	return vs, nil
-}
 
 func mptProve(key HexInt, proofs [][]byte, hash []byte) ([]byte, error) {
 	db := db.NewMapDB()
@@ -61,7 +31,7 @@ func mptProve(key HexInt, proofs [][]byte, hash []byte) ([]byte, error) {
 	return trie, nil
 }
 
-func addressesContains(data []byte, list []common.HexBytes) bool {
+func listContains(list []common.HexBytes, data common.HexBytes) bool {
 	for _, current := range list {
 		if bytes.Equal(data, current) {
 			return true

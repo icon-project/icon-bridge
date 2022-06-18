@@ -1,16 +1,12 @@
 package icon
 
 import (
-	"bytes"
-
-	"github.com/pkg/errors"
+	"fmt"
+	"sync"
 
 	"github.com/icon-project/goloop/common"
-	vlcodec "github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
-	"github.com/icon-project/icon-bridge/common/codec"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/icon-bridge/common/crypto"
-	"github.com/icon-project/icon-bridge/common/log"
 )
 
 type VerifierOptions struct {
@@ -59,14 +55,14 @@ const (
 	numberOfVoteTypes
 )
 
-type Result struct {
+type BlockHeaderResult struct {
 	StateHash        []byte
 	PatchReceiptHash []byte
 	ReceiptHash      common.HexBytes
 	ExtensionData    []byte
 }
 
-type Receipt struct {
+type TxResult struct {
 	Status             int64
 	To                 []byte
 	CumulativeStepUsed []byte
@@ -78,293 +74,136 @@ type Receipt struct {
 	EventLogsHash      common.HexBytes
 }
 
-type headerValidator struct {
-	validators     []common.HexBytes
-	validatorsHash common.HexBytes
-	height         uint64
+type Verifier struct {
+	mu                 sync.RWMutex
+	next               int64
+	nextValidatorsHash common.HexBytes
+	validators         map[string][]common.HexBytes
 }
 
-func (r *receiver) syncVerifier(hexHeight HexInt) error {
-	ht, hterr := hexHeight.Value()
-	if hterr != nil {
-		return errors.Wrapf(hterr, "syncVerifier; HexInt Conversion Error at Height %v ", hexHeight)
+func (vr *Verifier) Next() int64 { return vr.next }
+
+func (vr *Verifier) Verify(h *BlockHeader, votes []byte) (ok bool, err error) {
+	vr.mu.RLock()
+	defer vr.mu.RUnlock()
+
+	nvh := common.HexBytes(h.NextValidatorsHash)
+	validators, ok := vr.validators[nvh.String()]
+	if !ok {
+		return false, fmt.Errorf("no validators for hash=%v", nvh)
 	}
-	targetHeight := uint64(ht)
 
-	if targetHeight == r.hv.height {
-		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHeight": NewHexInt(int64(r.hv.height))}).Info("SyncVerifier; Same Height so already in sync ")
-		return nil
-	} else if targetHeight < r.hv.height {
-		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHeight": NewHexInt(int64(r.hv.height)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Start Syncing Backward ")
-		if targetHeight == 1 {
-			return errors.New("Cannot find validator list for block of height 1")
-		}
+	cvl := &commitVoteList{}
+	_, err = codec.BC.UnmarshalFromBytes(votes, cvl)
+	if err != nil {
+		return false, fmt.Errorf("invalid votes: %v; err=%v", common.HexBytes(votes), err)
+	}
 
-		verifiedHeader, err := r.getVerifiedHeaderForHeight(r.hv.height)
+	hash := crypto.SHA3Sum256(codec.BC.MustMarshalToBytes(h))
+	vote := &vote{
+		voteBase: voteBase{
+			_HR: _HR{
+				Height: h.Height,
+				Round:  cvl.Round,
+			},
+			Type:           VoteTypePrecommit,
+			BlockID:        hash,
+			BlockPartSetID: cvl.BlockPartSetID,
+		},
+	}
+
+	votesCount := 0
+	for _, item := range cvl.Items {
+		vote.Timestamp = item.Timestamp
+		pub, err := item.Signature.RecoverPublicKey(crypto.SHA3Sum256(codec.BC.MustMarshalToBytes(vote)))
 		if err != nil {
-			return errors.Wrap(err, "syncVerifier; ")
+			continue
 		}
-		for ht := r.hv.height - 1; ht >= targetHeight-1; ht-- {
-			if verifiedHeader, err = r.verifyWithPreviousHeader(verifiedHeader); err != nil {
-				return err
-			}
-			if ht%50 == 0 {
-				r.log.WithFields(log.Fields{"ValidatorsHeight": NewHexInt(int64(r.hv.height)), "TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; In Progress ")
-			}
+		address := common.NewAccountAddressFromPublicKey(pub)
+		if listContains(validators, address.Bytes()) {
+			votesCount++
 		}
-		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(r.hv.height)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Complete ")
-	} else {
-		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHeight": NewHexInt(int64(r.hv.height)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Start Syncing Forward ")
-		for ht := r.hv.height; ht < targetHeight; ht++ {
-			if header, err := r.getVerifiedHeaderForHeight(ht); err != nil {
-				return errors.Wrap(err, "syncVerifier; ")
-			} else {
-				if !bytes.Equal(header.NextValidatorsHash, r.hv.validatorsHash) { // should update
-					if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
-						return errors.Wrap(err, "syncVerifier; ")
-					} else {
-						r.log.WithFields(log.Fields{"ValidatorsHeight": NewHexInt(int64(ht + 1)), "NewValidatorsHash": common.HexBytes(header.NextValidatorsHash), "OldValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Updating Validator Hash ")
-						r.hv.validatorsHash = header.NextValidatorsHash
-						r.hv.validators = vs
-					}
-				}
-				r.hv.height = ht + 1
-			}
-			if ht%50 == 0 {
-				r.log.WithFields(log.Fields{"ValidatorsHeight": NewHexInt(int64(r.hv.height)), "TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; In Progress ")
-			}
-		}
-		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(r.hv.height)), "ValidatorsHeight": NewHexInt(int64(r.hv.height)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Complete ")
+	}
+	if votesCount < (2*len(validators))/3 {
+		return false, fmt.Errorf("insufficient votes")
+	}
+
+	return true, nil
+}
+
+func (vr *Verifier) Update(h *BlockHeader, nextValidators []common.HexBytes) (err error) {
+	vr.mu.Lock()
+	defer vr.mu.Unlock()
+	nvh := common.HexBytes(h.NextValidatorsHash)
+	if _, ok := vr.validators[nvh.String()]; !ok {
+		vr.validators[nvh.String()] = nextValidators
+	}
+	vr.next = h.Height + 1
+	vr.nextValidatorsHash = h.NextValidatorsHash
+	return nil
+}
+
+func (vr *Verifier) Validators(nvh common.HexBytes) []common.HexBytes {
+	vr.mu.RLock()
+	defer vr.mu.RUnlock()
+	validators, ok := vr.validators[nvh.String()]
+	if ok {
+		return validators
 	}
 	return nil
 }
 
-func (r *receiver) verify(v *BlockNotification) (*BlockHeader, []*chain.Receipt, error) {
-	r.log.WithFields(log.Fields{"Height": v.Height, "Hash": v.Hash}).Debug("verify Start")
-	ht, err := v.Height.Value()
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "verifyHeader; HexInt Conversion Error ")
-	}
-	header, err := r.getVerifiedHeaderForHeight(uint64(ht))
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "verify; ")
-	} else if header == nil {
-		return nil, nil, errors.New("verify; returned nil header")
-	}
+// func (r *receiver) syncVerifier(hexHeight HexInt) error {
+// 	ht, hterr := hexHeight.Value()
+// 	if hterr != nil {
+// 		return errors.Wrapf(hterr, "syncVerifier; HexInt Conversion Error at Height %v ", hexHeight)
+// 	}
+// 	targetHeight := uint64(ht)
 
-	rs, err := r.verifyReceipt(header, v)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "verify; ")
-	}
+// 	if targetHeight == r.hv.height {
+// 		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHeight": NewHexInt(int64(r.hv.height))}).Info("SyncVerifier; Same Height so already in sync ")
+// 		return nil
+// 	} else if targetHeight < r.hv.height {
+// 		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHeight": NewHexInt(int64(r.hv.height)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Start Syncing Backward ")
+// 		if targetHeight == 1 {
+// 			return errors.New("Cannot find validator list for block of height 1")
+// 		}
 
-	return header, rs, nil
-}
-
-func (r *receiver) verifyReceipt(header *BlockHeader, v *BlockNotification) ([]*chain.Receipt, error) {
-	// Update blockHeaders
-	if len(v.Indexes) == 0 || len(v.Events) == 0 {
-		r.log.Debug("verifyReceipt; Events and Indexes are empty; Skipping their verification ", v.Height)
-		return []*chain.Receipt{}, nil
-	}
-
-	var headerResult Result
-	vlcodec.RLP.MustUnmarshalFromBytes(header.Result, &headerResult)
-
-	r.log.WithFields(log.Fields{"Height": v.Height, "ReceiptHash": headerResult.ReceiptHash, "NumIndexes": len(v.Indexes[0])}).Debug("Receipt Verification Start")
-	rps := make([]*chain.Receipt, 0)
-
-	for i, index := range v.Indexes[0] {
-		p := &ProofEventsParam{BlockHash: v.Hash, Index: index, Events: v.Events[0][i]}
-		proofs, err := r.cl.GetProofForEvents(p)
-		if err != nil {
-			return nil, errors.Wrap(mapError(err), "verifyReceipt; GetProofForEvents; Err:")
-		}
-		if len(proofs) != 1+len(p.Events) { // returned proofs should be for all of the requested Events plus 1 for the receipt
-			return nil, errors.New("verifyReceipt; Proof Not returned for all requested events")
-		}
-
-		// Processing receipt index
-		serializedReceipt, err := mptProve(index, proofs[0], headerResult.ReceiptHash)
-		if err != nil {
-			return nil, errors.Wrap(err, "verifyReceipt; MPTProve Receipt; Err:")
-		}
-		var receipt Receipt
-		_, err = vlcodec.RLP.UnmarshalFromBytes(serializedReceipt, &receipt)
-		if err != nil {
-			return nil, errors.Wrap(err, "verifyReceipt; Unmarshal Receipt; Err:")
-		}
-
-		idx, _ := index.Value()
-		rp := &chain.Receipt{
-			Index:  uint64(idx),
-			Height: hexInt2Uint64(v.Height),
-		}
-		for j := 0; j < len(p.Events); j++ { // nextEP is pointer to event where sequence has caught up
-			serializedEventLog, err := mptProve(p.Events[j], proofs[j+1], common.HexBytes(receipt.EventLogsHash))
-			if err != nil {
-				return nil, errors.Wrap(err, "ReceiptVerification MPTPrice Events; Err:")
-			}
-			var el EventLog
-			_, err = codec.RLP.UnmarshalFromBytes(serializedEventLog, &el)
-			if err != nil {
-				return nil, errors.Wrap(err, "ReceiptVerification; Unmarshal Events; Err:")
-			}
-
-			if bytes.Equal(el.Addr, r.evtLogRawFilter.addr) && bytes.Equal(el.Indexed[EventIndexSignature], r.evtLogRawFilter.signature) && bytes.Equal(el.Indexed[EventIndexNext], r.evtLogRawFilter.next) {
-				var seqGot common.HexInt
-				seqGot.SetBytes(el.Indexed[EventIndexSequence])
-				evt := &chain.Event{
-					Next:     chain.BTPAddress(el.Indexed[EventIndexNext]),
-					Sequence: seqGot.Uint64(),
-					Message:  el.Data[0],
-				}
-				rp.Events = append(rp.Events, evt)
-			} else {
-				if !bytes.Equal(el.Addr, r.evtLogRawFilter.addr) {
-					r.log.WithFields(log.Fields{
-						"Height":   v.Height,
-						"got":      common.HexBytes(el.Addr),
-						"expected": common.HexBytes(r.evtLogRawFilter.addr)}).Error("invalid event: cannot match add")
-				}
-				if !bytes.Equal(el.Indexed[EventIndexSignature], r.evtLogRawFilter.signature) {
-					r.log.WithFields(log.Fields{
-						"Height":   v.Height,
-						"got":      common.HexBytes(el.Indexed[EventIndexSignature]),
-						"expected": common.HexBytes(r.evtLogRawFilter.signature)}).Error("invalid event: cannot match sig")
-				}
-				if !bytes.Equal(el.Indexed[EventIndexNext], r.evtLogRawFilter.next) {
-					r.log.WithFields(log.Fields{
-						"Height":   v.Height,
-						"got":      common.HexBytes(el.Indexed[EventIndexNext]),
-						"expected": common.HexBytes(r.evtLogRawFilter.next)}).Error("invalid event: cannot match next")
-				}
-				return nil, errors.New("verifyReceipt; Invalid event")
-			}
-		}
-		if len(rp.Events) > 0 && len(rp.Events) == len(p.Events) { //Only add if all the events were verified
-			rps = append(rps, rp)
-		} else if len(rp.Events) > 0 && len(rp.Events) != len(p.Events) {
-			r.log.WithFields(log.Fields{
-				"Height":       v.Height,
-				"ReceiptIndex": index,
-				"got":          len(rp.Events),
-				"expected":     len(p.Events)}).Info(" Not all events were verified for receipt ")
-			return nil, errors.New("verifyReceipt; Not all events were verified for receipt")
-		}
-	}
-	return rps, nil
-}
-
-func (r *receiver) getVerifiedHeaderForHeight(ht uint64) (*BlockHeader, error) {
-	height := NewHexInt(int64(ht))
-	header, err := getBlockHeader(r.cl, height)
-	if err != nil {
-		return nil, err
-	}
-	votesBytes, err := r.cl.GetVotesByHeight(&BlockHeightParam{Height: height})
-	if err != nil {
-		return nil, errors.Wrap(mapError(err), "verifyHeader; GetVotesByHeight; Err: ")
-	}
-	cvl := &commitVoteList{}
-	_, err = vlcodec.BC.UnmarshalFromBytes(votesBytes, cvl)
-	if err != nil {
-		return nil, errors.Wrap(mapError(err), "verifyHeader; UnmarshalFromBytes of Votes; Err: ")
-	}
-	blockHash := crypto.SHA3Sum256(vlcodec.BC.MustMarshalToBytes(header))
-	vote := &vote{
-		voteBase: voteBase{
-			_HR: _HR{
-				Height: header.Height,
-				Round:  cvl.Round,
-			},
-			Type:           VoteTypePrecommit,
-			BlockID:        blockHash,
-			BlockPartSetID: cvl.BlockPartSetID,
-		},
-	}
-
-	validCount := 0
-	for _, item := range cvl.Items {
-		vote.Timestamp = item.Timestamp
-		pub, err := item.Signature.RecoverPublicKey(crypto.SHA3Sum256(vlcodec.BC.MustMarshalToBytes(vote)))
-		if err != nil {
-			err = nil
-			continue
-		}
-		address := common.NewAccountAddressFromPublicKey(pub)
-
-		if addressesContains(address.Bytes(), r.hv.validators) {
-			validCount++
-		}
-	}
-	if validCount < int(2*len(r.hv.validators)/3) {
-		return nil, errors.New("verifyHeader; Block not validated by >= 2/3 of validators")
-	}
-	//r.log.WithFields(log.Fields{"NumValidators": len(r.hv.validators), "NumValidAddresses": validCount, "Height": ht}).Debug("Block Header Verified by Votes")
-	return header, nil
-}
-
-func (r *receiver) verifyWithPreviousHeader(currentHeader *BlockHeader) (*BlockHeader, error) {
-	previousHeight := currentHeader.Height - 1
-	prevHeader, err := getBlockHeader(r.cl, NewHexInt(int64(previousHeight)))
-	if err != nil {
-		return nil, err
-	}
-	newValidator := &headerValidator{height: r.hv.height, validators: r.hv.validators, validatorsHash: r.hv.validatorsHash}
-	if !bytes.Equal(prevHeader.NextValidatorsHash, r.hv.validatorsHash) {
-		vrs, err := getValidatorsFromHash(r.cl, prevHeader.NextValidatorsHash)
-		if err != nil {
-			return nil, errors.Wrap(err, "getValidatorsFromHash; ")
-		} else {
-			newValidator.validators = vrs
-			newValidator.validatorsHash = prevHeader.NextValidatorsHash
-		}
-	}
-	newValidator.height = uint64(currentHeader.Height) // update height in any case and do it after we're sure validators have been updated (to avoid inconsistent struct)
-
-	votesBytes, err := r.cl.GetVotesByHeight(&BlockHeightParam{Height: NewHexInt(currentHeader.Height)})
-	if err != nil {
-		return nil, errors.Wrap(mapError(err), "verifyHeader; GetVotesByHeight; Err: ")
-	}
-	cvl := &commitVoteList{}
-	_, err = vlcodec.BC.UnmarshalFromBytes(votesBytes, cvl)
-	if err != nil {
-		return nil, errors.Wrap(mapError(err), "verifyHeader; UnmarshalFromBytes of Votes; Err: ")
-	}
-	blockHash := crypto.SHA3Sum256(vlcodec.BC.MustMarshalToBytes(currentHeader))
-	vote := &vote{
-		voteBase: voteBase{
-			_HR: _HR{
-				Height: currentHeader.Height,
-				Round:  cvl.Round,
-			},
-			Type:           VoteTypePrecommit,
-			BlockID:        blockHash,
-			BlockPartSetID: cvl.BlockPartSetID,
-		},
-	}
-
-	validCount := 0
-	for _, item := range cvl.Items {
-		vote.Timestamp = item.Timestamp
-		pub, err := item.Signature.RecoverPublicKey(crypto.SHA3Sum256(vlcodec.BC.MustMarshalToBytes(vote)))
-		if err != nil {
-			err = nil
-			continue
-		}
-		address := common.NewAccountAddressFromPublicKey(pub)
-
-		if addressesContains(address.Bytes(), newValidator.validators) {
-			validCount++
-		}
-	}
-	if validCount < int(2*len(newValidator.validators)/3) {
-		return nil, errors.New("verifyHeader; Block not validated by >= 2/3 of validators")
-	}
-	if !bytes.Equal(r.hv.validatorsHash, newValidator.validatorsHash) {
-		r.log.WithFields(log.Fields{"ValidatorsHeight": NewHexInt(int64(newValidator.height)), "NewValidatorsHash": common.HexBytes(newValidator.validatorsHash), "OldValidatorsHash": common.HexBytes(r.hv.validatorsHash)}).Info("Sync Verifier; Updating Validator Hash ")
-	}
-	r.hv = newValidator
-
-	return prevHeader, nil
-}
+// 		verifiedHeader, err := r.getVerifiedHeaderForHeight(r.hv.height)
+// 		if err != nil {
+// 			return errors.Wrap(err, "syncVerifier; ")
+// 		}
+// 		for ht := r.hv.height - 1; ht >= targetHeight-1; ht-- {
+// 			if verifiedHeader, err = r.verifyWithPreviousHeader(verifiedHeader); err != nil {
+// 				return err
+// 			}
+// 			if ht%50 == 0 {
+// 				r.log.WithFields(log.Fields{"ValidatorsHeight": NewHexInt(int64(r.hv.height)), "TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; In Progress ")
+// 			}
+// 		}
+// 		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(r.hv.height)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Complete ")
+// 	} else {
+// 		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHeight": NewHexInt(int64(r.hv.height)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Start Syncing Forward ")
+// 		for ht := r.hv.height; ht < targetHeight; ht++ {
+// 			if header, err := r.getVerifiedHeaderForHeight(ht); err != nil {
+// 				return errors.Wrap(err, "syncVerifier; ")
+// 			} else {
+// 				if !bytes.Equal(header.NextValidatorsHash, r.hv.validatorsHash) { // should update
+// 					if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
+// 						return errors.Wrap(err, "syncVerifier; ")
+// 					} else {
+// 						r.log.WithFields(log.Fields{"ValidatorsHeight": NewHexInt(int64(ht + 1)), "NewValidatorsHash": common.HexBytes(header.NextValidatorsHash), "OldValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Updating Validator Hash ")
+// 						r.hv.validatorsHash = header.NextValidatorsHash
+// 						r.hv.validators = vs
+// 					}
+// 				}
+// 				r.hv.height = ht + 1
+// 			}
+// 			if ht%50 == 0 {
+// 				r.log.WithFields(log.Fields{"ValidatorsHeight": NewHexInt(int64(r.hv.height)), "TargetHeight": NewHexInt(int64(targetHeight)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; In Progress ")
+// 			}
+// 		}
+// 		r.log.WithFields(log.Fields{"TargetHeight": NewHexInt(int64(r.hv.height)), "ValidatorsHeight": NewHexInt(int64(r.hv.height)), "ValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Complete ")
+// 	}
+// 	return nil
+// }
