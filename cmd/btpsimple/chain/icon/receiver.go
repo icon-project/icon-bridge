@@ -605,12 +605,12 @@ func (r *receiver) Subscribe(
 	ctx context.Context, msgCh chan<- *chain.Message,
 	opts chain.SubscribeOptions) (errCh <-chan error, err error) {
 
+	opts.Seq++
+
 	if opts.Height < 1 {
 		opts.Height = 1
 	}
-	if opts.Seq < 1 {
-		opts.Seq = 1
-	}
+
 	_errCh := make(chan error)
 	go func() {
 		defer close(_errCh)
