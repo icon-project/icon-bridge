@@ -107,6 +107,8 @@ func (r *relay) Start(ctx context.Context) error {
 		r.log.Debug("relaySignal")
 	}
 
+	txBlockHeight := link.CurrentHeight
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -155,6 +157,10 @@ func (r *relay) Start(ctx context.Context) error {
 				continue
 			}
 
+			if link.CurrentHeight < txBlockHeight {
+				continue // skip until dst.Status is updated
+			}
+
 			if missing := filterSrcMsg(link.RxHeight, link.RxSeq); missing > 0 {
 				r.log.WithFields(log.Fields{"rxSeq": missing}).Error("missing event sequence")
 				return fmt.Errorf("missing event sequence")
@@ -187,11 +193,12 @@ func (r *relay) Start(ctx context.Context) error {
 
 			retryCount := 0
 		waitLoop:
-			for _, err := tx.Receipt(ctx); retryCount < 30; _, err = tx.Receipt(ctx) {
+			for blockHeight, err := tx.Receipt(ctx); retryCount < 30; _, err = tx.Receipt(ctx) {
 				switch {
 				case err == nil:
 					newMsg.From = srcMsg.From
 					srcMsg = newMsg
+					txBlockHeight = blockHeight
 					break waitLoop
 				case errors.Is(err, context.Canceled):
 					r.log.WithFields(log.Fields{"error": err}).Error("tx.Receipt failed")

@@ -94,7 +94,7 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	// ls.RotateTerm = uint(status.RotateTerm.Uint64())
 	// ls.DelayLimit = uint(status.DelayLimit.Uint64())
 	// ls.MaxAggregation = uint(status.MaxAggregation.Uint64())
-	// ls.CurrentHeight = status.CurrentHeight.Uint64()
+	ls.CurrentHeight = status.CurrentHeight.Uint64()
 	ls.RxHeight = status.RxHeight.Uint64()
 	// ls.RxHeightSrc = status.RxHeightSrc.Uint64()
 	return ls, nil
@@ -247,9 +247,9 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	return nil
 }
 
-func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error) {
+func (tx *relayTx) Receipt(ctx context.Context) (blockHeight uint64, err error) {
 	if tx.pendingTx == nil {
-		return nil, fmt.Errorf("no pending tx")
+		return 0, fmt.Errorf("no pending tx")
 	}
 
 	for i, isPending := 0, true; i < 5 && (isPending || err == ethereum.NotFound); i++ {
@@ -259,14 +259,14 @@ func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error)
 		_, isPending, err = tx.cl.eth.TransactionByHash(_ctx, tx.pendingTx.Hash())
 	}
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 	defer cancel()
 	txr, err := tx.cl.eth.TransactionReceipt(_ctx, tx.pendingTx.Hash())
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	if txr.Status == 0 {
@@ -284,23 +284,23 @@ func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error)
 		defer cancel()
 		data, err := tx.cl.eth.CallContract(_ctx, callMsg, txr.BlockNumber)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 
 		if txr.GasUsed >= tx.pendingTx.Gas()*63/64 { // gas limit exceeded
 			if txr.GasUsed == txr.CumulativeGasUsed { // block gas limit exceeded
-				return nil, chain.ErrBlockGasLimitExceeded
+				return 0, chain.ErrBlockGasLimitExceeded
 			}
-			return nil, chain.ErrGasLimitExceeded
+			return 0, chain.ErrGasLimitExceeded
 		}
 
-		return nil, chain.RevertError(revertReason(data))
+		return 0, chain.RevertError(revertReason(data))
 	}
 
 	tx.cl.log.WithFields(log.Fields{
 		"txh": tx.pendingTx.Hash()}).Debug("handleRelayMessage: success")
 
-	return txr, nil
+	return txr.BlockNumber.Uint64(), nil
 }
 
 func revertReason(data []byte) string {

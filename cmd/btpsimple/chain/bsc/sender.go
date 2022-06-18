@@ -125,6 +125,7 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	ls.TxSeq = status.TxSeq.Uint64()
 	ls.RxSeq = status.RxSeq.Uint64()
 	ls.RxHeight = status.RxHeight.Uint64()
+	ls.CurrentHeight = status.CurrentHeight.Uint64()
 	return ls, nil
 }
 
@@ -249,9 +250,9 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	return nil
 }
 
-func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error) {
+func (tx *relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) {
 	if tx.pendingTx == nil {
-		return nil, fmt.Errorf("no pending tx")
+		return 0, fmt.Errorf("no pending tx")
 	}
 
 	for i, isPending := 0, true; i < 5 && (isPending || err == ethereum.NotFound); i++ {
@@ -259,12 +260,12 @@ func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error)
 		_, isPending, err = tx.cl.GetTransaction(tx.pendingTx.Hash())
 	}
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	txr, err := tx.cl.GetTransactionReceipt(tx.pendingTx.Hash())
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	if txr.Status == 0 {
@@ -280,16 +281,16 @@ func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error)
 
 		data, err := tx.cl.CallContract(callMsg, txr.BlockNumber)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 
-		return nil, chain.RevertError(revertReason(data))
+		return 0, chain.RevertError(revertReason(data))
 	}
 
 	tx.cl.log.WithFields(log.Fields{
 		"txh": tx.pendingTx.Hash()}).Debug("handleRelayMessage: success")
 
-	return txr, nil
+	return txr.BlockNumber.Uint64(), nil
 }
 
 func revertReason(data []byte) string {
