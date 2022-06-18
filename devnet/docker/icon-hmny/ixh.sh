@@ -988,7 +988,7 @@ function deploysc() {
         TokenBSH.BSHProxy.register \
         "'ETH','ETH',18,100,'$btp_hmny_erc20'"
 
-    log "bsh nativecoin setFeeRatio:"
+    log "bsh token bsh setFeeRatio:"
     WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         TokenBSH.BSHProxy.setFeeRatio "100"
