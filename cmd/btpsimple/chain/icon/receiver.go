@@ -349,10 +349,10 @@ loop:
 				if vr != nil {
 					ok, err := vr.Verify(br.Header, br.Votes)
 					if !ok || err != nil {
-						if !ok {
-							r.log.WithFields(log.Fields{"height": br.Height, "hash": br.Hash}).Debug("receiveLoop: invalid header")
-						} else if err != nil {
+						if err != nil {
 							r.log.WithFields(log.Fields{"height": br.Height, "error": err}).Debug("receiveLoop: verification error")
+						} else if !ok {
+							r.log.WithFields(log.Fields{"height": br.Height, "hash": br.Hash}).Debug("receiveLoop: invalid header")
 						}
 						reconnect() // reconnect websocket
 						r.log.WithFields(log.Fields{"height": br.Height, "hash": br.Hash}).Error("reconnect: verification failed")
@@ -442,7 +442,12 @@ loop:
 								q.res = &res{}
 							}
 							q.res.Height = q.height
-							q.res.Hash = common.HexBytes(q.hash)
+							q.res.Hash, q.err = q.hash.Value()
+							if q.err != nil {
+								q.err = errors.Wrapf(q.err,
+									"invalid hash: height=%v, hash=%v, %v", q.height, q.hash, q.err)
+								return
+							}
 
 							q.res.Header, q.err = r.cl.getBlockHeaderByHeight(q.height)
 							if q.err != nil {
