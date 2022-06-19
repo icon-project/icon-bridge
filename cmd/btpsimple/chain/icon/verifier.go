@@ -87,7 +87,7 @@ func (vr *Verifier) Verify(h *BlockHeader, votes []byte) (ok bool, err error) {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
 
-	nvh := common.HexBytes(h.NextValidatorsHash)
+	nvh := vr.nextValidatorsHash
 	validators, ok := vr.validators[nvh.String()]
 	if !ok {
 		return false, fmt.Errorf("no validators for hash=%v", nvh)
