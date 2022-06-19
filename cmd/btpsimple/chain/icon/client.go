@@ -17,6 +17,7 @@
 package icon
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -446,14 +447,18 @@ func (cl *client) getCommitVoteListByHeight(height int64) (*commitVoteList, erro
 }
 
 func (cl *client) getValidatorsByHash(hash common.HexBytes) ([]common.HexBytes, error) {
-	vBytes, err := cl.GetDataByHash(&DataHashParam{Hash: NewHexBytes(hash.Bytes())})
+	data, err := cl.GetDataByHash(&DataHashParam{Hash: NewHexBytes(hash.Bytes())})
 	if err != nil {
-		return nil, errors.Wrap(err, "verifyHeader; GetDataByHash Validators; Err: ")
+		return nil, errors.Wrapf(err, "GetDataByHash; %v", err)
+	}
+	if !bytes.Equal(hash, crypto.SHA3Sum256(data)) {
+		return nil, errors.Errorf(
+			"invalid data: hash=%v, data=%v", hash, common.HexBytes(data))
 	}
 	var vs []common.HexBytes
-	_, err = codec.BC.UnmarshalFromBytes(vBytes, &vs)
+	_, err = codec.BC.UnmarshalFromBytes(data, &vs)
 	if err != nil {
-		return nil, errors.Wrap(err, "verifyHeader; Unmarshal Validators; Err: ")
+		return nil, errors.Wrapf(err, "Unmarshal Validators: %v", err)
 	}
 	return vs, nil
 }
