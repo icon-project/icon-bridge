@@ -1887,11 +1887,10 @@ btp_hmny_god_wallet_address=0xA5241513DA9F4463F1d4874b548dFBAC29D91f34
 btp_hmny_god_wallet_address_bech32=one155jp2y76nazx8uw5sa94fr0m4s5aj8e5xm6fu3
 
 btp_icon_nid=$(dec2hex $(cat "$btp_icon_config" | jq -r .nid 2>/dev/null))
-btp_hmny_nid=0x6357d2e0
-btp_hmny_chain_id=2
-
-btp_hmny_uri="http://$docker_host:9500"
 btp_icon_uri="http://$docker_host:9080/api/v3/default"
+btp_hmny_nid=0x6357d2e0
+btp_hmny_uri="http://$docker_host:9500"
+btp_hmny_chain_id=2
 # localnet: end
 
 # # testnet: begin
@@ -1909,10 +1908,7 @@ btp_icon_uri="http://$docker_host:9080/api/v3/default"
 # btp_icon_uri="https://berlin.net.solidwallet.io/api/v3/icon_dex"
 # btp_hmny_nid=0x6357d2e0
 # btp_hmny_uri="https://rpc.s0.b.hmny.io"
-
-# btp_icon_cps_address=cxc32e5105c30d9bc41466779c6ca6869e2bcd6064
-# btp_icon_band_protocol_address=cx8f87a4ce573a2e1377545feabac48a960e8092bb
-
+# btp_hmny_chain_id=2
 # # testnet: end
 
 # wallets for deploysc/tests
@@ -1946,6 +1942,8 @@ mkdir -p $ixh_tmp_dir
 
 btp_icon_bmc_owner_wallet="$btp_icon_wallet"
 btp_icon_bmc_owner_wallet_password="$btp_icon_wallet_password"
+btp_icon_bsh_owner_wallet="$btp_icon_wallet"
+btp_icon_bsh_owner_wallet_password="$btp_icon_wallet_password"
 # btp_icon_bmr_owner="hxfaff7dfd515d7f2b43270d5977b7587a65a48972"
 # btp_hmny_bmr_owner="0x4617eae515f629867ca6b486662e3ee65888937c"
 # btp_icon_bmr_owner_wallet=
@@ -2036,43 +2034,25 @@ demo)
     run_demo "${args[@]}"
     ;;
 
-set_fee_agg)
+set_fee_aggregator)
     . $ixh_env
 
-    # # build
-    # cd $ixh_jsc_dir
-    # gradle fee_aggregation:optimizedJar
-    # mkdir -p dist
-    # cp fee_aggregation/build/libs/fee_aggregation-1.0-optimized.jar dist/fee_aggregator.jar
-
-    # # deploy
-    # log "fee aggregation: "
-    # r=$(WALLET=$btp_icon_wallet \
-    #     PASSWORD=$btp_icon_wallet_password \
-    #     icon_deploysc \
-    #     $ixh_jsc_dir/dist/fee_aggregator.jar \
-    #     _cps_address="$btp_icon_cps_address" \
-    #     _band_protocol_address="$btp_icon_band_protocol_address")
-    # btp_icon_fee_aggregator=$(jq -r .scoreAddress <<<$r)
-    # log "$btp_icon_fee_aggregator"
-
-    echo "fee_agg: $(icon_callsc "$btp_icon_bmc" getFeeAggregator)"
-
+    echo "fee_aggregator: $(icon_callsc "$btp_icon_bmc" getFeeAggregator)"
     # configure
     log "bmc_set_fee_aggregator:"
     _=$(WALLET=$btp_icon_bmc_owner_wallet \
         PASSWORD=$btp_icon_bmc_owner_wallet_password \
         icon_sendtx_call \
         "$btp_icon_bmc" setFeeAggregator 0 "_addr=$btp_icon_fee_aggregator")
+    echo "fee_aggregator: $(icon_callsc "$btp_icon_bmc" getFeeAggregator)"
 
-    echo "fee_agg: $(icon_callsc "$btp_icon_bmc" getFeeAggregator)"
-    echo "fee_agg: $(icon_callsc "$btp_icon_bmc" getFeeGatheringTerm)"
-
-    # log "bmc_set_fee_gathering_term:"
-    # _=$(WALLET=$btp_icon_bmc_owner_wallet \
-    #     PASSWORD=$btp_icon_bmc_owner_wallet_password \
-    #     icon_sendtx_call \
-    #     "$btp_icon_bmc" setFeeGatheringTerm 0 "_value=1000") # every 100 blocks
+    echo "fee_gathering_term: $(icon_callsc "$btp_icon_bmc" getFeeGatheringTerm)"
+    log "bmc_set_fee_gathering_term:"
+    _=$(WALLET=$btp_icon_bmc_owner_wallet \
+        PASSWORD=$btp_icon_bmc_owner_wallet_password \
+        icon_sendtx_call \
+        "$btp_icon_bmc" setFeeGatheringTerm 0 "_value=1000") # every 1000 blocks
+    echo "fee_gathering_term: $(icon_callsc "$btp_icon_bmc" getFeeGatheringTerm)"
     ;;
 
 send_fee_gathering)
@@ -2082,7 +2062,7 @@ send_fee_gathering)
     _=$(WALLET=$btp_icon_bmc_owner_wallet \
         PASSWORD=$btp_icon_bmc_owner_wallet_password \
         icon_sendtx_call \
-        "$btp_icon_bmc" sendFeeGathering 0) # every 100 blocks
+        "$btp_icon_bmc" sendFeeGathering 0)
 
     ;;
 
