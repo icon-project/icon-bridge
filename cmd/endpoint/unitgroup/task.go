@@ -1,6 +1,7 @@
 package unitgroup
 
 import (
+	"fmt"
 	"math/big"
 	"strconv"
 	"sync"
@@ -39,7 +40,11 @@ const (
 func (ch *tEnvTaskCache) Add(task tEnvTask) {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
-	ch.mem[task.id] = task
+	if _, ok := ch.mem[task.id]; !ok {
+		ch.mem[task.id] = task
+	} else {
+		ch.mem[task.id+1] = task
+	}
 	ch.lastAdded = task.id
 }
 
@@ -106,6 +111,7 @@ func (ug *unitgroup) RegisterTestUnit(numAddrsPerChain map[chain.ChainType]int, 
 		tfunc:        task,
 		isolateAddrs: isolateAddrs,
 	}
+	fmt.Println("Add Task ")
 	ug.cache.Add(utask)
 
 	return
