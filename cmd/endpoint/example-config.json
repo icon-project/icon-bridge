@@ -1,0 +1,33 @@
+{
+    "chains":[
+        {
+            "name":"ICON",
+            "url":"http://127.0.0.1:9080/api/v3/default",
+            "contract_addresses": {
+                    "btp_icon_irc2":"cx2995e7ea3c68b8168d13d7696e85444354656405",
+                    "btp_icon_irc2_tradeable":"cxeee821d966cfffca4e9d3caee718c9f02c6142ab",
+                    "btp_icon_nativecoin_bsh":"cx9d2a497ff8feba80486ca3575d297a73984f1097",
+                    "btp_icon_token_bsh":"cxcdee87dfb584c69d2abe84c8f79d97ecf447f889"
+            },
+            "god_wallet":{
+                "path":"/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/icon.god.wallet.json",
+                "password":"gochain"
+            },
+            "network_id":"0x5b9a77"
+        },
+        {
+            "name":"HMNY",
+            "url":"http://127.0.0.1:9500",
+            "contract_addresses": {
+                    "btp_hmny_erc20":"0xb54f5e97972AcF96470e02BE0456c8DB2173f33a",
+                    "btp_hmny_nativecoin_bsh_core":"0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
+                    "btp_hmny_token_bsh_proxy":"0x48cacC89f023f318B4289A18aBEd44753a127782"
+            },
+            "god_wallet":{
+                "path":"/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/hmny.god.wallet.json",
+                "password":""
+            },
+            "network_id":"0x6357d2e0"
+        }
+    ]
+}
