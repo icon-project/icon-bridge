@@ -1,7 +1,6 @@
 package unitgroup
 
 import (
-	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -311,8 +310,8 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			}
 
 			tu.Logger().Info("Step 1. Funding demo wallets ...")
-			fmt.Println("AC ", ienv.AccountsKeys)
-			fmt.Println("HC ", henv.AccountsKeys)
+			// fmt.Println("AC ", ienv.AccountsKeys)
+			// fmt.Println("HC ", henv.AccountsKeys)
 
 			icx_target := new(big.Int)
 			icx_target.SetString("250000000000000000000", 10)
