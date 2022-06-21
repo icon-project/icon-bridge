@@ -2,12 +2,14 @@ package unitgroup
 
 import (
 	"math/big"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/tenv"
 	"github.com/icon-project/icon-bridge/common/errors"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 type tEnvTask struct {
@@ -91,12 +93,13 @@ func (ug *unitgroup) RegisterTestUnit(numAddrsPerChain map[chain.ChainType]int, 
 		}
 		newGodKeys[name] = pair
 	}
+	now := time.Now().Unix()
 
-	tu, err := tenv.New(ug.log, newCfg, accountsPerChain, newGodKeys)
+	tu, err := tenv.New(ug.log.WithFields(log.Fields{"id": strconv.Itoa(int(now))}), newCfg, accountsPerChain, newGodKeys)
 	if err != nil {
 		return
 	}
-	now := time.Now().UnixNano()
+
 	utask := tEnvTask{
 		id:           now,
 		tu:           tu,
