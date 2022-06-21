@@ -1,7 +1,6 @@
 package unitgroup
 
 import (
-	"fmt"
 	"math/big"
 	"strconv"
 	"sync"
@@ -98,7 +97,7 @@ func (ug *unitgroup) RegisterTestUnit(numAddrsPerChain map[chain.ChainType]int, 
 		}
 		newGodKeys[name] = pair
 	}
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 
 	tu, err := tenv.New(ug.log.WithFields(log.Fields{"id": strconv.Itoa(int(now))}), newCfg, accountsPerChain, newGodKeys)
 	if err != nil {
@@ -111,7 +110,6 @@ func (ug *unitgroup) RegisterTestUnit(numAddrsPerChain map[chain.ChainType]int, 
 		tfunc:        task,
 		isolateAddrs: isolateAddrs,
 	}
-	fmt.Println("Add Task ")
 	ug.cache.Add(utask)
 
 	return
