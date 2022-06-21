@@ -386,7 +386,7 @@ public class ServiceHandler {
                 _assets.add(_asset);
                 // pendingFeesDb.set(generateSerialNumber(), new
                 // TransferAsset(Context.getCaller().toString(), _fa, _assets));
-                // feeCollector.set(tokenNameDb.get(i), BigInteger.ZERO);
+                feeCollector.set(tokenNameDb.get(i), BigInteger.ZERO);
             }
         }
         if (_assets.size() > 0) {
@@ -400,7 +400,7 @@ public class ServiceHandler {
                     if (tokenAddr != null) {
                         Context.call(Address.fromString(tokenAddr), "transfer", fa, value,
                                 "transfer to Receiver".getBytes());
-                        feeCollector.set(tokenName, BigInteger.ZERO);
+                        // feeCollector.set(tokenName, BigInteger.ZERO);
                     }
                 }
             } else {
