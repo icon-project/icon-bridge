@@ -10,11 +10,6 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-const (
-	DefaultTestUnitTimeoutSeconds = 60
-	DefaultFundingAmount          = 100000000000000
-)
-
 type unitgroup struct {
 	godKeysPerChain map[chain.ChainType][2]string
 	cfgPerChain     map[chain.ChainType]*chain.ChainConfig
