@@ -35,7 +35,7 @@ func TestSubscribeMessage(t *testing.T) {
 	recv := newTestReceiver(t).(*receiver)
 	recv.src = src
 	recv.dst = dst
-	height := uint64(405)
+	height := uint64(614)
 
 	ctx, cancel := context.Background(), func() {}
 	if deadline, ok := t.Deadline(); ok {
@@ -47,7 +47,7 @@ func TestSubscribeMessage(t *testing.T) {
 	srcErrCh, err := recv.Subscribe(ctx,
 		srcMsgCh,
 		chain.SubscribeOptions{
-			Seq:    0,
+			Seq:    12,
 			Height: height,
 		})
 	require.NoError(t, err, "failed to subscribe")
