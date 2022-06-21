@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/icon-bridge/common/errors"
 )
 
 type Database interface {

@@ -288,14 +288,14 @@ SignLoop:
 	}
 }
 
-func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error) {
+func (tx *relayTx) Receipt(ctx context.Context) (blockHeight uint64, err error) {
 	if tx.txHashParam == nil {
-		return nil, fmt.Errorf("no pending tx")
+		return 0, fmt.Errorf("no pending tx")
 	}
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return 0, ctx.Err()
 		default:
 		}
 		txr, err := tx.cl.GetTransactionResult(tx.txHashParam)
@@ -307,11 +307,12 @@ func (tx *relayTx) Receipt(ctx context.Context) (receipt interface{}, err error)
 					continue
 				}
 			}
-			return txr, mapErrorWithTransactionResult(txr, err)
+			return 0, mapErrorWithTransactionResult(txr, err)
 		}
 		tx.cl.log.WithFields(log.Fields{
 			"txh": tx.txHashParam.Hash}).Debug("handleRelayMessage: success")
-		return txr, nil
+		height, _ := txr.BlockHeight.Value()
+		return uint64(height), nil
 	}
 }
 

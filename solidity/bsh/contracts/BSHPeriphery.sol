@@ -57,6 +57,16 @@ contract BSHPeriphery is Initializable, IBSHPeriphery {
         string _response
     );
 
+    /**
+        Used to log the state of successful incoming transaction
+    */
+    event TransferReceived(
+        string indexed _from,
+        address indexed _to,
+        uint256 _sn,
+        Types.Asset[] _assetDetails
+    );
+
     /**   @notice Notify that BSH contract has received unknown response
         The `_from` sender
         The `_sn` sequence number of service message
@@ -184,6 +194,7 @@ contract BSHPeriphery is Initializable, IBSHPeriphery {
                         "",
                         RC_OK
                     );
+                    emit TransferReceived(_from, _tc.to.parseAddress(), _sn, _tc.assets);
                     return;
                 } catch Error(string memory _err) {
                     errMsg = _err;
@@ -304,6 +315,7 @@ contract BSHPeriphery is Initializable, IBSHPeriphery {
                 revert("TransferFailed");
             }
         }
+
     }
 
     function sendResponseMessage(

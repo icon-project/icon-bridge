@@ -205,7 +205,7 @@ library Types {
         uint256 rxHeight;
         // uint256 blockIntervalSrc;
         // uint256 blockIntervalDst;
-        // uint256 currentHeight;
+        uint256 currentHeight;
     }
 
     struct RelayStats {

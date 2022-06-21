@@ -1,9 +1,11 @@
 package log
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,6 +33,19 @@ func TestForwarder(t *testing.T) {
 			GlobalLogger().Println("TestForwarder", c.Vendor, time.Now())
 		})
 	}
+}
+
+func TestSlackHook(t *testing.T) {
+	const URL = "https://hooks.slack.com/services/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"
+	sh, _ := NewSlackClient(URL, logrus.AllLevels)
+	l := New()
+	SetGlobalLogger(l)
+	globalLogger.addHook(sh)
+	for i := 0; i < 2; i++ {
+		WithFields(Fields{"Status": "Check " + fmt.Sprint(i)}).Info("Hello!!")
+	}
+	fmt.Println("Done")
+	<-time.After(time.Hour)
 }
 
 //bind to /fluentd/etc/fluent.conf

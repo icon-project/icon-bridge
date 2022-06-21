@@ -67,6 +67,14 @@ contract BSHImpl is IBSHImpl, Initializable {
         string _response
     );
 
+    event TransferReceived(
+        string indexed _from,
+        address indexed _to,
+        uint256 _sn,
+        Types.Asset[] _assetDetails
+    );
+
+
     modifier onlyBMC() {
         require(msg.sender == address(bmc), "Unauthorized");
         _;
@@ -124,6 +132,7 @@ contract BSHImpl is IBSHImpl, Initializable {
             try this.handleRequest(_ta) {
                 _statusMsg = "Transfer Success";
                 _status = RC_OK;
+                emit TransferReceived(_from, _ta.to.parseAddress(), _sn, _ta.asset);
             } catch Error(string memory _err) {
                 /**
                  * @dev Uncomment revert to debug errors

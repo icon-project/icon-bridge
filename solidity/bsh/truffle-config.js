@@ -21,6 +21,18 @@ module.exports = {
       timeoutBlocks: 200,
       gasPrice: 20000000000,
     },
+    hmny: {
+      provider: () =>
+          new HDWalletProvider({
+              privateKeys: [process.env.PRIVATE_KEY],
+              providerOrUrl: process.env.RPC_URL,
+          }),
+      network_id: process.env.NETWORK_ID,
+      skipDryRun: true,
+      networkCheckTimeout: 1000000,
+      timeoutBlocks: 200,
+      gasPrice: 20000000000,
+    },
   },
   compilers: {
     solc: {

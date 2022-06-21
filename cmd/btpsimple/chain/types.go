@@ -52,7 +52,7 @@ type BMCLinkStatus struct {
 type RelayTx interface {
 	ID() interface{}
 	Send(ctx context.Context) (err error)
-	Receipt(ctx context.Context) (txr interface{}, err error)
+	Receipt(ctx context.Context) (blockHeight uint64, err error)
 }
 
 type SubscribeOptions struct {

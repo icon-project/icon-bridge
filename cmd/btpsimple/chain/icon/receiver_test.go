@@ -14,30 +14,39 @@ import (
 )
 
 func TestReceiver(t *testing.T) {
-	srcAddress := "btp://0x7.icon/cx997849d3920d338ed81800833fbb270c785e743d"
+	srcAddress := "btp://0x1.icon/cx997849d3920d338ed81800833fbb270c785e743d"
 	dstAddress := "btp://0x63564c40.hmny/0xa69712a3813d0505bbD55AeD3fd8471Bc2f722DD"
 	srcEndpoint := []string{"https://ctz.solidwallet.io/api/v3/icon_dex"}
-	var height uint64 = 0x307f245 // seq 0x0a
-	var seq uint64 = 611
-	very := map[string]interface{}{
-		"blockHeight":    0x307f24f,
-		"validatorsHash": "0xa6760c547c3f76b7071658ef383d69ec01e11ea71d695600788695b50659e409",
+	// var height uint64 = 0x307f245 // seq 0x0a
+	// var height uint64 = 0x307f24f
+	var height uint64 = 0x308024f
+	// var seq uint64 = 611
+	var seq uint64 = 628
+	opts := map[string]interface{}{
+		"verifier": map[string]interface{}{
+			"blockHeight":    0x307f24f,
+			"validatorsHash": "0xa6760c547c3f76b7071658ef383d69ec01e11ea71d695600788695b50659e409",
+		},
 	}
-	opts := map[string]interface{}{"verifier": very}
 	l := log.New()
 	log.SetGlobalLogger(l)
-	//log.AddForwarder(&log.ForwarderConfig{Vendor: log.HookVendorSlack, Address: "https://hooks.slack.com/services/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", Level: "info"})
-	if recv, err := NewReceiver(chain.BTPAddress(srcAddress), chain.BTPAddress(dstAddress), srcEndpoint, opts, l); err != nil {
+	// log.AddForwarder(&log.ForwarderConfig{Vendor: log.HookVendorSlack, Address: "https://hooks.slack.com/services/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", Level: "info"})
+	recv, err := NewReceiver(chain.BTPAddress(srcAddress), chain.BTPAddress(dstAddress), srcEndpoint, opts, l)
+	if err != nil {
+		panic(err)
+	}
+	msgCh := make(chan *chain.Message)
+	if errCh, err := recv.Subscribe(
+		context.Background(), msgCh, chain.SubscribeOptions{Height: height, Seq: seq}); err != nil {
 		panic(err)
 	} else {
-		msgCh := make(chan *chain.Message)
-		if errCh, err := recv.Subscribe(context.Background(), msgCh, chain.SubscribeOptions{Height: height, Seq: seq}); err != nil {
-			panic(err)
-		} else {
-			for {
-				select {
-				case <-errCh:
-				case <-msgCh:
+		for {
+			select {
+			case err := <-errCh:
+				panic(err)
+			case msg := <-msgCh:
+				if len(msg.Receipts) > 0 {
+					l.Info(msg.From, len(msg.Receipts), msg.Receipts[0].Height)
 				}
 			}
 		}

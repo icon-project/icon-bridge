@@ -17,6 +17,7 @@
 package icon
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -32,6 +33,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/icon-bridge/common/crypto"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
@@ -412,6 +415,52 @@ func (c *client) wsReadJSONLoop(ctx context.Context, conn *websocket.Conn, respP
 		}
 
 	}
+}
+
+func (cl *client) getBlockHeaderByHeight(height int64) (*BlockHeader, error) {
+	p := &BlockHeightParam{Height: NewHexInt(height)}
+	b, err := cl.GetBlockHeaderByHeight(p)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	var bh BlockHeader
+	_, err = codec.RLP.UnmarshalFromBytes(b, &bh)
+	if err != nil {
+		return nil, err
+	}
+	bh.serialized = b
+	return &bh, nil
+}
+
+func (cl *client) getCommitVoteListByHeight(height int64) (*commitVoteList, error) {
+	p := &BlockHeightParam{Height: NewHexInt(height)}
+	b, err := cl.GetVotesByHeight(p)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	var cvl commitVoteList
+	_, err = codec.RLP.UnmarshalFromBytes(b, &cvl)
+	if err != nil {
+		return nil, err
+	}
+	return &cvl, nil
+}
+
+func (cl *client) getValidatorsByHash(hash common.HexBytes) ([]common.HexBytes, error) {
+	data, err := cl.GetDataByHash(&DataHashParam{Hash: NewHexBytes(hash.Bytes())})
+	if err != nil {
+		return nil, errors.Wrapf(err, "GetDataByHash; %v", err)
+	}
+	if !bytes.Equal(hash, crypto.SHA3Sum256(data)) {
+		return nil, errors.Errorf(
+			"invalid data: hash=%v, data=%v", hash, common.HexBytes(data))
+	}
+	var vs []common.HexBytes
+	_, err = codec.BC.UnmarshalFromBytes(data, &vs)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Unmarshal Validators: %v", err)
+	}
+	return vs, nil
 }
 
 const (

@@ -1,6 +1,6 @@
 
 ### Preparation
-Follow the  [Binance Smart Chain BTP Guide (WIP)](https://github.com/icon-project/btp/blob/btp_web3labs/doc/bsc-guide.md#binance-smart-chain-btp-guide-wip "Binance Smart Chain BTP Guide (WIP)") to start docker network containing provisioned goloop, binance smart chain and BSC ICON BTP relayer.
+Follow the  [Binance Smart Chain BTP Guide (WIP)](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/doc/bsc-guide.md#binance-smart-chain-btp-guide-wip "Binance Smart Chain BTP Guide (WIP)") to start docker network containing provisioned goloop, binance smart chain and BSC ICON BTP relayer.
 
 Note:
 * scripts files in `/goloop/bin`
@@ -20,7 +20,7 @@ The provisioned btp-icon image already holds the script to initiate token transf
 		
 Note: This initates transfer of `10 ETH token units` from Alice(ICON) to address in BOB(bob.ks.json)(BSC) & store the transaction json in `tx.token.icon_bsc.transfer` file.
 
-The script should display "Bob Balance after BTP transfer" after a successful transfer. For more info, check [transfer_eth.sh](https://github.com/icon-project/btp/blob/btp_web3labs/devnet/docker/icon-bsc/scripts/transfer_eth.sh)
+The script should display "Bob Balance after BTP transfer" after a successful transfer. For more info, check [transfer_eth.sh](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/devnet/docker/icon-bsc/scripts/transfer_eth.sh)
 
 ##### 2. Transfer Token(ICX) from ICON (Alice) -> BSC (BOB)
 1. From the `devnet/docker/icon-bsc` directory run 
@@ -29,7 +29,7 @@ The script should display "Bob Balance after BTP transfer" after a successful tr
 		
 Note: This initates transfer of `10 ICX` coins from Alice(ICON) to address in BOB(bob.ks.json)(BSC) & store the transaction json in `tx.native.icon_bsc.transfer` file.
 
-The script should display "Bob's Balance after BTP Native transfer" after a successful transfer. For more info, check [transfer_icx.sh](https://github.com/icon-project/btp/blob/btp_web3labs/devnet/docker/icon-bsc/scripts/transfer_icx.sh)
+The script should display "Bob's Balance after BTP Native transfer" after a successful transfer. For more info, check [transfer_icx.sh](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/devnet/docker/icon-bsc/scripts/transfer_icx.sh)
 
 
 ### BSC to ICON Token Transfer
@@ -41,7 +41,7 @@ The script should display "Bob's Balance after BTP Native transfer" after a succ
 		
 Note: This initates transfer of `1 ETH` token from BOB(bob.ks.json)(BSC) to address in Alice (ICON) & store the transaction json in `tx.token.bsc_icon.transfer` file.
 
-For more info, check [transfer_eth_bsc.sh](https://github.com/icon-project/btp/blob/btp_web3labs/devnet/docker/icon-bsc/scripts/transfer_eth_bsc.sh)
+For more info, check [transfer_eth_bsc.sh](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/devnet/docker/icon-bsc/scripts/transfer_eth_bsc.sh)
 
 ##### 2. Transfer Native Token(BNB) from BSC (BOB) -> ICON (Alice)
 1. From the `devnet/docker/icon-bsc` directory run 
@@ -50,4 +50,4 @@ For more info, check [transfer_eth_bsc.sh](https://github.com/icon-project/btp/b
 		
 Note: This initates transfer of `1 BNB` coins from BOB(bob.ks.json)(BSC) to address in Alice (ICON) & store the transaction json in `tx.native.bsc_icon.transfer` file.
 
-For more info, check [transfer_bnb_bsc.sh](https://github.com/icon-project/btp/blob/btp_web3labs/devnet/docker/icon-bsc/scripts/transfer_bnb_bsc.sh)
+For more info, check [transfer_bnb_bsc.sh](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/devnet/docker/icon-bsc/scripts/transfer_bnb_bsc.sh)

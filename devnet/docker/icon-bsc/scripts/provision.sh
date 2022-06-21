@@ -147,7 +147,6 @@ generate_relay_config() {
             .dst.address = $dst_address |
             .dst.endpoint = [ $dst_endpoint ] |
             .dst.options = $dst_options |
-            .dst.tx_data_size_limit = $dst_tx_data_size_limit |
             .dst.key_store = $dst_key_store |
             .dst.key_store.coinType = $dst_key_store_cointype |
             .dst.key_password = $dst_key_password ' \
@@ -162,8 +161,7 @@ generate_relay_config() {
         --argfile dst_key_store "$GOLOOP_RPC_KEY_STORE" \
         --arg dst_key_store_cointype "icx" \
         --arg dst_key_password "$(cat $GOLOOP_RPC_KEY_SECRET)" \
-        --argjson dst_tx_data_size_limit 8192 \
-        --argjson dst_options '{"step_limit":13610920010}'
+        --argjson dst_options '{"step_limit":13610920010, "tx_data_size_limit":8192}'
     )" \
     --argjson i2b_relay "$(
       jq -n '

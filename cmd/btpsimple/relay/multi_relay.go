@@ -8,8 +8,6 @@ import (
 
 	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
 	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain/bsc"
-
-	//"github.com/icon-project/icon-bridge/cmd/btpsimple/chain/hmny"
 	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain/icon"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
@@ -49,6 +47,20 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 			); err != nil {
 				return nil, err
 			}
+		/* case "hmny":
+		if dst, err = hmny.NewSender(
+			rc.Src.Address,
+			rc.Dst.Address,
+			rc.Dst.Endpoint,
+			w.(*wallet.EvmWallet),
+			rc.Dst.Options,
+			l.WithFields(log.Fields{
+				log.FieldKeyPrefix: "tx_",
+				log.FieldKeyChain:  blockChain,
+			}),
+		); err != nil {
+			return nil, err
+		} */
 		case "bsc":
 			if dst, err = bsc.NewSender(
 				rc.Src.Address,
@@ -80,6 +92,19 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 			); err != nil {
 				return nil, err
 			}
+		/* case "hmny":
+		if src, err = hmny.NewReceiver(
+			rc.Src.Address,
+			rc.Dst.Address,
+			rc.Src.Endpoint,
+			rc.Src.Options,
+			l.WithFields(log.Fields{
+				log.FieldKeyPrefix: "rx_",
+				log.FieldKeyChain:  blockChain,
+			}),
+		); err != nil {
+			return nil, err
+		} */
 		case "bsc":
 			if src, err = bsc.NewReceiver(
 				rc.Src.Address,

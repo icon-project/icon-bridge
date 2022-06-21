@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "./BSHPeripheryV1.sol";
 import "./BSHCoreV1.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
 contract AnotherHolder is ERC1155Holder {
     BSHPeripheryV1 private bshs;
