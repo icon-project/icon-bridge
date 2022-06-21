@@ -143,10 +143,7 @@ func (c *client) TransferHmnyOne(senderKey string, amount big.Int, recepientAddr
 	if err != nil {
 		return
 	}
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	if err = c.ethCl.SendTransaction(ctx, signedTx); err != nil {
+	if err = c.ethCl.SendTransaction(context.TODO(), signedTx); err != nil {
 		return
 	}
 	txnHash = signedTx.Hash().String()

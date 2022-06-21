@@ -2,9 +2,12 @@ package hmny
 
 import (
 	"math/big"
+	"math/rand"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 
@@ -106,7 +109,13 @@ func (c *client) GetWrappedCoin(addr string) (val *big.Int, err error) {
 }
 
 func (c *client) TransferCoin(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	return c.TransferHmnyOne(senderKey, amount, recepientAddress)
+	if txnHash, err = c.TransferHmnyOne(senderKey, amount, recepientAddress); err != nil && err.Error() == core.ErrReplaceUnderpriced.Error() {
+		duration := time.Millisecond * 500 * time.Duration(rand.Intn(11)+1) // Delay of [500ms, 6 seconds]
+		c.log.Warn("Retrying Hmny One Transaction after (ms) ", duration.Milliseconds())
+		time.Sleep(duration)
+		return c.TransferHmnyOne(senderKey, amount, recepientAddress)
+	}
+	return
 }
 
 func (c *client) TransferEthToken(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
