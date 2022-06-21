@@ -22,7 +22,7 @@ type unitgroup struct {
 	cache           *tEnvTaskCache
 }
 
-func New(l log.Logger, numAccountsPerChain map[chain.ChainType]int, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ug *unitgroup, err error) {
+func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ug *unitgroup, err error) {
 
 	ug = &unitgroup{
 		log:             l,

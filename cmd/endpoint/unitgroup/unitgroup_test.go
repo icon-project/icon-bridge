@@ -42,7 +42,7 @@ func TestUnitGroup(t *testing.T) {
 	l := log.New()
 	log.SetGlobalLogger(l)
 	fmt.Println("New")
-	ug, err := New(l, map[chain.ChainType]int{chain.HMNY: 1, chain.ICON: 1}, cfgPerMap)
+	ug, err := New(l, cfgPerMap)
 	if err != nil {
 		log.Fatal(err)
 	}
