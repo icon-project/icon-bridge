@@ -16,6 +16,8 @@ func init() {
 
 }
 
+const NUM_PARALLEL_DEMOS = 3
+
 func main() {
 	l := log.New()
 	log.SetGlobalLogger(l)
@@ -34,13 +36,12 @@ func main() {
 		log.Fatal(err)
 	}
 	ug.Start(context.TODO())
-	tf := unitgroup.DefaultTaskFunctions["DemoTransaction"]
-	if err := ug.RegisterTestUnit(map[chain.ChainType]int{chain.ICON: 1, chain.HMNY: 1}, tf, false); err != nil {
-		log.Fatal(err)
-	}
-	time.Sleep(time.Second * time.Duration(2))
-	if err := ug.RegisterTestUnit(map[chain.ChainType]int{chain.ICON: 1, chain.HMNY: 1}, tf, false); err != nil {
-		log.Fatal(err)
+	for i := 0; i < NUM_PARALLEL_DEMOS; i++ {
+		tf := unitgroup.DefaultTaskFunctions["DemoTransaction"]
+		if err := ug.RegisterTestUnit(map[chain.ChainType]int{chain.ICON: 1, chain.HMNY: 1}, tf, false); err != nil {
+			log.Fatal(err)
+		}
+		time.Sleep(time.Second * time.Duration(2))
 	}
 	fmt.Println("Wait")
 	time.Sleep(time.Second * time.Duration(3000))
