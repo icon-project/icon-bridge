@@ -54,7 +54,7 @@ func (ug *unitgroup) Start(ctx context.Context) error {
 			case <-ctx.Done():
 				break
 			case err := <-errChan:
-				ug.log.Error("UnitGroup; Start Error ", err)
+				ug.log.Error("UnitGroup; Error ", err)
 			}
 		}
 	}()
@@ -62,15 +62,18 @@ func (ug *unitgroup) Start(ctx context.Context) error {
 }
 
 func (ug *unitgroup) process(ctx context.Context, ts int64, r tEnvTask, errChan chan error) {
+	defer ug.cache.Del(ts)
 	var err error
 	if r.tfunc.PreRun != nil {
 		if err = r.tfunc.PreRun(r.tu); err != nil {
-			errChan <- err
+			errChan <- errors.Wrap(err, "PreRun ")
+			return
 		}
 	}
 	if r.tfunc.Run != nil {
 		if err = r.tfunc.Run(r.tu); err != nil {
-			errChan <- err
+			errChan <- errors.Wrap(err, "Run ")
+			return
 		}
 	} else {
 		err = errors.New("Run Function should be given")
@@ -78,8 +81,8 @@ func (ug *unitgroup) process(ctx context.Context, ts int64, r tEnvTask, errChan 
 	}
 	if r.tfunc.PostRun != nil {
 		if err = r.tfunc.PostRun(r.tu); err != nil {
-			errChan <- err
+			errChan <- errors.Wrap(err, " PostRun ")
+			return
 		}
 	}
-	ug.cache.Del(ts)
 }
