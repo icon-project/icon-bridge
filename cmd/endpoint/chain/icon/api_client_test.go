@@ -1,5 +1,6 @@
 package icon
 
+/*
 import (
 	"fmt"
 	"math/big"
@@ -50,7 +51,7 @@ func newLocalClient() *client {
 	}
 	cAddr := &contractAddress{}
 	cAddr.FromMap(cMap)
-	client, _ := newClient(URL, l, cAddr, "0x5b9a77")
+	client, _ := newClient(URL, l)
 	return client
 }
 
@@ -172,3 +173,4 @@ func TestHexInt(t *testing.T) {
 	nid := "0x61235"
 	fmt.Println(HexInt(nid))
 }
+*/

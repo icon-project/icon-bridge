@@ -1,0 +1,229 @@
+package icon
+
+import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"math/big"
+	"time"
+
+	"github.com/pkg/errors"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	gocrypto "github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/transaction"
+	"github.com/icon-project/icon-bridge/common/intconv"
+)
+
+func SignTransactionParam(wallet module.Wallet, param *TransactionParam) error {
+	js, err := json.Marshal(param)
+	if err != nil {
+		return err
+	}
+	var txSerializeExcludes = map[string]bool{"signature": true}
+	bs, err := transaction.SerializeJSON(js, nil, txSerializeExcludes)
+	if err != nil {
+		return err
+	}
+	bs = append([]byte("icx_sendTransaction."), bs...)
+	sig, err := wallet.Sign(gocrypto.SHA3Sum256(bs))
+	if err != nil {
+		return err
+	}
+	param.Signature = base64.StdEncoding.EncodeToString(sig)
+	return nil
+}
+
+func (a *api) TransactWithContract(senderKey string, contractAddress string,
+	amount big.Int, args map[string]string, method string, dataType string) (txHash string, err error) {
+	var senderWallet module.Wallet
+	senderWallet, err = GetWalletFromPrivKey(senderKey)
+	if err != nil {
+		return
+	}
+	param := TransactionParam{
+		Version:     NewHexInt(JsonrpcApiVersion),
+		ToAddress:   Address(contractAddress),
+		Value:       HexInt(intconv.FormatBigInt(&amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
+		FromAddress: Address(senderWallet.Address().String()),
+		StepLimit:   NewHexInt(StepLimit),
+		Timestamp:   NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
+		NetworkID:   HexInt(a.networkID),
+		DataType:    dataType,
+	}
+	argMap := map[string]interface{}{}
+	argMap["method"] = method
+	argMap["params"] = args
+	param.Data = argMap
+
+	if err = SignTransactionParam(senderWallet, &param); err != nil {
+		return
+	}
+	txH, err := a.cl.SendTransaction(&param)
+	if err != nil {
+		return
+	}
+
+	txBytes, err := txH.Value()
+	if err != nil {
+		return
+	}
+	txHash = hexutil.Encode(txBytes[:])
+	a.cl.waitForResults(context.TODO(), &TransactionHashParam{Hash: *txH})
+	return
+}
+
+func (a *api) CallContract(contractAddress string, args map[string]string, method string) (interface{}, error) {
+	param := &CallParam{
+		ToAddress: Address(contractAddress),
+		DataType:  "call",
+	}
+	argMap := map[string]interface{}{}
+	argMap["method"] = method
+	argMap["params"] = args
+	param.Data = argMap
+	var res interface{}
+	err := a.cl.Call(param, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func (a *api) GetICXBalance(addr string) (*big.Int, error) {
+	// curl -X POST 'http://127.0.0.1:9080/api/v3/default' -H 'Content-Type:application/json' -d '{"id":"1001", "jsonrpc":"2.0", "method": "icx_getBalance", "params":{"address":"hxff0ea998b84ab9955157ab27915a9dc1805edd35"} }'
+	return a.cl.GetBalance(&AddressParam{Address: Address(addr)})
+}
+
+func (a *api) TransferICX(senderKey string, amount big.Int, recepientAddress string) (txHash string, err error) {
+	//goloop rpc --uri "http://127.0.0.1:9080/api/v3/default" sendtx transfer --to "hx267ed8d02bae84ada9f6ab486d4557aa4763b33a" --value "20" --key_store devnet/docker/icon-hmny/src/icon.god.wallet.json --key_password "gochain" --nid "6003319" --step_limit "3500000000"
+	var senderWallet module.Wallet
+	senderWallet, err = GetWalletFromPrivKey(senderKey)
+	if err != nil {
+		err = errors.Wrap(err, "Get Wallet ")
+		return
+	}
+	param := TransactionParam{
+		Version:     NewHexInt(JsonrpcApiVersion),
+		ToAddress:   Address(recepientAddress),
+		Value:       HexInt(intconv.FormatBigInt(&amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
+		FromAddress: Address(senderWallet.Address().String()),
+		StepLimit:   NewHexInt(StepLimit),
+		Timestamp:   NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
+		NetworkID:   HexInt(a.networkID),
+	}
+	if err = SignTransactionParam(senderWallet, &param); err != nil {
+		return
+	}
+	txH, err := a.cl.SendTransaction(&param)
+	if err != nil {
+		return
+	}
+	txBytes, err := txH.Value()
+	if err != nil {
+		return
+	}
+	txHash = hexutil.Encode(txBytes[:])
+	a.cl.waitForResults(context.TODO(), &TransactionHashParam{Hash: *txH})
+	return
+}
+
+func (a *api) GetIrc2Balance(addr string) (*big.Int, error) {
+	//goloop rpc --uri "http://127.0.0.1:9080/api/v3/default" call --to "cxf559e2ab2d3a69d8b1c0f1c44f1a2c45bdc4424f" --method "balanceOf" --param _owner=hx51ecae93216cb6d58bbdc51e2b5d790da94f738a
+	args := map[string]string{"_owner": addr}
+	res, err := a.CallContract(a.contractAddress.btp_icon_irc2, args, "balanceOf")
+	if err != nil {
+		return nil, err
+	} else if res == nil {
+		return nil, errors.New("Nil value")
+	}
+	resStr, ok := res.(string)
+	if !ok {
+		return nil, errors.New("Unexpected type")
+	}
+	n := new(big.Int)
+	n.SetString(resStr[2:], 16) //remove 0x
+	return n, nil
+}
+
+func (a *api) GetIconWrappedOne(addr string) (*big.Int, error) {
+	//goloop rpc --uri "http://127.0.0.1:9080/api/v3/default" call --to "cxf559e2ab2d3a69d8b1c0f1c44f1a2c45bdc4424f" --method "balanceOf" --param _owner=hx51ecae93216cb6d58bbdc51e2b5d790da94f738a
+	args := map[string]string{"_owner": addr}
+	res, err := a.CallContract(a.contractAddress.btp_icon_irc2_tradeable, args, "balanceOf")
+	if err != nil {
+		return nil, err
+	} else if res == nil {
+		return nil, errors.New("Nil value")
+	}
+	resStr, ok := res.(string)
+	if !ok {
+		return nil, errors.New("Unexpected type")
+	}
+	n := new(big.Int)
+	n.SetString(resStr[2:], 16)
+	return n, nil
+}
+
+func (a *api) TransferIrc2(senderKey string, amount big.Int, recepientAddress string) (txHash string, err error) {
+	args := map[string]string{"_to": recepientAddress, "_value": intconv.FormatBigInt(&amount)}
+	return a.TransactWithContract(senderKey, a.contractAddress.btp_icon_irc2, *big.NewInt(0), args, "transfer", "call")
+}
+
+func (a *api) TransferICXToHarmony(senderKey string, amount big.Int, recepientAddress string) (txHash string, err error) {
+	args := map[string]string{"_to": recepientAddress} //"btp://$btp_hmny_net/$btp_hmny_demo_wallet_address"}
+	return a.TransactWithContract(senderKey, a.contractAddress.btp_icon_nativecoin_bsh, amount, args, "transferNativeCoin", "call")
+}
+
+func (a *api) ApproveIconNativeCoinBSHToAccessHmnyOne(ownerKey string, amount big.Int) (approveTxnHash string, allowanceAmount *big.Int, err error) {
+
+	btpHmnyNativecoinSymbol := "ONE"
+	coinAddressArgs := map[string]string{"_coinName": btpHmnyNativecoinSymbol}
+	res, err := a.CallContract(a.contractAddress.btp_icon_nativecoin_bsh, coinAddressArgs, "coinAddress")
+	if err != nil {
+		return
+	}
+	coinAddress := res.(string)
+
+	approveArgs := map[string]string{"spender": a.contractAddress.btp_icon_nativecoin_bsh, "amount": intconv.FormatBigInt(&amount)}
+	approveTxnHash, err = a.TransactWithContract(ownerKey, coinAddress, *big.NewInt(0), approveArgs, "approve", "call")
+	if err != nil {
+		return
+	}
+
+	var ownerWallet module.Wallet
+	ownerWallet, err = GetWalletFromPrivKey(ownerKey)
+	allowArgs := map[string]string{"owner": ownerWallet.Address().String(), "spender": a.contractAddress.btp_icon_nativecoin_bsh}
+	res, err = a.CallContract(coinAddress, allowArgs, "allowance")
+	if err != nil {
+		return
+	}
+	if resStr, ok := res.(string); ok {
+		allowanceAmount = new(big.Int)
+		allowanceAmount.SetString(resStr[2:], 16)
+	} else {
+		err = errors.New("allowance is not expected type ")
+	}
+	return
+}
+
+func (a *api) TransferWrappedOneFromIconToHmny(senderKey string, amount big.Int, recepientAddress string) (string, error) {
+	args := map[string]string{"_coinName": "ONE", "_value": intconv.FormatBigInt(&amount), "_to": recepientAddress}
+	return a.TransactWithContract(senderKey, a.contractAddress.btp_icon_nativecoin_bsh, *big.NewInt(0), args, "transfer", "call")
+}
+
+func (a *api) TransferIrc2ToHmny(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, transferTxnHash string, err error) {
+
+	arg1 := map[string]string{"_to": a.contractAddress.btp_icon_token_bsh, "_value": intconv.FormatBigInt(&amount)}
+	approveTxnHash, err = a.TransactWithContract(senderKey, a.contractAddress.btp_icon_irc2, *big.NewInt(0), arg1, "transfer", "call")
+	if err != nil {
+		return
+	}
+
+	arg2 := map[string]string{"tokenName": "ETH", "value": intconv.FormatBigInt(&amount), "to": recepientAddress}
+	transferTxnHash, err = a.TransactWithContract(senderKey, a.contractAddress.btp_icon_token_bsh, *big.NewInt(0), arg2, "transfer", "call")
+	if err != nil {
+		return
+	}
+	return
+}

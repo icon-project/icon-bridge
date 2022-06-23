@@ -16,51 +16,6 @@
 
 package icon
 
-import (
-	"encoding/hex"
-	"fmt"
-	"math/big"
-	"strconv"
-	"strings"
-
-	"github.com/icon-project/icon-bridge/common/intconv"
-	"github.com/icon-project/icon-bridge/common/jsonrpc"
-)
-
-const (
-	JsonrpcApiVersion                                = 3
-	JsonrpcErrorCodeSystem         jsonrpc.ErrorCode = -31000
-	JsonrpcErrorCodeTxPoolOverflow jsonrpc.ErrorCode = -31001
-	JsonrpcErrorCodePending        jsonrpc.ErrorCode = -31002
-	JsonrpcErrorCodeExecuting      jsonrpc.ErrorCode = -31003
-	JsonrpcErrorCodeNotFound       jsonrpc.ErrorCode = -31004
-	JsonrpcErrorLackOfResource     jsonrpc.ErrorCode = -31005
-	JsonrpcErrorCodeTimeout        jsonrpc.ErrorCode = -31006
-	JsonrpcErrorCodeSystemTimeout  jsonrpc.ErrorCode = -31007
-	JsonrpcErrorCodeScore          jsonrpc.ErrorCode = -30000
-)
-
-const (
-	DuplicateTransactionError = iota + 2000
-	TransactionPoolOverflowError
-	ExpiredTransactionError
-	FutureTransactionError
-	TransitionInterruptedError
-	InvalidTransactionError
-	InvalidQueryError
-	InvalidResultError
-	NoActiveContractError
-	NotContractAddressError
-	InvalidPatchDataError
-	CommittedTransactionError
-)
-
-const (
-	ResultStatusSuccess           = "0x1"
-	ResultStatusFailureCodeRevert = 32
-	ResultStatusFailureCodeEnd    = 99
-)
-
 type TransactionResult struct {
 	To                 Address `json:"to"`
 	CumulativeStepUsed HexInt  `json:"cumulativeStepUsed"`
@@ -120,84 +75,107 @@ type TransactionHashParam struct {
 	Hash HexBytes `json:"txHash" validate:"required,t_hash"`
 }
 
-//T_BIN_DATA, T_HASH
-type HexBytes string
-
-func (hs HexBytes) Value() ([]byte, error) {
-	if hs == "" {
-		return nil, nil
-	}
-	return hex.DecodeString(string(hs[2:]))
+type BlockHeightParam struct {
+	Height HexInt `json:"height" validate:"required,t_int"`
 }
-func NewHexBytes(b []byte) HexBytes {
-	return HexBytes("0x" + hex.EncodeToString(b))
+type DataHashParam struct {
+	Hash HexBytes `json:"hash" validate:"required,t_hash"`
 }
-
-//T_INT
-type HexInt string
-
-func (i HexInt) Value() (int64, error) {
-	s := string(i)
-	if strings.HasPrefix(s, "0x") {
-		s = s[2:]
-	}
-	return strconv.ParseInt(s, 16, 64)
+type ProofResultParam struct {
+	BlockHash HexBytes `json:"hash" validate:"required,t_hash"`
+	Index     HexInt   `json:"index" validate:"required,t_int"`
+}
+type ProofEventsParam struct {
+	BlockHash HexBytes `json:"hash" validate:"required,t_hash"`
+	Index     HexInt   `json:"index" validate:"required,t_int"`
+	Events    []HexInt `json:"events"`
 }
 
-func (i HexInt) Int() (int, error) {
-	s := string(i)
-	if strings.HasPrefix(s, "0x") {
-		s = s[2:]
-	}
-	v, err := strconv.ParseInt(s, 16, 32)
-	return int(v), err
+type Block struct {
+	//BlockHash              HexBytes  `json:"block_hash" validate:"required,t_hash"`
+	//Version                HexInt    `json:"version" validate:"required,t_int"`
+	Height int64 `json:"height" validate:"required,t_int"`
+	//Timestamp              int64             `json:"time_stamp" validate:"required,t_int"`
+	//Proposer               HexBytes  `json:"peer_id" validate:"optional,t_addr_eoa"`
+	//PrevID                 HexBytes  `json:"prev_block_hash" validate:"required,t_hash"`
+	//NormalTransactionsHash HexBytes  `json:"merkle_tree_root_hash" validate:"required,t_hash"`
+	NormalTransactions []struct {
+		TxHash HexBytes `json:"txHash"`
+		//Version   HexInt   `json:"version"`
+		From Address `json:"from"`
+		To   Address `json:"to"`
+		//Value     HexInt   `json:"value,omitempty" `
+		//StepLimit HexInt   `json:"stepLimit"`
+		//TimeStamp HexInt   `json:"timestamp"`
+		//NID       HexInt   `json:"nid,omitempty"`
+		//Nonce     HexInt   `json:"nonce,omitempty"`
+		//Signature HexBytes `json:"signature"`
+		//DataType  string          `json:"dataType,omitempty"`
+		//Data json.RawMessage `json:"data,omitempty"`
+	} `json:"confirmed_transaction_list"`
+	//Signature              HexBytes  `json:"signature" validate:"optional,t_hash"`
 }
 
-func (i HexInt) BigInt() (*big.Int, error) {
-	bi := new(big.Int)
-	if err := intconv.ParseBigInt(bi, string(i)); err != nil {
-		return nil, err
-	} else {
-		return bi, nil
-	}
+type BlockRequest struct {
+	Height       HexInt         `json:"height"`
+	EventFilters []*EventFilter `json:"eventFilters,omitempty"`
 }
 
-func NewHexInt(v int64) HexInt {
-	return HexInt("0x" + strconv.FormatInt(v, 16))
+type EventFilter struct {
+	Addr      Address   `json:"addr,omitempty"`
+	Signature string    `json:"event"`
+	Indexed   []*string `json:"indexed,omitempty"`
+	Data      []*string `json:"data,omitempty"`
 }
 
-//T_ADDR_EOA, T_ADDR_SCORE
-type Address string
-
-func (a Address) Value() ([]byte, error) {
-	var b [21]byte
-	switch a[:2] {
-	case "cx":
-		b[0] = 1
-	case "hx":
-	default:
-		return nil, fmt.Errorf("invalid prefix %s", a[:2])
-	}
-	n, err := hex.Decode(b[1:], []byte(a[2:]))
-	if err != nil {
-		return nil, err
-	}
-	if n != 20 {
-		return nil, fmt.Errorf("invalid length %d", n)
-	}
-	return b[:], nil
+type BlockNotification struct {
+	Hash    HexBytes     `json:"hash"`
+	Height  HexInt       `json:"height"`
+	Indexes [][]HexInt   `json:"indexes,omitempty"`
+	Events  [][][]HexInt `json:"events,omitempty"`
 }
 
-func NewAddress(b []byte) Address {
-	if len(b) != 21 {
-		return ""
-	}
-	switch b[0] {
-	case 1:
-		return Address("cx" + hex.EncodeToString(b[1:]))
-	case 0:
-		return Address("hx" + hex.EncodeToString(b[1:]))
-	default:
-		return ""
-	}
+type EventRequest struct {
+	EventFilter
+	Height HexInt `json:"height"`
+}
+type EventNotification struct {
+	Hash   HexBytes `json:"hash"`
+	Height HexInt   `json:"height"`
+	Index  HexInt   `json:"index"`
+	Events []HexInt `json:"events,omitempty"`
+}
+
+type BlockHeader struct {
+	Version                int
+	Height                 int64
+	Timestamp              int64
+	Proposer               []byte
+	PrevID                 []byte
+	VotesHash              []byte
+	NextValidatorsHash     []byte
+	PatchTransactionsHash  []byte
+	NormalTransactionsHash []byte
+	LogsBloom              []byte
+	Result                 []byte
+	serialized             []byte
+}
+
+type EventLog struct {
+	Addr    []byte
+	Indexed [][]byte
+	Data    [][]byte
+}
+
+type TxnLog struct {
+	TxHash    HexBytes `json:"txHash" validate:"required,t_int"`
+	From      Address  `json:"from"`
+	To        Address  `json:"to"`
+	EventLogs []struct {
+		Addr    Address  `json:"scoreAddress"`
+		Indexed []string `json:"indexed"`
+		Data    []string `json:"data"`
+	} `json:"eventLogs"`
+	Status      HexInt `json:"status"`
+	BlockHeight int64  `json:"blockHeight"`
 }
