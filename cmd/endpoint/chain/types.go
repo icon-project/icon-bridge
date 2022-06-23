@@ -9,7 +9,7 @@ const (
 	HMNY ChainType = "HMNY"
 )
 
-type Client interface {
+type API interface {
 	GetCoinBalance(addr string) (*big.Int, error)
 	GetEthToken(addr string) (val *big.Int, err error)
 	GetWrappedCoin(addr string) (val *big.Int, err error)
@@ -20,7 +20,7 @@ type Client interface {
 	TransferEthTokenCrossChain(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, transferTxnHash string, err error)
 	ApproveContractToAccessCrossCoin(ownerKey string, amount big.Int) (approveTxnHash string, allowanceAmount *big.Int, err error)
 	GetAddressFromPrivKey(key string) (*string, error)
-	GetFullAddress(addr string) *string
+	GetBTPAddress(addr string) *string
 }
 
 type ChainConfig struct {
@@ -42,7 +42,7 @@ type GodWallet struct {
 }
 
 type EnvVariables struct {
-	Client       Client
+	Client       API
 	GodKeys      [2]string
 	AccountsKeys [][2]string
 }

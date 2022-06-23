@@ -172,7 +172,7 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			if _, err := ienv.Client.TransferCoinCrossChain(
 				ienv.AccountsKeys[0][PRIVKEYPOS],
 				*i2h_nativecoin_transfer_amount,
-				*henv.Client.GetFullAddress(henv.AccountsKeys[0][PUBKEYPOS])); err != nil {
+				*henv.Client.GetBTPAddress(henv.AccountsKeys[0][PUBKEYPOS])); err != nil {
 				return errors.Wrap(err, "Transfer ICX to HMNY ")
 			}
 			time.Sleep(time.Second * 5)
@@ -182,7 +182,7 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			tu.Logger().Info("Step 3. Transfer Native ONE (HMNY -> ICON): ")
 			h2i_nativecoin_transfer_amount := new(big.Int)
 			h2i_nativecoin_transfer_amount.SetString("2000000000000000000", 10)
-			rxAddr := *ienv.Client.GetFullAddress(ienv.AccountsKeys[0][PUBKEYPOS])
+			rxAddr := *ienv.Client.GetBTPAddress(ienv.AccountsKeys[0][PUBKEYPOS])
 			if _, err := henv.Client.TransferCoinCrossChain(
 				henv.AccountsKeys[0][PRIVKEYPOS],
 				*h2i_nativecoin_transfer_amount, rxAddr); err != nil {
@@ -216,7 +216,7 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			if _, err := henv.Client.TransferWrappedCoinCrossChain(
 				henv.AccountsKeys[0][PRIVKEYPOS],
 				*h2i_wrapped_ICX_transfer_amount,
-				*ienv.Client.GetFullAddress(ienv.AccountsKeys[0][PUBKEYPOS]),
+				*ienv.Client.GetBTPAddress(ienv.AccountsKeys[0][PUBKEYPOS]),
 			); err != nil {
 				return errors.Wrap(err, " Transfer Wrapped ICX ")
 			}
@@ -230,7 +230,7 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			if _, err := ienv.Client.TransferWrappedCoinCrossChain(
 				ienv.AccountsKeys[0][PRIVKEYPOS],
 				*i2h_wrapped_ONE_transfer_amount,
-				*henv.Client.GetFullAddress(henv.AccountsKeys[0][PUBKEYPOS]),
+				*henv.Client.GetBTPAddress(henv.AccountsKeys[0][PUBKEYPOS]),
 			); err != nil {
 				return errors.Wrap(err, " Transfer Wrapped ONE ")
 			}
@@ -244,7 +244,7 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			if _, _, err := ienv.Client.TransferEthTokenCrossChain(
 				ienv.AccountsKeys[0][PRIVKEYPOS],
 				*i2h_irc2_ETH_transfer_amount,
-				*henv.Client.GetFullAddress(henv.AccountsKeys[0][PUBKEYPOS])); err != nil {
+				*henv.Client.GetBTPAddress(henv.AccountsKeys[0][PUBKEYPOS])); err != nil {
 				return errors.Wrap(err, " Transfer irc2.ETH to HMNY ")
 			}
 			time.Sleep(time.Second * 15)
@@ -257,7 +257,7 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			if _, _, err := henv.Client.TransferEthTokenCrossChain(
 				henv.AccountsKeys[0][PRIVKEYPOS],
 				*h2i_erc20_ETH_transfer_amount,
-				*ienv.Client.GetFullAddress(ienv.AccountsKeys[0][PUBKEYPOS])); err != nil {
+				*ienv.Client.GetBTPAddress(ienv.AccountsKeys[0][PUBKEYPOS])); err != nil {
 				return errors.Wrap(err, " Transfer erc20.ETH to ICON ")
 			}
 			time.Sleep(time.Second * 15)
@@ -283,16 +283,19 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			}
 			showIconBalance := func(ienv *chain.EnvVariables) error {
 				if amt, err := ienv.Client.GetCoinBalance(ienv.AccountsKeys[0][PUBKEYPOS]); err != nil {
+					tu.Logger().Error(err)
 					return err
 				} else {
 					tu.Logger().Info("ICX ", amt.String())
 				}
 				if amt, err := ienv.Client.GetEthToken(ienv.AccountsKeys[0][PUBKEYPOS]); err != nil {
+					tu.Logger().Error(err)
 					return err
 				} else {
 					tu.Logger().Info("Eth ", amt.String())
 				}
 				if amt, err := ienv.Client.GetWrappedCoin(ienv.AccountsKeys[0][PUBKEYPOS]); err != nil {
+					tu.Logger().Error(err)
 					return err
 				} else {
 					tu.Logger().Info("WrappedONE ", amt.String())
@@ -301,17 +304,20 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			}
 			showHmnyBalance := func(henv *chain.EnvVariables) error {
 				if amt, err := henv.Client.GetCoinBalance(henv.AccountsKeys[0][PUBKEYPOS]); err != nil {
+					tu.Logger().Error(err)
 					return err
 				} else {
 					tu.Logger().Info("ONE ", amt.String())
 				}
 
 				if amt, err := henv.Client.GetEthToken(henv.AccountsKeys[0][PUBKEYPOS]); err != nil {
+					tu.Logger().Error(err)
 					return err
 				} else {
 					tu.Logger().Info("Eth ", amt.String())
 				}
 				if amt, err := henv.Client.GetWrappedCoin(henv.AccountsKeys[0][PUBKEYPOS]); err != nil {
+					tu.Logger().Error(err)
 					return err
 				} else {
 					tu.Logger().Info("WrappedICX ", amt.String())
@@ -320,28 +326,38 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			}
 
 			tu.Logger().Info("Step 1. Funding demo wallets ...")
-			// fmt.Println("AC ", ienv.AccountsKeys)
-			// fmt.Println("HC ", henv.AccountsKeys)
+			tu.Logger().Info("AC ", ienv.AccountsKeys)
+			tu.Logger().Info("HC ", henv.AccountsKeys)
 
 			icx_target := new(big.Int)
 			icx_target.SetString("250000000000000000000", 10)
 			if _, err := ienv.Client.TransferCoin(ienv.GodKeys[PRIVKEYPOS], *icx_target, ienv.AccountsKeys[0][PUBKEYPOS]); err != nil {
-				return errors.Wrap(err, "Transfer ICX ")
+				errors.Wrap(err, "Transfer ICX ")
+				tu.Logger().Error(err)
+				return err
 			}
+
 			irc2_target := new(big.Int)
 			irc2_target.SetString("10000000000000000000", 10)
 			if _, err := ienv.Client.TransferEthToken(ienv.GodKeys[PRIVKEYPOS], *irc2_target, ienv.AccountsKeys[0][PUBKEYPOS]); err != nil {
-				return errors.Wrap(err, "Transfer IRC2 ")
+				errors.Wrap(err, "Transfer IRC2 ")
+				tu.Logger().Error(err)
+				return err
 			}
+
 			one_target := new(big.Int)
 			one_target.SetString("10000000000000000000", 10)
 			if _, err := henv.Client.TransferCoin(henv.GodKeys[PRIVKEYPOS], *one_target, henv.AccountsKeys[0][PUBKEYPOS]); err != nil {
-				return errors.Wrap(err, "Transfer One ")
+				err = errors.Wrap(err, "Transfer One ")
+				tu.Logger().Error(err)
+				return err
 			}
 			erc20_target := new(big.Int)
 			erc20_target.SetString("10000000000000000000", 10)
 			if _, err := henv.Client.TransferEthToken(henv.GodKeys[PRIVKEYPOS], *erc20_target, henv.AccountsKeys[0][PUBKEYPOS]); err != nil {
-				return errors.Wrap(err, "Transfer Erc20 ")
+				errors.Wrap(err, "Transfer Erc20 ")
+				tu.Logger().Error(err)
+				return err
 			}
 			tu.Logger().Info("Showing new balance")
 			showIconBalance(ienv)

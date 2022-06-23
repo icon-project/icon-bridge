@@ -20,13 +20,13 @@ import (
 */
 type tenv struct {
 	l                log.Logger
-	clientsPerChain  map[chain.ChainType]chain.Client
+	clientsPerChain  map[chain.ChainType]chain.API
 	accountsPerChain map[chain.ChainType][]string
 	godKeysPerChain  map[chain.ChainType][2]string
 }
 
 type TEnv interface {
-	GetClient(name chain.ChainType) (chain.Client, error)
+	GetClient(name chain.ChainType) (chain.API, error)
 	GetAccounts(name chain.ChainType) ([][2]string, error)
 	GetGodKeyPair(name chain.ChainType) ([2]string, error)
 	GetEnvVariables(name chain.ChainType) (*chain.EnvVariables, error)
@@ -36,7 +36,7 @@ type TEnv interface {
 func New(l log.Logger, clientsPerChain map[chain.ChainType]*chain.ChainConfig, accountsPerChain map[chain.ChainType][]string, godKeysPerChain map[chain.ChainType][2]string) (t TEnv, err error) {
 	tu := &tenv{l: l,
 		accountsPerChain: accountsPerChain,
-		clientsPerChain:  map[chain.ChainType]chain.Client{},
+		clientsPerChain:  map[chain.ChainType]chain.API{},
 		godKeysPerChain:  godKeysPerChain,
 	}
 	for name, cfg := range clientsPerChain {
@@ -57,7 +57,7 @@ func New(l log.Logger, clientsPerChain map[chain.ChainType]*chain.ChainConfig, a
 	return tu, nil
 }
 
-func (tv *tenv) GetClient(name chain.ChainType) (chain.Client, error) {
+func (tv *tenv) GetClient(name chain.ChainType) (chain.API, error) {
 	if cl, ok := tv.clientsPerChain[name]; ok {
 		return cl, nil
 	}
