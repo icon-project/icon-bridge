@@ -1,5 +1,6 @@
 package hmny
 
+/*
 import (
 	"math/big"
 	"testing"
@@ -156,3 +157,4 @@ func TestTransferERC20ToIcon(t *testing.T) {
 	}
 	log.Warn("ApproveHash ", hash, "  TransferHash ", hash2)
 }
+*/

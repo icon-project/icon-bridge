@@ -1,147 +1,288 @@
 package hmny
 
 import (
+	"context"
 	"math/big"
-	"math/rand"
-	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
-	bshcore "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/bsh/bshcore"
-	erc20 "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/bsh/erc20tradable"
-	bep20tkn "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/tokenbsh/bep20tkn"
-	bshproxy "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/tokenbsh/bshproxy"
+	"github.com/harmony-one/harmony/core/types"
+	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-const (
-	coinName        = "ICX"
-	DefaultGasLimit = 80000000
-)
+func newClients(urls []string, bmc string, l log.Logger) (cls []*client, err error) {
+	for _, url := range urls {
+		clrpc, err := rpc.Dial(url)
+		if err != nil {
+			l.Errorf("failed to create hmny rpc client: url=%v, %v", url, err)
+			return nil, err
+		}
+		cleth := ethclient.NewClient(clrpc)
+		clbmc, err := NewBMC(common.HexToAddress(bmc), cleth)
+		cls = append(cls, &client{
+			log: l,
+			rpc: clrpc,
+			bmc: clbmc,
+			eth: cleth,
+		})
+	}
+	return cls, nil
+}
 
 // grouped rpc api clients
 type client struct {
-	ethCl           *ethclient.Client
-	log             log.Logger
-	bshc            *bshcore.Bshcore
-	erc             *erc20.Erc20tradable
-	bep             *bep20tkn.BEP
-	tokbsh          *bshproxy.TokenBSH
-	contractAddress *contractAddress
-	networkID       string
+	log log.Logger
+	rpc *rpc.Client
+	eth *ethclient.Client
+	bmc *BMC
 }
 
-type contractAddress struct {
-	btp_hmny_erc20               string
-	btp_hmny_nativecoin_bsh_core string
-	btp_hmny_token_bsh_proxy     string
+func (cl *client) newVerifier(opts *VerifierOptions) (Verifier, error) {
+	if opts == nil {
+		return &dumbVerifier{}, nil
+	}
+	h, err := cl.GetHmyV2HeaderByHeight((&big.Int{}).SetUint64(opts.BlockHeight))
+	if err != nil {
+		return nil, errors.Wrapf(err, "cl.GetHeaderByHeight(%d): %v", opts.BlockHeight, err)
+	}
+	ssh := h // shard state header
+	if ssh.Epoch.Cmp(bigZero) <= 0 {
+		if ssh.Number.Cmp(bigZero) > 0 {
+			ssh, err = cl.GetHmyV2HeaderByHeight(bigZero)
+			if err != nil {
+				return nil, errors.Wrapf(err, "cl.GetHeaderByHeight(%d): %v", 0, err)
+			}
+		}
+	} else {
+		epoch := new(big.Int).Sub(ssh.Epoch, bigOne)
+		elb, err := cl.GetEpochLastBlock(epoch)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cl.GetEpochLastBlock(%d): %v", epoch, err)
+		}
+		ssh, err = cl.GetHmyV2HeaderByHeight(elb)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cl.GetHeaderByHeight(%d): %v", elb, err)
+		}
+	}
+	vr := verifier{}
+	if err = vr.Update(ssh); err != nil {
+		return nil, errors.Wrapf(err, "verifier.Update: %v", err)
+	}
+	ok, err := vr.Verify(h, opts.CommitBitmap, opts.CommitSignature)
+	if !ok || err != nil {
+		return nil, errors.Wrapf(err, "invalid signature: %v", err)
+	}
+	return &vr, nil
 }
 
-func (cAddr *contractAddress) FromMap(contractAddrsMap map[string]string) {
-	cAddr.btp_hmny_erc20 = contractAddrsMap["btp_hmny_erc20"]
-	cAddr.btp_hmny_nativecoin_bsh_core = contractAddrsMap["btp_hmny_nativecoin_bsh_core"]
-	cAddr.btp_hmny_token_bsh_proxy = contractAddrsMap["btp_hmny_token_bsh_proxy"]
+func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
+	h, err := cl.GetHmyV2HeaderByHeight((&big.Int{}).SetUint64(height))
+	if err != nil {
+		return err
+	}
+	cl.log.WithFields(log.Fields{"epoch": vr.Epoch()}).Debugf("syncVerifier: start")
+	for epoch := vr.Epoch(); epoch < h.Epoch.Uint64(); epoch++ {
+		elb, err := cl.GetEpochLastBlock((&big.Int{}).SetUint64(epoch))
+		if err != nil {
+			return errors.Wrapf(err, "cl.GetEpochLastBlock: %v", err)
+		}
+		elh, err := cl.GetHmyV2HeaderByHeight(elb)
+		if err != nil {
+			return errors.Wrapf(err, "cl.GetHmyHeaderByHeight: %v", err)
+		}
+		if err = vr.Update(elh); err != nil {
+			return errors.Wrapf(err, "vr.Update: %v", err)
+		}
+		cl.log.WithFields(log.Fields{
+			"epoch": vr.Epoch(), "height": elb.Uint64()}).Debugf("syncVerifier: syncing")
+	}
+	cl.log.WithFields(log.Fields{"epoch": vr.Epoch()}).Debugf("syncVerifier: complete")
+
+	return nil
 }
 
-func New(url string, l log.Logger, contractAddrsMap map[string]string, networkID string) (chain.Client, error) {
-	cAddr := &contractAddress{}
-	cAddr.FromMap(contractAddrsMap)
-
-	return newClient(url, l, cAddr, networkID)
+func (cl *client) GetBlockNumber() (uint64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	bn, err := cl.eth.BlockNumber(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return bn, nil
 }
 
-func newClient(url string, l log.Logger, cAddress *contractAddress, networkID string) (*client, error) {
+func (cl *client) GetTransaction(hash common.Hash) (*ethtypes.Transaction, bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	tx, pending, err := cl.eth.TransactionByHash(ctx, hash)
+	if err != nil {
+		return nil, pending, err
+	}
+	return tx, pending, err
+}
 
-	clrpc, err := rpc.Dial(url)
+func (cl *client) GetEpochLastBlock(epoch *big.Int) (*big.Int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	lbn := big.NewInt(0)
+	err := cl.rpc.CallContext(ctx, lbn, "hmyv2_epochLastBlock", epoch)
 	if err != nil {
 		return nil, err
 	}
-	cleth := ethclient.NewClient(clrpc)
+	return lbn, nil
+}
 
-	bshc, err := bshcore.NewBshcore(common.HexToAddress(cAddress.btp_hmny_nativecoin_bsh_core), cleth)
+func (cl *client) GetHmyBlockByHash(hash common.Hash) (*BlockWithTxHash, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	hb := new(BlockWithTxHash)
+	err := cl.rpc.CallContext(ctx, hb, "hmy_getBlockByHash", hash, false)
 	if err != nil {
 		return nil, err
 	}
-	coinAddress, err := bshc.CoinId(&bind.CallOpts{Pending: false, Context: nil}, coinName)
+	return hb, nil
+}
+
+func (cl *client) GetHmyV2HeaderByHeight(height *big.Int) (*Header, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	hb := new(Header)
+	err := cl.rpc.CallContext(ctx, hb, "hmyv2_getFullHeader", height)
 	if err != nil {
 		return nil, err
 	}
-	bep, err := bep20tkn.NewBEP(common.HexToAddress(cAddress.btp_hmny_erc20), cleth)
+	return hb, nil
+}
+
+func (cl *client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
+	receipts, err := cl.getHmyBlockReceipts(hash)
+	if err != nil {
+		return cl.getHmyTxnReceiptsByBlockHash(hash)
+	}
+	return receipts, nil
+}
+
+func (cl *client) getHmyBlockReceipts(hash common.Hash) (types.Receipts, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	receipts := make([]*types.Receipt, 0)
+	err := cl.rpc.CallContext(ctx, &receipts, "hmy_getBlockReceipts", hash)
 	if err != nil {
 		return nil, err
 	}
-	erc, err := erc20.NewErc20tradable(coinAddress, cleth)
+	return receipts, nil
+}
+
+func (cl *client) getHmyTxnReceiptsByBlockHash(hash common.Hash) (types.Receipts, error) {
+	b, err := cl.GetHmyBlockByHash(hash)
 	if err != nil {
 		return nil, err
 	}
-	tokbsh, err := bshproxy.NewTokenBSH(common.HexToAddress(cAddress.btp_hmny_token_bsh_proxy), cleth)
+	txhs := append(b.Transactions, b.StakingTxs...)
+	if b.GasUsed == 0 || len(txhs) == 0 {
+		return nil, nil
+	}
+	// fetch all txn receipts concurrently
+	type rcq struct {
+		txh   common.Hash
+		v     *types.Receipt
+		err   error
+		retry int
+	}
+	qch := make(chan *rcq, len(txhs))
+	for _, txh := range txhs {
+		qch <- &rcq{txh, nil, nil, 3}
+	}
+	rmap := make(map[common.Hash]*types.Receipt)
+	for q := range qch {
+		switch {
+		case q.err != nil:
+			if q.retry == 0 {
+				return nil, q.err
+			}
+			q.retry--
+			q.err = nil
+			qch <- q
+		case q.v != nil:
+			rmap[q.txh] = q.v
+			if len(rmap) == cap(qch) {
+				close(qch)
+			}
+		default:
+			go func(q *rcq) {
+				defer func() { qch <- q }()
+				ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+				defer cancel()
+				if q.v == nil {
+					q.v = &types.Receipt{}
+				}
+				q.err = cl.rpc.CallContext(ctx, q.v, "hmy_getTransactionReceipt", q.txh)
+				if q.err != nil {
+					q.err = errors.Wrapf(q.err, "hmy_getTransactionReceipt: %v", q.err)
+				}
+			}(q)
+		}
+	}
+	receipts := make(types.Receipts, 0, len(txhs))
+	for _, txh := range txhs {
+		if r, ok := rmap[txh]; ok {
+			receipts = append(receipts, r)
+		}
+	}
+	return receipts, nil
+}
+
+/*
+func (cl *client) GetChainID() (*big.Int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	return cl.eth.ChainID(ctx)
+}
+
+func (cl *client) GetTransactionReceipt(hash common.Hash) (*types.Receipt, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	tr := new(types.Receipt)
+	err := cl.rpc.CallContext(ctx, tr, "hmy_getTransactionReceipt", hash)
 	if err != nil {
 		return nil, err
 	}
-	c := &client{
-		ethCl:           cleth,
-		log:             l,
-		bshc:            bshc,
-		erc:             erc,
-		bep:             bep,
-		tokbsh:          tokbsh,
-		contractAddress: cAddress,
-		networkID:       networkID,
+	return tr, nil
+}
+
+func (cl *client) GetHmyBlockByHeight(height *big.Int) (*BlockWithTxHash, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	hb := new(BlockWithTxHash)
+	err := cl.rpc.CallContext(ctx, hb, "hmy_getBlockByNumber", height, false)
+	if err != nil {
+		return nil, err
 	}
-	return c, nil
+	return hb, nil
 }
 
-func (c *client) GetCoinBalance(addr string) (*big.Int, error) {
-	return c.GetHmnyBalance(addr)
-}
-
-func (c *client) GetEthToken(addr string) (val *big.Int, err error) {
-	return c.GetHmnyErc20Balance(addr)
-}
-
-func (c *client) GetWrappedCoin(addr string) (val *big.Int, err error) {
-	return c.GetHmnyWrappedICX(addr)
-}
-
-func (c *client) TransferCoin(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	if txnHash, err = c.TransferHmnyOne(senderKey, amount, recepientAddress); err != nil && err.Error() == core.ErrReplaceUnderpriced.Error() {
-		duration := time.Millisecond * 500 * time.Duration(rand.Intn(11)+1) // Delay of [500ms, 6 seconds]
-		c.log.Warn("Retrying Hmny One Transaction after (ms) ", duration.Milliseconds())
-		time.Sleep(duration)
-		return c.TransferHmnyOne(senderKey, amount, recepientAddress)
+func (cl *client) GetHmyV2BlockByHeight(height *big.Int) (*BlockV2WithTxHash, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	hb := new(BlockV2WithTxHash)
+	err := cl.rpc.CallContext(ctx, hb, "hmyv2_getBlockByNumber", height, map[string]interface{}{})
+	if err != nil {
+		return nil, err
 	}
-	return
+	return hb, nil
 }
 
-func (c *client) TransferEthToken(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	return c.TransferErc20(senderKey, amount, recepientAddress)
+func (cl *client) GetHmyV2BlockByHash(hash common.Hash) (*BlockV2WithTxHash, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	hb := new(BlockV2WithTxHash)
+	err := cl.rpc.CallContext(ctx, hb, "hmyv2_getBlockByHash", hash, map[string]interface{}{"inclStaking": true})
+	if err != nil {
+		return nil, err
+	}
+	return hb, nil
 }
-
-func (c *client) TransferCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	return c.TransferOneToIcon(senderKey, recepientAddress, amount)
-}
-
-func (c *client) TransferWrappedCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	return c.TransferWrappedICXFromHmnyToIcon(senderKey, amount, recepientAddress)
-}
-
-func (c *client) TransferEthTokenCrossChain(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, transferTxnHash string, err error) {
-	return c.TransferERC20ToIcon(senderKey, amount, recepientAddress)
-}
-func (c *client) ApproveContractToAccessCrossCoin(ownerKey string, amount big.Int) (approveTxnHash string, allowanceAmount *big.Int, err error) {
-	return c.ApproveHmnyNativeBSHCoreToAccessICX(ownerKey, amount)
-}
-
-func (c *client) GetAddressFromPrivKey(key string) (*string, error) {
-	return getAddressFromPrivKey(key)
-}
-
-func (c *client) GetFullAddress(addr string) *string {
-	fullAddr := "btp://" + c.networkID + ".hmny/" + addr
-	return &fullAddr
-}
+*/
