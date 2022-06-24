@@ -15,7 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/harmony-one/harmony/core/types"
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"
 )
@@ -29,7 +29,7 @@ const (
 
 func NewReceiver(
 	src, dst chain.BTPAddress, urls []string,
-	opts map[string]interface{}, l log.Logger) (chain.Receiver, error) {
+	opts map[string]interface{}, l log.Logger) (chain.SubscritionAPI, error) {
 	r := &receiver{
 		log: l,
 		src: src,
@@ -50,8 +50,8 @@ func NewReceiver(
 }
 
 type receiverOptions struct {
-	Verifier        *VerifierOptions `json:"verifier"`
 	SyncConcurrency uint64           `json:"syncConcurrency"`
+	Verifier        *VerifierOptions `json:"verifier"`
 }
 
 func (opts *receiverOptions) Unmarshal(v map[string]interface{}) error {
@@ -318,15 +318,12 @@ func (r *receiver) getRelayReceipts(v *BlockNotification) []*chain.Receipt {
 }
 
 func (r *receiver) Subscribe(
-	ctx context.Context, msgCh chan<- *chain.Message,
-	opts chain.SubscribeOptions) (errCh <-chan error, err error) {
+	ctx context.Context, sinkChan chan<- *chain.SubscribedEvent, _errCh chan<- error,
+	opts chain.SubscribeOptions) (err error) {
 
 	opts.Seq++
 
-	_errCh := make(chan error)
-
 	go func() {
-		defer close(_errCh)
 		lastHeight := opts.Height - 1
 		if err := r.receiveLoop(ctx,
 			&bnOptions{
@@ -365,9 +362,11 @@ func (r *receiver) Subscribe(
 					}
 					receipt.Events = events
 				}
-				r.getFilteredReceipts(v)
+
 				if len(receipts) > 0 {
-					msgCh <- &chain.Message{Receipts: receipts}
+					for _, sev := range v.Receipts {
+						sinkChan <- &chain.SubscribedEvent{Res: sev, ChainName: chain.HMNY}
+					}
 				}
 				lastHeight++
 				return nil
@@ -377,7 +376,7 @@ func (r *receiver) Subscribe(
 		}
 	}()
 
-	return _errCh, nil
+	return nil
 }
 
 func (r *receiver) getFilteredReceipts(v *BlockNotification) []*LogResult {
@@ -386,7 +385,6 @@ func (r *receiver) getFilteredReceipts(v *BlockNotification) []*LogResult {
 		TransferEndSignature           = "0x9b4c002cf17443998e01f132ae99b7392665eec5422a33a1d2dc47308c59b6e2" //"TransferEnd(address,uint256,uint256,string)"                      //
 		TransferReceivedSignature      = "0x78e3e55e26c08e043fbd9cc0282f53e2caab096d30594cb476fcdfbbe7ce8680" //"TransferReceived(string,address,uint256,(string,uint256)[])"      //
 		TransferReceivedSignatureToken = "0xd2221859bf6855d034602a0388473f88313afe64aa63f26788e51caa087ed15c" //"TransferReceived(string,address,uint256,(string,uint256,uint256)[])" //
-
 	)
 	signatureMap := map[string]string{
 		"0x50d22373bb84ed1f9eeb581c913e6d45d918c05f8b1d90f0be168f06a4e6994a": "TransferStart",

@@ -23,7 +23,7 @@ const (
 	DefaultGasLimit = 80000000
 )
 
-type api struct {
+type requestAPI struct {
 	contractAddress *contractAddress
 	networkID       string
 	ethCl           *ethclient.Client
@@ -40,8 +40,8 @@ func (cAddr *contractAddress) FromMap(contractAddrsMap map[string]string) {
 	cAddr.btp_hmny_token_bsh_proxy = contractAddrsMap["btp_hmny_token_bsh_proxy"]
 }
 
-func New(url string, l log.Logger, contractAddrsMap map[string]string, networkID string) (chain.API, error) {
-	return newAPI(url, l, contractAddrsMap, networkID)
+func NewRequestAPI(url string, l log.Logger, contractAddrsMap map[string]string, networkID string) (chain.RequestAPI, error) {
+	return newRequestAPI(url, l, contractAddrsMap, networkID)
 }
 
 type contractAddress struct {
@@ -50,7 +50,7 @@ type contractAddress struct {
 	btp_hmny_token_bsh_proxy     string
 }
 
-func newAPI(url string, l log.Logger, contractAddrsMap map[string]string, networkID string) (*api, error) {
+func newRequestAPI(url string, l log.Logger, contractAddrsMap map[string]string, networkID string) (*requestAPI, error) {
 	cAddress := &contractAddress{}
 	cAddress.FromMap(contractAddrsMap)
 
@@ -80,7 +80,7 @@ func newAPI(url string, l log.Logger, contractAddrsMap map[string]string, networ
 	if err != nil {
 		return nil, err
 	}
-	a := &api{
+	a := &requestAPI{
 		log:             l,
 		contractAddress: cAddress,
 		networkID:       networkID,
@@ -93,52 +93,52 @@ func newAPI(url string, l log.Logger, contractAddrsMap map[string]string, networ
 	return a, nil
 }
 
-func (a *api) GetCoinBalance(addr string) (*big.Int, error) {
-	return a.GetHmnyBalance(addr)
+func (r *requestAPI) GetCoinBalance(addr string) (*big.Int, error) {
+	return r.GetHmnyBalance(addr)
 }
 
-func (a *api) GetEthToken(addr string) (val *big.Int, err error) {
-	return a.GetHmnyErc20Balance(addr)
+func (r *requestAPI) GetEthToken(addr string) (val *big.Int, err error) {
+	return r.GetHmnyErc20Balance(addr)
 }
 
-func (a *api) GetWrappedCoin(addr string) (val *big.Int, err error) {
-	return a.GetHmnyWrappedICX(addr)
+func (r *requestAPI) GetWrappedCoin(addr string) (val *big.Int, err error) {
+	return r.GetHmnyWrappedICX(addr)
 }
 
-func (a *api) TransferCoin(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	if txnHash, err = a.TransferHmnyOne(senderKey, amount, recepientAddress); err != nil && err.Error() == core.ErrReplaceUnderpriced.Error() {
+func (r *requestAPI) TransferCoin(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+	if txnHash, err = r.TransferHmnyOne(senderKey, amount, recepientAddress); err != nil && err.Error() == core.ErrReplaceUnderpriced.Error() {
 		duration := time.Millisecond * 500 * time.Duration(rand.Intn(11)+1) // Delay of [500ms, 6 seconds]
-		a.log.Warn("Retrying Hmny One Transaction after (ms) ", duration.Milliseconds())
+		r.log.Warn("Retrying Hmny One Transaction after (ms) ", duration.Milliseconds())
 		time.Sleep(duration)
-		return a.TransferHmnyOne(senderKey, amount, recepientAddress)
+		return r.TransferHmnyOne(senderKey, amount, recepientAddress)
 	}
 	return
 }
 
-func (a *api) TransferEthToken(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	return a.TransferErc20(senderKey, amount, recepientAddress)
+func (r *requestAPI) TransferEthToken(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+	return r.TransferErc20(senderKey, amount, recepientAddress)
 }
 
-func (a *api) TransferCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	return a.TransferOneToIcon(senderKey, recepientAddress, amount)
+func (r *requestAPI) TransferCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+	return r.TransferOneToIcon(senderKey, recepientAddress, amount)
 }
 
-func (a *api) TransferWrappedCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	return a.TransferWrappedICXFromHmnyToIcon(senderKey, amount, recepientAddress)
+func (r *requestAPI) TransferWrappedCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+	return r.TransferWrappedICXFromHmnyToIcon(senderKey, amount, recepientAddress)
 }
 
-func (a *api) TransferEthTokenCrossChain(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, transferTxnHash string, err error) {
-	return a.TransferERC20ToIcon(senderKey, amount, recepientAddress)
+func (r *requestAPI) TransferEthTokenCrossChain(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, transferTxnHash string, err error) {
+	return r.TransferERC20ToIcon(senderKey, amount, recepientAddress)
 }
-func (a *api) ApproveContractToAccessCrossCoin(ownerKey string, amount big.Int) (approveTxnHash string, allowanceAmount *big.Int, err error) {
-	return a.ApproveHmnyNativeBSHCoreToAccessICX(ownerKey, amount)
+func (r *requestAPI) ApproveContractToAccessCrossCoin(ownerKey string, amount big.Int) (approveTxnHash string, allowanceAmount *big.Int, err error) {
+	return r.ApproveHmnyNativeBSHCoreToAccessICX(ownerKey, amount)
 }
 
-func (a *api) GetAddressFromPrivKey(key string) (*string, error) {
+func (r *requestAPI) GetAddressFromPrivKey(key string) (*string, error) {
 	return getAddressFromPrivKey(key)
 }
 
-func (a *api) GetBTPAddress(addr string) *string {
-	fullAddr := "btp://" + a.networkID + ".hmny/" + addr
+func (r *requestAPI) GetBTPAddress(addr string) *string {
+	fullAddr := "btp://" + r.networkID + ".hmny/" + addr
 	return &fullAddr
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-type api struct {
+type requestAPI struct {
 	contractAddress *contractAddress
 	networkID       string
 	cl              *client
@@ -29,62 +29,62 @@ func (cAddr *contractAddress) FromMap(contractAddrsMap map[string]string) {
 	cAddr.btp_icon_token_bsh = contractAddrsMap["btp_icon_token_bsh"]
 }
 
-func newAPI(uri string, l log.Logger, cAddr *contractAddress, networkID string) (*api, error) {
+func newARequestPI(uri string, l log.Logger, cAddr *contractAddress, networkID string) (*requestAPI, error) {
 	cl, err := newClient(uri, l)
 	if err != nil {
 		return nil, err
 	}
-	return &api{networkID: networkID, contractAddress: cAddr, cl: cl}, nil
+	return &requestAPI{networkID: networkID, contractAddress: cAddr, cl: cl}, nil
 }
 
-func New(url string, l log.Logger, contractAddrsMap map[string]string, networkID string) (chain.API, error) {
+func NewRequestAPI(url string, l log.Logger, contractAddrsMap map[string]string, networkID string) (chain.RequestAPI, error) {
 	cAddr := &contractAddress{}
 	cAddr.FromMap(contractAddrsMap)
 
-	return newAPI(url, l, cAddr, networkID)
+	return newARequestPI(url, l, cAddr, networkID)
 }
 
-func (a *api) GetCoinBalance(addr string) (*big.Int, error) {
-	return a.GetICXBalance(addr)
+func (r *requestAPI) GetCoinBalance(addr string) (*big.Int, error) {
+	return r.GetICXBalance(addr)
 }
 
-func (a *api) GetEthToken(addr string) (val *big.Int, err error) {
-	return a.GetIrc2Balance(addr)
+func (r *requestAPI) GetEthToken(addr string) (val *big.Int, err error) {
+	return r.GetIrc2Balance(addr)
 }
 
-func (a *api) GetWrappedCoin(addr string) (val *big.Int, err error) {
-	return a.GetIconWrappedOne(addr)
+func (r *requestAPI) GetWrappedCoin(addr string) (val *big.Int, err error) {
+	return r.GetIconWrappedOne(addr)
 }
 
-func (a *api) TransferCoin(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	return a.TransferICX(senderKey, amount, recepientAddress)
+func (r *requestAPI) TransferCoin(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+	return r.TransferICX(senderKey, amount, recepientAddress)
 }
 
-func (a *api) TransferEthToken(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	return a.TransferIrc2(senderKey, amount, recepientAddress)
+func (r *requestAPI) TransferEthToken(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+	return r.TransferIrc2(senderKey, amount, recepientAddress)
 }
 
-func (a *api) TransferCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	return a.TransferICXToHarmony(senderKey, amount, recepientAddress)
+func (r *requestAPI) TransferCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+	return r.TransferICXToHarmony(senderKey, amount, recepientAddress)
 }
 
-func (a *api) TransferWrappedCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	return a.TransferWrappedOneFromIconToHmny(senderKey, amount, recepientAddress)
+func (r *requestAPI) TransferWrappedCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+	return r.TransferWrappedOneFromIconToHmny(senderKey, amount, recepientAddress)
 }
 
-func (a *api) TransferEthTokenCrossChain(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, transferTxnHash string, err error) {
-	return a.TransferIrc2ToHmny(senderKey, amount, recepientAddress)
+func (r *requestAPI) TransferEthTokenCrossChain(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, transferTxnHash string, err error) {
+	return r.TransferIrc2ToHmny(senderKey, amount, recepientAddress)
 }
 
-func (a *api) ApproveContractToAccessCrossCoin(ownerKey string, amount big.Int) (approveTxnHash string, allowanceAmount *big.Int, err error) {
-	return a.ApproveIconNativeCoinBSHToAccessHmnyOne(ownerKey, amount)
+func (r *requestAPI) ApproveContractToAccessCrossCoin(ownerKey string, amount big.Int) (approveTxnHash string, allowanceAmount *big.Int, err error) {
+	return r.ApproveIconNativeCoinBSHToAccessHmnyOne(ownerKey, amount)
 }
 
-func (a *api) GetAddressFromPrivKey(key string) (*string, error) {
+func (r *requestAPI) GetAddressFromPrivKey(key string) (*string, error) {
 	return getAddressFromPrivKey(key)
 }
 
-func (a *api) GetBTPAddress(addr string) *string {
-	fullAddr := "btp://" + a.networkID + ".icon/" + addr
+func (r *requestAPI) GetBTPAddress(addr string) *string {
+	fullAddr := "btp://" + r.networkID + ".icon/" + addr
 	return &fullAddr
 }

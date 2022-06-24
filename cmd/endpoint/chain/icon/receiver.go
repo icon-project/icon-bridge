@@ -30,7 +30,7 @@ import (
 	vlcodec "github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/ompt"
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
@@ -49,7 +49,8 @@ const (
 )
 
 type receiverOptions struct {
-	Verifier *VerifierOptions `json:"verifier"`
+	SyncConcurrency uint64           `json:"syncConcurrency"`
+	Verifier        *VerifierOptions `json:"verifier"`
 }
 
 func (opts *receiverOptions) Unmarshal(v map[string]interface{}) error {
@@ -83,7 +84,7 @@ type Receiver interface {
 		opts chain.SubscribeOptions) (errCh <-chan error, err error)
 }
 
-func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]interface{}, l log.Logger) (Receiver, error) {
+func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]interface{}, l log.Logger) (chain.SubscritionAPI, error) {
 	if len(urls) == 0 {
 		return nil, errors.New("List of Urls is empty")
 	}
@@ -640,8 +641,8 @@ loop:
 }
 
 func (r *receiver) Subscribe(
-	ctx context.Context, msgCh chan<- []*TxnLog,
-	opts chain.SubscribeOptions) (errCh <-chan error, err error) {
+	ctx context.Context, sinkChan chan<- *chain.SubscribedEvent, _errCh chan<- error,
+	opts chain.SubscribeOptions) (err error) {
 
 	opts.Seq++
 
@@ -649,9 +650,9 @@ func (r *receiver) Subscribe(
 		opts.Height = 1
 	}
 
-	_errCh := make(chan error)
+	// _errCh := make(chan error)
 	go func() {
-		defer close(_errCh)
+		// defer close(_errCh)
 		err := r.receiveLoop(ctx, opts.Height, opts.Seq, func(receipts []*chain.Receipt, txnLogs []*TxnLog) error {
 			for _, receipt := range receipts {
 				events := receipt.Events[:0]
@@ -675,7 +676,9 @@ func (r *receiver) Subscribe(
 				receipt.Events = events
 			}
 			if len(txnLogs) > 0 {
-				msgCh <- txnLogs
+				for _, txn := range txnLogs {
+					sinkChan <- &chain.SubscribedEvent{Res: txn, ChainName: chain.ICON}
+				}
 			}
 			return nil
 		})
@@ -684,8 +687,27 @@ func (r *receiver) Subscribe(
 			_errCh <- err
 		}
 	}()
-	return _errCh, nil
+	return nil
 }
+
+// func decodeTxnLogToSubscribedEvent(txn *TxnLog) *chain.SubscribedEvent {
+// 	newEventLog := make([]chain.EventLog, len(txn.EventLogs))
+// 	for li, l := range txn.EventLogs {
+// 		newEventLog[li] = chain.EventLog{Addr: string(l.Addr), Indexed: l.Indexed, Data: l.Data}
+// 	}
+// 	status := int64(1)
+// 	if s, err := txn.Status.Value(); err != nil {
+// 		status = s
+// 	}
+// 	return &chain.SubscribedEvent{
+// 		TxHash:      string(txn.TxHash),
+// 		From:        string(txn.From),
+// 		To:          string(txn.To),
+// 		EventLogs:   newEventLog,
+// 		Status:      status,
+// 		BlockHeight: txn.BlockHeight,
+// 	}
+// }
 
 func mptProve(key HexInt, proofs [][]byte, hash []byte) ([]byte, error) {
 	db := db.NewMapDB()
