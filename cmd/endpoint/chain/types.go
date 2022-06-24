@@ -1,6 +1,9 @@
 package chain
 
-import "math/big"
+import (
+	"context"
+	"math/big"
+)
 
 type ChainType string
 
@@ -9,7 +12,7 @@ const (
 	HMNY ChainType = "HMNY"
 )
 
-type API interface {
+type RequestAPI interface {
 	GetCoinBalance(addr string) (*big.Int, error)
 	GetEthToken(addr string) (val *big.Int, err error)
 	GetWrappedCoin(addr string) (val *big.Int, err error)
@@ -23,12 +26,23 @@ type API interface {
 	GetBTPAddress(addr string) *string
 }
 
+type SubscritionAPI interface {
+	Start(ctx context.Context, sinkChan chan<- *SubscribedEvent, errChan chan<- error) error
+}
+
 type ChainConfig struct {
 	Name               ChainType         `json:"name"`
 	URL                string            `json:"url"`
 	ConftractAddresses map[string]string `json:"contract_addresses"`
 	GodWallet          GodWallet         `json:"god_wallet"`
 	NetworkID          string            `json:"network_id"`
+	Subscriber         SubscriberConfig  `json:"subscriber"`
+}
+
+type SubscriberConfig struct {
+	Src  BTPAddress             `json:"src"`
+	Dst  BTPAddress             `json:"dst"`
+	Opts map[string]interface{} `json:"options"`
 }
 
 type ContractAddress struct {
@@ -42,7 +56,35 @@ type GodWallet struct {
 }
 
 type EnvVariables struct {
-	Client       API
+	Client       RequestAPI
 	GodKeys      [2]string
 	AccountsKeys [][2]string
+}
+
+type EventLog struct {
+	Addr    string   `json:"scoreAddress"`
+	Indexed []string `json:"indexed"`
+	Data    []string `json:"data"`
+}
+
+type SubscribedEvent struct {
+	Res       interface{}
+	ChainName ChainType
+}
+
+type Event struct {
+	Next     BTPAddress
+	Sequence uint64
+	Message  []byte
+}
+
+type Receipt struct {
+	Index  uint64
+	Events []*Event
+	Height uint64
+}
+
+type SubscribeOptions struct {
+	Seq    uint64
+	Height uint64
 }

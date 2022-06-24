@@ -13,7 +13,18 @@
                 "path":"/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/icon.god.wallet.json",
                 "password":"gochain"
             },
-            "network_id":"0x5b9a77"
+            "network_id":"0x5b9a77",
+            "subscriber": {
+                "src":"btp://0x5b9a77.icon/cx8015df5623344958af75ba1598b4ee14b8574bee",
+                "dst":"btp://0x6357d2e0.hmny/0x0169AE3f21b67e798fd4AdF50d0FA9FB83d72651",
+                "options": {
+                    "syncConcurrency": 1,
+                    "verifier": {
+                        "blockHeight": 1211,
+                        "validatorsHash": "0xe4d1a21c32bd86bbcca8fa4dd96ea5f4fe80cc44b990ba1b1ae6b7808f8b7883"
+                    }
+                }
+            }
         },
         {
             "name":"HMNY",
@@ -27,7 +38,19 @@
                 "path":"/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/hmny.god.wallet.json",
                 "password":""
             },
-            "network_id":"0x6357d2e0"
+            "network_id":"0x6357d2e0",
+            "subscriber": {
+                "src":"btp://0x6357d2e0.hmny/0x0169AE3f21b67e798fd4AdF50d0FA9FB83d72651",
+                "dst":"btp://0x5b9a77.icon/cx8015df5623344958af75ba1598b4ee14b8574bee",
+                "options": {
+                    "syncConcurrency": 100,
+                    "verifier": {
+                      "blockHeight": 1171,
+                      "commitBitmap": "0xff",
+                      "commitSignature": "0xf102d2c65b9012f9e02f2066b381bcd91dfcaa0b41ce76671838dce44d5aff4837768982fd7d5e0c544318aa560af502a28de49329c992c59e69277828362b7dabecae1b462fb2ed43d2c4d010e31f3ae099689ea8224ab6e65051cf5e6db992"
+                    }
+                }
+            }
         }
     ]
 }

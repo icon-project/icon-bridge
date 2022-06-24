@@ -20,13 +20,13 @@ import (
 */
 type tenv struct {
 	l                log.Logger
-	clientsPerChain  map[chain.ChainType]chain.API
+	clientsPerChain  map[chain.ChainType]chain.RequestAPI
 	accountsPerChain map[chain.ChainType][]string
 	godKeysPerChain  map[chain.ChainType][2]string
 }
 
 type TEnv interface {
-	GetClient(name chain.ChainType) (chain.API, error)
+	GetClient(name chain.ChainType) (chain.RequestAPI, error)
 	GetAccounts(name chain.ChainType) ([][2]string, error)
 	GetGodKeyPair(name chain.ChainType) ([2]string, error)
 	GetEnvVariables(name chain.ChainType) (*chain.EnvVariables, error)
@@ -36,17 +36,17 @@ type TEnv interface {
 func New(l log.Logger, clientsPerChain map[chain.ChainType]*chain.ChainConfig, accountsPerChain map[chain.ChainType][]string, godKeysPerChain map[chain.ChainType][2]string) (t TEnv, err error) {
 	tu := &tenv{l: l,
 		accountsPerChain: accountsPerChain,
-		clientsPerChain:  map[chain.ChainType]chain.API{},
+		clientsPerChain:  map[chain.ChainType]chain.RequestAPI{},
 		godKeysPerChain:  godKeysPerChain,
 	}
 	for name, cfg := range clientsPerChain {
 		if name == chain.HMNY {
-			tu.clientsPerChain[name], err = hmny.New(cfg.URL, l, cfg.ConftractAddresses, cfg.NetworkID)
+			tu.clientsPerChain[name], err = hmny.NewRequestAPI(cfg.URL, l, cfg.ConftractAddresses, cfg.NetworkID)
 			if err != nil {
 				err = errors.Wrap(err, "HMNY Err: ")
 			}
 		} else if name == chain.ICON {
-			tu.clientsPerChain[name], err = icon.New(cfg.URL, l, cfg.ConftractAddresses, cfg.NetworkID)
+			tu.clientsPerChain[name], err = icon.NewRequestAPI(cfg.URL, l, cfg.ConftractAddresses, cfg.NetworkID)
 			if err != nil {
 				err = errors.Wrap(err, "HMNY Err: ")
 			}
@@ -57,7 +57,7 @@ func New(l log.Logger, clientsPerChain map[chain.ChainType]*chain.ChainConfig, a
 	return tu, nil
 }
 
-func (tv *tenv) GetClient(name chain.ChainType) (chain.API, error) {
+func (tv *tenv) GetClient(name chain.ChainType) (chain.RequestAPI, error) {
 	if cl, ok := tv.clientsPerChain[name]; ok {
 		return cl, nil
 	}

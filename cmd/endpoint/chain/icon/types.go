@@ -17,18 +17,14 @@
 package icon
 
 type TransactionResult struct {
-	To                 Address `json:"to"`
-	CumulativeStepUsed HexInt  `json:"cumulativeStepUsed"`
-	StepUsed           HexInt  `json:"stepUsed"`
-	StepPrice          HexInt  `json:"stepPrice"`
-	EventLogs          []struct {
-		Addr    Address  `json:"scoreAddress"`
-		Indexed []string `json:"indexed"`
-		Data    []string `json:"data"`
-	} `json:"eventLogs"`
-	LogsBloom HexBytes `json:"logsBloom"`
-	Status    HexInt   `json:"status"`
-	Failure   *struct {
+	To                 Address       `json:"to"`
+	CumulativeStepUsed HexInt        `json:"cumulativeStepUsed"`
+	StepUsed           HexInt        `json:"stepUsed"`
+	StepPrice          HexInt        `json:"stepPrice"`
+	EventLogs          []TxnEventLog `json:"eventLogs"`
+	LogsBloom          HexBytes      `json:"logsBloom"`
+	Status             HexInt        `json:"status"`
+	Failure            *struct {
 		CodeValue    HexInt `json:"code"`
 		MessageValue string `json:"message"`
 	} `json:"failure,omitempty"`
@@ -167,15 +163,17 @@ type EventLog struct {
 	Data    [][]byte
 }
 
+type TxnEventLog struct {
+	Addr    Address  `json:"scoreAddress"`
+	Indexed []string `json:"indexed"`
+	Data    []string `json:"data"`
+}
+
 type TxnLog struct {
-	TxHash    HexBytes `json:"txHash" validate:"required,t_int"`
-	From      Address  `json:"from"`
-	To        Address  `json:"to"`
-	EventLogs []struct {
-		Addr    Address  `json:"scoreAddress"`
-		Indexed []string `json:"indexed"`
-		Data    []string `json:"data"`
-	} `json:"eventLogs"`
-	Status      HexInt `json:"status"`
-	BlockHeight int64  `json:"blockHeight"`
+	TxHash      HexBytes      `json:"txHash" validate:"required,t_int"`
+	From        Address       `json:"from"`
+	To          Address       `json:"to"`
+	EventLogs   []TxnEventLog `json:"eventLogs"`
+	Status      HexInt        `json:"status"`
+	BlockHeight int64         `json:"blockHeight"`
 }

@@ -16,7 +16,7 @@ func init() {
 
 }
 
-const NUM_PARALLEL_DEMOS = 5
+const NUM_PARALLEL_DEMOS = 1
 
 func main() {
 	l := log.New()
@@ -30,7 +30,6 @@ func main() {
 	for _, ch := range cfg.Chains {
 		cfgPerMap[ch.Name] = ch
 	}
-
 	ug, err := unitgroup.New(l, cfgPerMap)
 	if err != nil {
 		log.Fatal(err)
