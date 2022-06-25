@@ -1,7 +1,7 @@
-package bshPeriphery
+package tokenHmy
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -11,14 +11,14 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
 )
 
-type bshPeripheryContract struct {
+type tokenHmyContract struct {
 	backend       bind.ContractBackend
-	genObj        *BshPeriphery
+	genObj        *TokenHmy
 	eventIDToName map[common.Hash]string
 }
 
-func (b *bshPeripheryContract) GetName() contracts.ContractName {
-	return contracts.BSHPeriphery
+func (b *tokenHmyContract) GetName() contracts.ContractName {
+	return contracts.TokenHmy
 }
 
 func NewContract(url string, cAddr common.Address) (contracts.Contract, error) {
@@ -27,25 +27,28 @@ func NewContract(url string, cAddr common.Address) (contracts.Contract, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctr := &bshPeripheryContract{backend: ethclient.NewClient(clrpc)}
+	ctr := &tokenHmyContract{backend: ethclient.NewClient(clrpc)}
 
-	ctr.genObj, err = NewBshPeriphery(cAddr, ctr.backend)
+	ctr.genObj, err = NewTokenHmy(cAddr, ctr.backend)
 	if err != nil {
 		return nil, err
 	}
-	ctr.eventIDToName, err = contracts.EventIDToName(BshPeripheryABI)
+	ctr.eventIDToName, err = contracts.EventIDToName(TokenHmyABI)
 	if err != nil {
 		return nil, err
 	}
 	return ctr, nil
 }
-
-func (b *bshPeripheryContract) Decode(log types.Log) (res map[string]interface{}, err error) {
+func (b *tokenHmyContract) Decode(l interface{}) (res map[string]interface{}, err error) {
+	log, ok := l.(types.Log)
+	if !ok {
+		return nil, errors.New("Log of wrong type. Expected types.Log")
+	}
 	res = map[string]interface{}{}
 	for _, tid := range log.Topics {
 		topicName, ok := b.eventIDToName[tid]
-		if ok {
-			fmt.Println("Okay", topicName, tid)
+		if !ok {
+			continue
 		}
 		if topicName == "TransferStart" {
 			if out, err := b.genObj.ParseTransferStart(log); err != nil {

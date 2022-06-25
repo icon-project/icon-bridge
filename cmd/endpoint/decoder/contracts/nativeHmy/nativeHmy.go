@@ -1,7 +1,7 @@
-package bshImpl
+package nativeHmy
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -11,14 +11,14 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
 )
 
-type bshImplContract struct {
+type nativeHmyContract struct {
 	backend       bind.ContractBackend
-	genObj        *BshImpl
+	genObj        *NativeHmy
 	eventIDToName map[common.Hash]string
 }
 
-func (b *bshImplContract) GetName() contracts.ContractName {
-	return contracts.BSHImpl
+func (b *nativeHmyContract) GetName() contracts.ContractName {
+	return contracts.NativeHmy
 }
 
 func NewContract(url string, cAddr common.Address) (contracts.Contract, error) {
@@ -27,24 +27,29 @@ func NewContract(url string, cAddr common.Address) (contracts.Contract, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctr := &bshImplContract{backend: ethclient.NewClient(clrpc)}
+	ctr := &nativeHmyContract{backend: ethclient.NewClient(clrpc)}
 
-	ctr.genObj, err = NewBshImpl(cAddr, ctr.backend)
+	ctr.genObj, err = NewNativeHmy(cAddr, ctr.backend)
 	if err != nil {
 		return nil, err
 	}
-	ctr.eventIDToName, err = contracts.EventIDToName(BshImplABI)
+	ctr.eventIDToName, err = contracts.EventIDToName(NativeHmyABI)
 	if err != nil {
 		return nil, err
 	}
 	return ctr, nil
 }
-func (b *bshImplContract) Decode(log types.Log) (res map[string]interface{}, err error) {
+
+func (b *nativeHmyContract) Decode(l interface{}) (res map[string]interface{}, err error) {
+	log, ok := l.(types.Log)
+	if !ok {
+		return nil, errors.New("Log of wrong type. Expected types.Log")
+	}
 	res = map[string]interface{}{}
 	for _, tid := range log.Topics {
 		topicName, ok := b.eventIDToName[tid]
-		if ok {
-			fmt.Println("Okay", topicName, tid)
+		if !ok {
+			continue
 		}
 		if topicName == "TransferStart" {
 			if out, err := b.genObj.ParseTransferStart(log); err != nil {

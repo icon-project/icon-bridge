@@ -8,9 +8,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chain/icon"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder"
 	ctr "github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/bshPeriphery"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/nativeHmy"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/tokenIcon"
 )
 
 func TestBshEvent(t *testing.T) {
@@ -19,8 +21,8 @@ func TestBshEvent(t *testing.T) {
 	btp_hmny_nativecoin_bsh_periphery := "0xfEe5c5B2bc2f927335C60879d78304e4305CdBaC"
 	contractUsed := btp_hmny_nativecoin_bsh_periphery
 	m := map[ctr.ContractName]common.Address{
-		ctr.BSHImpl:      common.HexToAddress(btp_hmny_token_bsh_impl),
-		ctr.BSHPeriphery: common.HexToAddress(btp_hmny_nativecoin_bsh_periphery),
+		ctr.TokenHmy:  common.HexToAddress(btp_hmny_token_bsh_impl),
+		ctr.NativeHmy: common.HexToAddress(btp_hmny_nativecoin_bsh_periphery),
 	}
 	dec, err := decoder.New(url, m)
 	if err != nil {
@@ -43,12 +45,12 @@ func TestBshEvent(t *testing.T) {
 		Index:       2,
 	}
 
-	if out, err := dec.DecodeEventLogData(log); err != nil {
+	if out, err := dec.DecodeEventLogData(log, log.Address); err != nil {
 		t.Fatal(err)
 	} else {
 		for k, v := range out {
 			if k == "TransferStart" && contractUsed == btp_hmny_nativecoin_bsh_periphery {
-				res, ok := v.(*bshPeriphery.BshPeripheryTransferStart)
+				res, ok := v.(*nativeHmy.NativeHmyTransferStart)
 				if !ok {
 					t.Fatal(errors.New("Problem"))
 				} else {
@@ -57,4 +59,35 @@ func TestBshEvent(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestIconEvent(t *testing.T) {
+	btp_icon_token_bsh := "cx5924a147ae30091ed9c6fe0c153ef77de4132902"
+	m := map[ctr.ContractName]common.Address{
+		ctr.TokenIcon: common.HexToAddress(btp_icon_token_bsh),
+	}
+	dec, err := decoder.New("", m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := icon.TxnEventLog{
+		Addr:    icon.Address("cx5924a147ae30091ed9c6fe0c153ef77de4132902"),
+		Indexed: []string{"TransferStart(Address,str,int,bytes)", "hx4a707b2ecbb5f40a8d761976d99244f53575eeb6"},
+		Data:    []string{"btp://0x6357d2e0.hmny/0x8BE8641225CC0Afdb24499409863E8E3f6557C32", "0x25", "0xd6d583455448880dbd2fc137a30000872386f26fc10000"},
+	}
+	if out, err := dec.DecodeEventLogData(log, common.HexToAddress(btp_icon_token_bsh)); err != nil {
+		t.Fatalf("%+v", err)
+	} else {
+		for k, v := range out {
+			if k == "TransferStart" && log.Addr == icon.Address(btp_icon_token_bsh) {
+				res, ok := v.(*tokenIcon.TokenIconTransferStart)
+				if !ok {
+					t.Fatal(errors.New("Problem"))
+				} else {
+					fmt.Println("First ", res.From, res.To, res.Sn, res.Assets)
+				}
+			}
+		}
+	}
+
 }

@@ -5,18 +5,22 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	ctr "github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/bshImpl"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/bshPeriphery"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/nativeHmy"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/tokenHmy"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/tokenIcon"
 )
 
 // Update this function for more contracts
 func getNewContract(cName ctr.ContractName, url string, cAddr common.Address) (ctr.Contract, error) {
-	if cName == ctr.BSHImpl {
-		return bshImpl.NewContract(url, cAddr)
-	} else if cName == ctr.BSHPeriphery {
-		return bshPeriphery.NewContract(url, cAddr)
+	if cName == ctr.TokenHmy {
+		return tokenHmy.NewContract(url, cAddr)
+	} else if cName == ctr.NativeHmy {
+		return nativeHmy.NewContract(url, cAddr)
+	} else if cName == ctr.TokenIcon {
+		return tokenIcon.NewContract(cAddr)
+	} else if cName == ctr.NativeIcon {
+		// return nativeIcon.NewContract(cAddr)
 	}
 	return nil, errors.New("Contract not registered")
 }
@@ -24,7 +28,7 @@ func getNewContract(cName ctr.ContractName, url string, cAddr common.Address) (c
 type Decoder interface {
 	Add(contractNameToAddressMap map[ctr.ContractName]common.Address) (err error)
 	Remove(addr common.Address)
-	DecodeEventLogData(log types.Log) (map[string]interface{}, error)
+	DecodeEventLogData(log interface{}, addr common.Address) (map[string]interface{}, error)
 }
 
 type decoder struct {
@@ -66,9 +70,9 @@ func (d *decoder) Remove(addr common.Address) {
 	delete(d.addrToContract, addr)
 }
 
-func (d *decoder) DecodeEventLogData(log types.Log) (map[string]interface{}, error) {
+func (d *decoder) DecodeEventLogData(log interface{}, addr common.Address) (map[string]interface{}, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	cAddr := d.addrToContract[log.Address]
-	return cAddr.Decode(log)
+	ctr := d.addrToContract[addr]
+	return ctr.Decode(log)
 }

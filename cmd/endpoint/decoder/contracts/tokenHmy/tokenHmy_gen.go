@@ -1,7 +1,7 @@
 // Code generated - DO NOT EDIT.
 // This file is a generated binding and any manual changes will be lost.
 
-package bshImpl
+package tokenHmy
 
 import (
 	"math/big"
@@ -40,107 +40,107 @@ type TypesTransferAssets struct {
 	Asset []TypesAsset
 }
 
-// BshImplABI is the input ABI used to generate the binding from.
-const BshImplABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_code\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_msg\",\"type\":\"string\"}],\"name\":\"HandleBTPMessageEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_from\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"}],\"name\":\"ResponseUnknownType\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"_from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_code\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_response\",\"type\":\"string\"}],\"name\":\"TransferEnd\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"string\",\"name\":\"_from\",\"type\":\"string\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"fee\",\"type\":\"uint256\"}],\"indexed\":false,\"internalType\":\"structTypes.Asset[]\",\"name\":\"_assetDetails\",\"type\":\"tuple[]\"}],\"name\":\"TransferReceived\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"_from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"fee\",\"type\":\"uint256\"}],\"indexed\":false,\"internalType\":\"structTypes.Asset[]\",\"name\":\"_assets\",\"type\":\"tuple[]\"}],\"name\":\"TransferStart\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"requests\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"from\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"to\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"serviceName\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_bmc\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_bshProxy\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_serviceName\",\"type\":\"string\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"hasPendingRequest\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_toFA\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"}],\"name\":\"handleFeeGathering\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_from\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"handleBTPMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"from\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"to\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"fee\",\"type\":\"uint256\"}],\"internalType\":\"structTypes.Asset[]\",\"name\":\"asset\",\"type\":\"tuple[]\"}],\"internalType\":\"structTypes.TransferAssets\",\"name\":\"transferAssets\",\"type\":\"tuple\"}],\"name\":\"handleRequest\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"}],\"name\":\"checkParseAddress\",\"outputs\":[],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_src\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_code\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"_msg\",\"type\":\"string\"}],\"name\":\"handleBTPError\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_from\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"fee\",\"type\":\"uint256\"}],\"internalType\":\"structTypes.Asset[]\",\"name\":\"_assets\",\"type\":\"tuple[]\"}],\"name\":\"sendServiceMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
+// TokenHmyABI is the input ABI used to generate the binding from.
+const TokenHmyABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_code\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_msg\",\"type\":\"string\"}],\"name\":\"HandleBTPMessageEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_from\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"}],\"name\":\"ResponseUnknownType\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"_from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_code\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_response\",\"type\":\"string\"}],\"name\":\"TransferEnd\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"string\",\"name\":\"_from\",\"type\":\"string\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"fee\",\"type\":\"uint256\"}],\"indexed\":false,\"internalType\":\"structTypes.Asset[]\",\"name\":\"_assetDetails\",\"type\":\"tuple[]\"}],\"name\":\"TransferReceived\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"_from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"fee\",\"type\":\"uint256\"}],\"indexed\":false,\"internalType\":\"structTypes.Asset[]\",\"name\":\"_assets\",\"type\":\"tuple[]\"}],\"name\":\"TransferStart\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"requests\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"from\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"to\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"serviceName\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_bmc\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_bshProxy\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_serviceName\",\"type\":\"string\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"hasPendingRequest\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_toFA\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"}],\"name\":\"handleFeeGathering\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_from\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"handleBTPMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"from\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"to\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"fee\",\"type\":\"uint256\"}],\"internalType\":\"structTypes.Asset[]\",\"name\":\"asset\",\"type\":\"tuple[]\"}],\"internalType\":\"structTypes.TransferAssets\",\"name\":\"transferAssets\",\"type\":\"tuple\"}],\"name\":\"handleRequest\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"}],\"name\":\"checkParseAddress\",\"outputs\":[],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_src\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_code\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"_msg\",\"type\":\"string\"}],\"name\":\"handleBTPError\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_from\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"fee\",\"type\":\"uint256\"}],\"internalType\":\"structTypes.Asset[]\",\"name\":\"_assets\",\"type\":\"tuple[]\"}],\"name\":\"sendServiceMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
 
-// BshImpl is an auto generated Go binding around an Ethereum contract.
-type BshImpl struct {
-	BshImplCaller     // Read-only binding to the contract
-	BshImplTransactor // Write-only binding to the contract
-	BshImplFilterer   // Log filterer for contract events
+// TokenHmy is an auto generated Go binding around an Ethereum contract.
+type TokenHmy struct {
+	TokenHmyCaller     // Read-only binding to the contract
+	TokenHmyTransactor // Write-only binding to the contract
+	TokenHmyFilterer   // Log filterer for contract events
 }
 
-// BshImplCaller is an auto generated read-only Go binding around an Ethereum contract.
-type BshImplCaller struct {
+// TokenHmyCaller is an auto generated read-only Go binding around an Ethereum contract.
+type TokenHmyCaller struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// BshImplTransactor is an auto generated write-only Go binding around an Ethereum contract.
-type BshImplTransactor struct {
+// TokenHmyTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type TokenHmyTransactor struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// BshImplFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
-type BshImplFilterer struct {
+// TokenHmyFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type TokenHmyFilterer struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// BshImplSession is an auto generated Go binding around an Ethereum contract,
+// TokenHmySession is an auto generated Go binding around an Ethereum contract,
 // with pre-set call and transact options.
-type BshImplSession struct {
-	Contract     *BshImpl          // Generic contract binding to set the session for
+type TokenHmySession struct {
+	Contract     *TokenHmy         // Generic contract binding to set the session for
 	CallOpts     bind.CallOpts     // Call options to use throughout this session
 	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
 }
 
-// BshImplCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// TokenHmyCallerSession is an auto generated read-only Go binding around an Ethereum contract,
 // with pre-set call options.
-type BshImplCallerSession struct {
-	Contract *BshImplCaller // Generic contract caller binding to set the session for
-	CallOpts bind.CallOpts  // Call options to use throughout this session
+type TokenHmyCallerSession struct {
+	Contract *TokenHmyCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts   // Call options to use throughout this session
 }
 
-// BshImplTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// TokenHmyTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
 // with pre-set transact options.
-type BshImplTransactorSession struct {
-	Contract     *BshImplTransactor // Generic contract transactor binding to set the session for
-	TransactOpts bind.TransactOpts  // Transaction auth options to use throughout this session
+type TokenHmyTransactorSession struct {
+	Contract     *TokenHmyTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts   // Transaction auth options to use throughout this session
 }
 
-// BshImplRaw is an auto generated low-level Go binding around an Ethereum contract.
-type BshImplRaw struct {
-	Contract *BshImpl // Generic contract binding to access the raw methods on
+// TokenHmyRaw is an auto generated low-level Go binding around an Ethereum contract.
+type TokenHmyRaw struct {
+	Contract *TokenHmy // Generic contract binding to access the raw methods on
 }
 
-// BshImplCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
-type BshImplCallerRaw struct {
-	Contract *BshImplCaller // Generic read-only contract binding to access the raw methods on
+// TokenHmyCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type TokenHmyCallerRaw struct {
+	Contract *TokenHmyCaller // Generic read-only contract binding to access the raw methods on
 }
 
-// BshImplTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
-type BshImplTransactorRaw struct {
-	Contract *BshImplTransactor // Generic write-only contract binding to access the raw methods on
+// TokenHmyTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type TokenHmyTransactorRaw struct {
+	Contract *TokenHmyTransactor // Generic write-only contract binding to access the raw methods on
 }
 
-// NewBshImpl creates a new instance of BshImpl, bound to a specific deployed contract.
-func NewBshImpl(address common.Address, backend bind.ContractBackend) (*BshImpl, error) {
-	contract, err := bindBshImpl(address, backend, backend, backend)
+// NewTokenHmy creates a new instance of TokenHmy, bound to a specific deployed contract.
+func NewTokenHmy(address common.Address, backend bind.ContractBackend) (*TokenHmy, error) {
+	contract, err := bindTokenHmy(address, backend, backend, backend)
 	if err != nil {
 		return nil, err
 	}
-	return &BshImpl{BshImplCaller: BshImplCaller{contract: contract}, BshImplTransactor: BshImplTransactor{contract: contract}, BshImplFilterer: BshImplFilterer{contract: contract}}, nil
+	return &TokenHmy{TokenHmyCaller: TokenHmyCaller{contract: contract}, TokenHmyTransactor: TokenHmyTransactor{contract: contract}, TokenHmyFilterer: TokenHmyFilterer{contract: contract}}, nil
 }
 
-// NewBshImplCaller creates a new read-only instance of BshImpl, bound to a specific deployed contract.
-func NewBshImplCaller(address common.Address, caller bind.ContractCaller) (*BshImplCaller, error) {
-	contract, err := bindBshImpl(address, caller, nil, nil)
+// NewTokenHmyCaller creates a new read-only instance of TokenHmy, bound to a specific deployed contract.
+func NewTokenHmyCaller(address common.Address, caller bind.ContractCaller) (*TokenHmyCaller, error) {
+	contract, err := bindTokenHmy(address, caller, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &BshImplCaller{contract: contract}, nil
+	return &TokenHmyCaller{contract: contract}, nil
 }
 
-// NewBshImplTransactor creates a new write-only instance of BshImpl, bound to a specific deployed contract.
-func NewBshImplTransactor(address common.Address, transactor bind.ContractTransactor) (*BshImplTransactor, error) {
-	contract, err := bindBshImpl(address, nil, transactor, nil)
+// NewTokenHmyTransactor creates a new write-only instance of TokenHmy, bound to a specific deployed contract.
+func NewTokenHmyTransactor(address common.Address, transactor bind.ContractTransactor) (*TokenHmyTransactor, error) {
+	contract, err := bindTokenHmy(address, nil, transactor, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &BshImplTransactor{contract: contract}, nil
+	return &TokenHmyTransactor{contract: contract}, nil
 }
 
-// NewBshImplFilterer creates a new log filterer instance of BshImpl, bound to a specific deployed contract.
-func NewBshImplFilterer(address common.Address, filterer bind.ContractFilterer) (*BshImplFilterer, error) {
-	contract, err := bindBshImpl(address, nil, nil, filterer)
+// NewTokenHmyFilterer creates a new log filterer instance of TokenHmy, bound to a specific deployed contract.
+func NewTokenHmyFilterer(address common.Address, filterer bind.ContractFilterer) (*TokenHmyFilterer, error) {
+	contract, err := bindTokenHmy(address, nil, nil, filterer)
 	if err != nil {
 		return nil, err
 	}
-	return &BshImplFilterer{contract: contract}, nil
+	return &TokenHmyFilterer{contract: contract}, nil
 }
 
-// bindBshImpl binds a generic wrapper to an already deployed contract.
-func bindBshImpl(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(BshImplABI))
+// bindTokenHmy binds a generic wrapper to an already deployed contract.
+func bindTokenHmy(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := abi.JSON(strings.NewReader(TokenHmyABI))
 	if err != nil {
 		return nil, err
 	}
@@ -151,46 +151,46 @@ func bindBshImpl(address common.Address, caller bind.ContractCaller, transactor 
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_BshImpl *BshImplRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
-	return _BshImpl.Contract.BshImplCaller.contract.Call(opts, result, method, params...)
+func (_TokenHmy *TokenHmyRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _TokenHmy.Contract.TokenHmyCaller.contract.Call(opts, result, method, params...)
 }
 
 // Transfer initiates a plain transaction to move funds to the contract, calling
 // its default method if one is available.
-func (_BshImpl *BshImplRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _BshImpl.Contract.BshImplTransactor.contract.Transfer(opts)
+func (_TokenHmy *TokenHmyRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _TokenHmy.Contract.TokenHmyTransactor.contract.Transfer(opts)
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_BshImpl *BshImplRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _BshImpl.Contract.BshImplTransactor.contract.Transact(opts, method, params...)
+func (_TokenHmy *TokenHmyRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _TokenHmy.Contract.TokenHmyTransactor.contract.Transact(opts, method, params...)
 }
 
 // Call invokes the (constant) contract method with params as input values and
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_BshImpl *BshImplCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
-	return _BshImpl.Contract.contract.Call(opts, result, method, params...)
+func (_TokenHmy *TokenHmyCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _TokenHmy.Contract.contract.Call(opts, result, method, params...)
 }
 
 // Transfer initiates a plain transaction to move funds to the contract, calling
 // its default method if one is available.
-func (_BshImpl *BshImplTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _BshImpl.Contract.contract.Transfer(opts)
+func (_TokenHmy *TokenHmyTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _TokenHmy.Contract.contract.Transfer(opts)
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_BshImpl *BshImplTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _BshImpl.Contract.contract.Transact(opts, method, params...)
+func (_TokenHmy *TokenHmyTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _TokenHmy.Contract.contract.Transact(opts, method, params...)
 }
 
 // CheckParseAddress is a free data retrieval call binding the contract method 0xc7a6d7fe.
 //
 // Solidity: function checkParseAddress(string _to) pure returns()
-func (_BshImpl *BshImplCaller) CheckParseAddress(opts *bind.CallOpts, _to string) error {
+func (_TokenHmy *TokenHmyCaller) CheckParseAddress(opts *bind.CallOpts, _to string) error {
 	var out []interface{}
-	err := _BshImpl.contract.Call(opts, &out, "checkParseAddress", _to)
+	err := _TokenHmy.contract.Call(opts, &out, "checkParseAddress", _to)
 
 	if err != nil {
 		return err
@@ -203,23 +203,23 @@ func (_BshImpl *BshImplCaller) CheckParseAddress(opts *bind.CallOpts, _to string
 // CheckParseAddress is a free data retrieval call binding the contract method 0xc7a6d7fe.
 //
 // Solidity: function checkParseAddress(string _to) pure returns()
-func (_BshImpl *BshImplSession) CheckParseAddress(_to string) error {
-	return _BshImpl.Contract.CheckParseAddress(&_BshImpl.CallOpts, _to)
+func (_TokenHmy *TokenHmySession) CheckParseAddress(_to string) error {
+	return _TokenHmy.Contract.CheckParseAddress(&_TokenHmy.CallOpts, _to)
 }
 
 // CheckParseAddress is a free data retrieval call binding the contract method 0xc7a6d7fe.
 //
 // Solidity: function checkParseAddress(string _to) pure returns()
-func (_BshImpl *BshImplCallerSession) CheckParseAddress(_to string) error {
-	return _BshImpl.Contract.CheckParseAddress(&_BshImpl.CallOpts, _to)
+func (_TokenHmy *TokenHmyCallerSession) CheckParseAddress(_to string) error {
+	return _TokenHmy.Contract.CheckParseAddress(&_TokenHmy.CallOpts, _to)
 }
 
 // HasPendingRequest is a free data retrieval call binding the contract method 0x6bf39c09.
 //
 // Solidity: function hasPendingRequest() view returns(bool)
-func (_BshImpl *BshImplCaller) HasPendingRequest(opts *bind.CallOpts) (bool, error) {
+func (_TokenHmy *TokenHmyCaller) HasPendingRequest(opts *bind.CallOpts) (bool, error) {
 	var out []interface{}
-	err := _BshImpl.contract.Call(opts, &out, "hasPendingRequest")
+	err := _TokenHmy.contract.Call(opts, &out, "hasPendingRequest")
 
 	if err != nil {
 		return *new(bool), err
@@ -234,26 +234,26 @@ func (_BshImpl *BshImplCaller) HasPendingRequest(opts *bind.CallOpts) (bool, err
 // HasPendingRequest is a free data retrieval call binding the contract method 0x6bf39c09.
 //
 // Solidity: function hasPendingRequest() view returns(bool)
-func (_BshImpl *BshImplSession) HasPendingRequest() (bool, error) {
-	return _BshImpl.Contract.HasPendingRequest(&_BshImpl.CallOpts)
+func (_TokenHmy *TokenHmySession) HasPendingRequest() (bool, error) {
+	return _TokenHmy.Contract.HasPendingRequest(&_TokenHmy.CallOpts)
 }
 
 // HasPendingRequest is a free data retrieval call binding the contract method 0x6bf39c09.
 //
 // Solidity: function hasPendingRequest() view returns(bool)
-func (_BshImpl *BshImplCallerSession) HasPendingRequest() (bool, error) {
-	return _BshImpl.Contract.HasPendingRequest(&_BshImpl.CallOpts)
+func (_TokenHmy *TokenHmyCallerSession) HasPendingRequest() (bool, error) {
+	return _TokenHmy.Contract.HasPendingRequest(&_TokenHmy.CallOpts)
 }
 
 // Requests is a free data retrieval call binding the contract method 0x81d12c58.
 //
 // Solidity: function requests(uint256 ) view returns(string from, string to)
-func (_BshImpl *BshImplCaller) Requests(opts *bind.CallOpts, arg0 *big.Int) (struct {
+func (_TokenHmy *TokenHmyCaller) Requests(opts *bind.CallOpts, arg0 *big.Int) (struct {
 	From string
 	To   string
 }, error) {
 	var out []interface{}
-	err := _BshImpl.contract.Call(opts, &out, "requests", arg0)
+	err := _TokenHmy.contract.Call(opts, &out, "requests", arg0)
 
 	outstruct := new(struct {
 		From string
@@ -273,29 +273,29 @@ func (_BshImpl *BshImplCaller) Requests(opts *bind.CallOpts, arg0 *big.Int) (str
 // Requests is a free data retrieval call binding the contract method 0x81d12c58.
 //
 // Solidity: function requests(uint256 ) view returns(string from, string to)
-func (_BshImpl *BshImplSession) Requests(arg0 *big.Int) (struct {
+func (_TokenHmy *TokenHmySession) Requests(arg0 *big.Int) (struct {
 	From string
 	To   string
 }, error) {
-	return _BshImpl.Contract.Requests(&_BshImpl.CallOpts, arg0)
+	return _TokenHmy.Contract.Requests(&_TokenHmy.CallOpts, arg0)
 }
 
 // Requests is a free data retrieval call binding the contract method 0x81d12c58.
 //
 // Solidity: function requests(uint256 ) view returns(string from, string to)
-func (_BshImpl *BshImplCallerSession) Requests(arg0 *big.Int) (struct {
+func (_TokenHmy *TokenHmyCallerSession) Requests(arg0 *big.Int) (struct {
 	From string
 	To   string
 }, error) {
-	return _BshImpl.Contract.Requests(&_BshImpl.CallOpts, arg0)
+	return _TokenHmy.Contract.Requests(&_TokenHmy.CallOpts, arg0)
 }
 
 // ServiceName is a free data retrieval call binding the contract method 0x9fdc7bc4.
 //
 // Solidity: function serviceName() view returns(string)
-func (_BshImpl *BshImplCaller) ServiceName(opts *bind.CallOpts) (string, error) {
+func (_TokenHmy *TokenHmyCaller) ServiceName(opts *bind.CallOpts) (string, error) {
 	var out []interface{}
-	err := _BshImpl.contract.Call(opts, &out, "serviceName")
+	err := _TokenHmy.contract.Call(opts, &out, "serviceName")
 
 	if err != nil {
 		return *new(string), err
@@ -310,146 +310,146 @@ func (_BshImpl *BshImplCaller) ServiceName(opts *bind.CallOpts) (string, error) 
 // ServiceName is a free data retrieval call binding the contract method 0x9fdc7bc4.
 //
 // Solidity: function serviceName() view returns(string)
-func (_BshImpl *BshImplSession) ServiceName() (string, error) {
-	return _BshImpl.Contract.ServiceName(&_BshImpl.CallOpts)
+func (_TokenHmy *TokenHmySession) ServiceName() (string, error) {
+	return _TokenHmy.Contract.ServiceName(&_TokenHmy.CallOpts)
 }
 
 // ServiceName is a free data retrieval call binding the contract method 0x9fdc7bc4.
 //
 // Solidity: function serviceName() view returns(string)
-func (_BshImpl *BshImplCallerSession) ServiceName() (string, error) {
-	return _BshImpl.Contract.ServiceName(&_BshImpl.CallOpts)
+func (_TokenHmy *TokenHmyCallerSession) ServiceName() (string, error) {
+	return _TokenHmy.Contract.ServiceName(&_TokenHmy.CallOpts)
 }
 
 // HandleBTPError is a paid mutator transaction binding the contract method 0x0a823dea.
 //
 // Solidity: function handleBTPError(string _src, string _svc, uint256 _sn, uint256 _code, string _msg) returns()
-func (_BshImpl *BshImplTransactor) HandleBTPError(opts *bind.TransactOpts, _src string, _svc string, _sn *big.Int, _code *big.Int, _msg string) (*types.Transaction, error) {
-	return _BshImpl.contract.Transact(opts, "handleBTPError", _src, _svc, _sn, _code, _msg)
+func (_TokenHmy *TokenHmyTransactor) HandleBTPError(opts *bind.TransactOpts, _src string, _svc string, _sn *big.Int, _code *big.Int, _msg string) (*types.Transaction, error) {
+	return _TokenHmy.contract.Transact(opts, "handleBTPError", _src, _svc, _sn, _code, _msg)
 }
 
 // HandleBTPError is a paid mutator transaction binding the contract method 0x0a823dea.
 //
 // Solidity: function handleBTPError(string _src, string _svc, uint256 _sn, uint256 _code, string _msg) returns()
-func (_BshImpl *BshImplSession) HandleBTPError(_src string, _svc string, _sn *big.Int, _code *big.Int, _msg string) (*types.Transaction, error) {
-	return _BshImpl.Contract.HandleBTPError(&_BshImpl.TransactOpts, _src, _svc, _sn, _code, _msg)
+func (_TokenHmy *TokenHmySession) HandleBTPError(_src string, _svc string, _sn *big.Int, _code *big.Int, _msg string) (*types.Transaction, error) {
+	return _TokenHmy.Contract.HandleBTPError(&_TokenHmy.TransactOpts, _src, _svc, _sn, _code, _msg)
 }
 
 // HandleBTPError is a paid mutator transaction binding the contract method 0x0a823dea.
 //
 // Solidity: function handleBTPError(string _src, string _svc, uint256 _sn, uint256 _code, string _msg) returns()
-func (_BshImpl *BshImplTransactorSession) HandleBTPError(_src string, _svc string, _sn *big.Int, _code *big.Int, _msg string) (*types.Transaction, error) {
-	return _BshImpl.Contract.HandleBTPError(&_BshImpl.TransactOpts, _src, _svc, _sn, _code, _msg)
+func (_TokenHmy *TokenHmyTransactorSession) HandleBTPError(_src string, _svc string, _sn *big.Int, _code *big.Int, _msg string) (*types.Transaction, error) {
+	return _TokenHmy.Contract.HandleBTPError(&_TokenHmy.TransactOpts, _src, _svc, _sn, _code, _msg)
 }
 
 // HandleBTPMessage is a paid mutator transaction binding the contract method 0xb70eeb8d.
 //
 // Solidity: function handleBTPMessage(string _from, string _svc, uint256 _sn, bytes _msg) returns()
-func (_BshImpl *BshImplTransactor) HandleBTPMessage(opts *bind.TransactOpts, _from string, _svc string, _sn *big.Int, _msg []byte) (*types.Transaction, error) {
-	return _BshImpl.contract.Transact(opts, "handleBTPMessage", _from, _svc, _sn, _msg)
+func (_TokenHmy *TokenHmyTransactor) HandleBTPMessage(opts *bind.TransactOpts, _from string, _svc string, _sn *big.Int, _msg []byte) (*types.Transaction, error) {
+	return _TokenHmy.contract.Transact(opts, "handleBTPMessage", _from, _svc, _sn, _msg)
 }
 
 // HandleBTPMessage is a paid mutator transaction binding the contract method 0xb70eeb8d.
 //
 // Solidity: function handleBTPMessage(string _from, string _svc, uint256 _sn, bytes _msg) returns()
-func (_BshImpl *BshImplSession) HandleBTPMessage(_from string, _svc string, _sn *big.Int, _msg []byte) (*types.Transaction, error) {
-	return _BshImpl.Contract.HandleBTPMessage(&_BshImpl.TransactOpts, _from, _svc, _sn, _msg)
+func (_TokenHmy *TokenHmySession) HandleBTPMessage(_from string, _svc string, _sn *big.Int, _msg []byte) (*types.Transaction, error) {
+	return _TokenHmy.Contract.HandleBTPMessage(&_TokenHmy.TransactOpts, _from, _svc, _sn, _msg)
 }
 
 // HandleBTPMessage is a paid mutator transaction binding the contract method 0xb70eeb8d.
 //
 // Solidity: function handleBTPMessage(string _from, string _svc, uint256 _sn, bytes _msg) returns()
-func (_BshImpl *BshImplTransactorSession) HandleBTPMessage(_from string, _svc string, _sn *big.Int, _msg []byte) (*types.Transaction, error) {
-	return _BshImpl.Contract.HandleBTPMessage(&_BshImpl.TransactOpts, _from, _svc, _sn, _msg)
+func (_TokenHmy *TokenHmyTransactorSession) HandleBTPMessage(_from string, _svc string, _sn *big.Int, _msg []byte) (*types.Transaction, error) {
+	return _TokenHmy.Contract.HandleBTPMessage(&_TokenHmy.TransactOpts, _from, _svc, _sn, _msg)
 }
 
 // HandleFeeGathering is a paid mutator transaction binding the contract method 0x3842888c.
 //
 // Solidity: function handleFeeGathering(string _toFA, string _svc) returns()
-func (_BshImpl *BshImplTransactor) HandleFeeGathering(opts *bind.TransactOpts, _toFA string, _svc string) (*types.Transaction, error) {
-	return _BshImpl.contract.Transact(opts, "handleFeeGathering", _toFA, _svc)
+func (_TokenHmy *TokenHmyTransactor) HandleFeeGathering(opts *bind.TransactOpts, _toFA string, _svc string) (*types.Transaction, error) {
+	return _TokenHmy.contract.Transact(opts, "handleFeeGathering", _toFA, _svc)
 }
 
 // HandleFeeGathering is a paid mutator transaction binding the contract method 0x3842888c.
 //
 // Solidity: function handleFeeGathering(string _toFA, string _svc) returns()
-func (_BshImpl *BshImplSession) HandleFeeGathering(_toFA string, _svc string) (*types.Transaction, error) {
-	return _BshImpl.Contract.HandleFeeGathering(&_BshImpl.TransactOpts, _toFA, _svc)
+func (_TokenHmy *TokenHmySession) HandleFeeGathering(_toFA string, _svc string) (*types.Transaction, error) {
+	return _TokenHmy.Contract.HandleFeeGathering(&_TokenHmy.TransactOpts, _toFA, _svc)
 }
 
 // HandleFeeGathering is a paid mutator transaction binding the contract method 0x3842888c.
 //
 // Solidity: function handleFeeGathering(string _toFA, string _svc) returns()
-func (_BshImpl *BshImplTransactorSession) HandleFeeGathering(_toFA string, _svc string) (*types.Transaction, error) {
-	return _BshImpl.Contract.HandleFeeGathering(&_BshImpl.TransactOpts, _toFA, _svc)
+func (_TokenHmy *TokenHmyTransactorSession) HandleFeeGathering(_toFA string, _svc string) (*types.Transaction, error) {
+	return _TokenHmy.Contract.HandleFeeGathering(&_TokenHmy.TransactOpts, _toFA, _svc)
 }
 
 // HandleRequest is a paid mutator transaction binding the contract method 0x898b83e7.
 //
 // Solidity: function handleRequest((string,string,(string,uint256,uint256)[]) transferAssets) returns()
-func (_BshImpl *BshImplTransactor) HandleRequest(opts *bind.TransactOpts, transferAssets TypesTransferAssets) (*types.Transaction, error) {
-	return _BshImpl.contract.Transact(opts, "handleRequest", transferAssets)
+func (_TokenHmy *TokenHmyTransactor) HandleRequest(opts *bind.TransactOpts, transferAssets TypesTransferAssets) (*types.Transaction, error) {
+	return _TokenHmy.contract.Transact(opts, "handleRequest", transferAssets)
 }
 
 // HandleRequest is a paid mutator transaction binding the contract method 0x898b83e7.
 //
 // Solidity: function handleRequest((string,string,(string,uint256,uint256)[]) transferAssets) returns()
-func (_BshImpl *BshImplSession) HandleRequest(transferAssets TypesTransferAssets) (*types.Transaction, error) {
-	return _BshImpl.Contract.HandleRequest(&_BshImpl.TransactOpts, transferAssets)
+func (_TokenHmy *TokenHmySession) HandleRequest(transferAssets TypesTransferAssets) (*types.Transaction, error) {
+	return _TokenHmy.Contract.HandleRequest(&_TokenHmy.TransactOpts, transferAssets)
 }
 
 // HandleRequest is a paid mutator transaction binding the contract method 0x898b83e7.
 //
 // Solidity: function handleRequest((string,string,(string,uint256,uint256)[]) transferAssets) returns()
-func (_BshImpl *BshImplTransactorSession) HandleRequest(transferAssets TypesTransferAssets) (*types.Transaction, error) {
-	return _BshImpl.Contract.HandleRequest(&_BshImpl.TransactOpts, transferAssets)
+func (_TokenHmy *TokenHmyTransactorSession) HandleRequest(transferAssets TypesTransferAssets) (*types.Transaction, error) {
+	return _TokenHmy.Contract.HandleRequest(&_TokenHmy.TransactOpts, transferAssets)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0x4571e3a6.
 //
 // Solidity: function initialize(address _bmc, address _bshProxy, string _serviceName) returns()
-func (_BshImpl *BshImplTransactor) Initialize(opts *bind.TransactOpts, _bmc common.Address, _bshProxy common.Address, _serviceName string) (*types.Transaction, error) {
-	return _BshImpl.contract.Transact(opts, "initialize", _bmc, _bshProxy, _serviceName)
+func (_TokenHmy *TokenHmyTransactor) Initialize(opts *bind.TransactOpts, _bmc common.Address, _bshProxy common.Address, _serviceName string) (*types.Transaction, error) {
+	return _TokenHmy.contract.Transact(opts, "initialize", _bmc, _bshProxy, _serviceName)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0x4571e3a6.
 //
 // Solidity: function initialize(address _bmc, address _bshProxy, string _serviceName) returns()
-func (_BshImpl *BshImplSession) Initialize(_bmc common.Address, _bshProxy common.Address, _serviceName string) (*types.Transaction, error) {
-	return _BshImpl.Contract.Initialize(&_BshImpl.TransactOpts, _bmc, _bshProxy, _serviceName)
+func (_TokenHmy *TokenHmySession) Initialize(_bmc common.Address, _bshProxy common.Address, _serviceName string) (*types.Transaction, error) {
+	return _TokenHmy.Contract.Initialize(&_TokenHmy.TransactOpts, _bmc, _bshProxy, _serviceName)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0x4571e3a6.
 //
 // Solidity: function initialize(address _bmc, address _bshProxy, string _serviceName) returns()
-func (_BshImpl *BshImplTransactorSession) Initialize(_bmc common.Address, _bshProxy common.Address, _serviceName string) (*types.Transaction, error) {
-	return _BshImpl.Contract.Initialize(&_BshImpl.TransactOpts, _bmc, _bshProxy, _serviceName)
+func (_TokenHmy *TokenHmyTransactorSession) Initialize(_bmc common.Address, _bshProxy common.Address, _serviceName string) (*types.Transaction, error) {
+	return _TokenHmy.Contract.Initialize(&_TokenHmy.TransactOpts, _bmc, _bshProxy, _serviceName)
 }
 
 // SendServiceMessage is a paid mutator transaction binding the contract method 0x5c436dbe.
 //
 // Solidity: function sendServiceMessage(address _from, string _to, (string,uint256,uint256)[] _assets) returns()
-func (_BshImpl *BshImplTransactor) SendServiceMessage(opts *bind.TransactOpts, _from common.Address, _to string, _assets []TypesAsset) (*types.Transaction, error) {
-	return _BshImpl.contract.Transact(opts, "sendServiceMessage", _from, _to, _assets)
+func (_TokenHmy *TokenHmyTransactor) SendServiceMessage(opts *bind.TransactOpts, _from common.Address, _to string, _assets []TypesAsset) (*types.Transaction, error) {
+	return _TokenHmy.contract.Transact(opts, "sendServiceMessage", _from, _to, _assets)
 }
 
 // SendServiceMessage is a paid mutator transaction binding the contract method 0x5c436dbe.
 //
 // Solidity: function sendServiceMessage(address _from, string _to, (string,uint256,uint256)[] _assets) returns()
-func (_BshImpl *BshImplSession) SendServiceMessage(_from common.Address, _to string, _assets []TypesAsset) (*types.Transaction, error) {
-	return _BshImpl.Contract.SendServiceMessage(&_BshImpl.TransactOpts, _from, _to, _assets)
+func (_TokenHmy *TokenHmySession) SendServiceMessage(_from common.Address, _to string, _assets []TypesAsset) (*types.Transaction, error) {
+	return _TokenHmy.Contract.SendServiceMessage(&_TokenHmy.TransactOpts, _from, _to, _assets)
 }
 
 // SendServiceMessage is a paid mutator transaction binding the contract method 0x5c436dbe.
 //
 // Solidity: function sendServiceMessage(address _from, string _to, (string,uint256,uint256)[] _assets) returns()
-func (_BshImpl *BshImplTransactorSession) SendServiceMessage(_from common.Address, _to string, _assets []TypesAsset) (*types.Transaction, error) {
-	return _BshImpl.Contract.SendServiceMessage(&_BshImpl.TransactOpts, _from, _to, _assets)
+func (_TokenHmy *TokenHmyTransactorSession) SendServiceMessage(_from common.Address, _to string, _assets []TypesAsset) (*types.Transaction, error) {
+	return _TokenHmy.Contract.SendServiceMessage(&_TokenHmy.TransactOpts, _from, _to, _assets)
 }
 
-// BshImplHandleBTPMessageEventIterator is returned from FilterHandleBTPMessageEvent and is used to iterate over the raw logs and unpacked data for HandleBTPMessageEvent events raised by the BshImpl contract.
-type BshImplHandleBTPMessageEventIterator struct {
-	Event *BshImplHandleBTPMessageEvent // Event containing the contract specifics and raw log
+// TokenHmyHandleBTPMessageEventIterator is returned from FilterHandleBTPMessageEvent and is used to iterate over the raw logs and unpacked data for HandleBTPMessageEvent events raised by the TokenHmy contract.
+type TokenHmyHandleBTPMessageEventIterator struct {
+	Event *TokenHmyHandleBTPMessageEvent // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -463,7 +463,7 @@ type BshImplHandleBTPMessageEventIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *BshImplHandleBTPMessageEventIterator) Next() bool {
+func (it *TokenHmyHandleBTPMessageEventIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -472,7 +472,7 @@ func (it *BshImplHandleBTPMessageEventIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(BshImplHandleBTPMessageEvent)
+			it.Event = new(TokenHmyHandleBTPMessageEvent)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -487,7 +487,7 @@ func (it *BshImplHandleBTPMessageEventIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(BshImplHandleBTPMessageEvent)
+		it.Event = new(TokenHmyHandleBTPMessageEvent)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -503,19 +503,19 @@ func (it *BshImplHandleBTPMessageEventIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *BshImplHandleBTPMessageEventIterator) Error() error {
+func (it *TokenHmyHandleBTPMessageEventIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *BshImplHandleBTPMessageEventIterator) Close() error {
+func (it *TokenHmyHandleBTPMessageEventIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// BshImplHandleBTPMessageEvent represents a HandleBTPMessageEvent event raised by the BshImpl contract.
-type BshImplHandleBTPMessageEvent struct {
+// TokenHmyHandleBTPMessageEvent represents a HandleBTPMessageEvent event raised by the TokenHmy contract.
+type TokenHmyHandleBTPMessageEvent struct {
 	Sn   *big.Int
 	Code *big.Int
 	Msg  string
@@ -525,21 +525,21 @@ type BshImplHandleBTPMessageEvent struct {
 // FilterHandleBTPMessageEvent is a free log retrieval operation binding the contract event 0x356868e4a05430bccb6aa9c954e410ab0792c5a5baa7b973b03e1d4c03fa1366.
 //
 // Solidity: event HandleBTPMessageEvent(uint256 _sn, uint256 _code, string _msg)
-func (_BshImpl *BshImplFilterer) FilterHandleBTPMessageEvent(opts *bind.FilterOpts) (*BshImplHandleBTPMessageEventIterator, error) {
+func (_TokenHmy *TokenHmyFilterer) FilterHandleBTPMessageEvent(opts *bind.FilterOpts) (*TokenHmyHandleBTPMessageEventIterator, error) {
 
-	logs, sub, err := _BshImpl.contract.FilterLogs(opts, "HandleBTPMessageEvent")
+	logs, sub, err := _TokenHmy.contract.FilterLogs(opts, "HandleBTPMessageEvent")
 	if err != nil {
 		return nil, err
 	}
-	return &BshImplHandleBTPMessageEventIterator{contract: _BshImpl.contract, event: "HandleBTPMessageEvent", logs: logs, sub: sub}, nil
+	return &TokenHmyHandleBTPMessageEventIterator{contract: _TokenHmy.contract, event: "HandleBTPMessageEvent", logs: logs, sub: sub}, nil
 }
 
 // WatchHandleBTPMessageEvent is a free log subscription operation binding the contract event 0x356868e4a05430bccb6aa9c954e410ab0792c5a5baa7b973b03e1d4c03fa1366.
 //
 // Solidity: event HandleBTPMessageEvent(uint256 _sn, uint256 _code, string _msg)
-func (_BshImpl *BshImplFilterer) WatchHandleBTPMessageEvent(opts *bind.WatchOpts, sink chan<- *BshImplHandleBTPMessageEvent) (event.Subscription, error) {
+func (_TokenHmy *TokenHmyFilterer) WatchHandleBTPMessageEvent(opts *bind.WatchOpts, sink chan<- *TokenHmyHandleBTPMessageEvent) (event.Subscription, error) {
 
-	logs, sub, err := _BshImpl.contract.WatchLogs(opts, "HandleBTPMessageEvent")
+	logs, sub, err := _TokenHmy.contract.WatchLogs(opts, "HandleBTPMessageEvent")
 	if err != nil {
 		return nil, err
 	}
@@ -549,8 +549,8 @@ func (_BshImpl *BshImplFilterer) WatchHandleBTPMessageEvent(opts *bind.WatchOpts
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(BshImplHandleBTPMessageEvent)
-				if err := _BshImpl.contract.UnpackLog(event, "HandleBTPMessageEvent", log); err != nil {
+				event := new(TokenHmyHandleBTPMessageEvent)
+				if err := _TokenHmy.contract.UnpackLog(event, "HandleBTPMessageEvent", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -574,18 +574,18 @@ func (_BshImpl *BshImplFilterer) WatchHandleBTPMessageEvent(opts *bind.WatchOpts
 // ParseHandleBTPMessageEvent is a log parse operation binding the contract event 0x356868e4a05430bccb6aa9c954e410ab0792c5a5baa7b973b03e1d4c03fa1366.
 //
 // Solidity: event HandleBTPMessageEvent(uint256 _sn, uint256 _code, string _msg)
-func (_BshImpl *BshImplFilterer) ParseHandleBTPMessageEvent(log types.Log) (*BshImplHandleBTPMessageEvent, error) {
-	event := new(BshImplHandleBTPMessageEvent)
-	if err := _BshImpl.contract.UnpackLog(event, "HandleBTPMessageEvent", log); err != nil {
+func (_TokenHmy *TokenHmyFilterer) ParseHandleBTPMessageEvent(log types.Log) (*TokenHmyHandleBTPMessageEvent, error) {
+	event := new(TokenHmyHandleBTPMessageEvent)
+	if err := _TokenHmy.contract.UnpackLog(event, "HandleBTPMessageEvent", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
 	return event, nil
 }
 
-// BshImplResponseUnknownTypeIterator is returned from FilterResponseUnknownType and is used to iterate over the raw logs and unpacked data for ResponseUnknownType events raised by the BshImpl contract.
-type BshImplResponseUnknownTypeIterator struct {
-	Event *BshImplResponseUnknownType // Event containing the contract specifics and raw log
+// TokenHmyResponseUnknownTypeIterator is returned from FilterResponseUnknownType and is used to iterate over the raw logs and unpacked data for ResponseUnknownType events raised by the TokenHmy contract.
+type TokenHmyResponseUnknownTypeIterator struct {
+	Event *TokenHmyResponseUnknownType // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -599,7 +599,7 @@ type BshImplResponseUnknownTypeIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *BshImplResponseUnknownTypeIterator) Next() bool {
+func (it *TokenHmyResponseUnknownTypeIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -608,7 +608,7 @@ func (it *BshImplResponseUnknownTypeIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(BshImplResponseUnknownType)
+			it.Event = new(TokenHmyResponseUnknownType)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -623,7 +623,7 @@ func (it *BshImplResponseUnknownTypeIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(BshImplResponseUnknownType)
+		it.Event = new(TokenHmyResponseUnknownType)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -639,19 +639,19 @@ func (it *BshImplResponseUnknownTypeIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *BshImplResponseUnknownTypeIterator) Error() error {
+func (it *TokenHmyResponseUnknownTypeIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *BshImplResponseUnknownTypeIterator) Close() error {
+func (it *TokenHmyResponseUnknownTypeIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// BshImplResponseUnknownType represents a ResponseUnknownType event raised by the BshImpl contract.
-type BshImplResponseUnknownType struct {
+// TokenHmyResponseUnknownType represents a ResponseUnknownType event raised by the TokenHmy contract.
+type TokenHmyResponseUnknownType struct {
 	From string
 	Sn   *big.Int
 	Raw  types.Log // Blockchain specific contextual infos
@@ -660,21 +660,21 @@ type BshImplResponseUnknownType struct {
 // FilterResponseUnknownType is a free log retrieval operation binding the contract event 0x64f88365dae9c547bfcae6a186a7827fdc2613baffd8d5164dc59a74f55fbeba.
 //
 // Solidity: event ResponseUnknownType(string _from, uint256 _sn)
-func (_BshImpl *BshImplFilterer) FilterResponseUnknownType(opts *bind.FilterOpts) (*BshImplResponseUnknownTypeIterator, error) {
+func (_TokenHmy *TokenHmyFilterer) FilterResponseUnknownType(opts *bind.FilterOpts) (*TokenHmyResponseUnknownTypeIterator, error) {
 
-	logs, sub, err := _BshImpl.contract.FilterLogs(opts, "ResponseUnknownType")
+	logs, sub, err := _TokenHmy.contract.FilterLogs(opts, "ResponseUnknownType")
 	if err != nil {
 		return nil, err
 	}
-	return &BshImplResponseUnknownTypeIterator{contract: _BshImpl.contract, event: "ResponseUnknownType", logs: logs, sub: sub}, nil
+	return &TokenHmyResponseUnknownTypeIterator{contract: _TokenHmy.contract, event: "ResponseUnknownType", logs: logs, sub: sub}, nil
 }
 
 // WatchResponseUnknownType is a free log subscription operation binding the contract event 0x64f88365dae9c547bfcae6a186a7827fdc2613baffd8d5164dc59a74f55fbeba.
 //
 // Solidity: event ResponseUnknownType(string _from, uint256 _sn)
-func (_BshImpl *BshImplFilterer) WatchResponseUnknownType(opts *bind.WatchOpts, sink chan<- *BshImplResponseUnknownType) (event.Subscription, error) {
+func (_TokenHmy *TokenHmyFilterer) WatchResponseUnknownType(opts *bind.WatchOpts, sink chan<- *TokenHmyResponseUnknownType) (event.Subscription, error) {
 
-	logs, sub, err := _BshImpl.contract.WatchLogs(opts, "ResponseUnknownType")
+	logs, sub, err := _TokenHmy.contract.WatchLogs(opts, "ResponseUnknownType")
 	if err != nil {
 		return nil, err
 	}
@@ -684,8 +684,8 @@ func (_BshImpl *BshImplFilterer) WatchResponseUnknownType(opts *bind.WatchOpts, 
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(BshImplResponseUnknownType)
-				if err := _BshImpl.contract.UnpackLog(event, "ResponseUnknownType", log); err != nil {
+				event := new(TokenHmyResponseUnknownType)
+				if err := _TokenHmy.contract.UnpackLog(event, "ResponseUnknownType", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -709,18 +709,18 @@ func (_BshImpl *BshImplFilterer) WatchResponseUnknownType(opts *bind.WatchOpts, 
 // ParseResponseUnknownType is a log parse operation binding the contract event 0x64f88365dae9c547bfcae6a186a7827fdc2613baffd8d5164dc59a74f55fbeba.
 //
 // Solidity: event ResponseUnknownType(string _from, uint256 _sn)
-func (_BshImpl *BshImplFilterer) ParseResponseUnknownType(log types.Log) (*BshImplResponseUnknownType, error) {
-	event := new(BshImplResponseUnknownType)
-	if err := _BshImpl.contract.UnpackLog(event, "ResponseUnknownType", log); err != nil {
+func (_TokenHmy *TokenHmyFilterer) ParseResponseUnknownType(log types.Log) (*TokenHmyResponseUnknownType, error) {
+	event := new(TokenHmyResponseUnknownType)
+	if err := _TokenHmy.contract.UnpackLog(event, "ResponseUnknownType", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
 	return event, nil
 }
 
-// BshImplTransferEndIterator is returned from FilterTransferEnd and is used to iterate over the raw logs and unpacked data for TransferEnd events raised by the BshImpl contract.
-type BshImplTransferEndIterator struct {
-	Event *BshImplTransferEnd // Event containing the contract specifics and raw log
+// TokenHmyTransferEndIterator is returned from FilterTransferEnd and is used to iterate over the raw logs and unpacked data for TransferEnd events raised by the TokenHmy contract.
+type TokenHmyTransferEndIterator struct {
+	Event *TokenHmyTransferEnd // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -734,7 +734,7 @@ type BshImplTransferEndIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *BshImplTransferEndIterator) Next() bool {
+func (it *TokenHmyTransferEndIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -743,7 +743,7 @@ func (it *BshImplTransferEndIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(BshImplTransferEnd)
+			it.Event = new(TokenHmyTransferEnd)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -758,7 +758,7 @@ func (it *BshImplTransferEndIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(BshImplTransferEnd)
+		it.Event = new(TokenHmyTransferEnd)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -774,19 +774,19 @@ func (it *BshImplTransferEndIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *BshImplTransferEndIterator) Error() error {
+func (it *TokenHmyTransferEndIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *BshImplTransferEndIterator) Close() error {
+func (it *TokenHmyTransferEndIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// BshImplTransferEnd represents a TransferEnd event raised by the BshImpl contract.
-type BshImplTransferEnd struct {
+// TokenHmyTransferEnd represents a TransferEnd event raised by the TokenHmy contract.
+type TokenHmyTransferEnd struct {
 	From     common.Address
 	Sn       *big.Int
 	Code     *big.Int
@@ -797,31 +797,31 @@ type BshImplTransferEnd struct {
 // FilterTransferEnd is a free log retrieval operation binding the contract event 0x9b4c002cf17443998e01f132ae99b7392665eec5422a33a1d2dc47308c59b6e2.
 //
 // Solidity: event TransferEnd(address indexed _from, uint256 _sn, uint256 _code, string _response)
-func (_BshImpl *BshImplFilterer) FilterTransferEnd(opts *bind.FilterOpts, _from []common.Address) (*BshImplTransferEndIterator, error) {
+func (_TokenHmy *TokenHmyFilterer) FilterTransferEnd(opts *bind.FilterOpts, _from []common.Address) (*TokenHmyTransferEndIterator, error) {
 
 	var _fromRule []interface{}
 	for _, _fromItem := range _from {
 		_fromRule = append(_fromRule, _fromItem)
 	}
 
-	logs, sub, err := _BshImpl.contract.FilterLogs(opts, "TransferEnd", _fromRule)
+	logs, sub, err := _TokenHmy.contract.FilterLogs(opts, "TransferEnd", _fromRule)
 	if err != nil {
 		return nil, err
 	}
-	return &BshImplTransferEndIterator{contract: _BshImpl.contract, event: "TransferEnd", logs: logs, sub: sub}, nil
+	return &TokenHmyTransferEndIterator{contract: _TokenHmy.contract, event: "TransferEnd", logs: logs, sub: sub}, nil
 }
 
 // WatchTransferEnd is a free log subscription operation binding the contract event 0x9b4c002cf17443998e01f132ae99b7392665eec5422a33a1d2dc47308c59b6e2.
 //
 // Solidity: event TransferEnd(address indexed _from, uint256 _sn, uint256 _code, string _response)
-func (_BshImpl *BshImplFilterer) WatchTransferEnd(opts *bind.WatchOpts, sink chan<- *BshImplTransferEnd, _from []common.Address) (event.Subscription, error) {
+func (_TokenHmy *TokenHmyFilterer) WatchTransferEnd(opts *bind.WatchOpts, sink chan<- *TokenHmyTransferEnd, _from []common.Address) (event.Subscription, error) {
 
 	var _fromRule []interface{}
 	for _, _fromItem := range _from {
 		_fromRule = append(_fromRule, _fromItem)
 	}
 
-	logs, sub, err := _BshImpl.contract.WatchLogs(opts, "TransferEnd", _fromRule)
+	logs, sub, err := _TokenHmy.contract.WatchLogs(opts, "TransferEnd", _fromRule)
 	if err != nil {
 		return nil, err
 	}
@@ -831,8 +831,8 @@ func (_BshImpl *BshImplFilterer) WatchTransferEnd(opts *bind.WatchOpts, sink cha
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(BshImplTransferEnd)
-				if err := _BshImpl.contract.UnpackLog(event, "TransferEnd", log); err != nil {
+				event := new(TokenHmyTransferEnd)
+				if err := _TokenHmy.contract.UnpackLog(event, "TransferEnd", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -856,18 +856,18 @@ func (_BshImpl *BshImplFilterer) WatchTransferEnd(opts *bind.WatchOpts, sink cha
 // ParseTransferEnd is a log parse operation binding the contract event 0x9b4c002cf17443998e01f132ae99b7392665eec5422a33a1d2dc47308c59b6e2.
 //
 // Solidity: event TransferEnd(address indexed _from, uint256 _sn, uint256 _code, string _response)
-func (_BshImpl *BshImplFilterer) ParseTransferEnd(log types.Log) (*BshImplTransferEnd, error) {
-	event := new(BshImplTransferEnd)
-	if err := _BshImpl.contract.UnpackLog(event, "TransferEnd", log); err != nil {
+func (_TokenHmy *TokenHmyFilterer) ParseTransferEnd(log types.Log) (*TokenHmyTransferEnd, error) {
+	event := new(TokenHmyTransferEnd)
+	if err := _TokenHmy.contract.UnpackLog(event, "TransferEnd", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
 	return event, nil
 }
 
-// BshImplTransferReceivedIterator is returned from FilterTransferReceived and is used to iterate over the raw logs and unpacked data for TransferReceived events raised by the BshImpl contract.
-type BshImplTransferReceivedIterator struct {
-	Event *BshImplTransferReceived // Event containing the contract specifics and raw log
+// TokenHmyTransferReceivedIterator is returned from FilterTransferReceived and is used to iterate over the raw logs and unpacked data for TransferReceived events raised by the TokenHmy contract.
+type TokenHmyTransferReceivedIterator struct {
+	Event *TokenHmyTransferReceived // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -881,7 +881,7 @@ type BshImplTransferReceivedIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *BshImplTransferReceivedIterator) Next() bool {
+func (it *TokenHmyTransferReceivedIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -890,7 +890,7 @@ func (it *BshImplTransferReceivedIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(BshImplTransferReceived)
+			it.Event = new(TokenHmyTransferReceived)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -905,7 +905,7 @@ func (it *BshImplTransferReceivedIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(BshImplTransferReceived)
+		it.Event = new(TokenHmyTransferReceived)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -921,19 +921,19 @@ func (it *BshImplTransferReceivedIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *BshImplTransferReceivedIterator) Error() error {
+func (it *TokenHmyTransferReceivedIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *BshImplTransferReceivedIterator) Close() error {
+func (it *TokenHmyTransferReceivedIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// BshImplTransferReceived represents a TransferReceived event raised by the BshImpl contract.
-type BshImplTransferReceived struct {
+// TokenHmyTransferReceived represents a TransferReceived event raised by the TokenHmy contract.
+type TokenHmyTransferReceived struct {
 	From         common.Hash
 	To           common.Address
 	Sn           *big.Int
@@ -944,7 +944,7 @@ type BshImplTransferReceived struct {
 // FilterTransferReceived is a free log retrieval operation binding the contract event 0xd2221859bf6855d034602a0388473f88313afe64aa63f26788e51caa087ed15c.
 //
 // Solidity: event TransferReceived(string indexed _from, address indexed _to, uint256 _sn, (string,uint256,uint256)[] _assetDetails)
-func (_BshImpl *BshImplFilterer) FilterTransferReceived(opts *bind.FilterOpts, _from []string, _to []common.Address) (*BshImplTransferReceivedIterator, error) {
+func (_TokenHmy *TokenHmyFilterer) FilterTransferReceived(opts *bind.FilterOpts, _from []string, _to []common.Address) (*TokenHmyTransferReceivedIterator, error) {
 
 	var _fromRule []interface{}
 	for _, _fromItem := range _from {
@@ -955,17 +955,17 @@ func (_BshImpl *BshImplFilterer) FilterTransferReceived(opts *bind.FilterOpts, _
 		_toRule = append(_toRule, _toItem)
 	}
 
-	logs, sub, err := _BshImpl.contract.FilterLogs(opts, "TransferReceived", _fromRule, _toRule)
+	logs, sub, err := _TokenHmy.contract.FilterLogs(opts, "TransferReceived", _fromRule, _toRule)
 	if err != nil {
 		return nil, err
 	}
-	return &BshImplTransferReceivedIterator{contract: _BshImpl.contract, event: "TransferReceived", logs: logs, sub: sub}, nil
+	return &TokenHmyTransferReceivedIterator{contract: _TokenHmy.contract, event: "TransferReceived", logs: logs, sub: sub}, nil
 }
 
 // WatchTransferReceived is a free log subscription operation binding the contract event 0xd2221859bf6855d034602a0388473f88313afe64aa63f26788e51caa087ed15c.
 //
 // Solidity: event TransferReceived(string indexed _from, address indexed _to, uint256 _sn, (string,uint256,uint256)[] _assetDetails)
-func (_BshImpl *BshImplFilterer) WatchTransferReceived(opts *bind.WatchOpts, sink chan<- *BshImplTransferReceived, _from []string, _to []common.Address) (event.Subscription, error) {
+func (_TokenHmy *TokenHmyFilterer) WatchTransferReceived(opts *bind.WatchOpts, sink chan<- *TokenHmyTransferReceived, _from []string, _to []common.Address) (event.Subscription, error) {
 
 	var _fromRule []interface{}
 	for _, _fromItem := range _from {
@@ -976,7 +976,7 @@ func (_BshImpl *BshImplFilterer) WatchTransferReceived(opts *bind.WatchOpts, sin
 		_toRule = append(_toRule, _toItem)
 	}
 
-	logs, sub, err := _BshImpl.contract.WatchLogs(opts, "TransferReceived", _fromRule, _toRule)
+	logs, sub, err := _TokenHmy.contract.WatchLogs(opts, "TransferReceived", _fromRule, _toRule)
 	if err != nil {
 		return nil, err
 	}
@@ -986,8 +986,8 @@ func (_BshImpl *BshImplFilterer) WatchTransferReceived(opts *bind.WatchOpts, sin
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(BshImplTransferReceived)
-				if err := _BshImpl.contract.UnpackLog(event, "TransferReceived", log); err != nil {
+				event := new(TokenHmyTransferReceived)
+				if err := _TokenHmy.contract.UnpackLog(event, "TransferReceived", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -1011,18 +1011,18 @@ func (_BshImpl *BshImplFilterer) WatchTransferReceived(opts *bind.WatchOpts, sin
 // ParseTransferReceived is a log parse operation binding the contract event 0xd2221859bf6855d034602a0388473f88313afe64aa63f26788e51caa087ed15c.
 //
 // Solidity: event TransferReceived(string indexed _from, address indexed _to, uint256 _sn, (string,uint256,uint256)[] _assetDetails)
-func (_BshImpl *BshImplFilterer) ParseTransferReceived(log types.Log) (*BshImplTransferReceived, error) {
-	event := new(BshImplTransferReceived)
-	if err := _BshImpl.contract.UnpackLog(event, "TransferReceived", log); err != nil {
+func (_TokenHmy *TokenHmyFilterer) ParseTransferReceived(log types.Log) (*TokenHmyTransferReceived, error) {
+	event := new(TokenHmyTransferReceived)
+	if err := _TokenHmy.contract.UnpackLog(event, "TransferReceived", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
 	return event, nil
 }
 
-// BshImplTransferStartIterator is returned from FilterTransferStart and is used to iterate over the raw logs and unpacked data for TransferStart events raised by the BshImpl contract.
-type BshImplTransferStartIterator struct {
-	Event *BshImplTransferStart // Event containing the contract specifics and raw log
+// TokenHmyTransferStartIterator is returned from FilterTransferStart and is used to iterate over the raw logs and unpacked data for TransferStart events raised by the TokenHmy contract.
+type TokenHmyTransferStartIterator struct {
+	Event *TokenHmyTransferStart // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -1036,7 +1036,7 @@ type BshImplTransferStartIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *BshImplTransferStartIterator) Next() bool {
+func (it *TokenHmyTransferStartIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -1045,7 +1045,7 @@ func (it *BshImplTransferStartIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(BshImplTransferStart)
+			it.Event = new(TokenHmyTransferStart)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -1060,7 +1060,7 @@ func (it *BshImplTransferStartIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(BshImplTransferStart)
+		it.Event = new(TokenHmyTransferStart)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -1076,19 +1076,19 @@ func (it *BshImplTransferStartIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *BshImplTransferStartIterator) Error() error {
+func (it *TokenHmyTransferStartIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *BshImplTransferStartIterator) Close() error {
+func (it *TokenHmyTransferStartIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// BshImplTransferStart represents a TransferStart event raised by the BshImpl contract.
-type BshImplTransferStart struct {
+// TokenHmyTransferStart represents a TransferStart event raised by the TokenHmy contract.
+type TokenHmyTransferStart struct {
 	From   common.Address
 	To     string
 	Sn     *big.Int
@@ -1099,31 +1099,31 @@ type BshImplTransferStart struct {
 // FilterTransferStart is a free log retrieval operation binding the contract event 0x50d22373bb84ed1f9eeb581c913e6d45d918c05f8b1d90f0be168f06a4e6994a.
 //
 // Solidity: event TransferStart(address indexed _from, string _to, uint256 _sn, (string,uint256,uint256)[] _assets)
-func (_BshImpl *BshImplFilterer) FilterTransferStart(opts *bind.FilterOpts, _from []common.Address) (*BshImplTransferStartIterator, error) {
+func (_TokenHmy *TokenHmyFilterer) FilterTransferStart(opts *bind.FilterOpts, _from []common.Address) (*TokenHmyTransferStartIterator, error) {
 
 	var _fromRule []interface{}
 	for _, _fromItem := range _from {
 		_fromRule = append(_fromRule, _fromItem)
 	}
 
-	logs, sub, err := _BshImpl.contract.FilterLogs(opts, "TransferStart", _fromRule)
+	logs, sub, err := _TokenHmy.contract.FilterLogs(opts, "TransferStart", _fromRule)
 	if err != nil {
 		return nil, err
 	}
-	return &BshImplTransferStartIterator{contract: _BshImpl.contract, event: "TransferStart", logs: logs, sub: sub}, nil
+	return &TokenHmyTransferStartIterator{contract: _TokenHmy.contract, event: "TransferStart", logs: logs, sub: sub}, nil
 }
 
 // WatchTransferStart is a free log subscription operation binding the contract event 0x50d22373bb84ed1f9eeb581c913e6d45d918c05f8b1d90f0be168f06a4e6994a.
 //
 // Solidity: event TransferStart(address indexed _from, string _to, uint256 _sn, (string,uint256,uint256)[] _assets)
-func (_BshImpl *BshImplFilterer) WatchTransferStart(opts *bind.WatchOpts, sink chan<- *BshImplTransferStart, _from []common.Address) (event.Subscription, error) {
+func (_TokenHmy *TokenHmyFilterer) WatchTransferStart(opts *bind.WatchOpts, sink chan<- *TokenHmyTransferStart, _from []common.Address) (event.Subscription, error) {
 
 	var _fromRule []interface{}
 	for _, _fromItem := range _from {
 		_fromRule = append(_fromRule, _fromItem)
 	}
 
-	logs, sub, err := _BshImpl.contract.WatchLogs(opts, "TransferStart", _fromRule)
+	logs, sub, err := _TokenHmy.contract.WatchLogs(opts, "TransferStart", _fromRule)
 	if err != nil {
 		return nil, err
 	}
@@ -1133,8 +1133,8 @@ func (_BshImpl *BshImplFilterer) WatchTransferStart(opts *bind.WatchOpts, sink c
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(BshImplTransferStart)
-				if err := _BshImpl.contract.UnpackLog(event, "TransferStart", log); err != nil {
+				event := new(TokenHmyTransferStart)
+				if err := _TokenHmy.contract.UnpackLog(event, "TransferStart", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -1158,9 +1158,9 @@ func (_BshImpl *BshImplFilterer) WatchTransferStart(opts *bind.WatchOpts, sink c
 // ParseTransferStart is a log parse operation binding the contract event 0x50d22373bb84ed1f9eeb581c913e6d45d918c05f8b1d90f0be168f06a4e6994a.
 //
 // Solidity: event TransferStart(address indexed _from, string _to, uint256 _sn, (string,uint256,uint256)[] _assets)
-func (_BshImpl *BshImplFilterer) ParseTransferStart(log types.Log) (*BshImplTransferStart, error) {
-	event := new(BshImplTransferStart)
-	if err := _BshImpl.contract.UnpackLog(event, "TransferStart", log); err != nil {
+func (_TokenHmy *TokenHmyFilterer) ParseTransferStart(log types.Log) (*TokenHmyTransferStart, error) {
+	event := new(TokenHmyTransferStart)
+	if err := _TokenHmy.contract.UnpackLog(event, "TransferStart", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
