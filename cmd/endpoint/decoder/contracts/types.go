@@ -19,6 +19,8 @@ const (
 	NativeHmy         ContractName = "NativeHmy"
 	Erc20Hmy          ContractName = "Erc20Hmy"
 	Erc20TradeableHmy ContractName = "Erc20TradeableHmy"
+	OwnerNativeHmy    ContractName = "OwnerNativeHmy"
+	OwnerTokenHmy     ContractName = "OwnerTokenHmy"
 	BmcHmy            ContractName = "BmcHmy"
 	TokenIcon         ContractName = "TokenIcon"
 	NativeIcon        ContractName = "NativeIcon"
