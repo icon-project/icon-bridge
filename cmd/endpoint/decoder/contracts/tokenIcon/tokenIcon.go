@@ -4,20 +4,20 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chain/icon"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
 )
 
 type tokenIconContract struct {
+	name contracts.ContractName
 }
 
 func (ti *tokenIconContract) GetName() contracts.ContractName {
-	return contracts.TokenIcon
+	return ti.name
 }
 
-func NewContract(cAddr common.Address) (contracts.Contract, error) {
-	tic := &tokenIconContract{}
+func NewContract(name contracts.ContractName) (contracts.Contract, error) {
+	tic := &tokenIconContract{name: name}
 	return tic, nil
 }
 

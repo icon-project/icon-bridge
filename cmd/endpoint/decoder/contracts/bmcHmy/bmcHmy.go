@@ -1,4 +1,4 @@
-package tokenHmy
+package bmcHmy
 
 import (
 	"errors"
@@ -12,14 +12,14 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
 )
 
-type tokenHmyContract struct {
+type bmcHmyContract struct {
 	name          contracts.ContractName
 	backend       bind.ContractBackend
-	genObj        *TokenHmy
+	genObj        *BmcHmy
 	eventIDToName map[common.Hash]string
 }
 
-func (b *tokenHmyContract) GetName() contracts.ContractName {
+func (b *bmcHmyContract) GetName() contracts.ContractName {
 	return b.name
 }
 
@@ -29,19 +29,20 @@ func NewContract(name contracts.ContractName, url string, cAddr string) (contrac
 	if err != nil {
 		return nil, err
 	}
-	ctr := &tokenHmyContract{name: name, backend: ethclient.NewClient(clrpc)}
+	ctr := &bmcHmyContract{name: name, backend: ethclient.NewClient(clrpc)}
 
-	ctr.genObj, err = NewTokenHmy(common.HexToAddress(cAddr), ctr.backend)
+	ctr.genObj, err = NewBmcHmy(common.HexToAddress(cAddr), ctr.backend)
 	if err != nil {
 		return nil, err
 	}
-	ctr.eventIDToName, err = contracts.EventIDToName(TokenHmyABI)
+	ctr.eventIDToName, err = contracts.EventIDToName(BmcHmyABI)
 	if err != nil {
 		return nil, err
 	}
 	return ctr, nil
 }
-func (b *tokenHmyContract) Decode(l interface{}) (res map[string]interface{}, err error) {
+
+func (b *bmcHmyContract) Decode(l interface{}) (res map[string]interface{}, err error) {
 	hlog, ok := l.(types.Log)
 	if !ok {
 		return nil, errors.New("Log of wrong type. Expected types.Log")
@@ -63,32 +64,14 @@ func (b *tokenHmyContract) Decode(l interface{}) (res map[string]interface{}, er
 		if !ok {
 			continue
 		}
-		if topicName == "TransferStart" {
-			if out, err := b.genObj.ParseTransferStart(log); err != nil {
+		if topicName == "Message" {
+			if out, err := b.genObj.ParseMessage(log); err != nil {
 				return nil, err
 			} else {
 				res[topicName] = out
 			}
-		} else if topicName == "TransferReceived" {
-			if out, err := b.genObj.ParseTransferReceived(log); err != nil {
-				return nil, err
-			} else {
-				res[topicName] = out
-			}
-		} else if topicName == "TransferEnd" {
-			if out, err := b.genObj.ParseTransferEnd(log); err != nil {
-				return nil, err
-			} else {
-				res[topicName] = out
-			}
-		} else if topicName == "ResponseUnknownType" {
-			if out, err := b.genObj.ParseResponseUnknownType(log); err != nil {
-				return nil, err
-			} else {
-				res[topicName] = out
-			}
-		} else if topicName == "HandleBTPMessageEvent" {
-			if out, err := b.genObj.ParseHandleBTPMessageEvent(log); err != nil {
+		} else if topicName == "ErrorOnBTPError" {
+			if out, err := b.genObj.ParseErrorOnBTPError(log); err != nil {
 				return nil, err
 			} else {
 				res[topicName] = out

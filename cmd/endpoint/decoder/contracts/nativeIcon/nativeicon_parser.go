@@ -36,7 +36,7 @@ func parseTransferStart(log icon.TxnEventLog) (*NativeIconTransferStart, error) 
 }
 
 func parseTransferReceived(log icon.TxnEventLog) (*NativeIconTransferReceived, error) {
-	if len(log.Data) != 3 {
+	if len(log.Data) != 2 || len(log.Indexed) != 3 {
 		return nil, errors.New("Unexpected length of log.Data")
 	}
 	data := log.Data
@@ -46,13 +46,13 @@ func parseTransferReceived(log icon.TxnEventLog) (*NativeIconTransferReceived, e
 		return nil, err
 	}
 	sn := new(big.Int)
-	if strings.HasPrefix(data[1], "0x") {
-		data[1] = data[1][2:]
+	if strings.HasPrefix(data[0], "0x") {
+		data[0] = data[0][2:]
 	}
-	sn.SetString(data[1], 16)
+	sn.SetString(data[0], 16)
 	ts := &NativeIconTransferReceived{
 		From:   log.Indexed[1],
-		To:     data[0],
+		To:     log.Indexed[2],
 		Sn:     sn,
 		Assets: *res,
 	}
@@ -101,9 +101,8 @@ type AssetTransferDetails struct {
 }
 
 type AssetDetails struct {
-	From string
-	To   string
-	Sn   *big.Int
+	Name  string
+	Value *big.Int
 }
 
 type NativeIconTransferEnd struct {

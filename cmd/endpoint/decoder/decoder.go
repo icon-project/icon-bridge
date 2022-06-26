@@ -2,44 +2,61 @@ package decoder
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
 	ctr "github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/bmcHmy"
+	bmcicon "github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/bmcIcon"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/erc20Hmy"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/irc2Icon"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/nativeHmy"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/nativeIcon"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/tokenHmy"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/tokenIcon"
 )
 
 // Update this function for more contracts
-func getNewContract(cName ctr.ContractName, url string, cAddr common.Address) (ctr.Contract, error) {
+func getNewContract(cName ctr.ContractName, url string, cAddr string) (ctr.Contract, error) {
 	if cName == ctr.TokenHmy {
-		return tokenHmy.NewContract(url, cAddr)
+		return tokenHmy.NewContract(cName, url, cAddr)
 	} else if cName == ctr.NativeHmy {
-		return nativeHmy.NewContract(url, cAddr)
+		return nativeHmy.NewContract(cName, url, cAddr)
+	} else if cName == ctr.Erc20Hmy {
+		return erc20Hmy.NewContract(cName, url, cAddr)
+	} else if cName == ctr.Erc20TradeableHmy {
+		return erc20Hmy.NewContract(cName, url, cAddr)
+	} else if cName == ctr.BmcHmy {
+		return bmcHmy.NewContract(cName, url, cAddr)
 	} else if cName == ctr.TokenIcon {
-		return tokenIcon.NewContract(cAddr)
+		return tokenIcon.NewContract(cName)
 	} else if cName == ctr.NativeIcon {
-		// return nativeIcon.NewContract(cAddr)
+		return nativeIcon.NewContract(cName)
+	} else if cName == ctr.Irc2Icon {
+		return irc2Icon.NewContract(cName)
+	} else if cName == ctr.Irc2TradeableIcon {
+		return irc2Icon.NewContract(cName)
+	} else if cName == ctr.BmcIcon {
+		return bmcicon.NewContract(cName)
 	}
 	return nil, errors.New("Contract not registered")
 }
 
 type Decoder interface {
-	Add(contractNameToAddressMap map[ctr.ContractName]common.Address) (err error)
-	Remove(addr common.Address)
-	DecodeEventLogData(log interface{}, addr common.Address) (map[string]interface{}, error)
+	Add(contractNameToAddressMap map[ctr.ContractName]string) (err error)
+	Remove(addr string)
+	DecodeEventLogData(log interface{}, addr string) (map[string]interface{}, error)
 }
 
 type decoder struct {
 	url            string
 	mtx            sync.RWMutex
-	addrToContract map[common.Address]ctr.Contract
+	addrToContract map[string]ctr.Contract
 }
 
-func New(url string, contractNameToAddressMap map[ctr.ContractName]common.Address) (Decoder, error) {
+func New(url string, contractNameToAddressMap map[ctr.ContractName]string) (Decoder, error) {
 	var err error
-	dec := &decoder{mtx: sync.RWMutex{}, url: url, addrToContract: make(map[common.Address]ctr.Contract)}
+	dec := &decoder{mtx: sync.RWMutex{}, url: url, addrToContract: make(map[string]ctr.Contract)}
 	for cName, cAddr := range contractNameToAddressMap {
 		dec.addrToContract[cAddr], err = getNewContract(cName, url, cAddr)
 		if err != nil {
@@ -49,12 +66,12 @@ func New(url string, contractNameToAddressMap map[ctr.ContractName]common.Addres
 	return dec, nil
 }
 
-func (d *decoder) Add(contractNameToAddressMap map[ctr.ContractName]common.Address) (err error) {
+func (d *decoder) Add(contractNameToAddressMap map[ctr.ContractName]string) (err error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	for cName, cAddr := range contractNameToAddressMap {
-		if cn, ok := d.addrToContract[cAddr]; ok || cn.GetName() == cName {
-			continue // Name or address already exists
+		if _, ok := d.addrToContract[cAddr]; ok {
+			continue // address already exists
 		}
 		d.addrToContract[cAddr], err = getNewContract(cName, d.url, cAddr)
 		if err != nil {
@@ -64,15 +81,19 @@ func (d *decoder) Add(contractNameToAddressMap map[ctr.ContractName]common.Addre
 	return nil
 }
 
-func (d *decoder) Remove(addr common.Address) {
+func (d *decoder) Remove(addr string) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	delete(d.addrToContract, addr)
 }
 
-func (d *decoder) DecodeEventLogData(log interface{}, addr common.Address) (map[string]interface{}, error) {
+func (d *decoder) DecodeEventLogData(log interface{}, addr string) (map[string]interface{}, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	ctr := d.addrToContract[addr]
+	ctr, ok := d.addrToContract[addr]
+	if !ok {
+		fmt.Println("Skipping ", addr)
+		return nil, nil
+	}
 	return ctr.Decode(log)
 }

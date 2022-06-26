@@ -1,4 +1,4 @@
-package nativeIcon
+package irc2Icon
 
 import (
 	"errors"
@@ -8,20 +8,20 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
 )
 
-type nativeIconContract struct {
+type irc2IconContract struct {
 	name contracts.ContractName
 }
 
-func (ti *nativeIconContract) GetName() contracts.ContractName {
+func (ti *irc2IconContract) GetName() contracts.ContractName {
 	return ti.name
 }
 
 func NewContract(name contracts.ContractName) (contracts.Contract, error) {
-	tic := &nativeIconContract{name: name}
+	tic := &irc2IconContract{name: name}
 	return tic, nil
 }
 
-func (ti *nativeIconContract) Decode(li interface{}) (res map[string]interface{}, err error) {
+func (ti *irc2IconContract) Decode(li interface{}) (res map[string]interface{}, err error) {
 	log, ok := li.(icon.TxnEventLog)
 	if !ok {
 		return nil, errors.New("Log of wrong type. Expected icon.TxnLog")
@@ -33,18 +33,8 @@ func (ti *nativeIconContract) Decode(li interface{}) (res map[string]interface{}
 	eventName := strings.Split(log.Indexed[0], "(")
 	sign := strings.TrimSpace(eventName[0])
 	res = map[string]interface{}{}
-	if sign == "TransferStart" {
-		res[sign], err = parseTransferStart(log)
-		if err != nil {
-			return nil, err
-		}
-	} else if sign == "TransferEnd" {
-		res[sign], err = parseTransferEnd(log)
-		if err != nil {
-			return nil, err
-		}
-	} else if sign == "TransferReceived" {
-		res[sign], err = parseTransferReceived(log)
+	if sign == "Transfer" {
+		res[sign], err = parseTransfer(log)
 		if err != nil {
 			return nil, err
 		}

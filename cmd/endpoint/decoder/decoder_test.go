@@ -20,9 +20,9 @@ func TestBshEvent(t *testing.T) {
 	btp_hmny_token_bsh_impl := "0xfAC8B63F77d8056A9BB45175b3DEd7D316D868D4"
 	btp_hmny_nativecoin_bsh_periphery := "0xfEe5c5B2bc2f927335C60879d78304e4305CdBaC"
 	contractUsed := btp_hmny_nativecoin_bsh_periphery
-	m := map[ctr.ContractName]common.Address{
-		ctr.TokenHmy:  common.HexToAddress(btp_hmny_token_bsh_impl),
-		ctr.NativeHmy: common.HexToAddress(btp_hmny_nativecoin_bsh_periphery),
+	m := map[ctr.ContractName]string{
+		ctr.TokenHmy:  btp_hmny_token_bsh_impl,
+		ctr.NativeHmy: btp_hmny_nativecoin_bsh_periphery,
 	}
 	dec, err := decoder.New(url, m)
 	if err != nil {
@@ -45,7 +45,7 @@ func TestBshEvent(t *testing.T) {
 		Index:       2,
 	}
 
-	if out, err := dec.DecodeEventLogData(log, log.Address); err != nil {
+	if out, err := dec.DecodeEventLogData(log, log.Address.String()); err != nil {
 		t.Fatal(err)
 	} else {
 		for k, v := range out {
@@ -63,8 +63,8 @@ func TestBshEvent(t *testing.T) {
 
 func TestIconEvent(t *testing.T) {
 	btp_icon_token_bsh := "cx5924a147ae30091ed9c6fe0c153ef77de4132902"
-	m := map[ctr.ContractName]common.Address{
-		ctr.TokenIcon: common.HexToAddress(btp_icon_token_bsh),
+	m := map[ctr.ContractName]string{
+		ctr.TokenIcon: btp_icon_token_bsh,
 	}
 	dec, err := decoder.New("", m)
 	if err != nil {
@@ -75,7 +75,7 @@ func TestIconEvent(t *testing.T) {
 		Indexed: []string{"TransferStart(Address,str,int,bytes)", "hx4a707b2ecbb5f40a8d761976d99244f53575eeb6"},
 		Data:    []string{"btp://0x6357d2e0.hmny/0x8BE8641225CC0Afdb24499409863E8E3f6557C32", "0x25", "0xd6d583455448880dbd2fc137a30000872386f26fc10000"},
 	}
-	if out, err := dec.DecodeEventLogData(log, common.HexToAddress(btp_icon_token_bsh)); err != nil {
+	if out, err := dec.DecodeEventLogData(log, btp_icon_token_bsh); err != nil {
 		t.Fatalf("%+v", err)
 	} else {
 		for k, v := range out {

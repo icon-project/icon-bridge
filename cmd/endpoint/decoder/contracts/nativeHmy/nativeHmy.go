@@ -5,31 +5,33 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/harmony-one/harmony/core/types"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
 )
 
 type nativeHmyContract struct {
+	name          contracts.ContractName
 	backend       bind.ContractBackend
 	genObj        *NativeHmy
 	eventIDToName map[common.Hash]string
 }
 
 func (b *nativeHmyContract) GetName() contracts.ContractName {
-	return contracts.NativeHmy
+	return b.name
 }
 
-func NewContract(url string, cAddr common.Address) (contracts.Contract, error) {
+func NewContract(name contracts.ContractName, url string, cAddr string) (contracts.Contract, error) {
 	var err error
 	clrpc, err := rpc.Dial(url)
 	if err != nil {
 		return nil, err
 	}
-	ctr := &nativeHmyContract{backend: ethclient.NewClient(clrpc)}
+	ctr := &nativeHmyContract{name: name, backend: ethclient.NewClient(clrpc)}
 
-	ctr.genObj, err = NewNativeHmy(cAddr, ctr.backend)
+	ctr.genObj, err = NewNativeHmy(common.HexToAddress(cAddr), ctr.backend)
 	if err != nil {
 		return nil, err
 	}
@@ -41,9 +43,20 @@ func NewContract(url string, cAddr common.Address) (contracts.Contract, error) {
 }
 
 func (b *nativeHmyContract) Decode(l interface{}) (res map[string]interface{}, err error) {
-	log, ok := l.(types.Log)
+	hlog, ok := l.(types.Log)
 	if !ok {
 		return nil, errors.New("Log of wrong type. Expected types.Log")
+	}
+	log := ethTypes.Log{
+		Address:     hlog.Address,
+		Topics:      hlog.Topics,
+		Data:        hlog.Data,
+		BlockNumber: hlog.BlockNumber,
+		TxHash:      hlog.TxHash,
+		TxIndex:     hlog.TxIndex,
+		BlockHash:   hlog.BlockHash,
+		Index:       hlog.Index,
+		Removed:     hlog.Removed,
 	}
 	res = map[string]interface{}{}
 	for _, tid := range log.Topics {
@@ -65,6 +78,12 @@ func (b *nativeHmyContract) Decode(l interface{}) (res map[string]interface{}, e
 			}
 		} else if topicName == "TransferEnd" {
 			if out, err := b.genObj.ParseTransferEnd(log); err != nil {
+				return nil, err
+			} else {
+				res[topicName] = out
+			}
+		} else if topicName == "UnknownResponse" {
+			if out, err := b.genObj.ParseUnknownResponse(log); err != nil {
 				return nil, err
 			} else {
 				res[topicName] = out

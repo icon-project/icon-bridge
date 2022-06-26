@@ -15,10 +15,16 @@ type Contract interface {
 type ContractName string
 
 const (
-	TokenHmy   ContractName = "TokenHmy"
-	NativeHmy  ContractName = "NativeHmy"
-	TokenIcon  ContractName = "TokenIcon"
-	NativeIcon ContractName = "NativeIcon"
+	TokenHmy          ContractName = "TokenHmy"
+	NativeHmy         ContractName = "NativeHmy"
+	Erc20Hmy          ContractName = "Erc20Hmy"
+	Erc20TradeableHmy ContractName = "Erc20TradeableHmy"
+	BmcHmy            ContractName = "BmcHmy"
+	TokenIcon         ContractName = "TokenIcon"
+	NativeIcon        ContractName = "NativeIcon"
+	Irc2Icon          ContractName = "Irc2Icon"
+	Irc2TradeableIcon ContractName = "Irc2TradeableIcon"
+	BmcIcon           ContractName = "BmcIcon"
 )
 
 // For Hmy only
