@@ -27,7 +27,9 @@ type RequestAPI interface {
 }
 
 type SubscritionAPI interface {
-	Start(ctx context.Context, sinkChan chan<- *SubscribedEvent, errChan chan<- error) error
+	Start(ctx context.Context) error
+	GetOutputChan() <-chan *SubscribedEvent
+	GetErrChan() <-chan error
 }
 
 type ChainConfig struct {

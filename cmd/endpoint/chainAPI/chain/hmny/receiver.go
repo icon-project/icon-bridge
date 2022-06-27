@@ -11,11 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/harmony-one/harmony/core/types"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"
 )
@@ -46,6 +45,8 @@ func NewReceiver(
 	if err != nil {
 		return nil, err
 	}
+	r.sinkChan = make(chan *chain.SubscribedEvent)
+	r.errChan = make(chan error)
 	return r, nil
 }
 
@@ -63,11 +64,13 @@ func (opts *receiverOptions) Unmarshal(v map[string]interface{}) error {
 }
 
 type receiver struct {
-	log  log.Logger
-	src  chain.BTPAddress
-	dst  chain.BTPAddress
-	opts receiverOptions
-	cls  []*client
+	log      log.Logger
+	src      chain.BTPAddress
+	dst      chain.BTPAddress
+	opts     receiverOptions
+	cls      []*client
+	sinkChan chan *chain.SubscribedEvent
+	errChan  chan error
 }
 
 func (r *receiver) client() *client {
@@ -318,7 +321,7 @@ func (r *receiver) getRelayReceipts(v *BlockNotification) []*chain.Receipt {
 }
 
 func (r *receiver) Subscribe(
-	ctx context.Context, sinkChan chan<- *chain.SubscribedEvent, _errCh chan<- error,
+	ctx context.Context,
 	opts chain.SubscribeOptions) (err error) {
 
 	opts.Seq++
@@ -332,8 +335,7 @@ func (r *receiver) Subscribe(
 				Concurrency:     r.opts.SyncConcurrency,
 			},
 			func(v *BlockNotification) error {
-				//r.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
-
+				// r.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
 				if v.Height.Uint64() != lastHeight+1 {
 					r.log.Errorf("expected v.Height == %d, got %d", lastHeight+1, v.Height.Uint64())
 					return fmt.Errorf(
@@ -362,105 +364,18 @@ func (r *receiver) Subscribe(
 					}
 					receipt.Events = events
 				}
-
-				if len(receipts) > 0 {
+				if len(v.Receipts) > 0 {
 					for _, sev := range v.Receipts {
-						sinkChan <- &chain.SubscribedEvent{Res: sev, ChainName: chain.HMNY}
+						r.sinkChan <- &chain.SubscribedEvent{Res: sev, ChainName: chain.HMNY}
 					}
 				}
 				lastHeight++
 				return nil
 			}); err != nil {
 			r.log.Errorf("receiveLoop terminated: %+v", err)
-			_errCh <- err
+			r.errChan <- err
 		}
 	}()
 
 	return nil
-}
-
-func (r *receiver) getFilteredReceipts(v *BlockNotification) []*LogResult {
-	const (
-		TransferStartSignature         = "0x50d22373bb84ed1f9eeb581c913e6d45d918c05f8b1d90f0be168f06a4e6994a" //"TransferStart(address,string,uint256,(string,uint256,uint256)[])" //
-		TransferEndSignature           = "0x9b4c002cf17443998e01f132ae99b7392665eec5422a33a1d2dc47308c59b6e2" //"TransferEnd(address,uint256,uint256,string)"                      //
-		TransferReceivedSignature      = "0x78e3e55e26c08e043fbd9cc0282f53e2caab096d30594cb476fcdfbbe7ce8680" //"TransferReceived(string,address,uint256,(string,uint256)[])"      //
-		TransferReceivedSignatureToken = "0xd2221859bf6855d034602a0388473f88313afe64aa63f26788e51caa087ed15c" //"TransferReceived(string,address,uint256,(string,uint256,uint256)[])" //
-	)
-	signatureMap := map[string]string{
-		"0x50d22373bb84ed1f9eeb581c913e6d45d918c05f8b1d90f0be168f06a4e6994a": "TransferStart",
-		"0x9b4c002cf17443998e01f132ae99b7392665eec5422a33a1d2dc47308c59b6e2": "TransferEnd",
-		"0x78e3e55e26c08e043fbd9cc0282f53e2caab096d30594cb476fcdfbbe7ce8680": "TransferReceived",
-		"0xd2221859bf6855d034602a0388473f88313afe64aa63f26788e51caa087ed15c": "TransferReceived",
-	}
-
-	newResults := []*LogResult{}
-	for _, receipt := range v.Receipts {
-		for _, log := range receipt.Logs {
-			var newTopic *common.Hash
-			for _, topic := range log.Topics {
-				if topic == common.HexToHash(TransferStartSignature) ||
-					topic == common.HexToHash(TransferReceivedSignature) ||
-					topic == common.HexToHash(TransferReceivedSignatureToken) ||
-					topic == common.HexToHash(TransferEndSignature) {
-					newTopic = &topic
-					break
-				}
-			}
-			if newTopic != nil {
-
-				if res, err := decodeLogData(log.Data, signatureMap[newTopic.String()]); err == nil && res != nil {
-					newResults = append(newResults, &LogResult{
-						TxHash:   log.TxHash,
-						LogIndex: log.Index,
-						Address:  log.Address,
-						Topic:    signatureMap[newTopic.String()],
-						Logs:     res,
-					})
-				} else if err != nil {
-					r.log.Error(err)
-				} else if res == nil {
-					r.log.Error("Returned nil interface")
-				}
-			}
-		}
-	}
-	for i, r := range newResults {
-		fmt.Println("New ", i, "  ", *r)
-	}
-	return newResults
-}
-
-func decodeLogData(data []byte, topicType string) (interface{}, error) {
-	if len(data) == 0 {
-		return nil, errors.New("Empty Log Data input to decode")
-	}
-
-	abi, err := abi.JSON(strings.NewReader(bshPeripherABI))
-	if err != nil {
-		return nil, err
-	}
-
-	if topicType == "TransferStart" {
-		var ev TransferStart
-		err = abi.UnpackIntoInterface(&ev, topicType, data)
-		if err != nil {
-			return nil, err
-		}
-		return ev, nil
-	} else if topicType == "TransferEnd" {
-		var ev TransferEnd
-		err = abi.UnpackIntoInterface(&ev, topicType, data)
-		if err != nil {
-			return nil, err
-		}
-		return ev, nil
-	} else if topicType == "TransferReceived" {
-		var ev TransferReceived
-		err = abi.UnpackIntoInterface(&ev, topicType, data)
-		if err != nil {
-			return nil, err
-		}
-		return ev, nil
-	}
-	return nil, errors.New("Doesn't match any signature")
 }

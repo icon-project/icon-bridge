@@ -3,7 +3,7 @@ package hmny
 import (
 	"context"
 
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
@@ -15,14 +15,21 @@ func NewSubscriptionAPI(l log.Logger, cfg chain.SubscriberConfig, endpoint strin
 	return rx, nil
 }
 
-func (r *receiver) Start(ctx context.Context, sinkChan chan<- *chain.SubscribedEvent, errChan chan<- error) error {
-	err := r.Subscribe(ctx, sinkChan, errChan,
+func (r *receiver) Start(ctx context.Context) error {
+	err := r.Subscribe(ctx,
 		chain.SubscribeOptions{
-			Seq:    138,
-			Height: 29076,
+			Seq:    0,
+			Height: 69,
 		})
 	if err != nil {
 		return err
 	}
 	return nil
+}
+func (r *receiver) GetOutputChan() <-chan *chain.SubscribedEvent {
+	return r.sinkChan
+}
+
+func (r *receiver) GetErrChan() <-chan error {
+	return r.errChan
 }

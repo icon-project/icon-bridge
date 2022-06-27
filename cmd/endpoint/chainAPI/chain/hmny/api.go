@@ -10,11 +10,11 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
-	bshcore "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/bsh/bshcore"
-	erc20 "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/bsh/erc20tradable"
-	bep20tkn "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/tokenbsh/bep20tkn"
-	bshproxy "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/tokenbsh/bshproxy"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
+	bshcore "github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/hmny/abi/bsh/bshcore"
+	erc20 "github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/hmny/abi/bsh/erc20tradable"
+	bep20tkn "github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/hmny/abi/tokenbsh/bep20tkn"
+	bshproxy "github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/hmny/abi/tokenbsh/bshproxy"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 

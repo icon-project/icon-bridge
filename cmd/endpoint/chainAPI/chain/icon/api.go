@@ -3,7 +3,7 @@ package icon
 import (
 	"math/big"
 
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 

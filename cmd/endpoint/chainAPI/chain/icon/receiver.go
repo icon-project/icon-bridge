@@ -30,7 +30,8 @@ import (
 	vlcodec "github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/ompt"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
+	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
@@ -76,12 +77,8 @@ type receiver struct {
 	opts      receiverOptions
 	blockReq  BlockRequest
 	logFilter eventLogRawFilter
-}
-
-type Receiver interface {
-	Subscribe(
-		ctx context.Context, msgCh chan<- []*TxnLog,
-		opts chain.SubscribeOptions) (errCh <-chan error, err error)
+	sinkChan  chan *chain.SubscribedEvent
+	errChan   chan error
 }
 
 func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]interface{}, l log.Logger) (chain.SubscritionAPI, error) {
@@ -124,6 +121,8 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]inter
 			signature: []byte(EventSignature),
 			next:      []byte(dstAddr),
 		}, // fill seq later
+		sinkChan: make(chan *chain.SubscribedEvent),
+		errChan:  make(chan error),
 	}
 
 	return recvr, nil
@@ -357,7 +356,7 @@ loop:
 
 		case br := <-brch:
 			for ; br != nil; next++ {
-				//r.log.WithFields(log.Fields{"height": br.Height}).Debug("block notification")
+				r.log.WithFields(log.Fields{"height": br.Height}).Debug("block notification")
 
 				if vr != nil {
 					ok, err := vr.Verify(br.Header, br.Votes)
@@ -486,12 +485,20 @@ loop:
 							if len(q.res.Header.NormalTransactionsHash) > 0 {
 								blk, err := r.cl.GetBlockByHeight(&BlockHeightParam{Height: NewHexInt(q.height)})
 								if err != nil {
-									q.err = err
+									q.err = errors.Wrapf(err, "GetBlockByHeight %v", q.height)
 									return
 								}
 								for _, txn := range blk.NormalTransactions {
 									res, err := r.cl.GetTransactionResult(&TransactionHashParam{Hash: txn.TxHash})
 									if err != nil {
+										switch re := err.(type) {
+										case *jsonrpc.Error:
+											switch re.Code {
+											case JsonrpcErrorCodePending, JsonrpcErrorCodeExecuting:
+												time.Sleep(2 * time.Second)
+												res, err = r.cl.GetTransactionResult(&TransactionHashParam{Hash: txn.TxHash})
+											}
+										}
 										q.err = err
 										return
 									}
@@ -569,12 +576,13 @@ loop:
 											bytes.Equal(el.Indexed[EventIndexNext], logFilter.next) {
 											var seqGot common.HexInt
 											seqGot.SetBytes(el.Indexed[EventIndexSequence])
-											evt := &chain.Event{
-												Next:     chain.BTPAddress(el.Indexed[EventIndexNext]),
-												Sequence: seqGot.Uint64(),
-												Message:  el.Data[0],
-											}
-											receipt.Events = append(receipt.Events, evt)
+
+											receipt.Events = append(receipt.Events,
+												&chain.Event{
+													Next:     chain.BTPAddress(el.Indexed[EventIndexNext]),
+													Sequence: seqGot.Uint64(),
+													Message:  el.Data[0],
+												})
 										} else {
 											if !bytes.Equal(el.Addr, logFilter.addr) {
 												r.log.WithFields(log.Fields{
@@ -641,7 +649,7 @@ loop:
 }
 
 func (r *receiver) Subscribe(
-	ctx context.Context, sinkChan chan<- *chain.SubscribedEvent, _errCh chan<- error,
+	ctx context.Context,
 	opts chain.SubscribeOptions) (err error) {
 
 	opts.Seq++
@@ -677,14 +685,14 @@ func (r *receiver) Subscribe(
 			}
 			if len(txnLogs) > 0 {
 				for _, txn := range txnLogs {
-					sinkChan <- &chain.SubscribedEvent{Res: txn, ChainName: chain.ICON}
+					r.sinkChan <- &chain.SubscribedEvent{Res: txn, ChainName: chain.ICON}
 				}
 			}
 			return nil
 		})
 		if err != nil {
 			r.log.Errorf("receiveLoop terminated: %v", err)
-			_errCh <- err
+			r.errChan <- err
 		}
 	}()
 	return nil
