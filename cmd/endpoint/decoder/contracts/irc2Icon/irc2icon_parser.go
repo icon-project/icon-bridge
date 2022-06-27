@@ -11,7 +11,7 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/icon"
 )
 
-func parseTransfer(log icon.TxnEventLog) (*Irc2IconTransfer, error) {
+func parseTransfer(log *icon.TxnEventLog) (*Irc2IconTransfer, error) {
 	if len(log.Indexed) != 4 {
 		return nil, errors.New("Unexpected length of log.Data")
 	}

@@ -22,7 +22,7 @@ func NewContract(name contracts.ContractName) (contracts.Contract, error) {
 }
 
 func (ti *irc2IconContract) Decode(li interface{}) (res map[string]interface{}, err error) {
-	log, ok := li.(icon.TxnEventLog)
+	log, ok := li.(*icon.TxnEventLog)
 	if !ok {
 		return nil, errors.New("Log of wrong type. Expected icon.TxnLog")
 	}

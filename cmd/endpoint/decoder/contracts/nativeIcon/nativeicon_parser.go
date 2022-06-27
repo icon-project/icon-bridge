@@ -11,7 +11,7 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/icon"
 )
 
-func parseTransferStart(log icon.TxnEventLog) (*NativeIconTransferStart, error) {
+func parseTransferStart(log *icon.TxnEventLog) (*NativeIconTransferStart, error) {
 	if len(log.Data) != 3 {
 		return nil, errors.New("Unexpected length of log.Data")
 	}
@@ -35,7 +35,7 @@ func parseTransferStart(log icon.TxnEventLog) (*NativeIconTransferStart, error) 
 	return ts, nil
 }
 
-func parseTransferReceived(log icon.TxnEventLog) (*NativeIconTransferReceived, error) {
+func parseTransferReceived(log *icon.TxnEventLog) (*NativeIconTransferReceived, error) {
 	if len(log.Data) != 2 || len(log.Indexed) != 3 {
 		return nil, errors.New("Unexpected length of log.Data")
 	}
@@ -59,7 +59,7 @@ func parseTransferReceived(log icon.TxnEventLog) (*NativeIconTransferReceived, e
 	return ts, nil
 }
 
-func parseTransferEnd(log icon.TxnEventLog) (*NativeIconTransferEnd, error) {
+func parseTransferEnd(log *icon.TxnEventLog) (*NativeIconTransferEnd, error) {
 	data := log.Data
 	sn := new(big.Int)
 	if strings.HasPrefix(data[0], "0x") {

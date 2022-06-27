@@ -8,7 +8,7 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/icon"
 )
 
-func parseMessage(log icon.TxnEventLog) (*MessageIconTransfer, error) {
+func parseMessage(log *icon.TxnEventLog) (*MessageIconTransfer, error) {
 	if len(log.Indexed) != 3 {
 		return nil, errors.New("Unexpected length of log.Data")
 	}

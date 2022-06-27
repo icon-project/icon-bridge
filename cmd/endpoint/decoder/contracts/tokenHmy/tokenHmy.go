@@ -42,7 +42,7 @@ func NewContract(name contracts.ContractName, url string, cAddr string) (contrac
 	return ctr, nil
 }
 func (b *tokenHmyContract) Decode(l interface{}) (res map[string]interface{}, err error) {
-	hlog, ok := l.(types.Log)
+	hlog, ok := l.(*types.Log)
 	if !ok {
 		return nil, errors.New("Log of wrong type. Expected types.Log")
 	}

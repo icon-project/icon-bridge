@@ -11,7 +11,7 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/icon"
 )
 
-func parseTransferStart(log icon.TxnEventLog) (*TokenIconTransferStart, error) {
+func parseTransferStart(log *icon.TxnEventLog) (*TokenIconTransferStart, error) {
 	if len(log.Data) != 3 {
 		return nil, errors.New("Unexpected length of log.Data")
 	}
@@ -35,7 +35,7 @@ func parseTransferStart(log icon.TxnEventLog) (*TokenIconTransferStart, error) {
 	return ts, nil
 }
 
-func parseTransferReceived(log icon.TxnEventLog) (*TokenIconTransferReceived, error) {
+func parseTransferReceived(log *icon.TxnEventLog) (*TokenIconTransferReceived, error) {
 	if len(log.Data) != 3 {
 		return nil, errors.New("Unexpected length of log.Data")
 	}
@@ -59,7 +59,7 @@ func parseTransferReceived(log icon.TxnEventLog) (*TokenIconTransferReceived, er
 	return ts, nil
 }
 
-func parseTransferEnd(log icon.TxnEventLog) (*TokenIconTransferEnd, error) {
+func parseTransferEnd(log *icon.TxnEventLog) (*TokenIconTransferEnd, error) {
 	if len(log.Data) != 3 {
 		return nil, errors.New("Unexpected length of log.Data")
 	}
