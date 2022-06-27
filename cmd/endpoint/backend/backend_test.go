@@ -21,9 +21,7 @@ func TestBackend(t *testing.T) {
 	}
 	cfgPerMap := map[chain.ChainType]*chain.ChainConfig{}
 	for _, ch := range cfg.Chains {
-		if ch.Name == chain.ICON {
-			cfgPerMap[ch.Name] = ch
-		}
+		cfgPerMap[ch.Name] = ch
 	}
 	be, err := New(l, cfgPerMap)
 	if err != nil {
