@@ -48,6 +48,7 @@ const (
 	SyncVerifierMaxConcurrency = 300 // 150
 	MonitorBlockMaxConcurrency = 300
 )
+const NotificationDelay = 10
 
 type receiverOptions struct {
 	SyncConcurrency uint64           `json:"syncConcurrency"`
@@ -355,8 +356,8 @@ loop:
 
 		case br := <-brch:
 			for ; br != nil; next++ {
-				if br.Height%100 == 0 {
-					r.log.WithFields(log.Fields{"height": br.Height}).Debug("icon block notification")
+				if br.Height%10 == 0 {
+					r.log.WithFields(log.Fields{"height": br.Height}).Debug("block notification")
 				}
 				if vr != nil {
 					ok, err := vr.Verify(br.Header, br.Votes)
@@ -374,6 +375,12 @@ loop:
 						return errors.Wrapf(err, "receiveLoop: update verifier: %v", err)
 					}
 				}
+
+				diff := time.Now().Unix() - (br.Header.Timestamp / 1000000)
+				if diff > 0 && diff < NotificationDelay {
+					time.Sleep(time.Second * time.Duration(NotificationDelay-diff))
+				}
+
 				if err := callback(br.Receipts, br.TxnLogs); err != nil {
 					return errors.Wrapf(err, "receiveLoop: callback: %v", err)
 				}
@@ -506,9 +513,6 @@ loop:
 										for i := 0; i < len(res.EventLogs); i++ {
 											q.res.TxnLogs = append(q.res.TxnLogs, &res.EventLogs[i])
 										}
-										// &TxnLog{From: txn.From, To: txn.To,
-										// 	TxHash: txn.TxHash, BlockHeight: q.height,
-										// 	EventLogs: res.EventLogs, Status: res.Status})
 									}
 
 								}

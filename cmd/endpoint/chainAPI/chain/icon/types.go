@@ -90,8 +90,8 @@ type ProofEventsParam struct {
 type Block struct {
 	//BlockHash              HexBytes  `json:"block_hash" validate:"required,t_hash"`
 	//Version                HexInt    `json:"version" validate:"required,t_int"`
-	Height int64 `json:"height" validate:"required,t_int"`
-	//Timestamp              int64             `json:"time_stamp" validate:"required,t_int"`
+	Height    int64 `json:"height" validate:"required,t_int"`
+	Timestamp int64 `json:"time_stamp" validate:"required,t_int"`
 	//Proposer               HexBytes  `json:"peer_id" validate:"optional,t_addr_eoa"`
 	//PrevID                 HexBytes  `json:"prev_block_hash" validate:"required,t_hash"`
 	//NormalTransactionsHash HexBytes  `json:"merkle_tree_root_hash" validate:"required,t_hash"`
