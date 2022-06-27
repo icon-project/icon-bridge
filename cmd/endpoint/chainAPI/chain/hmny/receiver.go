@@ -28,7 +28,7 @@ const (
 
 func NewReceiver(
 	src, dst chain.BTPAddress, urls []string,
-	opts map[string]interface{}, l log.Logger) (chain.SubscritionAPI, error) {
+	opts map[string]interface{}, l log.Logger) (chain.SubscriptionAPI, error) {
 	r := &receiver{
 		log: l,
 		src: src,

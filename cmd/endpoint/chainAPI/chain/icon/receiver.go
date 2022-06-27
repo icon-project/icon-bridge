@@ -81,7 +81,7 @@ type receiver struct {
 	errChan   chan error
 }
 
-func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]interface{}, l log.Logger) (chain.SubscritionAPI, error) {
+func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]interface{}, l log.Logger) (chain.SubscriptionAPI, error) {
 	if len(urls) == 0 {
 		return nil, errors.New("List of Urls is empty")
 	}
@@ -356,7 +356,7 @@ loop:
 
 		case br := <-brch:
 			for ; br != nil; next++ {
-				r.log.WithFields(log.Fields{"height": br.Height}).Debug("block notification")
+				//r.log.WithFields(log.Fields{"height": br.Height}).Debug("block notification")
 
 				if vr != nil {
 					ok, err := vr.Verify(br.Header, br.Votes)

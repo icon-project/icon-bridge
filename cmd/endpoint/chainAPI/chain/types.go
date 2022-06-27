@@ -26,10 +26,10 @@ type RequestAPI interface {
 	GetBTPAddress(addr string) *string
 }
 
-type SubscritionAPI interface {
+type SubscriptionAPI interface {
 	Start(ctx context.Context) error
-	GetOutputChan() <-chan *SubscribedEvent
-	GetErrChan() <-chan error
+	OutputChan() <-chan *SubscribedEvent
+	ErrChan() <-chan error
 }
 
 type ChainConfig struct {
