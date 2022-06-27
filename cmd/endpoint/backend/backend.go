@@ -15,7 +15,7 @@ const EventListenerCapacity = 1000
 type backend struct {
 	log                     log.Logger
 	chainapi                capi.ChainAPI
-	subscriptionAPIPerChain map[chain.ChainType]chain.SubscritionAPI
+	subscriptionAPIPerChain map[chain.ChainType]chain.SubscriptionAPI
 	wtch                    decoder.Decoder
 }
 
@@ -34,13 +34,13 @@ func New(l log.Logger, configPerChain map[chain.ChainType]*chain.ChainConfig) (B
 }
 
 func (be *backend) Start(ctx context.Context) {
-	for _, sub := range be.subscriptionAPIPerChain {
-		err := sub.Start(ctx)
-		if err != nil {
-			be.log.Error(err)
-			return
-		}
-	}
+	// for _, sub := range be.subscriptionAPIPerChain {
+	// 	err := sub.Start(ctx)
+	// 	if err != nil {
+	// 		be.log.Error(err)
+	// 		return
+	// 	}
+	// }
 	// go func() {
 	// 	for {
 	// 		select {
