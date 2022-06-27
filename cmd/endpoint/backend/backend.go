@@ -7,20 +7,17 @@ import (
 
 	capi "github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder"
+	wtchr "github.com/icon-project/icon-bridge/cmd/endpoint/watcher"
 )
 
-const EventListenerCapacity = 1000
-
 type backend struct {
-	log                     log.Logger
-	chainapi                capi.ChainAPI
-	subscriptionAPIPerChain map[chain.ChainType]chain.SubscriptionAPI
-	wtch                    decoder.Decoder
+	log      log.Logger
+	chainapi capi.ChainAPI
+	wtch     wtchr.Watcher
 }
 
 type Backend interface {
-	Start(ctx context.Context)
+	Start(ctx context.Context) error
 }
 
 func New(l log.Logger, configPerChain map[chain.ChainType]*chain.ChainConfig) (Backend, error) {
@@ -30,59 +27,21 @@ func New(l log.Logger, configPerChain map[chain.ChainType]*chain.ChainConfig) (B
 	if err != nil {
 		return nil, err
 	}
+	be.wtch, err = wtchr.New(l, be.chainapi.SubEventChan(), be.chainapi.ErrChan())
+	if err != nil {
+		return nil, err
+	}
 	return be, nil
 }
 
-func (be *backend) Start(ctx context.Context) {
-	// for _, sub := range be.subscriptionAPIPerChain {
-	// 	err := sub.Start(ctx)
-	// 	if err != nil {
-	// 		be.log.Error(err)
-	// 		return
-	// 	}
-	// }
-	// go func() {
-	// 	for {
-	// 		select {
-	// 		case <-ctx.Done():
-	// 			be.log.Error("Context cancelled")
-	// 			return
-	// 		case el := <-be.subscriptionReceivingChan:
-	// 			if el.ChainName == chain.ICON {
-	// 				iconTxn := (el.Res).(*icon.TxnLog)
-	// 				for _, l := range iconTxn.EventLogs {
-	// 					res, err := be.dec.DecodeEventLogData(l, string(l.Addr))
-	// 					if err != nil {
-	// 						be.log.Warn("Problem ", l)
-	// 						be.log.Error(err)
-	// 						return
-	// 					} else {
-	// 						for k, v := range res {
-	// 							be.log.Info(chain.ICON, "  ", k, v)
-	// 						}
-	// 					}
-	// 				}
-	// 			} else if el.ChainName == chain.HMNY {
-	// 				hmyRcs := (el.Res).(*types.Receipt)
-	// 				for _, l := range hmyRcs.Logs {
-	// 					res, err := be.dec.DecodeEventLogData(*l, l.Address.Hex()) // not pointer to log
-	// 					if err != nil {
-	// 						be.log.Warn("Problem ", l)
-	// 						be.log.Error(err)
-	// 						return
-	// 					} else {
-	// 						for k, v := range res {
-	// 							be.log.Info(chain.HMNY, "  ", k, v)
-	// 						}
-	// 					}
-	// 				}
-	// 			}
-	// 		case err := <-be.subscriptionErrChan:
-	// 			be.log.Error(err)
-	// 			return
-	// 		}
-	// 	}
-	// }()
+func (be *backend) Start(ctx context.Context) (err error) {
+	if err = be.wtch.Start(ctx); err != nil {
+		return
+	}
+	if err = be.chainapi.StartSubscription(ctx); err != nil {
+		return
+	}
+	return
 }
 
 // m := map[ctr.ContractName]string{

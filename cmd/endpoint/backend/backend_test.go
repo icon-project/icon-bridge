@@ -29,9 +29,14 @@ func TestBackend(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	be.Start(context.TODO())
-	log.Warn("Wait")
-	time.Sleep(time.Hour)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	be.Start(ctx)
+	time.Sleep(time.Second * 10)
+	t.Log("Send Cancel")
+	cancel()
+	time.Sleep(time.Second * 5)
 }
 
 type Config struct {
