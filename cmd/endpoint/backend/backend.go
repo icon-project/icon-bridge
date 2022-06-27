@@ -39,6 +39,17 @@ func (be *backend) Start(ctx context.Context) (err error) {
 	if err = be.wtch.Start(ctx); err != nil {
 		return
 	}
+	go func(ctx context.Context) {
+		ch := be.wtch.GetOutputChan()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case msg := <-ch:
+				be.log.Warnf("Message %+v", msg)
+			}
+		}
+	}(ctx)
 	if err = be.chainapi.StartSubscription(ctx); err != nil {
 		return
 	}
@@ -51,5 +62,8 @@ func (be *backend) Transfer(param *capi.RequestParam) (txHash string, err error)
 		return
 	}
 	err = be.wtch.ProcessTxn(param, logs)
+	if err != nil {
+		be.log.Errorf("ProcessTxn Err %+v", err)
+	}
 	return
 }

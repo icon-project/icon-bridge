@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/harmony-one/harmony/core/types"
+	capi "github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/icon"
 )
@@ -66,11 +67,20 @@ func (w *watcher) decodeHmnyEventLog(res interface{}) ([]eventLogInfo, error) {
 	return elInfoList, nil
 }
 
-func (w *watcher) decodeEventLog(evt *chain.SubscribedEvent) ([]eventLogInfo, error) {
+func (w *watcher) decodeSubscribedMessage(evt *chain.SubscribedEvent) ([]eventLogInfo, error) {
 	if evt.ChainName == chain.ICON {
 		return w.decodeIconEventLog(evt.Res)
 	} else if evt.ChainName == chain.HMNY {
 		return w.decodeHmnyEventLog(evt.Res)
+	}
+	return nil, errors.New("Unknow Chain Type")
+}
+
+func (w *watcher) decodeTransferReceipt(reqParam *capi.RequestParam, logs interface{}) ([]eventLogInfo, error) {
+	if reqParam.FromChain == chain.ICON {
+		return w.decodeIconEventLog(logs)
+	} else if reqParam.FromChain == chain.HMNY {
+		return w.decodeHmnyEventLog(logs)
 	}
 	return nil, errors.New("Unknow Chain Type")
 }

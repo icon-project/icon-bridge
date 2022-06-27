@@ -8,7 +8,9 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
 	ctr "github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/nativeHmy"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/nativeIcon"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/tokenHmy"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/tokenIcon"
 )
 
@@ -35,9 +37,7 @@ type args struct {
 type identifierGroup struct {
 	name        string
 	description string
-	req         *chainAPI.RequestParam
 	init        func(args []eventLogInfo, req *chainAPI.RequestParam) (interface{}, bool)
-	initRes     interface{}
 	idfs        []identifier
 }
 
@@ -78,9 +78,8 @@ var DefaultIdentifierGroup = []identifierGroup{
 				run: func(args args, info eventLogInfo) (bool, error) {
 					if info.contractName == ctr.NativeIcon {
 						if el, ok := info.eventLog.(*nativeIcon.NativeIconTransferStart); ok {
-							splts := strings.Split(el.To, "/")
 							seq := args.initRes.(*big.Int)
-							if el.From == args.req.FromAddress && args.req.ToAddress == splts[len(splts)-1] && el.Sn == seq {
+							if el.From == args.req.FromAddress && args.req.ToAddress == el.To && el.Sn.Int64() == seq.Int64() {
 								return true, nil
 							}
 						} else {
@@ -88,9 +87,8 @@ var DefaultIdentifierGroup = []identifierGroup{
 						}
 					} else if info.contractName == ctr.TokenIcon {
 						if el, ok := info.eventLog.(*tokenIcon.TokenIconTransferStart); ok {
-							splts := strings.Split(el.To, "/")
 							seq := args.initRes.(*big.Int)
-							if el.From == args.req.FromAddress && args.req.ToAddress == splts[len(splts)-1] && el.Sn == seq {
+							if el.From == args.req.FromAddress && args.req.ToAddress == el.To && el.Sn.Int64() == seq.Int64() {
 								return true, nil
 							}
 						} else {
@@ -112,7 +110,7 @@ var DefaultIdentifierGroup = []identifierGroup{
 					if info.contractName == ctr.NativeIcon {
 						if el, ok := info.eventLog.(*nativeIcon.NativeIconTransferEnd); ok {
 							seq := args.initRes.(*big.Int)
-							if el.From == args.req.FromAddress && el.Sn == seq {
+							if el.From == args.req.FromAddress && el.Sn.Int64() == seq.Int64() {
 								return true, nil
 							}
 						} else {
@@ -121,7 +119,7 @@ var DefaultIdentifierGroup = []identifierGroup{
 					} else if info.contractName == ctr.TokenIcon {
 						if el, ok := info.eventLog.(*tokenIcon.TokenIconTransferEnd); ok {
 							seq := args.initRes.(*big.Int)
-							if el.From == args.req.FromAddress && el.Sn == seq {
+							if el.From == args.req.FromAddress && el.Sn.Int64() == seq.Int64() {
 								return true, nil
 							}
 						} else {
@@ -133,30 +131,32 @@ var DefaultIdentifierGroup = []identifierGroup{
 			},
 			{
 				preRun: func(args args, info eventLogInfo) bool { // TransferStart msg on icon chain
-					if info.sourceChain == chain.ICON && info.eventType == "TransferReceived" &&
-						(info.contractName == ctr.NativeIcon || info.contractName == ctr.TokenIcon) {
+					if info.sourceChain == chain.HMNY && info.eventType == "TransferReceived" &&
+						(info.contractName == ctr.NativeHmy || info.contractName == ctr.TokenHmy) {
 						return true
 					}
 					return false
 				},
 				run: func(args args, info eventLogInfo) (bool, error) {
-					if info.contractName == ctr.NativeIcon {
-						if el, ok := info.eventLog.(*nativeIcon.NativeIconTransferReceived); ok {
+					if info.contractName == ctr.NativeHmy {
+						if el, ok := info.eventLog.(*nativeHmy.NativeHmyTransferReceived); ok {
 							seq := args.initRes.(*big.Int)
-							if el.From == args.req.FromAddress && el.Sn == seq {
+							splts := strings.Split(args.req.ToAddress, "/")
+							if el.To.Hex() == splts[len(splts)-1] && el.Sn.Int64() == seq.Int64() {
 								return true, nil
 							}
 						} else {
-							return false, errors.New("Expected *tokenIcon.NativeIconTransferReceived")
+							return false, errors.New("Expected *nativeHmy.NativeHmyTransferReceived")
 						}
-					} else if info.contractName == ctr.TokenIcon {
-						if el, ok := info.eventLog.(*tokenIcon.TokenIconTransferReceived); ok {
+					} else if info.contractName == ctr.TokenHmy {
+						if el, ok := info.eventLog.(*tokenHmy.TokenHmyTransferReceived); ok {
 							seq := args.initRes.(*big.Int)
-							if el.To == args.req.ToAddress && el.Sn == seq {
+							splts := strings.Split(args.req.ToAddress, "/")
+							if el.To.Hex() == splts[len(splts)-1] && el.Sn.Int64() == seq.Int64() {
 								return true, nil
 							}
 						} else {
-							return false, errors.New("Expected *tokenIcon.NativeIconTransferReceived")
+							return false, errors.New("Expected *tokenHmy.TokenHmyTransferReceived")
 						}
 					}
 					return false, nil

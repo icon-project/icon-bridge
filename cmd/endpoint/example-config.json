@@ -4,10 +4,11 @@
             "name":"ICON",
             "url":"http://127.0.0.1:9080/api/v3/default",
             "contract_addresses": {
-                    "btp_icon_irc2":"cx03137e3eda455bcafb0cfad874de11a229effa46",
-                    "btp_icon_irc2_tradeable":"cxcdbe61c16a4565b98c11911c9363c312c595d103",
-                    "btp_icon_nativecoin_bsh":"cxe51b3bd6326df70806419707d0f77eda86711bf5",
-                    "btp_icon_token_bsh":"cx5924a147ae30091ed9c6fe0c153ef77de4132902"
+                    "btp_icon_irc2":"cx491ef761730849efd43074692fb344c9bfab7f85",
+                    "btp_icon_irc2_tradeable":"cx3e08ab9fdb57a2688d8fec2f6c992bafb86b64e0",
+                    "btp_icon_nativecoin_bsh":"cxee3c4a5474bc9e722b7b5f34e99f56bf84bccf0f",
+                    "btp_icon_token_bsh":"cx7d6b69d7d2ff03379fa20765d533fb8355285dd3",
+                    "btp_icon_bmc":"cx0da2a6e1c7a1a026e50a21a536de922a45e7ecff"
             },
             "god_wallet":{
                 "path":"/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/icon.god.wallet.json",
@@ -18,9 +19,9 @@
                 "src":"btp://0x5b9a77.icon/cx8015df5623344958af75ba1598b4ee14b8574bee",
                 "dst":"btp://0x6357d2e0.hmny/0x0169AE3f21b67e798fd4AdF50d0FA9FB83d72651",
                 "options": {
-                    "syncConcurrency": 1,
+                    "syncConcurrency": 100,
                     "verifier": {
-                        "blockHeight": 1211,
+                        "blockHeight": 19000,
                         "validatorsHash": "0xe4d1a21c32bd86bbcca8fa4dd96ea5f4fe80cc44b990ba1b1ae6b7808f8b7883"
                     }
                 }
@@ -30,9 +31,13 @@
             "name":"HMNY",
             "url":"http://127.0.0.1:9500",
             "contract_addresses": {
-                    "btp_hmny_erc20":"0x39D13b1c63a9AB8D2Fb411b30a9dfb1FBF304F10",
-                    "btp_hmny_nativecoin_bsh_core":"0xaBF4EfD84e24Ac3E8b4ddc03F44CA05a2532BeAa",
-                    "btp_hmny_token_bsh_proxy":"0xcCd57725d4527cb5A0a52CC2458210C7E29A8574"
+                    "btp_hmny_token_bsh_impl":"0x8283e3bE7ac5f6dB332Df605f20E2B4c9977c662",
+                    "btp_hmny_nativecoin_bsh_periphery":"0xfad748a1063a40FF447B5D766331904d9bedDC26",
+                    "btp_hmny_erc20":"0xb54f5e97972AcF96470e02BE0456c8DB2173f33a",
+                    "btp_hmny_erc20_tradeable":"0xefdc9E85d3FDbe52abe1af44c5d16dE1BB385DCa",
+                    "btp_hmny_bmc_periphery":"0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91",
+                    "btp_hmny_nativecoin_bsh_core":"0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
+                    "btp_hmny_token_bsh_proxy":"0x48cacC89f023f318B4289A18aBEd44753a127782"
             },
             "god_wallet":{
                 "path":"/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/hmny.god.wallet.json",
@@ -45,12 +50,12 @@
                 "options": {
                     "syncConcurrency": 100,
                     "verifier": {
-                      "blockHeight": 1171,
+                      "blockHeight": 69,
                       "commitBitmap": "0xff",
-                      "commitSignature": "0xf102d2c65b9012f9e02f2066b381bcd91dfcaa0b41ce76671838dce44d5aff4837768982fd7d5e0c544318aa560af502a28de49329c992c59e69277828362b7dabecae1b462fb2ed43d2c4d010e31f3ae099689ea8224ab6e65051cf5e6db992"
+                      "commitSignature": "0x19a4d957aaa13f1e45f32776d5b37b0fe544f08709a2a5bec1339b9d602fd2a55266e8af162dce3f92fe0473b3388813942ef557fc2a69cf5a084a0e19d894b239aad5214a2e8819544369beb02ebb2c411f2c814f4e461b331fcd5829c4f594"
                     }
                 }
             }
         }
     ]
-}
+} 

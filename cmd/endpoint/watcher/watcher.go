@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/icon-project/icon-bridge/common/log"
 
@@ -30,14 +31,18 @@ var nameMap = map[string]ctr.ContractName{
 type Watcher interface {
 	Start(ctx context.Context) error
 	ProcessTxn(reqParam *capi.RequestParam, logs interface{}) error
+	GetOutputChan() <-chan eventLogInfo
 }
 
 type watcher struct {
-	log           log.Logger
-	subChan       <-chan *chain.SubscribedEvent
-	errChan       <-chan error
-	ctrAddrToName map[string]ctr.ContractName
-	dec           decoder.Decoder
+	log                log.Logger
+	ctrAddrToName      map[string]ctr.ContractName
+	dec                decoder.Decoder
+	inputSubChan       <-chan *chain.SubscribedEvent
+	inputErrChan       <-chan error
+	outputEventLogChan chan eventLogInfo
+	idGroups           []identifierGroup
+	runCache           *runnableCache
 }
 
 func New(log log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig, subChan <-chan *chain.SubscribedEvent, errChan <-chan error) (Watcher, error) {
@@ -57,26 +62,36 @@ func New(log log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig, sub
 	if err != nil {
 		return nil, err
 	}
-	w := &watcher{log: log, subChan: subChan, errChan: errChan, ctrAddrToName: resMap, dec: dec}
+	w := &watcher{
+		log:          log,
+		inputSubChan: subChan, inputErrChan: errChan,
+		ctrAddrToName: resMap, dec: dec,
+		idGroups: DefaultIdentifierGroup, runCache: &runnableCache{mem: []*runnable{}, mtx: sync.RWMutex{}},
+		outputEventLogChan: make(chan eventLogInfo),
+	}
 	return w, nil
 }
 
 func (w *watcher) Start(ctx context.Context) error {
 	go func() {
+		defer close(w.outputEventLogChan)
 		for {
 			select {
 			case <-ctx.Done():
 				w.log.Warn("Watcher; Context Cancelled")
 				return
-			case msg := <-w.subChan:
-				if decLogs, err := w.decodeEventLog(msg); err != nil {
+			case msg := <-w.inputSubChan:
+				if decLogs, err := w.decodeSubscribedMessage(msg); err != nil {
 					w.log.Error(err)
 				} else {
-					for dli, dl := range decLogs {
-						w.log.Info(dli, dl)
+					for _, dl := range decLogs {
+						if matchedIDs := w.lookupCache(dl); len(matchedIDs) > 0 {
+							w.outputEventLogChan <- dl
+							w.removeFromFromRunCache(matchedIDs)
+						}
 					}
 				}
-			case err := <-w.errChan:
+			case err := <-w.inputErrChan:
 				w.log.Error(err)
 				return
 			}
@@ -86,24 +101,85 @@ func (w *watcher) Start(ctx context.Context) error {
 }
 
 func (w *watcher) ProcessTxn(reqParam *capi.RequestParam, logs interface{}) error {
-	if reqParam.FromChain == chain.ICON {
-		elInfoList, err := w.decodeIconEventLog(logs)
-		if err != nil {
-			return err
+	elArr, err := w.decodeTransferReceipt(reqParam, logs)
+	if err != nil {
+		return err
+	}
+	for _, idg := range w.idGroups {
+		res, ok := idg.init(elArr, reqParam)
+		if !ok {
+			if res != nil {
+				return res.(error)
+			}
+			return errors.New("Did not match")
 		}
-		for _, el := range elInfoList {
-			w.log.Info(el)
+		args := args{req: reqParam, initRes: res}
+		for _, idf := range idg.idfs {
+			w.addToRunCache(&runnable{args: args, idf: idf})
 		}
-	} else if reqParam.FromChain == chain.HMNY {
-		elInfoList, err := w.decodeHmnyEventLog(logs)
-		if err != nil {
-			return err
-		}
-		for _, el := range elInfoList {
-			w.log.Info(el)
-		}
-	} else {
-		return errors.New("Chain Type not identified")
+		w.log.Warnf("Added to CacheLen %d; Seq %v ", len(w.runCache.mem), res)
 	}
 	return nil
+}
+
+type runnable struct {
+	args args
+	idf  identifier
+}
+
+type runnableCache struct {
+	mem []*runnable
+	mtx sync.RWMutex
+}
+
+func (w *watcher) addToRunCache(r *runnable) {
+	w.runCache.mtx.Lock()
+	defer w.runCache.mtx.Unlock()
+	for i, v := range w.runCache.mem {
+		if v == nil { // fill void if any
+			w.runCache.mem[i] = r
+			return
+		}
+	}
+	w.runCache.mem = append(w.runCache.mem, r)
+}
+
+func (w *watcher) removeFromFromRunCache(ids []int) {
+	w.runCache.mtx.Lock()
+	defer w.runCache.mtx.Unlock()
+	for _, id := range ids {
+		w.log.Warnf("Removing %d", id)
+		w.runCache.mem[id] = nil
+	}
+}
+
+func (w *watcher) lookupCache(elInfo eventLogInfo) []int {
+	w.runCache.mtx.RLock()
+	defer w.runCache.mtx.RUnlock()
+	matchedIDs := []int{}
+	for runid, runP := range w.runCache.mem {
+		if runP == nil { // nil is set for removed runnable. See removeFromFromRunCache
+			continue
+		}
+		if runP.idf.preRun(runP.args, elInfo) {
+			match, err := runP.idf.run(runP.args, elInfo)
+			if match {
+				w.log.Warn("Match RunID ", runid)
+				matchedIDs = append(matchedIDs, runid)
+			} else if !match && err != nil {
+				w.log.Error("Non Match ", err)
+			}
+		}
+	}
+	return matchedIDs
+}
+
+func (w *watcher) display(el eventLogInfo) {
+	w.log.Info("Matched ")
+	w.log.Info("Prelim ", el.sourceChain, el.contractName, el.eventType)
+	w.log.Infof("Extra Info %+v", el.eventLog)
+}
+
+func (w *watcher) GetOutputChan() <-chan eventLogInfo {
+	return w.outputEventLogChan
 }
