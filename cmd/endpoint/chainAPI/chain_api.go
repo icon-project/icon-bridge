@@ -42,7 +42,7 @@ type chainAPI struct {
 }
 
 type ChainAPI interface {
-	Transfer(param *RequestParam) (txHash string, err error)
+	Transfer(param *RequestParam) (txHash string, logs interface{}, err error)
 	StartSubscription(ctx context.Context) (err error)
 	SubEventChan() <-chan *chain.SubscribedEvent
 	ErrChan() <-chan error
@@ -90,23 +90,23 @@ func New(l log.Logger, configPerChain map[chain.ChainType]*chain.ChainConfig) (C
 	return &cAPI, nil
 }
 
-func (capi *chainAPI) Transfer(param *RequestParam) (txHash string, err error) {
+func (capi *chainAPI) Transfer(param *RequestParam) (txHash string, logs interface{}, err error) {
 	reqApi := capi.req[param.FromChain]
 	if param.Token == ICXToken || param.Token == ONEToken { // Native Coin
 		if param.FromChain == param.ToChain {
-			txHash, err = reqApi.TransferCoin(param.SenderKey, param.Amount, param.ToAddress)
+			txHash, logs, err = reqApi.TransferCoin(param.SenderKey, param.Amount, param.ToAddress)
 		} else {
-			txHash, err = reqApi.TransferCoinCrossChain(param.SenderKey, param.Amount, param.ToAddress)
+			txHash, logs, err = reqApi.TransferCoinCrossChain(param.SenderKey, param.Amount, param.ToAddress)
 		}
 	} else if param.Token == IRC2Token || param.Token == ERC20Token { // EthToken
 		if param.FromChain == param.ToChain {
-			txHash, err = reqApi.TransferEthToken(param.SenderKey, param.Amount, param.ToAddress)
+			txHash, logs, err = reqApi.TransferEthToken(param.SenderKey, param.Amount, param.ToAddress)
 		} else {
-			_, txHash, err = reqApi.TransferEthTokenCrossChain(param.SenderKey, param.Amount, param.ToAddress)
+			_, _, txHash, logs, err = reqApi.TransferEthTokenCrossChain(param.SenderKey, param.Amount, param.ToAddress)
 		}
 	} else if param.Token == ONEWrappedToken || param.Token == ICXWrappedToken { // WrappedToken
 		if param.FromChain != param.ToChain {
-			txHash, err = reqApi.TransferWrappedCoinCrossChain(param.SenderKey, param.Amount, param.ToAddress)
+			txHash, logs, err = reqApi.TransferWrappedCoinCrossChain(param.SenderKey, param.Amount, param.ToAddress)
 		} else {
 			err = errors.New("Wrapped Coins can be transferred only cross chain")
 		}
