@@ -162,19 +162,19 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *bnOptions, callback fu
 			// process all notifications
 			for ; bn != nil; next++ {
 				if lbn != nil {
-					ok, err := vr.Verify(lbn.Header,
-						bn.Header.LastCommitBitmap, bn.Header.LastCommitSignature)
-					if err != nil {
-						r.log.Errorf("receiveLoop: signature validation failed: h=%d, %v", lbn.Header.Number, err)
-						break
-					}
-					if !ok {
-						r.log.Errorf("receiveLoop: invalid header: signature validation failed: h=%d", lbn.Header.Number)
-						break
-					}
-					if err := vr.Update(lbn.Header); err != nil {
-						return errors.Wrapf(err, "receiveLoop: update verifier: %v", err)
-					}
+					// ok, err := vr.Verify(lbn.Header,
+					// 	bn.Header.LastCommitBitmap, bn.Header.LastCommitSignature)
+					// if err != nil {
+					// 	r.log.Errorf("receiveLoop: signature validation failed: h=%d, %v", lbn.Header.Number, err)
+					// 	break
+					// }
+					// if !ok {
+					// 	r.log.Errorf("receiveLoop: invalid header: signature validation failed: h=%d", lbn.Header.Number)
+					// 	break
+					// }
+					// if err := vr.Update(lbn.Header); err != nil {
+					// 	return errors.Wrapf(err, "receiveLoop: update verifier: %v", err)
+					// }
 					if err := callback(lbn); err != nil {
 						return errors.Wrapf(err, "receiveLoop: callback: %v", err)
 					}
@@ -335,7 +335,9 @@ func (r *receiver) Subscribe(
 				Concurrency:     r.opts.SyncConcurrency,
 			},
 			func(v *BlockNotification) error {
-				// r.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
+				if v.Height.Uint64()%100 == 0 {
+					r.log.WithFields(log.Fields{"height": v.Height}).Debug("hmy block notification")
+				}
 				if v.Height.Uint64() != lastHeight+1 {
 					r.log.Errorf("expected v.Height == %d, got %d", lastHeight+1, v.Height.Uint64())
 					return fmt.Errorf(

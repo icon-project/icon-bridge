@@ -18,7 +18,7 @@ func NewSubscriptionAPI(l log.Logger, cfg chain.SubscriberConfig, endpoint strin
 
 func (r *receiver) Start(ctx context.Context) error {
 	var seq uint64 = 0
-	var height uint64 = 19000 // used to be fetched by BMC Status
+	var height uint64 = 42000 // used to be fetched by BMC Status
 	err := r.Subscribe(ctx, chain.SubscribeOptions{Height: height, Seq: seq})
 	if err != nil {
 		return err

@@ -19,7 +19,7 @@ func (r *receiver) Start(ctx context.Context) error {
 	err := r.Subscribe(ctx,
 		chain.SubscribeOptions{
 			Seq:    0,
-			Height: 69,
+			Height: 42000,
 		})
 	if err != nil {
 		return err

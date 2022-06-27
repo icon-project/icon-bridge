@@ -96,8 +96,7 @@ func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
 		if err = vr.Update(elh); err != nil {
 			return errors.Wrapf(err, "vr.Update: %v", err)
 		}
-		cl.log.WithFields(log.Fields{
-			"epoch": vr.Epoch(), "height": elb.Uint64()}).Debugf("syncVerifier: syncing")
+		//cl.log.WithFields(log.Fields{"epoch": vr.Epoch(), "height": elb.Uint64()}).Debugf("syncVerifier: syncing")
 	}
 	cl.log.WithFields(log.Fields{"epoch": vr.Epoch()}).Debugf("syncVerifier: complete")
 

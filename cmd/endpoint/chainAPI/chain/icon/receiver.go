@@ -262,7 +262,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 					}
 				}
 			}
-			r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Debug("syncVerifier: syncing")
+			//r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Debug("syncVerifier: syncing")
 		}
 	}
 
@@ -293,7 +293,6 @@ func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64
 		Receipts       []*chain.Receipt
 		TxnLogs        []*TxnEventLog
 	}
-
 	ech := make(chan error)                                           // error channel
 	rech := make(chan struct{}, 1)                                    // reconnect channel
 	bnch := make(chan *BlockNotification, MonitorBlockMaxConcurrency) // block notification channel
@@ -356,8 +355,9 @@ loop:
 
 		case br := <-brch:
 			for ; br != nil; next++ {
-				//r.log.WithFields(log.Fields{"height": br.Height}).Debug("block notification")
-
+				if br.Height%100 == 0 {
+					r.log.WithFields(log.Fields{"height": br.Height}).Debug("icon block notification")
+				}
 				if vr != nil {
 					ok, err := vr.Verify(br.Header, br.Votes)
 					if !ok || err != nil {
@@ -506,7 +506,6 @@ loop:
 										for i := 0; i < len(res.EventLogs); i++ {
 											q.res.TxnLogs = append(q.res.TxnLogs, &res.EventLogs[i])
 										}
-
 										// &TxnLog{From: txn.From, To: txn.To,
 										// 	TxHash: txn.TxHash, BlockHeight: q.height,
 										// 	EventLogs: res.EventLogs, Status: res.Status})
