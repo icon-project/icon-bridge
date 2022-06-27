@@ -8,7 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain/icon"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/icon"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder"
 	ctr "github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/nativeHmy"

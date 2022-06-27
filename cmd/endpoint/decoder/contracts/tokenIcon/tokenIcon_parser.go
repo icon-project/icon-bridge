@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain/icon"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/icon"
 )
 
 func parseTransferStart(log icon.TxnEventLog) (*TokenIconTransferStart, error) {

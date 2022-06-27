@@ -2,7 +2,6 @@ package decoder
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 
 	ctr "github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
@@ -12,6 +11,8 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/irc2Icon"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/nativeHmy"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/nativeIcon"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/ownerNativeHmy"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/ownerTokenHmy"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/tokenHmy"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/tokenIcon"
 )
@@ -28,6 +29,10 @@ func getNewContract(cName ctr.ContractName, url string, cAddr string) (ctr.Contr
 		return erc20Hmy.NewContract(cName, url, cAddr)
 	} else if cName == ctr.BmcHmy {
 		return bmcHmy.NewContract(cName, url, cAddr)
+	} else if cName == ctr.OwnerNativeHmy {
+		return ownerNativeHmy.NewContract(cName, url, cAddr)
+	} else if cName == ctr.OwnerTokenHmy {
+		return ownerTokenHmy.NewContract(cName, url, cAddr)
 	} else if cName == ctr.TokenIcon {
 		return tokenIcon.NewContract(cName)
 	} else if cName == ctr.NativeIcon {
@@ -92,7 +97,6 @@ func (d *decoder) DecodeEventLogData(log interface{}, addr string) (map[string]i
 	defer d.mtx.RUnlock()
 	ctr, ok := d.addrToContract[addr]
 	if !ok {
-		fmt.Println("Skipping ", addr)
 		return nil, nil
 	}
 	return ctr.Decode(log)

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/tenv"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"
@@ -165,7 +165,7 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			if err != nil {
 				return err
 			}
-
+			time.Sleep(time.Second * 5)
 			tu.Logger().Info("Step 2. Transfer Native ICX (ICON -> HMNY): ")
 			i2h_nativecoin_transfer_amount := new(big.Int)
 			i2h_nativecoin_transfer_amount.SetString("2000000000000000000", 10)
@@ -200,7 +200,7 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			} else {
 				tu.Logger().Info("ICON Allowed Amount ", amt.String())
 			}
-
+			time.Sleep(time.Second * 5)
 			tu.Logger().Info("Step 5. Approve HMNY BSHCore to access ")
 			allowMount = new(big.Int)
 			allowMount.SetString("100000000000000000000000", 10)
@@ -209,7 +209,7 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 			} else {
 				tu.Logger().Info("HMNY Allowed Amount ", amt.String())
 			}
-
+			time.Sleep(time.Second * 5)
 			tu.Logger().Info("Step 6. Transfer Wrapped ICX (HMNY -> ICON):")
 			h2i_wrapped_ICX_transfer_amount := new(big.Int)
 			h2i_wrapped_ICX_transfer_amount.SetString("1000000000000000000", 10)
@@ -247,7 +247,7 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 				*henv.Client.GetBTPAddress(henv.AccountsKeys[0][PUBKEYPOS])); err != nil {
 				return errors.Wrap(err, " Transfer irc2.ETH to HMNY ")
 			}
-			time.Sleep(time.Second * 15)
+			time.Sleep(time.Second * 5)
 			showIconBalance(ienv)
 			showHmnyBalance(henv)
 
@@ -336,7 +336,6 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 				tu.Logger().Error(err)
 				return err
 			}
-
 			irc2_target := new(big.Int)
 			irc2_target.SetString("10000000000000000000", 10)
 			if _, err := ienv.Client.TransferEthToken(ienv.GodKeys[PRIVKEYPOS], *irc2_target, ienv.AccountsKeys[0][PUBKEYPOS]); err != nil {

@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain/icon"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/icon"
 )
 
 func parseMessage(log icon.TxnEventLog) (*MessageIconTransfer, error) {

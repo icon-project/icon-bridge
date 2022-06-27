@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain/icon"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/icon"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
 )
 
