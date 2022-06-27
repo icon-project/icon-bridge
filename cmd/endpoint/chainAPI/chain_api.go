@@ -96,12 +96,14 @@ func (capi *chainAPI) Transfer(param *RequestParam) (txHash string, logs interfa
 		if param.FromChain == param.ToChain {
 			txHash, logs, err = reqApi.TransferCoin(param.SenderKey, param.Amount, param.ToAddress)
 		} else {
+			param.ToAddress = *capi.req[param.ToChain].GetBTPAddress(param.ToAddress)
 			txHash, logs, err = reqApi.TransferCoinCrossChain(param.SenderKey, param.Amount, param.ToAddress)
 		}
 	} else if param.Token == IRC2Token || param.Token == ERC20Token { // EthToken
 		if param.FromChain == param.ToChain {
 			txHash, logs, err = reqApi.TransferEthToken(param.SenderKey, param.Amount, param.ToAddress)
 		} else {
+			param.ToAddress = *capi.req[param.ToChain].GetBTPAddress(param.ToAddress)
 			_, _, txHash, logs, err = reqApi.TransferEthTokenCrossChain(param.SenderKey, param.Amount, param.ToAddress)
 		}
 	} else if param.Token == ONEWrappedToken || param.Token == ICXWrappedToken { // WrappedToken
