@@ -2,9 +2,11 @@ package watcher
 
 import (
 	"context"
+	"errors"
 
 	"github.com/icon-project/icon-bridge/common/log"
 
+	capi "github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder"
 	ctr "github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
@@ -27,6 +29,7 @@ var nameMap = map[string]ctr.ContractName{
 
 type Watcher interface {
 	Start(ctx context.Context) error
+	ProcessTxn(reqParam *capi.RequestParam, logs interface{}) error
 }
 
 type watcher struct {
@@ -79,5 +82,28 @@ func (w *watcher) Start(ctx context.Context) error {
 			}
 		}
 	}()
+	return nil
+}
+
+func (w *watcher) ProcessTxn(reqParam *capi.RequestParam, logs interface{}) error {
+	if reqParam.FromChain == chain.ICON {
+		elInfoList, err := w.decodeIconEventLog(logs)
+		if err != nil {
+			return err
+		}
+		for _, el := range elInfoList {
+			w.log.Info(el)
+		}
+	} else if reqParam.FromChain == chain.HMNY {
+		elInfoList, err := w.decodeHmnyEventLog(logs)
+		if err != nil {
+			return err
+		}
+		for _, el := range elInfoList {
+			w.log.Info(el)
+		}
+	} else {
+		return errors.New("Chain Type not identified")
+	}
 	return nil
 }
