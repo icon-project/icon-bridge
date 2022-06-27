@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain/icon"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder"
 	ctr "github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
@@ -16,15 +17,15 @@ import (
 )
 
 func TestBshEvent(t *testing.T) {
-	url := "http://127.0.0.1:9500"
+	urlPerChain := map[chain.ChainType]string{chain.HMNY: "http://127.0.0.1:9500"}
 	btp_hmny_token_bsh_impl := "0xfAC8B63F77d8056A9BB45175b3DEd7D316D868D4"
 	btp_hmny_nativecoin_bsh_periphery := "0xfEe5c5B2bc2f927335C60879d78304e4305CdBaC"
 	contractUsed := btp_hmny_nativecoin_bsh_periphery
-	m := map[ctr.ContractName]string{
-		ctr.TokenHmy:  btp_hmny_token_bsh_impl,
-		ctr.NativeHmy: btp_hmny_nativecoin_bsh_periphery,
+	m := map[string]ctr.ContractName{
+		btp_hmny_token_bsh_impl:           ctr.TokenHmy,
+		btp_hmny_nativecoin_bsh_periphery: ctr.NativeHmy,
 	}
-	dec, err := decoder.New(url, m)
+	dec, err := decoder.New(urlPerChain, m)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,10 +64,11 @@ func TestBshEvent(t *testing.T) {
 
 func TestIconEvent(t *testing.T) {
 	btp_icon_token_bsh := "cx5924a147ae30091ed9c6fe0c153ef77de4132902"
-	m := map[ctr.ContractName]string{
-		ctr.TokenIcon: btp_icon_token_bsh,
+	m := map[string]ctr.ContractName{
+		btp_icon_token_bsh: ctr.TokenIcon,
 	}
-	dec, err := decoder.New("", m)
+	urlPerChain := map[chain.ChainType]string{chain.HMNY: "http://127.0.0.1:9500"}
+	dec, err := decoder.New(urlPerChain, m)
 	if err != nil {
 		t.Fatal(err)
 	}
