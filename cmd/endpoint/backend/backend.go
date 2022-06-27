@@ -18,6 +18,7 @@ type backend struct {
 
 type Backend interface {
 	Start(ctx context.Context) error
+	Transfer(param *capi.RequestParam) (txHash string, err error)
 }
 
 func New(l log.Logger, configPerChain map[chain.ChainType]*chain.ChainConfig) (Backend, error) {
@@ -41,5 +42,14 @@ func (be *backend) Start(ctx context.Context) (err error) {
 	if err = be.chainapi.StartSubscription(ctx); err != nil {
 		return
 	}
+	return
+}
+
+func (be *backend) Transfer(param *capi.RequestParam) (txHash string, err error) {
+	txHash, logs, err := be.chainapi.Transfer(param)
+	if err != nil {
+		return
+	}
+	err = be.wtch.ProcessTxn(param, logs)
 	return
 }
