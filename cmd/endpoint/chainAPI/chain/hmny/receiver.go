@@ -366,7 +366,7 @@ func (r *receiver) Subscribe(
 				}
 				if len(v.Receipts) > 0 {
 					for _, sev := range v.Receipts {
-						r.sinkChan <- &chain.SubscribedEvent{Res: sev, ChainName: chain.HMNY}
+						r.sinkChan <- &chain.SubscribedEvent{Res: sev.Logs, ChainName: chain.HMNY}
 					}
 				}
 				lastHeight++

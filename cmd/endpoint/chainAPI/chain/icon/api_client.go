@@ -36,7 +36,7 @@ func SignTransactionParam(wallet module.Wallet, param *TransactionParam) error {
 }
 
 func (r *requestAPI) TransactWithContract(senderKey string, contractAddress string,
-	amount big.Int, args map[string]string, method string, dataType string) (txHash string, err error) {
+	amount big.Int, args map[string]string, method string, dataType string) (txHash string, logs interface{}, err error) {
 	var senderWallet module.Wallet
 	senderWallet, err = GetWalletFromPrivKey(senderKey)
 	if err != nil {
@@ -70,7 +70,8 @@ func (r *requestAPI) TransactWithContract(senderKey string, contractAddress stri
 		return
 	}
 	txHash = hexutil.Encode(txBytes[:])
-	r.cl.waitForResults(context.TODO(), &TransactionHashParam{Hash: *txH})
+	_, txr, err := r.cl.waitForResults(context.TODO(), &TransactionHashParam{Hash: *txH})
+	logs = txr.EventLogs
 	return
 }
 
@@ -96,7 +97,7 @@ func (r *requestAPI) GetICXBalance(addr string) (*big.Int, error) {
 	return r.cl.GetBalance(&AddressParam{Address: Address(addr)})
 }
 
-func (r *requestAPI) TransferICX(senderKey string, amount big.Int, recepientAddress string) (txHash string, err error) {
+func (r *requestAPI) TransferICX(senderKey string, amount big.Int, recepientAddress string) (txHash string, logs interface{}, err error) {
 	//goloop rpc --uri "http://127.0.0.1:9080/api/v3/default" sendtx transfer --to "hx267ed8d02bae84ada9f6ab486d4557aa4763b33a" --value "20" --key_store devnet/docker/icon-hmny/src/icon.god.wallet.json --key_password "gochain" --nid "6003319" --step_limit "3500000000"
 	var senderWallet module.Wallet
 	senderWallet, err = GetWalletFromPrivKey(senderKey)
@@ -125,7 +126,8 @@ func (r *requestAPI) TransferICX(senderKey string, amount big.Int, recepientAddr
 		return
 	}
 	txHash = hexutil.Encode(txBytes[:])
-	r.cl.waitForResults(context.TODO(), &TransactionHashParam{Hash: *txH})
+	_, txr, err := r.cl.waitForResults(context.TODO(), &TransactionHashParam{Hash: *txH})
+	logs = txr.EventLogs
 	return
 }
 
@@ -165,17 +167,17 @@ func (r *requestAPI) GetIconWrappedOne(addr string) (*big.Int, error) {
 	return n, nil
 }
 
-func (r *requestAPI) TransferIrc2(senderKey string, amount big.Int, recepientAddress string) (txHash string, err error) {
+func (r *requestAPI) TransferIrc2(senderKey string, amount big.Int, recepientAddress string) (txHash string, logs interface{}, err error) {
 	args := map[string]string{"_to": recepientAddress, "_value": intconv.FormatBigInt(&amount)}
 	return r.TransactWithContract(senderKey, r.contractAddress.btp_icon_irc2, *big.NewInt(0), args, "transfer", "call")
 }
 
-func (r *requestAPI) TransferICXToHarmony(senderKey string, amount big.Int, recepientAddress string) (txHash string, err error) {
+func (r *requestAPI) TransferICXToHarmony(senderKey string, amount big.Int, recepientAddress string) (txHash string, logs interface{}, err error) {
 	args := map[string]string{"_to": recepientAddress} //"btp://$btp_hmny_net/$btp_hmny_demo_wallet_address"}
 	return r.TransactWithContract(senderKey, r.contractAddress.btp_icon_nativecoin_bsh, amount, args, "transferNativeCoin", "call")
 }
 
-func (r *requestAPI) ApproveIconNativeCoinBSHToAccessHmnyOne(ownerKey string, amount big.Int) (approveTxnHash string, allowanceAmount *big.Int, err error) {
+func (r *requestAPI) ApproveIconNativeCoinBSHToAccessHmnyOne(ownerKey string, amount big.Int) (approveTxnHash string, logs interface{}, allowanceAmount *big.Int, err error) {
 
 	btpHmnyNativecoinSymbol := "ONE"
 	coinAddressArgs := map[string]string{"_coinName": btpHmnyNativecoinSymbol}
@@ -186,7 +188,7 @@ func (r *requestAPI) ApproveIconNativeCoinBSHToAccessHmnyOne(ownerKey string, am
 	coinAddress := res.(string)
 
 	approveArgs := map[string]string{"spender": r.contractAddress.btp_icon_nativecoin_bsh, "amount": intconv.FormatBigInt(&amount)}
-	approveTxnHash, err = r.TransactWithContract(ownerKey, coinAddress, *big.NewInt(0), approveArgs, "approve", "call")
+	approveTxnHash, logs, err = r.TransactWithContract(ownerKey, coinAddress, *big.NewInt(0), approveArgs, "approve", "call")
 	if err != nil {
 		return
 	}
@@ -207,21 +209,21 @@ func (r *requestAPI) ApproveIconNativeCoinBSHToAccessHmnyOne(ownerKey string, am
 	return
 }
 
-func (r *requestAPI) TransferWrappedOneFromIconToHmny(senderKey string, amount big.Int, recepientAddress string) (string, error) {
+func (r *requestAPI) TransferWrappedOneFromIconToHmny(senderKey string, amount big.Int, recepientAddress string) (string, interface{}, error) {
 	args := map[string]string{"_coinName": "ONE", "_value": intconv.FormatBigInt(&amount), "_to": recepientAddress}
 	return r.TransactWithContract(senderKey, r.contractAddress.btp_icon_nativecoin_bsh, *big.NewInt(0), args, "transfer", "call")
 }
 
-func (r *requestAPI) TransferIrc2ToHmny(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, transferTxnHash string, err error) {
+func (r *requestAPI) TransferIrc2ToHmny(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, approveLogs interface{}, transferTxnHash string, transferLogs interface{}, err error) {
 
 	arg1 := map[string]string{"_to": r.contractAddress.btp_icon_token_bsh, "_value": intconv.FormatBigInt(&amount)}
-	approveTxnHash, err = r.TransactWithContract(senderKey, r.contractAddress.btp_icon_irc2, *big.NewInt(0), arg1, "transfer", "call")
+	approveTxnHash, approveLogs, err = r.TransactWithContract(senderKey, r.contractAddress.btp_icon_irc2, *big.NewInt(0), arg1, "transfer", "call")
 	if err != nil {
 		return
 	}
 
 	arg2 := map[string]string{"tokenName": "ETH", "value": intconv.FormatBigInt(&amount), "to": recepientAddress}
-	transferTxnHash, err = r.TransactWithContract(senderKey, r.contractAddress.btp_icon_token_bsh, *big.NewInt(0), arg2, "transfer", "call")
+	transferTxnHash, transferLogs, err = r.TransactWithContract(senderKey, r.contractAddress.btp_icon_token_bsh, *big.NewInt(0), arg2, "transfer", "call")
 	if err != nil {
 		return
 	}

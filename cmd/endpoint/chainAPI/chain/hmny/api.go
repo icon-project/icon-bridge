@@ -105,8 +105,8 @@ func (r *requestAPI) GetWrappedCoin(addr string) (val *big.Int, err error) {
 	return r.GetHmnyWrappedICX(addr)
 }
 
-func (r *requestAPI) TransferCoin(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
-	if txnHash, err = r.TransferHmnyOne(senderKey, amount, recepientAddress); err != nil && err.Error() == core.ErrReplaceUnderpriced.Error() {
+func (r *requestAPI) TransferCoin(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error) {
+	if txnHash, logs, err = r.TransferHmnyOne(senderKey, amount, recepientAddress); err != nil && err.Error() == core.ErrReplaceUnderpriced.Error() {
 		duration := time.Millisecond * 500 * time.Duration(rand.Intn(11)+1) // Delay of [500ms, 6 seconds]
 		r.log.Warn("Retrying Hmny One Transaction after (ms) ", duration.Milliseconds())
 		time.Sleep(duration)
@@ -115,22 +115,22 @@ func (r *requestAPI) TransferCoin(senderKey string, amount big.Int, recepientAdd
 	return
 }
 
-func (r *requestAPI) TransferEthToken(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+func (r *requestAPI) TransferEthToken(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error) {
 	return r.TransferErc20(senderKey, amount, recepientAddress)
 }
 
-func (r *requestAPI) TransferCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+func (r *requestAPI) TransferCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error) {
 	return r.TransferOneToIcon(senderKey, recepientAddress, amount)
 }
 
-func (r *requestAPI) TransferWrappedCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+func (r *requestAPI) TransferWrappedCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error) {
 	return r.TransferWrappedICXFromHmnyToIcon(senderKey, amount, recepientAddress)
 }
 
-func (r *requestAPI) TransferEthTokenCrossChain(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, transferTxnHash string, err error) {
+func (r *requestAPI) TransferEthTokenCrossChain(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, approveLogs interface{}, transferTxnHash string, transferLogs interface{}, err error) {
 	return r.TransferERC20ToIcon(senderKey, amount, recepientAddress)
 }
-func (r *requestAPI) ApproveContractToAccessCrossCoin(ownerKey string, amount big.Int) (approveTxnHash string, allowanceAmount *big.Int, err error) {
+func (r *requestAPI) ApproveContractToAccessCrossCoin(ownerKey string, amount big.Int) (approveTxnHash string, logs interface{}, allowanceAmount *big.Int, err error) {
 	return r.ApproveHmnyNativeBSHCoreToAccessICX(ownerKey, amount)
 }
 

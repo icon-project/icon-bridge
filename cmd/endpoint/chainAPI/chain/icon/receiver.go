@@ -270,7 +270,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 	return nil
 }
 
-func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64, callback func(rs []*chain.Receipt, ts []*TxnLog) error) (err error) {
+func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64, callback func(rs []*chain.Receipt, ts []*TxnEventLog) error) (err error) {
 
 	blockReq, logFilter := r.blockReq, r.logFilter // copy
 
@@ -291,7 +291,7 @@ func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64
 		Votes          []byte
 		NextValidators []common.HexBytes
 		Receipts       []*chain.Receipt
-		TxnLogs        []*TxnLog
+		TxnLogs        []*TxnEventLog
 	}
 
 	ech := make(chan error)                                           // error channel
@@ -503,10 +503,13 @@ loop:
 										return
 									}
 									if len(res.EventLogs) > 0 {
-										q.res.TxnLogs = append(q.res.TxnLogs,
-											&TxnLog{From: txn.From, To: txn.To,
-												TxHash: txn.TxHash, BlockHeight: q.height,
-												EventLogs: res.EventLogs, Status: res.Status})
+										for i := 0; i < len(res.EventLogs); i++ {
+											q.res.TxnLogs = append(q.res.TxnLogs, &res.EventLogs[i])
+										}
+
+										// &TxnLog{From: txn.From, To: txn.To,
+										// 	TxHash: txn.TxHash, BlockHeight: q.height,
+										// 	EventLogs: res.EventLogs, Status: res.Status})
 									}
 
 								}
@@ -661,7 +664,7 @@ func (r *receiver) Subscribe(
 	// _errCh := make(chan error)
 	go func() {
 		// defer close(_errCh)
-		err := r.receiveLoop(ctx, opts.Height, opts.Seq, func(receipts []*chain.Receipt, txnLogs []*TxnLog) error {
+		err := r.receiveLoop(ctx, opts.Height, opts.Seq, func(receipts []*chain.Receipt, txnLogs []*TxnEventLog) error {
 			for _, receipt := range receipts {
 				events := receipt.Events[:0]
 				for _, event := range receipt.Events {
@@ -684,9 +687,7 @@ func (r *receiver) Subscribe(
 				receipt.Events = events
 			}
 			if len(txnLogs) > 0 {
-				for _, txn := range txnLogs {
-					r.sinkChan <- &chain.SubscribedEvent{Res: txn, ChainName: chain.ICON}
-				}
+				r.sinkChan <- &chain.SubscribedEvent{Res: txnLogs, ChainName: chain.ICON}
 			}
 			return nil
 		})

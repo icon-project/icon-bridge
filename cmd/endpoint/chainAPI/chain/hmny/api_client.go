@@ -119,7 +119,7 @@ func (r *requestAPI) waitForResults(ctx context.Context, txHash common.Hash) (tx
 		}
 	}
 }
-func (r *requestAPI) TransferHmnyOne(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+func (r *requestAPI) TransferHmnyOne(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error) {
 	senderWallet, senderPrivKey, err := GetWalletFromPrivKey(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "SenderKey decode ")
@@ -147,11 +147,12 @@ func (r *requestAPI) TransferHmnyOne(senderKey string, amount big.Int, recepient
 		return
 	}
 	txnHash = signedTx.Hash().String()
-	_, err = r.waitForResults(context.TODO(), signedTx.Hash())
+	rcpts, err := r.waitForResults(context.TODO(), signedTx.Hash())
+	logs = rcpts.Logs
 	return
 }
 
-func (r *requestAPI) TransferErc20(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+func (r *requestAPI) TransferErc20(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error) {
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		return
@@ -162,11 +163,12 @@ func (r *requestAPI) TransferErc20(senderKey string, amount big.Int, recepientAd
 		return
 	}
 	txnHash = txn.Hash().String()
-	_, err = r.waitForResults(context.TODO(), txn.Hash())
+	rcpts, err := r.waitForResults(context.TODO(), txn.Hash())
+	logs = rcpts.Logs
 	return
 }
 
-func (r *requestAPI) TransferOneToIcon(senderKey string, recepientAddress string, amount big.Int) (txnHash string, err error) {
+func (r *requestAPI) TransferOneToIcon(senderKey string, recepientAddress string, amount big.Int) (txnHash string, logs interface{}, err error) {
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		return
@@ -178,11 +180,12 @@ func (r *requestAPI) TransferOneToIcon(senderKey string, recepientAddress string
 		return
 	}
 	txnHash = txn.Hash().String()
-	_, err = r.waitForResults(context.TODO(), txn.Hash())
+	rcpts, err := r.waitForResults(context.TODO(), txn.Hash())
+	logs = rcpts.Logs
 	return
 }
 
-func (r *requestAPI) TransferWrappedICXFromHmnyToIcon(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error) {
+func (r *requestAPI) TransferWrappedICXFromHmnyToIcon(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error) {
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		return
@@ -193,11 +196,12 @@ func (r *requestAPI) TransferWrappedICXFromHmnyToIcon(senderKey string, amount b
 		return
 	}
 	txnHash = txn.Hash().String()
-	_, err = r.waitForResults(context.TODO(), txn.Hash())
+	rcpts, err := r.waitForResults(context.TODO(), txn.Hash())
+	logs = rcpts.Logs
 	return
 }
 
-func (r *requestAPI) TransferERC20ToIcon(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, transferTxnHash string, err error) {
+func (r *requestAPI) TransferERC20ToIcon(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, approveLogs interface{}, transferTxnHash string, transferLogs interface{}, err error) {
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		return
@@ -216,15 +220,15 @@ func (r *requestAPI) TransferERC20ToIcon(senderKey string, amount big.Int, recep
 		return
 	}
 	approveTxnHash = approveTxn.Hash().String()
+	rcpts, err := r.waitForResults(context.TODO(), transferTxn.Hash())
+	approveLogs = rcpts.Logs
 	transferTxnHash = transferTxn.Hash().String()
-	_, err = r.waitForResults(context.TODO(), transferTxn.Hash())
-	if err != nil {
-		return
-	}
+	rcpts, err = r.waitForResults(context.TODO(), transferTxn.Hash())
+	transferLogs = rcpts.Logs
 	return
 }
 
-func (r *requestAPI) ApproveHmnyNativeBSHCoreToAccessICX(ownerKey string, amount big.Int) (approveTxnHash string, allowanceAmount *big.Int, err error) {
+func (r *requestAPI) ApproveHmnyNativeBSHCoreToAccessICX(ownerKey string, amount big.Int) (approveTxnHash string, logs interface{}, allowanceAmount *big.Int, err error) {
 	txo, err := r.getTransactionRequest(ownerKey)
 	if err != nil {
 		return
@@ -235,10 +239,11 @@ func (r *requestAPI) ApproveHmnyNativeBSHCoreToAccessICX(ownerKey string, amount
 		return
 	}
 	approveTxnHash = approveTxn.Hash().String()
-	_, err = r.waitForResults(context.TODO(), approveTxn.Hash())
+	rcpts, err := r.waitForResults(context.TODO(), approveTxn.Hash())
 	if err != nil {
 		return
 	}
+	logs = rcpts.Logs
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

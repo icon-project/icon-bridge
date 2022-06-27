@@ -16,12 +16,12 @@ type RequestAPI interface {
 	GetCoinBalance(addr string) (*big.Int, error)
 	GetEthToken(addr string) (val *big.Int, err error)
 	GetWrappedCoin(addr string) (val *big.Int, err error)
-	TransferCoin(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error)
-	TransferEthToken(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error)
-	TransferCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error)
-	TransferWrappedCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, err error)
-	TransferEthTokenCrossChain(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, transferTxnHash string, err error)
-	ApproveContractToAccessCrossCoin(ownerKey string, amount big.Int) (approveTxnHash string, allowanceAmount *big.Int, err error)
+	TransferCoin(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error)
+	TransferEthToken(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error)
+	TransferCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error)
+	TransferWrappedCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error)
+	TransferEthTokenCrossChain(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, approveLogs interface{}, transferTxnHash string, transferLogs interface{}, err error)
+	ApproveContractToAccessCrossCoin(ownerKey string, amount big.Int) (approveTxnHash string, logs interface{}, allowanceAmount *big.Int, err error)
 	GetAddressFromPrivKey(key string) (*string, error)
 	GetBTPAddress(addr string) *string
 }
