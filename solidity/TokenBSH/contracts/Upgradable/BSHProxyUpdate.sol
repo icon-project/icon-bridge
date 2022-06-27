@@ -49,6 +49,7 @@ contract BSHProxyUpdate is IBSHProxy, Initializable {
         string symbol;
         uint256 decimals;
         uint256 feeNumerator;
+        uint256 fixedFee;
     }
 
     mapping(address => bool) private owners;
@@ -159,21 +160,36 @@ contract BSHProxyUpdate is IBSHProxy, Initializable {
         _feeNumerator is set to `10` in construction by default, which means the default fee ratio is 0.1%.
         @param _feeNumerator    the fee numerator
     */
-    function setFeeRatio(uint256 _feeNumerator) external override onlyOwner {
+    function setFeeRatio(
+        string calldata _name,
+        uint256 _feeNumerator,
+        uint256 _fixedFee
+    ) external override onlyOwner {
         require(_feeNumerator <= FEE_DENOMINATOR, "InvalidSetting");
-        feeNumerator = _feeNumerator;
+        address token_addr = tokenAddr[_name];
+        require(tokenAddr[_name] != address(0), "TokenNotRegistered");
+        Token memory _token = tokens[token_addr];
+        _token.feeNumerator = _feeNumerator;
+        _token.fixedFee = _fixedFee;
     }
 
     function register(
+        address _addr,
         string calldata _name,
         string calldata _symbol,
         uint256 _decimals,
         uint256 _feeNumerator,
-        address _addr
+        uint256 _fixedFee
     ) external override onlyOwner {
         require(tokenAddr[_name] == address(0), "TokenExists");
         tokenAddr[_name] = _addr;
-        tokens[_addr] = Token(_name, _symbol, _decimals, _feeNumerator);
+        tokens[_addr] = Token(
+            _name,
+            _symbol,
+            _decimals,
+            _feeNumerator,
+            _fixedFee
+        );
         tokenNamesList.push(_name);
         numOfTokens++;
         emit Register(_name, _addr);
@@ -232,6 +248,7 @@ contract BSHProxyUpdate is IBSHProxy, Initializable {
 
     function withdraw(string calldata _tokenName, uint256 _value) external {
         require(tokenAddr[_tokenName] != address(0), "Token not supported");
+        require(_value > 0, "InvalidAmount");
         require(
             balances[msg.sender][_tokenName].refundableBalance >= _value,
             "Insufficient balance"
@@ -284,7 +301,9 @@ contract BSHProxyUpdate is IBSHProxy, Initializable {
         returns (uint256 value, uint256 fee)
     {
         Token memory _token = tokens[token_addr];
-        fee = _value.mul(_token.feeNumerator).div(FEE_DENOMINATOR);
+        fee = _value.mul(_token.feeNumerator).div(FEE_DENOMINATOR).add(
+            _token.fixedFee
+        );
         value = _value.sub(fee);
         return (value, fee);
     }

@@ -51,6 +51,7 @@ class ServiceHandlerTest extends TestBase {
     final static String symbol = "ETH";
     final static int decimals = 18;
     final static BigInteger fees = BigInteger.valueOf(100);
+    final static BigInteger fixedFee = BigInteger.valueOf(5000);
     final static BigInteger transferAmount = new BigInteger("10000000000000000000");
     private static final BigInteger initialSupply = BigInteger.valueOf(2000);
     private static final BigInteger totalSupply = initialSupply.multiply(TEN.pow(decimals));
@@ -118,7 +119,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(1)
     @Test
-    public void scenario1() {
+    public void invalidAddressShouldFail() {
         String _from = "0x12345678";
         String _to = "0x1234567890123456789";
         bmc.invoke(owners[0], "addService", _svc, bsh.getAddress());
@@ -133,7 +134,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(2)
     @Test
-    public void scenario2() {
+    public void unregisteredTokenShouldFail() {
         String _to = owners[0].getAddress().toString();
         AssertionError thrown = assertThrows(AssertionError.class, () ->
                 bsh.invoke(owners[0], "transfer", tokenName, transferAmount, _to)
@@ -147,9 +148,9 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(3)
     @Test
-    public void scenario3() {
+    public void tokenRegisterByNonOwnerShouldRevert() {
         AssertionError thrown = assertThrows(AssertionError.class, () ->
-                bsh.invoke(owners[1], "register", tokenName, symbol, BigInteger.valueOf(decimals), fees, token.getAddress()));
+                bsh.invoke(owners[1], "register", token.getAddress(), tokenName, symbol, BigInteger.valueOf(decimals), fees, fixedFee));
         assertTrue(thrown.getMessage().contains("No Permission"));
     }
 
@@ -158,9 +159,9 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(4)
     @Test
-    public void scenario4() {
+    public void tokenRegisterByOwnerShouldSucceed() {
         String _to = "btp://bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
-        bsh.invoke(owners[0], "register", tokenName, symbol, BigInteger.valueOf(decimals), fees, token.getAddress());
+        bsh.invoke(owners[0], "register", token.getAddress(), tokenName, symbol, BigInteger.valueOf(decimals), fees, fixedFee);
     }
 
 
@@ -169,10 +170,10 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(5)
     @Test
-    public void scenario5() {
+    public void registerExistingTokenShouldRevert() {
         String _to = "btp://bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         AssertionError thrown = assertThrows(AssertionError.class, () ->
-                bsh.invoke(owners[0], "register", tokenName, symbol, BigInteger.valueOf(decimals), fees, token.getAddress()));
+                bsh.invoke(owners[0], "register", token.getAddress(), tokenName, symbol, BigInteger.valueOf(decimals), fees, BigInteger.ZERO));
         assertTrue(thrown.getMessage().contains("Token with same name exists already"));
     }
 
@@ -182,7 +183,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(6)
     @Test
-    public void scenario6() {
+    public void overdrawnTransferShouldFail() {
         String _to = "btp://bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         AssertionError thrown = assertThrows(AssertionError.class, () ->
                 bsh.invoke(owners[0], "transfer", tokenName, transferAmount, _to)
@@ -197,7 +198,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(7)
     @Test
-    public void scenario7() {
+    public void invalidTransferAmountShouldFail() {
         String _to = "btp://bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         AssertionError thrown = assertThrows(AssertionError.class, () ->
                 bsh.invoke(owners[0], "transfer", tokenName, BigInteger.ZERO, _to)
@@ -211,7 +212,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(8)
     @Test
-    public void scenario8() {
+    public void transferToBSHShouldSucceed() {
         token.invoke(owners[0], "transfer", bsh.getAddress(), transferAmount, new byte[0]);
         //TODO: assert the balance after
     }
@@ -222,7 +223,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(9)
     @Test
-    public void scenario9a() {
+    public void invalidToBTPAddressShouldFail() {
         String _to = "btp://0x1.bsc:0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         //bsh.invoke(owners[0],"transfer", tokenName, transferAmount,_to);
         assertThrows(AssertionError.class, () ->
@@ -231,12 +232,12 @@ class ServiceHandlerTest extends TestBase {
     }
 
     /**
-     * Scenario #:  User transfers to an invalid BTP address - fail
+     * Scenario #:  User transfers to an blacklisted BTP address - fail
      */
 
     @Order(9)
     @Test
-    public void scenario9b() {
+    public void transferToBlackListedAddressShouldFail() {
         String _to = "btp://0x1.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         bsh.invoke(owners[0], "addRestrictor", restrictons.getAddress());
         restrictons.invoke(owners[0], "addBlacklistedUser", BTPAddress.fromString(_to).getContract());
@@ -253,7 +254,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(10)
     @Test
-    public void scenario10() {
+    public void transferBTPShouldSucceed() {
         String _to = "btp://0x1.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         Balance balanceBefore = (Balance) bsh.call("getBalance", owners[0].getAddress(), tokenName);
         bsh.invoke(owners[0], "transfer", tokenName, transferAmount, _to);
@@ -267,7 +268,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(11)
     @Test
-    public void scenario11() {
+    public void handleBTPMessageResponseERRShouldSucceed() {
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         Balance balanceBefore = (Balance) bsh.call("getBalance", owners[0].getAddress(), tokenName);
         bmc.invoke(owners[0], "handleBTPMessage", _from, _svc, BigInteger.ONE, handleBTPResponseBtpMsg(1, "Transfer Failed"));
@@ -280,7 +281,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(12)
     @Test
-    public void scenario11a() {
+    public void withdrawInvalidConditionsShouldFail() {
 
         Balance balanceBefore = (Balance) bsh.call("getBalance", owners[0].getAddress(), tokenName);
         AssertionError thrown = assertThrows(AssertionError.class, () ->
@@ -304,7 +305,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(12)
     @Test
-    public void scenario11b() {
+    public void withdrawRefundShouldSucceed() {
         BigInteger balanceBefore = (BigInteger) token.call("balanceOf", owners[0].getAddress());
         bsh.invoke(owners[0], "withdraw", tokenName, transferAmount);
         BigInteger balanceAfter = (BigInteger) token.call("balanceOf", owners[0].getAddress());
@@ -316,7 +317,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(12)
     @Test
-    public void scenario12() {
+    public void handleBTPMessageResponseOKShouldSucceed() {
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         String _to = "btp://0x1.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         token.invoke(owners[0], "transfer", bsh.getAddress(), transferAmount, new byte[0]);
@@ -335,7 +336,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Test
     @Order(13)
-    public void scenario13a() {
+    public void handleBTPMessageRequestBlacklistedTOUserShouldFail() {
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         restrictons.invoke(owners[0], "addBlacklistedUser", owners[1].getAddress().toString());
         BigInteger balanceBefore = (BigInteger) token.call("balanceOf", owners[0].getAddress());
@@ -350,7 +351,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Test
     @Order(13)
-    public void scenario13b() {
+    public void handleBTPMessageRequestBlacklistedFromUserShouldFail() {
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         restrictons.invoke(owners[0], "addBlacklistedUser", BTPAddress.fromString(_from).getContract());
         AssertionError thrown = assertThrows(AssertionError.class, () ->
@@ -365,7 +366,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Test
     @Order(13)
-    public void scenario13c() {
+    public void handleBTPMessageRequestTokenLimitShouldFail() {
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         restrictons.invoke(owners[0], "registerTokenLimit", tokenName, tokenName, token.getAddress(), transferAmount.subtract(BigInteger.valueOf(1)));
         AssertionError thrown = assertThrows(AssertionError.class, () ->
@@ -382,7 +383,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Test
     @Order(13)
-    public void scenario13d() {
+    public void handleBTPMessageRequestMintShouldSucceed() {
         String _from = "btp://0x97.bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
         //Balance balanceBefore = (Balance) bsh.call("getBalance", owners[0].getAddress(), tokenName);
         BigInteger balanceBefore = (BigInteger) token.call("balanceOf", owners[0].getAddress());
@@ -393,11 +394,11 @@ class ServiceHandlerTest extends TestBase {
     }
 
     /**
-     * scenario #: Add remove owner - min owner - should fail
+     * scenario #: remove owner - min owner - should fail
      */
     @Test
     @Order(14)
-    public void scenario14() {
+    public void removeMinOwnerShouldRevert() {
         assertThrows(AssertionError.class, () ->
                 bsh.invoke(owners[0], "removeOwner", owners[0].getAddress())
         );
@@ -408,7 +409,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Test
     @Order(15)
-    public void scenario15() {
+    public void addOwnerByNonOwnerShouldRevert() {
         AssertionError thrown = assertThrows(AssertionError.class, () ->
                 bsh.invoke(owners[1], "addOwner", owners[1].getAddress())
         );
@@ -420,7 +421,7 @@ class ServiceHandlerTest extends TestBase {
      */
     @Test
     @Order(16)
-    public void scenario16() {
+    public void addOwnerByOwnerShouldSucceed() {
         bsh.invoke(owners[0], "addOwner", owners[1].getAddress());
     }
 
@@ -429,20 +430,20 @@ class ServiceHandlerTest extends TestBase {
      */
     @Order(17)
     @Test
-    public void scenario17() {
+    public void registerByNewOwnerShouldSucceed() {
         String _to = "btp://bsc/0xa36a32c114ee13090e35cb086459a690f5c1f8e8";
-        bsh.invoke(owners[1], "register", "BNB", "BNB", BigInteger.valueOf(decimals), fees, token.getAddress());
+        bsh.invoke(owners[1], "register", token.getAddress(), "BNB", "BNB", BigInteger.valueOf(decimals), fees, BigInteger.ZERO);
     }
 
     /**
-     * Scenario #:  Handle Accumulated Fees - Failure
+     * Scenario #:  Handle Accumulated Fees - Not Enough Balance in BSH - Failure
      */
     @Order(18)
     @Test
-    public void scenario18() {
+    public void handleFeeGatheringNotEnoughBalanceShouldFail() {
         String _fa = "btp://0x1.icon/" + owners[2].getAddress();
         List<Map<String, BigInteger>> _assets = (List<Map<String, BigInteger>>) bsh.call("getAccumulatedFees");
-        BigInteger _fees = transferAmount.multiply(fees).divide(BigInteger.valueOf(10000));
+        BigInteger _fees = transferAmount.multiply(fees).divide(BigInteger.valueOf(10000)).add(fixedFee);
         assertEquals(_assets.get(0).get(tokenName), _fees);
         BigInteger balanceBefore = (BigInteger) token.call("balanceOf", bsh.getAddress());
         assertThrows(AssertionError.class, () -> bmc.invoke(owners[1], "handleFeeGathering", _fa, _svc));
@@ -454,14 +455,14 @@ class ServiceHandlerTest extends TestBase {
     }
 
     /**
-     * Scenario #:  Handle Accumulated Fees - Success
+     * Scenario #:  Handle Accumulated Fees - Enough Balance in BSH - Success
      */
     @Order(19)
     @Test
-    public void scenario19() {
+    public void handleFeeGatheringEnoughBalanceShouldFail() {
         String _fa = "btp://0x1.icon/" + owners[2].getAddress();
         List<Map<String, BigInteger>> _assets = (List<Map<String, BigInteger>>) bsh.call("getAccumulatedFees");
-        BigInteger _fees = transferAmount.multiply(fees).divide(BigInteger.valueOf(10000));
+        BigInteger _fees = transferAmount.multiply(fees).divide(BigInteger.valueOf(10000)).add(fixedFee);
         assertEquals(_assets.get(0).get(tokenName), _fees);
         token.invoke(owners[0], "transfer", bsh.getAddress(), transferAmount, new byte[0]);
         bmc.invoke(owners[1], "handleFeeGathering", _fa, _svc);

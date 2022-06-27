@@ -1,18 +1,18 @@
-package foundation.icon.btp.bsh.types;
+package foundation.icon.btp.nativecoin;
 
 import score.ObjectReader;
 import score.ObjectWriter;
 
 import java.math.BigInteger;
 
-public class Token {
+public class Coin {
     private String name;
     private String symbol;
-    private BigInteger decimals;
+    private int decimals;
     private BigInteger feeNumerator;
     private BigInteger fixedFee;
 
-    public Token(String name, String symbol, BigInteger decimals, BigInteger feeNumerator, BigInteger fixedFee) {
+    public Coin(String name, String symbol, int decimals, BigInteger feeNumerator, BigInteger fixedFee) {
         this.name = name;
         this.symbol = symbol;
         this.decimals = decimals;
@@ -21,7 +21,7 @@ public class Token {
     }
 
 
-    public static void writeObject(ObjectWriter w, Token v) {
+    public static void writeObject(ObjectWriter w, Coin v) {
         w.beginList(4);
         w.write(v.getName());
         w.write(v.getSymbol());
@@ -31,9 +31,9 @@ public class Token {
         w.end();
     }
 
-    public static Token readObject(ObjectReader r) {
+    public static Coin readObject(ObjectReader r) {
         r.beginList();
-        Token result = new Token(r.readString(), r.readString(), r.readBigInteger(), r.readBigInteger(), r.readBigInteger());
+        Coin result = new Coin(r.readString(), r.readString(), r.readInt(), r.readBigInteger(), r.readBigInteger());
         r.end();
         return result;
     }
@@ -54,11 +54,11 @@ public class Token {
         this.symbol = symbol;
     }
 
-    public BigInteger getDecimals() {
+    public int getDecimals() {
         return decimals;
     }
 
-    public void setDecimals(BigInteger decimals) {
+    public void setDecimals(int decimals) {
         this.decimals = decimals;
     }
 
