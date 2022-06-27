@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
 	ctr "github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/bmcHmy"
 	bmcicon "github.com/icon-project/icon-bridge/cmd/endpoint/decoder/contracts/bmcIcon"
@@ -18,21 +19,21 @@ import (
 )
 
 // Update this function for more contracts
-func getNewContract(cName ctr.ContractName, url string, cAddr string) (ctr.Contract, error) {
+func getNewContract(cName ctr.ContractName, urlPerChain map[chain.ChainType]string, cAddr string) (ctr.Contract, error) {
 	if cName == ctr.TokenHmy {
-		return tokenHmy.NewContract(cName, url, cAddr)
+		return tokenHmy.NewContract(cName, urlPerChain[chain.HMNY], cAddr)
 	} else if cName == ctr.NativeHmy {
-		return nativeHmy.NewContract(cName, url, cAddr)
+		return nativeHmy.NewContract(cName, urlPerChain[chain.HMNY], cAddr)
 	} else if cName == ctr.Erc20Hmy {
-		return erc20Hmy.NewContract(cName, url, cAddr)
+		return erc20Hmy.NewContract(cName, urlPerChain[chain.HMNY], cAddr)
 	} else if cName == ctr.Erc20TradeableHmy {
-		return erc20Hmy.NewContract(cName, url, cAddr)
+		return erc20Hmy.NewContract(cName, urlPerChain[chain.HMNY], cAddr)
 	} else if cName == ctr.BmcHmy {
-		return bmcHmy.NewContract(cName, url, cAddr)
+		return bmcHmy.NewContract(cName, urlPerChain[chain.HMNY], cAddr)
 	} else if cName == ctr.OwnerNativeHmy {
-		return ownerNativeHmy.NewContract(cName, url, cAddr)
+		return ownerNativeHmy.NewContract(cName, urlPerChain[chain.HMNY], cAddr)
 	} else if cName == ctr.OwnerTokenHmy {
-		return ownerTokenHmy.NewContract(cName, url, cAddr)
+		return ownerTokenHmy.NewContract(cName, urlPerChain[chain.HMNY], cAddr)
 	} else if cName == ctr.TokenIcon {
 		return tokenIcon.NewContract(cName)
 	} else if cName == ctr.NativeIcon {
@@ -48,22 +49,22 @@ func getNewContract(cName ctr.ContractName, url string, cAddr string) (ctr.Contr
 }
 
 type Decoder interface {
-	Add(contractNameToAddressMap map[ctr.ContractName]string) (err error)
+	Add(contractAddrToNameMap map[string]ctr.ContractName) (err error)
 	Remove(addr string)
 	DecodeEventLogData(log interface{}, addr string) (map[string]interface{}, error)
 }
 
 type decoder struct {
-	url            string
+	urlPerChain    map[chain.ChainType]string
 	mtx            sync.RWMutex
 	addrToContract map[string]ctr.Contract
 }
 
-func New(url string, contractNameToAddressMap map[ctr.ContractName]string) (Decoder, error) {
+func New(urlPerChain map[chain.ChainType]string, contractAddrToNameMap map[string]ctr.ContractName) (Decoder, error) {
 	var err error
-	dec := &decoder{mtx: sync.RWMutex{}, url: url, addrToContract: make(map[string]ctr.Contract)}
-	for cName, cAddr := range contractNameToAddressMap {
-		dec.addrToContract[cAddr], err = getNewContract(cName, url, cAddr)
+	dec := &decoder{mtx: sync.RWMutex{}, urlPerChain: urlPerChain, addrToContract: make(map[string]ctr.Contract)}
+	for cAddr, cName := range contractAddrToNameMap {
+		dec.addrToContract[cAddr], err = getNewContract(cName, urlPerChain, cAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -71,14 +72,14 @@ func New(url string, contractNameToAddressMap map[ctr.ContractName]string) (Deco
 	return dec, nil
 }
 
-func (d *decoder) Add(contractNameToAddressMap map[ctr.ContractName]string) (err error) {
+func (d *decoder) Add(contractAddrToNameMap map[string]ctr.ContractName) (err error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	for cName, cAddr := range contractNameToAddressMap {
+	for cAddr, cName := range contractAddrToNameMap {
 		if _, ok := d.addrToContract[cAddr]; ok {
 			continue // address already exists
 		}
-		d.addrToContract[cAddr], err = getNewContract(cName, d.url, cAddr)
+		d.addrToContract[cAddr], err = getNewContract(cName, d.urlPerChain, cAddr)
 		if err != nil {
 			return
 		}
