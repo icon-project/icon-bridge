@@ -71,7 +71,11 @@ func (r *requestAPI) TransactWithContract(senderKey string, contractAddress stri
 	}
 	txHash = hexutil.Encode(txBytes[:])
 	_, txr, err := r.cl.waitForResults(context.TODO(), &TransactionHashParam{Hash: *txH})
-	logs = txr.EventLogs
+	plogs := make([]*TxnEventLog, len(txr.EventLogs))
+	for i := range txr.EventLogs {
+		plogs[i] = &txr.EventLogs[i]
+	}
+	logs = plogs
 	return
 }
 
@@ -127,7 +131,11 @@ func (r *requestAPI) TransferICX(senderKey string, amount big.Int, recepientAddr
 	}
 	txHash = hexutil.Encode(txBytes[:])
 	_, txr, err := r.cl.waitForResults(context.TODO(), &TransactionHashParam{Hash: *txH})
-	logs = txr.EventLogs
+	plogs := make([]*TxnEventLog, len(txr.EventLogs))
+	for i := range txr.EventLogs {
+		plogs[i] = &txr.EventLogs[i]
+	}
+	logs = plogs
 	return
 }
 
