@@ -49,7 +49,6 @@ bmc_javascore_addLink() {
   ensure_txresult tx/addLink.icon
   echo "Added Link $(cat btp.bsc)"
 
-
   echo "goloop_bmc_setLinkDelayLimit"
   goloop rpc sendtx call --to $(cat bmc.icon) \
     --method setLinkDelayLimit \
@@ -77,13 +76,15 @@ bsh_javascore_register() {
   echo "Register ERC20 Token with BSH"
   cd $CONFIG_DIR
   FEE_NUMERATOR=0x64
+  FIXED_FEE=0x1388
   goloop rpc sendtx call --to $(cat token_bsh.icon) \
     --method register \
+    --param address=$(cat irc2_token.icon) \
     --param name=${TOKEN_NAME} \
     --param symbol=${TOKEN_SYM} \
-    --param feeNumerator=${FEE_NUMERATOR} \
     --param decimals=${TOKEN_DECIMALS} \
-    --param address=$(cat irc2_token.icon) | jq -r . >tx/register.token.icon
+    --param feeNumerator=${FEE_NUMERATOR} \
+    --param fixedFee=${FIXED_FEE} | jq -r . >tx/register.token.icon
   ensure_txresult tx/register.token.icon
 }
 
@@ -108,7 +109,7 @@ bmc_javascore_setFeeAggregator() {
   ensure_txresult tx/setFeeAggregator.icon
 
   goloop rpc sendtx call --to $(cat bmc.icon) \
-    --method setFeeGatheringTerm  \
+    --method setFeeGatheringTerm \
     --param _value=100 | jq -r . >tx/setFeeGatheringTerm.icon
   ensure_txresult tx/setFeeGatheringTerm.icon
 }
@@ -119,8 +120,7 @@ bmc_javascore_getServices() {
     --method getServices
 }
 
-
-deploy_javascore_restrictor(){
+deploy_javascore_restrictor() {
   echo "deploying javascore Restrictor"
   cd $CONFIG_DIR
   goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/restrictions-optimized.jar \
@@ -128,7 +128,7 @@ deploy_javascore_restrictor(){
   extract_scoreAddress tx.restrictor.icon restrictor.icon
 }
 
-configure_javascore_TokenBSH_restrictor(){
+configure_javascore_TokenBSH_restrictor() {
   echo "configuring javascore Restrictor for TokenBSH"
   cd $CONFIG_DIR
   goloop rpc sendtx call --to $(cat token_bsh.icon) \

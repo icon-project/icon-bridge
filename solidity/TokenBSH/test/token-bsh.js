@@ -34,21 +34,21 @@ contract('BSC BSH Proxy Contract Management tests', (accounts) => {
     });
 
     it(`Scenario 1: Register Token - by Owner - Success`, async () => {
-        await bshProxy.register(tokenName, symbol, decimals, fees, token.address);
+        await bshProxy.register(token.address, tokenName, symbol, decimals, fees, 0);
         var tokeNames = await bshProxy.tokenNames();
         assert.equal(tokeNames.length, 1, "The size of the token names should be 1");
     });
 
     it('Scenario 2: Register Token - not an owner - Revert', async () => {
         await truffleAssert.reverts(
-            bshProxy.register(tokenName, symbol, decimals, fees, token.address, { from: accounts[1] }),
+            bshProxy.register(token.address, tokenName, symbol, decimals, fees, 0, { from: accounts[1] }),
             "Unauthorized"
         );
     });
 
     it('Scenario 3: Register Token - Token already exists - Revert', async () => {
         await truffleAssert.reverts(
-            bshProxy.register(tokenName, symbol, decimals, fees, token.address),
+            bshProxy.register(token.address, tokenName, symbol, decimals, fees, 0),
             "TokenExists"
         );
     });
@@ -80,13 +80,13 @@ contract('BSC BSH Proxy Contract Management tests', (accounts) => {
 
     it('Scenario 7: update FeeRatio  - by owner - success', async () => {
         var new_fee = 200;
-        await bshProxy.setFeeRatio(new_fee);
+        await bshProxy.setFeeRatio(tokenName, new_fee, 0);
     });
 
     it('Scenario 8: update FeeRatio  - Not an owner - Revert', async () => {
         var new_fee = 2;
         await truffleAssert.reverts(
-            bshProxy.setFeeRatio(new_fee, { from: accounts[1] }),
+            bshProxy.setFeeRatio(tokenName, new_fee, 0, { from: accounts[1] }),
             "Unauthorized"
         );
     });
@@ -94,7 +94,7 @@ contract('BSC BSH Proxy Contract Management tests', (accounts) => {
     it('Scenario 9: update FeeRatio - Fee Numerator is higher than Fee Denominator - Revert', async () => {
         var new_fee = 11000;
         await truffleAssert.reverts(
-            bshProxy.setFeeRatio(new_fee),
+            bshProxy.setFeeRatio(tokenName, new_fee, 0),
             "InvalidSetting"
         );
     });
@@ -178,7 +178,7 @@ contract('BSC BSH Proxy Contract Management tests', (accounts) => {
     it('Scenario 18:  update FeeRatio  - By removed owner - Revert', async () => {
         var new_fee = 2;
         await truffleAssert.reverts(
-            bshProxy.setFeeRatio(new_fee, { from: accounts[0] }),
+            bshProxy.setFeeRatio(tokenName, new_fee, 0, { from: accounts[0] }),
             "Unauthorized"
         );
     });
@@ -224,7 +224,7 @@ contract('Sending ERC20 to ICON blockchain', function () {
 
     it("Scenario 2: User has not approved the transfer - fail", async () => {
         var _to = 'btp://0x03.icon/hxb6b5791be0b5ef67063b3c10b840fb81514db2fd';
-        await bshProxy.register(tokenName, symbol, decimals, fees, token.address);
+        await bshProxy.register(token.address, tokenName, symbol, decimals, fees, 0);
         //await token.approve(mock.address,15);
         await truffleAssert.reverts(
             bshProxy.transfer(tokenName, transferAmount + 50, _to),
@@ -331,7 +331,7 @@ contract('Sending ERC20 to ICON blockchain', function () {
     it("Scenario 11: All requirements are qualified and BSH receives a RESPONSE_UNKNOWN Message - Success", async () => {
         var _code = 1;
         await bmc.handleUnknownBTPResponse(_net, _svc, 3, _code, "UNKNOWN_TYPE")
-        const events = await bshImpl.getPastEvents('ResponseUnknownType');
+        const events = await bshImpl.getPastEvents('UnknownResponse');
         assert(
             events[0].args._from ==
             _net, "Invalid Event or No event emitted"
@@ -434,7 +434,7 @@ contract('Receiving ERC20 from ICON blockchain', function () {
     it('Scenario 3: Receive Request Token Mint - Insufficient funds with BSH - Failure', async () => {
         var _from = '0x12345678';
         var _value = "10000000000000000000"
-        await bshProxy.register(tokenName, symbol, decimals, fees, token.address);
+        await bshProxy.register(token.address, tokenName, symbol, decimals, fees, 0);
         var mockOutputToAssert = await bmc.buildBTPRespMessage(bmcBtpAdd, _bmcICON, _svc, 0, RC_ERR, 'ERC20: transfer amount exceeds balance');
         var output = await bmc.handleTransferReq(
             _from, accounts[1], _net, _svc, tokenName, _value

@@ -32,7 +32,7 @@ nativeBSH_solidity_register() {
   echo "Register Coin Name with NativeBSH"
   cd $CONTRACTS_DIR/solidity/bsh
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.nativeCoin.js \
-    --method register --name "ICX" --symbol "ICX" --decimals 18)
+    --method register --name "ICX" --symbol "ICX" --decimals 18 --feeNumerator 100 --fixedFee 50000)
   echo "$tx" >$CONFIG_DIR/tx/register.nativeCoin.bsc
 }
 
@@ -51,7 +51,7 @@ bsc_init_wrapped_native_btp_transfer() {
   BTP_TO="btp://$ICON_NET/$ALICE_ADDRESS"
   cd $CONTRACTS_DIR/solidity/bsh
   truffle exec --network bsc "$SCRIPTS_DIR"/bsh.nativeCoin.js \
-    --method transferWrappedNativeCoin --to $BTP_TO --coinName $1 --amount $2 --from $(get_bob_address) 
+    --method transferWrappedNativeCoin --to $BTP_TO --coinName $1 --amount $2 --from $(get_bob_address)
 }
 
 get_bob_ICX_balance() {
@@ -83,8 +83,6 @@ get_Bob_ICX_Balance_with_wait() {
   done
   echo "Bob's Balance after BTP Native transfer: $BOB_CURRENT_BAL"
 }
-
-
 
 get_bob_BNB_balance() {
   cd $CONTRACTS_DIR/solidity/bsh
@@ -128,7 +126,7 @@ generate_native_metadata() {
 
     wait_for_file $CONFIG_DIR/bsh.core.bsc
     wait_for_file $CONFIG_DIR/bsh.periphery.bsc
-    
+
     create_abi "BSHPeriphery"
     create_abi "BSHCore"
     echo "DONE."
