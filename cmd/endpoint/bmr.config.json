@@ -1,0 +1,110 @@
+{
+  "base_dir": "bmr",
+  "log_level": "debug",
+  "console_level": "trace",
+  "log_writer": {
+    "filename": "bmr/bmr.log"
+  },
+  "relays": [
+    {
+      "name": "h2i",
+      "src": {
+        "address": "btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91",
+        "endpoint": [
+          "http://localhost:9500"
+        ],
+        "options": {
+          "syncConcurrency": 100,
+          "verifier": {
+            "blockHeight": 69,
+            "commitBitmap": "0xff",
+            "commitSignature": "0x19a4d957aaa13f1e45f32776d5b37b0fe544f08709a2a5bec1339b9d602fd2a55266e8af162dce3f92fe0473b3388813942ef557fc2a69cf5a084a0e19d894b239aad5214a2e8819544369beb02ebb2c411f2c814f4e461b331fcd5829c4f594"
+          }
+        },
+        "offset": 69
+      },
+      "dst": {
+        "address": "btp://0x5b9a77.icon/cx0da2a6e1c7a1a026e50a21a536de922a45e7ecff",
+        "endpoint": [
+          "http://localhost:9080/api/v3/default"
+        ],
+        "options": {
+          "step_limit": 2500000000,
+          "tx_data_size_limit": 8192
+        },
+        "key_store": {
+          "address": "hxe72983ade2c6fcd847d7cb2e81682bfa3eb3896b",
+          "id": "f0aa63f7-b233-4525-9445-969ffee0504e",
+          "version": 3,
+          "coinType": "icx",
+          "crypto": {
+            "cipher": "aes-128-ctr",
+            "cipherparams": {
+              "iv": "83570f73cbedd517d85ffadd4b2a5cdd"
+            },
+            "ciphertext": "5c8d60819ca71fb0e8dc7607f580650432d106391b85172d8e85f14873ed505e",
+            "kdf": "scrypt",
+            "kdfparams": {
+              "dklen": 32,
+              "n": 65536,
+              "r": 8,
+              "p": 1,
+              "salt": "eb1cf9c79847e85c"
+            },
+            "mac": "cdbc18baef554c7eeb8e97e08e93cd7126ad3cfde7f2616f0ed32240248ec7be"
+          }
+        },
+        "key_password": "1234"
+      }
+    },
+    {
+      "name": "i2h",
+      "src": {
+        "address": "btp://0x5b9a77.icon/cx0da2a6e1c7a1a026e50a21a536de922a45e7ecff",
+        "endpoint": [
+          "http://localhost:9080/api/v3/default"
+        ],
+        "options": {
+          "verifier": {
+            "blockHeight": 107,
+            "validatorsHash": "0xe4d1a21c32bd86bbcca8fa4dd96ea5f4fe80cc44b990ba1b1ae6b7808f8b7883"
+          }
+        },
+        "offset": 107
+      },
+      "dst": {
+        "address": "btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91",
+        "endpoint": [
+          "http://localhost:9500"
+        ],
+        "options": {
+          "gas_limit": 80000000,
+          "tx_data_size_limit": 8192
+        },
+        "key_store": {
+          "address": "b66df94fc785c874e61f85e97457f1449b5dda9c",
+          "crypto": {
+            "cipher": "aes-128-ctr",
+            "ciphertext": "234980387bc6f335831e0a780f00e0d5e1e19c722eb9ca723f77190e884c244a",
+            "cipherparams": {
+              "iv": "8ad1455e4ce61873323a1704592e748a"
+            },
+            "kdf": "scrypt",
+            "kdfparams": {
+              "dklen": 32,
+              "n": 262144,
+              "p": 1,
+              "r": 8,
+              "salt": "0a88a76a7074b8f1483cf3533912f10d102a03f514c16bf8a2e94cf3e229b462"
+            },
+            "mac": "35d07b327d0367cab456c85b2b521957ec42fc689a6f2cd640cd109ce33ff7d8"
+          },
+          "id": "18c558dd-67ba-433b-90cb-d37b6db0d1bb",
+          "version": 3,
+          "coinType": "evm"
+        },
+        "key_password": "1234"
+      }
+    }
+  ]
+}

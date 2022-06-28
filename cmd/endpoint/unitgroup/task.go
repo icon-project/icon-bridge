@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/tenv"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"

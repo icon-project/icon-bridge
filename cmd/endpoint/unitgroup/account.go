@@ -7,7 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chainAPI/chain"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
 	"github.com/pkg/errors"
 )
 
