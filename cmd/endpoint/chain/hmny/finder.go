@@ -70,7 +70,7 @@ func (f *finder) removeFromFromRunCache(ids []int) {
 	f.runCache.mtx.Lock()
 	defer f.runCache.mtx.Unlock()
 	for _, id := range ids {
-		f.log.Debugf("Removing %d", id)
+		//f.log.Tracef("Removing %d", id)
 		f.runCache.mem[id] = nil
 	}
 }
