@@ -1,7 +1,6 @@
-package unitgroup
+package unitgroup_test
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/unitgroup"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
@@ -16,7 +16,6 @@ func TestUnitGroup(t *testing.T) {
 	type Config struct {
 		Chains []*chain.ChainConfig `json:"chains"`
 	}
-	fmt.Println("Start")
 	loadConfig := func(file string) (*Config, error) {
 		f, err := os.Open(file)
 		if err != nil {
@@ -32,7 +31,7 @@ func TestUnitGroup(t *testing.T) {
 	var err error
 	cfg, err := loadConfig("/home/manish/go/src/work/icon-bridge/cmd/endpoint/example-config.json")
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	cfgPerMap := map[chain.ChainType]*chain.ChainConfig{}
 	for _, ch := range cfg.Chains {
@@ -41,22 +40,37 @@ func TestUnitGroup(t *testing.T) {
 
 	l := log.New()
 	log.SetGlobalLogger(l)
-	fmt.Println("New")
-	ug, err := New(l, cfgPerMap)
+	ug, err := unitgroup.New(l, cfgPerMap)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
-	fmt.Println("UG Start")
-	ug.Start(context.TODO())
-	fmt.Println("register")
-	tf := DefaultTaskFunctions["DemoTransaction"]
-	if err := ug.RegisterTestUnit(map[chain.ChainType]int{chain.ICON: 1, chain.HMNY: 1}, tf, false); err != nil {
-		log.Fatal(err)
+	err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, unitgroup.DefaultCallBacks["Demo"])
+	if err != nil {
+		t.Fatal(err)
 	}
-	time.Sleep(time.Second * time.Duration(10))
-	if err := ug.RegisterTestUnit(map[chain.ChainType]int{chain.ICON: 1, chain.HMNY: 1}, tf, false); err != nil {
-		log.Fatal(err)
-	}
+
 	fmt.Println("Wait")
 	time.Sleep(time.Second * time.Duration(3000))
 }
+
+/*
+func (ug *unitgroup) createAccounts(accountMap map[chain.ChainType]int) (map[chain.ChainType][]string, error) {
+	resMap := map[chain.ChainType][]string{}
+	for name, count := range accountMap {
+		resMap[name] = make([]string, count)
+		for i := 0; i < count; i++ {
+			privKey, err := ethcrypto.GenerateKey()
+			if err != nil {
+				return nil, err
+			}
+			resMap[name][i] = hex.EncodeToString(ethcrypto.FromECDSA(privKey))
+			// pubKey, _ := crypto.ParsePublicKey(pub)
+			// addr := common.NewAccountAddressFromPublicKey(pubKey).String()
+			if err != nil {
+				return nil, errors.Wrap(err, "Unmarshal Public Key")
+			}
+		}
+	}
+	return resMap, nil
+}
+*/

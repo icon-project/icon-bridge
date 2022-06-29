@@ -33,18 +33,18 @@ type api struct {
 	requester *requestAPI
 }
 
-func NewApi(src, dst chain.BTPAddress, urls []string, l log.Logger, contractNameToAddress map[chain.ContractName]string, networkID string) (chain.ChainAPI, error) {
-	if len(urls) == 0 {
+func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
+	if len(cfg.URL) == 0 {
 		return nil, errors.New("List of Urls is empty")
 	}
-	client, err := newClient(urls[0], l)
+	client, err := newClient(cfg.URL, l)
 	if err != nil {
 		return nil, err
 	}
 
-	dstAddr := dst.String()
+	dstAddr := cfg.Dst.String()
 	ef := &EventFilter{
-		Addr:      Address(src.ContractAddress()),
+		Addr:      Address(cfg.Src.ContractAddress()),
 		Signature: EventSignature,
 		Indexed:   []*string{&dstAddr},
 	}
@@ -54,20 +54,20 @@ func NewApi(src, dst chain.BTPAddress, urls []string, l log.Logger, contractName
 
 	recvr := &api{
 		log:       l,
-		src:       src,
-		dst:       dst,
+		src:       cfg.Src,
+		dst:       cfg.Dst,
 		cl:        client,
 		blockReq:  evtReq,
 		sinkChan:  make(chan *chain.EventLogInfo),
 		errChan:   make(chan error),
 		fd:        NewFinder(l),
-		networkID: networkID,
+		networkID: cfg.NetworkID,
 	}
-	recvr.par, err = NewParser(contractNameToAddress)
+	recvr.par, err = NewParser(cfg.ConftractAddresses)
 	if err != nil {
 		return nil, err
 	}
-	recvr.requester, err = NewRequestAPI(urls[0], l, contractNameToAddress, networkID)
+	recvr.requester, err = newRequestAPI(cfg.URL, l, cfg.ConftractAddresses, cfg.NetworkID)
 	return recvr, nil
 }
 

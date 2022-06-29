@@ -34,7 +34,7 @@ func getNewApi() (chain.ChainAPI, error) {
 		chain.NativeBSHCoreHmy:      "0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
 		chain.TokenBSHProxyHmy:      "0x48cacC89f023f318B4289A18aBEd44753a127782",
 	}
-	rx, err := NewApi(chain.BTPAddress(src), chain.BTPAddress(dst), []string{url}, l, addrToName, "0x6357d2e0")
+	rx, err := NewApi(l, &chain.ChainConfig{Name: chain.HMNY, URL: url, Src: chain.BTPAddress(src), Dst: chain.BTPAddress(dst), ConftractAddresses: addrToName, NetworkID: "0x6357d2e0"})
 	if err != nil {
 		log.Fatal((err))
 	}

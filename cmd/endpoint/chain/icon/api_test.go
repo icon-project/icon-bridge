@@ -47,7 +47,7 @@ func TestReceiver(t *testing.T) {
 func getNewApi() (chain.ChainAPI, error) {
 	srcAddress := "btp://0x5b9a77.icon/cx0f011b8b10f2c0d850d5135ef57ea42120452003"
 	dstAddress := "btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91"
-	srcEndpoint := []string{"http://localhost:9080/api/v3/default"}
+	srcEndpoint := "http://localhost:9080/api/v3/default"
 
 	btp_icon_token_bsh := "cx3e836c763af780392a00a9ac2fc6e0471c95cb50"
 	btp_icon_nativecoin_bsh := "cxe4b60a773c63961aa2303961483c3c95b9de3360"
@@ -60,7 +60,7 @@ func getNewApi() (chain.ChainAPI, error) {
 	l := log.New()
 	log.SetGlobalLogger(l)
 	networkID := "0x5b9a77"
-	api, err := icon.NewApi(chain.BTPAddress(srcAddress), chain.BTPAddress(dstAddress), srcEndpoint, l, addrToName, networkID)
+	api, err := icon.NewApi(l, &chain.ChainConfig{Name: chain.ICON, URL: srcEndpoint, ConftractAddresses: addrToName, Src: chain.BTPAddress(srcAddress), Dst: chain.BTPAddress(dstAddress), NetworkID: networkID})
 	if err != nil {
 		return nil, err
 	}

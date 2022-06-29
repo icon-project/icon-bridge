@@ -23,30 +23,30 @@ const (
 	monitorBlockMaxConcurrency = 1000 // number of concurrent requests to synchronize older blocks from source chain
 )
 
-func NewApi(src, dst chain.BTPAddress, urls []string, l log.Logger, contractNameToAddress map[chain.ContractName]string, networkID string) (chain.ChainAPI, error) {
-	if len(urls) == 0 {
-		return nil, fmt.Errorf("empty urls: %v", urls)
+func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
+	if len(cfg.URL) == 0 {
+		return nil, errors.New("empty urls")
 	}
 	var err error
 	r := &api{
 		log:       l,
-		src:       src,
-		dst:       dst,
-		networkID: networkID,
+		src:       cfg.Src,
+		dst:       cfg.Dst,
+		networkID: cfg.NetworkID,
 		fd:        NewFinder(l),
 		sinkChan:  make(chan *chain.EventLogInfo),
 		errChan:   make(chan error),
 	}
 
-	r.cls, err = newClients(urls, src.ContractAddress(), r.log)
+	r.cls, err = newClients([]string{cfg.URL}, cfg.Src.ContractAddress(), r.log)
 	if err != nil {
 		return nil, err
 	}
-	r.par, err = NewParser(urls[0], contractNameToAddress)
+	r.par, err = NewParser(cfg.URL, cfg.ConftractAddresses)
 	if err != nil {
 		return nil, err
 	}
-	r.requester, err = NewRequestAPI(urls[0], l, contractNameToAddress, networkID)
+	r.requester, err = newRequestAPI(cfg.URL, l, cfg.ConftractAddresses, cfg.NetworkID)
 	if err != nil {
 		return nil, err
 	}

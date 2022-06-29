@@ -2,119 +2,207 @@ package unitgroup
 
 import (
 	"math/big"
-	"strconv"
-	"sync"
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/tenv"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chain/icon"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"
 )
-
-type tEnvTask struct {
-	id           int64
-	tu           tenv.TEnv
-	isolateAddrs bool
-	tfunc        TaskFunc
-}
-
-type TaskFunc struct {
-	PreRun  func(tu tenv.TEnv) error
-	Run     func(tu tenv.TEnv) error
-	PostRun func(tu tenv.TEnv) error
-}
-
-type tEnvTaskCache struct {
-	mem       map[int64]tEnvTask
-	mu        sync.RWMutex
-	lastAdded int64
-}
 
 const (
 	PRIVKEYPOS = 0
 	PUBKEYPOS  = 1
 )
 
-func (ch *tEnvTaskCache) Add(task tEnvTask) {
-	ch.mu.Lock()
-	defer ch.mu.Unlock()
-	if _, ok := ch.mem[task.id]; !ok {
-		ch.mem[task.id] = task
-	} else {
-		ch.mem[task.id+1] = task
-	}
-	ch.lastAdded = task.id
+type args struct {
+	log             log.Logger
+	clientsPerChain map[chain.ChainType]chain.ChainAPI
+	godKeysPerChain map[chain.ChainType][2]string
 }
 
-func (ch *tEnvTaskCache) GetNew(latestRead int64) (retList map[int64]tEnvTask, latestTs int64) {
-	ch.mu.RLock()
-	defer ch.mu.RUnlock()
-	if ch.lastAdded <= latestRead {
-		latestTs = ch.lastAdded
-		return
+func newArgs(l log.Logger, clientsPerChain map[chain.ChainType]*chain.ChainConfig, godKeysPerChain map[chain.ChainType][2]string) (t *args, err error) {
+	tu := &args{log: l,
+		clientsPerChain: map[chain.ChainType]chain.ChainAPI{},
+		godKeysPerChain: godKeysPerChain,
 	}
-	retList = map[int64]tEnvTask{}
-	for ts := range ch.mem {
-		if ts > latestRead { // if new, add
-			retList[ts] = ch.mem[ts]
+	for name, cfg := range clientsPerChain {
+		if name == chain.HMNY {
+			tu.clientsPerChain[name], err = hmny.NewApi(l, cfg)
+			if err != nil {
+				err = errors.Wrap(err, "HMNY Err: ")
+				return nil, err
+			}
+		} else if name == chain.ICON {
+			tu.clientsPerChain[name], err = icon.NewApi(l, cfg)
+			if err != nil {
+				err = errors.Wrap(err, "HMNY Err: ")
+			}
+		} else {
+			return nil, errors.New("Unknown Chain Type supplied from config: " + string(name))
 		}
 	}
-	latestTs = ch.lastAdded
-	return
+	return tu, nil
 }
 
-func (ch *tEnvTaskCache) Del(key int64) {
-	ch.mu.Lock()
-	defer ch.mu.Unlock()
-	if _, ok := ch.mem[key]; ok {
-		delete(ch.mem, key)
-	}
-}
+type callBackFunc func(args *args) error
 
-func (ug *unitgroup) RegisterTestUnit(numAddrsPerChain map[chain.ChainType]int, task TaskFunc, isolateAddrs bool) (err error) {
-	for key, num := range numAddrsPerChain {
-		if num < 1 {
-			delete(numAddrsPerChain, key)
-		}
-	}
-	accountsPerChain, err := ug.createAccounts(numAddrsPerChain)
-	if err != nil {
-		return
-	}
-	newCfg := map[chain.ChainType]*chain.ChainConfig{}
-	newGodKeys := map[chain.ChainType][2]string{}
-	for name := range numAddrsPerChain {
-		cfg, ok := ug.cfgPerChain[name]
+var DefaultCallBacks = map[string]callBackFunc{
+	"Demo": func(args *args) error {
+		// fund demo wallets
+		args.log.Info("Starting demo...")
+		ienv, ok := args.clientsPerChain[chain.ICON]
 		if !ok {
-			err = errors.New("ChainType not known")
-			return
+			return errors.New("Icon client not found")
 		}
-		newCfg[name] = cfg
-		pair, ok := ug.godKeysPerChain[name]
+		henv, ok := args.clientsPerChain[chain.HMNY]
 		if !ok {
-			err = errors.New("God wallet for chain not found")
+			return errors.New("Hmny client not found")
 		}
-		newGodKeys[name] = pair
-	}
-	now := time.Now().UnixNano()
+		igod, ok := args.godKeysPerChain[chain.ICON]
+		if !ok {
+			return errors.New("God Keys not found for ICON")
+		}
+		hgod, ok := args.godKeysPerChain[chain.HMNY]
+		if !ok {
+			return errors.New("God keys not found for Hmy")
+		}
+		tmp, err := ienv.GetKeyPairs(1)
+		if err != nil {
+			return errors.New("Couldn't create demo account for icon")
+		}
+		iDemo := tmp[0]
+		tmp, err = henv.GetKeyPairs(1)
+		if err != nil {
+			return errors.New("Couldn't create demo account for hmny")
+		}
+		hDemo := tmp[0]
+		args.log.Info("Creating Demo Icon Account ", iDemo)
+		args.log.Info("Creating Demo Hmy Account ", hDemo)
+		showBalance := func(log log.Logger, env chain.ChainAPI, addr string, tokens []chain.TokenType) error {
+			factor := new(big.Int)
+			factor.SetString("10000000000000000", 10)
+			for _, token := range tokens {
+				if amt, err := env.GetCoinBalance(addr, token); err != nil {
+					return err
+				} else {
+					log.Infof("%v: %v", token, amt.Div(amt, factor).String())
+				}
+			}
+			return nil
+		}
+		args.log.Info("Funding Demo Wallets ")
+		amt := new(big.Int)
+		amt.SetString("250000000000000000000", 10)
+		_, err = ienv.Transfer(&chain.RequestParam{FromChain: chain.ICON, ToChain: chain.ICON, SenderKey: igod[PRIVKEYPOS], FromAddress: igod[PUBKEYPOS], ToAddress: iDemo[PUBKEYPOS], Amount: *amt, Token: chain.ICXToken})
+		if err != nil {
+			return err
+		}
+		amt = new(big.Int)
+		amt.SetString("10000000000000000000", 10)
+		_, err = ienv.Transfer(&chain.RequestParam{FromChain: chain.ICON, ToChain: chain.ICON, SenderKey: igod[PRIVKEYPOS], FromAddress: igod[PUBKEYPOS], ToAddress: iDemo[PUBKEYPOS], Amount: *amt, Token: chain.IRC2Token})
+		if err != nil {
+			return err
+		}
+		amt = new(big.Int)
+		amt.SetString("10000000000000000000", 10)
+		_, err = henv.Transfer(&chain.RequestParam{FromChain: chain.HMNY, ToChain: chain.HMNY, SenderKey: hgod[PRIVKEYPOS], FromAddress: hgod[PUBKEYPOS], ToAddress: hDemo[PUBKEYPOS], Amount: *amt, Token: chain.ONEToken})
+		if err != nil {
+			return err
+		}
+		amt = new(big.Int)
+		amt.SetString("10000000000000000000", 10)
+		_, err = henv.Transfer(&chain.RequestParam{FromChain: chain.HMNY, ToChain: chain.HMNY, SenderKey: hgod[PRIVKEYPOS], FromAddress: hgod[PUBKEYPOS], ToAddress: hDemo[PUBKEYPOS], Amount: *amt, Token: chain.ERC20Token})
+		if err != nil {
+			return err
+		}
+		args.log.Info("Done funding")
+		time.Sleep(time.Second * 10)
+		// args.log.Info("ICON:  ")
+		// if err := showBalance(args.log, ienv, iDemo[PUBKEYPOS], []chain.TokenType{chain.ICXToken, chain.IRC2Token, chain.ONEToken}); err != nil {
+		// 	return err
+		// }
+		// args.log.Info("HMNY:   ")
+		// if err := showBalance(args.log, henv, hDemo[PUBKEYPOS], []chain.TokenType{chain.ONEToken, chain.ERC20Token, chain.ICXToken}); err != nil {
+		// 	return err
+		// }
 
-	tu, err := tenv.New(ug.log.WithFields(log.Fields{"id": strconv.Itoa(int(now))}), newCfg, accountsPerChain, newGodKeys)
-	if err != nil {
-		return
-	}
+		args.log.Info("Transfer Native ICX to HMY")
+		amt = new(big.Int)
+		amt.SetString("2000000000000000000", 10)
+		_, err = ienv.Transfer(&chain.RequestParam{FromChain: chain.ICON, ToChain: chain.HMNY, SenderKey: iDemo[PRIVKEYPOS], FromAddress: iDemo[PUBKEYPOS], ToAddress: *henv.GetBTPAddress(hDemo[PUBKEYPOS]), Amount: *amt, Token: chain.ICXToken})
+		if err != nil {
+			return err
+		}
+		args.log.Info("Transfer Native ONE to ICX")
+		amt = new(big.Int)
+		amt.SetString("2000000000000000000", 10)
+		_, err = henv.Transfer(&chain.RequestParam{FromChain: chain.HMNY, ToChain: chain.ICON, SenderKey: hDemo[PRIVKEYPOS], FromAddress: hDemo[PUBKEYPOS], ToAddress: *ienv.GetBTPAddress(iDemo[PUBKEYPOS]), Amount: *amt, Token: chain.ONEToken})
+		if err != nil {
+			return err
+		}
+		args.log.Info("Approve")
+		time.Sleep(time.Second * 10)
 
-	utask := tEnvTask{
-		id:           now,
-		tu:           tu,
-		tfunc:        task,
-		isolateAddrs: isolateAddrs,
-	}
-	ug.cache.Add(utask)
+		amt = new(big.Int)
+		amt.SetString("100000000000000000000000", 10)
+		_, err = ienv.Approve(iDemo[PRIVKEYPOS], *amt)
+		if err != nil {
+			return err
+		}
+		amt = new(big.Int)
+		amt.SetString("100000000000000000000000", 10)
+		_, err = henv.Approve(hDemo[PRIVKEYPOS], *amt)
+		if err != nil {
+			return err
+		}
+		time.Sleep(5 * time.Second)
 
-	return
+		args.log.Info("Transfer Wrapped")
+		amt = new(big.Int)
+		amt.SetString("1000000000000000000", 10)
+		_, err = henv.Transfer(&chain.RequestParam{FromChain: chain.HMNY, ToChain: chain.ICON, SenderKey: hDemo[PRIVKEYPOS], FromAddress: hDemo[PUBKEYPOS], ToAddress: *ienv.GetBTPAddress(iDemo[PUBKEYPOS]), Amount: *amt, Token: chain.ICXToken})
+		if err != nil {
+			return err
+		}
+		amt = new(big.Int)
+		amt.SetString("1000000000000000000", 10)
+		_, err = ienv.Transfer(&chain.RequestParam{FromChain: chain.ICON, ToChain: chain.HMNY, SenderKey: iDemo[PRIVKEYPOS], FromAddress: iDemo[PUBKEYPOS], ToAddress: *henv.GetBTPAddress(hDemo[PUBKEYPOS]), Amount: *amt, Token: chain.ONEToken})
+		if err != nil {
+			return err
+		}
+		time.Sleep(10 * time.Second)
+
+		args.log.Info("Transfer Irc2 to HMY")
+		amt = new(big.Int)
+		amt.SetString("1000000000000000000", 10)
+		_, err = ienv.Transfer(&chain.RequestParam{FromChain: chain.ICON, ToChain: chain.HMNY, SenderKey: iDemo[PRIVKEYPOS], FromAddress: iDemo[PUBKEYPOS], ToAddress: *henv.GetBTPAddress(hDemo[PUBKEYPOS]), Amount: *amt, Token: chain.IRC2Token})
+		if err != nil {
+			return err
+		}
+		args.log.Info("Transfer Erc20 to ICon")
+		amt = new(big.Int)
+		amt.SetString("1000000000000000000", 10)
+		_, err = henv.Transfer(&chain.RequestParam{FromChain: chain.HMNY, ToChain: chain.ICON, SenderKey: hDemo[PRIVKEYPOS], FromAddress: hDemo[PUBKEYPOS], ToAddress: *ienv.GetBTPAddress(iDemo[PUBKEYPOS]), Amount: *amt, Token: chain.ERC20Token})
+		if err != nil {
+			return err
+		}
+		time.Sleep(15 * time.Second)
+		args.log.Info("ICON:  ")
+		if err := showBalance(args.log, ienv, iDemo[PUBKEYPOS], []chain.TokenType{chain.ICXToken, chain.IRC2Token, chain.ONEToken}); err != nil {
+			return err
+		}
+		args.log.Info("HMNY:   ")
+		if err := showBalance(args.log, henv, hDemo[PUBKEYPOS], []chain.TokenType{chain.ONEToken, chain.ERC20Token, chain.ICXToken}); err != nil {
+			return err
+		}
+		args.log.Info("Done")
+		return nil
+	},
 }
 
+/*
 var DefaultTaskFunctions = map[string]TaskFunc{
 	"DemoTransaction": {
 		Run: func(tu tenv.TEnv) error {
@@ -365,3 +453,4 @@ var DefaultTaskFunctions = map[string]TaskFunc{
 		},
 	},
 }
+*/

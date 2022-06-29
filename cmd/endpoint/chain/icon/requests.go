@@ -31,7 +31,7 @@ type requestAPI struct {
 	cl                    *client
 }
 
-func NewRequestAPI(url string, l log.Logger, contractNameToAddress map[chain.ContractName]string, networkID string) (*requestAPI, error) {
+func newRequestAPI(url string, l log.Logger, contractNameToAddress map[chain.ContractName]string, networkID string) (*requestAPI, error) {
 	cl, err := newClient(url, l)
 	if err != nil {
 		return nil, err
@@ -273,7 +273,7 @@ func (r *requestAPI) transferWrappedOneFromIconToHmny(senderKey string, amount b
 }
 
 func (r *requestAPI) transferIrc2ToHmny(senderKey string, amount big.Int, recepientAddress string) (string, interface{}, error) {
-	caddr, ok := r.contractNameToAddress[chain.TokenBSHIcon]
+	caddrbsh, ok := r.contractNameToAddress[chain.TokenBSHIcon]
 	if !ok {
 		return "", nil, errors.New("TokenBSHIcon Contract not found on input map")
 	}
@@ -281,13 +281,15 @@ func (r *requestAPI) transferIrc2ToHmny(senderKey string, amount big.Int, recepi
 	if !ok {
 		return "", nil, errors.New("TokenBSHIcon Contract not found on input map")
 	}
-	if recepientAddress == caddr {
-		arg1 := map[string]string{"_to": recepientAddress, "_value": intconv.FormatBigInt(&amount)}
-		return r.transactWithContract(senderKey, caddrirc2, *big.NewInt(0), arg1, "transfer", "call")
+
+	arg1 := map[string]string{"_to": caddrbsh, "_value": intconv.FormatBigInt(&amount)}
+	_, _, err := r.transactWithContract(senderKey, caddrirc2, *big.NewInt(0), arg1, "transfer", "call")
+	if err != nil {
+		return "", nil, err
 	}
 
 	arg2 := map[string]string{"tokenName": "ETH", "value": intconv.FormatBigInt(&amount), "to": recepientAddress}
-	return r.transactWithContract(senderKey, caddr, *big.NewInt(0), arg2, "transfer", "call")
+	return r.transactWithContract(senderKey, caddrbsh, *big.NewInt(0), arg2, "transfer", "call")
 }
 
 func GetWalletFromFile(walFile string, password string) (module.Wallet, error) {

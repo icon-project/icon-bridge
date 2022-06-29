@@ -70,18 +70,13 @@ type ChainAPI interface {
 }
 
 type ChainConfig struct {
-	Name               ChainType         `json:"name"`
-	URL                string            `json:"url"`
-	ConftractAddresses map[string]string `json:"contract_addresses"`
-	GodWallet          GodWallet         `json:"god_wallet"`
-	NetworkID          string            `json:"network_id"`
-	Subscriber         SubscriberConfig  `json:"subscriber"`
-}
-
-type SubscriberConfig struct {
-	Src  BTPAddress             `json:"src"`
-	Dst  BTPAddress             `json:"dst"`
-	Opts map[string]interface{} `json:"options"`
+	Name               ChainType               `json:"name"`
+	URL                string                  `json:"url"`
+	ConftractAddresses map[ContractName]string `json:"contract_addresses"`
+	GodWallet          GodWallet               `json:"god_wallet"`
+	NetworkID          string                  `json:"network_id"`
+	Src                BTPAddress              `json:"src"`
+	Dst                BTPAddress              `json:"dst"`
 }
 
 // type ContractAddress struct {

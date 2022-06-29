@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,7 +15,7 @@ func init() {
 
 }
 
-const NUM_PARALLEL_DEMOS = 1
+const NUM_PARALLEL_DEMOS = 2
 
 func main() {
 	l := log.New()
@@ -34,13 +33,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ug.Start(context.TODO())
+
 	for i := 0; i < NUM_PARALLEL_DEMOS; i++ {
-		tf := unitgroup.DefaultTaskFunctions["DemoTransaction"]
-		if err := ug.RegisterTestUnit(map[chain.ChainType]int{chain.ICON: 1, chain.HMNY: 1}, tf, false); err != nil {
+		log.Info("Register Process ", i)
+		err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, unitgroup.DefaultCallBacks["Demo"])
+		if err != nil {
 			log.Fatal(err)
 		}
-		time.Sleep(time.Second * time.Duration(2))
+		time.Sleep(time.Second * time.Duration(5))
 	}
 	fmt.Println("Wait")
 	time.Sleep(time.Second * time.Duration(3000))

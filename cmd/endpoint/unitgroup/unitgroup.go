@@ -1,12 +1,14 @@
 package unitgroup
 
 import (
-	"context"
-	"sync"
-	"time"
+	"encoding/hex"
+	"io/ioutil"
+	"math/rand"
+	"os"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
-	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
@@ -14,19 +16,39 @@ type unitgroup struct {
 	godKeysPerChain map[chain.ChainType][2]string
 	cfgPerChain     map[chain.ChainType]*chain.ChainConfig
 	log             log.Logger
-	cache           *tEnvTaskCache
+	counter         int
 }
 
 func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ug *unitgroup, err error) {
+	getKeyPairFromFile := func(walFile string, password string) (pair [2]string, err error) {
+		keyReader, err := os.Open(walFile)
+		if err != nil {
+			return
+		}
+		defer keyReader.Close()
 
+		keyStore, err := ioutil.ReadAll(keyReader)
+		if err != nil {
+			return
+		}
+		key, err := keystore.DecryptKey(keyStore, password)
+		if err != nil {
+			return
+		}
+		privBytes := ethcrypto.FromECDSA(key.PrivateKey)
+		privString := hex.EncodeToString(privBytes)
+		addr := ethcrypto.PubkeyToAddress(key.PrivateKey.PublicKey)
+		pair = [2]string{privString, addr.String()}
+		return
+	}
 	ug = &unitgroup{
 		log:             l,
 		cfgPerChain:     cfgPerChain,
-		cache:           &tEnvTaskCache{mem: map[int64]tEnvTask{}, mu: sync.RWMutex{}, lastAdded: 0},
 		godKeysPerChain: make(map[chain.ChainType][2]string),
+		counter:         0,
 	}
 	for name, cfg := range cfgPerChain {
-		if pair, err := GetKeyPairFromFile(cfg.GodWallet.Path, cfg.GodWallet.Password); err != nil {
+		if pair, err := getKeyPairFromFile(cfg.GodWallet.Path, cfg.GodWallet.Password); err != nil {
 			return nil, err
 		} else {
 			ug.godKeysPerChain[name] = pair
@@ -35,54 +57,24 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ug *
 	return
 }
 
-func (ug *unitgroup) Start(ctx context.Context) error {
-	cachePoller := time.NewTicker(time.Duration(2) * time.Second)
-	lastChecked := int64(0)
-	res := map[int64]tEnvTask{}
-	errChan := make(chan error)
-	go func() { // Poll for newly added tasks and feed it to executor
-		defer cachePoller.Stop()
-		for {
-			select {
-			case <-cachePoller.C:
-				res, lastChecked = ug.cache.GetNew(lastChecked)
-				//ug.log.Warn("Poll ", len(res), lastChecked)
-				for ts, r := range res {
-					ug.log.Warn("Spawn processing go routine")
-					go ug.process(ctx, ts, r, errChan)
-				}
-			case <-ctx.Done():
-				break
-			case err := <-errChan:
-				ug.log.Error("UnitGroup; Error ", err)
-			}
-		}
-	}()
-	return nil
-}
+func (ug *unitgroup) Execute(chains []chain.ChainType, cb callBackFunc) (err error) {
+	newCfg := map[chain.ChainType]*chain.ChainConfig{}
+	for name, cfg := range ug.cfgPerChain {
+		newCfg[name] = cfg
+	}
+	godKeys := map[chain.ChainType][2]string{}
+	for name, keys := range ug.godKeysPerChain {
+		godKeys[name] = keys
+	}
+	ug.log.Info("Creating clients")
 
-func (ug *unitgroup) process(ctx context.Context, ts int64, r tEnvTask, errChan chan error) {
-	defer ug.cache.Del(ts)
-	var err error
-	if r.tfunc.PreRun != nil {
-		if err = r.tfunc.PreRun(r.tu); err != nil {
-			errChan <- errors.Wrap(err, "PreRun ")
-			return
-		}
+	args, err := newArgs(
+		ug.log.WithFields(log.Fields{"id": rand.Intn(100)}),
+		newCfg, godKeys,
+	)
+	if err != nil {
+		return
 	}
-	if r.tfunc.Run != nil {
-		if err = r.tfunc.Run(r.tu); err != nil {
-			errChan <- errors.Wrap(err, "Run ")
-			return
-		}
-	} else {
-		err = errors.New("Run Function should be given")
-		errChan <- err
-	}
-	if r.tfunc.PostRun != nil {
-		if err = r.tfunc.PostRun(r.tu); err != nil {
-			errChan <- errors.Wrap(err, " PostRun ")
-			return
-		}
-	}
+	go cb(args)
+	return
 }

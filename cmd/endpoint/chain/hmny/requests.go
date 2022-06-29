@@ -45,7 +45,7 @@ type requestAPI struct {
 	tokbsh                *bshproxy.TokenBSH
 }
 
-func NewRequestAPI(url string, l log.Logger, contractNameToAddress map[chain.ContractName]string, networkID string) (*requestAPI, error) {
+func newRequestAPI(url string, l log.Logger, contractNameToAddress map[chain.ContractName]string, networkID string) (*requestAPI, error) {
 
 	clrpc, err := rpc.Dial(url)
 	if err != nil {
