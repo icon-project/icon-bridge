@@ -264,10 +264,10 @@ func (r *api) Subscribe(ctx context.Context, height uint64) (sinkChan chan *chai
 								//r.log.Error(err)
 								continue
 							}
-							el := chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
+							el := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
 							if r.fd.Match(el) {
 								//r.log.Infof("Matched %+v", el)
-								r.sinkChan <- &el
+								r.sinkChan <- el
 							}
 						}
 					}
@@ -366,6 +366,6 @@ func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	return res, nil
 }
 
-func (r *api) WatchFor(eventType chain.EventLogType, seq int64, contractAddress string) error {
-	return r.fd.WatchFor(args{eventType: eventType, seq: seq, contractAddress: contractAddress})
+func (r *api) WatchFor(id uint64, eventType chain.EventLogType, seq int64, contractAddress string) error {
+	return r.fd.WatchFor(args{id: id, eventType: eventType, seq: seq, contractAddress: contractAddress})
 }

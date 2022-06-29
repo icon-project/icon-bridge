@@ -146,10 +146,11 @@ func TestReceiver(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	startHeight := 15000
-	rx.WatchFor(chain.TransferStart, 7, "0xfad748a1063a40FF447B5D766331904d9bedDC26")
-	rx.WatchFor(chain.TransferEnd, 7, "0xfad748a1063a40FF447B5D766331904d9bedDC26")
-	rx.WatchFor(chain.TransferReceived, 5, "0xfad748a1063a40FF447B5D766331904d9bedDC26")
+	startHeight := 24700
+	rx.WatchFor(1, chain.TransferStart, 7, "0xfad748a1063a40FF447B5D766331904d9bedDC26")
+	rx.WatchFor(2, chain.TransferEnd, 7, "0xfad748a1063a40FF447B5D766331904d9bedDC26")
+	rx.WatchFor(1, chain.TransferReceived, 5, "0xfad748a1063a40FF447B5D766331904d9bedDC26")
+	rx.WatchFor(3, chain.TransferReceived, 5, "0xfad748a1063a40FF447B5D766331904d9bedDC26")
 	sinkChan, errChan, err := rx.Subscribe(context.TODO(), uint64(startHeight))
 	if err != nil {
 		log.Fatal(err)

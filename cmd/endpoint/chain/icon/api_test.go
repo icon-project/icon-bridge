@@ -22,9 +22,9 @@ func TestReceiver(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	recv.WatchFor(chain.TransferStart, 5, "cxe4b60a773c63961aa2303961483c3c95b9de3360")
-	recv.WatchFor(chain.TransferEnd, 5, "cxe4b60a773c63961aa2303961483c3c95b9de3360")
-	recv.WatchFor(chain.TransferReceived, 7, "cxe4b60a773c63961aa2303961483c3c95b9de3360")
+	recv.WatchFor(1, chain.TransferStart, 5, "cxe4b60a773c63961aa2303961483c3c95b9de3360")
+	recv.WatchFor(1, chain.TransferEnd, 5, "cxe4b60a773c63961aa2303961483c3c95b9de3360")
+	recv.WatchFor(1, chain.TransferReceived, 7, "cxe4b60a773c63961aa2303961483c3c95b9de3360")
 
 	startHeight := 15000
 	go func() {

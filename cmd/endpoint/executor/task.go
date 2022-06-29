@@ -19,14 +19,15 @@ const (
 )
 
 type args struct {
+	id              uint64
 	log             log.Logger
 	clientsPerChain map[chain.ChainType]chain.ChainAPI
 	godKeysPerChain map[chain.ChainType][2]string
 	addrToName      map[string]chain.ContractName
 }
 
-func newArgs(l log.Logger, clientsPerChain map[chain.ChainType]*chain.ChainConfig, godKeysPerChain map[chain.ChainType][2]string) (t *args, err error) {
-	tu := &args{log: l,
+func newArgs(id uint64, l log.Logger, clientsPerChain map[chain.ChainType]*chain.ChainConfig, godKeysPerChain map[chain.ChainType][2]string) (t *args, err error) {
+	tu := &args{log: l, id: id,
 		clientsPerChain: map[chain.ChainType]chain.ChainAPI{},
 		godKeysPerChain: godKeysPerChain,
 		addrToName:      make(map[string]chain.ContractName),
@@ -114,15 +115,15 @@ var DemoSubCallback callBackFunc = func(args *args) error {
 			args.log.Infof("Generated event %v contractName %v SeqNo %v", el.EventType, ctrName, seq)
 			if ctrName == chain.NativeBSHIcon {
 				if ctr, ok := findAddrForContract(chain.NativeBSHPeripheryHmy); ok {
-					henv.WatchFor(chain.TransferReceived, seq, ctr)
-					ienv.WatchFor(chain.TransferEnd, seq, el.ContractAddress)
+					henv.WatchFor(args.id, chain.TransferReceived, seq, ctr)
+					ienv.WatchFor(args.id, chain.TransferEnd, seq, el.ContractAddress)
 				} else {
 					return errors.New("NativeBSHPeripheryHmy does not exist in config")
 				}
 			} else if ctrName == chain.NativeBSHPeripheryHmy {
 				if ctr, ok := findAddrForContract(chain.NativeBSHIcon); ok {
-					henv.WatchFor(chain.TransferEnd, seq, el.ContractAddress)
-					ienv.WatchFor(chain.TransferReceived, seq, ctr)
+					henv.WatchFor(args.id, chain.TransferEnd, seq, el.ContractAddress)
+					ienv.WatchFor(args.id, chain.TransferReceived, seq, ctr)
 				} else {
 					return errors.New("NativeBSHIcon does not exist in config")
 				}

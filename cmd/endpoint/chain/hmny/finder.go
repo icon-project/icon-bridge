@@ -14,12 +14,13 @@ type finder struct {
 }
 
 type args struct {
+	id              uint64
 	eventType       chain.EventLogType
 	seq             int64
 	contractAddress string
 }
 
-type callBackFunc func(args args, info chain.EventLogInfo) (bool, error)
+type callBackFunc func(args args, info *chain.EventLogInfo) (bool, error)
 
 type runnable struct {
 	args     args
@@ -44,9 +45,10 @@ func (f *finder) WatchFor(args args) (err error) {
 	return
 }
 
-func (f *finder) Match(elinfo chain.EventLogInfo) bool {
-	if matchedIDs := f.lookupCache(elinfo); len(matchedIDs) > 0 {
-		f.removeFromFromRunCache(matchedIDs)
+func (f *finder) Match(elinfo *chain.EventLogInfo) bool {
+	if matchedIndex, matchedIDs := f.lookupCache(elinfo); len(matchedIndex) > 0 {
+		elinfo.IDs = matchedIDs
+		f.removeFromFromRunCache(matchedIndex)
 		return true
 	}
 	return false
@@ -73,10 +75,11 @@ func (f *finder) removeFromFromRunCache(ids []int) {
 	}
 }
 
-func (f *finder) lookupCache(elInfo chain.EventLogInfo) []int {
+func (f *finder) lookupCache(elInfo *chain.EventLogInfo) ([]int, []uint64) {
 	f.runCache.mtx.RLock()
 	defer f.runCache.mtx.RUnlock()
-	matchedIDs := []int{}
+	matchedIndex := []int{}
+	matchedIDs := []uint64{}
 	for runid, runP := range f.runCache.mem {
 		if runP == nil { // nil is set for removed runnable. See removeFromFromRunCache
 			continue
@@ -84,13 +87,14 @@ func (f *finder) lookupCache(elInfo chain.EventLogInfo) []int {
 		match, err := runP.callback(runP.args, elInfo)
 		if match {
 			//f.log.Warn("Match RunID ", runid)
-			matchedIDs = append(matchedIDs, runid)
+			matchedIndex = append(matchedIndex, runid)
+			matchedIDs = append(matchedIDs, runP.args.id)
 		} else if !match && err != nil {
-			//	f.log.Error("Non Match ", err)
+			//f.log.Error("Non Match ", err)
 		}
 
 	}
-	return matchedIDs
+	return matchedIndex, matchedIDs
 }
 
 func NewFinder(l log.Logger) *finder {
@@ -100,7 +104,7 @@ func NewFinder(l log.Logger) *finder {
 	}
 }
 
-var transferStartCB callBackFunc = func(args args, elInfo chain.EventLogInfo) (bool, error) {
+var transferStartCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
 	elog, ok := (elInfo.EventLog).(*chain.TransferStartEvent)
 	if !ok {
 		return false, errors.New("Should be TransferStart event log")
@@ -113,7 +117,7 @@ var transferStartCB callBackFunc = func(args args, elInfo chain.EventLogInfo) (b
 	return false, nil
 }
 
-var transferReceivedCB callBackFunc = func(args args, elInfo chain.EventLogInfo) (bool, error) {
+var transferReceivedCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
 	elog, ok := (elInfo.EventLog).(*chain.TransferReceivedEvent)
 	if !ok {
 		return false, errors.New("Should be transferReceivedCB event log")
@@ -126,7 +130,7 @@ var transferReceivedCB callBackFunc = func(args args, elInfo chain.EventLogInfo)
 	return false, nil
 }
 
-var transferEndCB callBackFunc = func(args args, elInfo chain.EventLogInfo) (bool, error) {
+var transferEndCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
 	elog, ok := (elInfo.EventLog).(*chain.TransferEndEvent)
 	if !ok {
 		return false, errors.New("Should be transferEndCB event log")

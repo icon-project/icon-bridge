@@ -15,7 +15,7 @@ func init() {
 
 }
 
-const NUM_PARALLEL_DEMOS = 2
+const NUM_PARALLEL_DEMOS = 1
 
 func main() {
 	l := log.New()

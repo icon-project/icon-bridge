@@ -66,7 +66,7 @@ type ChainAPI interface {
 	Approve(ownerKey string, amount big.Int) (txnHash string, err error)
 	GetBTPAddress(addr string) *string
 	GetKeyPairs(num int) ([][2]string, error)
-	WatchFor(eventType EventLogType, seq int64, contractAddress string) error
+	WatchFor(ID uint64, eventType EventLogType, seq int64, contractAddress string) error
 }
 
 type ChainConfig struct {
@@ -90,6 +90,7 @@ type GodWallet struct {
 }
 
 type EventLogInfo struct {
+	IDs             []uint64
 	ContractAddress string
 	EventType       EventLogType
 	EventLog        interface{}
