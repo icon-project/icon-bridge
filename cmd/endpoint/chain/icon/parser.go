@@ -15,8 +15,12 @@ type parser struct {
 	addressToContractName map[string]chain.ContractName
 }
 
-func NewParser(addrToContractName map[string]chain.ContractName) (*parser, error) {
-	return &parser{addressToContractName: addrToContractName}, nil
+func NewParser(nameToAddr map[chain.ContractName]string) (*parser, error) {
+	addrToName := map[string]chain.ContractName{}
+	for name, addr := range nameToAddr {
+		addrToName[addr] = name
+	}
+	return &parser{addressToContractName: addrToName}, nil
 }
 
 func (p *parser) Parse(log *TxnEventLog) (resLog interface{}, eventType chain.EventLogType, err error) {
@@ -27,7 +31,7 @@ func (p *parser) Parse(log *TxnEventLog) (resLog interface{}, eventType chain.Ev
 	}
 	eventName := strings.Split(log.Indexed[0], "(")
 	eventType = chain.EventLogType(strings.TrimSpace(eventName[0]))
-	if cName == chain.NativeIcon {
+	if cName == chain.NativeBSHIcon {
 		if eventType == chain.TransferStart {
 			resLog, err = parseTransferStartNativeCoin(log)
 		} else if eventType == chain.TransferReceived {
@@ -37,7 +41,7 @@ func (p *parser) Parse(log *TxnEventLog) (resLog interface{}, eventType chain.Ev
 		} else {
 			err = errors.New("No matching signature ")
 		}
-	} else if cName == chain.TokenIcon {
+	} else if cName == chain.TokenBSHIcon {
 		if eventType == chain.TransferStart {
 			resLog, err = parseTransferStartToken(log)
 		} else if eventType == chain.TransferReceived {

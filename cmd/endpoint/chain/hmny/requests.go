@@ -14,12 +14,89 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
+	bshcore "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/bsh/bshcore"
+	erc20 "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/bsh/erc20tradable"
+	bep20tkn "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/tokenbsh/bep20tkn"
+	bshproxy "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/tokenbsh/bshproxy"
+	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
 // func (r *requestAPI) GetAddressFromPrivKey(key string) (*string, error) {
 // 	return getAddressFromPrivKey(key)
 // }
+
+const (
+	coinName        = "ICX"
+	DefaultGasLimit = 80000000
+)
+
+type requestAPI struct {
+	contractNameToAddress map[chain.ContractName]string
+	networkID             string
+	ethCl                 *ethclient.Client
+	log                   log.Logger
+	bshc                  *bshcore.Bshcore
+	erc                   *erc20.Erc20tradable
+	bep                   *bep20tkn.BEP
+	tokbsh                *bshproxy.TokenBSH
+}
+
+func NewRequestAPI(url string, l log.Logger, contractNameToAddress map[chain.ContractName]string, networkID string) (*requestAPI, error) {
+
+	clrpc, err := rpc.Dial(url)
+	if err != nil {
+		return nil, err
+	}
+	cleth := ethclient.NewClient(clrpc)
+
+	caddr, ok := contractNameToAddress[chain.NativeBSHCoreHmy]
+	if !ok {
+		return nil, errors.New("Contract NativeBSHCoreHmy not found in map")
+	}
+	bshc, err := bshcore.NewBshcore(common.HexToAddress(caddr), cleth)
+	if err != nil {
+		return nil, err
+	}
+	coinAddress, err := bshc.CoinId(&bind.CallOpts{Pending: false, Context: nil}, coinName)
+	if err != nil {
+		return nil, err
+	}
+	caddr, ok = contractNameToAddress[chain.Erc20Hmy]
+	if !ok {
+		return nil, errors.New("Contract Erc20Hmy not found in map")
+	}
+	bep, err := bep20tkn.NewBEP(common.HexToAddress(caddr), cleth)
+	if err != nil {
+		return nil, err
+	}
+	erc, err := erc20.NewErc20tradable(coinAddress, cleth)
+	if err != nil {
+		return nil, err
+	}
+	caddr, ok = contractNameToAddress[chain.TokenBSHProxyHmy]
+	if !ok {
+		return nil, errors.New("Contract TokenBSHProxyHmy not found in map")
+	}
+	tokbsh, err := bshproxy.NewTokenBSH(common.HexToAddress(caddr), cleth)
+	if err != nil {
+		return nil, err
+	}
+	a := &requestAPI{
+		log:                   l,
+		contractNameToAddress: contractNameToAddress,
+		networkID:             networkID,
+		ethCl:                 cleth,
+		bshc:                  bshc,
+		erc:                   erc,
+		bep:                   bep,
+		tokbsh:                tokbsh,
+	}
+	return a, nil
+}
 
 func GetWalletFromPrivKey(privKey string) (wal *wallet.EvmWallet, pKey *ecdsa.PrivateKey, err error) {
 	privBytes, err := hex.DecodeString(privKey)
@@ -222,8 +299,13 @@ func (r *requestAPI) transferERC20ToIcon(senderKey string, amount big.Int, recep
 	if err != nil {
 		return
 	}
+	caddr, ok := r.contractNameToAddress[chain.TokenBSHProxyHmy]
+	if !ok {
+		err = errors.New("Contract TokenBSHProxyHmy not found in map")
+		return
+	}
 	txo.Context = context.Background()
-	approveTxn, err := r.bep.Approve(txo, common.HexToAddress(r.contractAddress.btp_hmny_token_bsh_proxy), &amount)
+	approveTxn, err := r.bep.Approve(txo, common.HexToAddress(caddr), &amount)
 	if err != nil {
 		return
 	}
@@ -249,8 +331,13 @@ func (r *requestAPI) approveHmnyNativeBSHCoreToAccessICX(ownerKey string, amount
 	if err != nil {
 		return
 	}
+	caddr, ok := r.contractNameToAddress[chain.NativeBSHCoreHmy]
+	if !ok {
+		err = errors.New("Contract TokenBSHPCoreHmy not found in map")
+		return
+	}
 	txo.Context = context.Background()
-	approveTxn, err := r.erc.Approve(txo, common.HexToAddress(r.contractAddress.btp_hmny_nativecoin_bsh_core), &amount)
+	approveTxn, err := r.erc.Approve(txo, common.HexToAddress(caddr), &amount)
 	if err != nil {
 		return
 	}
@@ -267,7 +354,12 @@ func (r *requestAPI) approveHmnyNativeBSHCoreToAccessICX(ownerKey string, amount
 	if err != nil {
 		return
 	}
-	allowanceAmount, err = r.erc.Allowance(&bind.CallOpts{Pending: false, Context: ctx}, common.HexToAddress(ownerWallet.Address()), common.HexToAddress(r.contractAddress.btp_hmny_nativecoin_bsh_core))
+	caddr, ok = r.contractNameToAddress[chain.NativeBSHCoreHmy]
+	if !ok {
+		err = errors.New("Contract NativeBSHCoreHmy not found in map")
+		return
+	}
+	allowanceAmount, err = r.erc.Allowance(&bind.CallOpts{Pending: false, Context: ctx}, common.HexToAddress(ownerWallet.Address()), common.HexToAddress(caddr))
 	return
 }
 

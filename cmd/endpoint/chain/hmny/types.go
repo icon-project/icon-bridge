@@ -11,6 +11,11 @@ import (
 	"github.com/harmony-one/harmony/core/types"
 )
 
+type bnOptions struct {
+	StartHeight uint64
+	Concurrency uint64
+}
+
 type BlockNotification struct {
 	Hash     common.Hash
 	Height   *big.Int

@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"math/big"
 )
 
@@ -24,10 +25,15 @@ const (
 type ContractName string
 
 const (
-	TokenHmy   ContractName = "TokenHmy"
-	NativeHmy  ContractName = "NativeHmy"
-	TokenIcon  ContractName = "TokenIcon"
-	NativeIcon ContractName = "NativeIcon"
+	TokenBSHImplHmy       ContractName = "TokenBSHImplHmy" //TokenHmy
+	NativeBSHPeripheryHmy ContractName = "NativeBSHPeripheryHmy"
+	Erc20Hmy              ContractName = "Erc20Hmy"
+	NativeBSHCoreHmy      ContractName = "NativeBSHCoreHmy"
+	TokenBSHProxyHmy      ContractName = "TokenBSHProxyHmy"
+	TokenBSHIcon          ContractName = "TokenBSHIcon"
+	NativeBSHIcon         ContractName = "NativeBSHIcon"
+	Irc2Icon              ContractName = "Irc2Icon"
+	Irc2TradeableIcon     ContractName = "Irc2TradeableIcon"
 )
 
 type EventLogType string
@@ -52,29 +58,15 @@ type RequestParam struct {
 	Token       TokenType
 }
 
-// type RequestAPI interface {
-// 	GetCoinBalance(addr string) (*big.Int, error)
-// 	GetEthToken(addr string) (val *big.Int, err error)
-// 	GetWrappedCoin(addr string) (val *big.Int, err error)
-// 	TransferCoin(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error)
-// 	TransferEthToken(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error)
-// 	TransferCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error)
-// 	TransferWrappedCoinCrossChain(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error)
-// 	TransferEthTokenCrossChain(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, approveLogs interface{}, transferTxnHash string, transferLogs interface{}, err error)
-// 	ApproveContractToAccessCrossCoin(ownerKey string, amount big.Int) (approveTxnHash string, logs interface{}, allowanceAmount *big.Int, err error)
-// 	GetAddressFromPrivKey(key string) (*string, error)
-// 	GetBTPAddress(addr string) *string
-// }
-// type EnvVariables struct {
-// 	Client       RequestAPI
-// 	GodKeys      [2]string
-// 	AccountsKeys [][2]string
-// }
-
-type SubscriptionAPI interface {
-	Start(ctx context.Context) error
-	OutputChan() <-chan *SubscribedEvent
-	ErrChan() <-chan error
+type ChainAPI interface {
+	Subscribe(ctx context.Context, height uint64) (sinkChan chan *EventLogInfo, errChan chan error, err error)
+	Transfer(param *RequestParam) (txnHash string, err error)
+	GetCoinBalance(addr string, coinType TokenType) (*big.Int, error)
+	WaitForTxnResult(hash string) (txr interface{}, elInfo []*EventLogInfo, err error)
+	Approve(ownerKey string, amount big.Int) (txnHash string, err error)
+	GetBTPAddress(addr string) *string
+	GetKeyPairs(num int) ([][2]string, error)
+	WatchFor(eventType EventLogType, seq int64, contractAddress string) error
 }
 
 type ChainConfig struct {
@@ -92,19 +84,43 @@ type SubscriberConfig struct {
 	Opts map[string]interface{} `json:"options"`
 }
 
-type ContractAddress struct {
-	Name    string `json:"name"`
-	Address string `json:"address"`
-}
+// type ContractAddress struct {
+// 	Name    string `json:"name"`
+// 	Address string `json:"address"`
+// }
 
 type GodWallet struct {
 	Path     string `json:"path"`
 	Password string `json:"password"`
 }
 
-type SubscribedEvent struct {
-	Res       interface{}
-	ChainName ChainType
+type EventLogInfo struct {
+	ContractAddress string
+	EventType       EventLogType
+	EventLog        interface{}
+}
+
+func (e *EventLogInfo) GetSeq() (seq int64, err error) {
+	if e.EventType == TransferStart {
+		st, ok := e.EventLog.(*TransferStartEvent)
+		if !ok {
+			err = errors.New("EventLg type is not *TransferStartEvent")
+		}
+		seq = st.Sn.Int64()
+	} else if e.EventType == TransferReceived {
+		st, ok := e.EventLog.(*TransferReceivedEvent)
+		if !ok {
+			err = errors.New("EventLg type is not *TransferReceivedEvent")
+		}
+		seq = st.Sn.Int64()
+	} else if e.EventType == TransferEnd {
+		st, ok := e.EventLog.(*TransferEndEvent)
+		if !ok {
+			err = errors.New("EventLg type is not *TransferEndEvent")
+		}
+		seq = st.Sn.Int64()
+	}
+	return
 }
 
 type TransferStartEvent struct {

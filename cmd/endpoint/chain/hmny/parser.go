@@ -34,18 +34,22 @@ func find(m map[string]chain.ContractName, key chain.ContractName) *string {
 	return nil
 }
 
-func NewParser(url string, addrToContractName map[string]chain.ContractName) (*parser, error) {
+func NewParser(url string, nameToAddr map[chain.ContractName]string) (*parser, error) {
 	var err error
 	clrpc, err := rpc.Dial(url)
 	if err != nil {
 		return nil, err
 	}
+	addrToContractName := map[string]chain.ContractName{}
+	for name, addr := range nameToAddr {
+		addrToContractName[addr] = name
+	}
 	p := &parser{backend: ethclient.NewClient(clrpc)}
-	nativeAddr := find(addrToContractName, chain.NativeHmy)
+	nativeAddr := find(addrToContractName, chain.NativeBSHPeripheryHmy)
 	if nativeAddr == nil {
 		return nil, errors.New("Did not find native hmy contract in input map")
 	}
-	tokenAddr := find(addrToContractName, chain.TokenHmy)
+	tokenAddr := find(addrToContractName, chain.TokenBSHImplHmy)
 	if tokenAddr == nil {
 		return nil, errors.New("Did not find token hmy contract in input map")
 	}
@@ -80,28 +84,17 @@ func findTopic(topics []common.Hash, eventIDToName map[common.Hash]string) *stri
 	return nil
 }
 
-func (p *parser) Parse(hlog *types.Log) (resLog interface{}, eventType chain.EventLogType, err error) {
-	log := &ethTypes.Log{
-		Address:     hlog.Address,
-		Topics:      hlog.Topics,
-		Data:        hlog.Data,
-		BlockNumber: hlog.BlockNumber,
-		TxHash:      hlog.TxHash,
-		TxIndex:     hlog.TxIndex,
-		BlockHash:   hlog.BlockHash,
-		Index:       hlog.Index,
-		Removed:     hlog.Removed,
-	}
-
-	cName, ok := p.addressToContractName[hlog.Address.String()]
+func (p *parser) ParseEth(log *ethTypes.Log) (resLog interface{}, eventType chain.EventLogType, err error) {
+	cName, ok := p.addressToContractName[log.Address.String()]
 	if !ok {
 		err = errors.New("Couldn't find contract matching the log")
 		return
 	}
-	if cName == chain.NativeHmy {
+	if cName == chain.NativeBSHPeripheryHmy {
 		tres := findTopic(log.Topics, p.eventIDToNameNative)
 		if tres == nil {
 			err = errors.New("Topic not among mentioned ones")
+			return
 		}
 		eventType = chain.EventLogType(*tres)
 		if eventType == chain.TransferStart {
@@ -113,10 +106,11 @@ func (p *parser) Parse(hlog *types.Log) (resLog interface{}, eventType chain.Eve
 		} else {
 			err = errors.New("No matching signature ")
 		}
-	} else if cName == chain.TokenHmy {
+	} else if cName == chain.TokenBSHImplHmy {
 		tres := findTopic(log.Topics, p.eventIDToNameNative)
 		if tres == nil {
 			err = errors.New("Topic not among mentioned ones")
+			return
 		}
 		eventType = chain.EventLogType(*tres)
 		if eventType == chain.TransferStart {
@@ -132,6 +126,20 @@ func (p *parser) Parse(hlog *types.Log) (resLog interface{}, eventType chain.Eve
 		err = errors.New("Contract not amongst processed ones")
 	}
 	return
+}
+func (p *parser) Parse(hlog *types.Log) (resLog interface{}, eventType chain.EventLogType, err error) {
+	log := &ethTypes.Log{
+		Address:     hlog.Address,
+		Topics:      hlog.Topics,
+		Data:        hlog.Data,
+		BlockNumber: hlog.BlockNumber,
+		TxHash:      hlog.TxHash,
+		TxIndex:     hlog.TxIndex,
+		BlockHash:   hlog.BlockHash,
+		Index:       hlog.Index,
+		Removed:     hlog.Removed,
+	}
+	return p.ParseEth(log)
 }
 
 func (p *parser) parseTransferStartNativeCoin(hlog *ethTypes.Log) (*chain.TransferStartEvent, error) {

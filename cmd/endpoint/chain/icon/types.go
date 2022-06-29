@@ -11,6 +11,13 @@ import (
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 )
 
+type eventLogRawFilter struct {
+	addr      []byte
+	signature []byte
+	next      []byte
+	seq       uint64
+}
+
 type TransactionResult struct {
 	To                 Address       `json:"to"`
 	CumulativeStepUsed HexInt        `json:"cumulativeStepUsed"`
