@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/unitgroup"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/executor"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
@@ -29,14 +29,14 @@ func main() {
 	for _, ch := range cfg.Chains {
 		cfgPerMap[ch.Name] = ch
 	}
-	ug, err := unitgroup.New(l, cfgPerMap)
+	ug, err := executor.New(l, cfgPerMap)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for i := 0; i < NUM_PARALLEL_DEMOS; i++ {
 		log.Info("Register Process ", i)
-		err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, unitgroup.DefaultCallBacks["Demo"])
+		err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, executor.DefaultCallBacks["Demo"])
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -1,4 +1,4 @@
-package unitgroup_test
+package executor_test
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/unitgroup"
+	"github.com/icon-project/icon-bridge/cmd/endpoint/executor"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
@@ -40,11 +40,11 @@ func TestUnitGroup(t *testing.T) {
 
 	l := log.New()
 	log.SetGlobalLogger(l)
-	ug, err := unitgroup.New(l, cfgPerMap)
+	ug, err := executor.New(l, cfgPerMap)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, unitgroup.DefaultCallBacks["Demo"])
+	err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, executor.DefaultCallBacks["Demo"])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestUnitGroup(t *testing.T) {
 }
 
 /*
-func (ug *unitgroup) createAccounts(accountMap map[chain.ChainType]int) (map[chain.ChainType][]string, error) {
+func (ug *executor) createAccounts(accountMap map[chain.ChainType]int) (map[chain.ChainType][]string, error) {
 	resMap := map[chain.ChainType][]string{}
 	for name, count := range accountMap {
 		resMap[name] = make([]string, count)

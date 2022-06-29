@@ -1,4 +1,4 @@
-package unitgroup
+package executor
 
 import (
 	"encoding/hex"
@@ -12,14 +12,14 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-type unitgroup struct {
+type executor struct {
 	godKeysPerChain map[chain.ChainType][2]string
 	cfgPerChain     map[chain.ChainType]*chain.ChainConfig
 	log             log.Logger
 	counter         int
 }
 
-func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ug *unitgroup, err error) {
+func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ug *executor, err error) {
 	getKeyPairFromFile := func(walFile string, password string) (pair [2]string, err error) {
 		keyReader, err := os.Open(walFile)
 		if err != nil {
@@ -41,7 +41,7 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ug *
 		pair = [2]string{privString, addr.String()}
 		return
 	}
-	ug = &unitgroup{
+	ug = &executor{
 		log:             l,
 		cfgPerChain:     cfgPerChain,
 		godKeysPerChain: make(map[chain.ChainType][2]string),
@@ -57,7 +57,7 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ug *
 	return
 }
 
-func (ug *unitgroup) Execute(chains []chain.ChainType, cb callBackFunc) (err error) {
+func (ug *executor) Execute(chains []chain.ChainType, cb callBackFunc) (err error) {
 	newCfg := map[chain.ChainType]*chain.ChainConfig{}
 	for name, cfg := range ug.cfgPerChain {
 		newCfg[name] = cfg
