@@ -16,7 +16,7 @@ import (
 
 const (
 	EventSignature             = "Message(str,int,bytes)"
-	MonitorBlockMaxConcurrency = 10
+	MonitorBlockMaxConcurrency = 50
 )
 
 type api struct {
@@ -110,6 +110,7 @@ loop:
 	for {
 		select {
 		case <-ctx.Done():
+			r.log.Warn("Context Cancelled Exiting Icon Subscription Loop")
 			return nil
 
 		case err := <-ech:
@@ -348,8 +349,8 @@ func (r *api) GetCoinBalance(addr string, coinType chain.TokenType) (*big.Int, e
 	return nil, errors.New("Unsupported Token Type ")
 }
 
-func (r *api) WaitForTxnResult(hash string) (interface{}, []*chain.EventLogInfo, error) {
-	_, txRes, err := r.cl.waitForResults(context.TODO(), &TransactionHashParam{Hash: HexBytes(hash)})
+func (r *api) WaitForTxnResult(ctx context.Context, hash string) (interface{}, []*chain.EventLogInfo, error) {
+	_, txRes, err := r.cl.waitForResults(ctx, &TransactionHashParam{Hash: HexBytes(hash)})
 	if err != nil {
 		return nil, nil, err
 	}

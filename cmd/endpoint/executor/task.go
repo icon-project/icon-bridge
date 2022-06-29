@@ -51,6 +51,7 @@ func newArgs(id uint64, l log.Logger,
 type callBackFunc func(ctx context.Context, args *args) error
 
 var DemoSubCallback callBackFunc = func(ctx context.Context, args *args) error {
+
 	// fund demo wallets
 	args.log.Info("Starting demo...")
 	ienv, ok := args.clientsPerChain[chain.ICON]
@@ -151,17 +152,25 @@ var DemoSubCallback callBackFunc = func(ctx context.Context, args *args) error {
 	time.Sleep(time.Second * 10)
 	go func(ctx context.Context) {
 		args.log.Info("Starting Watch")
+		defer args.closeFunc()
+		counter := 0
 		for {
 			select {
 			case <-ctx.Done():
+				args.log.Warn("Context Cancelled Exiting task")
 				return
 			case res := <-args.sinkChan:
 				args.log.Infof("%v: %+v", res.name, res.msg)
+				counter += 1
+				if counter >= 4 { // 2 Watch calls * 2 TxEvents{End,Rx}
+					args.log.Infof("Received all events. Closing...")
+					return
+				}
 			}
 		}
 
-	}(context.TODO())
-	time.Sleep(time.Second * 30)
+	}(ctx)
+	time.Sleep(time.Second * 15)
 
 	args.log.Info("Transfer Native ICX to HMY")
 	amt = new(big.Int)
@@ -170,7 +179,7 @@ var DemoSubCallback callBackFunc = func(ctx context.Context, args *args) error {
 	if err != nil {
 		return err
 	}
-	_, elInfo, err := ienv.WaitForTxnResult(hash)
+	_, elInfo, err := ienv.WaitForTxnResult(ctx, hash)
 	if err != nil {
 		return err
 	}
@@ -183,7 +192,7 @@ var DemoSubCallback callBackFunc = func(ctx context.Context, args *args) error {
 	if err != nil {
 		return err
 	}
-	_, elInfo, err = henv.WaitForTxnResult(hash)
+	_, elInfo, err = henv.WaitForTxnResult(ctx, hash)
 	if err != nil {
 		return err
 	}
@@ -193,6 +202,7 @@ var DemoSubCallback callBackFunc = func(ctx context.Context, args *args) error {
 }
 
 var DemoRequestCallback callBackFunc = func(ctx context.Context, args *args) error {
+	defer args.closeFunc()
 	// fund demo wallets
 	args.log.Info("Starting demo...")
 	ienv, ok := args.clientsPerChain[chain.ICON]

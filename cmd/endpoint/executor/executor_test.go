@@ -45,16 +45,15 @@ func TestExecutor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ex.Start(context.TODO(), 45800)
-	err = ex.Execute(context.TODO(), []chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
-	if err != nil {
-		t.Fatal(err)
-	}
 	time.Sleep(time.Second * 10)
-	err = ex.Execute(context.TODO(), []chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	ex.Start(ctx, 46000)
+	err = ex.Execute(ctx, []chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	fmt.Println("Wait")
 	time.Sleep(time.Second * time.Duration(3000))
 }

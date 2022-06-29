@@ -173,7 +173,7 @@ func (c *client) waitForResults(ctx context.Context, thp *TransactionHashParam) 
 		defer ticker.Stop()
 		select {
 		case <-ctx.Done():
-			err = errors.New("Context Cancelled")
+			err = errors.New("Context Cancelled ReceiptWait Exiting ")
 			return
 		case <-ticker.C:
 			if retryCounter >= retryLimit {

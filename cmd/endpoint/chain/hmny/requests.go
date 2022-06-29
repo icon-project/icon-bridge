@@ -194,7 +194,7 @@ func (r *requestAPI) waitForResults(ctx context.Context, txHash common.Hash) (tx
 		defer ticker.Stop()
 		select {
 		case <-ctx.Done():
-			err = errors.New("Context Cancelled")
+			err = errors.New("Context Cancelled. ResultWait Exiting ")
 			return
 		case <-ticker.C:
 			if retryCounter >= retryLimit {
@@ -203,7 +203,7 @@ func (r *requestAPI) waitForResults(ctx context.Context, txHash common.Hash) (tx
 			}
 			retryCounter++
 			//r.log.Debugf("GetTransactionResult Attempt: %d", retryCounter)
-			txr, err = r.ethCl.TransactionReceipt(context.TODO(), txHash)
+			txr, err = r.ethCl.TransactionReceipt(ctx, txHash)
 			if err != nil && err == ethereum.NotFound {
 				continue
 			}

@@ -20,7 +20,7 @@ const (
 	BlockInterval              = 2 * time.Second
 	BlockHeightPollInterval    = 60 * time.Second
 	defaultReadTimeout         = 15 * time.Second
-	monitorBlockMaxConcurrency = 10 // number of concurrent requests to synchronize older blocks from source chain
+	monitorBlockMaxConcurrency = 50 // number of concurrent requests to synchronize older blocks from source chain
 )
 
 func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
@@ -107,6 +107,7 @@ func (r *api) receiveLoop(ctx context.Context, opts *bnOptions, callback func(v 
 	for {
 		select {
 		case <-ctx.Done():
+			r.log.Warn("Context Cancelled Exiting Hmny Subscription Loop")
 			return nil
 
 		case <-heightTicker.C:
@@ -332,8 +333,8 @@ func (r *api) Approve(ownerKey string, amount big.Int) (txnHash string, err erro
 // 	txr, err = r.requester.waitForResults(context.TODO(), )
 // 	return
 // }
-func (r *api) WaitForTxnResult(hash string) (interface{}, []*chain.EventLogInfo, error) {
-	txRes, err := r.requester.waitForResults(context.TODO(), common.HexToHash(hash))
+func (r *api) WaitForTxnResult(ctx context.Context, hash string) (interface{}, []*chain.EventLogInfo, error) {
+	txRes, err := r.requester.waitForResults(ctx, common.HexToHash(hash))
 	if err != nil {
 		return nil, nil, err
 	}

@@ -163,7 +163,7 @@ func (ex *executor) Start(ctx context.Context, startHeight uint64) {
 			chosen, value, ok := reflect.Select(cases)
 			if !ok {
 				if chosen == len(cases)-1 {
-					ex.log.Error("Context cancelled")
+					ex.log.Error("Context cancelled. Exiting Executor")
 					return
 				}
 				if chosen >= lenCls {
@@ -198,7 +198,7 @@ func (ex *executor) Start(ctx context.Context, startHeight uint64) {
 				}
 				ex.log.Errorf("ErrMessage %v %+v", chains[chosen-lenCls], res)
 			} else {
-				ex.log.Error("Context Cancelled")
+				ex.log.Error("Context cancelled. Exiting Executor")
 				return
 			}
 		}

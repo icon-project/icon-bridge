@@ -62,7 +62,7 @@ type ChainAPI interface {
 	Subscribe(ctx context.Context, height uint64) (sinkChan chan *EventLogInfo, errChan chan error, err error)
 	Transfer(param *RequestParam) (txnHash string, err error)
 	GetCoinBalance(addr string, coinType TokenType) (*big.Int, error)
-	WaitForTxnResult(hash string) (txr interface{}, elInfo []*EventLogInfo, err error)
+	WaitForTxnResult(ctx context.Context, hash string) (txr interface{}, elInfo []*EventLogInfo, err error)
 	Approve(ownerKey string, amount big.Int) (txnHash string, err error)
 	GetBTPAddress(addr string) *string
 	GetKeyPairs(num int) ([][2]string, error)

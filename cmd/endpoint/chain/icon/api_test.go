@@ -120,7 +120,7 @@ func TestGodWalletTransfer(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("Transaction Hash %v", txnHash)
-	res, elInfo, err := api.WaitForTxnResult(txnHash)
+	res, elInfo, err := api.WaitForTxnResult(context.TODO(), txnHash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestTransferAcross(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("Transaction Hash %v", txnHash)
-	res, elInfo, err := api.WaitForTxnResult(txnHash)
+	res, elInfo, err := api.WaitForTxnResult(context.TODO(), txnHash)
 	if err != nil {
 		t.Fatal(err)
 	}
