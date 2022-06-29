@@ -1,6 +1,7 @@
 package executor_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -12,7 +13,7 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-func TestUnitGroup(t *testing.T) {
+func TestExecutor(t *testing.T) {
 	type Config struct {
 		Chains []*chain.ChainConfig `json:"chains"`
 	}
@@ -40,15 +41,20 @@ func TestUnitGroup(t *testing.T) {
 
 	l := log.New()
 	log.SetGlobalLogger(l)
-	ug, err := executor.New(l, cfgPerMap)
+	ex, err := executor.New(l, cfgPerMap)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
+	ex.Start(context.TODO(), 45800)
+	err = ex.Execute(context.TODO(), []chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	time.Sleep(time.Second * 10)
+	err = ex.Execute(context.TODO(), []chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
+	if err != nil {
+		t.Fatal(err)
+	}
 	fmt.Println("Wait")
 	time.Sleep(time.Second * time.Duration(3000))
 }

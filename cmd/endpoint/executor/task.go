@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain/icon"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"
 )
@@ -18,49 +16,41 @@ const (
 	PUBKEYPOS  = 1
 )
 
+type evt struct {
+	msg  *chain.EventLogInfo
+	name chain.ChainType
+}
+
 type args struct {
 	id              uint64
 	log             log.Logger
 	clientsPerChain map[chain.ChainType]chain.ChainAPI
 	godKeysPerChain map[chain.ChainType][2]string
 	addrToName      map[string]chain.ContractName
+	sinkChan        <-chan *evt
+	closeFunc       func()
 }
 
-func newArgs(id uint64, l log.Logger, clientsPerChain map[chain.ChainType]*chain.ChainConfig, godKeysPerChain map[chain.ChainType][2]string) (t *args, err error) {
+func newArgs(id uint64, l log.Logger,
+	clientsPerChain map[chain.ChainType]chain.ChainAPI,
+	godKeysPerChain map[chain.ChainType][2]string,
+	addrToName map[string]chain.ContractName,
+	sinkChan <-chan *evt, closeFunc func(),
+) (t *args, err error) {
 	tu := &args{log: l, id: id,
-		clientsPerChain: map[chain.ChainType]chain.ChainAPI{},
+		clientsPerChain: clientsPerChain,
 		godKeysPerChain: godKeysPerChain,
-		addrToName:      make(map[string]chain.ContractName),
+		addrToName:      addrToName,
+		sinkChan:        sinkChan,
+		closeFunc:       closeFunc,
 	}
 
-	for name, cfg := range clientsPerChain {
-		if name == chain.HMNY {
-			tu.clientsPerChain[name], err = hmny.NewApi(l, cfg)
-			if err != nil {
-				err = errors.Wrap(err, "HMNY Err: ")
-				return nil, err
-			}
-			for name, addr := range cfg.ConftractAddresses {
-				tu.addrToName[addr] = name
-			}
-		} else if name == chain.ICON {
-			tu.clientsPerChain[name], err = icon.NewApi(l, cfg)
-			if err != nil {
-				err = errors.Wrap(err, "HMNY Err: ")
-			}
-			for name, addr := range cfg.ConftractAddresses {
-				tu.addrToName[addr] = name
-			}
-		} else {
-			return nil, errors.New("Unknown Chain Type supplied from config: " + string(name))
-		}
-	}
 	return tu, nil
 }
 
-type callBackFunc func(args *args) error
+type callBackFunc func(ctx context.Context, args *args) error
 
-var DemoSubCallback callBackFunc = func(args *args) error {
+var DemoSubCallback callBackFunc = func(ctx context.Context, args *args) error {
 	// fund demo wallets
 	args.log.Info("Starting demo...")
 	ienv, ok := args.clientsPerChain[chain.ICON]
@@ -160,30 +150,13 @@ var DemoSubCallback callBackFunc = func(args *args) error {
 	args.log.Info("Done funding")
 	time.Sleep(time.Second * 10)
 	go func(ctx context.Context) {
-		startHeight := 37420
-		sinkIconChan, errIconChan, err := ienv.Subscribe(context.Background(), uint64(startHeight))
-		if err != nil {
-			args.log.Errorf("%+v", err)
-			return
-		}
-		sinkHmyChan, errHmyChan, err := henv.Subscribe(context.Background(), uint64(startHeight))
-		if err != nil {
-			args.log.Errorf("%+v", err)
-			return
-		}
 		args.log.Info("Starting Watch")
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case err := <-errIconChan:
-				args.log.Errorf("\nICON Error: %v\n", err)
-			case msg := <-sinkIconChan:
-				args.log.Infof("\nICON Message: %+v\n", msg)
-			case err := <-errHmyChan:
-				args.log.Errorf("\nHmy Error: %v\n", err)
-			case msg := <-sinkHmyChan:
-				args.log.Infof("\nHmy Message: %+v\n", msg)
+			case res := <-args.sinkChan:
+				args.log.Infof("%v: %+v", res.name, res.msg)
 			}
 		}
 
@@ -219,7 +192,7 @@ var DemoSubCallback callBackFunc = func(args *args) error {
 	return nil
 }
 
-var DemoRequestCallback callBackFunc = func(args *args) error {
+var DemoRequestCallback callBackFunc = func(ctx context.Context, args *args) error {
 	// fund demo wallets
 	args.log.Info("Starting demo...")
 	ienv, ok := args.clientsPerChain[chain.ICON]

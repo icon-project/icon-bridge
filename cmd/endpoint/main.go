@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -15,7 +16,7 @@ func init() {
 
 }
 
-const NUM_PARALLEL_DEMOS = 1
+const NUM_PARALLEL_DEMOS = 3
 
 func main() {
 	l := log.New()
@@ -33,17 +34,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	ug.Start(context.TODO(), 46000)
 	for i := 0; i < NUM_PARALLEL_DEMOS; i++ {
 		log.Info("Register Process ", i)
-		err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
+		err = ug.Execute(context.TODO(), []chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
 		if err != nil {
 			log.Fatal(err)
 		}
 		time.Sleep(time.Second * time.Duration(5))
 	}
 	fmt.Println("Wait")
-	time.Sleep(time.Second * time.Duration(3000))
+	time.Sleep(time.Second * time.Duration(30000))
 }
 
 type Config struct {
