@@ -40,15 +40,15 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 
 	r.cls, err = newClients([]string{cfg.URL}, cfg.Src.ContractAddress(), r.log)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "newCient ")
 	}
 	r.par, err = NewParser(cfg.URL, cfg.ConftractAddresses)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "newParser ")
 	}
 	r.requester, err = newRequestAPI(cfg.URL, l, cfg.ConftractAddresses, cfg.NetworkID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "newRequestAPI ")
 	}
 	return r, nil
 }
@@ -262,7 +262,8 @@ func (r *api) Subscribe(ctx context.Context, height uint64) (sinkChan chan *chai
 						for _, txnLog := range sev.Logs {
 							res, evtType, err := r.par.Parse(txnLog)
 							if err != nil {
-								//r.log.Error(err)
+								r.log.Trace(errors.Wrap(err, "Parse "))
+								err = nil
 								continue
 							}
 							el := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
@@ -292,12 +293,12 @@ func (r *api) GetCoinBalance(addr string, coinType chain.TokenType) (*big.Int, e
 	} else if coinType == chain.ICXToken {
 		return r.requester.getHmnyWrappedICX(addr)
 	}
-	return nil, errors.New("Unsupported Token Type ")
+	return nil, fmt.Errorf("Unexpected Token Type %v ", coinType)
 }
 
 func (r *api) Transfer(param *chain.RequestParam) (txnHash string, err error) {
 	if param.FromChain != chain.HMNY {
-		err = errors.New("Source Chan should be Hmny")
+		err = fmt.Errorf("Unexpected Token Type %v .Expected chain.HMNY ", param.FromChain)
 		return
 	}
 	if param.ToChain == chain.HMNY {
@@ -306,7 +307,7 @@ func (r *api) Transfer(param *chain.RequestParam) (txnHash string, err error) {
 		} else if param.Token == chain.ERC20Token {
 			txnHash, _, err = r.requester.transferErc20(param.SenderKey, param.Amount, param.ToAddress)
 		} else {
-			err = errors.New("For intra chain transfer; unsupported token type ")
+			err = fmt.Errorf("Unexpected Token Type %v ", param.Token)
 		}
 	} else if param.ToChain == chain.ICON {
 		if param.Token == chain.ONEToken {
@@ -316,16 +317,19 @@ func (r *api) Transfer(param *chain.RequestParam) (txnHash string, err error) {
 		} else if param.Token == chain.ICXToken {
 			txnHash, _, err = r.requester.transferWrappedICXFromHmnyToIcon(param.SenderKey, param.Amount, param.ToAddress)
 		} else {
-			err = errors.New("For intra chain transfer; unsupported token type ")
+			err = fmt.Errorf("Unexpected Token Type %v ", param.Token)
 		}
 	} else {
-		err = errors.New("Unsupport Transaction Parameters ")
+		err = fmt.Errorf("Unexpected params %v ", param)
 	}
 	return
 }
 
 func (r *api) Approve(ownerKey string, amount big.Int) (txnHash string, err error) {
 	txnHash, _, _, err = r.requester.approveHmnyNativeBSHCoreToAccessICX(ownerKey, amount)
+	if err != nil {
+		err = errors.Wrap(err, "approveHmnyNativeBSHCoreToAccessICX ")
+	}
 	return
 }
 
@@ -336,12 +340,14 @@ func (r *api) Approve(ownerKey string, amount big.Int) (txnHash string, err erro
 func (r *api) WaitForTxnResult(ctx context.Context, hash string) (interface{}, []*chain.EventLogInfo, error) {
 	txRes, err := r.requester.waitForResults(ctx, common.HexToHash(hash))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "waitForResults ")
 	}
 	plogs := []*chain.EventLogInfo{}
 	for _, v := range txRes.Logs {
 		decodedLog, eventType, err := r.par.ParseEth(v)
 		if err != nil {
+			r.log.Trace(errors.Wrap(err, "ParseEth "))
+			err = nil
 			continue
 			//return nil, nil, err
 		}
@@ -361,7 +367,7 @@ func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	for i := 0; i < num; i++ {
 		res[i], err = generateKeyPair()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "generateKeyPair ")
 		}
 	}
 	return res, nil

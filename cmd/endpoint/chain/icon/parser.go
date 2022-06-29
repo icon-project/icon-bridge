@@ -3,9 +3,11 @@ package icon
 import (
 	"bytes"
 	"encoding/hex"
-	"errors"
+	"fmt"
 	"math/big"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
@@ -26,7 +28,7 @@ func NewParser(nameToAddr map[chain.ContractName]string) (*parser, error) {
 func (p *parser) Parse(log *TxnEventLog) (resLog interface{}, eventType chain.EventLogType, err error) {
 	cName, ok := p.addressToContractName[string(log.Addr)]
 	if !ok {
-		err = errors.New("Couldn't find contract matching the log " + string(log.Addr))
+		err = fmt.Errorf("addressToContractName doesn't include %v", string(log.Addr))
 		return
 	}
 	eventName := strings.Split(log.Indexed[0], "(")
@@ -39,7 +41,7 @@ func (p *parser) Parse(log *TxnEventLog) (resLog interface{}, eventType chain.Ev
 		} else if eventType == chain.TransferEnd {
 			resLog, err = parseTransferEndNativeCoin(log)
 		} else {
-			err = errors.New("No matching signature ")
+			err = fmt.Errorf("No matching signature for chain %v", cName)
 		}
 	} else if cName == chain.TokenBSHIcon {
 		if eventType == chain.TransferStart {
@@ -49,10 +51,10 @@ func (p *parser) Parse(log *TxnEventLog) (resLog interface{}, eventType chain.Ev
 		} else if eventType == chain.TransferEnd {
 			resLog, err = parseTransferEndToken(log)
 		} else {
-			err = errors.New("No matching signature ")
+			err = fmt.Errorf("No matching signature for chain %v", cName)
 		}
 	} else {
-		err = errors.New("Contract not amongst processed ones")
+		err = fmt.Errorf("Unexpected ContractName %v", cName)
 	}
 	return
 }
@@ -63,24 +65,24 @@ func rlpDecodeHex(str string, out interface{}) error {
 	}
 	input, err := hex.DecodeString(str)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "hex.DecodeString ")
 	}
 	err = rlp.Decode(bytes.NewReader(input), out)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "rlp.Decode ")
 	}
 	return nil
 }
 
 func parseTransferStartNativeCoin(log *TxnEventLog) (*chain.TransferStartEvent, error) {
 	if len(log.Data) != 3 {
-		return nil, errors.New("Unexpected length of log.Data")
+		return nil, fmt.Errorf("Unexpected length of log.Data. Got %d. Expected 3", len(log.Data))
 	}
 	data := log.Data
 	res := &[]chain.AssetTransferDetails{}
 	err := rlpDecodeHex(data[len(data)-1], res)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "rlpDecodeHex ")
 	}
 	sn := new(big.Int)
 	if strings.HasPrefix(data[1], "0x") {
@@ -98,13 +100,13 @@ func parseTransferStartNativeCoin(log *TxnEventLog) (*chain.TransferStartEvent, 
 
 func parseTransferReceivedNativeCoin(log *TxnEventLog) (*chain.TransferReceivedEvent, error) {
 	if len(log.Data) != 2 || len(log.Indexed) != 3 {
-		return nil, errors.New("Unexpected length of log.Data")
+		return nil, fmt.Errorf("Unexpected length. Got %v and %v. Expected 2 and 3", len(log.Data), len(log.Indexed))
 	}
 	data := log.Data
 	res := &[]chain.AssetDetails{}
 	err := rlpDecodeHex(data[len(data)-1], res)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "rlp.DecodeHex ")
 	}
 	sn := new(big.Int)
 	if strings.HasPrefix(data[0], "0x") {
@@ -148,13 +150,13 @@ func parseTransferEndNativeCoin(log *TxnEventLog) (*chain.TransferEndEvent, erro
 
 func parseTransferStartToken(log *TxnEventLog) (*chain.TransferStartEvent, error) {
 	if len(log.Data) != 3 {
-		return nil, errors.New("Unexpected length of log.Data")
+		return nil, fmt.Errorf("Unexpected length of log.Data. Got %d. Expected 3", len(log.Data))
 	}
 	data := log.Data
 	res := &[]chain.AssetTransferDetails{}
 	err := rlpDecodeHex(data[len(data)-1], res)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "rlpDecodeHex ")
 	}
 	sn := new(big.Int)
 	if strings.HasPrefix(data[1], "0x") {
@@ -172,13 +174,13 @@ func parseTransferStartToken(log *TxnEventLog) (*chain.TransferStartEvent, error
 
 func parseTransferReceivedToken(log *TxnEventLog) (*chain.TransferReceivedEvent, error) {
 	if len(log.Data) != 3 {
-		return nil, errors.New("Unexpected length of log.Data")
+		return nil, fmt.Errorf("Unexpected length of log.Data. Got %d. Expected 3", len(log.Data))
 	}
 	data := log.Data
 	res := &[]chain.AssetTransferDetails{}
 	err := rlpDecodeHex(data[len(data)-1], res)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "rlpDecodeHex ")
 	}
 	sn := new(big.Int)
 	if strings.HasPrefix(data[1], "0x") {
@@ -196,7 +198,7 @@ func parseTransferReceivedToken(log *TxnEventLog) (*chain.TransferReceivedEvent,
 
 func parseTransferEndToken(log *TxnEventLog) (*chain.TransferEndEvent, error) {
 	if len(log.Data) != 3 {
-		return nil, errors.New("Unexpected length of log.Data")
+		return nil, fmt.Errorf("Unexpected length of log.Data. Got %d. Expected 3", len(log.Data))
 	}
 	data := log.Data
 	sn := new(big.Int)

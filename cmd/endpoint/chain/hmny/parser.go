@@ -1,6 +1,7 @@
 package hmny
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -38,7 +39,7 @@ func NewParser(url string, nameToAddr map[chain.ContractName]string) (*parser, e
 	var err error
 	clrpc, err := rpc.Dial(url)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "rpc.Dial(%v) ", url)
 	}
 	addrToContractName := map[string]chain.ContractName{}
 	for name, addr := range nameToAddr {
@@ -47,26 +48,30 @@ func NewParser(url string, nameToAddr map[chain.ContractName]string) (*parser, e
 	p := &parser{backend: ethclient.NewClient(clrpc)}
 	nativeAddr := find(addrToContractName, chain.NativeBSHPeripheryHmy)
 	if nativeAddr == nil {
-		return nil, errors.New("Did not find native hmy contract in input map")
+		return nil, fmt.Errorf("addrToContractName doesn't include %v ", chain.NativeBSHPeripheryHmy)
 	}
 	tokenAddr := find(addrToContractName, chain.TokenBSHImplHmy)
 	if tokenAddr == nil {
-		return nil, errors.New("Did not find token hmy contract in input map")
+		return nil, fmt.Errorf("addrToContractName doesn't include %v ", chain.TokenBSHImplHmy)
 	}
 	p.genNativeObj, err = nativeHmy.NewNativeHmy(common.HexToAddress(*nativeAddr), p.backend)
 	if err != nil {
+		err = errors.Wrap(err, "nativeHmy.NewNativeHmy ")
 		return nil, err
 	}
 	p.genTokenObj, err = tokenHmy.NewTokenHmy(common.HexToAddress(*tokenAddr), p.backend)
 	if err != nil {
+		err = errors.Wrap(err, "tokenHmy.NewTokenHmy ")
 		return nil, err
 	}
 	p.eventIDToNameNative, err = eventIDToName(nativeHmy.NativeHmyABI)
 	if err != nil {
+		err = errors.Wrap(err, "eventIDToName ")
 		return nil, err
 	}
 	p.eventIDToNameToken, err = eventIDToName(tokenHmy.TokenHmyABI)
 	if err != nil {
+		err = errors.Wrap(err, "eventIDToName ")
 		return nil, err
 	}
 	p.addressToContractName = addrToContractName
@@ -87,13 +92,13 @@ func findTopic(topics []common.Hash, eventIDToName map[common.Hash]string) *stri
 func (p *parser) ParseEth(log *ethTypes.Log) (resLog interface{}, eventType chain.EventLogType, err error) {
 	cName, ok := p.addressToContractName[log.Address.String()]
 	if !ok {
-		err = errors.New("Couldn't find contract matching the log")
+		err = fmt.Errorf("addrToContractName doesn't include %v ", log.Address.String())
 		return
 	}
 	if cName == chain.NativeBSHPeripheryHmy {
 		tres := findTopic(log.Topics, p.eventIDToNameNative)
 		if tres == nil {
-			err = errors.New("Topic not among mentioned ones")
+			err = errors.New("log.Topics not among p.eventIDToNameNative ")
 			return
 		}
 		eventType = chain.EventLogType(*tres)
@@ -104,12 +109,12 @@ func (p *parser) ParseEth(log *ethTypes.Log) (resLog interface{}, eventType chai
 		} else if eventType == chain.TransferEnd {
 			resLog, err = p.parseTransferEndNativeCoin(log)
 		} else {
-			err = errors.New("No matching signature ")
+			err = fmt.Errorf("Unexpected eventType. Got %v ", eventType)
 		}
 	} else if cName == chain.TokenBSHImplHmy {
-		tres := findTopic(log.Topics, p.eventIDToNameNative)
+		tres := findTopic(log.Topics, p.eventIDToNameToken)
 		if tres == nil {
-			err = errors.New("Topic not among mentioned ones")
+			err = errors.New("log.Topics not among p.eventIDToNameToken ")
 			return
 		}
 		eventType = chain.EventLogType(*tres)
@@ -120,10 +125,10 @@ func (p *parser) ParseEth(log *ethTypes.Log) (resLog interface{}, eventType chai
 		} else if eventType == chain.TransferEnd {
 			resLog, err = p.parseTransferEndToken(log)
 		} else {
-			err = errors.New("No matching signature ")
+			err = fmt.Errorf("Unexpected eventType. Got %v ", eventType)
 		}
 	} else {
-		err = errors.New("Contract not amongst processed ones")
+		err = fmt.Errorf("Unexpected contractType. Got %v ", cName)
 	}
 	return
 }
@@ -156,7 +161,7 @@ func (p *parser) parseTransferStartNativeCoin(hlog *ethTypes.Log) (*chain.Transf
 	}
 	out, err := p.genNativeObj.ParseTransferStart(log)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "genNativeObj.ParseTransferStart ")
 	}
 	newAssetDetails := make([]chain.AssetTransferDetails, len(out.AssetDetails))
 	for i, v := range out.AssetDetails {
@@ -186,7 +191,7 @@ func (p *parser) parseTransferReceivedNativeCoin(hlog *ethTypes.Log) (*chain.Tra
 	}
 	out, err := p.genNativeObj.ParseTransferReceived(log)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "genNativeObj.ParseTransferReceived ")
 	}
 	newAssetDetails := make([]chain.AssetTransferDetails, len(out.AssetDetails))
 	for i, v := range out.AssetDetails {
@@ -215,7 +220,7 @@ func (p *parser) parseTransferEndNativeCoin(hlog *ethTypes.Log) (*chain.Transfer
 	}
 	out, err := p.genNativeObj.ParseTransferEnd(log)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "genNativeObj.ParseTransferEnd ")
 	}
 	return &chain.TransferEndEvent{
 		From: out.From.String(),
@@ -238,7 +243,7 @@ func (p *parser) parseTransferStartToken(hlog *ethTypes.Log) (*chain.TransferSta
 	}
 	out, err := p.genTokenObj.ParseTransferStart(log)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "genTokenObj.ParseTransferStart ")
 	}
 	newAssetDetails := make([]chain.AssetTransferDetails, len(out.Assets))
 	for i, v := range out.Assets {
@@ -268,7 +273,7 @@ func (p *parser) parseTransferReceivedToken(hlog *ethTypes.Log) (*chain.Transfer
 	}
 	out, err := p.genTokenObj.ParseTransferReceived(log)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "genTokenObj.ParseTransferReceived ")
 	}
 	newAssetDetails := make([]chain.AssetTransferDetails, len(out.AssetDetails))
 	for i, v := range out.AssetDetails {
@@ -298,7 +303,7 @@ func (p *parser) parseTransferEndToken(hlog *ethTypes.Log) (*chain.TransferEndEv
 	}
 	out, err := p.genTokenObj.ParseTransferEnd(log)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "genTokenObj.ParseTransferEnd ")
 	}
 	return &chain.TransferEndEvent{
 		From: out.From.String(),
@@ -311,7 +316,7 @@ func eventIDToName(abiStr string) (map[common.Hash]string, error) {
 	resMap := map[common.Hash]string{}
 	abi, err := abi.JSON(strings.NewReader(abiStr))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "abi.JSON ")
 	}
 	for _, a := range abi.Events {
 		resMap[a.ID] = a.Name

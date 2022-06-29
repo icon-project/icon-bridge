@@ -33,16 +33,19 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ex *
 	getKeyPairFromFile := func(walFile string, password string) (pair [2]string, err error) {
 		keyReader, err := os.Open(walFile)
 		if err != nil {
+			err = errors.Wrapf(err, "os.Open file %v", walFile)
 			return
 		}
 		defer keyReader.Close()
 
 		keyStore, err := ioutil.ReadAll(keyReader)
 		if err != nil {
+			err = errors.Wrapf(err, "ioutil.ReadAll %v", walFile)
 			return
 		}
 		key, err := keystore.DecryptKey(keyStore, password)
 		if err != nil {
+			err = errors.Wrapf(err, "keystore.Decrypt %v", walFile)
 			return
 		}
 		privBytes := ethcrypto.FromECDSA(key.PrivateKey)
@@ -63,7 +66,7 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ex *
 	for name, cfg := range cfgPerChain {
 		// GodKeys
 		if pair, err := getKeyPairFromFile(cfg.GodWallet.Path, cfg.GodWallet.Password); err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "getKeyPairFromFile(%v)", cfg.GodWallet.Path)
 		} else {
 			ex.godKeysPerChain[name] = pair
 		}
@@ -71,7 +74,7 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ex *
 		if name == chain.HMNY {
 			ex.clientsPerChain[name], err = hmny.NewApi(l, cfg)
 			if err != nil {
-				err = errors.Wrap(err, "HMNY Err: ")
+				err = errors.Wrap(err, "hmny.NewApi ")
 				return nil, err
 			}
 			for name, addr := range cfg.ConftractAddresses {
@@ -80,7 +83,8 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ex *
 		} else if name == chain.ICON {
 			ex.clientsPerChain[name], err = icon.NewApi(l, cfg)
 			if err != nil {
-				err = errors.Wrap(err, "HMNY Err: ")
+				err = errors.Wrap(err, "icon.NewApi ")
+				return nil, err
 			}
 			for name, addr := range cfg.ConftractAddresses {
 				ex.addrToName[addr] = name
@@ -121,7 +125,7 @@ func (ex *executor) removeChan(id uint64) {
 	ex.syncChanMtx.Lock()
 	defer ex.syncChanMtx.Unlock()
 	if ch, ok := ex.sinkChanPerID[id]; ok {
-		ex.log.Warnf("Removing channel of id %v", id)
+		ex.log.Debugf("Removing channel of id %v", id)
 		if ch != nil {
 			close(ex.sinkChanPerID[id])
 		}
@@ -146,12 +150,11 @@ func (ex *executor) Start(ctx context.Context, startHeight uint64) {
 		chains := make([]chain.ChainType, lenCls)
 		cases := make([]reflect.SelectCase, 1+(lenCls*2))
 		i := 0
-		ex.log.Debugf("LenCls %d", lenCls)
 		for name, cl := range ex.clientsPerChain {
 			ex.log.Debugf("Start Subscription %v", name)
 			sinkChan, errChan, err := cl.Subscribe(ctx, startHeight)
 			if err != nil {
-				ex.log.Errorf("%+v", err)
+				ex.log.Error(errors.Wrapf(err, "%v: Subscribe(%v)", name, startHeight))
 			}
 			chains[i] = name
 			cases[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(sinkChan)}
@@ -178,7 +181,7 @@ func (ex *executor) Start(ctx context.Context, startHeight uint64) {
 			if chosen < lenCls { // [0, lenCapi-1] is message
 				res, dok := value.Interface().(*chain.EventLogInfo)
 				if !dok {
-					ex.log.Error("Wrong interface; Expected *SubscribedEvent")
+					ex.log.Errorf("Got interface of type %T; Expected errorType", value)
 					break
 				}
 				if len(res.IDs) > 0 {
@@ -193,7 +196,7 @@ func (ex *executor) Start(ctx context.Context, startHeight uint64) {
 			} else if chosen >= lenCls && chosen < 2*len(cases) {
 				res, eok := value.Interface().(error)
 				if !eok {
-					ex.log.Error("Wrong interface; Expected errorType")
+					ex.log.Errorf("Got interface of type %T; Expected errorType", value)
 					break
 				}
 				ex.log.Errorf("ErrMessage %v %+v", chains[chosen-lenCls], res)
@@ -225,7 +228,7 @@ func (ex *executor) Execute(ctx context.Context, chains []chain.ChainType, cb ca
 
 	id, err := ex.getID()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "getID ")
 	}
 
 	sinkChan := make(chan *evt)
@@ -239,7 +242,7 @@ func (ex *executor) Execute(ctx context.Context, chains []chain.ChainType, cb ca
 		sinkChan, func() { ex.removeChan(id) },
 	)
 	if err != nil {
-		return
+		return errors.Wrap(err, "newArgs ")
 	}
 	go cb(ctx, args)
 	return

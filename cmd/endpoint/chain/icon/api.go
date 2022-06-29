@@ -2,6 +2,7 @@ package icon
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"sort"
 	"time"
@@ -35,11 +36,11 @@ type api struct {
 
 func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 	if len(cfg.URL) == 0 {
-		return nil, errors.New("List of Urls is empty")
+		return nil, errors.New("List of Urls is empty ")
 	}
 	client, err := newClient(cfg.URL, l)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "newClient ")
 	}
 
 	dstAddr := cfg.Dst.String()
@@ -65,7 +66,7 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 	}
 	recvr.par, err = NewParser(cfg.ConftractAddresses)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "NewParser ")
 	}
 	recvr.requester, err = newRequestAPI(cfg.URL, l, cfg.ConftractAddresses, cfg.NetworkID)
 	return recvr, nil
@@ -241,7 +242,7 @@ loop:
 										}
 									}
 									if err != nil {
-										q.err = err
+										q.err = errors.Wrapf(err, "GetTransactionResult(%v)", blk.Height)
 										return
 									}
 								}
@@ -288,7 +289,8 @@ func (r *api) Subscribe(ctx context.Context, height uint64) (sinkChan chan *chai
 			for _, txnLog := range txnLogs {
 				res, evtType, err := r.par.Parse(txnLog)
 				if err != nil {
-					//r.log.Error(err)
+					r.log.Trace(errors.Wrap(err, "Parse "))
+					err = nil
 					continue
 				}
 				el := &chain.EventLogInfo{ContractAddress: string(txnLog.Addr), EventType: evtType, EventLog: res}
@@ -311,7 +313,7 @@ func (r *api) Subscribe(ctx context.Context, height uint64) (sinkChan chan *chai
 
 func (r *api) Transfer(param *chain.RequestParam) (txnHash string, err error) {
 	if param.FromChain != chain.ICON {
-		err = errors.New("Source Chan should be Icon")
+		err = fmt.Errorf("Unexpected chain type. Got %v. Expected chain.ICON ", param.FromChain)
 		return
 	}
 	if param.ToChain == chain.ICON {
@@ -320,7 +322,7 @@ func (r *api) Transfer(param *chain.RequestParam) (txnHash string, err error) {
 		} else if param.Token == chain.IRC2Token {
 			txnHash, _, err = r.requester.transferIrc2(param.SenderKey, param.Amount, param.ToAddress)
 		} else {
-			err = errors.New("For intra chain transfer; unsupported token type ")
+			err = fmt.Errorf("Unexpected token type. Got %v ", param.Token)
 		}
 	} else if param.ToChain == chain.HMNY {
 		if param.Token == chain.ICXToken {
@@ -330,10 +332,10 @@ func (r *api) Transfer(param *chain.RequestParam) (txnHash string, err error) {
 		} else if param.Token == chain.ONEToken {
 			txnHash, _, err = r.requester.transferWrappedOneFromIconToHmny(param.SenderKey, param.Amount, param.ToAddress)
 		} else {
-			err = errors.New("For intra chain transfer; unsupported token type ")
+			err = fmt.Errorf("Unexpected token type. Got %v ", param.Token)
 		}
 	} else {
-		err = errors.New("Unsupport Transaction Parameters ")
+		err = fmt.Errorf("Unexpected transaction param. Got %v ", param)
 	}
 	return
 }
@@ -346,18 +348,20 @@ func (r *api) GetCoinBalance(addr string, coinType chain.TokenType) (*big.Int, e
 	} else if coinType == chain.ONEToken {
 		return r.requester.getIconWrappedOne(addr)
 	}
-	return nil, errors.New("Unsupported Token Type ")
+	return nil, fmt.Errorf("Unexpected token type. Got %v ", coinType)
 }
 
 func (r *api) WaitForTxnResult(ctx context.Context, hash string) (interface{}, []*chain.EventLogInfo, error) {
 	_, txRes, err := r.cl.waitForResults(ctx, &TransactionHashParam{Hash: HexBytes(hash)})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "waitForResults(%v)", hash)
 	}
 	plogs := []*chain.EventLogInfo{}
 	for _, v := range txRes.EventLogs {
 		decodedLog, eventType, err := r.par.Parse(&v)
 		if err != nil {
+			r.log.Trace(errors.Wrap(err, "waitForResults.Parse "))
+			err = nil
 			continue
 			//return nil, nil, err
 		}
@@ -368,6 +372,7 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (interface{}, [
 
 func (r *api) Approve(ownerKey string, amount big.Int) (txnHash string, err error) {
 	txnHash, _, _, err = r.requester.approveIconNativeCoinBSHToAccessHmnyOne(ownerKey, amount)
+	err = errors.Wrap(err, "Approve ")
 	return
 }
 
@@ -382,7 +387,7 @@ func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	for i := 0; i < num; i++ {
 		res[i], err = generateKeyPair()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "generateKeyPair ")
 		}
 	}
 	return res, nil

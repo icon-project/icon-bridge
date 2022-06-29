@@ -1,11 +1,11 @@
 package hmny
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
 	"github.com/icon-project/icon-bridge/common/log"
-	"github.com/pkg/errors"
 )
 
 type finder struct {
@@ -40,7 +40,7 @@ func (f *finder) WatchFor(args args) (err error) {
 	} else if args.eventType == chain.TransferEnd {
 		f.addToRunCache(&runnable{args: args, callback: transferEndCB})
 	} else {
-		err = errors.New("args.EventType not among supported EventLog Types ")
+		err = fmt.Errorf("Unexpected args.EventType %v", args.eventType)
 	}
 	return
 }
@@ -70,7 +70,7 @@ func (f *finder) removeFromFromRunCache(ids []int) {
 	f.runCache.mtx.Lock()
 	defer f.runCache.mtx.Unlock()
 	for _, id := range ids {
-		//f.log.Warnf("Removing %d", id)
+		f.log.Debugf("Removing %d", id)
 		f.runCache.mem[id] = nil
 	}
 }
@@ -107,7 +107,7 @@ func NewFinder(l log.Logger) *finder {
 var transferStartCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
 	elog, ok := (elInfo.EventLog).(*chain.TransferStartEvent)
 	if !ok {
-		return false, errors.New("Should be TransferStart event log")
+		return false, fmt.Errorf("Unexpected Type. Gor %T. Expected *TransferStartEvent", elInfo.EventLog)
 	}
 	if elInfo.EventType == chain.TransferStart &&
 		elInfo.ContractAddress == args.contractAddress &&
@@ -120,7 +120,7 @@ var transferStartCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (
 var transferReceivedCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
 	elog, ok := (elInfo.EventLog).(*chain.TransferReceivedEvent)
 	if !ok {
-		return false, errors.New("Should be transferReceivedCB event log")
+		return false, fmt.Errorf("Unexpected Type. Gor %T. Expected *TransferReceivedEvent", elInfo.EventLog)
 	}
 	if elInfo.EventType == chain.TransferReceived &&
 		elInfo.ContractAddress == args.contractAddress &&
@@ -133,7 +133,7 @@ var transferReceivedCB callBackFunc = func(args args, elInfo *chain.EventLogInfo
 var transferEndCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
 	elog, ok := (elInfo.EventLog).(*chain.TransferEndEvent)
 	if !ok {
-		return false, errors.New("Should be transferEndCB event log")
+		return false, fmt.Errorf("Unexpected Type. Gor %T. Expected *TransferEndEvent", elInfo.EventLog)
 	}
 	if elInfo.EventType == chain.TransferEnd &&
 		elInfo.ContractAddress == args.contractAddress &&

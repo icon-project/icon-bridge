@@ -2,7 +2,7 @@ package chain
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"math/big"
 )
 
@@ -100,19 +100,19 @@ func (e *EventLogInfo) GetSeq() (seq int64, err error) {
 	if e.EventType == TransferStart {
 		st, ok := e.EventLog.(*TransferStartEvent)
 		if !ok {
-			err = errors.New("EventLg type is not *TransferStartEvent")
+			err = fmt.Errorf("Expected *TransferStartEvent. Got %v", e.EventLog)
 		}
 		seq = st.Sn.Int64()
 	} else if e.EventType == TransferReceived {
 		st, ok := e.EventLog.(*TransferReceivedEvent)
 		if !ok {
-			err = errors.New("EventLg type is not *TransferReceivedEvent")
+			err = fmt.Errorf("Expected *TransferReceivedEvent. Got %v", e.EventLog)
 		}
 		seq = st.Sn.Int64()
 	} else if e.EventType == TransferEnd {
 		st, ok := e.EventLog.(*TransferEndEvent)
 		if !ok {
-			err = errors.New("EventLg type is not *TransferEndEvent")
+			err = fmt.Errorf("Expected *TransferEndEvent. Got %v", e.EventLog)
 		}
 		seq = st.Sn.Int64()
 	}
