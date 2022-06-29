@@ -20,7 +20,7 @@ const (
 	BlockInterval              = 2 * time.Second
 	BlockHeightPollInterval    = 60 * time.Second
 	defaultReadTimeout         = 15 * time.Second
-	monitorBlockMaxConcurrency = 1000 // number of concurrent requests to synchronize older blocks from source chain
+	monitorBlockMaxConcurrency = 10 // number of concurrent requests to synchronize older blocks from source chain
 )
 
 func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {

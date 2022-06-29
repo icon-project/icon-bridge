@@ -36,7 +36,7 @@ func main() {
 
 	for i := 0; i < NUM_PARALLEL_DEMOS; i++ {
 		log.Info("Register Process ", i)
-		err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, executor.DefaultCallBacks["Demo"])
+		err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -69,7 +69,7 @@ func (ug *executor) Execute(chains []chain.ChainType, cb callBackFunc) (err erro
 	ug.log.Info("Creating clients")
 
 	args, err := newArgs(
-		ug.log.WithFields(log.Fields{"id": rand.Intn(100)}),
+		ug.log.WithFields(log.Fields{"pid": rand.Intn(100)}),
 		newCfg, godKeys,
 	)
 	if err != nil {

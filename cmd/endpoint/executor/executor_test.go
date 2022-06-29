@@ -44,7 +44,7 @@ func TestUnitGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, executor.DefaultCallBacks["Demo"])
+	err = ug.Execute([]chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -16,7 +16,7 @@ import (
 
 const (
 	EventSignature             = "Message(str,int,bytes)"
-	MonitorBlockMaxConcurrency = 300
+	MonitorBlockMaxConcurrency = 10
 )
 
 type api struct {
@@ -239,8 +239,10 @@ loop:
 											res, err = r.cl.GetTransactionResult(&TransactionHashParam{Hash: txn.TxHash})
 										}
 									}
-									q.err = err
-									return
+									if err != nil {
+										q.err = err
+										return
+									}
 								}
 								if len(res.EventLogs) > 0 {
 									for i := 0; i < len(res.EventLogs); i++ {
