@@ -118,6 +118,22 @@ var DemoSubCallback callBackFunc = func(ctx context.Context, args *args) error {
 				} else {
 					return errors.New("NativeBSHIcon does not exist in config")
 				}
+			} else if ctrName == chain.TokenBSHIcon {
+				if ctr, ok := findAddrForContract(chain.TokenBSHImplHmy); ok {
+					henv.WatchFor(args.id, chain.TransferReceived, seq, ctr)
+					ienv.WatchFor(args.id, chain.TransferEnd, seq, el.ContractAddress)
+				} else {
+					return errors.New("TokenBSHImplHmy does not exist in config")
+				}
+			} else if ctrName == chain.TokenBSHImplHmy {
+				if ctr, ok := findAddrForContract(chain.TokenBSHIcon); ok {
+					henv.WatchFor(args.id, chain.TransferEnd, seq, el.ContractAddress)
+					ienv.WatchFor(args.id, chain.TransferReceived, seq, ctr)
+				} else {
+					return errors.New("NativeBSHIcon does not exist in config")
+				}
+			} else {
+				args.log.Warnf("Unexpected contract name %v ", ctrName)
 			}
 		}
 		return nil
@@ -175,7 +191,38 @@ var DemoSubCallback callBackFunc = func(ctx context.Context, args *args) error {
 	args.log.Info("Transfer Native ICX to HMY")
 	amt = new(big.Int)
 	amt.SetString("2000000000000000000", 10)
-	hash, err := ienv.Transfer(&chain.RequestParam{FromChain: chain.ICON, ToChain: chain.HMNY, SenderKey: iDemo[PRIVKEYPOS], FromAddress: iDemo[PUBKEYPOS], ToAddress: *henv.GetBTPAddress(hDemo[PUBKEYPOS]), Amount: *amt, Token: chain.ICXToken})
+	_, err = ienv.Transfer(&chain.RequestParam{FromChain: chain.ICON, ToChain: chain.HMNY, SenderKey: iDemo[PRIVKEYPOS], FromAddress: iDemo[PUBKEYPOS], ToAddress: *henv.GetBTPAddress(hDemo[PUBKEYPOS]), Amount: *amt, Token: chain.ICXToken})
+	if err != nil {
+		return err
+	}
+	args.log.Info("Transfer Native ONE to ICX")
+	amt = new(big.Int)
+	amt.SetString("2000000000000000000", 10)
+	_, err = henv.Transfer(&chain.RequestParam{FromChain: chain.HMNY, ToChain: chain.ICON, SenderKey: hDemo[PRIVKEYPOS], FromAddress: hDemo[PUBKEYPOS], ToAddress: *ienv.GetBTPAddress(iDemo[PUBKEYPOS]), Amount: *amt, Token: chain.ONEToken})
+	if err != nil {
+		return err
+	}
+	args.log.Info("Approve")
+	time.Sleep(time.Second * 10)
+
+	amt = new(big.Int)
+	amt.SetString("100000000000000000000000", 10)
+	_, err = ienv.Approve(iDemo[PRIVKEYPOS], *amt)
+	if err != nil {
+		return err
+	}
+	amt = new(big.Int)
+	amt.SetString("100000000000000000000000", 10)
+	_, err = henv.Approve(hDemo[PRIVKEYPOS], *amt)
+	if err != nil {
+		return err
+	}
+	time.Sleep(5 * time.Second)
+
+	args.log.Info("Transfer Wrapped")
+	amt = new(big.Int)
+	amt.SetString("1000000000000000000", 10)
+	hash, err := ienv.Transfer(&chain.RequestParam{FromChain: chain.ICON, ToChain: chain.HMNY, SenderKey: iDemo[PRIVKEYPOS], FromAddress: iDemo[PUBKEYPOS], ToAddress: *henv.GetBTPAddress(hDemo[PUBKEYPOS]), Amount: *amt, Token: chain.ONEToken})
 	if err != nil {
 		return err
 	}
@@ -185,10 +232,9 @@ var DemoSubCallback callBackFunc = func(ctx context.Context, args *args) error {
 	}
 	watchTransferStart(elInfo)
 
-	args.log.Info("Transfer Native ONE to ICX")
 	amt = new(big.Int)
-	amt.SetString("2000000000000000000", 10)
-	hash, err = henv.Transfer(&chain.RequestParam{FromChain: chain.HMNY, ToChain: chain.ICON, SenderKey: hDemo[PRIVKEYPOS], FromAddress: hDemo[PUBKEYPOS], ToAddress: *ienv.GetBTPAddress(iDemo[PUBKEYPOS]), Amount: *amt, Token: chain.ONEToken})
+	amt.SetString("1000000000000000000", 10)
+	hash, err = henv.Transfer(&chain.RequestParam{FromChain: chain.HMNY, ToChain: chain.ICON, SenderKey: hDemo[PRIVKEYPOS], FromAddress: hDemo[PUBKEYPOS], ToAddress: *ienv.GetBTPAddress(iDemo[PUBKEYPOS]), Amount: *amt, Token: chain.ICXToken})
 	if err != nil {
 		return err
 	}
@@ -341,7 +387,7 @@ var DemoRequestCallback callBackFunc = func(ctx context.Context, args *args) err
 	if err != nil {
 		return err
 	}
-	time.Sleep(15 * time.Second)
+	time.Sleep(30 * time.Second)
 	args.log.Info("ICON:  ")
 	if err := showBalance(args.log, ienv, iDemo[PUBKEYPOS], []chain.TokenType{chain.ICXToken, chain.IRC2Token, chain.ONEToken}); err != nil {
 		return err
