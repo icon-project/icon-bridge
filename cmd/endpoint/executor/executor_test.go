@@ -46,9 +46,9 @@ func TestExecutor(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(time.Second * 10)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3000*time.Second)
 	defer cancel()
-	ex.Start(ctx, 46000)
+	ex.Start(ctx, 100)
 	err = ex.Execute(ctx, []chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
 	if err != nil {
 		t.Fatal(err)

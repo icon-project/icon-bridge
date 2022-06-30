@@ -4,18 +4,18 @@
             "name":"ICON",
             "url":"http://127.0.0.1:9080/api/v3/default",
             "contract_addresses": {
-                    "Irc2Icon":"cx10129552153ad5899eb841baf03be5105801bd9a",
-                    "Irc2TradeableIcon":"cx1017c1beb68b5d5c8706c530c164bba91970a6eb",
-                    "NativeBSHIcon":"cxe4b60a773c63961aa2303961483c3c95b9de3360",
-                    "TokenBSHIcon":"cx3e836c763af780392a00a9ac2fc6e0471c95cb50"
+                    "Irc2Icon":"cx70053f7c2d0d985c5b342886c5fe8f5e4db1fb1b",
+                    "Irc2TradeableIcon":"cxd5faca679820dd974245eaceca3fb74536815f96",
+                    "NativeBSHIcon":"cxabbcd08546141646dd169ae70170da87b9296778",
+                    "TokenBSHIcon":"cxd029bba56f72e2ced0c88fd2fc289f4ae4dcd31f"
             },
             "god_wallet":{
                 "path":"/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/icon.god.wallet.json",
                 "password":"gochain"
             },
             "network_id":"0x5b9a77",
-            "src":"btp://0x5b9a77.icon/cx8015df5623344958af75ba1598b4ee14b8574bee",
-            "dst":"btp://0x6357d2e0.hmny/0x0169AE3f21b67e798fd4AdF50d0FA9FB83d72651"
+            "src":"btp://0x5b9a77.icon/cxe95228d7345879fc6b5d963fb60ed949ee6d3d99",
+            "dst":"btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91"
        
         },
         {
@@ -33,8 +33,8 @@
                 "password":""
             },
             "network_id":"0x6357d2e0",
-            "src":"btp://0x6357d2e0.hmny/0x0169AE3f21b67e798fd4AdF50d0FA9FB83d72651",
-            "dst":"btp://0x5b9a77.icon/cx8015df5623344958af75ba1598b4ee14b8574bee"
+            "src":"btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91",
+            "dst":"btp://0x5b9a77.icon/cxe95228d7345879fc6b5d963fb60ed949ee6d3d99"
         }
     ]
 } 

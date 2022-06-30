@@ -40,7 +40,7 @@ func main() {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
-	startHeight := uint64(48300)
+	startHeight := uint64(100)
 	ug.Start(ctx, startHeight)
 	for i := 0; i < NUM_PARALLEL_DEMOS; i++ {
 		log.Info("Register Process ", i)
