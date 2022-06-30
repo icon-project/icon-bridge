@@ -16,6 +16,10 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/btpsimple/stat"
 	"github.com/icon-project/icon-bridge/common/config"
 	"github.com/icon-project/icon-bridge/common/log"
+
+	_ "github.com/icon-project/icon-bridge/cmd/btpsimple/chain/bsc"
+	_ "github.com/icon-project/icon-bridge/cmd/btpsimple/chain/hmny"
+	_ "github.com/icon-project/icon-bridge/cmd/btpsimple/chain/icon"
 )
 
 var (

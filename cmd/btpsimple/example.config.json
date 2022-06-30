@@ -83,6 +83,7 @@
                 "endpoint": ["https://rpc.s0.b.hmny.io"],
                 "options": {
                     "gas_limit": 80000000,
+                    "boost_gas_price": 1.5,
                     "tx_data_size_limit": 65536
                 },
                 "key_store": {

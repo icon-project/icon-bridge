@@ -10,27 +10,30 @@ public class Token {
     private String symbol;
     private BigInteger decimals;
     private BigInteger feeNumerator;
+    private BigInteger fixedFee;
 
-    public Token(String name, String symbol, BigInteger decimals, BigInteger feeNumerator) {
+    public Token(String name, String symbol, BigInteger decimals, BigInteger feeNumerator, BigInteger fixedFee) {
         this.name = name;
         this.symbol = symbol;
         this.decimals = decimals;
         this.feeNumerator = feeNumerator;
+        this.fixedFee = fixedFee;
     }
 
 
     public static void writeObject(ObjectWriter w, Token v) {
         w.beginList(4);
-        w.write( v.getName());
-        w.write( v.getSymbol());
-        w.write( v.getDecimals());
-        w.write( v.getFeeNumerator());
+        w.write(v.getName());
+        w.write(v.getSymbol());
+        w.write(v.getDecimals());
+        w.write(v.getFeeNumerator());
+        w.write(v.getFixedFee());
         w.end();
     }
 
     public static Token readObject(ObjectReader r) {
         r.beginList();
-        Token result= new Token(r.readString(),r.readString(),r.readBigInteger(),r.readBigInteger());
+        Token result = new Token(r.readString(), r.readString(), r.readBigInteger(), r.readBigInteger(), r.readBigInteger());
         r.end();
         return result;
     }
@@ -65,5 +68,13 @@ public class Token {
 
     public void setFeeNumerator(BigInteger feeNumerator) {
         this.feeNumerator = feeNumerator;
+    }
+
+    public BigInteger getFixedFee() {
+        return fixedFee;
+    }
+
+    public void setFixedFee(BigInteger fixedFee) {
+        this.fixedFee = fixedFee;
     }
 }

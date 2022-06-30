@@ -38,7 +38,7 @@ RUN cd bls && make -j8 BLS_SWAP_G=1 && make install && cd ..
 RUN cd mcl && make install && cd ..
 
 COPY . bmr
-RUN cd bmr/cmd/btpsimple && go build .
+RUN cd bmr/cmd/btpsimple && go build -tags hmny .
 
 # prod build
 FROM ubuntu:18.04

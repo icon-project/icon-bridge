@@ -59,7 +59,11 @@ interface IBSHProxy {
         _feeNumerator is set to `10` in construction by default, which means the default fee ratio is 0.1%.
         @param _feeNumerator    the fee numerator
     */
-    function setFeeRatio(uint256 _feeNumerator) external;
+    function setFeeRatio(
+        string calldata _name,
+        uint256 _feeNumerator,
+        uint256 _fixedFee
+    ) external;
 
     /**
         @notice Registers a wrapped coin and id number of a supporting coin.
@@ -70,11 +74,12 @@ interface IBSHProxy {
         @param _name    Coin name. 
     */
     function register(
+        address _addr,
         string calldata _name,
         string calldata _symbol,
         uint256 _decimals,
         uint256 _feeNumerator,
-        address _addr
+        uint256 _fixedFee
     ) external;
 
     /**

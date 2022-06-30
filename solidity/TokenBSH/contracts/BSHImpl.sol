@@ -74,7 +74,6 @@ contract BSHImpl is IBSHImpl, Initializable {
         Types.Asset[] _assetDetails
     );
 
-
     modifier onlyBMC() {
         require(msg.sender == address(bmc), "Unauthorized");
         _;
@@ -115,7 +114,11 @@ contract BSHImpl is IBSHImpl, Initializable {
         bshProxy.handleFeeTransfer(_toFA);
     }
 
-    event ResponseUnknownType(string _from, uint256 _sn);
+    /**   @notice Notify that BSH contract has received unknown response
+        The `_from` sender
+        The `_sn` sequence number of service message
+    */
+    event UnknownResponse(string _from, uint256 _sn);
 
     function handleBTPMessage(
         string calldata _from,
@@ -132,7 +135,12 @@ contract BSHImpl is IBSHImpl, Initializable {
             try this.handleRequest(_ta) {
                 _statusMsg = "Transfer Success";
                 _status = RC_OK;
-                emit TransferReceived(_from, _ta.to.parseAddress(), _sn, _ta.asset);
+                emit TransferReceived(
+                    _from,
+                    _ta.to.parseAddress(),
+                    _sn,
+                    _ta.asset
+                );
             } catch Error(string memory _err) {
                 /**
                  * @dev Uncomment revert to debug errors
@@ -156,7 +164,7 @@ contract BSHImpl is IBSHImpl, Initializable {
             Types.Response memory response = _sm.data.decodeResponse();
             handleResponse(_sn, response.code, response.message);
         } else if (_sm.serviceType == Types.ServiceType.RESPONSE_UNKNOWN) {
-            emit ResponseUnknownType(_from, _sn);
+            emit UnknownResponse(_from, _sn);
         } else {
             sendBTPResponse(
                 Types.ServiceType.RESPONSE_UNKNOWN,
@@ -175,7 +183,6 @@ contract BSHImpl is IBSHImpl, Initializable {
         //string memory _toNetwork;
         //string memory _toAddress;
         string memory _toAddress = transferAssets.to;
-        //TODO: check the to address format is it btp address or just account?
         //(_toNetwork, _toAddress) = transferAssets.to.splitBTPAddress();
 
         try this.checkParseAddress(_toAddress) {} catch {
@@ -191,7 +198,6 @@ contract BSHImpl is IBSHImpl, Initializable {
                 bshProxy.isTokenRegisterd(_tokenName) == true,
                 "Unregistered Token"
             );
-            //TODO: send money to the user , try catch?
             try
                 bshProxy.handleTransferRequest(
                     _toAddress.parseAddress(),
@@ -253,7 +259,6 @@ contract BSHImpl is IBSHImpl, Initializable {
         emit TransferEnd(_caller, _sn, _code, _msg);
     }
 
-    //todo: check how to disable this from anyone to  invoke
     function sendServiceMessage(
         address _from,
         string memory _to,
@@ -290,6 +295,6 @@ contract BSHImpl is IBSHImpl, Initializable {
         }
 
         numOfPendingRequests++;
-        emit TransferStart(_from, _to, serialNo, _assets);        
+        emit TransferStart(_from, _to, serialNo, _assets);
     }
 }

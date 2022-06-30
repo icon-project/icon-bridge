@@ -4,11 +4,10 @@ require('dotenv').config()
 module.exports = {
   networks: {
     development: {
-      provider: () => new HDWalletProvider({
-        privateKeys: JSON.parse(process.env.PRIVATE_KEY),
-        providerOrUrl: "http://localhost:9545",
-      }),
-      network_id: '*'
+      host: "127.0.0.1",     // Localhost
+      port: 9545,            // Standard Ganache UI port
+      network_id: "*", 
+      gas: 4600000
     },
     bsc: {
       provider: () => new HDWalletProvider({

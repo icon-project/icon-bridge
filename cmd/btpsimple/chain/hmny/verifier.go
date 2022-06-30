@@ -1,3 +1,5 @@
+//go:build hmny
+
 package hmny
 
 import (
@@ -9,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rlp"
-
 	libbls "github.com/harmony-one/bls/ffi/go/bls"
 	"github.com/harmony-one/harmony/crypto/bls"
 	"github.com/harmony-one/harmony/numeric"
@@ -32,20 +33,8 @@ type Verifier interface {
 	Update(h *Header) (err error)
 }
 
-type dumbVerifier struct{}
-
-func (*dumbVerifier) Epoch() uint64 {
-	return 0
-}
-
-func (*dumbVerifier) Update(
-	h *Header) (err error) {
-	return nil
-}
-
-func (*dumbVerifier) Verify(h *Header,
-	bitmap, signature []byte) (ok bool, err error) {
-	return true, nil
+func NewVerifier() Verifier {
+	return &verifier{}
 }
 
 type verifier struct {

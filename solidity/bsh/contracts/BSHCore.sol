@@ -24,6 +24,13 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     event SetOwnership(address indexed promoter, address indexed newOwner);
     event RemoveOwnership(address indexed remover, address indexed formerOwner);
 
+    struct Coin {
+        string name;
+        string symbol;
+        uint256 feeNumerator;
+        uint256 fixedFee;
+    }
+
     modifier onlyOwner() {
         require(owners[msg.sender] == true, "Unauthorized");
         _;
@@ -52,6 +59,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     mapping(string => uint256) internal aggregationFee; // storing Aggregation Fee in state mapping variable.
     mapping(address => mapping(string => Types.Balance)) internal balances;
     mapping(string => address) internal coins; //  a list of all supported coins
+    mapping(string => Coin) coinDetails;
 
     function initialize(
         string calldata _nativeCoinName,
@@ -66,6 +74,12 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         feeNumerator = _feeNumerator;
         fixedFee = _fixedFee;
         coinsName.push(_nativeCoinName);
+        coinDetails[_nativeCoinName] = Coin(
+            _nativeCoinName,
+            _nativeCoinName,
+            _feeNumerator,
+            _fixedFee
+        );
     }
 
     /**
@@ -147,22 +161,19 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         @dev Caller must be an Owner of this contract
         The transfer fee is calculated by feeNumerator/FEE_DEMONINATOR. 
         The feeNumetator should be less than FEE_DEMONINATOR
-        _feeNumerator is set to `10` in construction by default, which means the default fee ratio is 0.1%.
+        _feeNumerator if it is set to `10`, which means the default fee ratio is 0.1%.
         @param _feeNumerator    the fee numerator
     */
-    function setFeeRatio(uint256 _feeNumerator) external override onlyOwner {
+    function setFeeRatio(
+        string calldata _name,
+        uint256 _feeNumerator,
+        uint256 _fixedFee
+    ) external override onlyOwner {
         require(_feeNumerator <= FEE_DENOMINATOR, "InvalidSetting");
-        feeNumerator = _feeNumerator;
-    }
-
-    /**
-        @notice set Fixed Fee.
-        @dev Caller must be an Owner
-        @param _fixedFee    A new value of Fixed Fee
-    */
-    function setFixedFee(uint256 _fixedFee) external override onlyOwner {
-        require(_fixedFee > 0, "InvalidSetting");
-        fixedFee = _fixedFee;
+        require(coins[_name] != address(0), "TokenNotRegistered");
+        Coin memory _coin = coinDetails[_name];
+        _coin.feeNumerator = _feeNumerator;
+        _coin.fixedFee = _fixedFee;
     }
 
     /**
@@ -176,15 +187,19 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     function register(
         string calldata _name,
         string calldata _symbol,
-        uint8 _decimals
+        uint8 _decimals,
+        uint256 _feeNumerator,
+        uint256 _fixedFee
     ) external override onlyOwner {
         require(!_name.compareTo(nativeCoinName), "ExistNativeCoin");
         require(coins[_name] == address(0), "ExistCoin");
+        require(_feeNumerator <= FEE_DENOMINATOR, "InvalidFeeSetting");
         address deployedERC20 = address(
             new ERC20Tradable(_name, _symbol, _decimals)
         );
         coins[_name] = deployedERC20;
         coinsName.push(_name);
+        coinDetails[_name] = Coin(_name, _symbol, _feeNumerator, _fixedFee);
     }
 
     /**
@@ -329,11 +344,12 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         //  require(_chargeAmt > 0) can be omitted
         //  If msg.value less than _chargeAmt, it likely fails when calculating
         //  _amount = _value - _chargeAmt
+        Coin memory _coin = coinDetails[nativeCoinName];
         uint256 _chargeAmt = msg
             .value
-            .mul(feeNumerator)
+            .mul(_coin.feeNumerator)
             .div(FEE_DENOMINATOR)
-            .add(fixedFee);
+            .add(_coin.fixedFee);
 
         //  @dev msg.value is an amount request to transfer (include fee)
         //  Later on, it will be calculated a true amount that should be received at a destination
@@ -362,14 +378,16 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         require(!_coinName.compareTo(nativeCoinName), "InvalidWrappedCoin");
         address _erc20Address = coins[_coinName];
         require(_erc20Address != address(0), "UnregisterCoin");
+        Coin memory _coin = coinDetails[_coinName];
         //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
         //  Thus, it's likely that _chargeAmt is always greater than 0
         //  require(_chargeAmt > 0) can be omitted
         //  If _value less than _chargeAmt, it likely fails when calculating
         //  _amount = _value - _chargeAmt
-        uint256 _chargeAmt = _value.mul(feeNumerator).div(FEE_DENOMINATOR).add(
-            fixedFee
-        );
+        uint256 _chargeAmt = _value
+            .mul(_coin.feeNumerator)
+            .div(FEE_DENOMINATOR)
+            .add(_coin.fixedFee);
 
         //  Transfer and Lock Token processes:
         //  BSHCore contract calls safeTransferFrom() to transfer the Token from Caller's account (msg.sender)
@@ -460,14 +478,15 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
                 _values[i]
             );
 
+            Coin memory _coin = coinDetails[_coinNames[i]];
             //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
             //  Thus, it's likely that _chargeAmt is always greater than 0
             //  require(_chargeAmt > 0) can be omitted
             _coins[i] = _coinNames[i];
             _chargeAmts[i] = _values[i]
-                .mul(feeNumerator)
+                .mul(_coin.feeNumerator)
                 .div(FEE_DENOMINATOR)
-                .add(fixedFee);
+                .add(_coin.fixedFee);
             _amounts[i] = _values[i].sub(_chargeAmts[i]);
 
             //  Lock this requested _value as a record of a pending transferring transaction
@@ -478,15 +497,16 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         }
 
         if (msg.value != 0) {
+            Coin memory _coin = coinDetails[nativeCoinName];
             //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
             //  Thus, it's likely that _chargeAmt is always greater than 0
             //  require(_chargeAmt > 0) can be omitted
             _coins[size - 1] = nativeCoinName; // push native_coin at the end of request
             _chargeAmts[size - 1] = msg
                 .value
-                .mul(feeNumerator)
+                .mul(_coin.feeNumerator)
                 .div(FEE_DENOMINATOR)
-                .add(fixedFee);
+                .add(_coin.fixedFee);
             _amounts[size - 1] = msg.value.sub(_chargeAmts[size - 1]);
             lockBalance(msg.sender, coinsName[0], msg.value);
         }
@@ -550,7 +570,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     }
 
     function paymentTransfer(address payable _to, uint256 _amount) private {
-        (bool sent, ) = _to.call{ value: _amount }("");
+        (bool sent, ) = _to.call{value: _amount}("");
         require(sent, "Payment transfer failed");
     }
 

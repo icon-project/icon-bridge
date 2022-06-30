@@ -1,7 +1,7 @@
 ARG BTPSIMPLE_VERSION=latest
 ARG GOLOOP_IMAGE=iconloop/goloop-icon:v0.9.7
 
-FROM ${GOLOOP_IMAGE}
+FROM ${GOLOOP_IMAGE} as goloop
 FROM canhlinh/truffle:5.3.0-alpine as truffle
 FROM btpsimple:${BTPSIMPLE_VERSION} AS btpsimple
 FROM node:16.1-alpine as node
@@ -31,11 +31,12 @@ ENV BTPSIMPLE_CONFIG_DIR=${BTPSIMPLE_BASE_DIR}/config
 ENV BTPSIMPLE_CONTRACTS_DIR=${BTPSIMPLE_BASE_DIR}/contracts
 ENV BTPSIMPLE_SCRIPTS_DIR=${BTPSIMPLE_BASE_DIR}/js
 ENV BTPSIMPLE_BIN_DIR=/btpsimple/bin
-
+    
 COPY ./*.sh /btpsimple/bin/
 COPY ./scripts/*.sh /btpsimple/bin/
 COPY ./entrypoint.sh /
 COPY ./scripts/provision.sh /
+COPY ./iconvalidators /btpsimple/bin/
 
 
 #RUN mkdir {BTPSIMPLE_SCRIPTS_DIR}

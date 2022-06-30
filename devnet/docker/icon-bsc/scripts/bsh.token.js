@@ -10,7 +10,7 @@ module.exports = async function (callback) {
     switch (argv["method"]) {
       case "registerToken":
         console.log("registerToken", argv.name)
-        tx = await bshProxy.register(argv.name, argv.symbol, 18, 100, argv.addr)
+        tx = await bshProxy.register(argv.addr, argv.name, argv.symbol, 18, argv.feeNumerator, argv.fixedFee)
         //console.log(await bshProxy.tokenNames())
         console.log(tx)
         break;

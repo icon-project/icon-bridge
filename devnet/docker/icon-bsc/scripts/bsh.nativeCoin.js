@@ -9,7 +9,7 @@ module.exports = async function (callback) {
     switch (argv["method"]) {
       case "register":
         console.log("registerCoin", argv.name)
-        tx = await bshCore.register(argv.name, argv.symbol, argv.decimals);
+        tx = await bshCore.register(argv.name, argv.symbol, argv.decimals, argv.feeNumerator, argv.fixedFee);
         //console.log(await bshCore.coinNames())
         console.log(tx)
         break;
