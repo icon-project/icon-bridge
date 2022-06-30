@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
    @dev This contract is used to handle coin transferring service
    Note: The coin of following interface can be:
    Native Coin : The native coin of this chain
-   Wrapped Native Coin : A tokenized ERC1155 version of another native coin like ICX
+   Wrapped Native Coin : A tokenized ERC20 version of another native coin like ICX
 */
 interface IBSHCore {
     /**
@@ -73,12 +73,13 @@ interface IBSHCore {
         _decimals decimal number
         @param _name    Coin name. 
     */
-    function register(
+    function register(       
         string calldata _name,
         string calldata _symbol,
         uint8 _decimals,
         uint256 _feeNumerator,
-        uint256 _fixedFee
+        uint256 _fixedFee,
+        address _addr
     ) external;
 
     /**

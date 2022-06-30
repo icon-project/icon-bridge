@@ -4,6 +4,7 @@ pragma abicoder v2;
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IBSHPeriphery.sol";
 import "./interfaces/IBSHCore.sol";
 import "./libraries/String.sol";
@@ -16,7 +17,7 @@ import "./interfaces/IERC20Tradable.sol";
    @dev This contract is used to handle coin transferring service
    Note: The coin of following contract can be:
    Native Coin : The native coin of this chain
-   Wrapped Native Coin : A tokenized ERC1155 version of another native coin like ICX
+   Wrapped Native Coin : A tokenized ERC20 version of another native coin like ICX
 */
 contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     using SafeMathUpgradeable for uint256;
@@ -25,10 +26,10 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     event RemoveOwnership(address indexed remover, address indexed formerOwner);
 
     struct Coin {
-        string name;
-        string symbol;
+        address addr;
         uint256 feeNumerator;
         uint256 fixedFee;
+        uint256 coinType;
     }
 
     modifier onlyOwner() {
@@ -42,10 +43,12 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     }
 
     uint256 private constant FEE_DENOMINATOR = 10**4;
-    uint256 public feeNumerator;
-    uint256 public fixedFee;
     uint256 private constant RC_OK = 0;
     uint256 private constant RC_ERR = 1;
+
+    uint256 private constant NATIVE_COIN_TYPE = 0;
+    uint256 private constant NATIVE_WRAPPED_COIN_TYPE = 1;
+    uint256 private constant NON_NATIVE_TOKEN_TYPE = 2;
 
     IBSHPeriphery internal bshPeriphery;
 
@@ -59,7 +62,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     mapping(string => uint256) internal aggregationFee; // storing Aggregation Fee in state mapping variable.
     mapping(address => mapping(string => Types.Balance)) internal balances;
     mapping(string => address) internal coins; //  a list of all supported coins
-    mapping(string => Coin) coinDetails;
+    mapping(string => Coin) internal coinDetails;
 
     function initialize(
         string calldata _nativeCoinName,
@@ -71,14 +74,12 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         emit SetOwnership(address(0), msg.sender);
         nativeCoinName = _nativeCoinName;
         coins[_nativeCoinName] = address(0);
-        feeNumerator = _feeNumerator;
-        fixedFee = _fixedFee;
         coinsName.push(_nativeCoinName);
         coinDetails[_nativeCoinName] = Coin(
-            _nativeCoinName,
-            _nativeCoinName,
+            address(0),
             _feeNumerator,
-            _fixedFee
+            _fixedFee,
+            NATIVE_COIN_TYPE
         );
     }
 
@@ -101,8 +102,8 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
        @param _owner    Address of an Owner to be removed.
    */
     function removeOwner(address _owner) external override onlyOwner {
-        require(listOfOwners.length > 1, "Unable to remove last Owner");
-        require(owners[_owner] == true, "Removing Owner not found");
+        require(listOfOwners.length > 1, "CannotRemoveMinOwner");
+        require(owners[_owner] == true, "NotanOwner");
         delete owners[_owner];
         _remove(_owner);
         emit RemoveOwnership(msg.sender, _owner);
@@ -170,10 +171,9 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         uint256 _fixedFee
     ) external override onlyOwner {
         require(_feeNumerator <= FEE_DENOMINATOR, "InvalidSetting");
-        require(coins[_name] != address(0), "TokenNotRegistered");
-        Coin memory _coin = coinDetails[_name];
-        _coin.feeNumerator = _feeNumerator;
-        _coin.fixedFee = _fixedFee;
+        require(coins[_name] != address(0), "TokenNotExists");
+        coinDetails[_name].feeNumerator = _feeNumerator;
+        coinDetails[_name].fixedFee = _fixedFee;
     }
 
     /**
@@ -184,22 +184,39 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         _decimals decimal number
         @param _name    Coin name. 
     */
-    function register(
+    function register(        
         string calldata _name,
         string calldata _symbol,
         uint8 _decimals,
         uint256 _feeNumerator,
-        uint256 _fixedFee
+        uint256 _fixedFee,
+        address _addr
     ) external override onlyOwner {
         require(!_name.compareTo(nativeCoinName), "ExistNativeCoin");
         require(coins[_name] == address(0), "ExistCoin");
         require(_feeNumerator <= FEE_DENOMINATOR, "InvalidFeeSetting");
-        address deployedERC20 = address(
-            new ERC20Tradable(_name, _symbol, _decimals)
-        );
-        coins[_name] = deployedERC20;
-        coinsName.push(_name);
-        coinDetails[_name] = Coin(_name, _symbol, _feeNumerator, _fixedFee);
+        if (_addr == address(0)) {
+            address deployedERC20 = address(
+                new ERC20Tradable(_name, _symbol, _decimals)
+            );
+            coins[_name] = deployedERC20;
+            coinsName.push(_name);
+            coinDetails[_name] = Coin(
+                deployedERC20,
+                _feeNumerator,
+                _fixedFee,
+                NATIVE_WRAPPED_COIN_TYPE
+            );
+        } else {
+            coins[_name] = _addr;
+            coinsName.push(_name);
+            coinDetails[_name] = Coin(
+                _addr,
+                _feeNumerator,
+                _fixedFee,
+                NON_NATIVE_TOKEN_TYPE
+            );
+        }
     }
 
     /**
@@ -344,12 +361,11 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         //  require(_chargeAmt > 0) can be omitted
         //  If msg.value less than _chargeAmt, it likely fails when calculating
         //  _amount = _value - _chargeAmt
-        Coin memory _coin = coinDetails[nativeCoinName];
         uint256 _chargeAmt = msg
             .value
-            .mul(_coin.feeNumerator)
+            .mul(coinDetails[nativeCoinName].feeNumerator)
             .div(FEE_DENOMINATOR)
-            .add(_coin.fixedFee);
+            .add(coinDetails[nativeCoinName].fixedFee);
 
         //  @dev msg.value is an amount request to transfer (include fee)
         //  Later on, it will be calculated a true amount that should be received at a destination
@@ -378,16 +394,15 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         require(!_coinName.compareTo(nativeCoinName), "InvalidWrappedCoin");
         address _erc20Address = coins[_coinName];
         require(_erc20Address != address(0), "UnregisterCoin");
-        Coin memory _coin = coinDetails[_coinName];
         //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
         //  Thus, it's likely that _chargeAmt is always greater than 0
         //  require(_chargeAmt > 0) can be omitted
         //  If _value less than _chargeAmt, it likely fails when calculating
         //  _amount = _value - _chargeAmt
         uint256 _chargeAmt = _value
-            .mul(_coin.feeNumerator)
+            .mul(coinDetails[_coinName].feeNumerator)
             .div(FEE_DENOMINATOR)
-            .add(_coin.fixedFee);
+            .add(coinDetails[_coinName].fixedFee);
 
         //  Transfer and Lock Token processes:
         //  BSHCore contract calls safeTransferFrom() to transfer the Token from Caller's account (msg.sender)
@@ -465,6 +480,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         string[] memory _coins = new string[](size);
         uint256[] memory _amounts = new uint256[](size);
         uint256[] memory _chargeAmts = new uint256[](size);
+        Coin memory _coin;
 
         for (uint256 i = 0; i < _coinNames.length; i++) {
             address _erc20Addresses = coins[_coinNames[i]];
@@ -478,7 +494,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
                 _values[i]
             );
 
-            Coin memory _coin = coinDetails[_coinNames[i]];
+            _coin = coinDetails[_coinNames[i]];
             //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
             //  Thus, it's likely that _chargeAmt is always greater than 0
             //  require(_chargeAmt > 0) can be omitted
@@ -497,16 +513,15 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         }
 
         if (msg.value != 0) {
-            Coin memory _coin = coinDetails[nativeCoinName];
             //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
             //  Thus, it's likely that _chargeAmt is always greater than 0
             //  require(_chargeAmt > 0) can be omitted
             _coins[size - 1] = nativeCoinName; // push native_coin at the end of request
             _chargeAmts[size - 1] = msg
                 .value
-                .mul(_coin.feeNumerator)
+                .mul(coinDetails[nativeCoinName].feeNumerator)
                 .div(FEE_DENOMINATOR)
-                .add(_coin.fixedFee);
+                .add(coinDetails[nativeCoinName].fixedFee);
             _amounts[size - 1] = msg.value.sub(_chargeAmts[size - 1]);
             lockBalance(msg.sender, coinsName[0], msg.value);
         }
@@ -564,14 +579,13 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         if (_coinName.compareTo(nativeCoinName)) {
             paymentTransfer(payable(_to), _value);
         } else {
-            address _erc20Address = coins[_coinName];
-            IERC20Tradable(_erc20Address).transfer(_to, _value);
+            IERC20(coins[_coinName]).transfer(_to, _value);
         }
     }
 
     function paymentTransfer(address payable _to, uint256 _amount) private {
         (bool sent, ) = _to.call{value: _amount}("");
-        require(sent, "Payment transfer failed");
+        require(sent, "PaymentFailed");
     }
 
     /**
@@ -591,9 +605,12 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     ) external override onlyBSHPeriphery {
         if (_coinName.compareTo(nativeCoinName)) {
             paymentTransfer(payable(_to), _value);
-        } else {
-            address _erc20Address = coins[_coinName];
-            IERC20Tradable(_erc20Address).mint(_to, _value);
+        } else if (
+            coinDetails[_coinName].coinType == NATIVE_WRAPPED_COIN_TYPE
+        ) {
+            IERC20Tradable(coins[_coinName]).mint(_to, _value);
+        } else if (coinDetails[_coinName].coinType == NON_NATIVE_TOKEN_TYPE) {
+            IERC20(coins[_coinName]).transfer(_to, _value);
         }
     }
 
@@ -643,7 +660,10 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
             }
         } else if (_rspCode == RC_OK) {
             address _erc20Address = coins[_coinName];
-            if (!_coinName.compareTo(nativeCoinName)) {
+            if (
+                !_coinName.compareTo(nativeCoinName) &&
+                coinDetails[_coinName].coinType == NATIVE_WRAPPED_COIN_TYPE
+            ) {
                 IERC20Tradable(_erc20Address).burn(address(this), _value);
             }
         }

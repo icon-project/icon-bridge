@@ -24,8 +24,17 @@ import score.ObjectWriter;
 import java.math.BigInteger;
 
 public class Balance {
+    private BigInteger usable;
     private BigInteger locked;
     private BigInteger refundable;
+
+    public BigInteger getUsable() {
+        return usable;
+    }
+
+    public void setUsable(BigInteger usable) {
+        this.usable = usable;
+    }
 
     public BigInteger getLocked() {
         return locked;
@@ -46,7 +55,8 @@ public class Balance {
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("Balance{");
-        sb.append("locked=").append(locked);
+        sb.append("usable=").append(usable);
+        sb.append(", locked=").append(locked);
         sb.append(", refundable=").append(refundable);
         sb.append('}');
         return sb.toString();
@@ -59,6 +69,7 @@ public class Balance {
     public static Balance readObject(ObjectReader reader) {
         Balance obj = new Balance();
         reader.beginList();
+        obj.setUsable(reader.readNullable(BigInteger.class));
         obj.setLocked(reader.readNullable(BigInteger.class));
         obj.setRefundable(reader.readNullable(BigInteger.class));
         reader.end();
@@ -66,7 +77,8 @@ public class Balance {
     }
 
     public void writeObject(ObjectWriter writer) {
-        writer.beginList(2);
+        writer.beginList(3);
+        writer.writeNullable(this.getUsable());
         writer.writeNullable(this.getLocked());
         writer.writeNullable(this.getRefundable());
         writer.end();

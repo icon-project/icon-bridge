@@ -1,5 +1,6 @@
 package foundation.icon.btp.nativecoin;
 
+import score.Address;
 import score.ObjectReader;
 import score.ObjectWriter;
 
@@ -11,31 +12,45 @@ public class Coin {
     private int decimals;
     private BigInteger feeNumerator;
     private BigInteger fixedFee;
+    private int coinType;
+    private Address address;
 
-    public Coin(String name, String symbol, int decimals, BigInteger feeNumerator, BigInteger fixedFee) {
+    public Coin(Address address, String name, String symbol, int decimals, BigInteger feeNumerator, BigInteger fixedFee, int coinType) {
+        this.address = address;
         this.name = name;
         this.symbol = symbol;
         this.decimals = decimals;
         this.feeNumerator = feeNumerator;
         this.fixedFee = fixedFee;
+        this.coinType = coinType;
     }
 
 
     public static void writeObject(ObjectWriter w, Coin v) {
-        w.beginList(4);
+        w.beginList(6);
+        w.write(v.getAddress());
         w.write(v.getName());
         w.write(v.getSymbol());
         w.write(v.getDecimals());
         w.write(v.getFeeNumerator());
         w.write(v.getFixedFee());
+        w.write(v.getCoinType());
         w.end();
     }
 
     public static Coin readObject(ObjectReader r) {
         r.beginList();
-        Coin result = new Coin(r.readString(), r.readString(), r.readInt(), r.readBigInteger(), r.readBigInteger());
+        Coin result = new Coin(r.readAddress(), r.readString(), r.readString(), r.readInt(), r.readBigInteger(), r.readBigInteger(), r.readInt());
         r.end();
         return result;
+    }
+
+    public Address getAddress() {
+        return address;
+    }
+
+    public void setAddress(Address address) {
+        this.address = address;
     }
 
     public String getName() {
@@ -76,5 +91,13 @@ public class Coin {
 
     public void setFixedFee(BigInteger fixedFee) {
         this.fixedFee = fixedFee;
+    }
+
+    public int getCoinType() {
+        return coinType;
+    }
+
+    public void setCoinType(int coinType) {
+        this.coinType = coinType;
     }
 }

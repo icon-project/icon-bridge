@@ -34,7 +34,7 @@ public interface NCS {
      * @param _name A coin name.
      */
     @External
-    void register(String _name, String _symbol, int _decimals, BigInteger _feeNumerator, BigInteger _fixedFee);
+    void register(String _name, String _symbol, int _decimals, BigInteger _feeNumerator, BigInteger _fixedFee, Address address);
 
     /**
      * Return all supported coins names in other networks by the BSH contract

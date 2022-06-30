@@ -17,7 +17,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
    @dev This contract use to handle coin transfer service
    Note: The coin of following interface can be:
    Native Coin : The native coin of this chain
-   Wrapped Native Coin : A tokenized ERC1155 version of another native coin like ICX
+   Wrapped Native Coin : A tokenized ERC20 version of another native coin like ICX
 */
 contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
     using RLPEncodeStruct for Types.TransferCoin;

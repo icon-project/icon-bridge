@@ -76,7 +76,7 @@ library ParseAddress {
         }
 
         // get the capitalized characters in the actual checksum.
-        string memory actual = _toChecksumString(accountAddress);
+        //string memory actual = _toChecksumString(accountAddress);
 
         // compare provided string to actual checksum string to test for validity.
         //TODO: check with ICONDAO team, this fails due to the capitalization of the actual address
