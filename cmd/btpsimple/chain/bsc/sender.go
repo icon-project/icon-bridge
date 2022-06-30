@@ -83,11 +83,11 @@ type sender struct {
 
 func NewSender(
 	src, dst chain.BTPAddress,
-	urls []string, w *wallet.EvmWallet,
+	urls []string, w wallet.Wallet,
 	opts map[string]interface{}, l log.Logger) (chain.Sender, error) {
 	s := &sender{
 		log: l,
-		w:   w,
+		w:   w.(*wallet.EvmWallet),
 		src: src,
 		dst: dst,
 	}
