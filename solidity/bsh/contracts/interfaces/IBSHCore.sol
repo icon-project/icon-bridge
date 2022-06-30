@@ -59,14 +59,11 @@ interface IBSHCore {
         _feeNumerator is set to `10` in construction by default, which means the default fee ratio is 0.1%.
         @param _feeNumerator    the fee numerator
     */
-    function setFeeRatio(uint256 _feeNumerator) external;
-
-    /**
-        @notice set Fixed Fee.
-        @dev Caller must be an Owner
-        @param _fixedFee    A new value of Fixed Fee
-    */
-    function setFixedFee(uint256 _fixedFee) external;
+    function setFeeRatio(
+        string calldata _name,
+        uint256 _feeNumerator,
+        uint256 _fixedFee
+    ) external;
 
     /**
         @notice Registers a wrapped coin and id number of a supporting coin.
@@ -79,7 +76,9 @@ interface IBSHCore {
     function register(
         string calldata _name,
         string calldata _symbol,
-        uint8 _decimals
+        uint8 _decimals,
+        uint256 _feeNumerator,
+        uint256 _fixedFee
     ) external;
 
     /**

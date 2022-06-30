@@ -34,7 +34,7 @@ public interface NCS {
      * @param _name A coin name.
      */
     @External
-    void register(String _name, String _symbol, int _decimals);
+    void register(String _name, String _symbol, int _decimals, BigInteger _feeNumerator, BigInteger _fixedFee);
 
     /**
      * Return all supported coins names in other networks by the BSH contract
@@ -151,7 +151,7 @@ public interface NCS {
      *  @param _feeNumerator  the fee numerator
      */
     @External
-    void setFeeRatio(BigInteger _feeNumerator);
+    void setFeeRatio(String _name, BigInteger _feeNumerator, BigInteger _fixedFee);
 
     /**
      *  Get transfer fee ratio.

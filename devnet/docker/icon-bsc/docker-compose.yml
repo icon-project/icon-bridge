@@ -6,7 +6,7 @@ services:
       context: ../goloop
       args:
         BTPSIMPLE_VERSION: latest
-        GOLOOP_IMAGE: goloop:latest
+        GOLOOP_IMAGE: iconloop/goloop-icon:v0.9.7
     ports:
       - "9080:9080"
     volumes:

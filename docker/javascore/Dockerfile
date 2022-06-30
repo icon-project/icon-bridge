@@ -1,4 +1,4 @@
-ARG GOLOOP_IMAGE=goloop:latest
+ARG GOLOOP_IMAGE=iconloop/goloop-icon:v0.9.7
 FROM ${GOLOOP_IMAGE} as build-stage
 
 RUN apk add git

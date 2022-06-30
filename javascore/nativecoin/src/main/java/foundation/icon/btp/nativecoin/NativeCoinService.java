@@ -16,7 +16,6 @@
 
 package foundation.icon.btp.nativecoin;
 
-import com.iconloop.score.token.irc31.IRC31Receiver;
 import foundation.icon.btp.lib.*;
 import foundation.icon.btp.nativecoin.irc2.IRC2SupplierScoreInterface;
 import foundation.icon.btp.restrictions.RestrictionsScoreInterface;
@@ -32,7 +31,7 @@ import scorex.util.ArrayList;
 import java.math.BigInteger;
 import java.util.List;
 
-public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, OwnerManager {
+public class NativeCoinService implements NCS, NCSEvents, BSH, OwnerManager {
     private static final Logger logger = Logger.getLogger(NativeCoinService.class);
 
     public static final String SERVICE = "nativecoin";
@@ -58,6 +57,7 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
     private final DictDB<String, BigInteger> feeBalances = Context.newDictDB("feeBalances", BigInteger.class);
     private final DictDB<BigInteger, TransferTransaction> transactions = Context.newDictDB("transactions",
             TransferTransaction.class);
+    private final DictDB<String, Coin> coinDb = Context.newDictDB("coins", Coin.class);
 
     //
     private final VarDB<Address> bsrDb = Context.newVarDB("bsr", Address.class);
@@ -71,6 +71,7 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
         net = btpAddress.net();
         name = _name;
         serializedIrc2 = _serializedIrc2;
+        coinDb.set(_name, new Coin(_name, _name, 0, BigInteger.ZERO, BigInteger.ZERO));
     }
 
     public NCSProperties getProperties() {
@@ -106,14 +107,39 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
         }
     }
 
+    /**
+     * To change the Coin Fee setting( Fixed fee and fee percentage)
+     *
+     * @param _name         name of the Coin
+     * @param _feeNumerator fee numerator to calculate the fee percentage, Set Zero to retain existing value
+     * @param _fixedFee     to update the fixed fee
+     */
     @External
-    public void register(String _name, String _symbol, int _decimals) {
+    public void setFeeRatio(String _name, BigInteger _feeNumerator, BigInteger _fixedFee) {
+        requireOwnerAccess();
+        Context.require(_feeNumerator.compareTo(BigInteger.ONE) >= 0 &&
+                        _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
+                "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
+        require(name.equals(_name) || isRegistered(_name), "Not supported Coin");
+        Coin _coin = coinDb.get(_name);
+        if (_coin == null) {
+            throw NCSException.unknown("Coin Not Registered");
+        } else {
+            _coin.setFeeNumerator(_feeNumerator);
+            _coin.setFixedFee(_fixedFee);
+        }
+        coinDb.set(_name, _coin);
+    }
+
+    @External
+    public void register(String _name, String _symbol, int _decimals, BigInteger _feeNumerator, BigInteger _fixedFee) {
         requireOwnerAccess();
 
         require(!name.equals(_name) && !isRegistered(_name), "already existed");
         Address irc2Address = Context.deploy(serializedIrc2, _name, _symbol, _decimals);
         coinNames.add(_name);
         coinAddresses.set(_name, irc2Address);
+        coinDb.set(_name, new Coin(_name, _symbol, _decimals, _feeNumerator, _fixedFee));
     }
 
     @External(readonly = true)
@@ -249,17 +275,14 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
         logger.println("sendRequest", "begin");
         NCSProperties properties = getProperties();
 
-        BigInteger feeRatio = properties.getFeeRatio();
-        if (owner.equals(Context.getAddress())) {
-            feeRatio = BigInteger.ZERO;
-        }
+
         int len = coinNames.size();
         AssetTransferDetail[] assetTransferDetails = new AssetTransferDetail[len];
         Asset[] assets = new Asset[len];
         for (int i = 0; i < len; i++) {
             String coinName = coinNames.get(i);
             BigInteger amount = amounts.get(i);
-            AssetTransferDetail assetTransferDetail = newAssetTransferDetail(coinName, amount, feeRatio);
+            AssetTransferDetail assetTransferDetail = newAssetTransferDetail(coinName, amount, owner);
             lock(coinName, owner, amount);
             assetTransferDetails[i] = assetTransferDetail;
             assets[i] = new Asset(assetTransferDetail);
@@ -557,37 +580,24 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
         logger.println("handleResponse", "end");
     }
 
-    @External
-    public void onIRC31Received(Address _operator, Address _from, BigInteger _id, BigInteger _value, byte[] _data) {
-        // nothing to do
-    }
-
-    @External
-    public void onIRC31BatchReceived(Address _operator, Address _from, BigInteger[] _ids, BigInteger[] _values,
-            byte[] _data) {
-        // nothing to do
-    }
-
-    @External
-    public void setFeeRatio(BigInteger _feeNumerator) {
-        requireOwnerAccess();
-        require(_feeNumerator.compareTo(BigInteger.ONE) >= 0 &&
-                _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
-                "The feeNumetator should be less than FEE_DEMONINATOR and greater than 1");
-        NCSProperties properties = getProperties();
-        properties.setFeeRatio(_feeNumerator);
-        setProperties(properties);
-    }
-
     @External(readonly = true)
     public BigInteger feeRatio() {
         NCSProperties properties = getProperties();
         return properties.getFeeRatio();
     }
 
-    private AssetTransferDetail newAssetTransferDetail(String coinName, BigInteger amount, BigInteger feeRatio) {
+    private AssetTransferDetail newAssetTransferDetail(String coinName, BigInteger amount, Address owner) {
         logger.println("newAssetTransferDetail", "begin");
-        BigInteger fee = amount.multiply(feeRatio).divide(FEE_DENOMINATOR);
+        Coin _coin = coinDb.get(coinName);
+        if (_coin == null) {
+            throw NCSException.unknown("Coin Not Registered");
+        }
+        BigInteger feeRatio = _coin.getFeeNumerator();
+        BigInteger fixedFee = _coin.getFixedFee();
+        if (owner.equals(Context.getAddress())) {
+            feeRatio = BigInteger.ZERO;
+        }
+        BigInteger fee = amount.multiply(feeRatio).divide(FEE_DENOMINATOR).add(fixedFee);
         if (feeRatio.compareTo(BigInteger.ZERO) > 0 && fee.compareTo(BigInteger.ZERO) == 0) {
             fee = BigInteger.ONE;
         }
@@ -604,7 +614,7 @@ public class NativeCoinService implements NCS, NCSEvents, IRC31Receiver, BSH, Ow
         return asset;
     }
 
-    /* Intercall with IRC31Supplier */
+    /* Intercall with IRC2Supplier */
     private void transferFrom(Address from, Address to, String coinName, BigInteger amount) {
         logger.println("transferFrom", from, to, coinName, amount);
         Address coinAddress = this.getCoinAddress(coinName);
