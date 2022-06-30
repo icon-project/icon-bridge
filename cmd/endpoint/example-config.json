@@ -4,30 +4,37 @@
             "name":"ICON",
             "url":"http://127.0.0.1:9080/api/v3/default",
             "contract_addresses": {
-                    "btp_icon_irc2":"cx2995e7ea3c68b8168d13d7696e85444354656405",
-                    "btp_icon_irc2_tradeable":"cxeee821d966cfffca4e9d3caee718c9f02c6142ab",
-                    "btp_icon_nativecoin_bsh":"cx9d2a497ff8feba80486ca3575d297a73984f1097",
-                    "btp_icon_token_bsh":"cxcdee87dfb584c69d2abe84c8f79d97ecf447f889"
+                    "Irc2Icon":"cx70053f7c2d0d985c5b342886c5fe8f5e4db1fb1b",
+                    "Irc2TradeableIcon":"cxd5faca679820dd974245eaceca3fb74536815f96",
+                    "NativeBSHIcon":"cxabbcd08546141646dd169ae70170da87b9296778",
+                    "TokenBSHIcon":"cxd029bba56f72e2ced0c88fd2fc289f4ae4dcd31f"
             },
             "god_wallet":{
                 "path":"/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/icon.god.wallet.json",
                 "password":"gochain"
             },
-            "network_id":"0x5b9a77"
+            "network_id":"0x5b9a77",
+            "src":"btp://0x5b9a77.icon/cxe95228d7345879fc6b5d963fb60ed949ee6d3d99",
+            "dst":"btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91"
+       
         },
         {
             "name":"HMNY",
             "url":"http://127.0.0.1:9500",
             "contract_addresses": {
-                    "btp_hmny_erc20":"0xb54f5e97972AcF96470e02BE0456c8DB2173f33a",
-                    "btp_hmny_nativecoin_bsh_core":"0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
-                    "btp_hmny_token_bsh_proxy":"0x48cacC89f023f318B4289A18aBEd44753a127782"
+                    "TokenBSHImplHmy":"0x8283e3bE7ac5f6dB332Df605f20E2B4c9977c662",
+                    "NativeBSHPeripheryHmy":"0xfad748a1063a40FF447B5D766331904d9bedDC26",
+                    "Erc20Hmy":"0xb54f5e97972AcF96470e02BE0456c8DB2173f33a",
+                    "NativeBSHCoreHmy":"0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
+                    "TokenBSHProxyHmy":"0x48cacC89f023f318B4289A18aBEd44753a127782"
             },
             "god_wallet":{
                 "path":"/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/hmny.god.wallet.json",
                 "password":""
             },
-            "network_id":"0x6357d2e0"
+            "network_id":"0x6357d2e0",
+            "src":"btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91",
+            "dst":"btp://0x5b9a77.icon/cxe95228d7345879fc6b5d963fb60ed949ee6d3d99"
         }
     ]
-}
+} 
