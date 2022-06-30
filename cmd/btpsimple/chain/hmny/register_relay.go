@@ -1,3 +1,5 @@
+//go:build hmny
+
 package hmny
 
 import "github.com/icon-project/icon-bridge/cmd/btpsimple/relay"
