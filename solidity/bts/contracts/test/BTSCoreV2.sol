@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.8.0;
 pragma abicoder v2;
-import "../BSHCore.sol";
+import "../BTSCore.sol";
 
-contract BSHCoreV2 is BSHCore {
+contract BTSCoreV2 is BTSCore {
     using String for string;
     using SafeMathUpgradeable for uint256;
 
@@ -62,8 +62,8 @@ contract BSHCoreV2 is BSHCore {
     }
 
     //  @notice This is just an example to show how to add more function in upgrading a contract
-    function clearBSHPerifSetting() external {
-        bshPeriphery = IBSHPeriphery(address(0));
+    function clearBTSPeripherySetting() external {
+        btsPeriphery = IBTSPeriphery(address(0));
     }
 
     //  @notice This is just an example to show how to add more function in upgrading a contract

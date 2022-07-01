@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.8.0;
 pragma abicoder v2;
-import "../interfaces/IBSHPeriphery.sol";
-import "../interfaces/IBSHCore.sol";
-import "../interfaces/IBMCPeriphery.sol";
-import "../libraries/Types.sol";
-import "../libraries/RLPEncodeStruct.sol";
-import "../libraries/RLPDecodeStruct.sol";
-import "../libraries/ParseAddress.sol";
-import "../libraries/String.sol";
+import "./interfaces/IBTSPeriphery.sol";
+import "./interfaces/IBTSCore.sol";
+import "./interfaces/IBMCPeriphery.sol";
+import "./libraries/Types.sol";
+import "./libraries/RLPEncodeStruct.sol";
+import "./libraries/RLPDecodeStruct.sol";
+import "./libraries/ParseAddress.sol";
+import "./libraries/String.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
-   @title BSHPeriphery contract
-   @dev This contract is used to handle communications among BMCService and BSHCore contract
+   @title BTSPeriphery contract
+   @dev This contract is used to handle communications among BMCService and BTSCore contract
    @dev OwnerUpgradeable has been removed. This contract does not have its own Owners
-        Instead, BSHCore manages ownership roles.
-        Thus, BSHPeriphery should call bshCore.isOwner() and pass an address for verification
+        Instead, BTSCore manages ownership roles.
+        Thus, BTSPeriphery should call btsCore.isOwner() and pass an address for verification
         in case of implementing restrictions, if needed, in the future. 
 */
-contract BSHPeripheryV1 is Initializable, IBSHPeriphery {
+contract BTSPeriphery is Initializable, IBTSPeriphery {
     using RLPEncodeStruct for Types.TransferCoin;
     using RLPEncodeStruct for Types.ServiceMessage;
     using RLPEncodeStruct for Types.Response;
@@ -29,6 +29,7 @@ contract BSHPeripheryV1 is Initializable, IBSHPeriphery {
     using ParseAddress for address;
     using ParseAddress for string;
     using String for string;
+    using String for uint256;
 
     /**   @notice Sends a receipt to user
         The `_from` sender
@@ -56,6 +57,16 @@ contract BSHPeripheryV1 is Initializable, IBSHPeriphery {
         string _response
     );
 
+    /**
+        Used to log the state of successful incoming transaction
+    */
+    event TransferReceived(
+        string indexed _from,
+        address indexed _to,
+        uint256 _sn,
+        Types.Asset[] _assetDetails
+    );
+
     /**   @notice Notify that BSH contract has received unknown response
         The `_from` sender
         The `_sn` sequence number of service message
@@ -63,8 +74,8 @@ contract BSHPeripheryV1 is Initializable, IBSHPeriphery {
     event UnknownResponse(string _from, uint256 _sn);
 
     IBMCPeriphery private bmc;
-    IBSHCore internal bshCore;
-    mapping(uint256 => Types.PendingTransferCoin) internal requests; // a list of transferring requests
+    IBTSCore internal btsCore;
+    mapping(uint256 => Types.PendingTransferCoin) public requests; // a list of transferring requests
     string public serviceName; //    BSH Service Name
 
     uint256 private constant RC_OK = 0;
@@ -79,16 +90,16 @@ contract BSHPeripheryV1 is Initializable, IBSHPeriphery {
 
     function initialize(
         address _bmc,
-        address _bshCore,
+        address _btsCore,
         string memory _serviceName
     ) public initializer {
         bmc = IBMCPeriphery(_bmc);
-        bshCore = IBSHCore(_bshCore);
+        btsCore = IBTSCore(_btsCore);
         serviceName = _serviceName;
     }
 
     /**
-     @notice Check whether BSHPeriphery has any pending transferring requests
+     @notice Check whether BTSPeriphery has any pending transferring requests
      @return true or false
     */
     function hasPendingRequest() external view override returns (bool) {
@@ -183,6 +194,12 @@ contract BSHPeripheryV1 is Initializable, IBSHPeriphery {
                         "",
                         RC_OK
                     );
+                    emit TransferReceived(
+                        _from,
+                        _tc.to.parseAddress(),
+                        _sn,
+                        _tc.assets
+                    );
                     return;
                 } catch Error(string memory _err) {
                     errMsg = _err;
@@ -205,14 +222,14 @@ contract BSHPeripheryV1 is Initializable, IBSHPeriphery {
             Types.Response memory response = _sm.data.decodeResponse();
             //  @dev Not implement try_catch at this point
             //  + If RESPONSE_REQUEST_SERVICE:
-            //      If RC_ERR, BSHCore proceeds a refund. If a refund is failed, BSHCore issues refundable Balance
+            //      If RC_ERR, BTSCore proceeds a refund. If a refund is failed, BTSCore issues refundable Balance
             //      If RC_OK:
             //      - requested coin = native -> update aggregation fee (likely no issue)
-            //      - requested coin = wrapped coin -> BSHCore calls itself to burn its tokens and update aggregation fee (likely no issue)
-            //  The only issue, which might happen, is BSHCore's token balance lower than burning amount
+            //      - requested coin = wrapped coin -> BTSCore calls itself to burn its tokens and update aggregation fee (likely no issue)
+            //  The only issue, which might happen, is BTSCore's token balance lower than burning amount
             //  If so, there might be something went wrong before
             //  + If RESPONSE_FEE_GATHERING
-            //      If RC_ERR, BSHCore saves charged fees back to `aggregationFee` state mapping variable
+            //      If RC_ERR, BTSCore saves charged fees back to `aggregationFee` state mapping variable
             //      If RC_OK: do nothing
             handleResponseService(_sn, response.code, response.message);
         } else if (_sm.serviceType == Types.ServiceType.UNKNOWN_TYPE) {
@@ -246,7 +263,11 @@ contract BSHPeripheryV1 is Initializable, IBSHPeriphery {
     ) external override onlyBMC {
         require(_svc.compareTo(serviceName) == true, "InvalidSvc");
         require(bytes(requests[_sn].from).length != 0, "InvalidSN");
-        handleResponseService(_sn, _code, _msg);
+        string memory _emitMsg = string("errCode: ")
+            .concat(_code.toString())
+            .concat(", errMsg: ")
+            .concat(_msg);
+        handleResponseService(_sn, RC_ERR, _emitMsg);
     }
 
     function handleResponseService(
@@ -257,7 +278,7 @@ contract BSHPeripheryV1 is Initializable, IBSHPeriphery {
         address _caller = requests[_sn].from.parseAddress();
         uint256 loop = requests[_sn].coinNames.length;
         for (uint256 i = 0; i < loop; i++) {
-            bshCore.handleResponseService(
+            btsCore.handleResponseService(
                 _caller,
                 requests[_sn].coinNames[i],
                 requests[_sn].amounts[i],
@@ -283,14 +304,14 @@ contract BSHPeripheryV1 is Initializable, IBSHPeriphery {
         require(msg.sender == address(this), "Unauthorized");
         for (uint256 i = 0; i < _assets.length; i++) {
             require(
-                bshCore.isValidCoin(_assets[i].coinName) == true,
+                btsCore.isValidCoin(_assets[i].coinName) == true,
                 "UnregisteredCoin"
             );
-            //  @dev There might be many errors generating by BSHCore contract
+            //  @dev There might be many errors generating by BTSCore contract
             //  which includes also low-level error
             //  Thus, must use try_catch at this point so that it can return an expected response
             try
-                bshCore.mint(
+                btsCore.mint(
                     _to.parseAddress(),
                     _assets[i].coinName,
                     _assets[i].value
@@ -335,8 +356,10 @@ contract BSHPeripheryV1 is Initializable, IBSHPeriphery {
         require(_svc.compareTo(serviceName) == true, "InvalidSvc");
         //  If adress of Fee Aggregator (_fa) is invalid BTP address format
         //  revert(). Then, BMC will catch this error
+        //  @dev this part simply check whether `_fa` is splittable (`prefix` + `_net` + `dstAddr`)
+        //  checking validity of `_net` and `dstAddr` does not belong to BTSPeriphery's scope
         _fa.splitBTPAddress();
-        bshCore.transferFees(_fa);
+        btsCore.transferFees(_fa);
     }
 
     //  @dev Solidity does not allow to use try_catch with internal function

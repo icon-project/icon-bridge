@@ -5,21 +5,21 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./interfaces/IBSHPeriphery.sol";
-import "./interfaces/IBSHCore.sol";
+import "./interfaces/IBTSPeriphery.sol";
+import "./interfaces/IBTSCore.sol";
 import "./libraries/String.sol";
 import "./libraries/Types.sol";
 import "./ERC20Tradable.sol";
 import "./interfaces/IERC20Tradable.sol";
 
 /**
-   @title BSHCore contract
+   @title BTSCore contract
    @dev This contract is used to handle coin transferring service
    Note: The coin of following contract can be:
    Native Coin : The native coin of this chain
    Wrapped Native Coin : A tokenized ERC20 version of another native coin like ICX
 */
-contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
+contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
     using SafeMathUpgradeable for uint256;
     using String for string;
     event SetOwnership(address indexed promoter, address indexed newOwner);
@@ -37,8 +37,8 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         _;
     }
 
-    modifier onlyBSHPeriphery() {
-        require(msg.sender == address(bshPeriphery), "Unauthorized");
+    modifier onlyBTSPeriphery() {
+        require(msg.sender == address(btsPeriphery), "Unauthorized");
         _;
     }
 
@@ -50,7 +50,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     uint256 private constant NATIVE_WRAPPED_COIN_TYPE = 1;
     uint256 private constant NON_NATIVE_TOKEN_TYPE = 2;
 
-    IBSHPeriphery internal bshPeriphery;
+    IBTSPeriphery internal btsPeriphery;
 
     address[] private listOfOwners;
     uint256[] private chargedAmounts; //   a list of amounts have been charged so far (use this when Fee Gathering occurs)
@@ -137,24 +137,24 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     }
 
     /**
-        @notice update BSH Periphery address.
+        @notice update BTS Periphery address.
         @dev Caller must be an Owner of this contract
-        _bshPeriphery Must be different with the existing one.
-        @param _bshPeriphery    BSHPeriphery contract address.
+        _btsPeriphery Must be different with the existing one.
+        @param _btsPeriphery    BTSPeriphery contract address.
     */
-    function updateBSHPeriphery(address _bshPeriphery)
+    function updateBTSPeriphery(address _btsPeriphery)
         external
         override
         onlyOwner
     {
-        require(_bshPeriphery != address(0), "InvalidSetting");
-        if (address(bshPeriphery) != address(0)) {
+        require(_btsPeriphery != address(0), "InvalidSetting");
+        if (address(btsPeriphery) != address(0)) {
             require(
-                bshPeriphery.hasPendingRequest() == false,
+                btsPeriphery.hasPendingRequest() == false,
                 "HasPendingRequest"
             );
         }
-        bshPeriphery = IBSHPeriphery(_bshPeriphery);
+        btsPeriphery = IBTSPeriphery(_btsPeriphery);
     }
 
     /**
@@ -184,7 +184,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         _decimals decimal number
         @param _name    Coin name. 
     */
-    function register(        
+    function register(
         string calldata _name,
         string calldata _symbol,
         uint8 _decimals,
@@ -249,7 +249,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
 
     /**
        @notice  Check Validity of a _coinName
-       @dev     Call by BSHPeriphery contract to validate a requested _coinName
+       @dev     Call by BTSPeriphery contract to validate a requested _coinName
        @return  _valid     true of false
     */
     function isValidCoin(string calldata _coinName)
@@ -349,7 +349,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     }
 
     /**
-       @notice Allow users to deposit `msg.value` native coin into a BSHCore contract.
+       @notice Allow users to deposit `msg.value` native coin into a BTSCore contract.
        @dev MUST specify msg.value
        @param _to  An address that a user expects to receive an amount of tokens.
     */
@@ -379,8 +379,8 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     }
 
     /**
-       @notice Allow users to deposit an amount of wrapped native coin `_coinName` from the `msg.sender` address into the BSHCore contract.
-       @dev Caller must set to approve that the wrapped tokens can be transferred out of the `msg.sender` account by BSHCore contract.
+       @notice Allow users to deposit an amount of wrapped native coin `_coinName` from the `msg.sender` address into the BTSCore contract.
+       @dev Caller must set to approve that the wrapped tokens can be transferred out of the `msg.sender` account by BTSCore contract.
        It MUST revert if the balance of the holder for token `_coinName` is lower than the `_value` sent.
        @param _coinName    A given name of a wrapped coin 
        @param _value       An amount request to transfer from a Requester (include fee)
@@ -405,17 +405,17 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
             .add(coinDetails[_coinName].fixedFee);
 
         //  Transfer and Lock Token processes:
-        //  BSHCore contract calls safeTransferFrom() to transfer the Token from Caller's account (msg.sender)
+        //  BTSCore contract calls safeTransferFrom() to transfer the Token from Caller's account (msg.sender)
         //  Before that, Caller must approve (setApproveForAll) to accept
         //  token being transfer out by an Operator
         //  If this requirement is failed, a transaction is reverted.
-        //  After transferring token, BSHCore contract updates Caller's locked balance
+        //  After transferring token, BTSCore contract updates Caller's locked balance
         //  as a record of pending transfer transaction
         //  When a transaction is completed without any error on another chain,
         //  Locked Token amount (bind to an address of caller) will be reset/subtract,
         //  then emit a successful TransferEnd event as a notification
         //  Otherwise, the locked amount will also be updated
-        //  but BSHCore contract will issue a refund to Caller before emitting an error TransferEnd event
+        //  but BTSCore contract will issue a refund to Caller before emitting an error TransferEnd event
         IERC20Tradable(_erc20Address).transferFrom(
             msg.sender,
             address(this),
@@ -427,7 +427,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     }
 
     /**
-       @notice This private function handles overlapping procedure before sending a service message to BSHPeriphery
+       @notice This private function handles overlapping procedure before sending a service message to BTSPeriphery
        @param _from             An address of a Requester
        @param _to               BTP address of of Receiver on another chain
        @param _coinName         A given name of a requested coin 
@@ -454,12 +454,12 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         _fees[0] = _chargeAmt;
 
         //  @dev `_amounts` is a true amount to receive at a destination after deducting a charged fee
-        bshPeriphery.sendServiceMessage(_from, _to, _coins, _amounts, _fees);
+        btsPeriphery.sendServiceMessage(_from, _to, _coins, _amounts, _fees);
     }
 
     /**
        @notice Allow users to transfer multiple coins/wrapped coins to another chain
-       @dev Caller must set to approve that the wrapped tokens can be transferred out of the `msg.sender` account by BSHCore contract.
+       @dev Caller must set to approve that the wrapped tokens can be transferred out of the `msg.sender` account by BTSCore contract.
        It MUST revert if the balance of the holder for token `_coinName` is lower than the `_value` sent.
        In case of transferring a native coin, it also checks `msg.value`
        The number of requested coins MUST be as the same as the number of requested values
@@ -527,7 +527,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         }
 
         //  @dev `_amounts` is true amounts to receive at a destination after deducting charged fees
-        bshPeriphery.sendServiceMessage(
+        btsPeriphery.sendServiceMessage(
             msg.sender,
             _to,
             _coins,
@@ -564,9 +564,9 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     //  Thus, this function would be set as 'external`
     //  But, it has restriction. It should be called by this contract only
     //  In addition, there are only two functions calling this refund()
-    //  + handleRequestService(): this function only called by BSHPeriphery
+    //  + handleRequestService(): this function only called by BTSPeriphery
     //  + reclaim(): this function can be called by ANY
-    //  In case of reentrancy attacks, the chance happenning on BSHPeriphery
+    //  In case of reentrancy attacks, the chance happenning on BTSPeriphery
     //  since it requires a request from BMC which requires verification fron BMV
     //  reclaim() has higher chance to have reentrancy attacks.
     //  So, it must be prevented by adding 'nonReentrant'
@@ -584,15 +584,15 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     }
 
     function paymentTransfer(address payable _to, uint256 _amount) private {
-        (bool sent, ) = _to.call{value: _amount}("");
+        (bool sent, ) = _to.call{ value: _amount }("");
         require(sent, "PaymentFailed");
     }
 
     /**
         @notice mint the wrapped coin.
-        @dev Caller must be an BSHPeriphery contract
+        @dev Caller must be an BTSPeriphery contract
         Invalid _coinName will have an _id = 0. However, _id = 0 is also dedicated to Native Coin
-        Thus, BSHPeriphery will check a validity of a requested _coinName before calling
+        Thus, BTSPeriphery will check a validity of a requested _coinName before calling
         for the _coinName indicates with id = 0, it should send the Native Coin (Example: PRA) to user account
         @param _to    the account receive the minted coin
         @param _coinName    coin name
@@ -602,7 +602,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         address _to,
         string calldata _coinName,
         uint256 _value
-    ) external override onlyBSHPeriphery {
+    ) external override onlyBTSPeriphery {
         if (_coinName.compareTo(nativeCoinName)) {
             paymentTransfer(payable(_to), _value);
         } else if (
@@ -616,7 +616,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
 
     /**
         @notice Handle a response of a requested service
-        @dev Caller must be an BSHPeriphery contract
+        @dev Caller must be an BTSPeriphery contract
         @param _requester   An address of originator of a requested service
         @param _coinName    A name of requested coin
         @param _value       An amount to receive on a destination chain
@@ -628,7 +628,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         uint256 _value,
         uint256 _fee,
         uint256 _rspCode
-    ) external override onlyBSHPeriphery {
+    ) external override onlyBTSPeriphery {
         //  Fee Gathering and Transfer Coin Request use the same method
         //  and both have the same response
         //  In case of Fee Gathering's response, `_requester` is this contract's address
@@ -651,7 +651,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         ].lockedBalance.sub(_amount);
 
         //  A new implementation has been proposed to prevent spam attacks
-        //  In receiving error response, BSHCore refunds `_value`, not including `_fee`, back to Requestor
+        //  In receiving error response, BTSCore refunds `_value`, not including `_fee`, back to Requestor
         if (_rspCode == RC_ERR) {
             try this.refund(_requester, _coinName, _value) {} catch {
                 balances[_requester][_coinName].refundableBalance = balances[
@@ -673,12 +673,12 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
     /**
         @notice Handle a request of Fee Gathering
             Usage: Copy all charged fees to an array
-        @dev Caller must be an BSHPeriphery contract
+        @dev Caller must be an BTSPeriphery contract
     */
     function transferFees(string calldata _fa)
         external
         override
-        onlyBSHPeriphery
+        onlyBTSPeriphery
     {
         //  @dev Due to uncertainty in identifying a size of returning memory array
         //  and Solidity does not allow to use 'push' with memory array (only storage)
@@ -690,7 +690,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
                 delete aggregationFee[coinsName[i]];
             }
         }
-        bshPeriphery.sendServiceMessage(
+        btsPeriphery.sendServiceMessage(
             address(this),
             _fa,
             chargedCoins,

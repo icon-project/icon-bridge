@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.8.0;
 pragma abicoder v2;
-import "../BSHCore.sol";
+import "../BTSCore.sol";
 
-contract MockBSHCore is BSHCore {
+contract MockBTSCore is BTSCore {
     function mintMock(
         address _acc,
         address _erc20Address,
@@ -32,8 +32,8 @@ contract MockBSHCore is BSHCore {
         }
     }
 
-    function clearBSHPerifSetting() external {
-        bshPeriphery = IBSHPeriphery(address(0));
+    function clearBTSPeripherySetting() external {
+        btsPeriphery = IBTSPeriphery(address(0));
     }
 
     function setRefundableBalance(

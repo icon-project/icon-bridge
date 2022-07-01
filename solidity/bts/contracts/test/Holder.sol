@@ -2,19 +2,21 @@
 pragma solidity >=0.8.0;
 pragma abicoder v2;
 
-import "./BSHPeripheryV1.sol";
-import "./BSHCoreV1.sol";
+import "../interfaces/IBTSPeriphery.sol";
+import "../interfaces/IBTSCore.sol";
+import "../libraries/String.sol";
+import "../interfaces/IERC20Tradable.sol";
 
-contract AnotherHolder {
-    BSHPeripheryV1 private bshs;
-    BSHCoreV1 private bshc;
+contract Holder {
+    IBTSPeriphery private btsp;
+    IBTSCore private btsc;
     using String for string;
 
     function deposit() external payable {}
 
-    function addBSHContract(address _bshs, address _bshc) external {
-        bshs = BSHPeripheryV1(_bshs);
-        bshc = BSHCoreV1(_bshc);
+    function addBSHContract(address _btsp, address _btsc) external {
+        btsp = IBTSPeriphery(_btsp);
+        btsc = IBTSCore(_btsc);
     }
 
     function setApprove(
@@ -30,7 +32,7 @@ contract AnotherHolder {
         uint256 _value,
         string calldata _to
     ) external {
-        bshc.transfer(_coinName, _value, _to);
+        btsc.transfer(_coinName, _value, _to);
     }
 
     // function isSendingNative(string[] memory _coinNames)
@@ -65,7 +67,7 @@ contract AnotherHolder {
             );
             require(success, string(err));
         } else {
-            bshc.transferBatch(_coinNames, _values, _to);
+            btsc.transferBatch(_coinNames, _values, _to);
         }
     }
 }

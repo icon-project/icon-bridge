@@ -5,19 +5,19 @@ pragma abicoder v2;
 import "./IBSH.sol";
 
 /**
-   @title Interface of BSHPeriphery contract
-   @dev This contract is used to handle communications among BMCService and BSHCore contract
+   @title Interface of BTSPeriphery contract
+   @dev This contract is used to handle communications among BMCService and BTSCore contract
 */
-interface IBSHPeriphery is IBSH {
+interface IBTSPeriphery is IBSH {
     /**
-     @notice Check whether BSHPeriphery has any pending transferring requests
+     @notice Check whether BTSPeriphery has any pending transferring requests
      @return true or false
     */
     function hasPendingRequest() external view returns (bool);
 
     /**
-     @notice Send Service Message from BSHCore contract to BMCService contract
-     @dev Caller must be BSHCore only
+     @notice Send Service Message from BTSCore contract to BMCService contract
+     @dev Caller must be BTSCore only
      @param _to             A network address of destination chain
      @param _coinNames      A list of coin name that are requested to transfer  
      @param _values         A list of an amount to receive at destination chain respectively with its coin name
@@ -35,7 +35,7 @@ interface IBSHPeriphery is IBSH {
      @notice BSH handle BTP Message from BMC contract
      @dev Caller must be BMC contract only
      @param _from    An originated network address of a request
-     @param _svc     A service name of BSHPeriphery contract     
+     @param _svc     A service name of BTSPeriphery contract     
      @param _sn      A serial number of a service request 
      @param _msg     An RLP message of a service request/service response
     */
@@ -49,7 +49,7 @@ interface IBSHPeriphery is IBSH {
     /**
      @notice BSH handle BTP Error from BMC contract
      @dev Caller must be BMC contract only 
-     @param _svc     A service name of BSHPeriphery contract     
+     @param _svc     A service name of BTSPeriphery contract     
      @param _sn      A serial number of a service request 
      @param _code    A response code of a message (RC_OK / RC_ERR)
      @param _msg     A response message

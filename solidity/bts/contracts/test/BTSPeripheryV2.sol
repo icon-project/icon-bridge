@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.8.0;
 pragma abicoder v2;
-import "../interfaces/IBSHPeriphery.sol";
-import "../interfaces/IBSHCore.sol";
+import "../interfaces/IBTSPeriphery.sol";
+import "../interfaces/IBTSCore.sol";
 import "../interfaces/IBMCPeriphery.sol";
 import "../libraries/Types.sol";
 import "../libraries/RLPEncodeStruct.sol";
@@ -19,7 +19,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
    Native Coin : The native coin of this chain
    Wrapped Native Coin : A tokenized ERC20 version of another native coin like ICX
 */
-contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
+contract BTSPeripheryV2 is Initializable, IBTSPeriphery {
     using RLPEncodeStruct for Types.TransferCoin;
     using RLPEncodeStruct for Types.ServiceMessage;
     using RLPEncodeStruct for Types.Response;
@@ -62,7 +62,7 @@ contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
     event UnknownResponse(string _from, uint256 _sn);
 
     IBMCPeriphery private bmc;
-    IBSHCore internal bshCore;
+    IBTSCore internal btsCore;
     mapping(uint256 => Types.PendingTransferCoin) internal requests; // a list of transferring requests
     string public serviceName; //    BSH Service Name
 
@@ -77,7 +77,7 @@ contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
     }
 
     /**
-     @notice Check whether BSHPeriphery has any pending transferring requests
+     @notice Check whether BTSPeriphery has any pending transferring requests
      @return true or false
     */
     function hasPendingRequest() external view override returns (bool) {
@@ -104,7 +104,7 @@ contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
         view
         returns (uint256 _fee)
     {
-        Types.Asset[] memory _fees = bshCore.getAccumulatedFees();
+        Types.Asset[] memory _fees = btsCore.getAccumulatedFees();
         for (uint256 i = 0; i < _fees.length; i++) {
             if (_coinName.compareTo(_fees[i].coinName)) return _fees[i].value;
         }
@@ -220,14 +220,14 @@ contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
             Types.Response memory response = _sm.data.decodeResponse();
             //  @dev Not implement try_catch at this point
             //  + If RESPONSE_REQUEST_SERVICE:
-            //      If RC_ERR, BSHCore proceeds a refund. If a refund is failed, BSHCore issues refundable Balance
+            //      If RC_ERR, BTSCore proceeds a refund. If a refund is failed, BTSCore issues refundable Balance
             //      If RC_OK:
             //      - requested coin = native -> update aggregation fee (likely no issue)
-            //      - requested coin = wrapped coin -> BSHCore calls itself to burn its tokens and update aggregation fee (likely no issue)
-            //  The only issue, which might happen, is BSHCore's token balance lower than burning amount
+            //      - requested coin = wrapped coin -> BTSCore calls itself to burn its tokens and update aggregation fee (likely no issue)
+            //  The only issue, which might happen, is BTSCore's token balance lower than burning amount
             //  If so, there might be something went wrong before
             //  + If RESPONSE_FEE_GATHERING
-            //      If RC_ERR, BSHCore saves charged fees back to `aggregationFee` state mapping variable
+            //      If RC_ERR, BTSCore saves charged fees back to `aggregationFee` state mapping variable
             //      If RC_OK: do nothing
             handleResponseService(_sn, response.code, response.message);
         } else if (_sm.serviceType == Types.ServiceType.UNKNOWN_TYPE) {
@@ -272,7 +272,7 @@ contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
         address _caller = requests[_sn].from.parseAddress();
         uint256 loop = requests[_sn].coinNames.length;
         for (uint256 i = 0; i < loop; i++) {
-            bshCore.handleResponseService(
+            btsCore.handleResponseService(
                 _caller,
                 requests[_sn].coinNames[i],
                 requests[_sn].amounts[i],
@@ -298,14 +298,14 @@ contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
         require(msg.sender == address(this), "Unauthorized");
         for (uint256 i = 0; i < _assets.length; i++) {
             require(
-                bshCore.isValidCoin(_assets[i].coinName) == true,
+                btsCore.isValidCoin(_assets[i].coinName) == true,
                 "UnregisteredCoin"
             );
-            //  @dev There might be many errors generating by BSHCore contract
+            //  @dev There might be many errors generating by BTSCore contract
             //  which includes also low-level error
             //  Thus, must use try_catch at this point so that it can return an expected response
             try
-                bshCore.mint(
+                btsCore.mint(
                     _to.parseAddress(),
                     _assets[i].coinName,
                     _assets[i].value
@@ -351,7 +351,7 @@ contract BSHPeripheryV2 is Initializable, IBSHPeriphery {
         //  If adress of Fee Aggregator (_fa) is invalid BTP address format
         //  revert(). Then, BMC will catch this error
         _fa.splitBTPAddress();
-        bshCore.transferFees(_fa);
+        btsCore.transferFees(_fa);
     }
 
     //  @dev Solidity does not allow to use try_catch with internal function

@@ -1,5 +1,5 @@
 {
-    "name": "bsh",
+    "name": "bts",
     "version": "1.0.0",
     "license": "Apache-2.0",
     "dependencies": {
@@ -29,7 +29,7 @@
         "test": "yarn test:unit && yarn test:integration",
         "test:unit": "rm -rf .openzeppelin && truffle test test/unit/*.js",
         "test:integration": "rm -rf .openzeppelin && truffle test test/integration/*.js",
-        "abigen:BSHCore": "truffle run abigen BSHCore && abigen --abi=abigenBindings/abi/BSHCore.abi --pkg=bsh --out=bsh_core_abigen.go"
+        "abigen:BTSCore": "truffle run abigen BTSCore && abigen --abi=abigenBindings/abi/BTSCore.abi --pkg=bts --out=bts_core_abigen.go"
     },
     "husky": {
         "hooks": {

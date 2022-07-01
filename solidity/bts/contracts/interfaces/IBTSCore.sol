@@ -6,13 +6,13 @@ import "../libraries/Types.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 /**
-   @title Interface of BSHCore contract
+   @title Interface of BTSCore contract
    @dev This contract is used to handle coin transferring service
    Note: The coin of following interface can be:
    Native Coin : The native coin of this chain
    Wrapped Native Coin : A tokenized ERC20 version of another native coin like ICX
 */
-interface IBSHCore {
+interface IBTSCore {
     /**
        @notice Adding another Onwer.
        @dev Caller must be an Onwer of BTP network
@@ -44,12 +44,12 @@ interface IBSHCore {
     function getOwners() external view returns (address[] memory);
 
     /**
-        @notice update BSH Periphery address.
+        @notice update BTS Periphery address.
         @dev Caller must be an Owner of this contract
-        _bshPeriphery Must be different with the existing one.
-        @param _bshPeriphery    BSHPeriphery contract address.
+        _btsPeriphery Must be different with the existing one.
+        @param _btsPeriphery    BTSPeriphery contract address.
     */
-    function updateBSHPeriphery(address _bshPeriphery) external;
+    function updateBTSPeriphery(address _btsPeriphery) external;
 
     /**
         @notice set fee ratio.
@@ -73,7 +73,7 @@ interface IBSHCore {
         _decimals decimal number
         @param _name    Coin name. 
     */
-    function register(       
+    function register(
         string calldata _name,
         string calldata _symbol,
         uint8 _decimals,
@@ -101,7 +101,7 @@ interface IBSHCore {
 
     /**
        @notice  Check Validity of a _coinName
-       @dev     Call by BSHPeriphery contract to validate a requested _coinName
+       @dev     Call by BTSPeriphery contract to validate a requested _coinName
        @return  _valid     true of false
     */
     function isValidCoin(string calldata _coinName)
@@ -153,15 +153,15 @@ interface IBSHCore {
         returns (Types.Asset[] memory _accumulatedFees);
 
     /**
-       @notice Allow users to deposit `msg.value` native coin into a BSHCore contract.
+       @notice Allow users to deposit `msg.value` native coin into a BTSCore contract.
        @dev MUST specify msg.value
        @param _to  An address that a user expects to receive an amount of tokens.
     */
     function transferNativeCoin(string calldata _to) external payable;
 
     /**
-       @notice Allow users to deposit an amount of wrapped native coin `_coinName` from the `msg.sender` address into the BSHCore contract.
-       @dev Caller must set to approve that the wrapped tokens can be transferred out of the `msg.sender` account by BSHCore contract.
+       @notice Allow users to deposit an amount of wrapped native coin `_coinName` from the `msg.sender` address into the BTSCore contract.
+       @dev Caller must set to approve that the wrapped tokens can be transferred out of the `msg.sender` account by BTSCore contract.
        It MUST revert if the balance of the holder for token `_coinName` is lower than the `_value` sent.
        @param _coinName    A given name of a wrapped coin 
        @param _value       An amount request to transfer.
@@ -175,7 +175,7 @@ interface IBSHCore {
 
     /**
        @notice Allow users to transfer multiple coins/wrapped coins to another chain
-       @dev Caller must set to approve that the wrapped tokens can be transferred out of the `msg.sender` account by BSHCore contract.
+       @dev Caller must set to approve that the wrapped tokens can be transferred out of the `msg.sender` account by BTSCore contract.
        It MUST revert if the balance of the holder for token `_coinName` is lower than the `_value` sent.
        In case of transferring a native coin, it also checks `msg.value` with `_values[i]`
        It MUST revert if `msg.value` is not equal to `_values[i]`
@@ -202,9 +202,9 @@ interface IBSHCore {
 
     /**
         @notice mint the wrapped coin.
-        @dev Caller must be an BSHPeriphery contract
+        @dev Caller must be an BTSPeriphery contract
         Invalid _coinName will have an _id = 0. However, _id = 0 is also dedicated to Native Coin
-        Thus, BSHPeriphery will check a validity of a requested _coinName before calling
+        Thus, BTSPeriphery will check a validity of a requested _coinName before calling
         for the _coinName indicates with id = 0, it should send the Native Coin (Example: PRA) to user account
         @param _to    the account receive the minted coin
         @param _coinName    coin name
@@ -218,14 +218,14 @@ interface IBSHCore {
 
     /**
         @notice Handle a request of Fee Gathering
-        @dev    Caller must be an BSHPeriphery contract
+        @dev    Caller must be an BTSPeriphery contract
         @param  _fa    BTP Address of Fee Aggregator 
     */
     function transferFees(string calldata _fa) external;
 
     /**
         @notice Handle a response of a requested service
-        @dev Caller must be an BSHPeriphery contract
+        @dev Caller must be an BTSPeriphery contract
         @param _requester   An address of originator of a requested service
         @param _coinName    A name of requested coin
         @param _value       An amount to receive on a destination chain
