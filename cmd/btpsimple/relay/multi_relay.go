@@ -3,14 +3,26 @@ package relay
 import (
 	"context"
 	"errors"
+	"fmt"
 	"runtime/debug"
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain/bsc"
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain/icon"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
+)
+
+type NewSenderFunc func(
+	src, dst chain.BTPAddress, urls []string, w wallet.Wallet,
+	opts map[string]interface{}, l log.Logger) (chain.Sender, error)
+
+type NewReceiverFunc func(
+	src, dst chain.BTPAddress, urls []string,
+	opts map[string]interface{}, l log.Logger) (chain.Receiver, error)
+
+var (
+	Senders   = map[string]NewSenderFunc{}
+	Receivers = map[string]NewReceiverFunc{}
 )
 
 func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
@@ -31,10 +43,9 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 			log.FieldKeyWallet: w.Address(),
 		})
 
-		blockChain := rc.Dst.Address.BlockChain()
-		switch blockChain {
-		case "icon":
-			if dst, err = icon.NewSender(
+		chainName := rc.Dst.Address.BlockChain()
+		if sender, ok := Senders[chainName]; ok {
+			if dst, err = sender(
 				rc.Src.Address,
 				rc.Dst.Address,
 				rc.Dst.Endpoint,
@@ -42,82 +53,30 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 				rc.Dst.Options,
 				l.WithFields(log.Fields{
 					log.FieldKeyPrefix: "tx_",
-					log.FieldKeyChain:  blockChain,
-				}),
-			); err != nil {
+					log.FieldKeyChain:  chainName,
+				})); err != nil {
 				return nil, err
 			}
-		/* case "hmny":
-		if dst, err = hmny.NewSender(
-			rc.Src.Address,
-			rc.Dst.Address,
-			rc.Dst.Endpoint,
-			w.(*wallet.EvmWallet),
-			rc.Dst.Options,
-			l.WithFields(log.Fields{
-				log.FieldKeyPrefix: "tx_",
-				log.FieldKeyChain:  blockChain,
-			}),
-		); err != nil {
-			return nil, err
-		} */
-		case "bsc":
-			if dst, err = bsc.NewSender(
-				rc.Src.Address,
-				rc.Dst.Address,
-				rc.Dst.Endpoint,
-				w.(*wallet.EvmWallet),
-				rc.Dst.Options,
-				l.WithFields(log.Fields{
-					log.FieldKeyPrefix: "tx_",
-					log.FieldKeyChain:  blockChain,
-				}),
-			); err != nil {
-				return nil, err
-			}
+		} else {
+			return nil, fmt.Errorf("unsupported blockchain: sender=%s", chainName)
 		}
 
-		blockChain = rc.Src.Address.BlockChain()
-		switch blockChain {
-		case "icon":
-			if src, err = icon.NewReceiver(
+		chainName = rc.Src.Address.BlockChain()
+		if receiver, ok := Receivers[chainName]; ok {
+			if src, err = receiver(
 				rc.Src.Address,
 				rc.Dst.Address,
 				rc.Src.Endpoint,
 				rc.Src.Options,
 				l.WithFields(log.Fields{
 					log.FieldKeyPrefix: "rx_",
-					log.FieldKeyChain:  blockChain,
+					log.FieldKeyChain:  chainName,
 				}),
 			); err != nil {
 				return nil, err
 			}
-		/* case "hmny":
-		if src, err = hmny.NewReceiver(
-			rc.Src.Address,
-			rc.Dst.Address,
-			rc.Src.Endpoint,
-			rc.Src.Options,
-			l.WithFields(log.Fields{
-				log.FieldKeyPrefix: "rx_",
-				log.FieldKeyChain:  blockChain,
-			}),
-		); err != nil {
-			return nil, err
-		} */
-		case "bsc":
-			if src, err = bsc.NewReceiver(
-				rc.Src.Address,
-				rc.Dst.Address,
-				rc.Src.Endpoint,
-				rc.Src.Options,
-				l.WithFields(log.Fields{
-					log.FieldKeyPrefix: "rx_",
-					log.FieldKeyChain:  blockChain,
-				}),
-			); err != nil {
-				return nil, err
-			}
+		} else {
+			return nil, fmt.Errorf("unsupported blockchain: receiver=%s", chainName)
 		}
 
 		relay, err := NewRelay(rc, src, dst, l.WithFields(log.Fields{log.FieldKeyChain: "relay"}))

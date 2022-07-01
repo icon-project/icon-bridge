@@ -1,3 +1,6 @@
+//go:build hmny
+// +build hmny
+
 package hmny
 
 import (
@@ -45,9 +48,6 @@ type client struct {
 }
 
 func (cl *client) newVerifier(opts *VerifierOptions) (Verifier, error) {
-	if opts == nil {
-		return &dumbVerifier{}, nil
-	}
 	h, err := cl.GetHmyV2HeaderByHeight((&big.Int{}).SetUint64(opts.BlockHeight))
 	if err != nil {
 		return nil, errors.Wrapf(err, "cl.GetHeaderByHeight(%d): %v", opts.BlockHeight, err)
@@ -71,7 +71,7 @@ func (cl *client) newVerifier(opts *VerifierOptions) (Verifier, error) {
 			return nil, errors.Wrapf(err, "cl.GetHeaderByHeight(%d): %v", elb, err)
 		}
 	}
-	vr := verifier{}
+	vr := NewVerifier()
 	if err = vr.Update(ssh); err != nil {
 		return nil, errors.Wrapf(err, "verifier.Update: %v", err)
 	}
@@ -79,7 +79,7 @@ func (cl *client) newVerifier(opts *VerifierOptions) (Verifier, error) {
 	if !ok || err != nil {
 		return nil, errors.Wrapf(err, "invalid signature: %v", err)
 	}
-	return &vr, nil
+	return vr, nil
 }
 
 func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
@@ -95,7 +95,15 @@ func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
 		}
 		elh, err := cl.GetHmyV2HeaderByHeight(elb)
 		if err != nil {
-			return errors.Wrapf(err, "cl.GetHmyHeaderByHeight: %v", err)
+			return errors.Wrapf(err, "cl.GetHmyHeaderByHeight(elh): %v", err)
+		}
+		elx, err := cl.GetHmyV2HeaderByHeight((&big.Int{}).Add(elb, bigOne))
+		if err != nil {
+			return errors.Wrapf(err, "cl.GetHmyHeaderByHeight(elx): %v", err)
+		}
+		ok, err := vr.Verify(elh, elx.LastCommitBitmap, elx.LastCommitSignature)
+		if !ok || err != nil {
+			return errors.Wrapf(err, "vr.Verify: invalid signature: %v", err)
 		}
 		if err = vr.Update(elh); err != nil {
 			return errors.Wrapf(err, "vr.Update: %v", err)
@@ -104,7 +112,6 @@ func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
 			"epoch": vr.Epoch(), "height": elb.Uint64()}).Debugf("syncVerifier: syncing")
 	}
 	cl.log.WithFields(log.Fields{"epoch": vr.Epoch()}).Debugf("syncVerifier: complete")
-
 	return nil
 }
 

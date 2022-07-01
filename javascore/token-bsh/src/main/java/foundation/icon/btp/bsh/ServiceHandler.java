@@ -418,7 +418,7 @@ public class ServiceHandler {
                     if (tokenAddr != null) {
                         Context.call(Address.fromString(tokenAddr), "transfer", fa, value,
                                 "transfer to Receiver".getBytes());
-                        feeCollector.set(tokenName, BigInteger.ZERO);
+                        // feeCollector.set(tokenName, BigInteger.ZERO);
                     }
                 }
             } else {
