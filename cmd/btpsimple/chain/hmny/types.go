@@ -1,3 +1,5 @@
+//go:build hmny
+
 package hmny
 
 import (

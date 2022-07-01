@@ -1,3 +1,5 @@
+//go:build hmny
+
 package hmny
 
 import (
@@ -22,17 +24,19 @@ const (
 	txMaxDataSize        = 64 * 1024 // 64 KB
 	txOverheadScale      = 0.01      // base64 encoding overhead 0.36, rlp and other fields 0.01
 	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale)
-	defaultGasLimit      = 10000000
 	defaultSendTxTimeout = 15 * time.Second
+	defaultGasLimit      = 8e7
+	defaultGasPrice      = 3e10
+	maxGasPriceBoost     = 10.0
 )
 
 func NewSender(
 	src, dst chain.BTPAddress,
-	urls []string, w *wallet.EvmWallet,
+	urls []string, w wallet.Wallet,
 	opts map[string]interface{}, l log.Logger) (chain.Sender, error) {
 	s := &sender{
 		log: l,
-		w:   w,
+		w:   w.(*wallet.EvmWallet),
 		src: src,
 		dst: dst,
 	}
@@ -43,6 +47,13 @@ func NewSender(
 	if err != nil {
 		return nil, err
 	}
+	if s.opts.BoostGasPrice < 1.0 {
+		s.opts.BoostGasPrice = 1.0
+	}
+	if s.opts.BoostGasPrice > maxGasPriceBoost {
+		s.opts.BoostGasPrice = maxGasPriceBoost
+	}
+
 	s.cls, err = newClients(urls, dst.ContractAddress(), s.log)
 	if err != nil {
 		return nil, err
@@ -51,8 +62,9 @@ func NewSender(
 }
 
 type senderOptions struct {
-	GasLimit        uint64 `json:"gas_limit"`
-	TxDataSizeLimit uint64 `json:"tx_data_size_limit"`
+	GasLimit        uint64  `json:"gas_limit"`
+	BoostGasPrice   float64 `json:"boost_gas_price"`
+	TxDataSizeLimit uint64  `json:"tx_data_size_limit"`
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
@@ -174,15 +186,10 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*
 		return nil, err
 	}
 	txOpts.Context = ctx
-	txOpts.GasPrice, err = client.eth.SuggestGasPrice(ctx)
-	if err != nil {
-		return nil, err
-	}
-	// add 50 % of estimated gas price
-	txOpts.GasPrice = txOpts.GasPrice.Add(
-		txOpts.GasPrice,
-		(&big.Int{}).Div(txOpts.GasPrice, big.NewInt(2)),
-	)
+	txOpts.GasPrice, _ = (&big.Float{}).Mul(
+		(&big.Float{}).SetInt64(defaultGasPrice),
+		(&big.Float{}).SetFloat64(s.opts.BoostGasPrice),
+	).Int(nil)
 
 	txOpts.GasLimit = defaultGasLimit
 	if s.opts.GasLimit > 0 {
@@ -190,7 +197,7 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*
 	}
 	return &relayTx{
 		Prev:    prev,
-		Message: message, // base64.URLEncoding.EncodeToString(rlpCrm),
+		Message: message,
 		opts:    txOpts,
 		cl:      client,
 	}, nil

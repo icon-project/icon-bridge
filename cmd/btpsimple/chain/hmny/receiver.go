@@ -1,3 +1,5 @@
+//go:build hmny
+
 package hmny
 
 import (
@@ -164,12 +166,17 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *bnOptions, callback fu
 			opts.StartHeight, opts.VerifierOptions.BlockHeight,
 		)
 	}
-	vr, err := r.client().newVerifier(opts.VerifierOptions)
-	if err != nil {
-		return errors.Wrapf(err, "receiveLoop: NewVerifier: %v", err)
-	}
-	if err = r.client().syncVerifier(vr, opts.StartHeight); err != nil {
-		return errors.Wrapf(err, "receiveLoop: cl.syncVerifier: %v", err)
+	var vr Verifier
+	if opts.VerifierOptions != nil {
+		var err error
+		vr, err = r.client().newVerifier(opts.VerifierOptions)
+		if err != nil {
+			return errors.Wrapf(err, "receiveLoop: NewVerifier: %v", err)
+		}
+		err = r.client().syncVerifier(vr, opts.StartHeight)
+		if err != nil {
+			return errors.Wrapf(err, "receiveLoop: cl.syncVerifier: %v", err)
+		}
 	}
 
 	// block notification channel
@@ -218,18 +225,20 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *bnOptions, callback fu
 			// process all notifications
 			for ; bn != nil; next++ {
 				if lbn != nil {
-					ok, err := vr.Verify(lbn.Header,
-						bn.Header.LastCommitBitmap, bn.Header.LastCommitSignature)
-					if err != nil {
-						r.log.Errorf("receiveLoop: signature validation failed: h=%d, %v", lbn.Header.Number, err)
-						break
-					}
-					if !ok {
-						r.log.Errorf("receiveLoop: invalid header: signature validation failed: h=%d", lbn.Header.Number)
-						break
-					}
-					if err := vr.Update(lbn.Header); err != nil {
-						return errors.Wrapf(err, "receiveLoop: update verifier: %v", err)
+					if vr != nil {
+						ok, err := vr.Verify(lbn.Header,
+							bn.Header.LastCommitBitmap, bn.Header.LastCommitSignature)
+						if err != nil {
+							r.log.Errorf("receiveLoop: signature validation failed: h=%d, %v", lbn.Header.Number, err)
+							break
+						}
+						if !ok {
+							r.log.Errorf("receiveLoop: invalid header: signature validation failed: h=%d", lbn.Header.Number)
+							break
+						}
+						if err := vr.Update(lbn.Header); err != nil {
+							return errors.Wrapf(err, "receiveLoop: update verifier: %v", err)
+						}
 					}
 					if err := callback(lbn); err != nil {
 						return errors.Wrapf(err, "receiveLoop: callback: %v", err)
