@@ -230,6 +230,14 @@ func (c *client) GetBlockByHeight(p *BlockHeightParam) (*Block, error) {
 	return result, nil
 }
 
+func (c *client) GetLastBlock() (*Block, error) {
+	result := &Block{}
+	if _, err := c.Do("icx_getLastBlock", struct{}{}, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 const (
 	HeaderKeyIconOptions = "Icon-Options"
 	IconOptionsDebug     = "debug"

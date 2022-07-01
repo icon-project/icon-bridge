@@ -47,7 +47,7 @@ func TestExecutor(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 240*time.Second)
 
-	ex.Subscribe(ctx, 31000)
+	ex.Subscribe(ctx)
 
 	amount := new(big.Int)
 	amount.SetString("10000000000000000000", 10)

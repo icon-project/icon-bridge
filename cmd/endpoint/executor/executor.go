@@ -150,7 +150,7 @@ func (ex *executor) getChan(id uint64) chan *evt {
 	return nil
 }
 
-func (ex *executor) Subscribe(ctx context.Context, startHeight uint64) {
+func (ex *executor) Subscribe(ctx context.Context) {
 	go func() {
 		lenCls := len(ex.clientsPerChain)
 		chains := make([]chain.ChainType, lenCls)
@@ -158,9 +158,9 @@ func (ex *executor) Subscribe(ctx context.Context, startHeight uint64) {
 		i := 0
 		for name, cl := range ex.clientsPerChain {
 			ex.log.Debugf("Start Subscription %v", name)
-			sinkChan, errChan, err := cl.Subscribe(ctx, startHeight)
+			sinkChan, errChan, err := cl.Subscribe(ctx)
 			if err != nil {
-				ex.log.Error(errors.Wrapf(err, "%v: Subscribe(%v)", name, startHeight))
+				ex.log.Error(errors.Wrapf(err, "%v: Subscribe()", name))
 			}
 			chains[i] = name
 			cases[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(sinkChan)}

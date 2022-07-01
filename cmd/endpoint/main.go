@@ -33,7 +33,7 @@ func main() {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
-	ex.Subscribe(ctx, 31000)
+	ex.Subscribe(ctx)
 
 	amount := new(big.Int)
 	amount.SetString("10000000000000000000", 10)

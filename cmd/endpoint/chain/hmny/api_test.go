@@ -152,11 +152,11 @@ func TestReceiver(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	startHeight := 18000
+
 	recv.WatchForTransferStart(1, "ONE", 15)
 	recv.WatchForTransferReceived(1, "ICX", 14)
 	recv.WatchForTransferEnd(1, "ONE", 15)
-	sinkChan, errChan, err := recv.Subscribe(context.TODO(), uint64(startHeight))
+	sinkChan, errChan, err := recv.Subscribe(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}

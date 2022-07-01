@@ -238,8 +238,12 @@ func (r *api) receiveLoop(ctx context.Context, opts *bnOptions, callback func(v 
 	}
 }
 
-func (r *api) Subscribe(ctx context.Context, height uint64) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
-
+func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
+	height, err := r.client().GetBlockNumber()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "GetBlockNumber ")
+	}
+	r.log.Infof("Subscribe Start Height %v", height)
 	go func() {
 		lastHeight := height - 1
 		if err := r.receiveLoop(ctx,

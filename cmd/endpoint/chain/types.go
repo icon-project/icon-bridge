@@ -65,7 +65,7 @@ type DstAPI interface {
 }
 
 type ChainAPI interface {
-	Subscribe(ctx context.Context, height uint64) (sinkChan chan *EventLogInfo, errChan chan error, err error)
+	Subscribe(ctx context.Context) (sinkChan chan *EventLogInfo, errChan chan error, err error)
 	GetKeyPairs(num int) ([][2]string, error)
 	GetBTPAddress(addr string) string
 

@@ -281,8 +281,13 @@ loop:
 
 }
 
-func (r *api) Subscribe(ctx context.Context, height uint64) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
-
+func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
+	blk, err := r.cl.GetLastBlock()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "GetLastBlock ")
+	}
+	height := uint64(blk.Height)
+	r.log.Infof("Subscribe Start Height %v", height)
 	// _errCh := make(chan error)
 	go func() {
 		// defer close(_errCh)

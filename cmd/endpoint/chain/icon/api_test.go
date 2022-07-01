@@ -26,9 +26,8 @@ func TestReceiver(t *testing.T) {
 	recv.WatchForTransferReceived(1, "ONE", 15)
 	recv.WatchForTransferEnd(1, "ICX", 14)
 
-	startHeight := 18000
 	go func() {
-		if sinkChan, errChan, err := recv.Subscribe(context.Background(), uint64(startHeight)); err != nil {
+		if sinkChan, errChan, err := recv.Subscribe(context.Background()); err != nil {
 			panic(err)
 		} else {
 			for {
