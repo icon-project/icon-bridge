@@ -76,7 +76,7 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
     IBMCPeriphery private bmc;
     IBTSCore internal btsCore;
     mapping(uint256 => Types.PendingTransferCoin) public requests; // a list of transferring requests
-    string public serviceName; //    BSH Service Name
+    string public constant serviceName = "bts"; //    BSH Service Name
 
     uint256 private constant RC_OK = 0;
     uint256 private constant RC_ERR = 1;
@@ -88,14 +88,9 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         _;
     }
 
-    function initialize(
-        address _bmc,
-        address _btsCore,
-        string memory _serviceName
-    ) public initializer {
+    function initialize(address _bmc, address _btsCore) public initializer {
         bmc = IBMCPeriphery(_bmc);
         btsCore = IBTSCore(_btsCore);
-        serviceName = _serviceName;
     }
 
     /**
