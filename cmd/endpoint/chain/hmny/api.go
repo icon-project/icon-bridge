@@ -33,7 +33,7 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 		src:       cfg.Src,
 		dst:       cfg.Dst,
 		networkID: cfg.NetworkID,
-		fd:        NewFinder(l),
+		fd:        NewFinder(l, cfg.ConftractAddresses),
 		sinkChan:  make(chan *chain.EventLogInfo),
 		errChan:   make(chan error),
 	}
@@ -285,50 +285,72 @@ func (r *api) Subscribe(ctx context.Context, height uint64) (sinkChan chan *chai
 	return r.sinkChan, r.errChan, nil
 }
 
-func (r *api) GetCoinBalance(addr string, coinType chain.TokenType) (*big.Int, error) {
-	if coinType == chain.ONEToken {
-		return r.requester.getHmnyBalance(addr)
-	} else if coinType == chain.ERC20Token {
-		return r.requester.getHmnyErc20Balance(addr)
-	} else if coinType == chain.ICXToken {
-		return r.requester.getHmnyWrappedICX(addr)
-	}
-	return nil, fmt.Errorf("Unexpected Token Type %v ", coinType)
+func (r *api) GetChainType() chain.ChainType {
+	return chain.HMNY
 }
 
-func (r *api) Transfer(param *chain.RequestParam) (txnHash string, err error) {
-	if param.FromChain != chain.HMNY {
-		err = fmt.Errorf("Unexpected Token Type %v .Expected chain.HMNY ", param.FromChain)
-		return
+func (r *api) GetCoinBalance(coinName string, addr string) (*big.Int, error) {
+	if !strings.Contains(addr, "btp://") {
+		return nil, errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
-	if param.ToChain == chain.HMNY {
-		if param.Token == chain.ONEToken {
-			txnHash, _, err = r.requester.transferHmnyOne(param.SenderKey, param.Amount, param.ToAddress)
-		} else if param.Token == chain.ERC20Token {
-			txnHash, _, err = r.requester.transferErc20(param.SenderKey, param.Amount, param.ToAddress)
+	if !strings.Contains(addr, ".hmny") {
+		return nil, fmt.Errorf("Address should be BTP address of account in native chain. Got %v", addr)
+	}
+	splts := strings.Split(addr, "/")
+	address := splts[len(splts)-1]
+	if coinName == "ONE" {
+		return r.requester.getHmnyBalance(address)
+	} else if coinName == "ETH" {
+		return r.requester.getHmnyErc20Balance(address)
+	} else if coinName == "ICX" {
+		return r.requester.getHmnyWrappedICX(address)
+	}
+	return nil, fmt.Errorf("Unexpected CoinName %v ", coinName)
+}
+
+func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
+	if !strings.Contains(recepientAddress, "btp://") {
+		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
+	}
+	within := false
+	if strings.Contains(recepientAddress, ".hmny") {
+		within = true
+		splts := strings.Split(recepientAddress, "/")
+		recepientAddress = splts[len(splts)-1]
+	}
+	if coinName == "ONE" {
+		if within {
+			txnHash, _, err = r.requester.transferNativeWithin(senderKey, recepientAddress, amount)
 		} else {
-			err = fmt.Errorf("Unexpected Token Type %v ", param.Token)
+			txnHash, _, err = r.requester.transferNativeCrossChain(senderKey, recepientAddress, amount)
 		}
-	} else if param.ToChain == chain.ICON {
-		if param.Token == chain.ONEToken {
-			txnHash, _, err = r.requester.transferOneToIcon(param.SenderKey, param.ToAddress, param.Amount)
-		} else if param.Token == chain.ERC20Token {
-			_, _, txnHash, _, err = r.requester.transferERC20ToIcon(param.SenderKey, param.Amount, param.ToAddress)
-		} else if param.Token == chain.ICXToken {
-			txnHash, _, err = r.requester.transferWrappedICXFromHmnyToIcon(param.SenderKey, param.Amount, param.ToAddress)
+
+	} else if coinName == "ETH" {
+		if within {
+			txnHash, _, err = r.requester.transferTokenWithin(senderKey, recepientAddress, amount)
 		} else {
-			err = fmt.Errorf("Unexpected Token Type %v ", param.Token)
+			txnHash, _, err = r.requester.transferTokenCrossChain(coinName, senderKey, recepientAddress, amount)
+		}
+
+	} else if coinName == "ICX" {
+		if within {
+			err = fmt.Errorf("Wrapped Coin can only be transferred across chain but recepientAddress has .icon in it")
+		} else {
+			txnHash, _, err = r.requester.transferWrappedCrossChain(coinName, senderKey, recepientAddress, amount)
 		}
 	} else {
-		err = fmt.Errorf("Unexpected params %v ", param)
+		err = fmt.Errorf("Unexpected CoinName %v; Supported ONE, ETH, ICX ", coinName)
 	}
 	return
 }
 
-func (r *api) Approve(ownerKey string, amount big.Int) (txnHash string, err error) {
-	txnHash, _, _, err = r.requester.approveHmnyNativeBSHCoreToAccessICX(ownerKey, amount)
-	if err != nil {
-		err = errors.Wrap(err, "approveHmnyNativeBSHCoreToAccessICX ")
+func (r *api) Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error) {
+	if coinName == "ICX" {
+		txnHash, _, err = r.requester.approveCrossNativeCoin(coinName, ownerKey, amount)
+	} else if coinName == "ETH" {
+		txnHash, _, err = r.requester.approveToken(coinName, ownerKey, amount)
+	} else {
+		err = errors.Wrapf(err, "CoinName not among accepted Values ICX, ETH. Got %v", coinName)
 	}
 	return
 }
@@ -356,9 +378,9 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (interface{}, [
 	return txRes, plogs, nil
 }
 
-func (r *api) GetBTPAddress(addr string) *string {
+func (r *api) GetBTPAddress(addr string) string {
 	fullAddr := "btp://" + r.networkID + ".hmny/" + addr
-	return &fullAddr
+	return fullAddr
 }
 
 func (r *api) GetKeyPairs(num int) ([][2]string, error) {
@@ -373,6 +395,14 @@ func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	return res, nil
 }
 
-func (r *api) WatchFor(id uint64, eventType chain.EventLogType, seq int64, contractAddress string) error {
-	return r.fd.WatchFor(args{id: id, eventType: eventType, seq: seq, contractAddress: contractAddress})
+func (r *api) WatchForTransferStart(id uint64, coinName string, seq int64) error {
+	return r.fd.watchFor(chain.TransferStart, id, coinName, seq)
+}
+
+func (r *api) WatchForTransferReceived(id uint64, coinName string, seq int64) error {
+	return r.fd.watchFor(chain.TransferReceived, id, coinName, seq)
+}
+
+func (r *api) WatchForTransferEnd(id uint64, coinName string, seq int64) error {
+	return r.fd.watchFor(chain.TransferEnd, id, coinName, seq)
 }

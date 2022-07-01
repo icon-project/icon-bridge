@@ -3,7 +3,9 @@ package executor
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
+	"math/big"
 	"math/rand"
 	"os"
 	"reflect"
@@ -22,11 +24,11 @@ import (
 type executor struct {
 	log             log.Logger
 	godKeysPerChain map[chain.ChainType][2]string
-	addrToName      map[string]chain.ContractName
 	cfgPerChain     map[chain.ChainType]*chain.ChainConfig
 	clientsPerChain map[chain.ChainType]chain.ChainAPI
 	sinkChanPerID   map[uint64]chan *evt
 	syncChanMtx     sync.RWMutex
+	stoppedChan     chan struct{}
 }
 
 func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ex *executor, err error) {
@@ -58,10 +60,10 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ex *
 		log:             l,
 		cfgPerChain:     cfgPerChain,
 		godKeysPerChain: make(map[chain.ChainType][2]string),
-		addrToName:      make(map[string]chain.ContractName),
 		clientsPerChain: make(map[chain.ChainType]chain.ChainAPI),
 		sinkChanPerID:   make(map[uint64]chan *evt),
 		syncChanMtx:     sync.RWMutex{},
+		stoppedChan:     make(chan struct{}),
 	}
 	for name, cfg := range cfgPerChain {
 		// GodKeys
@@ -77,23 +79,23 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ex *
 				err = errors.Wrap(err, "hmny.NewApi ")
 				return nil, err
 			}
-			for name, addr := range cfg.ConftractAddresses {
-				ex.addrToName[addr] = name
-			}
 		} else if name == chain.ICON {
 			ex.clientsPerChain[name], err = icon.NewApi(l, cfg)
 			if err != nil {
 				err = errors.Wrap(err, "icon.NewApi ")
 				return nil, err
 			}
-			for name, addr := range cfg.ConftractAddresses {
-				ex.addrToName[addr] = name
-			}
+
 		} else {
 			return nil, errors.New("Unknown Chain Type supplied from config: " + string(name))
 		}
 	}
+
 	return
+}
+
+func (ex *executor) Done() <-chan struct{} {
+	return ex.stoppedChan
 }
 
 func (ex *executor) getID() (uint64, error) {
@@ -125,15 +127,19 @@ func (ex *executor) removeChan(id uint64) {
 	ex.syncChanMtx.Lock()
 	defer ex.syncChanMtx.Unlock()
 	if ch, ok := ex.sinkChanPerID[id]; ok {
-		ex.log.Debugf("Removing channel of id %v", id)
+		ex.log.Debugf("Cleaning up after function returns. Removing channel of id %v", id)
 		if ch != nil {
 			close(ex.sinkChanPerID[id])
 		}
 		delete(ex.sinkChanPerID, id)
 	}
+	if len(ex.sinkChanPerID) == 0 {
+		ex.log.Info("All test scripts have been completed")
+		ex.stoppedChan <- struct{}{}
+	}
 }
 
-func (ex *executor) getSink(id uint64) chan *evt {
+func (ex *executor) getChan(id uint64) chan *evt {
 	ex.syncChanMtx.RLock()
 	defer ex.syncChanMtx.RUnlock()
 	if _, ok := ex.sinkChanPerID[id]; ok {
@@ -144,7 +150,7 @@ func (ex *executor) getSink(id uint64) chan *evt {
 	return nil
 }
 
-func (ex *executor) Start(ctx context.Context, startHeight uint64) {
+func (ex *executor) Subscribe(ctx context.Context, startHeight uint64) {
 	go func() {
 		lenCls := len(ex.clientsPerChain)
 		chains := make([]chain.ChainType, lenCls)
@@ -186,7 +192,7 @@ func (ex *executor) Start(ctx context.Context, startHeight uint64) {
 				}
 				if len(res.IDs) > 0 {
 					for _, id := range res.IDs {
-						if dst := ex.getSink(id); dst != nil {
+						if dst := ex.getChan(id); dst != nil {
 							dst <- &evt{name: chains[chosen], msg: res}
 						}
 					}
@@ -208,42 +214,97 @@ func (ex *executor) Start(ctx context.Context, startHeight uint64) {
 	}()
 }
 
-func (ex *executor) Execute(ctx context.Context, chains []chain.ChainType, cb callBackFunc) (err error) {
-	filteredClients := map[chain.ChainType]chain.ChainAPI{}
-	filteredGods := map[chain.ChainType][2]string{}
-	for _, name := range chains {
-		// clients
-		if _, ok := ex.clientsPerChain[name]; ok {
-			filteredClients[name] = ex.clientsPerChain[name]
-		} else {
-			return errors.New("Client doesn't exist for " + string(name))
-		}
-		// gods
-		if _, ok := ex.godKeysPerChain[name]; ok {
-			filteredGods[name] = ex.godKeysPerChain[name]
-		} else {
-			return errors.New("GodKeyPairs doesn't exist for " + string(name))
-		}
-	}
-
+func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, initialBalance *big.Int, cb callBackFunc) (err error) {
 	id, err := ex.getID()
 	if err != nil {
 		return errors.Wrap(err, "getID ")
 	}
-
+	log := ex.log.WithFields(log.Fields{"pid": id})
 	sinkChan := make(chan *evt)
 	ex.addChan(id, sinkChan)
+	defer ex.removeChan(id) // should defer be called by cb() instead to make sure cb() was done
 
+	src, ok := ex.clientsPerChain[srcChainName]
+	if !ok {
+		return fmt.Errorf("Client for chain %v doesnot exist in config ", srcChainName)
+	}
+	dst, ok := ex.clientsPerChain[dstChainName]
+	if !ok {
+		return fmt.Errorf("Client for chain %v doesnot exist in config ", dstChainName)
+	}
+	srcGKey, ok := ex.godKeysPerChain[srcChainName]
+	if !ok {
+		return fmt.Errorf("GodKeys for chain %v doesnot exist in config", srcChainName)
+	}
+	dstGKey, ok := ex.godKeysPerChain[dstChainName]
+	if !ok {
+		return fmt.Errorf("GodKeys for chain %v doesnot exist in config", dstChainName)
+	}
+	srcKeys, err := src.GetKeyPairs(1)
+	if err != nil {
+		return errors.Wrapf(err, "GetKeyPairs for src %v", srcChainName)
+	}
+	srcAddress := src.GetBTPAddress(srcKeys[0][1])
+	dstKeys, err := dst.GetKeyPairs(1)
+	if err != nil {
+		return errors.Wrapf(err, "GetKeyPairs for dst %v", dstChainName)
+	}
+	dstAddress := dst.GetBTPAddress(dstKeys[0][1])
+
+	coinsToFund := map[chain.ChainType][]string{chain.ICON: {"ICX", "ETH"}, chain.HMNY: {"ONE", "ETH"}}
+	wrappedCointsToFund := map[chain.ChainType][]string{chain.ICON: {"ONE"}, chain.HMNY: {"ICX"}}
+
+	log.Info("Funding src and dst accounts with ETH token and native coins ")
+	if err := ex.fund(log, src, srcGKey[0], srcAddress, coinsToFund[srcChainName], initialBalance); err != nil {
+		return errors.Wrapf(err, "Fund Src: %v %v", srcChainName, srcAddress)
+	}
+	if err := ex.fund(log, dst, dstGKey[0], srcAddress, wrappedCointsToFund[srcChainName], initialBalance); err != nil {
+		return errors.Wrapf(err, "Fund Src: %v %v", srcChainName, srcAddress)
+	}
+	if err := ex.fund(log, dst, dstGKey[0], dstAddress, coinsToFund[dstChainName], initialBalance); err != nil {
+		return errors.Wrapf(err, "Fund Dst: %v %v", dstChainName, srcAddress)
+	}
+	if err := ex.fund(log, src, srcGKey[0], dstAddress, wrappedCointsToFund[dstChainName], initialBalance); err != nil {
+		return errors.Wrapf(err, "Fund Dst: %v %v", dstChainName, srcAddress)
+	}
+
+	time.Sleep(time.Second * 10)
 	args, err := newArgs(
-		id,
-		ex.log.WithFields(log.Fields{"pid": id}),
-		filteredClients, filteredGods,
-		ex.addrToName,
-		sinkChan, func() { ex.removeChan(id) },
+		id, log,
+		src, dst, srcGKey[0],
+		srcKeys[0][0], srcAddress, dstAddress,
+		sinkChan,
 	)
+
 	if err != nil {
 		return errors.Wrap(err, "newArgs ")
 	}
-	go cb(ctx, args)
+
+	if cb != nil {
+		if err := cb(ctx, args); err != nil {
+			return errors.Wrap(err, "CallBackFunc ")
+		}
+	} else {
+		return errors.New("Callback function was nil")
+	}
+
+	// CleanupFunc removeChan() is called after cb() on function return
+	// so make sure cb() returns only after all the test logic is finished
 	return
+}
+
+func (ex *executor) fund(log log.Logger, api chain.ChainAPI, senderKey string, recepientAddr string, coins []string, amount *big.Int) error {
+	for _, coin := range coins {
+		if hash, err := api.Transfer(coin, senderKey, recepientAddr, *amount); err != nil {
+			return errors.Wrapf(err, "Transfer(%v,%v,%v,%v)", coin, senderKey, recepientAddr, amount.String())
+		} else {
+			if _, _, err := api.WaitForTxnResult(context.TODO(), hash); err != nil {
+				return errors.Wrapf(err, "WaitForTxnResult %v %v", coin, hash)
+			} else {
+				log.Infof("Funded %v with %v %v. Hash: %v", recepientAddr, amount.String(), coin, hash)
+			}
+		}
+
+	}
+	return nil
 }
