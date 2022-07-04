@@ -15,11 +15,7 @@ module.exports = async function (deployer, network) {
         );
         await deployProxy(
             BTSPeriphery,
-            [
-                process.env.BMC_PERIPHERY_ADDRESS,
-                BTSCore.address,
-                process.env.BSH_SERVICE,
-            ],
+            [process.env.BMC_PERIPHERY_ADDRESS, BTSCore.address],
             { deployer }
         );
         const btsCore = await BTSCore.deployed();
