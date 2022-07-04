@@ -8,8 +8,8 @@ module.exports = async function (deployer, network) {
             BTSCore,
             [
                 process.env.BSH_COIN_NAME,
-                parseInt(process.env.BSH_COIN_FEE),
-                parseInt(process.env.BSH_FIXED_FEE),
+                process.env.BSH_COIN_FEE,
+                process.env.BSH_FIXED_FEE,
             ],
             { deployer }
         );
