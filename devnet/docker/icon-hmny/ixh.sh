@@ -760,7 +760,7 @@ function deploysc() {
     _=$(WALLET=$btp_icon_bts_owner_wallet \
         PASSWORD=$btp_icon_bts_owner_wallet_password \
         icon_sendtx_call "$btp_icon_bts" \
-        setFeeRatio 0 _name="ICX" _feeNumerator=0x64 _fixedFee=0x1)
+        setFeeRatio 0 _name="ICX" _feeNumerator=$(dec2hex $btp_bts_fee_numerator) _fixedFee=$(dec2hex $btp_bts_fixed_fee))
 
     # configuration: end
 
@@ -811,8 +811,8 @@ function deploysc() {
                 PASSWORD=$btp_hmny_wallet_password \
                 BSH_COIN_URL="https://github.com/icon/btp" \
                 BSH_COIN_NAME="ONE" \
-                BSH_COIN_FEE=10 \
-                BSH_FIXED_FEE=0 \
+                BSH_COIN_FEE=$btp_bts_fee_numerator \
+                BSH_FIXED_FEE=$btp_bts_fixed_fee \
                 BMC_PERIPHERY_ADDRESS="$btp_hmny_bmc_periphery" \
                 BSH_SERVICE="$btp_bts_svc_name" \
                 hmny_deploysc $ixh_sol_dir/bts BTSCore BTSPeriphery HRC20
@@ -835,7 +835,7 @@ function deploysc() {
     log "bts setFeeRatio:"
     WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
-        bts.BTSCore.setFeeRatio "'ONE',100,1"
+        bts.BTSCore.setFeeRatio "'ONE','$btp_bts_fee_numerator','$btp_bts_fixed_fee'"
 
     # configuration: end
 
@@ -881,7 +881,9 @@ function deploysc() {
     _=$(WALLET=$btp_icon_bts_owner_wallet \
         PASSWORD=$btp_icon_bts_owner_wallet_password \
         icon_sendtx_call "$btp_icon_bts" register 0 \
-        "_name=ONE" "_symbol=ONE" "_decimals=0x12" "_feeNumerator=0x64" "_fixedFee=0x1")
+        "_name=ONE" "_symbol=ONE" "_decimals=0x12" \
+        "_feeNumerator=$(dec2hex $btp_bts_fee_numerator)" \
+        "_fixedFee=$(dec2hex $btp_bts_fixed_fee)")
 
     btp_icon_one=$(icon_callsc \
         "$btp_icon_bts" coinAddress \
@@ -891,13 +893,18 @@ function deploysc() {
     log "bts: Register IRC2 (TICX):" # pre-existing token
     _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
         icon_sendtx_call "$btp_icon_bts" register 0 \
-        "_name=TICX" "_symbol=TICX" "_decimals=0x12" "_feeNumerator=0x64" "_fixedFee=0x1" "_addr=$btp_icon_ticx")
+        "_name=TICX" "_symbol=TICX" "_decimals=0x12" \
+        "_feeNumerator=$(dec2hex $btp_bts_fee_numerator)" \
+        "_fixedFee=$(dec2hex $btp_bts_fixed_fee)" \
+        "_addr=$btp_icon_ticx")
     log "bts: registered: $(icon_callsc "$btp_icon_bts" tokenNames | jq -r .)"
 
     log "bts: Register IRC2 (TONE):" # hmny's erc20 token
     _=$(WALLET=$btp_icon_wallet PASSWORD=$btp_icon_wallet_password \
         icon_sendtx_call "$btp_icon_bts" register 0 \
-        "_name=TONE" "_symbol=TONE" "_decimals=0x12" "_feeNumerator=0x64" "_fixedFee=0x1")
+        "_name=TONE" "_symbol=TONE" "_decimals=0x12" \
+        "_feeNumerator=$(dec2hex $btp_bts_fee_numerator)" \
+        "_fixedFee=$(dec2hex $btp_bts_fixed_fee)")
     log "bts: registered: $(icon_callsc "$btp_icon_bts" tokenNames | jq -r .)"
 
     btp_icon_tone=$(icon_callsc \
@@ -944,7 +951,7 @@ function deploysc() {
     WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         bts.BTSCore.register \
-        "'ICX','ICX',18,100,1,'0x0000000000000000000000000000000000000000'"
+        "'ICX','ICX',18,'$btp_bts_fee_numerator','$btp_bts_fixed_fee','0x0000000000000000000000000000000000000000'"
 
     btp_hmny_icx=$(
         WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
@@ -956,13 +963,13 @@ function deploysc() {
     WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         bts.BTSCore.register \
-        "'TONE','TONE',18,100,1,'$btp_hmny_tone'"
+        "'TONE','TONE',18,'$btp_bts_fee_numerator','$btp_bts_fixed_fee','$btp_hmny_tone'"
 
     log "bts: Register ERC20 (TICX):" # icon's IRC2 token
     WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
         run_sol >/dev/null \
         bts.BTSCore.register \
-        "'TICX','TICX',18,100,1,'0x0000000000000000000000000000000000000000'"
+        "'TICX','TICX',18,'$btp_bts_fee_numerator','$btp_bts_fixed_fee','0x0000000000000000000000000000000000000000'"
 
     btp_hmny_ticx=$(
         WALLET=$btp_hmny_wallet PASSWORD=$btp_hmny_wallet_password \
@@ -1636,8 +1643,7 @@ function run_demo() {
     }
 
     function format_token() {
-        echo "$1"
-        # echo "scale=2;$1/10^18" | bc
+        echo "scale=2;$1/10^18" | bc
     }
 
     function show_balances() {
@@ -1675,7 +1681,7 @@ function run_demo() {
     fund_demo_wallets
     show_balances
 
-    i2h_ICX_transfer_amount=2000000000000000000 # 2 ICX
+    i2h_ICX_transfer_amount=3000000000000000000 # 3 ICX
     echo "Transfer Native ICX (ICON -> HMNY):"
     echo "    amount=$(format_token $i2h_ICX_transfer_amount)"
     echo -n "    "
@@ -1689,7 +1695,7 @@ function run_demo() {
     tx_relay_wait
     show_balances
 
-    h2i_ONE_transfer_amount=2000000000000000000 # 2 ONE
+    h2i_ONE_transfer_amount=3000000000000000000 # 3 ONE
     echo "Transfer Native ONE (HMNY -> ICON):"
     echo "    amount=$(format_token $h2i_ONE_transfer_amount)"
     echo -n "    "
@@ -1704,7 +1710,7 @@ function run_demo() {
     show_balances
 
     h2i_ICX_transfer_amount=1000000000000000000 # 1 ICX
-    echo "Transfer Wrapped ICX (HMNY -> ICON):"
+    echo "Transfer ICX (HMNY -> ICON):"
     echo "    amount=$(format_token $h2i_ICX_transfer_amount)"
     echo -n "    "
     WALLET=$btp_hmny_demo_wallet \
@@ -1722,7 +1728,7 @@ function run_demo() {
     show_balances
 
     i2h_ONE_transfer_amount=1000000000000000000 # 1 ONE
-    echo "Transfer Wrapped ONE (ICON -> HMNY):"
+    echo "Transfer ONE (ICON -> HMNY):"
     echo "    amount=$(format_token $i2h_ONE_transfer_amount)"
     echo -n "    "
     WALLET=$btp_icon_demo_wallet \
@@ -1739,7 +1745,7 @@ function run_demo() {
     tx_relay_wait
     show_balances
 
-    i2h_TICX_transfer_amount=2000000000000000000 # 2 TICX
+    i2h_TICX_transfer_amount=3000000000000000000 # 3 TICX
     echo "Transfer TICX (ICON -> HMNY):"
     echo "    amount=$(format_token $i2h_TICX_transfer_amount)"
     echo -n "    "
@@ -1761,7 +1767,7 @@ function run_demo() {
     tx_relay_wait
     show_balances
 
-    h2i_TONE_transfer_amount=2000000000000000000 # 2 TONE
+    h2i_TONE_transfer_amount=3000000000000000000 # 3 TONE
     echo "Transfer TONE (HMNY -> ICON):"
     echo "    amount=$(format_token $h2i_TONE_transfer_amount)"
     echo -n "    "
@@ -1801,7 +1807,7 @@ function run_demo() {
     echo -n "    "
     WALLET=$btp_icon_demo_wallet \
         PASSWORD=$btp_icon_demo_wallet_password \
-        run_exec iconBSHApprove "ONE" \
+        run_exec iconBSHApprove "TONE" \
         "$btp_icon_bts" "$i2h_TONE_transfer_amount" >/dev/null
     WALLET=$btp_icon_demo_wallet \
         PASSWORD=$btp_icon_demo_wallet_password \
@@ -1858,6 +1864,8 @@ btp_icon_bmc_owner_balance=50000000000000000000 # 50 ICX
 btp_icon_bts_owner_balance=50000000000000000000 # 50 ICX
 btp_icon_step_limit=3500000000
 btp_bts_svc_name=bts
+btp_bts_fee_numerator=100
+btp_bts_fixed_fee=200000000000000000
 btp_icon_bmr_owner_balance=50000000000000000000 # 50 ICX
 btp_hmny_bmr_owner_balance=10000000000000000000 # 10 ONE
 btp_hmny_gas_limit=80000000                     # equal to block gas limit
