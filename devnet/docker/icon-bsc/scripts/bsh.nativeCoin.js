@@ -9,12 +9,12 @@ module.exports = async function (callback) {
     switch (argv["method"]) {
       case "register":
         console.log("registerCoin", argv.name)
-        tx = await bshCore.register(argv.name, argv.symbol, argv.decimals, argv.feeNumerator, argv.fixedFee);
+        tx = await bshCore.register(argv.name, argv.symbol, argv.decimals, argv.feeNumerator, argv.fixedFee,'0x0000000000000000000000000000000000000000');
         //console.log(await bshCore.coinNames())
         console.log(tx)
         break;
       case "getBalanceOf":
-        var balance = await bshCore.getBalanceOf(argv.addr, argv.name);
+        var balance = await bshCore.balanceOf(argv.addr, argv.name);
         //console.log("balance of user:" + argv.addr + " = " + balance._usableBalance);
         var bal = await web3.utils.fromWei(balance._usableBalance, "ether")
         console.log(bal)

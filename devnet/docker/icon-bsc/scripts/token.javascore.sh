@@ -156,9 +156,9 @@ bsh_javascore_balance() {
   local EOA=$(rpceoa $1)
   echo "Balance of user $EOA"
   goloop rpc call --to "$(extractAddresses "javascore" "TokenBSH")" \
-    --method getBalance \
-    --param user=$EOA \
-    --param tokenName=$TOKEN_NAME
+    --method balanceOf \
+    --param _owner=$EOA \
+    --param _coinName=$TOKEN_NAME
 }
 
 bsh_javascore_transfer() {
@@ -174,9 +174,9 @@ bsh_javascore_transfer() {
   TX=$(
     goloop rpc sendtx call --to "$(extractAddresses "javascore" "TokenBSH")" \
       --method transfer \
-      --param tokenName=${TOKEN_NAME} \
-      --param value=$VAL \
-      --param to=btp://$BSC_BMC_NET/$EOA | jq -r .
+      --param _coinName=${TOKEN_NAME} \
+      --param _value=$VAL \
+      --param _to=btp://$BSC_BMC_NET/$EOA | jq -r .
   )
   ensure_txresult $TX
 }
