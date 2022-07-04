@@ -269,7 +269,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
                 it will be locked until getting the Service Message Response.
         @return _refundableBalance refundable balance is the balance that will be refunded to users.
     */
-    function getBalanceOf(address _owner, string memory _coinName)
+    function balanceOf(address _owner, string memory _coinName)
         external
         view
         override
@@ -288,7 +288,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         }
         address _erc20Address = coins[_coinName];
         _usableBalance = _erc20Address != address(0)
-            ? IERC20Tradable(_erc20Address).balanceOf(_owner)
+            ? IERC20(_erc20Address).balanceOf(_owner)
             : 0;
         return (
             _usableBalance,
@@ -305,7 +305,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
         @return _lockedBalances         An array of Locked Balances
         @return _refundableBalances     An array of Refundable Balances
     */
-    function getBalanceOfBatch(address _owner, string[] calldata _coinNames)
+    function balanceOfBatch(address _owner, string[] calldata _coinNames)
         external
         view
         override
@@ -323,7 +323,7 @@ contract BSHCore is Initializable, IBSHCore, ReentrancyGuardUpgradeable {
                 _usableBalances[i],
                 _lockedBalances[i],
                 _refundableBalances[i]
-            ) = this.getBalanceOf(_owner, _coinNames[i]);
+            ) = this.balanceOf(_owner, _coinNames[i]);
         }
         return (_usableBalances, _lockedBalances, _refundableBalances);
     }

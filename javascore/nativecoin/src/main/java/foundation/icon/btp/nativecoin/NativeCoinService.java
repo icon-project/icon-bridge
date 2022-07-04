@@ -176,12 +176,24 @@ public class NativeCoinService implements NCS, NCSEvents, BSH, OwnerManager {
     public Balance balanceOf(Address _owner, String _coinName) {
         if (_owner.equals(Context.getAddress())) {
             Balance balance = new Balance();
-            balance.setUsable(BigInteger.ZERO);
+            balance.setUsable(Context.getBalance(_owner));
             balance.setLocked(BigInteger.ZERO);
             balance.setRefundable(feeBalances.getOrDefault(_coinName, BigInteger.ZERO));
             return balance;
         } else {
-            return getBalance(_coinName, _owner);
+            Balance balance = getBalance(_coinName, _owner);
+            Address _addr = coinAddresses.get(_coinName);
+            if (_addr == null) {
+                return balance;
+            }
+            Coin _coin = coinDb.get(_coinName);
+            if (_coinName == name) {
+                balance.setUsable(Context.getBalance(_owner));
+            } else if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
+                IRC2SupplierScoreInterface _irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());
+                balance.setUsable(_irc2.balanceOf(_owner));
+            }
+            return balance;
         }
     }
 
@@ -213,7 +225,12 @@ public class NativeCoinService implements NCS, NCSEvents, BSH, OwnerManager {
 
         Address owner = Context.getCaller();
         Balance balance = getBalance(_coinName, owner);
-        require(balance.getRefundable().compareTo(_value) > -1, "invalid value");
+        require(balance.getRefundable().add(balance.getUsable()).compareTo(_value) > -1, "invalid value");
+        Coin _coin = coinDb.get(_coinName);
+        if(_coin.getCoinType() == NON_NATIVE_TOKEN_TYPE) {
+            balance.setRefundable(balance.getRefundable().add(balance.getUsable()));
+            balance.setUsable(BigInteger.ZERO);
+        }
         balance.setRefundable(balance.getRefundable().subtract(_value));
         setBalance(_coinName, owner, balance);
 
@@ -482,8 +499,16 @@ public class NativeCoinService implements NCS, NCSEvents, BSH, OwnerManager {
         // unlock and add refundable
         Balance balance = getBalance(coinName, owner);
         balance.setLocked(balance.getLocked().subtract(value));
-        if (!owner.equals(Context.getAddress())) {
-            balance.setRefundable(balance.getRefundable().add(value));
+        try {
+            if (name.equals(coinName)) {
+                Context.transfer(owner, value);
+            } else {
+                _transferBatch(Context.getAddress(), owner, List.of(coinName), List.of(value));
+            }
+        } catch (Exception e) {
+            if (!owner.equals(Context.getAddress())) {
+                balance.setRefundable(balance.getRefundable().add(value));
+            }
         }
         setBalance(coinName, owner, balance);
     }
@@ -722,8 +747,16 @@ public class NativeCoinService implements NCS, NCSEvents, BSH, OwnerManager {
         if(_coinAddr == null){
             throw NCSException.irc31Failure("Exception: CoinNotFound");
         }
-        IRC2ScoreInterface _irc2 = new IRC2ScoreInterface(_coinAddr);
-        _irc2.transfer(to, amount, null);
+        try {
+            IRC2ScoreInterface _irc2 = new IRC2ScoreInterface(_coinAddr);
+            _irc2.transfer(to, amount, null);
+        } catch (UserRevertedException e) {
+            logger.println("mint", "code:", e.getCode(), "msg:", e.getMessage());
+            throw NCSException.irc31Reverted("code:" + e.getCode() + "msg:" + e.getMessage());
+        } catch (IllegalArgumentException | RevertedException e) {
+            logger.println("mint", "Exception:", e.toString());
+            throw NCSException.irc31Failure("Exception:" + e);
+        }
     }
 
     private void mintBatch(Address to, String[] coinNames, BigInteger[] amounts) {

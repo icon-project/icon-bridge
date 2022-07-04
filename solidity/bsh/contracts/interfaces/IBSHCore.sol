@@ -116,7 +116,7 @@ interface IBSHCore {
                 it will be locked until getting the Service Message Response.
         @return _refundableBalance refundable balance is the balance that will be refunded to users.
     */
-    function getBalanceOf(address _owner, string memory _coinName)
+    function balanceOf(address _owner, string memory _coinName)
         external
         view
         returns (
@@ -133,7 +133,7 @@ interface IBSHCore {
         @return _lockedBalances         An array of Locked Balances
         @return _refundableBalances     An array of Refundable Balances
     */
-    function getBalanceOfBatch(address _owner, string[] calldata _coinNames)
+    function balanceOfBatch(address _owner, string[] calldata _coinNames)
         external
         view
         returns (
