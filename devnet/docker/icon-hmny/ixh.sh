@@ -1813,7 +1813,7 @@ function run_demo() {
         PASSWORD=$btp_icon_demo_wallet_password \
         icon_sendtx_call >/dev/null \
         "$btp_icon_bts" transfer 0 \
-        "_coinName=TICX" \
+        "_coinName=TONE" \
         "_value=$i2h_TONE_transfer_amount" \
         "_to=btp://$btp_hmny_net/$btp_hmny_demo_wallet_address"
     echo
