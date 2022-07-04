@@ -11,9 +11,9 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/harmony-one/harmony/accounts/abi"
 	"github.com/harmony-one/harmony/core/types"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
-	nativeHmy "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/bsh/bshPeriphery"
-	tokenHmy "github.com/icon-project/icon-bridge/cmd/endpoint/chain/hmny/abi/tokenbsh/bshimpl"
+	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
+	nativeHmy "github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny/abi/bsh/bshPeriphery"
+	tokenHmy "github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny/abi/tokenbsh/bshimpl"
 	"github.com/pkg/errors"
 )
 

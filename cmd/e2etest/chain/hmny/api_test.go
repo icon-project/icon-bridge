@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/harmony-one/harmony/core/types"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
+	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 

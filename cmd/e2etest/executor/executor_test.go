@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/icon-project/icon-bridge/cmd/endpoint/chain"
-	"github.com/icon-project/icon-bridge/cmd/endpoint/executor"
+	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
+	"github.com/icon-project/icon-bridge/cmd/e2etest/executor"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
