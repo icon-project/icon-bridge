@@ -7,7 +7,7 @@ source nativeCoin.solidity.sh
 
 # ensure alice user keystore creation
 printf "\n\nStep 1: creating/ensuring Alice keystore \n"
-source /btpsimple/bin/keystore.sh
+source /iconbridge/bin/keystore.sh
 ensure_key_store alice.ks.json alice.secret
 
 printf "\n\nStep 2 Bob's BNB balance before BTP Native transfer \n"

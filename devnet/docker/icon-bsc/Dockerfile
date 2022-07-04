@@ -1,9 +1,9 @@
-ARG BTPSIMPLE_VERSION=latest
+ARG ICONBRIDGE_VERSION=latest
 ARG GOLOOP_IMAGE=iconloop/goloop-icon:v0.9.7
 
 FROM ${GOLOOP_IMAGE} as goloop
 FROM canhlinh/truffle:5.3.0-alpine as truffle
-FROM btpsimple:${BTPSIMPLE_VERSION} AS btpsimple
+FROM iconbridge:${ICONBRIDGE_VERSION} AS iconbridge
 FROM node:16.1-alpine as node
 
 # install truffle cli
@@ -18,38 +18,38 @@ RUN yarn --version
 #install eth-cli 
 RUN yarn global add eth-cli
 
-# install btpsimple cli
-COPY --from=btpsimple . .
-ENV PATH $PATH:/btpsimple/bin
+# install iconbridge cli
+COPY --from=iconbridge . .
+ENV PATH $PATH:/iconbridge/bin
 
 # install goloop cli
 COPY --from=goloop /goloop/bin /goloop/bin
 ENV PATH $PATH:/goloop/bin
 
-ENV BTPSIMPLE_BASE_DIR=/btpsimple
-ENV BTPSIMPLE_CONFIG_DIR=${BTPSIMPLE_BASE_DIR}/config
-ENV BTPSIMPLE_CONTRACTS_DIR=${BTPSIMPLE_BASE_DIR}/contracts
-ENV BTPSIMPLE_SCRIPTS_DIR=${BTPSIMPLE_BASE_DIR}/js
-ENV BTPSIMPLE_BIN_DIR=/btpsimple/bin
-    
-COPY ./*.sh /btpsimple/bin/
-COPY ./scripts/*.sh /btpsimple/bin/
+ENV ICONBRIDGE_BASE_DIR=/iconbridge
+ENV ICONBRIDGE_CONFIG_DIR=${ICONBRIDGE_BASE_DIR}/config
+ENV ICONBRIDGE_CONTRACTS_DIR=${ICONBRIDGE_BASE_DIR}/contracts
+ENV ICONBRIDGE_SCRIPTS_DIR=${ICONBRIDGE_BASE_DIR}/js
+ENV ICONBRIDGE_BIN_DIR=/iconbridge/bin
+
+COPY ./*.sh /iconbridge/bin/
+COPY ./scripts/*.sh /iconbridge/bin/
 COPY ./entrypoint.sh /
 COPY ./scripts/provision.sh /
-COPY ./iconvalidators /btpsimple/bin/
+COPY ./iconvalidators /iconbridge/bin/
 
 
-#RUN mkdir {BTPSIMPLE_SCRIPTS_DIR}
-#COPY ./*.js /btpsimple/js/
-COPY ./scripts/*.js /btpsimple/js/
+#RUN mkdir {ICONBRIDGE_SCRIPTS_DIR}
+#COPY ./*.js /iconbridge/js/
+COPY ./scripts/*.js /iconbridge/js/
 
 RUN chmod +x /provision.sh
 RUN chmod +x /entrypoint.sh
-RUN chmod +x /btpsimple/bin/wait-for-it.sh
+RUN chmod +x /iconbridge/bin/wait-for-it.sh
 
-RUN yarn --cwd $BTPSIMPLE_CONTRACTS_DIR/solidity/bmc --prod
-RUN yarn --cwd $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh --prod
-RUN yarn --cwd $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH --prod
+RUN yarn --cwd $ICONBRIDGE_CONTRACTS_DIR/solidity/bmc --prod
+RUN yarn --cwd $ICONBRIDGE_CONTRACTS_DIR/solidity/bsh --prod
+RUN yarn --cwd $ICONBRIDGE_CONTRACTS_DIR/solidity/TokenBSH --prod
 
-WORKDIR /btpsimple/config
+WORKDIR /iconbridge/config
 ENTRYPOINT ["entrypoint.sh"]

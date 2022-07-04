@@ -130,7 +130,7 @@ NOTE: _Wait for 1 minute or more before doing this after deploying blockchains t
 If you have `bls` dependencies installed in local system, you can run following commands from the project root directory to start relayer locally.
 
 ```
-$ cd cmd/btpsimple
+$ cd cmd/iconbridge
 $ go run . -config ../../devnet/docker/icon-hmny/_ixh/bmr.config.json
 ```
 

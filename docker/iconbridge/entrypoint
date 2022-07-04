@@ -1,8 +1,6 @@
 #!/bin/sh
 set -e
 
-source provision.sh
-
 if [ "$ICONBRIDGE_OFFSET" != "" ] && [ -f "$ICONBRIDGE_OFFSET" ]; then
     export ICONBRIDGE_OFFSET=$(cat ${ICONBRIDGE_OFFSET})
 fi
@@ -16,7 +14,6 @@ if [ "$ICONBRIDGE_CONFIG" != "" ] && [ ! -f "$ICONBRIDGE_CONFIG" ]; then
         printf $(date | md5sum | head -c16) >$ICONBRIDGE_KEY_SECRET
     fi
     if [ "$ICONBRIDGE_KEY_STORE" != "" ] && [ ! -f "$ICONBRIDGE_KEY_STORE" ]; then
-        echo "Save keystore $ICONBRIDGE_CONFIG"
         UNSET="$UNSET ICONBRIDGE_KEY_STORE"
         CMD="$CMD --save_key_store=$ICONBRIDGE_KEY_STORE"
     fi
@@ -38,5 +35,4 @@ if [ "$ICONBRIDGE_CONFIG" != "" ] && [ ! -f "$ICONBRIDGE_CONFIG" ]; then
     fi
     sh -c "unset $UNSET ; $CMD"
 fi
-
 exec "$@"

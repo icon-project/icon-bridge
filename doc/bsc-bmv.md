@@ -59,7 +59,7 @@ Every block header maintains structure which contains three states in Trie struc
 - Transactions trie
 - State trie
 
-BSC Relay [Receiver](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/cmd/btpsimple/module/bsc/receiver.go#L150) reconstructs the proof trie encoded specification. 
+BSC Relay [Receiver](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/cmd/iconbridge/module/bsc/receiver.go#L150) reconstructs the proof trie encoded specification. 
 BMV Message Verifier in turn decodes the proofs which includes the receipts trie and [verifies](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/javascore/bmv/src/main/java/foundation/icon/btp/bmv/BTPMessageVerifier.java#L91)
 the trie against header `ReceiptHash`. 
 
@@ -76,7 +76,7 @@ type ReceiptProof struct {
 Binance Smart Chain relies on the extra security of Binance Chain network. Binance chain does the staking and governance parts for BSC,
 and ValidatorSet change, double sign slash of BSC is updated through interchain communication.
 
-ValidatorSet is updated after each epoch block (Epoch is set to 200 in mainnent), BMR queries ValidatorSet via the [TendermintLightClient](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/cmd/btpsimple/module/bsc/receiver.go#L82) contract  
+ValidatorSet is updated after each epoch block (Epoch is set to 200 in mainnent), BMR queries ValidatorSet via the [TendermintLightClient](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/cmd/iconbridge/module/bsc/receiver.go#L82) contract  
 
 ```go
 type ConsensusStates struct {

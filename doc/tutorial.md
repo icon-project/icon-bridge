@@ -327,36 +327,36 @@ goloop rpc sendtx call --to $(cat bmc.$(rpcch)) \
 
 ## Start relay
 
-Prepare 'btpsimple' docker image via `make btpsimple-image`
+Prepare 'iconbridge' docker image via `make iconbridge-image`
 
 Start relay 'src' chain to 'dst' chain
 ````shell
-docker run -d --name btpsimple_src --link goloop \
-  -v ${CONFIG_DIR}:/btpsimple/config \
-  -e BTPSIMPLE_CONFIG=/btpsimple/config/src.config.json \
-  -e BTPSIMPLE_SRC_ADDRESS=$(cat ${CONFIG_DIR}/btp.src) \
-  -e BTPSIMPLE_SRC_ENDPOINT=http://goloop:9080/api/v3/src \
-  -e BTPSIMPLE_DST_ADDRESS=$(cat ${CONFIG_DIR}/btp.dst) \
-  -e BTPSIMPLE_DST_ENDPOINT=http://goloop:9080/api/v3/dst \
-  -e BTPSIMPLE_OFFSET=$(cat ${CONFIG_DIR}/offset.src) \
-  -e BTPSIMPLE_KEY_STORE=/btpsimple/config/src.ks.json \
-  -e BTPSIMPLE_KEY_SECRET=/btpsimple/config/src.secret \
-  btpsimple
+docker run -d --name iconbridge_src --link goloop \
+  -v ${CONFIG_DIR}:/iconbridge/config \
+  -e ICONBRIDGE_CONFIG=/iconbridge/config/src.config.json \
+  -e ICONBRIDGE_SRC_ADDRESS=$(cat ${CONFIG_DIR}/btp.src) \
+  -e ICONBRIDGE_SRC_ENDPOINT=http://goloop:9080/api/v3/src \
+  -e ICONBRIDGE_DST_ADDRESS=$(cat ${CONFIG_DIR}/btp.dst) \
+  -e ICONBRIDGE_DST_ENDPOINT=http://goloop:9080/api/v3/dst \
+  -e ICONBRIDGE_OFFSET=$(cat ${CONFIG_DIR}/offset.src) \
+  -e ICONBRIDGE_KEY_STORE=/iconbridge/config/src.ks.json \
+  -e ICONBRIDGE_KEY_SECRET=/iconbridge/config/src.secret \
+  iconbridge
 ````
 
 For relay of 'dst' chain, same flows with replace 'src' to 'dst' and 'dst' to 'src'.
 ````shell
-docker run -d --name btpsimple_dst --link goloop \
-  -v ${CONFIG_DIR}:/btpsimple/config \
-  -e BTPSIMPLE_CONFIG=/btpsimple/config/dst.config.json \
-  -e BTPSIMPLE_SRC_ADDRESS=$(cat ${CONFIG_DIR}/btp.dst) \
-  -e BTPSIMPLE_SRC_ENDPOINT=http://goloop:9080/api/v3/dst \
-  -e BTPSIMPLE_DST_ADDRESS=$(cat ${CONFIG_DIR}/btp.src) \
-  -e BTPSIMPLE_DST_ENDPOINT=http://goloop:9080/api/v3/src \
-  -e BTPSIMPLE_OFFSET=$(cat ${CONFIG_DIR}/offset.dst) \
-  -e BTPSIMPLE_KEY_STORE=/btpsimple/config/dst.ks.json \
-  -e BTPSIMPLE_KEY_SECRET=/btpsimple/config/dst.secret \
-  btpsimple
+docker run -d --name iconbridge_dst --link goloop \
+  -v ${CONFIG_DIR}:/iconbridge/config \
+  -e ICONBRIDGE_CONFIG=/iconbridge/config/dst.config.json \
+  -e ICONBRIDGE_SRC_ADDRESS=$(cat ${CONFIG_DIR}/btp.dst) \
+  -e ICONBRIDGE_SRC_ENDPOINT=http://goloop:9080/api/v3/dst \
+  -e ICONBRIDGE_DST_ADDRESS=$(cat ${CONFIG_DIR}/btp.src) \
+  -e ICONBRIDGE_DST_ENDPOINT=http://goloop:9080/api/v3/src \
+  -e ICONBRIDGE_OFFSET=$(cat ${CONFIG_DIR}/offset.dst) \
+  -e ICONBRIDGE_KEY_STORE=/iconbridge/config/dst.ks.json \
+  -e ICONBRIDGE_KEY_SECRET=/iconbridge/config/dst.secret \
+  iconbridge
 ````
 
 > To retrieve status of relay, use `getStatus(_link)` method of BMC.  
@@ -432,9 +432,9 @@ goloop rpc sendtx call --to $(cat token_bsh.dst) \
 Tutorial with [Docker-compose](https://docs.docker.com/compose/)
 
 ### Preparation
-Prepare 'btpsimple' docker image via `make btpsimple-image` and Copy files from project source to `/path/to/tutorial`
+Prepare 'iconbridge' docker image via `make iconbridge-image` and Copy files from project source to `/path/to/tutorial`
 ````shell
-make btpsimple-image
+make iconbridge-image
 mkdir -p /path/to/tutorial
 cp docker-compose/* /path/to/tutorial/
 ```` 
@@ -449,7 +449,7 @@ cp docker-compose/* /path/to/tutorial/
   - SCORE Address : `<score>.<chain>`
   - BTP Address : `btp.<chain>`, `net.btp.<chain>`
     
-And It creates containers for `goloop`, `btpsimple_src`, `btpsimple_dst` services
+And It creates containers for `goloop`, `iconbridge_src`, `iconbridge_dst` services
 
 ### Interchain Token Transfer
 > To use `goloop` as json-rpc client, execute shell via `docker-compose exec goloop sh`  

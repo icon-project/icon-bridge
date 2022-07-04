@@ -7,7 +7,7 @@ TOKENS_TRANSFER_AMOUNT=${1:-1}
 
 # ensure alice user keystore creation
 printf "\n\nStep 1: creating/ensuring Alice keystore\n"
-source /btpsimple/bin/keystore.sh
+source /iconbridge/bin/keystore.sh
 ensure_key_store alice.ks.json alice.secret
 
 #transfer eth from owner bsc.ks.json to BOB bob.ks.json

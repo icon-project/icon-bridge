@@ -7,7 +7,7 @@ source utils.sh
 deploy_solidity_nativeCoin_BSH() {
   echo "deploying solidity Native BSH"
   cd $CONTRACTS_DIR/solidity/bsh
-  cp $BTPSIMPLE_BASE_DIR/bin/env ./.env
+  cp $ICONBRIDGE_BASE_DIR/bin/env ./.env
   rm -rf contracts/test build .openzeppelin
   NODE_ENV=docker BSH_COIN_URL=https://ethereum.org/en/ \
     BSH_COIN_NAME=BNB \
