@@ -3,7 +3,7 @@
 
 package hmny
 
-import "github.com/icon-project/icon-bridge/cmd/btpsimple/relay"
+import "github.com/icon-project/icon-bridge/cmd/iconbridge/relay"
 
 func init() {
 	relay.Senders["hmny"] = NewSender

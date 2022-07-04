@@ -3,7 +3,7 @@ package relay
 import (
 	"encoding/json"
 
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/wallet"
 )
 

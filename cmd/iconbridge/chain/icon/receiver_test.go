@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	vlcodec "github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"

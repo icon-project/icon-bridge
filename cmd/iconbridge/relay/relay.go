@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"
 )

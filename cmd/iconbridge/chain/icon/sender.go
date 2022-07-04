@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common"
 	"github.com/icon-project/icon-bridge/common/codec"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"

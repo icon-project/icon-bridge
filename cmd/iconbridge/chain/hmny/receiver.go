@@ -18,7 +18,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/harmony-one/harmony/core/types"
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"
 )

@@ -12,14 +12,14 @@ import (
 
 	_ "net/http/pprof"
 
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/relay"
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/stat"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/relay"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/stat"
 	"github.com/icon-project/icon-bridge/common/config"
 	"github.com/icon-project/icon-bridge/common/log"
 
-	_ "github.com/icon-project/icon-bridge/cmd/btpsimple/chain/bsc"
-	_ "github.com/icon-project/icon-bridge/cmd/btpsimple/chain/hmny"
-	_ "github.com/icon-project/icon-bridge/cmd/btpsimple/chain/icon"
+	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc"
+	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/hmny"
+	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"
 )
 
 var (

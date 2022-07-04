@@ -21,8 +21,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain/bsc/binding"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/binding"
 
 	"math/big"
 

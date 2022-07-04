@@ -32,7 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/icon-project/icon-bridge/common/wallet"
 
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain/bsc/binding"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/binding"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 

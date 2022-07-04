@@ -27,7 +27,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/icon-bridge/cmd/btpsimple/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
