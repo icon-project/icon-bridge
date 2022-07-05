@@ -3,7 +3,7 @@
 # Parts of this code is adapted from https://github.com/icon-project/btp/blob/goloop2moonbeam/testnet/goloop2moonbeam/scripts
 source env.variables.sh
 source rpc.sh
-source /btpsimple/bin/keystore.sh
+source /iconbridge/bin/keystore.sh
 source utils.sh
 ensure_key_store alice.ks.json alice.secret
 
