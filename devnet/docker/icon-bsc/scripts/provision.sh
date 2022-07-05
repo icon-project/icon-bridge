@@ -33,28 +33,29 @@ provision() {
     source token.solidity.sh
 
     deploy_javascore_bmc
-    deploy_javascore_bsh
+    # deploy_javascore_bsh
     deploy_javascore_irc2
 
     deploy_solidity_bmc
 
-    bmc_javascore_addService
-    bsh_javascore_register
+    #bmc_javascore_addService
+    # bsh_javascore_register
 
     source nativeCoin.javascore.sh
     deploy_javascore_nativeCoin_BSH
     bmc_javascore_addNativeService
     nativeBSH_javascore_register
+    nativeBSH_javascore_register_token
     nativeBSH_javascore_setFeeRatio
 
-    deploy_solidity_tokenBSH_BEP20
+    #deploy_solidity_tokenBSH_BEP20
     source nativeCoin.solidity.sh
     deploy_solidity_nativeCoin_BSH
 
     generate_addresses_json >$ICONBRIDGE_CONFIG_DIR/addresses.json
     cp $ICONBRIDGE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
 
-    bsc_addService
+    #bsc_addService
     bsc_registerToken
 
     bmc_solidity_addNativeService
@@ -77,7 +78,7 @@ provision() {
     generate_relay_config >$ICONBRIDGE_CONFIG_DIR/bmr.config.json
     wait_for_file $ICONBRIDGE_CONFIG_DIR/bmr.config.json
 
-    cp $ICONBRIDGE_CONFIG_DIR/addresses.json $ICONBRIDGE_CONTRACTS_DIR/solidity/bsh/
+    cp $ICONBRIDGE_CONFIG_DIR/addresses.json $ICONBRIDGE_CONTRACTS_DIR/solidity/bts/
     cp $ICONBRIDGE_CONFIG_DIR/addresses.json $ICONBRIDGE_CONTRACTS_DIR/solidity/TokenBSH/
 
     touch $ICONBRIDGE_CONFIG_DIR/provision
@@ -90,18 +91,13 @@ provision() {
 prepare_solidity_env() {
 
   cp $ICONBRIDGE_CONFIG_DIR/env $ICONBRIDGE_CONTRACTS_DIR/solidity/bmc/.env
-  cp $ICONBRIDGE_CONFIG_DIR/env $ICONBRIDGE_CONTRACTS_DIR/solidity/bsh/.env
-  cp $ICONBRIDGE_CONFIG_DIR/env $ICONBRIDGE_CONTRACTS_DIR/solidity/TokenBSH/.env
+  cp $ICONBRIDGE_CONFIG_DIR/env $ICONBRIDGE_CONTRACTS_DIR/solidity/bts/.env
 
   cp $ICONBRIDGE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
 
-  if [ ! -f $ICONBRIDGE_CONTRACTS_DIR/solidity/bsh/build/contracts/BSHCore.json ]; then
-    cd $ICONBRIDGE_CONTRACTS_DIR/solidity/bsh/
+  if [ ! -f $ICONBRIDGE_CONTRACTS_DIR/solidity/bts/build/contracts/BTSCore.json ]; then
+    cd $ICONBRIDGE_CONTRACTS_DIR/solidity/bts/
     rm -rf contracts/test
-    truffle compile --network bsc
-  fi
-  if [ ! -f $ICONBRIDGE_CONTRACTS_DIR/solidity/TokenBSH/build/contracts/BSHProxy.json ]; then
-    cd $ICONBRIDGE_CONTRACTS_DIR/solidity/TokenBSH/
     truffle compile --network bsc
   fi
 }

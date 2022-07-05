@@ -1,6 +1,4 @@
-# Btpsimple
-
-## iconbridge
+# IconBridge
 
 ### Description
 Command Line Interface of Relay for Blockchain Transmission Protocol

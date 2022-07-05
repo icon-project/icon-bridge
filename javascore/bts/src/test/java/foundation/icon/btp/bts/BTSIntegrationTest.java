@@ -42,30 +42,29 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @TestMethodOrder(value = MethodOrderer.OrderAnnotation.class)
 public interface BTSIntegrationTest extends BTPIntegrationTest {
 
-    DefaultScoreClient btsClient = DefaultScoreClient.of(
-            System.getProperties(), Map.of(
-                    "_bmc", MockBMCIntegrationTest.mockBMCClient._address()
-            ));
+        DefaultScoreClient btsClient = DefaultScoreClient.of(
+                        System.getProperties(), Map.of(
+                                        "_bmc", MockBMCIntegrationTest.mockBMCClient._address()));
 
-    @ScoreClient
-    BTS bts = new BTSScoreClient(btsClient);
+        @ScoreClient
+        BTS bts = new BTSScoreClient(btsClient);
 
-    @ScoreClient
-    BSH btsBSH = new BSHScoreClient(btsClient);
+        @ScoreClient
+        BSH btsBSH = new BSHScoreClient(btsClient);
 
-    @ScoreClient
-    OwnerManager btsOwnerManager = new OwnerManagerScoreClient(btsClient);
+        @ScoreClient
+        OwnerManager btsOwnerManager = new OwnerManagerScoreClient(btsClient);
 
-    Wallet tester = ScoreIntegrationTest.getOrGenerateWallet("tester.", System.getProperties());
-    DefaultScoreClient btsClientWithTester = new DefaultScoreClient(
-            btsClient.endpoint(), btsClient._nid(), tester, btsClient._address());
-    BTS btsWithTester = new BTSScoreClient(btsClientWithTester);
-    OwnerManager btsOwnerManagerWithTester = new OwnerManagerScoreClient(btsClientWithTester);
+        Wallet tester = ScoreIntegrationTest.getOrGenerateWallet("tester.", System.getProperties());
+        DefaultScoreClient btsClientWithTester = new DefaultScoreClient(
+                        btsClient.endpoint(), btsClient._nid(), tester, btsClient._address());
+        BTS btsWithTester = new BTSScoreClient(btsClientWithTester);
+        OwnerManager btsOwnerManagerWithTester = new OwnerManagerScoreClient(btsClientWithTester);
 
-    static <T> Consumer<TransactionResult> eventLogChecker(
-            EventLogsSupplier<T> supplier, Consumer<T> consumer) {
-        return ScoreIntegrationTest.eventLogChecker(
-                btsClient._address(), supplier, consumer);
-    }
+        static <T> Consumer<TransactionResult> eventLogChecker(
+                        EventLogsSupplier<T> supplier, Consumer<T> consumer) {
+                return ScoreIntegrationTest.eventLogChecker(
+                                btsClient._address(), supplier, consumer);
+        }
 
 }
