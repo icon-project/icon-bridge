@@ -17,6 +17,7 @@ deploy_javascore_nativeCoin_BSH() {
     --param _serializedIrc2=$IRC2_SERIALIZED_SCORE \
     --param _name=ICX | jq -r . >tx.nativebsh.icon
   extract_scoreAddress tx.nativebsh.icon nativebsh.icon
+  extract_scoreAddress tx.nativebsh.icon token_bsh.icon
 }
 
 bmc_javascore_addNativeService() {
@@ -47,13 +48,33 @@ nativeBSH_javascore_register() {
     --method coinAddress --param _coinName=BNB | sed -e 's/^"//' -e 's/"$//' >irc2TradeableToken.icon
 }
 
+
+nativeBSH_javascore_register_token() {
+  echo "Register Coin Name with NativeBSH"
+  cd $CONFIG_DIR
+  FEE_NUMERATOR=0x64
+  FIXED_FEE=0x1388
+  goloop rpc sendtx call --to $(cat nativebsh.icon) \
+    --method register \
+    --param _addr=$(cat irc2_token.icon) \
+    --param _name=${TOKEN_NAME} \
+    --param _symbol=${TOKEN_SYM} \
+    --param _decimals=${TOKEN_DECIMALS}  \
+    --param _feeNumerator=${FEE_NUMERATOR} \
+    --param _fixedFee=${FIXED_FEE} | jq -r . >tx/register.token.icon
+  ensure_txresult tx/register.token.icon  
+}
+
+
 nativeBSH_javascore_setFeeRatio() {
   echo "Setting Fee ratio for NativeCoin"
   cd $CONFIG_DIR
+  FEE_NUMERATOR=0x64
+  FIXED_FEE=0x1388
   goloop rpc sendtx call --to $(cat nativebsh.icon) \
     --method setFeeRatio \
     --param _name=ICX \
-    --param _feeNumerator=100 \
+    --param _feeNumerator=${FEE_NUMERATOR} \
     --param _fixedFee=${FIXED_FEE} | jq -r . >tx/setFeeRatio.nativebsh.icon
   ensure_txresult tx/setFeeRatio.nativebsh.icon
 }

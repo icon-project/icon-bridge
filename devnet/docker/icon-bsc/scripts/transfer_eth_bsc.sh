@@ -22,7 +22,6 @@ printf "\n\nStep 4: Alice's ETH balance before BTP Transfer\n"
 irc2_javascore_balance alice.ks.json
 
 printf "\n\n Fees & amount Split \n"
-calculateTransferFee "$TOKENS_TRANSFER_AMOUNT"
 #initiate Transfer from BSC to ICON from BSH
 printf "\n\nStep 5: BOB Initiates BTP token transfer of $TOKENS_TRANSFER_AMOUNT ETH to Alice\n"
 bsc_init_btp_transfer "$TOKENS_TRANSFER_AMOUNT" >>$CONFIG_DIR/tx.token.bsc_icon.transfer
