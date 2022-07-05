@@ -13,27 +13,15 @@ const (
 	HMNY ChainType = "HMNY"
 )
 
-// type TokenType string
-
-// const (
-// 	ICXToken   TokenType = "ICX"
-// 	IRC2Token  TokenType = "IRC2"
-// 	ONEToken   TokenType = "ONE"
-// 	ERC20Token TokenType = "ERC20"
-// )
-
 type ContractName string
 
 const (
-	TokenBSHImplHmy       ContractName = "TokenBSHImplHmy" //TokenHmy
-	NativeBSHPeripheryHmy ContractName = "NativeBSHPeripheryHmy"
-	Erc20Hmy              ContractName = "Erc20Hmy"
-	NativeBSHCoreHmy      ContractName = "NativeBSHCoreHmy"
-	TokenBSHProxyHmy      ContractName = "TokenBSHProxyHmy"
-	TokenBSHIcon          ContractName = "TokenBSHIcon"
-	NativeBSHIcon         ContractName = "NativeBSHIcon"
-	Irc2Icon              ContractName = "Irc2Icon"
-	Irc2TradeableIcon     ContractName = "Irc2TradeableIcon"
+	Erc20Hmy         ContractName = "Erc20Hmy"
+	BTSIcon          ContractName = "BTSIcon"
+	TONEHmny         ContractName = "TONEHmny"
+	TICXIcon         ContractName = "TICXIcon"
+	BTSCoreHmny      ContractName = "BTSCoreHmny"
+	BTSPeripheryHmny ContractName = "BTSPeripheryHmny"
 )
 
 type EventLogType string

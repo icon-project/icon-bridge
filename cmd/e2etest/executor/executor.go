@@ -214,7 +214,7 @@ func (ex *executor) Subscribe(ctx context.Context) {
 	}()
 }
 
-func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, initialBalance *big.Int, cb callBackFunc) (err error) {
+func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, amount *big.Int, cb callBackFunc) (err error) {
 	id, err := ex.getID()
 	if err != nil {
 		return errors.Wrap(err, "getID ")
@@ -251,22 +251,22 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	}
 	dstAddress := dst.GetBTPAddress(dstKeys[0][1])
 
-	coinsToFund := map[chain.ChainType][]string{chain.ICON: {"ICX", "ETH"}, chain.HMNY: {"ONE", "ETH"}}
-	wrappedCointsToFund := map[chain.ChainType][]string{chain.ICON: {"ONE"}, chain.HMNY: {"ICX"}}
+	coinsToFund := map[chain.ChainType][]string{chain.ICON: {"ICX", "TICX"}, chain.HMNY: {"ONE", "TONE"}}
+	//wrappedCointsToFund := map[chain.ChainType][]string{chain.ICON: {"ONE", "TONE"}, chain.HMNY: {"ICX", "TICX"}}
 
-	log.Info("Funding src and dst accounts with ETH token and native coins ")
-	if err := ex.fund(log, src, srcGKey[0], srcAddress, coinsToFund[srcChainName], initialBalance); err != nil {
+	log.Info("Funding src and dst accounts with and native coin and token")
+	if err := ex.fund(log, src, srcGKey[0], srcAddress, coinsToFund[srcChainName], amount); err != nil {
 		return errors.Wrapf(err, "Fund Src: %v %v", srcChainName, srcAddress)
 	}
-	if err := ex.fund(log, dst, dstGKey[0], srcAddress, wrappedCointsToFund[srcChainName], initialBalance); err != nil {
-		return errors.Wrapf(err, "Fund Src: %v %v", srcChainName, srcAddress)
-	}
-	if err := ex.fund(log, dst, dstGKey[0], dstAddress, coinsToFund[dstChainName], initialBalance); err != nil {
+	// if err := ex.fund(log, dst, dstGKey[0], srcAddress, wrappedCointsToFund[srcChainName], amount); err != nil {
+	// 	return errors.Wrapf(err, "Fund Src: %v %v", srcChainName, srcAddress)
+	// }
+	if err := ex.fund(log, dst, dstGKey[0], dstAddress, coinsToFund[dstChainName], amount); err != nil {
 		return errors.Wrapf(err, "Fund Dst: %v %v", dstChainName, srcAddress)
 	}
-	if err := ex.fund(log, src, srcGKey[0], dstAddress, wrappedCointsToFund[dstChainName], initialBalance); err != nil {
-		return errors.Wrapf(err, "Fund Dst: %v %v", dstChainName, srcAddress)
-	}
+	// if err := ex.fund(log, src, srcGKey[0], dstAddress, wrappedCointsToFund[dstChainName], amount); err != nil {
+	// 	return errors.Wrapf(err, "Fund Dst: %v %v", dstChainName, srcAddress)
+	// }
 
 	time.Sleep(time.Second * 10)
 	args, err := newArgs(

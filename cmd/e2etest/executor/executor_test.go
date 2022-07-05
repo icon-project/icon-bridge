@@ -30,7 +30,7 @@ func TestExecutor(t *testing.T) {
 		return cfg, nil
 	}
 	var err error
-	cfg, err := loadConfig("/home/manish/go/src/work/icon-bridge/cmd/endpoint/example-config.json")
+	cfg, err := loadConfig("/home/manish/go/src/work/icon-bridge/cmd/e2etest/example-config.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,25 +69,3 @@ func TestExecutor(t *testing.T) {
 	time.Sleep(time.Second * 3)
 	l.Info("Exit")
 }
-
-/*
-func (ug *executor) createAccounts(accountMap map[chain.ChainType]int) (map[chain.ChainType][]string, error) {
-	resMap := map[chain.ChainType][]string{}
-	for name, count := range accountMap {
-		resMap[name] = make([]string, count)
-		for i := 0; i < count; i++ {
-			privKey, err := ethcrypto.GenerateKey()
-			if err != nil {
-				return nil, err
-			}
-			resMap[name][i] = hex.EncodeToString(ethcrypto.FromECDSA(privKey))
-			// pubKey, _ := crypto.ParsePublicKey(pub)
-			// addr := common.NewAccountAddressFromPublicKey(pubKey).String()
-			if err != nil {
-				return nil, errors.Wrap(err, "Unmarshal Public Key")
-			}
-		}
-	}
-	return resMap, nil
-}
-*/

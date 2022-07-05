@@ -17,14 +17,13 @@ import (
 )
 
 func TestReceiver(t *testing.T) {
-
 	recv, err := getNewApi()
 	if err != nil {
 		panic(err)
 	}
-	recv.WatchForTransferStart(1, "ICX", 14)
-	recv.WatchForTransferReceived(1, "ONE", 15)
-	recv.WatchForTransferEnd(1, "ICX", 14)
+	recv.WatchForTransferStart(1, "ICX", 10)
+	recv.WatchForTransferReceived(1, "TONE", 8)
+	recv.WatchForTransferEnd(1, "ICX", 10)
 
 	go func() {
 		if sinkChan, errChan, err := recv.Subscribe(context.Background()); err != nil {
@@ -40,120 +39,107 @@ func TestReceiver(t *testing.T) {
 			}
 		}
 	}()
-	time.Sleep(time.Second * 30)
+	time.Sleep(time.Second * 3000)
 }
 
 func getNewApi() (chain.ChainAPI, error) {
-	srcAddress := "btp://0x5b9a77.icon/cx0f011b8b10f2c0d850d5135ef57ea42120452003"
+	//ICONDemo [f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5 btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee]
+	//HmnyDemo [564971a566ce839535681eef81ccd44005944b98f7409cb5c0f5684ae862a530 btp://0x6357d2e0.hmny/0x8Fc668275b4fA032342eA3039653D841f069a83b]
+
+	srcAddress := "btp://0x5b9a77.icon/cxb70a4eb562081251e0d7a56454fb79f604ab73d4"
 	dstAddress := "btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91"
 	srcEndpoint := "http://localhost:9080/api/v3/default"
 
 	addrToName := map[chain.ContractName]string{
-		chain.TokenBSHIcon:          "cxd029bba56f72e2ced0c88fd2fc289f4ae4dcd31f",
-		chain.NativeBSHIcon:         "cxabbcd08546141646dd169ae70170da87b9296778",
-		chain.Irc2Icon:              "cx70053f7c2d0d985c5b342886c5fe8f5e4db1fb1b",
-		chain.Irc2TradeableIcon:     "cxd5faca679820dd974245eaceca3fb74536815f96",
-		chain.TokenBSHImplHmy:       "0x8283e3bE7ac5f6dB332Df605f20E2B4c9977c662",
-		chain.NativeBSHPeripheryHmy: "0xfad748a1063a40FF447B5D766331904d9bedDC26",
-		chain.Erc20Hmy:              "0xb54f5e97972AcF96470e02BE0456c8DB2173f33a",
-		chain.NativeBSHCoreHmy:      "0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
-		chain.TokenBSHProxyHmy:      "0x48cacC89f023f318B4289A18aBEd44753a127782",
+		chain.BTSIcon:  "cx3781bee9a0e97c508bb9f382cccbe27f9630cfd4",
+		chain.TICXIcon: "cx0addeee2c20ca3c9636cbb4b51515976c26a4230", //irc2
 	}
+
 	l := log.New()
 	log.SetGlobalLogger(l)
 	networkID := "0x5b9a77"
 	return icon.NewApi(l, &chain.ChainConfig{Name: chain.ICON, URL: srcEndpoint, ConftractAddresses: addrToName, Src: chain.BTPAddress(srcAddress), Dst: chain.BTPAddress(dstAddress), NetworkID: networkID})
 }
 
-func TestGodWalletTransfer(t *testing.T) {
-	getKeyPairFromFile := func(walFile string, password string) (pair [2]string, err error) {
-		keyReader, err := os.Open(walFile)
-		if err != nil {
-			return
-		}
-		defer keyReader.Close()
-
-		keyStore, err := ioutil.ReadAll(keyReader)
-		if err != nil {
-			return
-		}
-		key, err := keystore.DecryptKey(keyStore, password)
-		if err != nil {
-			return
-		}
-		privBytes := ethcrypto.FromECDSA(key.PrivateKey)
-		privString := hex.EncodeToString(privBytes)
-		addr := ethcrypto.PubkeyToAddress(key.PrivateKey.PublicKey)
-		pair = [2]string{privString, addr.String()}
-		return
-	}
+func TestTransferIntraChain(t *testing.T) {
 	godKeyPair, err := getKeyPairFromFile("/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/icon.god.wallet.json", "gochain")
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
 	t.Logf("God KeyPair %v", godKeyPair)
+
 	api, err := getNewApi()
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
-	demoKeyPair, err := api.GetKeyPairs(1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// demoKeyPair, err := api.GetKeyPairs(1)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	demoKeyPair := [][2]string{{"f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5", "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"}}
+
 	amount := new(big.Int)
-	amount.SetString("100000000000000000000", 10)
+	amount.SetString("10000000000000000", 10)
 	t.Logf("Demo KeyPair %v", demoKeyPair)
-	txnHash, err := api.Transfer("ETH", godKeyPair[0], api.GetBTPAddress(demoKeyPair[0][1]), *amount)
-	if err != nil {
-		t.Fatal(err)
+
+	for _, coinName := range []string{"ICX", "TICX"} {
+		txnHash, err := api.Transfer(coinName, godKeyPair[0], api.GetBTPAddress(demoKeyPair[0][1]), *amount)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("Transaction Hash %v", txnHash)
+		res, elInfo, err := api.WaitForTxnResult(context.TODO(), txnHash)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("Receipt %+v", res)
+		for _, lin := range elInfo {
+			t.Logf("Log %+v ", lin)
+		}
+
+		if val, err := api.GetCoinBalance(coinName, demoKeyPair[0][1]); err != nil {
+			t.Fatal(err)
+		} else {
+			t.Logf("Balance %v", val.String())
+		}
 	}
-	t.Logf("Transaction Hash %v", txnHash)
-	res, elInfo, err := api.WaitForTxnResult(context.TODO(), txnHash)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Receipt %+v", res)
-	for _, lin := range elInfo {
-		t.Logf("Log %+v ", lin)
-	}
-	if val, err := api.GetCoinBalance("ETH", demoKeyPair[0][1]); err != nil {
-		t.Fatal(err)
-	} else {
-		t.Logf("Balance %v", val.String())
-	}
-	//[[13a135a25373970bfd77c21c6f8e5c38f73a8bf55fa0c691f6b4629546e74a23 hxe98400c26c64bcdf6dc26cf1c3d3da5160e76dc3]]
 	return
 }
 
-func TestTransferAcross(t *testing.T) {
-	senderKey := "f5b501cb7527c39ad064313c24fd9e0ee2dc443baa6a1dfa50f97cc7ab88aee0"
-	senderAddress := "hx2b66a78bf1ebc8d34133058ea648b243be099267"
-	rxAddress := "btp://0x6357d2e0.hmny/0x5ce1c8b80020cE82054d114e0440117470d3611F"
+func TestGetCoinBalance(t *testing.T) {
+	demoKeyPair := [][2]string{{"f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5", "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"}}
+	showBalance(demoKeyPair[0])
+}
+
+func TestTransferCrossChain(t *testing.T) {
+	senderKey := "f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5"
+	senderAddress := "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
+	rxAddress := "btp://0x6357d2e0.hmny/0x8Fc668275b4fA032342eA3039653D841f069a83b"
 	api, err := getNewApi()
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
-	if val, err := api.GetCoinBalance("ETH", senderAddress); err != nil {
+	if val, err := api.GetCoinBalance("ICX", senderAddress); err != nil {
 		t.Fatal(err)
 	} else {
-		t.Logf("Balance %v", val.String())
+		t.Logf("Initial Balance %v", val.String())
 	}
 
 	amount := new(big.Int)
 	amount.SetString("1000000000000000000", 10)
-	txnHash, err := api.Approve("ICX", senderKey, *amount)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// txnHash, err := api.Approve("TICX", senderKey, *amount)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
 	time.Sleep(5 * time.Second)
-	txnHash, err = api.Transfer("ICX", senderKey, rxAddress, *amount)
+	txnHash, err := api.Transfer("ICX", senderKey, rxAddress, *amount)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Transaction Hash %v", txnHash)
+	t.Logf("Transaction Hash  %v", txnHash)
 	res, elInfo, err := api.WaitForTxnResult(context.TODO(), txnHash)
 	if err != nil {
 		t.Fatal(err)
@@ -163,10 +149,53 @@ func TestTransferAcross(t *testing.T) {
 		seq, _ := lin.GetSeq()
 		t.Logf("Log %+v and Seq %v", lin, seq)
 	}
+	time.Sleep(5 * time.Second)
+	if val, err := api.GetCoinBalance("ICX", senderAddress); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("Final Balance %v", val.String())
+	}
 }
 
+func getKeyPairFromFile(walFile string, password string) (pair [2]string, err error) {
+	keyReader, err := os.Open(walFile)
+	if err != nil {
+		return
+	}
+	defer keyReader.Close()
+
+	keyStore, err := ioutil.ReadAll(keyReader)
+	if err != nil {
+		return
+	}
+	key, err := keystore.DecryptKey(keyStore, password)
+	if err != nil {
+		return
+	}
+	privBytes := ethcrypto.FromECDSA(key.PrivateKey)
+	privString := hex.EncodeToString(privBytes)
+	addr := ethcrypto.PubkeyToAddress(key.PrivateKey.PublicKey)
+	pair = [2]string{privString, addr.String()}
+	return
+}
+
+func showBalance(demoKeyPair [2]string) error {
+	api, err := getNewApi()
+	if err != nil {
+		return err
+	}
+	for _, coinName := range []string{"ICX", "ONE", "TICX", "TONE"} {
+		res, err := api.GetCoinBalance(coinName, demoKeyPair[1])
+		if err != nil {
+			return err
+		}
+		log.Infof("coin %v amount %v", coinName, res.String())
+	}
+	return nil
+}
+
+/*
 func TestIconEventParse(t *testing.T) {
-	btp_icon_token_bsh := "cx5924a147ae30091ed9c6fe0c153ef77de4132902"
 	m := map[chain.ContractName]string{
 		chain.TokenBSHIcon: btp_icon_token_bsh,
 	}
@@ -185,3 +214,4 @@ func TestIconEventParse(t *testing.T) {
 	}
 	t.Logf("EventType %v  Res %+v", eventType, res)
 }
+*/

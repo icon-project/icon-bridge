@@ -304,12 +304,8 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*big.Int, error) {
 	address := splts[len(splts)-1]
 	if coinName == "ONE" {
 		return r.requester.getHmnyBalance(address)
-	} else if coinName == "ETH" {
-		return r.requester.getHmnyErc20Balance(address)
-	} else if coinName == "ICX" {
-		return r.requester.getHmnyWrappedICX(address)
 	}
-	return nil, fmt.Errorf("Unexpected CoinName %v ", coinName)
+	return r.requester.getWrappedCoinBalance(coinName, address)
 }
 
 func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
@@ -322,47 +318,30 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.
 		splts := strings.Split(recepientAddress, "/")
 		recepientAddress = splts[len(splts)-1]
 	}
-	if coinName == "ONE" {
-		if within {
-			txnHash, _, err = r.requester.transferNativeWithin(senderKey, recepientAddress, amount)
+	if within {
+		if coinName == "ONE" {
+			txnHash, _, err = r.requester.transferNativeIntraChain(senderKey, recepientAddress, amount)
+		} else if coinName == "TONE" {
+			txnHash, _, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount)
 		} else {
-			txnHash, _, err = r.requester.transferNativeCrossChain(senderKey, recepientAddress, amount)
-		}
-
-	} else if coinName == "ETH" {
-		if within {
-			txnHash, _, err = r.requester.transferTokenWithin(senderKey, recepientAddress, amount)
-		} else {
-			txnHash, _, err = r.requester.transferTokenCrossChain(coinName, senderKey, recepientAddress, amount)
-		}
-
-	} else if coinName == "ICX" {
-		if within {
-			err = fmt.Errorf("Wrapped Coin can only be transferred across chain but recepientAddress has .icon in it")
-		} else {
-			txnHash, _, err = r.requester.transferWrappedCrossChain(coinName, senderKey, recepientAddress, amount)
+			err = fmt.Errorf("IntraChain transfers are supported for coins ONE and TONE only")
 		}
 	} else {
-		err = fmt.Errorf("Unexpected CoinName %v; Supported ONE, ETH, ICX ", coinName)
+		if coinName == "ONE" {
+			txnHash, _, err = r.requester.transferNativeCrossChain(senderKey, recepientAddress, amount)
+		} else { // TONE,ICX.TICX
+			txnHash, _, err = r.requester.transferWrappedCrossChain(coinName, senderKey, recepientAddress, amount)
+		}
 	}
+
 	return
 }
 
 func (r *api) Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error) {
-	if coinName == "ICX" {
-		txnHash, _, err = r.requester.approveCrossNativeCoin(coinName, ownerKey, amount)
-	} else if coinName == "ETH" {
-		txnHash, _, err = r.requester.approveToken(coinName, ownerKey, amount)
-	} else {
-		err = errors.Wrapf(err, "CoinName not among accepted Values ICX, ETH. Got %v", coinName)
-	}
+	txnHash, _, err = r.requester.approveCoin(coinName, ownerKey, amount)
 	return
 }
 
-// func (r *api) WaitForTxnResult(hash string) (txr interface{}, err error) {
-// 	txr, err = r.requester.waitForResults(context.TODO(), )
-// 	return
-// }
 func (r *api) WaitForTxnResult(ctx context.Context, hash string) (interface{}, []*chain.EventLogInfo, error) {
 	txRes, err := r.requester.waitForResults(ctx, common.HexToHash(hash))
 	if err != nil {
