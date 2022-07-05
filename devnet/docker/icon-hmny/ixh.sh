@@ -1292,7 +1292,7 @@ function run_exec() {
     hmnyGetWrappedCoinBalance)
         wallet_address=${args[0]}
         coinName=${args[1]}
-        run_sol bts.BTSCore.getBalanceOf "'$wallet_address','$coinName'"
+        run_sol bts.BTSCore.balanceOf "'$wallet_address','$coinName'"
         ;;
     hmnyTransferNativeCoin)
         value=$(dec2hex ${args[0]})

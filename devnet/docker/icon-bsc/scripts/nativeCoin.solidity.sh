@@ -36,6 +36,14 @@ nativeBSH_solidity_register() {
   echo "$tx" >$CONFIG_DIR/tx/register.nativeCoin.bsc
 }
 
+nativeBSH_solidity_register_token() {
+  echo "Register Coin Name with NativeBSH"
+  cd $CONTRACTS_DIR/solidity/bsh
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.nativeCoin.js \
+    --method register --name "ICX" --symbol "ICX" --decimals 18 --feeNumerator 100 --fixedFee 50000)
+  echo "$tx" >$CONFIG_DIR/tx/register.nativeCoin.bsc
+}
+
 bsc_init_native_btp_transfer() {
   ICON_NET=$(cat $CONFIG_DIR/net.btp.icon)
   ALICE_ADDRESS=$(get_alice_address)
@@ -123,12 +131,24 @@ generate_native_metadata() {
     BSH_PERIPHERY_ADDRESS=$(jq -r '.networks[] | .address' build/contracts/BSHPeriphery.json)
     jq -r '.networks[] | .address' build/contracts/BSHCore.json >$CONFIG_DIR/bsh.core.bsc
     jq -r '.networks[] | .address' build/contracts/BSHPeriphery.json >$CONFIG_DIR/bsh.periphery.bsc
+    
+    jq -r '.networks[] | .address' build/contracts/BSHCore.json >$CONFIG_DIR/token_bsh.proxy.bsc
+    jq -r '.networks[] | .address' build/contracts/BSHPeriphery.json >$CONFIG_DIR/token_bsh.impl.bsc
 
     wait_for_file $CONFIG_DIR/bsh.core.bsc
     wait_for_file $CONFIG_DIR/bsh.periphery.bsc
+    
+    wait_for_file $CONFIG_DIR/token_bsh.impl.bsc
+    wait_for_file $CONFIG_DIR/token_bsh.proxy.bsc
 
     create_abi "BSHPeriphery"
     create_abi "BSHCore"
+
+    jq -r '.networks[] | .address' build/contracts/ERC20TKN.json >$CONFIG_DIR/bep20_token.bsc
+    wait_for_file $CONFIG_DIR/bep20_token.bsc
+
+    create_abi "ERC20TKN"
+
     echo "DONE."
     ;;
 
