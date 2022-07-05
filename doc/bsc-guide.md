@@ -69,12 +69,12 @@ Follow Make build(Method 1) or step-by-step build (Method 2) to start the networ
 ### Method 1(Using Make)
 To build and run using the make commands, navigate to  `<btp repo>/devnet/docker/icon-bsc` project directory
 #### 1. Clean & remove artifacts
-To remove the build folder & work folder which contains previous artifacts, logs and all the provision images(dist-javascore, dist-sol, btpsimple-image)
+To remove the build folder & work folder which contains previous artifacts, logs and all the provision images(dist-javascore, dist-sol, iconbridge-image)
     
     make remove
 
 #### 2. build docker images
-To build the provision images(dist-javascore, dist-sol, btpsimple-image)
+To build the provision images(dist-javascore, dist-sol, iconbridge-image)
     
     make build
 
@@ -109,7 +109,7 @@ Note: this step doesn't compile the contracts, this happens at later stage durin
 #### Build BTP Simple Docker Image
 
 ```
-make btpsimple-image
+make iconbridge-image
 ```
 This will prepare copy of bmc, bmv and TokenBSH solidity contracts
 

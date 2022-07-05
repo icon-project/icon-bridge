@@ -10,7 +10,7 @@ source utils.sh
 
 # ensure alice user keystore creation
 printf "\n\nStep 1: creating/ensuring Alice keystore\n"
-source /btpsimple/bin/keystore.sh
+source /iconbridge/bin/keystore.sh
 ensure_key_store alice.ks.json alice.secret
 
 #transfer 10 ETH from IRC2 token to Alice#$(coin2wei ${1:-10})

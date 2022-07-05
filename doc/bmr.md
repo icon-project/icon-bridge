@@ -15,4 +15,4 @@
 * [Tutorial](tutorial.md)
 
 ## Management
-* [btpsimple command line](btpsimple_cli.md)
+* [iconbridge command line](iconbridge_cli.md)

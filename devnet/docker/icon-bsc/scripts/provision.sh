@@ -17,17 +17,17 @@ goloop_lastblock() {
 
 provision() {
 
-  cp -r $BTPSIMPLE_BASE_DIR/keys/* $BTPSIMPLE_CONFIG_DIR
-  cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_BIN_DIR/env
+  cp -r $ICONBRIDGE_BASE_DIR/keys/* $ICONBRIDGE_CONFIG_DIR
+  cp $ICONBRIDGE_CONFIG_DIR/env $ICONBRIDGE_BIN_DIR/env
 
-  if [ ! -f $BTPSIMPLE_CONFIG_DIR/provision ]; then
+  if [ ! -f $ICONBRIDGE_CONFIG_DIR/provision ]; then
     echo "start provisioning..."
 
     # shellcheck disable=SC2059
 
     echo "$GOLOOP_RPC_NID.icon" >net.btp.icon
-    mkdir -p $BTPSIMPLE_CONFIG_DIR/tx
-    eth_blocknumber >/btpsimple/config/offset.bsc
+    mkdir -p $ICONBRIDGE_CONFIG_DIR/tx
+    eth_blocknumber >/iconbridge/config/offset.bsc
 
     source token.javascore.sh
     source token.solidity.sh
@@ -51,8 +51,8 @@ provision() {
     source nativeCoin.solidity.sh
     deploy_solidity_nativeCoin_BSH
 
-    generate_addresses_json >$BTPSIMPLE_CONFIG_DIR/addresses.json
-    cp $BTPSIMPLE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
+    generate_addresses_json >$ICONBRIDGE_CONFIG_DIR/addresses.json
+    cp $ICONBRIDGE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
 
     bsc_addService
     bsc_registerToken
@@ -74,13 +74,13 @@ provision() {
     add_icon_link
     add_icon_relay
 
-    generate_relay_config >$BTPSIMPLE_CONFIG_DIR/bmr.config.json
-    wait_for_file $BTPSIMPLE_CONFIG_DIR/bmr.config.json
+    generate_relay_config >$ICONBRIDGE_CONFIG_DIR/bmr.config.json
+    wait_for_file $ICONBRIDGE_CONFIG_DIR/bmr.config.json
 
-    cp $BTPSIMPLE_CONFIG_DIR/addresses.json $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/
-    cp $BTPSIMPLE_CONFIG_DIR/addresses.json $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/
+    cp $ICONBRIDGE_CONFIG_DIR/addresses.json $ICONBRIDGE_CONTRACTS_DIR/solidity/bsh/
+    cp $ICONBRIDGE_CONFIG_DIR/addresses.json $ICONBRIDGE_CONTRACTS_DIR/solidity/TokenBSH/
 
-    touch $BTPSIMPLE_CONFIG_DIR/provision
+    touch $ICONBRIDGE_CONFIG_DIR/provision
     echo "provision is now complete"
   else
     prepare_solidity_env
@@ -89,19 +89,19 @@ provision() {
 
 prepare_solidity_env() {
 
-  cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/bmc/.env
-  cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/.env
-  cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/.env
+  cp $ICONBRIDGE_CONFIG_DIR/env $ICONBRIDGE_CONTRACTS_DIR/solidity/bmc/.env
+  cp $ICONBRIDGE_CONFIG_DIR/env $ICONBRIDGE_CONTRACTS_DIR/solidity/bsh/.env
+  cp $ICONBRIDGE_CONFIG_DIR/env $ICONBRIDGE_CONTRACTS_DIR/solidity/TokenBSH/.env
 
-  cp $BTPSIMPLE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
+  cp $ICONBRIDGE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
 
-  if [ ! -f $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/build/contracts/BSHCore.json ]; then
-    cd $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/
+  if [ ! -f $ICONBRIDGE_CONTRACTS_DIR/solidity/bsh/build/contracts/BSHCore.json ]; then
+    cd $ICONBRIDGE_CONTRACTS_DIR/solidity/bsh/
     rm -rf contracts/test
     truffle compile --network bsc
   fi
-  if [ ! -f $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/build/contracts/BSHProxy.json ]; then
-    cd $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/
+  if [ ! -f $ICONBRIDGE_CONTRACTS_DIR/solidity/TokenBSH/build/contracts/BSHProxy.json ]; then
+    cd $ICONBRIDGE_CONTRACTS_DIR/solidity/TokenBSH/
     truffle compile --network bsc
   fi
 }
@@ -124,7 +124,7 @@ wait_for_file() {
 btp_icon_validators_hash() {
   URI=$ICON_ENDPOINT \
     HEIGHT=$(decimal2Hex $(cat $CONFIG_DIR/offset.icon)) \
-    $BTPSIMPLE_BIN_DIR/iconvalidators | jq -r .hash
+    $ICONBRIDGE_BIN_DIR/iconvalidators | jq -r .hash
 }
 
 generate_relay_config() {

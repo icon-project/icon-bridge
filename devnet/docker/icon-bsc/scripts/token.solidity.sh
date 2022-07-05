@@ -4,8 +4,8 @@ source utils.sh
 deploy_solidity_bmc() {
   echo "deploying solidity bmc"
   cd $CONTRACTS_DIR/solidity/bmc
-  cp $BTPSIMPLE_BASE_DIR/bin/env ./.env
-  rm -rf contracts/test build .openzeppelin  
+  cp $ICONBRIDGE_BASE_DIR/bin/env ./.env
+  rm -rf contracts/test build .openzeppelin
   BMC_BTP_NET=$BSC_BMC_NET \
     truffle migrate --network bsc --compile-all
 
@@ -15,11 +15,11 @@ deploy_solidity_bmc() {
 deploy_solidity_tokenBSH_BEP20() {
   echo "deploying solidity Token BSH"
   cd $CONTRACTS_DIR/solidity/TokenBSH
-  cp $BTPSIMPLE_BASE_DIR/bin/env ./.env
+  cp $ICONBRIDGE_BASE_DIR/bin/env ./.env
   rm -rf contracts/test build .openzeppelin
-  #npm install --legacy-peer-deps  
+  #npm install --legacy-peer-deps
   SVC_NAME=TokenBSH
-  
+
   BSH_TOKEN_FEE=1 \
     BMC_PERIPHERY_ADDRESS=$BMC_ADDRESS \
     BSH_SERVICE=$SVC_NAME \
@@ -157,8 +157,8 @@ generate_metadata() {
     echo "DONE."
     ;;
 
-
-  TOKEN_BSH)
+  \
+    TOKEN_BSH)
     echo "################### Generating Token BSH & BEP20  Solidity metadata ###################"
 
     BSH_IMPL_ADDRESS=$(jq -r '.networks[] | .address' build/contracts/BSHImpl.json)

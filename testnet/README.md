@@ -29,4 +29,4 @@ Relay:
 3. add bsc.secret & icon.secret with password to the respective wallet
 4. create a data folder if doesnt exist
 5. start the relay by passing the proper config files
-`./btpsimple start --config ./icon.config.json`
+`./iconbridge start --config ./icon.config.json`
