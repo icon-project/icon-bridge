@@ -59,7 +59,7 @@ bsc_registerToken() {
   cd $CONTRACTS_DIR/solidity/TokenBSH
   BEP20_TKN_ADDRESS=$(cat $CONFIG_DIR/bep20_token.bsc)
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.token.js \
-    --method registerToken --name $TOKEN_NAME --symbol $TOKEN_SYM --addr "$BEP20_TKN_ADDRESS")
+    --method registerToken --name $TOKEN_NAME --symbol $TOKEN_SYM --addr "$BEP20_TKN_ADDRESS" --feeNumerator 100 --fixedFee 50000)
   echo "$tx" >$CONFIG_DIR/tx/register.token.bsc
 }
 

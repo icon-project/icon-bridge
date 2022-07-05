@@ -53,7 +53,11 @@ func (r *relay) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	r.log.Infof("init: link.rxSeq=%d, link.rxHeight=%d", link.RxSeq, link.RxHeight)
+	r.log.WithFields(log.Fields{
+		"rxSeq":         link.RxSeq,
+		"rxHeight":      link.RxHeight,
+		"currentHeight": link.CurrentHeight,
+	}).Info("link status")
 
 	srcMsgCh := make(chan *chain.Message)
 	srcErrCh, err := r.src.Subscribe(ctx,

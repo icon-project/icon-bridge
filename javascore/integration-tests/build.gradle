@@ -14,7 +14,7 @@ allprojects {
 }
 
 dependencies {
-    implementation project(':bsh')
+    implementation project(':bts')
     implementation 'foundation.icon:javaee-api:0.9.0'
     implementation 'foundation.icon:javaee-rt:0.9.0'
     implementation 'foundation.icon:javaee-tooling:0.9.0'
