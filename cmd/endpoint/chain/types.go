@@ -13,14 +13,14 @@ const (
 	HMNY ChainType = "HMNY"
 )
 
-type TokenType string
+// type TokenType string
 
-const (
-	ICXToken   TokenType = "ICX"
-	IRC2Token  TokenType = "IRC2"
-	ONEToken   TokenType = "ONE"
-	ERC20Token TokenType = "ERC20"
-)
+// const (
+// 	ICXToken   TokenType = "ICX"
+// 	IRC2Token  TokenType = "IRC2"
+// 	ONEToken   TokenType = "ONE"
+// 	ERC20Token TokenType = "ERC20"
+// )
 
 type ContractName string
 
@@ -48,25 +48,35 @@ func (e EventLogType) String() string {
 	return string(e)
 }
 
-type RequestParam struct {
-	FromChain   ChainType
-	ToChain     ChainType
-	SenderKey   string
-	FromAddress string
-	ToAddress   string
-	Amount      big.Int
-	Token       TokenType
+type SrcAPI interface {
+	Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error)
+	WaitForTxnResult(ctx context.Context, hash string) (txr interface{}, elInfo []*EventLogInfo, err error)
+	WatchForTransferStart(requestID uint64, coinName string, seq int64) error
+	WatchForTransferEnd(ID uint64, coinName string, seq int64) error
+	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
+	GetCoinBalance(coinName string, addr string) (*big.Int, error)
+	GetChainType() ChainType
+}
+
+type DstAPI interface {
+	GetCoinBalance(coinName string, addr string) (*big.Int, error)
+	WatchForTransferReceived(requestID uint64, coinName string, seq int64) error
+	GetChainType() ChainType
 }
 
 type ChainAPI interface {
-	Subscribe(ctx context.Context, height uint64) (sinkChan chan *EventLogInfo, errChan chan error, err error)
-	Transfer(param *RequestParam) (txnHash string, err error)
-	GetCoinBalance(addr string, coinType TokenType) (*big.Int, error)
-	WaitForTxnResult(ctx context.Context, hash string) (txr interface{}, elInfo []*EventLogInfo, err error)
-	Approve(ownerKey string, amount big.Int) (txnHash string, err error)
-	GetBTPAddress(addr string) *string
+	Subscribe(ctx context.Context) (sinkChan chan *EventLogInfo, errChan chan error, err error)
 	GetKeyPairs(num int) ([][2]string, error)
-	WatchFor(ID uint64, eventType EventLogType, seq int64, contractAddress string) error
+	GetBTPAddress(addr string) string
+
+	Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error)
+	WaitForTxnResult(ctx context.Context, hash string) (txr interface{}, elInfo []*EventLogInfo, err error)
+	WatchForTransferStart(ID uint64, coinName string, seq int64) error
+	WatchForTransferReceived(ID uint64, coinName string, seq int64) error
+	WatchForTransferEnd(ID uint64, coinName string, seq int64) error
+	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
+	GetCoinBalance(coinName string, addr string) (*big.Int, error)
+	GetChainType() ChainType
 }
 
 type ChainConfig struct {
@@ -78,11 +88,6 @@ type ChainConfig struct {
 	Src                BTPAddress              `json:"src"`
 	Dst                BTPAddress              `json:"dst"`
 }
-
-// type ContractAddress struct {
-// 	Name    string `json:"name"`
-// 	Address string `json:"address"`
-// }
 
 type GodWallet struct {
 	Path     string `json:"path"`

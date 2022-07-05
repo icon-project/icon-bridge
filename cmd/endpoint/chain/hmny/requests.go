@@ -31,7 +31,6 @@ import (
 // }
 
 const (
-	coinName        = "ICX"
 	DefaultGasLimit = 80000000
 )
 
@@ -62,7 +61,7 @@ func newRequestAPI(url string, l log.Logger, contractNameToAddress map[chain.Con
 	if err != nil {
 		return nil, errors.Wrap(err, "NewBshcore ")
 	}
-	coinAddress, err := bshc.CoinId(&bind.CallOpts{Pending: false, Context: nil}, coinName)
+	coinAddress, err := bshc.CoinId(&bind.CallOpts{Pending: false, Context: nil}, "ICX")
 	if err != nil {
 		return nil, errors.Wrap(err, "bshc.CoinId ")
 	}
@@ -218,7 +217,8 @@ func (r *requestAPI) waitForResults(ctx context.Context, txHash common.Hash) (tx
 		}
 	}
 }
-func (r *requestAPI) transferHmnyOne(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error) {
+
+func (r *requestAPI) transferNativeWithin(senderKey, recepientAddress string, amount big.Int) (txnHash string, logs interface{}, err error) {
 	senderWallet, senderPrivKey, err := GetWalletFromPrivKey(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
@@ -256,7 +256,7 @@ func (r *requestAPI) transferHmnyOne(senderKey string, amount big.Int, recepient
 	return
 }
 
-func (r *requestAPI) transferErc20(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error) {
+func (r *requestAPI) transferTokenWithin(senderKey, recepientAddress string, amount big.Int) (txnHash string, logs interface{}, err error) {
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
@@ -274,7 +274,7 @@ func (r *requestAPI) transferErc20(senderKey string, amount big.Int, recepientAd
 	return
 }
 
-func (r *requestAPI) transferOneToIcon(senderKey string, recepientAddress string, amount big.Int) (txnHash string, logs interface{}, err error) {
+func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress string, amount big.Int) (txnHash string, logs interface{}, err error) {
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
@@ -293,7 +293,7 @@ func (r *requestAPI) transferOneToIcon(senderKey string, recepientAddress string
 	return
 }
 
-func (r *requestAPI) transferWrappedICXFromHmnyToIcon(senderKey string, amount big.Int, recepientAddress string) (txnHash string, logs interface{}, err error) {
+func (r *requestAPI) transferWrappedCrossChain(coinName string, senderKey, recepientAddress string, amount big.Int) (txnHash string, logs interface{}, err error) {
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
@@ -311,7 +311,7 @@ func (r *requestAPI) transferWrappedICXFromHmnyToIcon(senderKey string, amount b
 	return
 }
 
-func (r *requestAPI) transferERC20ToIcon(senderKey string, amount big.Int, recepientAddress string) (approveTxnHash, approveLogs interface{}, transferTxnHash string, transferLogs interface{}, err error) {
+func (r *requestAPI) approveToken(coinName, senderKey string, amount big.Int) (txnHash string, logs interface{}, err error) {
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
@@ -323,31 +323,34 @@ func (r *requestAPI) transferERC20ToIcon(senderKey string, amount big.Int, recep
 		return
 	}
 	txo.Context = context.Background()
+
 	approveTxn, err := r.bep.Approve(txo, common.HexToAddress(caddr), &amount)
 	if err != nil {
-		err = errors.Wrap(err, "bep.Approve ")
+		err = errors.Wrapf(err, "bep.Approve %v  %v  %v", amount.String(), txo.GasPrice, txo.GasLimit)
 		return
 	}
-	// _, err = r.waitForResults(context.TODO(), approveTxn.Hash())
-	// if err != nil {
-	// 	return
-	// }
-	transferTxn, err := r.tokbsh.Transfer(txo, "ETH", &amount, recepientAddress)
+	txnHash = approveTxn.Hash().String()
+	return
+}
+
+func (r *requestAPI) transferTokenCrossChain(coinName string, senderKey, recepientAddress string, amount big.Int) (transferTxnHash string, transferLogs interface{}, err error) {
+	txo, err := r.getTransactionRequest(senderKey)
+	if err != nil {
+		err = errors.Wrap(err, "getTransactionRequest ")
+		return
+	}
+	txo.Context = context.Background()
+	transferTxn, err := r.tokbsh.Transfer(txo, coinName, &amount, recepientAddress)
 	if err != nil {
 		err = errors.Wrap(err, "tokbsh.Transfer ")
 		return
 	}
-	approveTxnHash = approveTxn.Hash().String()
-	// rcpts, err := r.waitForResults(context.TODO(), transferTxn.Hash())
-	// approveLogs = rcpts.Logs
 	transferTxnHash = transferTxn.Hash().String()
-	// rcpts, err = r.waitForResults(context.TODO(), transferTxn.Hash())
-	// transferLogs = rcpts.Logs
 	return
 }
 
-func (r *requestAPI) approveHmnyNativeBSHCoreToAccessICX(ownerKey string, amount big.Int) (approveTxnHash string, logs interface{}, allowanceAmount *big.Int, err error) {
-	txo, err := r.getTransactionRequest(ownerKey)
+func (r *requestAPI) approveCrossNativeCoin(coinName, senderKey string, amount big.Int) (approveTxnHash string, logs interface{}, err error) {
+	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
@@ -364,29 +367,30 @@ func (r *requestAPI) approveHmnyNativeBSHCoreToAccessICX(ownerKey string, amount
 		return
 	}
 	approveTxnHash = approveTxn.Hash().String()
+	return
 	// rcpts, err := r.waitForResults(context.TODO(), approveTxn.Hash())
 	// if err != nil {
 	// 	return
 	// }
 	// logs = rcpts.Logs
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	ownerWallet, _, err := GetWalletFromPrivKey(ownerKey)
-	if err != nil {
-		err = errors.Wrap(err, "GetWalletFromPrivKey ")
-		return
-	}
-	caddr, ok = r.contractNameToAddress[chain.NativeBSHCoreHmy]
-	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.NativeBSHCoreHmy)
-		return
-	}
-	allowanceAmount, err = r.erc.Allowance(&bind.CallOpts{Pending: false, Context: ctx}, common.HexToAddress(ownerWallet.Address()), common.HexToAddress(caddr))
-	if err != nil {
-		err = errors.Wrap(err, "erc.Allowance ")
-	}
-	return
+	// ctx := context.Background()
+	// ctx, cancel := context.WithCancel(ctx)
+	// defer cancel()
+	// ownerWallet, _, err := GetWalletFromPrivKey(senderKey)
+	// if err != nil {
+	// 	err = errors.Wrap(err, "GetWalletFromPrivKey ")
+	// 	return
+	// }
+	// caddr, ok = r.contractNameToAddress[chain.NativeBSHCoreHmy]
+	// if !ok {
+	// 	err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.NativeBSHCoreHmy)
+	// 	return
+	// }
+	// allowanceAmount, err = r.erc.Allowance(&bind.CallOpts{Pending: false, Context: ctx}, common.HexToAddress(ownerWallet.Address()), common.HexToAddress(caddr))
+	// if err != nil {
+	// 	err = errors.Wrap(err, "erc.Allowance ")
+	// }
+	// return
 }
 
 // func GetWalletAndPrivKey(walFile string, password string) (wal *wallet.EvmWallet, pKey *ecdsr.PrivateKey, err error) {

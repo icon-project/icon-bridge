@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
@@ -25,11 +26,10 @@ func getNewApi() (chain.ChainAPI, error) {
 
 	l := log.New()
 	log.SetGlobalLogger(l)
-	btp_hmny_token_bsh_impl := "0x8283e3bE7ac5f6dB332Df605f20E2B4c9977c662"
-	btp_hmny_nativecoin_bsh_periphery := "0xfad748a1063a40FF447B5D766331904d9bedDC26"
+
 	addrToName := map[chain.ContractName]string{
-		chain.TokenBSHImplHmy:       btp_hmny_token_bsh_impl,
-		chain.NativeBSHPeripheryHmy: btp_hmny_nativecoin_bsh_periphery,
+		chain.TokenBSHImplHmy:       "0x8283e3bE7ac5f6dB332Df605f20E2B4c9977c662",
+		chain.NativeBSHPeripheryHmy: "0xfad748a1063a40FF447B5D766331904d9bedDC26",
 		chain.Erc20Hmy:              "0xb54f5e97972AcF96470e02BE0456c8DB2173f33a",
 		chain.NativeBSHCoreHmy:      "0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
 		chain.TokenBSHProxyHmy:      "0x48cacC89f023f318B4289A18aBEd44753a127782",
@@ -41,63 +41,30 @@ func getNewApi() (chain.ChainAPI, error) {
 	return rx, nil
 }
 
-func TestTransferAcross(t *testing.T) {
-	senderKey := "05bfc351f5ec0e81d88ccda3df3108d993415d92c1d41e09afa6ea24ba8a4307"
-	senderAddress := "0x80d1f81A5E541cA370308571AAbD096cCA6C901c"
-	rxAddress := "btp://0x5b9a77.icon/hx3fdf6ff1c0e747f7573b365d2890c84bed107162"
-	api, err := getNewApi()
+var getKeyPairFromFile = func(walFile string, password string) (pair [2]string, err error) {
+	keyReader, err := os.Open(walFile)
 	if err != nil {
-		t.Fatal(err)
 		return
 	}
-	amount := new(big.Int)
-	amount.SetString("2000000000000000000", 10)
-	txnHash, err := api.Transfer(&chain.RequestParam{
-		FromChain:   chain.HMNY,
-		ToChain:     chain.ICON,
-		SenderKey:   senderKey,
-		FromAddress: senderAddress,
-		ToAddress:   rxAddress,
-		Amount:      *amount,
-		Token:       chain.ONEToken,
-	})
+	defer keyReader.Close()
+
+	keyStore, err := ioutil.ReadAll(keyReader)
 	if err != nil {
-		t.Fatal(err)
+		return
 	}
-	t.Logf("Transaction Hash %v", txnHash)
-	res, elInfo, err := api.WaitForTxnResult(context.TODO(), txnHash)
+	key, err := keystore.DecryptKey(keyStore, password)
 	if err != nil {
-		t.Fatal(err)
+		return
 	}
-	t.Logf("Receipt %+v", res)
-	for _, lin := range elInfo {
-		seq, _ := lin.GetSeq()
-		t.Logf("Log %+v and Seq %v", lin, seq)
-	}
+	privBytes := ethcrypto.FromECDSA(key.PrivateKey)
+	privString := hex.EncodeToString(privBytes)
+	addr := ethcrypto.PubkeyToAddress(key.PrivateKey.PublicKey)
+	pair = [2]string{privString, addr.String()}
+	return
 }
 
 func TestGodWalletTransfer(t *testing.T) {
-	getKeyPairFromFile := func(walFile string, password string) (pair [2]string, err error) {
-		keyReader, err := os.Open(walFile)
-		if err != nil {
-			return
-		}
-		defer keyReader.Close()
 
-		keyStore, err := ioutil.ReadAll(keyReader)
-		if err != nil {
-			return
-		}
-		key, err := keystore.DecryptKey(keyStore, password)
-		if err != nil {
-			return
-		}
-		privBytes := ethcrypto.FromECDSA(key.PrivateKey)
-		privString := hex.EncodeToString(privBytes)
-		addr := ethcrypto.PubkeyToAddress(key.PrivateKey.PublicKey)
-		pair = [2]string{privString, addr.String()}
-		return
-	}
 	godKeyPair, err := getKeyPairFromFile("/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/hmny.god.wallet.json", "")
 	if err != nil {
 		t.Fatal(err)
@@ -114,17 +81,9 @@ func TestGodWalletTransfer(t *testing.T) {
 		t.Fatal(err)
 	}
 	amount := new(big.Int)
-	amount.SetString("250000000000000000000", 10)
+	amount.SetString("100000000000000000000", 10)
 	t.Logf("Demo KeyPair %v", demoKeyPair)
-	txnHash, err := api.Transfer(&chain.RequestParam{
-		FromChain:   chain.HMNY,
-		ToChain:     chain.HMNY,
-		SenderKey:   godKeyPair[0],
-		FromAddress: godKeyPair[1],
-		ToAddress:   demoKeyPair[0][1],
-		Amount:      *amount,
-		Token:       chain.ONEToken,
-	})
+	txnHash, err := api.Transfer("ETH", godKeyPair[0], api.GetBTPAddress(demoKeyPair[0][1]), *amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,21 +96,67 @@ func TestGodWalletTransfer(t *testing.T) {
 	for _, lin := range elInfo {
 		seq, _ := lin.GetSeq()
 		t.Logf("Log %+v and Seq %v", lin, seq)
-	} //[[05bfc351f5ec0e81d88ccda3df3108d993415d92c1d41e09afa6ea24ba8a4307 0x80d1f81A5E541cA370308571AAbD096cCA6C901c]]
+	} //7957f548a6b2ea3fff4d698a79dbeecaf2f911fce06a5b8a3f4a8c476be4f0e2 0x94efF7b6e91C08195395AA7F5aDF295A62d50Dc3
+	if val, err := api.GetCoinBalance("ETH", demoKeyPair[0][1]); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("Balance %v", val.String())
+	}
 	return
 }
 
-func TestReceiver(t *testing.T) {
-	rx, err := getNewApi()
+func TestTransferAcross(t *testing.T) {
+	senderKey := "9915b304cfcd7bd2b8ae0232a1d1ca432d5237c167a63a8530d69594c755519e"
+	senderAddress := "0x5ce1c8b80020cE82054d114e0440117470d3611F"
+	rxAddress := "btp://0x5b9a77.icon/hx2b66a78bf1ebc8d34133058ea648b243be099267"
+	api, err := getNewApi()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	if val, err := api.GetCoinBalance("ETH", senderAddress); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("Balance %v", val.String())
+	}
+	amount := new(big.Int)
+	amount.SetString("1000000000000000000", 10)
+	txnHash, err := api.Approve("ETH", senderKey, *amount)
 	if err != nil {
 		t.Fatal(err)
 	}
-	startHeight := 24700
-	rx.WatchFor(1, chain.TransferStart, 7, "0xfad748a1063a40FF447B5D766331904d9bedDC26")
-	rx.WatchFor(2, chain.TransferEnd, 7, "0xfad748a1063a40FF447B5D766331904d9bedDC26")
-	rx.WatchFor(1, chain.TransferReceived, 5, "0xfad748a1063a40FF447B5D766331904d9bedDC26")
-	rx.WatchFor(3, chain.TransferReceived, 5, "0xfad748a1063a40FF447B5D766331904d9bedDC26")
-	sinkChan, errChan, err := rx.Subscribe(context.TODO(), uint64(startHeight))
+	t.Logf("Transaction Hash %v", txnHash)
+	res, elInfo, err := api.WaitForTxnResult(context.TODO(), txnHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Second)
+	txnHash, err = api.Transfer("ETH", senderKey, rxAddress, *amount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Transaction Hash %v", txnHash)
+	res, elInfo, err = api.WaitForTxnResult(context.TODO(), txnHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Receipt %+v", res)
+	for _, lin := range elInfo {
+		seq, _ := lin.GetSeq()
+		t.Logf("Log %+v and Seq %v", lin, seq)
+	}
+
+}
+func TestReceiver(t *testing.T) {
+	recv, err := getNewApi()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recv.WatchForTransferStart(1, "ONE", 15)
+	recv.WatchForTransferReceived(1, "ICX", 14)
+	recv.WatchForTransferEnd(1, "ONE", 15)
+	sinkChan, errChan, err := recv.Subscribe(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}
