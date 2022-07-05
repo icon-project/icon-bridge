@@ -56,7 +56,7 @@ bsc_addService() {
 
 bsc_registerToken() {
   echo "Registering ${TOKEN_NAME} into tokenBSH"
-  cd $CONTRACTS_DIR/solidity/TokenBSH
+  cd $CONTRACTS_DIR/solidity/bsh
   BEP20_TKN_ADDRESS=$(cat $CONFIG_DIR/bep20_token.bsc)
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.token.js \
     --method registerToken --name $TOKEN_NAME --symbol $TOKEN_SYM --addr "$BEP20_TKN_ADDRESS" --feeNumerator 100 --fixedFee 50000)
@@ -71,7 +71,7 @@ bsc_updateRxSeq() {
 
 token_bsc_fundBSH() {
   echo "Funding solidity BSH"
-  cd $CONTRACTS_DIR/solidity/TokenBSH
+  cd $CONTRACTS_DIR/solidity/bsh
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.token.js \
     --method fundBSH --addr $(cat $CONFIG_DIR/token_bsh.proxy.bsc) --amount 1000)
   echo "$tx" >$CONFIG_DIR/tx/fundBSH.bsc
@@ -79,14 +79,14 @@ token_bsc_fundBSH() {
 
 deposit_token_for_bob() {
   echo "Funding BOB"
-  cd $CONTRACTS_DIR/solidity/TokenBSH
+  cd $CONTRACTS_DIR/solidity/bsh
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.token.js \
     --method fundBOB --addr $(get_bob_address) --amount $1)
   echo "$tx" >$CONFIG_DIR/fundBOB.bsc
 }
 
 token_approveTransfer() {
-  cd $CONTRACTS_DIR/solidity/TokenBSH
+  cd $CONTRACTS_DIR/solidity/bsh
   truffle exec --network bsc "$SCRIPTS_DIR"/bsh.token.js \
     --method approve --addr $(cat $CONFIG_DIR/token_bsh.proxy.bsc) --amount $1 --from "$(get_bob_address)"
 }
@@ -95,7 +95,7 @@ bsc_init_btp_transfer() {
   ICON_NET=$(cat $CONFIG_DIR/net.btp.icon)
   ALICE_ADDRESS=$(get_alice_address)
   BTP_TO="btp://$ICON_NET/$ALICE_ADDRESS"
-  cd $CONTRACTS_DIR/solidity/TokenBSH
+  cd $CONTRACTS_DIR/solidity/bsh
   truffle exec --network bsc "$SCRIPTS_DIR"/bsh.token.js \
     --method transfer --to $BTP_TO --amount $1 --from "$(get_bob_address)"
 }
@@ -107,7 +107,7 @@ calculateTransferFee() {
 }
 
 get_Bob_Token_Balance() {
-  cd $CONTRACTS_DIR/solidity/TokenBSH
+  cd $CONTRACTS_DIR/solidity/bsh
   BSC_USER=$(get_bob_address)
   BOB_BALANCE=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.token.js \
     --method getBalance --addr $BSC_USER)
@@ -161,19 +161,19 @@ generate_metadata() {
   TOKEN_BSH)
     echo "################### Generating Token BSH & BEP20  Solidity metadata ###################"
 
-    BSH_IMPL_ADDRESS=$(jq -r '.networks[] | .address' build/contracts/BSHImpl.json)
-    jq -r '.networks[] | .address' build/contracts/BSHImpl.json >$CONFIG_DIR/token_bsh.impl.bsc
-    jq -r '.networks[] | .address' build/contracts/BSHProxy.json >$CONFIG_DIR/token_bsh.proxy.bsc
+    # BSH_IMPL_ADDRESS=$(jq -r '.networks[] | .address' build/contracts/BSHImpl.json)
+    # jq -r '.networks[] | .address' build/contracts/BSHImpl.json >$CONFIG_DIR/token_bsh.impl.bsc
+    # jq -r '.networks[] | .address' build/contracts/BSHProxy.json >$CONFIG_DIR/token_bsh.proxy.bsc
 
-    wait_for_file $CONFIG_DIR/token_bsh.impl.bsc
-    wait_for_file $CONFIG_DIR/token_bsh.proxy.bsc
+    # wait_for_file $CONFIG_DIR/token_bsh.impl.bsc
+    # wait_for_file $CONFIG_DIR/token_bsh.proxy.bsc
 
-    jq -r '.networks[] | .address' build/contracts/BEP20TKN.json >$CONFIG_DIR/bep20_token.bsc
+    jq -r '.networks[] | .address' build/contracts/ERC20TKN.json >$CONFIG_DIR/bep20_token.bsc
     wait_for_file $CONFIG_DIR/bep20_token.bsc
 
-    create_abi "BSHProxy"
-    create_abi "BSHImpl"
-    create_abi "BEP20TKN"
+    #create_abi "BSHProxy"
+    #create_abi "BSHImpl"
+    create_abi "ERC20TKN"
     echo "DONE."
     ;;
 

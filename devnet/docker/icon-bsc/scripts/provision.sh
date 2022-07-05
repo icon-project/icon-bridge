@@ -33,33 +33,34 @@ provision() {
     source token.solidity.sh
 
     deploy_javascore_bmc
-    deploy_javascore_bsh
+    # deploy_javascore_bsh
     deploy_javascore_irc2
 
     deploy_solidity_bmc
 
-    bmc_javascore_addService
-    bsh_javascore_register
+    #bmc_javascore_addService
+    # bsh_javascore_register
 
     source nativeCoin.javascore.sh
     deploy_javascore_nativeCoin_BSH
     bmc_javascore_addNativeService
     nativeBSH_javascore_register
+    nativeBSH_javascore_register_token
     nativeBSH_javascore_setFeeRatio
 
-    deploy_solidity_tokenBSH_BEP20
+    #deploy_solidity_tokenBSH_BEP20
     source nativeCoin.solidity.sh
     deploy_solidity_nativeCoin_BSH
 
     generate_addresses_json >$BTPSIMPLE_CONFIG_DIR/addresses.json
     cp $BTPSIMPLE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
 
-    bsc_addService
+    #bsc_addService
     bsc_registerToken
 
     bmc_solidity_addNativeService
     nativeBSH_solidity_register
-
+    
     token_bsc_fundBSH
     token_icon_fundBSH
 
@@ -90,18 +91,13 @@ provision() {
 prepare_solidity_env() {
 
   cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/bmc/.env
-  cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/.env
-  cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/.env
+  cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/.env  
 
   cp $BTPSIMPLE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
 
   if [ ! -f $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/build/contracts/BSHCore.json ]; then
     cd $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/
     rm -rf contracts/test
-    truffle compile --network bsc
-  fi
-  if [ ! -f $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/build/contracts/BSHProxy.json ]; then
-    cd $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/
     truffle compile --network bsc
   fi
 }
