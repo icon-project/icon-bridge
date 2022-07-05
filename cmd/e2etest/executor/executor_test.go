@@ -3,7 +3,7 @@ package executor_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -45,17 +45,29 @@ func TestExecutor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(time.Second * 10)
-	ctx, cancel := context.WithTimeout(context.Background(), 3000*time.Second)
-	defer cancel()
-	ex.Start(ctx, 100)
-	err = ex.Execute(ctx, []chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 240*time.Second)
 
-	fmt.Println("Wait")
-	time.Sleep(time.Second * time.Duration(3000))
+	ex.Subscribe(ctx)
+
+	amount := new(big.Int)
+	amount.SetString("10000000000000000000", 10)
+	for tsi, ts := range executor.TestScripts {
+		l.Info("Running TestScript SN.", tsi)
+		go func() {
+			err = ex.Execute(ctx, chain.ICON, chain.HMNY, amount, ts)
+			if err != nil {
+				log.Errorf("%+v", err)
+			}
+		}()
+		time.Sleep(time.Second * 5)
+	}
+	defer func() {
+		cancel()
+	}()
+	<-ex.Done()
+	cancel()
+	time.Sleep(time.Second * 3)
+	l.Info("Exit")
 }
 
 /*

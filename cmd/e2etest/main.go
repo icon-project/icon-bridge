@@ -3,9 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"math/big"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
@@ -13,12 +12,6 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
-
-func init() {
-
-}
-
-const NUM_PARALLEL_DEMOS = 2
 
 func main() {
 	l := log.New()
@@ -32,7 +25,7 @@ func main() {
 	for _, ch := range cfg.Chains {
 		cfgPerMap[ch.Name] = ch
 	}
-	ug, err := executor.New(l, cfgPerMap)
+	ex, err := executor.New(l, cfgPerMap)
 	if err != nil {
 		log.Error(errors.Wrap(err, "executor.New "))
 		return
@@ -40,23 +33,24 @@ func main() {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
-	startHeight := uint64(100)
-	ug.Start(ctx, startHeight)
-	for i := 0; i < NUM_PARALLEL_DEMOS; i++ {
-		log.Info("Register Process ", i)
-		err = ug.Execute(ctx, []chain.ChainType{chain.ICON, chain.HMNY}, executor.DemoSubCallback)
-		if err != nil {
-			log.Error(err, errors.Wrap(err, "executor.Execute"))
-		}
-		time.Sleep(time.Second * time.Duration(15))
-	}
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	defer func() {
-		signal.Stop(sigCh)
-	}()
+	ex.Subscribe(ctx)
 
-	<-sigCh // second signal, hard exit
+	amount := new(big.Int)
+	amount.SetString("10000000000000000000", 10)
+	for tsi, ts := range executor.TestScripts {
+		l.Info("Running TestScript SN.", tsi)
+		go func() {
+			err = ex.Execute(ctx, chain.ICON, chain.HMNY, amount, ts)
+			if err != nil {
+				log.Errorf("%+v", err)
+			}
+		}()
+		time.Sleep(time.Second * 5)
+	}
+	defer func() {
+		cancel()
+	}()
+	<-ex.Done()
 	cancel()
 	time.Sleep(time.Second * 2)
 	log.Warn("Exit...")

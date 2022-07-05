@@ -22,13 +22,12 @@ func TestReceiver(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	recv.WatchFor(1, chain.TransferStart, 5, "cxe4b60a773c63961aa2303961483c3c95b9de3360")
-	recv.WatchFor(1, chain.TransferEnd, 5, "cxe4b60a773c63961aa2303961483c3c95b9de3360")
-	recv.WatchFor(1, chain.TransferReceived, 7, "cxe4b60a773c63961aa2303961483c3c95b9de3360")
+	recv.WatchForTransferStart(1, "ICX", 14)
+	recv.WatchForTransferReceived(1, "ONE", 15)
+	recv.WatchForTransferEnd(1, "ICX", 14)
 
-	startHeight := 15000
 	go func() {
-		if sinkChan, errChan, err := recv.Subscribe(context.Background(), uint64(startHeight)); err != nil {
+		if sinkChan, errChan, err := recv.Subscribe(context.Background()); err != nil {
 			panic(err)
 		} else {
 			for {
@@ -49,22 +48,21 @@ func getNewApi() (chain.ChainAPI, error) {
 	dstAddress := "btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91"
 	srcEndpoint := "http://localhost:9080/api/v3/default"
 
-	btp_icon_token_bsh := "cx3e836c763af780392a00a9ac2fc6e0471c95cb50"
-	btp_icon_nativecoin_bsh := "cxe4b60a773c63961aa2303961483c3c95b9de3360"
 	addrToName := map[chain.ContractName]string{
-		chain.TokenBSHIcon:      btp_icon_token_bsh,
-		chain.NativeBSHIcon:     btp_icon_nativecoin_bsh,
-		chain.Irc2Icon:          "cx10129552153ad5899eb841baf03be5105801bd9a",
-		chain.Irc2TradeableIcon: "cx1017c1beb68b5d5c8706c530c164bba91970a6eb",
+		chain.TokenBSHIcon:          "cxd029bba56f72e2ced0c88fd2fc289f4ae4dcd31f",
+		chain.NativeBSHIcon:         "cxabbcd08546141646dd169ae70170da87b9296778",
+		chain.Irc2Icon:              "cx70053f7c2d0d985c5b342886c5fe8f5e4db1fb1b",
+		chain.Irc2TradeableIcon:     "cxd5faca679820dd974245eaceca3fb74536815f96",
+		chain.TokenBSHImplHmy:       "0x8283e3bE7ac5f6dB332Df605f20E2B4c9977c662",
+		chain.NativeBSHPeripheryHmy: "0xfad748a1063a40FF447B5D766331904d9bedDC26",
+		chain.Erc20Hmy:              "0xb54f5e97972AcF96470e02BE0456c8DB2173f33a",
+		chain.NativeBSHCoreHmy:      "0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
+		chain.TokenBSHProxyHmy:      "0x48cacC89f023f318B4289A18aBEd44753a127782",
 	}
 	l := log.New()
 	log.SetGlobalLogger(l)
 	networkID := "0x5b9a77"
-	api, err := icon.NewApi(l, &chain.ChainConfig{Name: chain.ICON, URL: srcEndpoint, ConftractAddresses: addrToName, Src: chain.BTPAddress(srcAddress), Dst: chain.BTPAddress(dstAddress), NetworkID: networkID})
-	if err != nil {
-		return nil, err
-	}
-	return api, nil
+	return icon.NewApi(l, &chain.ChainConfig{Name: chain.ICON, URL: srcEndpoint, ConftractAddresses: addrToName, Src: chain.BTPAddress(srcAddress), Dst: chain.BTPAddress(dstAddress), NetworkID: networkID})
 }
 
 func TestGodWalletTransfer(t *testing.T) {
@@ -105,17 +103,9 @@ func TestGodWalletTransfer(t *testing.T) {
 		t.Fatal(err)
 	}
 	amount := new(big.Int)
-	amount.SetString("250000000000000000000", 10)
+	amount.SetString("100000000000000000000", 10)
 	t.Logf("Demo KeyPair %v", demoKeyPair)
-	txnHash, err := api.Transfer(&chain.RequestParam{
-		FromChain:   chain.ICON,
-		ToChain:     chain.ICON,
-		SenderKey:   godKeyPair[0],
-		FromAddress: godKeyPair[1],
-		ToAddress:   demoKeyPair[0][1],
-		Amount:      *amount,
-		Token:       chain.ICXToken,
-	})
+	txnHash, err := api.Transfer("ETH", godKeyPair[0], api.GetBTPAddress(demoKeyPair[0][1]), *amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,30 +117,39 @@ func TestGodWalletTransfer(t *testing.T) {
 	t.Logf("Receipt %+v", res)
 	for _, lin := range elInfo {
 		t.Logf("Log %+v ", lin)
-	} //[[2f3467b8eb43c733fca4387ca8669d569527c26afc3f4d0b18a4cccf44bd44d3 hx3fdf6ff1c0e747f7573b365d2890c84bed107162]]
+	}
+	if val, err := api.GetCoinBalance("ETH", demoKeyPair[0][1]); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("Balance %v", val.String())
+	}
+	//[[13a135a25373970bfd77c21c6f8e5c38f73a8bf55fa0c691f6b4629546e74a23 hxe98400c26c64bcdf6dc26cf1c3d3da5160e76dc3]]
 	return
 }
 
 func TestTransferAcross(t *testing.T) {
-	senderKey := "2f3467b8eb43c733fca4387ca8669d569527c26afc3f4d0b18a4cccf44bd44d3"
-	senderAddress := "hx3fdf6ff1c0e747f7573b365d2890c84bed107162"
-	rxAddress := "btp://0x6357d2e0.hmny/0x80d1f81A5E541cA370308571AAbD096cCA6C901c"
+	senderKey := "f5b501cb7527c39ad064313c24fd9e0ee2dc443baa6a1dfa50f97cc7ab88aee0"
+	senderAddress := "hx2b66a78bf1ebc8d34133058ea648b243be099267"
+	rxAddress := "btp://0x6357d2e0.hmny/0x5ce1c8b80020cE82054d114e0440117470d3611F"
 	api, err := getNewApi()
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
+	if val, err := api.GetCoinBalance("ETH", senderAddress); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("Balance %v", val.String())
+	}
+
 	amount := new(big.Int)
-	amount.SetString("2000000000000000000", 10)
-	txnHash, err := api.Transfer(&chain.RequestParam{
-		FromChain:   chain.ICON,
-		ToChain:     chain.HMNY,
-		SenderKey:   senderKey,
-		FromAddress: senderAddress,
-		ToAddress:   rxAddress,
-		Amount:      *amount,
-		Token:       chain.ICXToken,
-	})
+	amount.SetString("1000000000000000000", 10)
+	txnHash, err := api.Approve("ICX", senderKey, *amount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Second)
+	txnHash, err = api.Transfer("ICX", senderKey, rxAddress, *amount)
 	if err != nil {
 		t.Fatal(err)
 	}

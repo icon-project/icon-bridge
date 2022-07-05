@@ -9,8 +9,9 @@ import (
 )
 
 type finder struct {
-	log      log.Logger
-	runCache *runnableCache
+	log           log.Logger
+	runCache      *runnableCache
+	nameToAddrMap map[chain.ContractName]string
 }
 
 type args struct {
@@ -32,17 +33,37 @@ type runnableCache struct {
 	mtx sync.RWMutex
 }
 
-func (f *finder) WatchFor(args args) (err error) {
-	if args.eventType == chain.TransferStart {
+func (f *finder) watchFor(eventType chain.EventLogType, id uint64, coinName string, seq int64) error {
+	contractAddress := ""
+	ok := false
+	if coinName == "ICX" {
+		if contractAddress, ok = f.nameToAddrMap[chain.NativeBSHIcon]; !ok {
+			return fmt.Errorf("watchFor; Contract %v not found on map", chain.NativeBSHIcon)
+		}
+	} else if coinName == "ETH" {
+		if contractAddress, ok = f.nameToAddrMap[chain.TokenBSHIcon]; !ok {
+			return fmt.Errorf("watchFor; Contract %v not found on map", chain.TokenBSHIcon)
+		}
+	} else if coinName == "ONE" {
+		if contractAddress, ok = f.nameToAddrMap[chain.NativeBSHIcon]; !ok {
+			return fmt.Errorf("watchFor; Contract %v not found on map", chain.NativeBSHIcon)
+		}
+	} else {
+		return fmt.Errorf("watchFor; CoinName not among supporteed types. Expected ICX, ETH, ONE. Got %v", coinName)
+	}
+	if eventType == chain.TransferStart {
+		args := args{id: id, eventType: chain.TransferStart, seq: seq, contractAddress: contractAddress}
 		f.addToRunCache(&runnable{args: args, callback: transferStartCB})
-	} else if args.eventType == chain.TransferReceived {
+	} else if eventType == chain.TransferReceived {
+		args := args{id: id, eventType: chain.TransferReceived, seq: seq, contractAddress: contractAddress}
 		f.addToRunCache(&runnable{args: args, callback: transferReceivedCB})
-	} else if args.eventType == chain.TransferEnd {
+	} else if eventType == chain.TransferEnd {
+		args := args{id: id, eventType: chain.TransferEnd, seq: seq, contractAddress: contractAddress}
 		f.addToRunCache(&runnable{args: args, callback: transferEndCB})
 	} else {
-		err = fmt.Errorf("Unexpected args.EventType %v", args.eventType)
+		return fmt.Errorf("watchFor; EventType not among supported ones")
 	}
-	return
+	return nil
 }
 
 func (f *finder) Match(elinfo *chain.EventLogInfo) bool {
@@ -97,10 +118,11 @@ func (f *finder) lookupCache(elInfo *chain.EventLogInfo) ([]int, []uint64) {
 	return matchedIndex, matchedIDs
 }
 
-func NewFinder(l log.Logger) *finder {
+func NewFinder(l log.Logger, nameToAddrMap map[chain.ContractName]string) *finder {
 	return &finder{
-		log:      l,
-		runCache: &runnableCache{mem: []*runnable{}, mtx: sync.RWMutex{}},
+		log:           l,
+		runCache:      &runnableCache{mem: []*runnable{}, mtx: sync.RWMutex{}},
+		nameToAddrMap: nameToAddrMap,
 	}
 }
 
