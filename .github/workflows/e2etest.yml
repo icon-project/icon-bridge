@@ -22,7 +22,19 @@ jobs:
       with:
         go-version: 1.18
 
+    - name: Checkout bls repo
+      uses: actions/checkout@v3
+      with:
+        repository: harmony-one/bls.git
+        path: bls
+
+    - name: Make bls
+    - run: |
+           apt install -y g++ gcc
+           cd bls
+           make -j8 BLS_SWAP_G=1
+           make install
+
     - name: Test
       working-directory: ./cmd/e2etest
       run: go run main.go
-
