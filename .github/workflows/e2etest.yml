@@ -51,5 +51,5 @@ jobs:
     - name: Test
       working-directory: ./cmd/e2etest
       run: |
-           sudo apt-get install libc6-dev libgmp3-dev libssl-dev g++ -y
+           sudo apt-get install libc6-dev libgmp3-dev libssl-dev build-essential manpages-dev g++ -y
            go run main.go
