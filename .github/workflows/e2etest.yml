@@ -31,7 +31,7 @@ jobs:
 
     - name: Make bls
       run: |
-           apt install -y g++ gcc
+           sudo apt install -y g++ gcc
            cd bls
            make -j8 BLS_SWAP_G=1
            make install
