@@ -3,12 +3,12 @@ name: E2ETest
 on:
   push:
     branches: [ e2eTestCI ]
-    paths:
-      - 'cmd'
+    # paths:
+    #   - 'cmd'
   pull_request:
     branches: [ e2eTestCI ]
-    paths:
-      - 'cmd'
+    # paths:
+    #   - 'cmd'
 
 jobs:
 
