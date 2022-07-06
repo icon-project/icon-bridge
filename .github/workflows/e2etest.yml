@@ -38,7 +38,7 @@ jobs:
 
     - name: Make bls
       run: |
-           sudo apt install -y g++ gcc
+           sudo apt install -y g++ gcc libssl-dev libgmp-dev
            cd bls
            sudo make -j8 BLS_SWAP_G=1
            sudo make install
