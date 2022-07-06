@@ -16,10 +16,9 @@ const (
 type ContractName string
 
 const (
-	Erc20Hmy         ContractName = "Erc20Hmy"
-	BTSIcon          ContractName = "BTSIcon"
 	TONEHmny         ContractName = "TONEHmny"
 	TICXIcon         ContractName = "TICXIcon"
+	BTSIcon          ContractName = "BTSIcon"
 	BTSCoreHmny      ContractName = "BTSCoreHmny"
 	BTSPeripheryHmny ContractName = "BTSPeripheryHmny"
 )
