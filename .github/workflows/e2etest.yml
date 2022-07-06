@@ -29,6 +29,13 @@ jobs:
         path: bls
         ref: master
 
+    - name: Checkout mcl repo
+      uses: actions/checkout@v3
+      with:
+        repository: harmony-one/mcl.git
+        path: mcl
+        ref: master
+
     - name: Make bls
       run: |
            sudo apt install -y g++ gcc
