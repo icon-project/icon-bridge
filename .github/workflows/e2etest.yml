@@ -41,9 +41,9 @@ jobs:
            sudo apt install -y g++ gcc libssl-dev libgmp-dev
            cd bls
            sudo make -j8 BLS_SWAP_G=1
-           sudo make BLS_ETH=1 lib/libbls384_256.so
+           sudo make BLS_ETH=1 /usr/local/lib/libbls384_256.so
            sudo make install
-           sudo strip /home/runner/work/nethermind/nethermind/bls/lib/libbls384_256.so
+          #  sudo strip /home/runner/work/nethermind/nethermind/bls/lib/libbls384_256.so
 
     - name: Make mcl
       run: |
