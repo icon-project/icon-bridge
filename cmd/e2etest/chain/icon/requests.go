@@ -19,27 +19,29 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"
 	"github.com/icon-project/icon-bridge/common"
 	"github.com/icon-project/icon-bridge/common/crypto"
 	"github.com/icon-project/icon-bridge/common/intconv"
-	"github.com/icon-project/icon-bridge/common/log"
+)
+
+const (
+	DefaultSendTransactionRetryInterval        = 3 * time.Second         //3sec
+	DefaultGetTransactionResultPollingInterval = 1500 * time.Millisecond //1.5sec
+	StepLimit                                  = 3500000000
 )
 
 type requestAPI struct {
 	contractNameToAddress map[chain.ContractName]string
 	networkID             string
-	cl                    *client
+	cl                    *icon.Client
 }
 
-func newRequestAPI(url string, l log.Logger, contractNameToAddress map[chain.ContractName]string, networkID string) (*requestAPI, error) {
-	cl, err := newClient(url, l)
-	if err != nil {
-		return nil, errors.Wrap(err, "newClient ")
-	}
+func newRequestAPI(cl *icon.Client, contractNameToAddress map[chain.ContractName]string, networkID string) (*requestAPI, error) {
 	return &requestAPI{networkID: networkID, contractNameToAddress: contractNameToAddress, cl: cl}, nil
 }
 
-func SignTransactionParam(wallet module.Wallet, param *TransactionParam) error {
+func SignTransactionParam(wallet module.Wallet, param *icon.TransactionParam) error {
 	js, err := json.Marshal(param)
 	if err != nil {
 		return errors.Wrap(err, "jsonMarshal ")
@@ -66,14 +68,14 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
 	}
-	param := TransactionParam{
-		Version:     NewHexInt(JsonrpcApiVersion),
-		ToAddress:   Address(contractAddress),
-		Value:       HexInt(intconv.FormatBigInt(&amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
-		FromAddress: Address(senderWallet.Address().String()),
-		StepLimit:   NewHexInt(StepLimit),
-		Timestamp:   NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
-		NetworkID:   HexInt(r.networkID),
+	param := icon.TransactionParam{
+		Version:     icon.NewHexInt(icon.JsonrpcApiVersion),
+		ToAddress:   icon.Address(contractAddress),
+		Value:       icon.HexInt(intconv.FormatBigInt(&amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
+		FromAddress: icon.Address(senderWallet.Address().String()),
+		StepLimit:   icon.NewHexInt(StepLimit),
+		Timestamp:   icon.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
+		NetworkID:   icon.HexInt(r.networkID),
 		DataType:    dataType,
 	}
 	argMap := map[string]interface{}{}
@@ -101,8 +103,8 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 }
 
 func (r *requestAPI) callContract(contractAddress string, args map[string]string, method string) (interface{}, error) {
-	param := &CallParam{
-		ToAddress: Address(contractAddress),
+	param := &icon.CallParam{
+		ToAddress: icon.Address(contractAddress),
 		DataType:  "call",
 	}
 	argMap := map[string]interface{}{}
@@ -118,7 +120,7 @@ func (r *requestAPI) callContract(contractAddress string, args map[string]string
 }
 
 func (r *requestAPI) getICXBalance(addr string) (*big.Int, error) {
-	return r.cl.GetBalance(&AddressParam{Address: Address(addr)})
+	return r.cl.GetBalance(&icon.AddressParam{Address: icon.Address(addr)})
 }
 
 func (r *requestAPI) getWrappedCoinBalance(coinName string, addr string) (*big.Int, error) {
@@ -171,14 +173,14 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
 	}
-	param := TransactionParam{
-		Version:     NewHexInt(JsonrpcApiVersion),
-		ToAddress:   Address(recepientAddress),
-		Value:       HexInt(intconv.FormatBigInt(&amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
-		FromAddress: Address(senderWallet.Address().String()),
-		StepLimit:   NewHexInt(StepLimit),
-		Timestamp:   NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
-		NetworkID:   HexInt(r.networkID),
+	param := icon.TransactionParam{
+		Version:     icon.NewHexInt(icon.JsonrpcApiVersion),
+		ToAddress:   icon.Address(recepientAddress),
+		Value:       icon.HexInt(intconv.FormatBigInt(&amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
+		FromAddress: icon.Address(senderWallet.Address().String()),
+		StepLimit:   icon.NewHexInt(StepLimit),
+		Timestamp:   icon.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
+		NetworkID:   icon.HexInt(r.networkID),
 	}
 	if err = SignTransactionParam(senderWallet, &param); err != nil {
 		err = errors.Wrap(err, "SignTransactionParam ")
