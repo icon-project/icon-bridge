@@ -38,9 +38,6 @@ func main() {
 	amount := new(big.Int)
 	amount.SetString("10000000000000000000", 10)
 	for tsi, ts := range executor.TestScripts {
-		if tsi == 0 { // Ignoring 0 for now
-			continue
-		}
 		l.Info("Running TestScript SN.", tsi)
 		go func() {
 			err = ex.Execute(ctx, chain.ICON, chain.HMNY, amount, ts)
