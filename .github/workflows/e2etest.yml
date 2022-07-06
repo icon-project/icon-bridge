@@ -54,5 +54,7 @@ jobs:
       working-directory: ./cmd/e2etest
       run: |
            sudo apt-get install libc6-dev libgmp3-dev -y
+           LD_LIBRARY_PATH=/usr/local/lib
+           export LD_LIBRARY_PATH
            echo $LD_LIBRARY_PATH 
           #  go run main.go
