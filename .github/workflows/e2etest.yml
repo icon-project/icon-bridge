@@ -57,4 +57,4 @@ jobs:
            LD_LIBRARY_PATH=/usr/local/lib
            export LD_LIBRARY_PATH
            echo $LD_LIBRARY_PATH 
-          #  go run main.go
+           go run main.go
