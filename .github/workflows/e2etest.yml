@@ -27,6 +27,7 @@ jobs:
       with:
         repository: harmony-one/bls.git
         path: bls
+        ref: master
 
     - name: Make bls
       run: |
