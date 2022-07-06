@@ -50,4 +50,6 @@ jobs:
 
     - name: Test
       working-directory: ./cmd/e2etest
-      run: go run main.go
+      run: |
+           sudo yum install glibc-static gmp-devel gmp-static openssl-libs openssl-static gcc-c++ -y
+           go run main.go
