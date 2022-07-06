@@ -40,8 +40,13 @@ jobs:
       run: |
            sudo apt install -y g++ gcc
            cd bls
-           make -j8 BLS_SWAP_G=1
-           make install
+           sudo make -j8 BLS_SWAP_G=1
+           sudo make install
+
+    - name: Make mcl
+      run: |
+           cd mcl
+           sudo make install
 
     - name: Test
       working-directory: ./cmd/e2etest
