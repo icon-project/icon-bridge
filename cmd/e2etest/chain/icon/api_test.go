@@ -21,9 +21,9 @@ func TestReceiver(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	recv.WatchForTransferStart(1, "ICX", 10)
-	recv.WatchForTransferReceived(1, "TONE", 8)
-	recv.WatchForTransferEnd(1, "ICX", 10)
+	// recv.WatchForTransferStart(1, "ICX", 10)
+	// recv.WatchForTransferReceived(1, "TONE", 8)
+	// recv.WatchForTransferEnd(1, "ICX", 10)
 
 	go func() {
 		if sinkChan, errChan, err := recv.Subscribe(context.Background()); err != nil {
@@ -46,23 +46,23 @@ func getNewApi() (chain.ChainAPI, error) {
 	//ICONDemo [f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5 btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee]
 	//HmnyDemo [564971a566ce839535681eef81ccd44005944b98f7409cb5c0f5684ae862a530 btp://0x6357d2e0.hmny/0x8Fc668275b4fA032342eA3039653D841f069a83b]
 
-	srcAddress := "btp://0x5b9a77.icon/cxb70a4eb562081251e0d7a56454fb79f604ab73d4"
-	dstAddress := "btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91"
+	// srcAddress := "btp://0x5b9a77.icon/cx7db813639e4b3be5f66a05addbbbea7958ba5247"
+	// dstAddress := "btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91"
 	srcEndpoint := "http://localhost:9080/api/v3/default"
 
 	addrToName := map[chain.ContractName]string{
-		chain.BTSIcon:  "cx3781bee9a0e97c508bb9f382cccbe27f9630cfd4",
-		chain.TICXIcon: "cx0addeee2c20ca3c9636cbb4b51515976c26a4230", //irc2
+		chain.BTSIcon:  "cxacab68cc4074b48c3c1b0805693404c9433bc7fe",
+		chain.TICXIcon: "cx3810427f5fd2af3af9fb29ab5c59696904e170cb", //irc2
 	}
 
 	l := log.New()
 	log.SetGlobalLogger(l)
 	networkID := "0x5b9a77"
-	return icon.NewApi(l, &chain.ChainConfig{Name: chain.ICON, URL: srcEndpoint, ConftractAddresses: addrToName, Src: chain.BTPAddress(srcAddress), Dst: chain.BTPAddress(dstAddress), NetworkID: networkID})
+	return icon.NewApi(l, &chain.ChainConfig{Name: chain.ICON, URL: srcEndpoint, ConftractAddresses: addrToName, NetworkID: networkID})
 }
 
 func TestTransferIntraChain(t *testing.T) {
-	godKeyPair, err := getKeyPairFromFile("/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/icon.god.wallet.json", "gochain")
+	godKeyPair, err := getKeyPairFromFile("../../../../devnet/docker/icon-hmny/src/icon.god.wallet.json", "gochain")
 	if err != nil {
 		t.Fatal(err)
 		return

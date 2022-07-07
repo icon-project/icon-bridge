@@ -16,7 +16,7 @@ import (
 func main() {
 	l := log.New()
 	log.SetGlobalLogger(l)
-	cfg, err := loadConfig("/home/manish/go/src/work/icon-bridge/cmd/e2etest/example-config.json")
+	cfg, err := loadConfig("./example-config.json")
 	if err != nil {
 		log.Error(errors.Wrap(err, "loadConfig "))
 		return

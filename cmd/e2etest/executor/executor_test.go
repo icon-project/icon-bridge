@@ -30,7 +30,7 @@ func TestExecutor(t *testing.T) {
 		return cfg, nil
 	}
 	var err error
-	cfg, err := loadConfig("/home/manish/go/src/work/icon-bridge/cmd/e2etest/example-config.json")
+	cfg, err := loadConfig("../example-config.json")
 	if err != nil {
 		t.Fatal(err)
 	}

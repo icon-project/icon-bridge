@@ -72,8 +72,6 @@ type ChainConfig struct {
 	ConftractAddresses map[ContractName]string `json:"contract_addresses"`
 	GodWallet          GodWallet               `json:"god_wallet"`
 	NetworkID          string                  `json:"network_id"`
-	Src                BTPAddress              `json:"src"`
-	Dst                BTPAddress              `json:"dst"`
 }
 
 type GodWallet struct {

@@ -18,10 +18,10 @@ import (
 
 func getNewApi() (chain.ChainAPI, error) {
 	//ICONDemo [f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5 btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee]
-	//HmnyDemo [564971a566ce839535681eef81ccd44005944b98f7409cb5c0f5684ae862a530 btp://0x6357d2e0.hmny/0x8Fc668275b4fA032342eA3039653D841f069a83b]
+	//HmnyDemo [564971a566ce839535681eef81ccd44005944b98f7409cb5c0f5684ae862a530 btp://0x6357d2e0.hmny/0x8fc668275b4fa032342ea3039653d841f069a83b]
 	const (
 		src = "btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91"
-		dst = "btp://0x5b9a77.icon/cxb70a4eb562081251e0d7a56454fb79f604ab73d4"
+		dst = "btp://0x5b9a77.icon/cx7db813639e4b3be5f66a05addbbbea7958ba5247"
 		url = "http://localhost:9500"
 	)
 
@@ -30,11 +30,10 @@ func getNewApi() (chain.ChainAPI, error) {
 
 	addrToName := map[chain.ContractName]string{
 		chain.BTSCoreHmny:      "0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
-		chain.Erc20Hmy:         "0xB20CCD2a42e5486054AE3439f2bDa95DC75d9B75",
 		chain.BTSPeripheryHmny: "0xfad748a1063a40FF447B5D766331904d9bedDC26",
 		chain.TONEHmny:         "0xB20CCD2a42e5486054AE3439f2bDa95DC75d9B75",
 	}
-	rx, err := hmny.NewApi(l, &chain.ChainConfig{Name: chain.HMNY, URL: url, Src: chain.BTPAddress(src), Dst: chain.BTPAddress(dst), ConftractAddresses: addrToName, NetworkID: "0x6357d2e0"})
+	rx, err := hmny.NewApi(l, &chain.ChainConfig{Name: chain.HMNY, URL: url, ConftractAddresses: addrToName, NetworkID: "0x6357d2e0"})
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +42,8 @@ func getNewApi() (chain.ChainAPI, error) {
 
 func TestGetCoinBalance(t *testing.T) {
 	demoKeyPair := [2]string{"564971a566ce839535681eef81ccd44005944b98f7409cb5c0f5684ae862a530", "btp://0x6357d2e0.hmny/0x8Fc668275b4fA032342eA3039653D841f069a83b"}
-	// demoKeyPair, err = getKeyPairFromFile("/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/hmny.god.wallet.json", "")
+	// var err error
+	// demoKeyPair, err = getKeyPairFromFile("../../../../devnet/docker/icon-hmny/src/hmny.god.wallet.json", "")
 	// if err != nil {
 	// 	t.Fatal(err)
 	// 	return
@@ -93,7 +93,7 @@ func showBalance(demoKeyPair [2]string) error {
 
 func TestTransferIntraChain(t *testing.T) {
 
-	godKeyPair, err := getKeyPairFromFile("/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/hmny.god.wallet.json", "")
+	godKeyPair, err := getKeyPairFromFile("../../../../devnet/docker/icon-hmny/src/hmny.god.wallet.json", "")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -111,7 +111,7 @@ func TestTransferIntraChain(t *testing.T) {
 	demoKeyPair := [][2]string{{"564971a566ce839535681eef81ccd44005944b98f7409cb5c0f5684ae862a530", "btp://0x6357d2e0.hmny/0x8Fc668275b4fA032342eA3039653D841f069a83b"}}
 
 	amount := new(big.Int)
-	amount.SetString("1000000000000000000", 10)
+	amount.SetString("10000000000000000000", 10)
 	t.Logf("Demo KeyPair  %v", demoKeyPair)
 
 	txnHash, err := api.Transfer("TONE", godKeyPair[0], api.GetBTPAddress(demoKeyPair[0][1]), *amount)
@@ -148,14 +148,14 @@ func TestTransferCrossChain(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
-	if val, err := api.GetCoinBalance("TICX", senderAddress); err != nil {
+	if val, err := api.GetCoinBalance("TONE", senderAddress); err != nil {
 		t.Fatal(err)
 	} else {
-		t.Logf("Initial Balance %v", val.String())
+		t.Logf("Initial  Balance %v", val.String())
 	}
 	amount := new(big.Int)
-	amount.SetString("1000000000000000000", 10)
-	txnHash, err := api.Approve("TICX", senderKey, *amount)
+	amount.SetString("10000000000000000000", 10)
+	txnHash, err := api.Approve("TONE", senderKey, *amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestTransferCrossChain(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(5 * time.Second)
-	txnHash, err = api.Transfer("TICX", senderKey, rxAddress, *amount)
+	txnHash, err = api.Transfer("TONE", senderKey, rxAddress, *amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestTransferCrossChain(t *testing.T) {
 		seq, _ := lin.GetSeq()
 		t.Logf("Log %+v and Seq %v", lin, seq)
 	}
-	if val, err := api.GetCoinBalance("TICX", senderAddress); err != nil {
+	if val, err := api.GetCoinBalance("TONE", senderAddress); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Logf("Final Balance %v", val.String())
