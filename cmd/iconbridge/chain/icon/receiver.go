@@ -45,11 +45,11 @@ const (
 	MonitorBlockMaxConcurrency = 300
 )
 
-type receiverOptions struct {
+type ReceiverOptions struct {
 	Verifier *VerifierOptions `json:"verifier"`
 }
 
-func (opts *receiverOptions) Unmarshal(v map[string]interface{}) error {
+func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -68,8 +68,8 @@ type receiver struct {
 	log       log.Logger
 	src       chain.BTPAddress
 	dst       chain.BTPAddress
-	cl        *client
-	opts      receiverOptions
+	cl        *Client
+	opts      ReceiverOptions
 	blockReq  BlockRequest
 	logFilter eventLogRawFilter
 }
@@ -78,9 +78,9 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]inter
 	if len(urls) == 0 {
 		return nil, errors.New("List of Urls is empty")
 	}
-	client := newClient(urls[0], l)
+	client := NewClient(urls[0], l)
 
-	var recvOpts receiverOptions
+	var recvOpts ReceiverOptions
 	if err := recvOpts.Unmarshal(opts); err != nil {
 		return nil, errors.Wrapf(err, "recvOpts.Unmarshal: %v", err)
 	}
