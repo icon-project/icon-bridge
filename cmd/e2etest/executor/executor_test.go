@@ -51,16 +51,15 @@ func TestExecutor(t *testing.T) {
 
 	amount := new(big.Int)
 	amount.SetString("10000000000000000000", 10)
-	for tsi, ts := range executor.TestScripts {
-		l.Info("Running TestScript SN.", tsi)
-		go func() {
-			err = ex.Execute(ctx, chain.ICON, chain.HMNY, amount, ts)
-			if err != nil {
-				log.Errorf("%+v", err)
-			}
-		}()
-		time.Sleep(time.Second * 5)
-	}
+
+	go func() {
+		err = ex.Execute(ctx, chain.ICON, chain.HMNY, "ICX", map[string]*big.Int{"ICX": amount}, executor.TransferWithoutApproveFromICON.Callback)
+		if err != nil {
+			log.Errorf("%+v", err)
+		}
+	}()
+	time.Sleep(time.Second * 5)
+
 	defer func() {
 		cancel()
 	}()
