@@ -192,9 +192,9 @@ func TestReceiver(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv.WatchForTransferStart(1, "TONE", 8)
-	recv.WatchForTransferReceived(1, "ICX", 10)
-	recv.WatchForTransferEnd(1, "TONE", 8)
+	recv.WatchForTransferStart(1, 8)
+	recv.WatchForTransferReceived(1, 10)
+	recv.WatchForTransferEnd(1, 8)
 	sinkChan, errChan, err := recv.Subscribe(context.TODO())
 	if err != nil {
 		log.Fatal(err)

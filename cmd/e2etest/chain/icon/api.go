@@ -211,14 +211,14 @@ func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	return res, nil
 }
 
-func (r *api) WatchForTransferStart(id uint64, coinName string, seq int64) error {
-	return r.fd.watchFor(chain.TransferStart, id, coinName, seq)
+func (r *api) WatchForTransferStart(id uint64, seq int64) error {
+	return r.fd.watchFor(chain.TransferStart, id, seq)
 }
 
-func (r *api) WatchForTransferReceived(id uint64, coinName string, seq int64) error {
-	return r.fd.watchFor(chain.TransferReceived, id, coinName, seq)
+func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
+	return r.fd.watchFor(chain.TransferReceived, id, seq)
 }
 
-func (r *api) WatchForTransferEnd(id uint64, coinName string, seq int64) error {
-	return r.fd.watchFor(chain.TransferEnd, id, coinName, seq)
+func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
+	return r.fd.watchFor(chain.TransferEnd, id, seq)
 }

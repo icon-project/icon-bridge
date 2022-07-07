@@ -38,8 +38,8 @@ func (e EventLogType) String() string {
 type SrcAPI interface {
 	Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error)
 	WaitForTxnResult(ctx context.Context, hash string) (txr interface{}, elInfo []*EventLogInfo, err error)
-	WatchForTransferStart(requestID uint64, coinName string, seq int64) error
-	WatchForTransferEnd(ID uint64, coinName string, seq int64) error
+	WatchForTransferStart(requestID uint64, seq int64) error
+	WatchForTransferEnd(ID uint64, seq int64) error
 	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*big.Int, error)
 	GetChainType() ChainType
@@ -47,7 +47,7 @@ type SrcAPI interface {
 
 type DstAPI interface {
 	GetCoinBalance(coinName string, addr string) (*big.Int, error)
-	WatchForTransferReceived(requestID uint64, coinName string, seq int64) error
+	WatchForTransferReceived(requestID uint64, seq int64) error
 	GetChainType() ChainType
 }
 
@@ -58,9 +58,9 @@ type ChainAPI interface {
 
 	Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error)
 	WaitForTxnResult(ctx context.Context, hash string) (txr interface{}, elInfo []*EventLogInfo, err error)
-	WatchForTransferStart(ID uint64, coinName string, seq int64) error
-	WatchForTransferReceived(ID uint64, coinName string, seq int64) error
-	WatchForTransferEnd(ID uint64, coinName string, seq int64) error
+	WatchForTransferStart(ID uint64, seq int64) error
+	WatchForTransferReceived(ID uint64, seq int64) error
+	WatchForTransferEnd(ID uint64, seq int64) error
 	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*big.Int, error)
 	GetChainType() ChainType

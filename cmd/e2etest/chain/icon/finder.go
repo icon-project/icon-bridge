@@ -33,7 +33,7 @@ type runnableCache struct {
 	mtx sync.RWMutex
 }
 
-func (f *finder) watchFor(eventType chain.EventLogType, id uint64, coinName string, seq int64) error {
+func (f *finder) watchFor(eventType chain.EventLogType, id uint64, seq int64) error {
 	contractAddress, ok := f.nameToAddrMap[chain.BTSIcon]
 	if !ok {
 		return fmt.Errorf("watchFor; Contract %v not found on map", chain.BTSIcon)
