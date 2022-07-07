@@ -21,6 +21,8 @@ pub struct FungibleToken {
     symbol: String,
     uri: Option<AccountId>,
     network: Network,
+    fee_numerator: u128,
+    fixed_fee: u128,
     extras: Option<AssetMetadataExtras>
 }
 
@@ -37,6 +39,8 @@ impl FungibleToken {
         symbol: String,
         uri: Option<AccountId>,
         network: Network,
+        fee_numerator: u128,
+        fixed_fee: u128,
         extras: Option<AssetMetadataExtras>
     ) -> FungibleToken {
         Self {
@@ -44,6 +48,8 @@ impl FungibleToken {
             symbol,
             uri,
             network,
+            fee_numerator,
+            fixed_fee,
             extras
         }
     }
@@ -78,5 +84,21 @@ impl AssetMetadata for FungibleToken {
 
     fn metadata(&self) -> &Self {
         self
+    }
+
+    fn fee_numerator(&self) -> u128 {
+        self.fee_numerator
+    }
+
+    fn fee_numerator_mut(&mut self) -> &mut u128 {
+        &mut self.fee_numerator
+    }
+
+    fn fixed_fee(&self) -> u128 {
+        self.fixed_fee
+    }
+
+    fn fixed_fee_mut(&mut self) -> &mut u128 {
+        &mut self.fixed_fee
     }
 }

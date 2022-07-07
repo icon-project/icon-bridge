@@ -91,10 +91,10 @@ impl<T: BorshDeserialize + BorshSerialize + AssetMetadata> Assets<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{asset::*,assets::*};
     use crate::types::WrappedNativeCoin;
+    use crate::types::{asset::*, assets::*};
     use near_sdk::{serde_json, testing_env, VMContext};
-    use std::{collections::HashSet};
+    use std::collections::HashSet;
 
     fn get_context(input: Vec<u8>, is_view: bool) -> VMContext {
         VMContext {
@@ -127,7 +127,9 @@ mod tests {
             "ABC".to_string(),
             None,
             "0x1.near".to_string(),
-            None
+            10000,
+            10000,
+            None,
         );
 
         tokens.add(
@@ -152,12 +154,19 @@ mod tests {
             "ABC".to_string(),
             None,
             "0x1.near".to_string(),
-            None
+            10000,
+            10000,
+            None,
         );
 
-        tokens.add(&"ABC Asset".to_string().as_bytes().to_vec(), &<Asset<WrappedNativeCoin>>::new(native_coin.clone()));
-        tokens.add(&"ABC Asset".to_string().as_bytes().to_vec(), &<Asset<WrappedNativeCoin>>::new(native_coin.clone()));
-        
+        tokens.add(
+            &"ABC Asset".to_string().as_bytes().to_vec(),
+            &<Asset<WrappedNativeCoin>>::new(native_coin.clone()),
+        );
+        tokens.add(
+            &"ABC Asset".to_string().as_bytes().to_vec(),
+            &<Asset<WrappedNativeCoin>>::new(native_coin.clone()),
+        );
         let result = tokens.to_vec();
 
         let expected: Vec<AssetItem> = vec![AssetItem {
@@ -174,14 +183,19 @@ mod tests {
         testing_env!(context);
         let mut tokens = Assets::new();
         let native_coin = WrappedNativeCoin::new(
-           "ABC Asset".to_string(),
+            "ABC Asset".to_string(),
             "ABC".to_string(),
             None,
             "0x1.near".to_string(),
-            None
+            10000,
+            10000,
+            None,
         );
 
-        tokens.add(&"ABC Asset".to_string().as_bytes().to_vec(), &<Asset<WrappedNativeCoin>>::new(native_coin.clone()));
+        tokens.add(
+            &"ABC Asset".to_string().as_bytes().to_vec(),
+            &<Asset<WrappedNativeCoin>>::new(native_coin.clone()),
+        );
 
         tokens.remove(&"ABC Asset".to_string().as_bytes().to_vec());
         let result = tokens.contains(&"ABC Asset".to_string().as_bytes().to_vec());
@@ -211,14 +225,18 @@ mod tests {
             "ABC".to_string(),
             None,
             "0x1.near".to_string(),
-            None
+            10000,
+            10000,
+            None,
         );
         let native_coin_2 = WrappedNativeCoin::new(
             "DEF Asset".to_string(),
             "DEF".to_string(),
             None,
             "0x1.bsc".to_string(),
-            None
+            10000,
+            10000,
+            None,
         );
 
         tokens.add(
@@ -257,7 +275,9 @@ mod tests {
             "ABC".to_string(),
             None,
             "0x1.near".to_string(),
-            None
+            10000,
+            10000,
+            None,
         );
         tokens.add(
             &"ABC Asset".to_string().as_bytes().to_vec(),

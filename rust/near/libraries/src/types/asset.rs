@@ -10,6 +10,10 @@ pub trait AssetMetadata {
     fn name(&self) -> &String;
     fn network(&self) -> &Network;
     fn symbol(&self) -> &String;
+    fn fee_numerator(&self) -> u128;
+    fn fee_numerator_mut(&mut self) -> &mut u128;
+    fn fixed_fee(&self) -> u128;
+    fn fixed_fee_mut(&mut self) -> &mut u128;
     fn metadata(&self) -> &Self;
     fn extras(&self) -> &Option<AssetMetadataExtras>;
 }

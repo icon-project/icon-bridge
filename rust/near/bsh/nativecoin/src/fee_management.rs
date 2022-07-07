@@ -31,7 +31,7 @@ impl NativeCoinService {
         self.transfer_fees(&fee_aggregator);
     }
 
-    pub fn set_fee_ratio(&mut self, fee_numerator: U128) {
+    pub fn set_fee_ratio(&mut self, fee_numerator: U128, fixed_fee: U128) {
         self.assert_have_permission();
         self.assert_valid_fee_ratio(fee_numerator.into());
         self.fee_numerator.clone_from(&fee_numerator.into());
