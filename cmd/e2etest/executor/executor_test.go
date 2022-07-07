@@ -53,7 +53,7 @@ func TestExecutor(t *testing.T) {
 	amount.SetString("10000000000000000000", 10)
 
 	go func() {
-		err = ex.Execute(ctx, chain.ICON, chain.HMNY, "ICX", map[string]*big.Int{"ICX": amount}, executor.TransferWithoutApproveFromICON.Callback)
+		err = ex.Execute(ctx, chain.ICON, chain.HMNY, "ICX", amount, executor.TransferWithoutApproveFromICON)
 		if err != nil {
 			log.Errorf("%+v", err)
 		}

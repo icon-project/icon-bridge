@@ -214,7 +214,7 @@ func (ex *executor) Subscribe(ctx context.Context) {
 	}()
 }
 
-func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, coinName string, amountPerCoin map[string]*big.Int, cb callBackFunc) (err error) {
+func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, coinName string, amount *big.Int, scr Script) (err error) {
 	id, err := ex.getID()
 	if err != nil {
 		return errors.Wrap(err, "getID ")
@@ -256,6 +256,10 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 		coinName:       coinName,
 	}
 
+	amountPerCoin := map[string]*big.Int{coinName: amount}
+	if src.GetNativeCoin() != coinName { // Add native coin to cut gas fees
+		amountPerCoin[src.GetNativeCoin()] = amount
+	}
 	// Funding accounts
 	nativeCoinsPerChain := map[string]chain.ChainType{"ICX": chain.ICON, "TICX": chain.ICON, "ONE": chain.HMNY, "TONE": chain.HMNY}
 	for coinName, amt := range amountPerCoin {
@@ -272,21 +276,22 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 			}
 			if err := ex.fund(log, chainClient, chainGodKey[PRIVKEYPOS], srcAddress, coinName, amt); err != nil {
 				return errors.Wrapf(err, "Fund Dst: %v %v", dstChainName, srcAddress)
-			} else {
-				ex.log.Infof("Chain %v Funded amount %v %v to Src Chain %v Addr %v", chainType, amt, coinName, srcChainName, srcAddress)
 			}
+			// else {
+			// 	ex.log.Infof("Chain %v Funded amount %v %v to Src Chain %v Addr %v", chainType, amt, coinName, srcChainName, srcAddress)
+			// }
 		}
 	}
 
 	time.Sleep(time.Second * 15)
-	if cb != nil {
-		if err := cb(ctx, args); err != nil {
-			return errors.Wrap(err, "CallBackFunc ")
-		}
-	} else {
+	ex.log.Infof("Run ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinName, src.GetChainType(), dst.GetChainType())
+	if scr.Callback == nil {
 		return errors.New("Callback function was nil")
 	}
-
+	if err := scr.Callback(ctx, args); err != nil {
+		return errors.Wrap(err, "CallBackFunc ")
+	}
+	ex.log.Infof("Completed Succesfully. ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinName, src.GetChainType(), dst.GetChainType())
 	// CleanupFunc removeChan() is called after cb() on function return
 	// so make sure cb() returns only after all the test logic is finished
 	return

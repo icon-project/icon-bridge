@@ -1,0 +1,14 @@
+{
+    "flowTests":[
+        {
+            "srcChain":"ICON",
+            "dstChain":"HMNY",
+            "coins":["ICX", "ONE"]
+        },
+        {
+            "srcChain":"HMNY",
+            "dstChain":"ICON",
+            "coins":["ICX", "TICX", "TONE"]
+        }
+    ]
+}

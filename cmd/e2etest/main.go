@@ -21,6 +21,11 @@ func main() {
 		log.Error(errors.Wrap(err, "loadConfig "))
 		return
 	}
+	testCfg, err := loadTestConfig("./test-config.json")
+	if err != nil {
+		log.Error(errors.Wrap(err, "loadConfig "))
+		return
+	}
 	cfgPerMap := map[chain.ChainType]*chain.ChainConfig{}
 	for _, ch := range cfg.Chains {
 		cfgPerMap[ch.Name] = ch
@@ -35,16 +40,40 @@ func main() {
 
 	ex.Subscribe(ctx)
 
-	amount := new(big.Int)
-	amount.SetString("10000000000000000000", 10)
+	fundAmount := new(big.Int)
+	fundAmount.SetString("10000000000000000000", 10)
 
-	go func() {
-		err = ex.Execute(ctx, chain.ICON, chain.HMNY, "TONE", map[string]*big.Int{"ICX": amount, "TONE": amount}, executor.MonitorTransferWithApproveFromICON.Callback)
-		if err != nil {
-			log.Errorf("%+v", err)
+	for _, fts := range testCfg.FlowTests {
+		if fts.SrcChain == chain.ICON {
+			for _, coinName := range fts.CoinNames {
+				go func(coinName string) {
+					script := executor.MonitorTransferWithApproveFromICON
+					if coinName == "ICX" {
+						script = executor.MonitorTransferWithoutApproveFromICON
+					}
+					err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, coinName, fundAmount, script)
+					if err != nil {
+						log.Errorf("%+v", err)
+					}
+				}(coinName)
+				time.Sleep(time.Second * 5)
+			}
+		} else if fts.SrcChain == chain.HMNY {
+			for _, coinName := range fts.CoinNames {
+				go func(coinName string) {
+					script := executor.MonitorTransferWithApproveFromHMNY
+					if coinName == "ONE" {
+						script = executor.MonitorTransferWithoutApproveFromHMNY
+					}
+					err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, coinName, fundAmount, script)
+					if err != nil {
+						log.Errorf("%+v", err)
+					}
+				}(coinName)
+				time.Sleep(time.Second * 5)
+			}
 		}
-	}()
-	time.Sleep(time.Second * 5)
+	}
 
 	defer func() {
 		cancel()
@@ -71,4 +100,27 @@ func loadConfig(file string) (*Config, error) {
 		return nil, errors.Wrapf(err, "json.Decode file %v", file)
 	}
 	return cfg, nil
+}
+
+func loadTestConfig(file string) (*TestConfig, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, errors.Wrapf(err, "os.Open file %v", file)
+	}
+	cfg := &TestConfig{}
+	err = json.NewDecoder(f).Decode(cfg)
+	if err != nil {
+		return nil, errors.Wrapf(err, "json.Decode file %v", file)
+	}
+	return cfg, nil
+}
+
+type TestConfig struct {
+	FlowTests []*FlowTestConfig `json:"flowTests"`
+}
+
+type FlowTestConfig struct {
+	SrcChain  chain.ChainType `json:"srcChain"`
+	DstChain  chain.ChainType `json:"dstChain"`
+	CoinNames []string        `json:"coins"`
 }
