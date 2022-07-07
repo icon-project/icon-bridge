@@ -1,6 +1,7 @@
 {
-    "flowTests":[
-        {
+    "flowTest":{
+        "disable":false,
+        "chains": [{
             "srcChain":"ICON",
             "dstChain":"HMNY",
             "coins":["ICX", "ONE"]
@@ -9,6 +10,14 @@
             "srcChain":"HMNY",
             "dstChain":"ICON",
             "coins":["ICX", "TICX", "TONE"]
-        }
-    ]
+        }]
+    },
+    "stressTest": {
+        "disable":false,
+        "addresses":{
+            "ICON":2,
+            "HMNY":2
+        },
+        "jobs":7
+    }
 }

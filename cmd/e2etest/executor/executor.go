@@ -127,7 +127,7 @@ func (ex *executor) removeChan(id uint64) {
 	ex.syncChanMtx.Lock()
 	defer ex.syncChanMtx.Unlock()
 	if ch, ok := ex.sinkChanPerID[id]; ok {
-		ex.log.Debugf("Cleaning up after function returns. Removing channel of id %v", id)
+		//ex.log.Debugf("Cleaning up after function returns. Removing channel of id %v", id)
 		if ch != nil {
 			close(ex.sinkChanPerID[id])
 		}
@@ -274,7 +274,7 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 			if !ok {
 				return fmt.Errorf("GodKeys for chain %v doesnot exist in config ", chainType)
 			}
-			if err := ex.fund(log, chainClient, chainGodKey[PRIVKEYPOS], srcAddress, coinName, amt); err != nil {
+			if err := ex.fund(chainClient, chainGodKey[PRIVKEYPOS], srcAddress, coinName, amt); err != nil {
 				return errors.Wrapf(err, "Fund Dst: %v %v", dstChainName, srcAddress)
 			}
 			// else {
@@ -297,7 +297,7 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	return
 }
 
-func (ex *executor) fund(log log.Logger, api chain.ChainAPI, senderKey string, recepientAddr string, coin string, amount *big.Int) error {
+func (ex *executor) fund(api chain.ChainAPI, senderKey string, recepientAddr string, coin string, amount *big.Int) error {
 	if api.GetNativeCoin() != coin {
 		if _, err := api.Approve(coin, senderKey, *amount); err != nil {
 			return errors.Wrapf(err, "Approve(%v,%v,%v)", coin, senderKey, amount.String())
@@ -311,5 +311,96 @@ func (ex *executor) fund(log log.Logger, api chain.ChainAPI, senderKey string, r
 		}
 	}
 
+	return nil
+}
+
+func (ex *executor) GetFundedAddresses(addressMap map[chain.ChainType]uint) (map[chain.ChainType][][2]string, error) {
+	retMap := map[chain.ChainType][][2]string{}
+	fundAmount := new(big.Int)
+	fundAmount.SetString("10000000000000000000", 10)
+	nativeCoinsPerChain := map[string]chain.ChainType{"ICX": chain.ICON, "TICX": chain.ICON, "ONE": chain.HMNY, "TONE": chain.HMNY}
+	tokensToFund := []string{"ICX", "ONE", "TICX", "TONE"}
+	for chainName, numAddr := range addressMap {
+		cl, ok := ex.clientsPerChain[chainName]
+		if !ok {
+			return nil, fmt.Errorf("Client for chain %v doesnot exist in config ", chainName)
+		}
+		keys, err := cl.GetKeyPairs(int(numAddr))
+		if err != nil {
+			return nil, errors.Wrapf(err, "GetKeyPairs for src %v", chainName)
+		}
+		for i := 0; i < len(keys); i++ {
+			keys[i][PUBKEYPOS] = cl.GetBTPAddress(keys[i][PUBKEYPOS])
+		}
+		retMap[chainName] = keys
+		// Fund
+		for _, coinName := range tokensToFund {
+			if chainType, ok := nativeCoinsPerChain[coinName]; !ok {
+				return nil, fmt.Errorf("Unexpected coinName %v", coinName)
+			} else {
+				godCl, ok := ex.clientsPerChain[chainType]
+				if !ok {
+					return nil, fmt.Errorf("Client for chain %v doesnot exist in config ", chainType)
+				}
+				godKey, ok := ex.godKeysPerChain[chainType]
+				if !ok {
+					return nil, fmt.Errorf("GodKeys for chain %v doesnot exist in config ", chainType)
+				}
+				for _, key := range keys {
+					if err := ex.fund(godCl, godKey[PRIVKEYPOS], key[PUBKEYPOS], coinName, fundAmount); err != nil {
+						return nil, errors.Wrapf(err, "Fund %v Dst: %v", coinName, key[PUBKEYPOS])
+					} else {
+						time.Sleep(time.Second * 2)
+						ex.log.Infof("Funded %v %v on chain %v by chain %v", fundAmount.String(), coinName, chainName, godCl.GetChainType())
+					}
+				}
+
+			}
+		}
+	}
+	time.Sleep(time.Second * 10)
+	return retMap, nil
+}
+
+func (ex *executor) ExecuteOnAddr(ctx context.Context, srcChainName, dstChainName chain.ChainType, coinName string, srcKeys, dstKeys [2]string, scr Script) (err error) {
+	id, err := ex.getID()
+	if err != nil {
+		return errors.Wrap(err, "getID ")
+	}
+	log := ex.log.WithFields(log.Fields{"pid": id})
+	sinkChan := make(chan *evt)
+	ex.addChan(id, sinkChan)
+	defer ex.removeChan(id) // should defer be called by cb() instead to make sure cb() was done
+
+	src, ok := ex.clientsPerChain[srcChainName]
+	if !ok {
+		return fmt.Errorf("Client for chain %v doesnot exist in config ", srcChainName)
+	}
+	dst, ok := ex.clientsPerChain[dstChainName]
+	if !ok {
+		return fmt.Errorf("Client for chain %v doesnot exist in config ", dstChainName)
+	}
+	args := &args{
+		watchRequestID: id,
+		log:            log,
+		src:            src,
+		dst:            dst,
+		srcKey:         srcKeys[PRIVKEYPOS],
+		srcAddr:        srcKeys[PUBKEYPOS],
+		dstAddr:        dstKeys[PUBKEYPOS],
+		sinkChan:       sinkChan,
+		coinName:       coinName,
+	}
+
+	ex.log.Infof("Run ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinName, src.GetChainType(), dst.GetChainType())
+	if scr.Callback == nil {
+		return errors.New("Callback function was nil")
+	}
+	if err := scr.Callback(ctx, args); err != nil {
+		return errors.Wrap(err, "CallBackFunc ")
+	}
+	ex.log.Infof("Completed Succesfully. ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinName, src.GetChainType(), dst.GetChainType())
+	// CleanupFunc removeChan() is called after cb() on function return
+	// so make sure cb() returns only after all the test logic is finished
 	return nil
 }
