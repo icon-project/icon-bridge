@@ -7,10 +7,10 @@ docker_port="5000"
 docker_registry="$docker_host"
 [[ -z $docker_port ]] || docker_registry+=":$docker_port"
 
-ixh_dir=$PWD
-ixh_tmp_dir="$ixh_dir/_ixh"
-ixh_src_dir="$ixh_dir/res"
-root_dir="$ixh_dir/../.."
+bmr_dir=$PWD
+bmr_tmp_dir="$bmr_dir/_bmr"
+bmr_src_dir="$bmr_dir/res"
+root_dir="$bmr_dir/../.."
 
 function repeat() {
     for i in $(seq 1 $2); do echo -n "$1"; done
@@ -37,7 +37,7 @@ function build_images() {
     log_stack
 
     image="${1:-}"
-    repos_dir=$ixh_tmp_dir/repos
+    repos_dir=$bmr_tmp_dir/repos
     mkdir -p $repos_dir
 
     function build_bmr() {
@@ -45,9 +45,9 @@ function build_images() {
         cd $root_dir
         docker \
             build \
-            -f $ixh_src_dir/bmr.Dockerfile \
+            -f $bmr_src_dir/bmr.Dockerfile \
             -t $docker_registry/bmr:latest .
-        cd $ixh_dir
+        cd $bmr_dir
     }
 
     case "$image" in
