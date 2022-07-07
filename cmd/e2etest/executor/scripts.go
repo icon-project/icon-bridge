@@ -490,12 +490,15 @@ var MonitorTransferWithoutApproveFromICON Script = Script{
 		numExpectedEvents := 2
 		args.src.WatchForTransferEnd(args.watchRequestID, startEvent.Sn.Int64())
 		args.dst.WatchForTransferReceived(args.watchRequestID, startEvent.Sn.Int64())
-		timedContext, timedContextCancel := context.WithTimeout(ctx, time.Second*30)
+		newCtx := context.Background()
+		timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*60)
 		for {
 			defer timedContextCancel()
 			select {
 			case <-timedContext.Done():
-				args.log.Warn("Context Cancelled Exiting task")
+				return errors.New("Context Timeout Exiting task")
+			case <-ctx.Done():
+				args.log.Warn("Context Cancelled. Return from Callback watch")
 				return nil
 			case el := <-args.sinkChan:
 				if el.msg.EventType == chain.TransferReceived && el.chainType == args.dst.GetChainType() {
@@ -617,12 +620,15 @@ var MonitorTransferWithApproveFromICON Script = Script{
 		numExpectedEvents := 2
 		args.src.WatchForTransferEnd(args.watchRequestID, startEvent.Sn.Int64())
 		args.dst.WatchForTransferReceived(args.watchRequestID, startEvent.Sn.Int64())
-		timedContext, timedContextCancel := context.WithTimeout(ctx, time.Second*30)
+		newCtx := context.Background()
+		timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*60)
 		for {
 			defer timedContextCancel()
 			select {
 			case <-timedContext.Done():
-				args.log.Warn("Context Cancelled Exiting task")
+				return errors.New("Context Timeout Exiting task")
+			case <-ctx.Done():
+				args.log.Warn("Context Cancelled. Return from Callback watch")
 				return nil
 			case el := <-args.sinkChan:
 				if el.msg.EventType == chain.TransferReceived && el.chainType == args.dst.GetChainType() {
@@ -737,12 +743,15 @@ var MonitorTransferWithoutApproveFromHMNY Script = Script{
 		numExpectedEvents := 2
 		args.src.WatchForTransferEnd(args.watchRequestID, startEvent.Sn.Int64())
 		args.dst.WatchForTransferReceived(args.watchRequestID, startEvent.Sn.Int64())
-		timedContext, timedContextCancel := context.WithTimeout(ctx, time.Second*30)
+		newCtx := context.Background()
+		timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*60)
 		for {
 			defer timedContextCancel()
 			select {
 			case <-timedContext.Done():
-				args.log.Warn("Context Cancelled Exiting task")
+				return errors.New("Context Timeout Exiting task")
+			case <-ctx.Done():
+				args.log.Warn("Context Cancelled. Return from Callback watch")
 				return nil
 			case el := <-args.sinkChan:
 				if el.msg.EventType == chain.TransferReceived && el.chainType == args.dst.GetChainType() {
@@ -860,12 +869,15 @@ var MonitorTransferWithApproveFromHMNY Script = Script{
 		numExpectedEvents := 2
 		args.src.WatchForTransferEnd(args.watchRequestID, startEvent.Sn.Int64())
 		args.dst.WatchForTransferReceived(args.watchRequestID, startEvent.Sn.Int64())
-		timedContext, timedContextCancel := context.WithTimeout(ctx, time.Second*30)
+		newCtx := context.Background()
+		timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*60)
 		for {
 			defer timedContextCancel()
 			select {
 			case <-timedContext.Done():
-				args.log.Warn("Context Cancelled Exiting task")
+				return errors.New("Context Timeout Exiting task")
+			case <-ctx.Done():
+				args.log.Warn("Context Cancelled. Return from Callback watch")
 				return nil
 			case el := <-args.sinkChan:
 				if el.msg.EventType == chain.TransferReceived && el.chainType == args.dst.GetChainType() {
