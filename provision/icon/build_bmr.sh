@@ -9,7 +9,7 @@ docker_registry="$docker_host"
 
 ixh_dir=$PWD
 ixh_tmp_dir="$ixh_dir/_ixh"
-ixh_src_dir="$ixh_dir/../res"
+ixh_src_dir="$ixh_dir/res"
 root_dir="$ixh_dir/../.."
 
 function repeat() {
