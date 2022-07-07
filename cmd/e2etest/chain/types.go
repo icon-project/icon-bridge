@@ -43,6 +43,7 @@ type SrcAPI interface {
 	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*big.Int, error)
 	GetChainType() ChainType
+	GetNativeCoin() string
 }
 
 type DstAPI interface {
@@ -64,6 +65,7 @@ type ChainAPI interface {
 	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*big.Int, error)
 	GetChainType() ChainType
+	GetNativeCoin() string
 }
 
 type ChainConfig struct {

@@ -197,6 +197,10 @@ func (r *api) GetBTPAddress(addr string) string {
 	return fullAddr
 }
 
+func (r *api) GetNativeCoin() string {
+	return "ONE"
+}
+
 func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	var err error
 	res := make([][2]string, num)

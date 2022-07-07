@@ -39,7 +39,7 @@ func main() {
 	amount.SetString("10000000000000000000", 10)
 
 	go func() {
-		err = ex.Execute(ctx, chain.ICON, chain.HMNY, "TONE", map[string]*big.Int{"TONE": amount, "ICX": amount}, executor.MonitorTransferWithApproveFromICON.Callback)
+		err = ex.Execute(ctx, chain.ICON, chain.HMNY, "TONE", map[string]*big.Int{"ICX": amount, "TONE": amount}, executor.MonitorTransferWithApproveFromICON.Callback)
 		if err != nil {
 			log.Errorf("%+v", err)
 		}

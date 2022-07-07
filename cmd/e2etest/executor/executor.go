@@ -278,7 +278,7 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 		}
 	}
 
-	time.Sleep(time.Second * 25)
+	time.Sleep(time.Second * 15)
 	if cb != nil {
 		if err := cb(ctx, args); err != nil {
 			return errors.Wrap(err, "CallBackFunc ")
@@ -293,13 +293,16 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 }
 
 func (ex *executor) fund(log log.Logger, api chain.ChainAPI, senderKey string, recepientAddr string, coin string, amount *big.Int) error {
+	if api.GetNativeCoin() != coin {
+		if _, err := api.Approve(coin, senderKey, *amount); err != nil {
+			return errors.Wrapf(err, "Approve(%v,%v,%v)", coin, senderKey, amount.String())
+		}
+	}
 	if hash, err := api.Transfer(coin, senderKey, recepientAddr, *amount); err != nil {
 		return errors.Wrapf(err, "Transfer(%v,%v,%v,%v)", coin, senderKey, recepientAddr, amount.String())
 	} else {
 		if _, _, err := api.WaitForTxnResult(context.TODO(), hash); err != nil {
 			return errors.Wrapf(err, "WaitForTxnResult %v %v", coin, hash)
-		} else {
-			log.Infof("Funded %v with %v %v. Hash: %v", recepientAddr, amount.String(), coin, hash)
 		}
 	}
 
