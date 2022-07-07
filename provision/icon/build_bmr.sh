@@ -8,9 +8,9 @@ docker_registry="$docker_host"
 [[ -z $docker_port ]] || docker_registry+=":$docker_port"
 
 ixh_dir=$PWD
-ixh_tmp_dir=$ixh_dir/_ixh
-ixh_src_dir=$ixh_dir/../../devnet/docker/icon-hmny/src
-root_dir="$ixh_dir/../../"
+ixh_tmp_dir="$ixh_dir/_ixh"
+ixh_src_dir="$ixh_dir/../res"
+root_dir="$ixh_dir/../.."
 
 function repeat() {
     for i in $(seq 1 $2); do echo -n "$1"; done
