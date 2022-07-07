@@ -1,6 +1,3 @@
-//go:build hmny
-// +build hmny
-
 package hmny
 
 import (
@@ -21,11 +18,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestClient(t *testing.T) *client {
+func newTestClient(t *testing.T) (*Client, *BMC) {
 	url := "https://rpc.s0.b.hmny.io"
-	cls, err := newClients([]string{url}, "", log.New())
+	cls, bmcs, err := newClients([]string{url}, "", log.New())
 	require.NoError(t, err)
-	return cls[0]
+	return cls[0], bmcs[0]
 }
 
 func getDefaultContext() (context.Context, context.CancelFunc) {
@@ -33,7 +30,7 @@ func getDefaultContext() (context.Context, context.CancelFunc) {
 }
 
 func TestGetTransactionRevertReason(t *testing.T) {
-	cl := newTestClient(t)
+	cl, _ := newTestClient(t)
 	txh := common.HexToHash("0x04c3009eb637b8871cfc3732bfe6c23bca1b6e850a6e8bb47dd32ac521d7af7b")
 
 	ctx, cancel := getDefaultContext()
@@ -77,7 +74,7 @@ func TestRevertReason(t *testing.T) {
 
 func TestBlockAndHeaderHashMatch(t *testing.T) {
 	n := int64(1000000) // block number
-	cl := newTestClient(t)
+	cl, _ := newTestClient(t)
 	b, err := cl.GetHmyV2BlockByHeight(big.NewInt(n))
 	require.NoError(t, err, "failed to get block by height")
 
@@ -89,7 +86,7 @@ func TestBlockAndHeaderHashMatch(t *testing.T) {
 
 func TestNewVerifier(t *testing.T) {
 	n := uint64(1000000)
-	cl := newTestClient(t)
+	cl, _ := newTestClient(t)
 
 	next, err := cl.GetHmyV2HeaderByHeight((&big.Int{}).SetUint64(n + 1))
 	require.NoError(t, err, "failed to fetch next header")
@@ -103,7 +100,7 @@ func TestNewVerifier(t *testing.T) {
 }
 
 func TestBMCMessageDecode(t *testing.T) {
-	cl := newTestClient(t)
+	_, bmcCl := newTestClient(t)
 
 	receiptWithBMCMessage := `{
 		"blockHash": "0xb5261bf0156a310b2de99d4e30bd69cf5e28bd7c501c9313abff6a62d4fd955c",
@@ -146,7 +143,7 @@ func TestBMCMessageDecode(t *testing.T) {
 			Data:   log.Data,
 			Topics: log.Topics,
 		}
-		msg, err := cl.bmc.ParseMessage(ethlog)
+		msg, err := bmcCl.ParseMessage(ethlog)
 		require.NoError(t, err, "failed to parse btp log")
 
 		json.NewEncoder(os.Stdout).Encode(msg)
@@ -174,7 +171,7 @@ func TestBMCMessageDecode(t *testing.T) {
 }
 
 func TestGetBlockReceiptsByBlockHash(t *testing.T) {
-	cl := newTestClient(t)
+	cl, _ := newTestClient(t)
 
 	// TODO generate transactions and note their block numbers
 	s, e := 5, 21
@@ -193,7 +190,7 @@ func TestGetBlockReceiptsByBlockHash(t *testing.T) {
 }
 
 func TestGetBlockReceiptsByHeaderHash(t *testing.T) {
-	cl := newTestClient(t)
+	cl, _ := newTestClient(t)
 
 	s, err := cl.GetBlockNumber()
 	require.NoError(t, err, "failed to get block number")
