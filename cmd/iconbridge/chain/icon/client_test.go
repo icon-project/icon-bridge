@@ -34,7 +34,7 @@ func TestMonitorBlockMissingNotification(t *testing.T) {
 		go func(i int, url string) {
 			l := l.WithFields(log.Fields{"i": i, "url": url})
 
-			cl := newClient(url, l)
+			cl := NewClient(url, l)
 
 			h, s := height, seq
 			err := cl.MonitorBlock(ctx, blockReq,
