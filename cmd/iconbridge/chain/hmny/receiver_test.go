@@ -1,4 +1,5 @@
-// TODO add more receiver tests
+//go:build hmny
+// +build hmny
 package hmny
 
 import (
