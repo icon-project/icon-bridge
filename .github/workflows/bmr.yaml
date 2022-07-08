@@ -1,0 +1,29 @@
+name: BMR Build
+
+on:
+  push:
+    branches: [ e2eTestCI ]
+    # paths:
+    #   - 'cmd'
+  pull_request:
+    branches: [ e2eTestCI ]
+    # paths:
+    #   - 'cmd'
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # setup Docker build action
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build image and push to Docker Hub and GitHub Container Registry
+        working-directory: ./provision/icon
+        run: |
+             ./build_bmr.sh
