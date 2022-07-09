@@ -16,32 +16,12 @@ function repeat() {
     for i in $(seq 1 $2); do echo -n "$1"; done
 }
 
-# echo message to stderr
-function log() {
-    local prefix="$(date '+%Y-%m-%d %H:%M:%S') $(repeat '    ' $((${#FUNCNAME[@]} - 2)))"
-    echo -e "$prefix$@" >&2
-}
-
-function log_status() {
-    [[ "$1" == 0 ]] && log " ✔" || log " ✘"
-}
-
-function log_stack() {
-    local cmd=${FUNCNAME[1]}
-    if [[ $# > 0 ]]; then cmd="$@"; fi
-    local prefix="$(date '+%Y-%m-%d %H:%M:%S') $(repeat '    ' $((${#FUNCNAME[@]} - 3)))"
-    echo -e "$prefix$cmd():${BASH_LINENO[1]}" >&2
-}
-
 function build_images() {
-    log_stack
-
     image="${1:-}"
     repos_dir=$bmr_tmp_dir/repos
     mkdir -p $repos_dir
 
     function build_bmr() {
-        log "building bmr"
         cd $root_dir
         docker \
             build \

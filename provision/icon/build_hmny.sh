@@ -23,7 +23,6 @@ function build_images() {
     mkdir -p $repos_dir
 
     function build_hmny() {
-        log "building hmny"
         cd $repos_dir
         docker <$hmny_src_dir/hmny.Dockerfile \
             build \
