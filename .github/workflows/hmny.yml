@@ -1,4 +1,4 @@
-name: BMR Build
+name: HMNY Build
 
 on:
   push:
@@ -26,4 +26,4 @@ jobs:
       - name: Build image
         working-directory: ./provision/icon
         run: |
-             ./build_bmr.sh
+             ./build_hmny.sh
