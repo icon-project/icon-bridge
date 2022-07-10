@@ -23,4 +23,4 @@ export TOKEN_NAME=ETH
 export TOKEN_SYM=ETH
 export TOKEN_SUPPLY=0x186A0
 export TOKEN_DECIMALS=0x12
-export SVC_NAME=TokenBSH
+export SVC_NAME='bts'

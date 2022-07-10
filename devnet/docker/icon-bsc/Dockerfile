@@ -46,10 +46,10 @@ COPY ./scripts/*.js /iconbridge/js/
 RUN chmod +x /provision.sh
 RUN chmod +x /entrypoint.sh
 RUN chmod +x /iconbridge/bin/wait-for-it.sh
+RUN chmod +x /iconbridge/bin/iconvalidators
 
 RUN yarn --cwd $ICONBRIDGE_CONTRACTS_DIR/solidity/bmc --prod
-RUN yarn --cwd $ICONBRIDGE_CONTRACTS_DIR/solidity/bsh --prod
-RUN yarn --cwd $ICONBRIDGE_CONTRACTS_DIR/solidity/TokenBSH --prod
+RUN yarn --cwd $ICONBRIDGE_CONTRACTS_DIR/solidity/bts --prod
 
 WORKDIR /iconbridge/config
 ENTRYPOINT ["entrypoint.sh"]
