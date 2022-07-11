@@ -13,7 +13,7 @@ provision() {
 
   if [ ! -f $ICONBRIDGE_CONFIG_DIR/provision ]; then
     echo "start provisioning..."
-    sleep 10
+    sleep 30
     echo "$GOLOOP_RPC_NID.icon" >net.btp.icon #0x240fa7.icon
     mkdir -p $ICONBRIDGE_CONFIG_DIR/tx
 
@@ -66,6 +66,7 @@ provision() {
     bsc_register_icx
     get_coinID_icx
     bsc_register_tbnb
+    get_coinID_tbnb
     bsc_register_ticx
     get_coinID_ticx
 
