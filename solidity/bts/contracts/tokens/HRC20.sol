@@ -21,7 +21,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract HRC20 is ERC20 {
-    constructor() ERC20("HRC20", "TONE") {
+    constructor() ERC20("HRC20", "TONE") { // should be changed to "TBNB" for deploying contracts in BSC
         _mint(msg.sender, 1e5 * 1e18);
     }
 }
