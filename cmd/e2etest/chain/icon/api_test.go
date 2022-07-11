@@ -48,21 +48,21 @@ func getNewApi() (chain.ChainAPI, error) {
 
 	// srcAddress := "btp://0x5b9a77.icon/cx7db813639e4b3be5f66a05addbbbea7958ba5247"
 	// dstAddress := "btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91"
-	srcEndpoint := "http://localhost:9080/api/v3/default"
+	srcEndpoint := "http://localhost:9080/api/v3/icon"
 
 	addrToName := map[chain.ContractName]string{
-		chain.BTSIcon:  "cxacab68cc4074b48c3c1b0805693404c9433bc7fe",
-		chain.TICXIcon: "cx3810427f5fd2af3af9fb29ab5c59696904e170cb", //irc2
+		chain.BTSIcon:  "cxf9a4556e7049bf81bf4fb3ffb4f5c23691d3aef6",
+		chain.TICXIcon: "cxc39fce2d84ad7a49c07f967f08341900023f1566", //irc2
 	}
 
 	l := log.New()
 	log.SetGlobalLogger(l)
-	networkID := "0x5b9a77"
+	networkID := "0xdf6463"
 	return icon.NewApi(l, &chain.ChainConfig{Name: chain.ICON, URL: srcEndpoint, ConftractAddresses: addrToName, NetworkID: networkID})
 }
 
 func TestTransferIntraChain(t *testing.T) {
-	godKeyPair, err := getKeyPairFromFile("../../../../devnet/docker/icon-hmny/src/icon.god.wallet.json", "gochain")
+	godKeyPair, err := getKeyPairFromFile("../../icon.god.wallet.json", "d7b864bc6b02cc30")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -81,7 +81,7 @@ func TestTransferIntraChain(t *testing.T) {
 	demoKeyPair := [][2]string{{"f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5", "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"}}
 
 	amount := new(big.Int)
-	amount.SetString("10000000000000000", 10)
+	amount.SetString("100000000000000000", 10)
 	t.Logf("Demo KeyPair %v", demoKeyPair)
 
 	for _, coinName := range []string{"ICX", "TICX"} {
@@ -109,33 +109,36 @@ func TestTransferIntraChain(t *testing.T) {
 }
 
 func TestGetCoinBalance(t *testing.T) {
-	demoKeyPair := [][2]string{{"f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5", "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"}}
-	showBalance(demoKeyPair[0])
+	demoKeyPair := [][2]string{{"f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5", "btp://0xdf6463.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"}}
+	if err := showBalance(demoKeyPair[0]); err != nil {
+		t.Fatalf(" %+v", err)
+	}
+
 }
 
-func TestTransferCrossChain(t *testing.T) {
+func TestTransferInterChain(t *testing.T) {
 	senderKey := "f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5"
-	senderAddress := "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
-	rxAddress := "btp://0x6357d2e0.hmny/0x8Fc668275b4fA032342eA3039653D841f069a83b"
+	senderAddress := "btp://0xdf6463.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
+	rxAddress := "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
 	api, err := getNewApi()
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
-	if val, err := api.GetCoinBalance("ICX", senderAddress); err != nil {
+	if val, err := api.GetCoinBalance("TICX", senderAddress); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Logf("Initial Balance %v", val.String())
 	}
 
 	amount := new(big.Int)
-	amount.SetString("1000000000000000000", 10)
-	// txnHash, err := api.Approve("TICX", senderKey, *amount)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+	amount.SetString("10000000000000000", 10)
+	_, err = api.Approve("TICX", senderKey, *amount)
+	if err != nil {
+		t.Fatal(err)
+	}
 	time.Sleep(5 * time.Second)
-	txnHash, err := api.Transfer("ICX", senderKey, rxAddress, *amount)
+	txnHash, err := api.Transfer("TICX", senderKey, rxAddress, *amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +153,7 @@ func TestTransferCrossChain(t *testing.T) {
 		t.Logf("Log %+v and Seq %v", lin, seq)
 	}
 	time.Sleep(5 * time.Second)
-	if val, err := api.GetCoinBalance("ICX", senderAddress); err != nil {
+	if val, err := api.GetCoinBalance("TICX", senderAddress); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Logf("Final Balance %v", val.String())
@@ -184,7 +187,7 @@ func showBalance(demoKeyPair [2]string) error {
 	if err != nil {
 		return err
 	}
-	for _, coinName := range []string{"ICX", "ONE", "TICX", "TONE"} {
+	for _, coinName := range []string{"ICX", "TICX", "BNB", "TBNB"} {
 		res, err := api.GetCoinBalance(coinName, demoKeyPair[1])
 		if err != nil {
 			return err
