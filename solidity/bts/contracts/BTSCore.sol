@@ -171,7 +171,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         uint256 _fixedFee
     ) external override onlyOwner {
         require(_feeNumerator <= FEE_DENOMINATOR, "InvalidSetting");
-        require(coins[_name] != address(0), "TokenNotExists");
+        require(coins[_name] != address(0) || _name.compareTo(nativeCoinName), "TokenNotExists");
         coinDetails[_name].feeNumerator = _feeNumerator;
         coinDetails[_name].fixedFee = _fixedFee;
     }
