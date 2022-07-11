@@ -11,16 +11,20 @@ type ChainType string
 const (
 	ICON ChainType = "ICON"
 	HMNY ChainType = "HMNY"
+	BSC  ChainType = "BSC"
 )
 
 type ContractName string
 
 const (
+	TBNBBsc          ContractName = "TBNBBsc"
 	TONEHmny         ContractName = "TONEHmny"
 	TICXIcon         ContractName = "TICXIcon"
 	BTSIcon          ContractName = "BTSIcon"
 	BTSCoreHmny      ContractName = "BTSCoreHmny"
 	BTSPeripheryHmny ContractName = "BTSPeripheryHmny"
+	BTSCoreBsc       ContractName = "BTSCoreBsc"
+	BTSPeripheryBsc  ContractName = "BTSPeripheryBsc"
 )
 
 type EventLogType string

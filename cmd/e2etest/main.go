@@ -64,12 +64,12 @@ func main() {
 					}(coinName)
 					time.Sleep(time.Second * 5)
 				}
-			} else if fts.SrcChain == chain.HMNY {
+			} else if fts.SrcChain == chain.BSC {
 				for _, coinName := range fts.CoinNames {
 					go func(coinName string) {
-						script := executor.MonitorTransferWithApproveFromHMNY
-						if coinName == "ONE" {
-							script = executor.MonitorTransferWithoutApproveFromHMNY
+						script := executor.MonitorTransferWithApproveFromBSC
+						if coinName == "BNB" {
+							script = executor.MonitorTransferWithoutApproveFromBSC
 						}
 						err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, coinName, fundAmount, script)
 						if err != nil {
@@ -97,7 +97,7 @@ func main() {
 			for cn := range addrsPerChain {
 				cns = append(cns, cn)
 			}
-			allCoins := []string{"ICX", "TICX", "ONE", "TONE"}
+			allCoins := []string{"ICX", "TICX", "BNB", "TBNB"}
 			log.Error("Run Jobs")
 			for j := 0; j < int(testCfg.StressTest.JobsCount); j++ {
 				rand.Seed(time.Now().UnixNano())
@@ -106,13 +106,13 @@ func main() {
 					coin := allCoins[rand.Intn(len(allCoins))]
 
 					script := executor.StressTransferWithApprove
-					if coin == "ICX" && srcChainType == chain.ICON || coin == "ONE" && srcChainType == chain.HMNY {
+					if coin == "ICX" && srcChainType == chain.ICON || coin == "BNB" && srcChainType == chain.BSC {
 						script = executor.StressTransferWithoutApprove
 					}
 					srcAddr := addrsPerChain[srcChainType][rand.Intn(len(addrsPerChain[srcChainType]))]
 					dstAddr := addrsPerChain[dstChainType][rand.Intn(len(addrsPerChain[dstChainType]))]
 					if err := ex.ExecuteOnAddr(ctx, srcChainType, dstChainType, coin, srcAddr, dstAddr, script); err != nil {
-						log.Errorf("%+v", err)
+						log.Errorf("%v", err)
 					}
 				}()
 				time.Sleep(time.Second * 5)

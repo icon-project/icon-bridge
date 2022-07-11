@@ -1,23 +1,23 @@
 {
     "flowTest":{
-        "disable":false,
+        "disable":true,
         "chains": [{
-            "srcChain":"ICON",
-            "dstChain":"HMNY",
-            "coins":["ICX", "ONE"]
+            "srcChain":"BSC",
+            "dstChain":"ICON",
+            "coins":["BNB", "TBNB", "ICX", "TICX"]
         },
         {
-            "srcChain":"HMNY",
-            "dstChain":"ICON",
-            "coins":["ICX", "TICX", "TONE"]
+            "srcChain":"ICON",
+            "dstChain":"BSC",
+            "coins":["TBNB", "TICX"]
         }]
     },
     "stressTest": {
         "disable":false,
         "addresses":{
             "ICON":2,
-            "HMNY":2
+            "BSC":2
         },
-        "jobs":7
+        "jobs":5
     }
 }
