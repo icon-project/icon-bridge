@@ -18,7 +18,7 @@ var TransferWithoutApproveFromICON Script = Script{
 	Description: "Transfer Fixed Amount of coin without approve",
 	Callback: func(ctx context.Context, args *args) error {
 		amt := new(big.Int)
-		amt.SetString("2000000000000000000", 10)
+		amt.SetString("1000000000000000000", 10)
 		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
@@ -28,7 +28,7 @@ var TransferWithoutApproveFromICON Script = Script{
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
 		if initSrcBalance.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 2000000000000000000. Expected greater.", initSrcBalance.String())
+			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		hash, err := args.src.Transfer(args.coinName, args.srcKey, args.dstAddr, *amt)
 		if err != nil {
@@ -118,7 +118,7 @@ var TransferWithApproveFromICON Script = Script{
 	Description: "Transfer Fixed Amount of coin with approve",
 	Callback: func(ctx context.Context, args *args) error {
 		amt := new(big.Int)
-		amt.SetString("2000000000000000000", 10)
+		amt.SetString("1000000000000000000", 10)
 		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
@@ -128,7 +128,7 @@ var TransferWithApproveFromICON Script = Script{
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
 		if initSrcBalance.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 2000000000000000000. Expected greater.", initSrcBalance.String())
+			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		if approveHash, err := args.src.Approve(args.coinName, args.srcKey, *amt); err != nil {
 			return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
@@ -217,12 +217,12 @@ var TransferWithApproveFromICON Script = Script{
 	},
 }
 
-var TransferWithoutApproveFromHMNY Script = Script{
-	Name:        "TransferWithoutApproveFromHMNY",
+var TransferWithoutApproveFromBSC Script = Script{
+	Name:        "TransferWithoutApproveFromBSC",
 	Description: "Transfer Fixed Amount of coin without approve",
 	Callback: func(ctx context.Context, args *args) error {
 		amt := new(big.Int)
-		amt.SetString("2000000000000000000", 10)
+		amt.SetString("1000000000000000000", 10)
 		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
@@ -232,7 +232,7 @@ var TransferWithoutApproveFromHMNY Script = Script{
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
 		if initSrcBalance.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 2000000000000000000. Expected greater.", initSrcBalance.String())
+			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		hash, err := args.src.Transfer(args.coinName, args.srcKey, args.dstAddr, *amt)
 		if err != nil {
@@ -312,12 +312,12 @@ var TransferWithoutApproveFromHMNY Script = Script{
 	},
 }
 
-var TransferWithApproveFromHMNY Script = Script{
-	Name:        "TransferWithApproveFromHMNY",
+var TransferWithApproveFromBSC Script = Script{
+	Name:        "TransferWithApproveFromBSC",
 	Description: "Transfer Fixed Amount of coin with approve",
 	Callback: func(ctx context.Context, args *args) error {
 		amt := new(big.Int)
-		amt.SetString("2000000000000000000", 10)
+		amt.SetString("1000000000000000000", 10)
 		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
@@ -327,7 +327,7 @@ var TransferWithApproveFromHMNY Script = Script{
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
 		if initSrcBalance.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 2000000000000000000. Expected greater.", initSrcBalance.String())
+			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		if approveHash, err := args.src.Approve(args.coinName, args.srcKey, *amt); err != nil {
 			return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
@@ -415,7 +415,7 @@ var MonitorTransferWithoutApproveFromICON Script = Script{
 	Description: "Transfer Fixed Amount of coin without approve and monitor eventlogs TransferReceived and TransferEnd",
 	Callback: func(ctx context.Context, args *args) error {
 		amt := new(big.Int)
-		amt.SetString("2000000000000000000", 10)
+		amt.SetString("1000000000000000000", 10)
 		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
@@ -425,7 +425,7 @@ var MonitorTransferWithoutApproveFromICON Script = Script{
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
 		if initSrcBalance.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 2000000000000000000. Expected greater.", initSrcBalance.String())
+			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		hash, err := args.src.Transfer(args.coinName, args.srcKey, args.dstAddr, *amt)
 		if err != nil {
@@ -542,7 +542,7 @@ var MonitorTransferWithApproveFromICON Script = Script{
 	Description: "Transfer Fixed Amount of coin with approve and monitor eventlogs TransferReceived and TransferEnd",
 	Callback: func(ctx context.Context, args *args) error {
 		amt := new(big.Int)
-		amt.SetString("2000000000000000000", 10)
+		amt.SetString("1000000000000000000", 10)
 		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
@@ -552,7 +552,7 @@ var MonitorTransferWithApproveFromICON Script = Script{
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
 		if initSrcBalance.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 2000000000000000000. Expected greater.", initSrcBalance.String())
+			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		if approveHash, err := args.src.Approve(args.coinName, args.srcKey, *amt); err != nil {
 			return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
@@ -667,12 +667,12 @@ var MonitorTransferWithApproveFromICON Script = Script{
 	},
 }
 
-var MonitorTransferWithoutApproveFromHMNY Script = Script{
-	Name:        "MonitorTransferWithoutApproveFromHMNY",
+var MonitorTransferWithoutApproveFromBSC Script = Script{
+	Name:        "MonitorTransferWithoutApproveFromBSC",
 	Description: "Transfer Fixed Amount of coin without approve and monitor eventlogs TransferReceived and TransferEnd",
 	Callback: func(ctx context.Context, args *args) error {
 		amt := new(big.Int)
-		amt.SetString("2000000000000000000", 10)
+		amt.SetString("1000000000000000000", 10)
 		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
@@ -682,7 +682,7 @@ var MonitorTransferWithoutApproveFromHMNY Script = Script{
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
 		if initSrcBalance.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 2000000000000000000. Expected greater.", initSrcBalance.String())
+			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		hash, err := args.src.Transfer(args.coinName, args.srcKey, args.dstAddr, *amt)
 		if err != nil {
@@ -790,12 +790,12 @@ var MonitorTransferWithoutApproveFromHMNY Script = Script{
 	},
 }
 
-var MonitorTransferWithApproveFromHMNY Script = Script{
-	Name:        "MonitorTransferWithApproveFromHMNY",
+var MonitorTransferWithApproveFromBSC Script = Script{
+	Name:        "MonitorTransferWithApproveFromBSC",
 	Description: "Transfer Fixed Amount of coin with approve and monitor eventlogs TransferReceived and TransferEnd",
 	Callback: func(ctx context.Context, args *args) error {
 		amt := new(big.Int)
-		amt.SetString("2000000000000000000", 10)
+		amt.SetString("1000000000000000000", 10)
 		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
@@ -805,7 +805,7 @@ var MonitorTransferWithApproveFromHMNY Script = Script{
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
 		if initSrcBalance.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 2000000000000000000. Expected greater.", initSrcBalance.String())
+			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		if approveHash, err := args.src.Approve(args.coinName, args.srcKey, *amt); err != nil {
 			return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
@@ -921,13 +921,13 @@ var StressTransferWithoutApprove Script = Script{
 	Description: "Transfer Fixed Amount of coin without approve and monitor eventlogs TransferReceived and TransferEnd",
 	Callback: func(ctx context.Context, args *args) error {
 		amt := new(big.Int)
-		amt.SetString("2000000000000000000", 10)
+		amt.SetString("1000000000000000000", 10)
 		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
 		if initSrcBalance.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 2000000000000000000. Expected greater.", initSrcBalance.String())
+			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		hash, err := args.src.Transfer(args.coinName, args.srcKey, args.dstAddr, *amt)
 		if err != nil {
@@ -949,7 +949,7 @@ var StressTransferWithoutApprove Script = Script{
 			} else if status != 1 {
 				return errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Failure %+v Hash %v", status, iconTxResult.Failure, hash)
 			}
-		} else if args.src.GetChainType() == chain.HMNY {
+		} else if args.src.GetChainType() == chain.BSC {
 			txResult, ok := res.(*ethTypes.Receipt)
 			if !ok {
 				return fmt.Errorf("TransactionResult Expected Type *ethtypes.Receipt Got Type %T Hash %v", res, hash)
@@ -1036,13 +1036,13 @@ var StressTransferWithApprove Script = Script{
 	Description: "Transfer Fixed Amount of coin with approve and monitor eventlogs TransferReceived and TransferEnd",
 	Callback: func(ctx context.Context, args *args) error {
 		amt := new(big.Int)
-		amt.SetString("2000000000000000000", 10)
+		amt.SetString("1000000000000000000", 10)
 		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
 		if initSrcBalance.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 2000000000000000000. Expected greater.", initSrcBalance.String())
+			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		if approveHash, err := args.src.Approve(args.coinName, args.srcKey, *amt); err != nil {
 			return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
@@ -1067,7 +1067,7 @@ var StressTransferWithApprove Script = Script{
 			} else if status != 1 {
 				return errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Failure %+v Hash %v", status, iconTxResult.Failure, hash)
 			}
-		} else if args.src.GetChainType() == chain.HMNY {
+		} else if args.src.GetChainType() == chain.BSC {
 			txResult, ok := res.(*ethTypes.Receipt)
 			if !ok {
 				return fmt.Errorf("TransactionResult Expected Type *ethtypes.Receipt Got Type %T Hash %v", res, hash)
