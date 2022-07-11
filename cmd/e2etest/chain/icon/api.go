@@ -100,7 +100,6 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 					}
 
 					el := &chain.EventLogInfo{ContractAddress: common.NewAddress(el.Addr).String(), EventType: evtType, EventLog: res}
-
 					if r.fd.Match(el) { //el.IDs is updated by match if matched
 						//r.Log.Infof("Matched %+v", el)
 						r.sinkChan <- el
@@ -180,7 +179,7 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (interface{}, [
 }
 
 func (r *api) Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error) {
-	if coinName == "ONE" || coinName == "TONE" {
+	if coinName == "BNB" || coinName == "TBNB" {
 		txnHash, _, err = r.requester.approveCrossNativeCoin(coinName, ownerKey, amount)
 	} else if coinName == "TICX" {
 		txnHash, _, err = r.requester.approveToken(coinName, ownerKey, amount)
