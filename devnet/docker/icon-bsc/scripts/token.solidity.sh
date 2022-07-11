@@ -109,6 +109,14 @@ bsc_register_tbnb() {
   echo "$tx" >$CONFIG_DIR/tx/register.tbnb.bsc
 }
 
+get_coinID_tbnb() {
+  echo "getCoinID TBNB"
+  cd $CONTRACTS_DIR/solidity/bts
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+    --method coinId --coinName "TBNB")
+  echo "$tx" >$CONFIG_DIR/tx/coinID.tbnb
+}
+
 bsc_register_ticx() {
   local btp_bts_fee_numerator=100
   local btp_bts_fixed_fee=5000
