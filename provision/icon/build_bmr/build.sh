@@ -10,7 +10,7 @@ docker_registry="$docker_host"
 bmr_dir=$PWD
 bmr_tmp_dir="$bmr_dir/_bmr"
 bmr_src_dir="$bmr_dir/res"
-root_dir="$bmr_dir/../../.."
+root_dir="$bmr_dir/../.."
 
 function build_images() {
     image="${1:-}"
