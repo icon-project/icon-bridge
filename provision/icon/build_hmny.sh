@@ -12,10 +12,6 @@ hmny_tmp_dir="$hmny_dir/_hmny"
 hmny_src_dir="$hmny_dir/res"
 root_dir="$hmny_dir/../.."
 
-function repeat() {
-    for i in $(seq 1 $2); do echo -n "$1"; done
-}
-
 function build_images() {
 
     image="${1:-}"
