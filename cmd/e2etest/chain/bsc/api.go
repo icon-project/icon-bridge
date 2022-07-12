@@ -15,6 +15,11 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
+const (
+	NativeCoinName = "BNB"
+	TokenName      = "TBNB"
+)
+
 func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 	if len(cfg.URL) == 0 {
 		return nil, errors.New("empty urls")
@@ -125,7 +130,7 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*big.Int, error) {
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-	if coinName == "BNB" {
+	if coinName == NativeCoinName {
 		return r.requester.getBscBalance(address)
 	}
 	return r.requester.getWrappedCoinBalance(coinName, address)
@@ -142,18 +147,18 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.
 		recepientAddress = splts[len(splts)-1]
 	}
 	if within {
-		if coinName == "BNB" {
+		if coinName == NativeCoinName {
 			txnHash, err = r.requester.transferNativeIntraChain(senderKey, recepientAddress, amount)
-		} else if coinName == "TBNB" {
+		} else if coinName == TokenName {
 			txnHash, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount)
 		} else {
 			err = fmt.Errorf("IntraChain transfers are supported for coins ONE and TONE only")
 		}
 	} else {
-		if coinName == "BNB" {
+		if coinName == NativeCoinName {
 			txnHash, err = r.requester.transferNativeCrossChain(senderKey, recepientAddress, amount)
 		} else { // TBNB,ICX.TICX
-			txnHash, _, err = r.requester.transferWrappedCrossChain(coinName, senderKey, recepientAddress, amount)
+			txnHash, err = r.requester.transferWrappedCrossChain(coinName, senderKey, recepientAddress, amount)
 		}
 	}
 
@@ -161,14 +166,14 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.
 }
 
 func (r *api) Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error) {
-	txnHash, _, err = r.requester.approveCoin(coinName, ownerKey, amount)
+	txnHash, err = r.requester.approveCoin(coinName, ownerKey, amount)
 	return
 }
 
-func (r *api) WaitForTxnResult(ctx context.Context, hash string) (interface{}, []*chain.EventLogInfo, error) {
+func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
 	txRes, err := r.requester.waitForResults(ctx, ethCommon.HexToHash(hash))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "waitForResults ")
+		return nil, errors.Wrap(err, "waitForResults ")
 	}
 	plogs := []*chain.EventLogInfo{}
 	for _, v := range txRes.Logs {
@@ -181,7 +186,7 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (interface{}, [
 		}
 		plogs = append(plogs, &chain.EventLogInfo{ContractAddress: v.Address.String(), EventType: eventType, EventLog: decodedLog})
 	}
-	return txRes, plogs, nil
+	return &chain.TxnResult{StatusCode: int(txRes.Status), ElInfo: plogs, Raw: txRes}, nil
 }
 
 func (r *api) GetBTPAddress(addr string) string {
@@ -189,8 +194,12 @@ func (r *api) GetBTPAddress(addr string) string {
 	return fullAddr
 }
 
-func (r *api) GetNativeCoin() string {
-	return "BNB"
+func (r *api) NativeCoinName() string {
+	return NativeCoinName
+}
+
+func (r *api) TokenName() string {
+	return TokenName
 }
 
 func (r *api) GetKeyPairs(num int) ([][2]string, error) {

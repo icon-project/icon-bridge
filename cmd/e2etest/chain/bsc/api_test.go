@@ -93,11 +93,11 @@ func TestTransferInterChain(t *testing.T) {
 	}
 	amt := new(big.Int)
 	amt.SetString("1000000000000000", 10)
-	_, _, err = rpi.approveCoin("ICX", senderKey, *amt)
+	_, err = rpi.approveCoin("ICX", senderKey, *amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	hash, _, err := rpi.transferWrappedCrossChain("ICX", senderKey, recepientAddress, *amt)
+	hash, err := rpi.transferWrappedCrossChain("ICX", senderKey, recepientAddress, *amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

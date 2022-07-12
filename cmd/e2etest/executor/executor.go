@@ -13,13 +13,11 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/bsc"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/icon"
-	cicon "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"
 )
@@ -264,11 +262,15 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	}
 
 	amountPerCoin := map[string]*big.Int{coinName: amount}
-	if src.GetNativeCoin() != coinName { // Add native coin to cut gas fees
-		amountPerCoin[src.GetNativeCoin()] = amount
+	if src.NativeCoinName() != coinName { // Add native coin to cut gas fees
+		amountPerCoin[src.NativeCoinName()] = amount
 	}
 	// Funding accounts
-	nativeCoinsPerChain := map[string]chain.ChainType{"ICX": chain.ICON, "TICX": chain.ICON, "BNB": chain.BSC, "TBNB": chain.BSC, "ONE": chain.HMNY, "TONE": chain.HMNY}
+	nativeCoinsPerChain := map[string]chain.ChainType{}
+	for cName, cl := range ex.clientsPerChain {
+		nativeCoinsPerChain[cl.NativeCoinName()] = cName
+		nativeCoinsPerChain[cl.TokenName()] = cName
+	}
 	for coinName, amt := range amountPerCoin {
 		if chainType, ok := nativeCoinsPerChain[coinName]; !ok {
 			return fmt.Errorf("Unexpected coinName %v", coinName)
@@ -283,9 +285,10 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 			}
 			if err := ex.fund(chainClient, chainGodKey[PRIVKEYPOS], srcAddress, coinName, amt); err != nil {
 				return errors.Wrapf(err, "Fund Dst: %v %v", dstChainName, srcAddress)
-			} else {
-				ex.log.Infof("Chain %v Funded amount %v %v to Src Chain %v Addr %v", chainType, amt, coinName, srcChainName, srcAddress)
 			}
+			// else {
+			// 	ex.log.Infof("Chain %v Funded amount %v %v to Src Chain %v Addr %v", chainType, amt, coinName, srcChainName, srcAddress)
+			// }
 		}
 	}
 
@@ -304,7 +307,7 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 }
 
 func (ex *executor) fund(api chain.ChainAPI, senderKey string, recepientAddr string, coin string, amount *big.Int) error {
-	if api.GetNativeCoin() != coin {
+	if api.NativeCoinName() != coin {
 		if _, err := api.Approve(coin, senderKey, *amount); err != nil {
 			return errors.Wrapf(err, "Approve(%v,%v,%v)", coin, senderKey, amount.String())
 		}
@@ -312,26 +315,11 @@ func (ex *executor) fund(api chain.ChainAPI, senderKey string, recepientAddr str
 	if hash, err := api.Transfer(coin, senderKey, recepientAddr, *amount); err != nil {
 		return errors.Wrapf(err, "Transfer(%v,%v,%v,%v)", coin, senderKey, recepientAddr, amount.String())
 	} else {
-		if res, _, err := api.WaitForTxnResult(context.TODO(), hash); err != nil {
+		if res, err := api.WaitForTxnResult(context.TODO(), hash); err != nil {
 			return errors.Wrapf(err, "WaitForTxnResult %v %v", coin, hash)
 		} else {
-			if api.GetChainType() == chain.BSC {
-				txResult, ok := res.(*ethTypes.Receipt)
-				if !ok {
-					return fmt.Errorf("TransactionResult Expected Type *ethtypes.Receipt Got Type %T Hash %v", res, hash)
-				} else if ok && txResult.Status != 1 {
-					return errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", txResult.Status, hash)
-				}
-			} else if api.GetChainType() == chain.ICON {
-				iconTxResult, ok := res.(*cicon.TransactionResult)
-				if !ok {
-					return fmt.Errorf("TransactionResult Expected Type *icon.TransactionResult Got Type %T Hash %v", res, hash)
-				}
-				if status, err := iconTxResult.Status.Int(); err != nil {
-					return errors.Wrapf(err, "Transaction Result; Error: %v Hash %v", err, hash)
-				} else if status != 1 {
-					return errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Failure %+v Hash %v", status, iconTxResult.Failure, hash)
-				}
+			if res.StatusCode != 1 {
+				return errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
 			}
 		}
 	}
@@ -343,7 +331,12 @@ func (ex *executor) GetFundedAddresses(addressMap map[chain.ChainType]uint) (map
 	retMap := map[chain.ChainType][][2]string{}
 	fundAmount := new(big.Int)
 	fundAmount.SetString("100000000000000000000", 10)
-	nativeCoinsPerChain := map[string]chain.ChainType{"ICX": chain.ICON, "TICX": chain.ICON, "BNB": chain.BSC, "TBNB": chain.BSC}
+	nativeCoinsPerChain := map[string]chain.ChainType{}
+	for cName, cl := range ex.clientsPerChain {
+		nativeCoinsPerChain[cl.NativeCoinName()] = cName
+		nativeCoinsPerChain[cl.TokenName()] = cName
+	}
+	//TODO:
 	tokensToFund := []string{"ICX", "BNB", "TICX", "TBNB"}
 	for chainName, numAddr := range addressMap {
 		cl, ok := ex.clientsPerChain[chainName]
@@ -376,7 +369,7 @@ func (ex *executor) GetFundedAddresses(addressMap map[chain.ChainType]uint) (map
 						return nil, errors.Wrapf(err, "Fund %v Dst: %v", coinName, key[PUBKEYPOS])
 					} else {
 						time.Sleep(time.Second)
-						ex.log.Infof("Funded %v %v on chain %v by chain %v", fundAmount.String(), coinName, chainName, godCl.GetChainType())
+						//ex.log.Infof("Funded %v %v on chain %v by chain %v", fundAmount.String(), coinName, chainName, godCl.GetChainType())
 					}
 				}
 

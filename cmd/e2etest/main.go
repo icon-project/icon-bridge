@@ -50,34 +50,14 @@ func main() {
 		fundAmount := new(big.Int)
 		fundAmount.SetString("10000000000000000000", 10)
 		for _, fts := range testCfg.FlowTest.Chains {
-			if fts.SrcChain == chain.ICON {
-				for _, coinName := range fts.CoinNames {
-					go func(coinName string) {
-						script := executor.MonitorTransferWithApproveFromICON
-						if coinName == "ICX" {
-							script = executor.MonitorTransferWithoutApproveFromICON
-						}
-						err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, coinName, fundAmount, script)
-						if err != nil {
-							log.Errorf("%+v", err)
-						}
-					}(coinName)
-					time.Sleep(time.Second * 5)
-				}
-			} else if fts.SrcChain == chain.BSC {
-				for _, coinName := range fts.CoinNames {
-					go func(coinName string) {
-						script := executor.MonitorTransferWithApproveFromBSC
-						if coinName == "BNB" {
-							script = executor.MonitorTransferWithoutApproveFromBSC
-						}
-						err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, coinName, fundAmount, script)
-						if err != nil {
-							log.Errorf("%+v", err)
-						}
-					}(coinName)
-					time.Sleep(time.Second * 5)
-				}
+			for _, coinName := range fts.CoinNames {
+				go func(coinName string) {
+					err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, coinName, fundAmount, executor.Transfer)
+					if err != nil {
+						log.Errorf("%+v", err)
+					}
+				}(coinName)
+				time.Sleep(time.Second * 5)
 			}
 		}
 		<-ex.Done()
@@ -97,6 +77,7 @@ func main() {
 			for cn := range addrsPerChain {
 				cns = append(cns, cn)
 			}
+			// TODO
 			allCoins := []string{"ICX", "TICX", "BNB", "TBNB"}
 			log.Error("Run Jobs")
 			for j := 0; j < int(testCfg.StressTest.JobsCount); j++ {
@@ -104,14 +85,9 @@ func main() {
 				go func() {
 					srcChainType, dstChainType := getRandomChains(cns)
 					coin := allCoins[rand.Intn(len(allCoins))]
-
-					script := executor.StressTransferWithApprove
-					if coin == "ICX" && srcChainType == chain.ICON || coin == "BNB" && srcChainType == chain.BSC {
-						script = executor.StressTransferWithoutApprove
-					}
 					srcAddr := addrsPerChain[srcChainType][rand.Intn(len(addrsPerChain[srcChainType]))]
 					dstAddr := addrsPerChain[dstChainType][rand.Intn(len(addrsPerChain[dstChainType]))]
-					if err := ex.ExecuteOnAddr(ctx, srcChainType, dstChainType, coin, srcAddr, dstAddr, script); err != nil {
+					if err := ex.ExecuteOnAddr(ctx, srcChainType, dstChainType, coin, srcAddr, dstAddr, executor.StressTransfer); err != nil {
 						log.Errorf("%v", err)
 					}
 				}()

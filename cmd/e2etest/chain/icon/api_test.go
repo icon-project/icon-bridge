@@ -90,12 +90,12 @@ func TestTransferIntraChain(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Logf("Transaction Hash %v", txnHash)
-		res, elInfo, err := api.WaitForTxnResult(context.TODO(), txnHash)
+		res, err := api.WaitForTxnResult(context.TODO(), txnHash)
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Logf("Receipt %+v", res)
-		for _, lin := range elInfo {
+		for _, lin := range res.ElInfo {
 			t.Logf("Log %+v ", lin)
 		}
 
@@ -143,12 +143,12 @@ func TestTransferInterChain(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("Transaction Hash  %v", txnHash)
-	res, elInfo, err := api.WaitForTxnResult(context.TODO(), txnHash)
+	res, err := api.WaitForTxnResult(context.TODO(), txnHash)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("Receipt %+v", res)
-	for _, lin := range elInfo {
+	for _, lin := range res.ElInfo {
 		seq, _ := lin.GetSeq()
 		t.Logf("Log %+v and Seq %v", lin, seq)
 	}
