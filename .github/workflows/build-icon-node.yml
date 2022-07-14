@@ -1,0 +1,17 @@
+name: Build Icon Node
+on:
+  push:
+    paths:
+      - 'provision/icon/build'
+  workflow_call:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build icon image
+        working-directory: ./provision/icon/build
+        run: |
+             ./build.sh

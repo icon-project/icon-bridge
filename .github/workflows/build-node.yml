@@ -1,0 +1,60 @@
+name: Build Node
+on:
+  push:
+    paths:
+      - 'provision/*/build'
+  workflow_call:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - id: files
+        uses: jitterbit/get-changed-files@v1
+      - run: |
+              home_dir=$PWD
+              dirs=()
+              for file in ${{ steps.files.outputs.all }}; do
+                  dirs+=($(echo $file | grep -o -e 'provision/.*/build' || true))
+              done
+              dirs=($(printf "%s\n" "${dirs[@]}" | sort -u))
+              # pwd
+              echo ${dirs[@]}
+              dir_list=${dirs[@]}
+              if [ ! -z "$dir_list" ]
+              then
+                for dir in $dir_list; do
+                    cd $home_dir/$dir && ./build.sh
+                    docker tag localhost:5000/$DIR ${DOCKER_REPO}/$DIR:${SHORT_SHA}
+                    docker push ${DOCKER_REPO}/$DIR:${SHORT_SHA}
+                    cd 
+                done
+              else
+                echo "no build"
+              fi
+
+      # - name: Run step when a file has been deleted
+      #   if: contains(steps.files.outputs.all, 'bsc')
+      #   run: |
+      #     echo "Your bsc change has been deleted."
+
+      # - name: Build icon image
+      #   working-directory: ./provision/bsc/build
+      #   # if: Contains(steps.filepath.outputs.commitpath, 'Dockerfile') || Contains(steps.filepath.outputs.commitpath, 'install.sh') || Contains(steps.filepath.outputs.commitpath, 'setup.py')
+      #   run: |
+      #        ./build.sh
+
+    # uses: dwdraju/bridge-test/.github/workflows/build-icon-node.yml@e2eTestCI-test1
+
+  # build-bsc:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+
+  #     - name: Build bsc image
+  #       working-directory: ./provision/bsc/build
+  #       run: |
+  #            ./build.sh

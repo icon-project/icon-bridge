@@ -1,0 +1,16 @@
+name: File change action
+on:
+  push:
+    paths:
+      - 'provision/'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build image
+        working-directory: ./provision
+        run: |
+             ls -al

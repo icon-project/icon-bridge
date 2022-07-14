@@ -50,14 +50,14 @@ ENV PATH="/root/.gimme/versions/go${GIMME_GO_VERSION}.linux.${TARGETARCH:-amd64}
 
 RUN . ~/.bash_profile
 # RUN . ~/.bash_profile; \
-# 	go get -u golang.org/x/tools/cmd/goimports; \
-# 	go get -u golang.org/x/lint/golint ; \
-# 	go get -u github.com/rogpeppe/godef ; \
-# 	go get -u github.com/go-delve/delve/cmd/dlv; \
-# 	go get -u github.com/golang/mock/mockgen; \
-# 	go get -u github.com/stamblerre/gocode; \
-# 	go get -u golang.org/x/tools/...; \
-# 	go get -u honnef.co/go/tools/cmd/staticcheck/...
+#   go get -u golang.org/x/tools/cmd/goimports; \
+#   go get -u golang.org/x/lint/golint ; \
+#   go get -u github.com/rogpeppe/godef ; \
+#   go get -u github.com/go-delve/delve/cmd/dlv; \
+#   go get -u github.com/golang/mock/mockgen; \
+#   go get -u github.com/stamblerre/gocode; \
+#   go get -u golang.org/x/tools/...; \
+#   go get -u honnef.co/go/tools/cmd/staticcheck/...
 
 WORKDIR ${HMY_PATH}/harmony
 
