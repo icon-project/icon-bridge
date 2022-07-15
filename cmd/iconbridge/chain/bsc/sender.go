@@ -164,7 +164,6 @@ func (s *sender) Segment(
 		From:     msg.From,
 		Receipts: msg.Receipts,
 	}
-	var latestHeight uint64 = 1
 	for i, receipt := range msg.Receipts {
 		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events)
 		if err != nil {
@@ -185,17 +184,14 @@ func (s *sender) Segment(
 		}
 		msgSize = newMsgSize
 		rm.Receipts = append(rm.Receipts, rlpReceipt)
-		if receipt.Height > latestHeight {
-			latestHeight = receipt.Height
-		}
 	}
 	message, err := codec.RLP.MarshalToBytes(rm)
 	if err != nil {
 		return nil, nil, err
 	}
-	gasPrice, err := s.cl.GetMedianGasPriceForBlock(latestHeight)
+	gasPrice, err := s.cl.GetMedianGasPriceForBlock()
 	if err != nil || gasPrice.Int64() == 0 {
-		s.log.Errorf("GetMedianGasPriceForBlock Height:%v Err: %v", latestHeight, err)
+		s.log.Infof("GetMedianGasPriceForBlock Msg: %v. Using default value for gas price", err)
 		gasPrice = big.NewInt(defaultGasPrice)
 	}
 	boostedGasPrice, _ := (&big.Float{}).Mul(
