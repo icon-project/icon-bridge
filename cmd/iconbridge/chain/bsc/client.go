@@ -98,6 +98,33 @@ func (c *client) SendTransaction(tx *types.Transaction) error {
 	return nil
 }
 
+func (c *client) GetMedianGasPriceForBlock(height uint64) (gasPrice *big.Int, err error) {
+	gasPrice = big.NewInt(0)
+	header, err := c.ethClient().HeaderByNumber(context.TODO(), big.NewInt(int64(height)))
+	if err != nil {
+		return
+	}
+	txnCount, err := c.ethClient().TransactionCount(context.TODO(), header.Hash())
+	if err != nil {
+		return
+	}
+	if txnCount == 0 {
+		return big.NewInt(0), nil
+	}
+
+	txnF, err := c.ethClient().TransactionInBlock(context.TODO(), header.Hash(), 0)
+	if err != nil {
+		return nil, err
+	}
+	txnS, err := c.ethClient().TransactionInBlock(context.TODO(), header.Hash(), txnCount-1)
+	if err != nil {
+		return nil, err
+	}
+	gasPrice = gasPrice.Add(txnF.GasPrice(), txnS.GasPrice())
+	gasPrice.Div(gasPrice, big.NewInt(2))
+	return
+}
+
 func (c *client) CallContract(callData ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
