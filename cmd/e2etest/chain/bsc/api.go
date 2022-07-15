@@ -73,7 +73,6 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "GetBlockNumber ")
 	}
-	height = 100
 	r.log.Infof("Subscribe Start Height %v", height)
 	go func() {
 		lastHeight := height - 1
@@ -101,8 +100,6 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 							continue
 						}
 						nel := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
-						r.Log.Infof("First  %+v", nel)
-						r.Log.Infof("Second  %+v", nel.EventLog)
 						if r.fd.Match(nel) {
 							//r.log.Infof("Matched %+v", el)
 							r.sinkChan <- nel
