@@ -132,6 +132,7 @@ func (r *requestAPI) getWrappedCoinBalance(coinName string, addr string) (val *b
 		err = errors.Wrap(err, "btsc.GetBalanceOf ")
 		return
 	}
+	r.log.Infof("Locked %v Refundable %v Usable %v", v.LockedBalance, v.RefundableBalance, v.UsableBalance)
 	return v.UsableBalance, nil
 }
 
@@ -346,5 +347,39 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount big.Int) (ap
 		return
 	}
 	approveTxnHash = approveTxn.Hash().String()
+
 	return
+}
+
+func (r *requestAPI) getAllowance(coinName, ownerAddr string) (amount *big.Int, err error) {
+	erc := &erc20.Erc20tradable{}
+	res, ok := r.ercPerCoin.Load(coinName)
+	if !ok {
+		r.log.Debugf("Registering Input coinName %v ", coinName)
+		coinAddress, errs := r.btsc.CoinId(&bind.CallOpts{Pending: false, Context: nil}, coinName)
+		if err != nil {
+			err = errors.Wrap(errs, "btsc.CoinId ")
+			return
+		}
+		if erc, err = erc20.NewErc20tradable(coinAddress, r.ethCl); err != nil {
+			err = errors.Wrap(err, "NewErc20tradable")
+			return
+		}
+		r.ercPerCoin.Store(coinName, erc)
+		res = erc
+	} else if ok && res == nil {
+		err = fmt.Errorf("ercPerCoin includes coin %v but value is nil", coinName)
+		return
+	}
+	// ok && res != nil
+	if erc, ok = res.(*erc20.Erc20tradable); !ok {
+		err = fmt.Errorf("Expected type *erc20.Erc20tradable; Got %T", res)
+		return
+	}
+	btscaddr, ok := r.contractNameToAddress[chain.BTSCoreBsc]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTSCoreBsc)
+		return
+	}
+	return erc.Allowance(&bind.CallOpts{Pending: false, Context: context.TODO()}, common.HexToAddress(ownerAddr), common.HexToAddress(btscaddr))
 }
