@@ -86,7 +86,7 @@ func (r *receiver) newBTPMessage(v *BlockNotification) ([]*chain.Receipt, error)
 		rp.Height = BlockNumber
 		rp.Events = append(rp.Events, events...)
 		receipts = append(receipts, rp)
-		r.log.Debugf("event found for height & address:", rp.Height, srcContractAddress)
+		r.log.Debugf("event found for height %v & address: %v", rp.Height, srcContractAddress)
 	}
 
 	return receipts, nil
@@ -143,7 +143,7 @@ func (r *receiver) Subscribe(
 				for _, receipt := range receipts {
 					events := receipt.Events[:0]
 					for _, event := range receipt.Events {
-						r.log.Infof("seq no", event.Sequence, opts.Seq)
+						r.log.Infof("evt seq %v seq no %v", event.Sequence, opts.Seq)
 						switch {
 						case event.Sequence == opts.Seq:
 							events = append(events, event)
