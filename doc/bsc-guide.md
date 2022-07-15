@@ -41,7 +41,7 @@ This is sufficient for BTP purpose at this point, however for more details, plea
 ### Build Binance Smart Chain docker
 
 We will need a custom BSC build to include SHA3-256 FIPS 202 hash,
-please read instructions [here](https://github.com/icon-project/icon-bridge/tree/bridge_bsc/devnet)
+please read instructions [here](https://github.com/icon-project/icon-bridge/bmr/tree/bridge_bsc/devnet)
 for information on how to build bsc node docker image.
 
 ### Build BTP Relay
@@ -49,7 +49,7 @@ for information on how to build bsc node docker image.
 #### Get the code
 currently, lives in Web3 Labs branch
 ```
-git clone -b bridge_bsc https://github.com/icon-project/icon-bridge 
+git clone -b bridge_bsc https://github.com/icon-project/icon-bridge/bmr 
 ```
 
 #### Build executables
@@ -85,7 +85,7 @@ To start the network and run the provision
 
 Note:
  - A successfull build should have four docker conatiners (goloop, binancesmartchaincontainer, btp-icon, btp-bsc) started and running.
- - To try token transfer/ native token transfer examples on the btp network, please follow [token-transfer-guide.md](https://github.com/icon-project/icon-bridge/blob/bridge_bsc/doc/token-transfer-guide.md). Please wait for the entire provision to finish.
+ - To try token transfer/ native token transfer examples on the btp network, please follow [token-transfer-guide.md](https://github.com/icon-project/icon-bridge/bmr/blob/bridge_bsc/doc/token-transfer-guide.md). Please wait for the entire provision to finish.
 
 ### (Or) Method 2 (Manual step-by-step build)
 #### Build JavaScore Contracts
