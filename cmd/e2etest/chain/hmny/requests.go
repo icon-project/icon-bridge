@@ -316,3 +316,25 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount big.Int) (ap
 	approveTxnHash = approveTxn.Hash().String()
 	return
 }
+
+func (r *requestAPI) getAllowance(coinName, ownerAddr string) (amont *big.Int, err error) {
+	erc := &erc20.Erc20tradable{}
+	res, ok := r.ercPerCoin.Load(coinName)
+	if !ok {
+		err = fmt.Errorf("ercPerCoin does not includes coin %v", coinName)
+		return
+	} else if ok && res == nil {
+		err = fmt.Errorf("ercPerCoin includes coin %v but value is nil", coinName)
+		return
+	}
+	if erc, ok = res.(*erc20.Erc20tradable); !ok {
+		err = fmt.Errorf("Expected type *erc20.Erc20tradable; Got %T", res)
+		return
+	}
+	btscaddr, ok := r.contractNameToAddress[chain.BTSCoreHmny]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTSCoreHmny)
+		return
+	}
+	return erc.Allowance(&bind.CallOpts{Pending: false, Context: context.TODO()}, common.HexToAddress(ownerAddr), common.HexToAddress(btscaddr))
+}

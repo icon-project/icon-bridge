@@ -49,6 +49,7 @@ type SrcAPI interface {
 	GetChainType() ChainType
 	NativeCoinName() string
 	TokenName() string
+	GetAllowance(coinName, ownerAddr string) (amont *big.Int, err error)
 }
 
 type DstAPI interface {
@@ -78,6 +79,7 @@ type ChainAPI interface {
 	GetChainType() ChainType
 	NativeCoinName() string
 	TokenName() string
+	GetAllowance(coinName, ownerAddr string) (amont *big.Int, err error)
 }
 
 type ChainConfig struct {
