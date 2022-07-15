@@ -194,7 +194,7 @@ func (s *sender) Segment(
 		return nil, nil, err
 	}
 	gasPrice, err := s.cl.GetMedianGasPriceForBlock(latestHeight)
-	if err != nil {
+	if err != nil || gasPrice.Int64() == 0 {
 		s.log.Errorf("GetMedianGasPriceForBlock Height:%v Err: %v", latestHeight, err)
 		gasPrice = big.NewInt(defaultGasPrice)
 	}
