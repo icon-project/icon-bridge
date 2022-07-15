@@ -106,10 +106,10 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 								err = nil
 								continue
 							}
-							el := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
-							if r.fd.Match(el) {
+							nel := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
+							if r.fd.Match(nel) {
 								//r.log.Infof("Matched %+v", el)
-								r.sinkChan <- el
+								r.sinkChan <- nel
 							}
 						}
 					}
@@ -232,4 +232,8 @@ func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
 
 func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
+}
+
+func (r *api) GetAllowance(coinName, ownerAddr string) (amont *big.Int, err error) {
+	return r.requester.getAllowance(coinName, chain.BTPAddress(ownerAddr).ContractAddress())
 }

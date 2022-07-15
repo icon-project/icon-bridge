@@ -102,11 +102,10 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 						err = nil
 						continue
 					}
-
-					el := &chain.EventLogInfo{ContractAddress: common.NewAddress(el.Addr).String(), EventType: evtType, EventLog: res}
-					if r.fd.Match(el) { //el.IDs is updated by match if matched
+					nel := &chain.EventLogInfo{ContractAddress: common.NewAddress(el.Addr).String(), EventType: evtType, EventLog: res}
+					if r.fd.Match(nel) { //el.IDs is updated by match if matched
 						//r.Log.Infof("Matched %+v", el)
-						r.sinkChan <- el
+						r.sinkChan <- nel
 					}
 				}
 			}
@@ -189,6 +188,8 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 func (r *api) Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error) {
 	if coinName == TokenName {
 		txnHash, _, err = r.requester.approveToken(coinName, ownerKey, amount)
+	} else if coinName == NativeCoinName {
+		r.Log.Infof("No Handler for Approve Call on NativeCoin: %v, because not needed")
 	} else {
 		txnHash, _, err = r.requester.approveCrossNativeCoin(coinName, ownerKey, amount)
 	}
@@ -234,4 +235,13 @@ func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
 
 func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
+}
+
+func (r *api) GetAllowance(coinName, ownerAddr string) (amont *big.Int, err error) {
+	if coinName == NativeCoinName {
+		return big.NewInt(0), nil
+	} else if coinName == r.TokenName() {
+		return r.requester.getAllowanceForNativeTokens(coinName, chain.BTPAddress(ownerAddr).ContractAddress())
+	}
+	return r.requester.getAllowanceForWrappedCoins(coinName, chain.BTPAddress(ownerAddr).ContractAddress())
 }
