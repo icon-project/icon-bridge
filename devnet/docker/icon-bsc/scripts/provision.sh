@@ -13,7 +13,7 @@ provision() {
 
   if [ ! -f $ICONBRIDGE_CONFIG_DIR/provision ]; then
     echo "start provisioning..."
-    sleep 30
+    sleep 45
     echo "$GOLOOP_RPC_NID.icon" >net.btp.icon #0x240fa7.icon
     mkdir -p $ICONBRIDGE_CONFIG_DIR/tx
 
@@ -25,9 +25,10 @@ provision() {
     deploy_javascore_bsr
     deploy_javascore_bts
     deploy_javascore_irc2
+    deploy_javascore_eth
+    #deploy bsc
     deploy_solidity_bmc
     deploy_solidity_bts
-    #deploy bsc
 
 
     generate_addresses_json >$ICONBRIDGE_CONFIG_DIR/addresses.json
@@ -55,6 +56,7 @@ provision() {
     configure_javascore_register_bnb
     get_btp_icon_bnb
     configure_javascore_register_ticx
+    configure_javascore_register_eth
     configure_javascore_register_tbnb
     get_btp_icon_tbnb
 
@@ -67,6 +69,8 @@ provision() {
     get_coinID_icx
     bsc_register_tbnb
     get_coinID_tbnb
+    bsc_register_eth
+    get_coinID_eth
     bsc_register_ticx
     get_coinID_ticx
 

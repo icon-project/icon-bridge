@@ -14,6 +14,7 @@ deploy_javascore_bmc() {
   goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bmc.jar \
     --content_type application/java \
     --param _net=$(cat net.btp.icon) | jq -r . >tx.icon.bmc
+  sleep 2
   extract_scoreAddress tx.icon.bmc btp.icon.bmc
   echo "btp://$(cat net.btp.icon)/$(cat btp.icon.bmc)" >btp.icon.btp.address
   btp_icon_block_height=$(goloop_lastblock | jq -r .height)
@@ -51,6 +52,18 @@ deploy_javascore_irc2() {
     --param _initialSupply="0x186a0" \
     --param _decimals="0x12" | jq -r . >tx.icon.ticx
   extract_scoreAddress tx.icon.ticx btp.icon.ticx
+}
+
+deploy_javascore_eth() {
+  echo "deploying javascore IRC2Token ETH"
+  cd $CONFIG_DIR
+  goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/irc2.jar \
+    --content_type application/java \
+    --param _name="ETH" \
+    --param _symbol="ETH" \
+    --param _initialSupply="0x186a0" \
+    --param _decimals="0x12" | jq -r . >tx.icon.eth
+  extract_scoreAddress tx.icon.eth btp.icon.eth
 }
 
 configure_javascore_add_bmc_owner() {
@@ -200,6 +213,23 @@ configure_javascore_register_ticx() {
     --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/register.coin.ticx
   ensure_txresult tx/register.coin.ticx
 }
+
+configure_javascore_register_eth() {
+  echo "Register ETH"
+  cd $CONFIG_DIR
+  local btp_bts_fee_numerator=100
+  local btp_bts_fixed_fee=5000
+  goloop rpc sendtx call --to $(cat btp.icon.bts) \
+    --method register \
+    --param _name=ETH \
+    --param _symbol=ETH \
+    --param _decimals=0x12 \
+    --param _addr=$(cat btp.icon.eth) \
+    --param _feeNumerator=$(decimal2Hex $btp_bts_fee_numerator) \
+    --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/register.coin.eth
+  ensure_txresult tx/register.coin.eth
+}
+
 
 configure_javascore_register_tbnb() {
   echo "Register TBNB"

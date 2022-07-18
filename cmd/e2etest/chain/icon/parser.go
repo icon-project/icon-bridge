@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"
@@ -79,16 +80,31 @@ func parseTransferStart(log *icon.EventLog) (*chain.TransferStartEvent, error) {
 	//logAddr := common.NewAddress(log.Addr).String()
 	var sn common.HexInt
 	sn.SetBytes(log.Data[1])
-	res := &[]chain.AssetTransferDetails{}
-	err := rlpDecodeHex(common.HexBytes(log.Data[2]).String(), res)
+
+	res := []AssetTxDetails{}
+	err := rlp.Decode(bytes.NewReader(log.Data[2]), &res)
 	if err != nil {
-		return nil, errors.Wrap(err, "rlpDecodeHex ")
+		fmt.Println(err)
+		return nil, errors.Wrapf(err, "rlp.Decode %v", err)
 	}
+
 	ts := &chain.TransferStartEvent{
 		From:   common.NewAddress(log.Indexed[1]).String(),
 		To:     string(log.Data[0]),
 		Sn:     big.NewInt(sn.Int64()),
-		Assets: *res,
+		Assets: []chain.AssetTransferDetails{},
+	}
+	for _, r := range res {
+		f := new(big.Int)
+		f.SetString(hexutil.Encode(r.Fee)[2:], 16)
+		v := new(big.Int)
+		v.SetString(hexutil.Encode(r.Value)[2:], 16)
+
+		ts.Assets = append(ts.Assets, chain.AssetTransferDetails{
+			Name:  r.Name,
+			Value: v,
+			Fee:   f,
+		})
 	}
 	return ts, nil
 }
@@ -126,6 +142,9 @@ func parseTransferEnd(log *icon.EventLog) (*chain.TransferEndEvent, error) {
 	var cd common.HexInt
 	cd.SetBytes(log.Data[1])
 
+	if len(log.Data[2]) > 0 {
+		fmt.Println("Parse End ", string(log.Data[2]))
+	}
 	te := &chain.TransferEndEvent{
 		From: common.NewAddress(log.Indexed[1]).String(),
 		Sn:   big.NewInt(sn.Int64()),
@@ -139,10 +158,10 @@ func parseTransferStartTxn(log *TxnEventLog) (*chain.TransferStartEvent, error) 
 		return nil, fmt.Errorf("Unexpected length of log.Data. Got %d. Expected 3", len(log.Data))
 	}
 	data := log.Data
-	res := &[]chain.AssetTransferDetails{}
-	err := rlpDecodeHex(data[len(data)-1], res)
+	res := []AssetTxDetails{}
+	err := rlpDecodeHex(data[len(data)-1], &res)
 	if err != nil {
-		return nil, errors.Wrap(err, "rlpDecodeHex ")
+		return nil, errors.Wrapf(err, "rlpDecodeHex %v", err)
 	}
 	sn := new(big.Int)
 	if strings.HasPrefix(data[1], "0x") {
@@ -153,7 +172,20 @@ func parseTransferStartTxn(log *TxnEventLog) (*chain.TransferStartEvent, error) 
 		From:   log.Indexed[1],
 		To:     data[0],
 		Sn:     sn,
-		Assets: *res,
+		Assets: []chain.AssetTransferDetails{},
+	}
+
+	for _, r := range res {
+		f := new(big.Int)
+		f.SetString(hexutil.Encode(r.Fee)[2:], 16)
+		v := new(big.Int)
+		v.SetString(hexutil.Encode(r.Value)[2:], 16)
+
+		ts.Assets = append(ts.Assets, chain.AssetTransferDetails{
+			Name:  r.Name,
+			Value: v,
+			Fee:   f,
+		})
 	}
 	return ts, nil
 }
@@ -206,4 +238,10 @@ func parseTransferEndTxn(log *TxnEventLog) (*chain.TransferEndEvent, error) {
 		Code: cd,
 	}
 	return te, nil
+}
+
+type AssetTxDetails struct {
+	Name  string
+	Value []byte
+	Fee   []byte
 }

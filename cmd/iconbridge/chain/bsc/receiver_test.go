@@ -30,7 +30,7 @@ func TestMedianGasPrice(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if val, err := cls.GetMedianGasPriceForBlock(25007); err != nil {
+	if val, err := cls.GetMedianGasPriceForBlock(); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Log(val.String())

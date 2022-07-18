@@ -17,9 +17,6 @@ const (
 type ContractName string
 
 const (
-	TBNBBsc          ContractName = "TBNBBsc"
-	TONEHmny         ContractName = "TONEHmny"
-	TICXIcon         ContractName = "TICXIcon"
 	BTSIcon          ContractName = "BTSIcon"
 	BTSCoreHmny      ContractName = "BTSCoreHmny"
 	BTSPeripheryHmny ContractName = "BTSPeripheryHmny"
@@ -60,8 +57,8 @@ type SrcAPI interface {
 	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	GetChainType() ChainType
-	NativeCoinName() string
-	NativeTokenName() string
+	NativeCoin() string
+	NativeTokens() []string
 }
 
 type DstAPI interface {
@@ -89,16 +86,18 @@ type ChainAPI interface {
 	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	GetChainType() ChainType
-	NativeCoinName() string
-	NativeTokenName() string
+	NativeCoin() string
+	NativeTokens() []string
 }
 
 type ChainConfig struct {
-	Name               ChainType               `json:"name"`
-	URL                string                  `json:"url"`
-	ConftractAddresses map[ContractName]string `json:"contract_addresses"`
-	GodWallet          GodWallet               `json:"god_wallet"`
-	NetworkID          string                  `json:"network_id"`
+	Name                 ChainType               `json:"name"`
+	URL                  string                  `json:"url"`
+	ContractAddresses    map[ContractName]string `json:"contract_addresses"`
+	NativeTokenAddresses map[string]string       `json:"native_token_addresses"`
+	GodWallet            GodWallet               `json:"god_wallet"`
+	NetworkID            string                  `json:"network_id"`
+	NativeCoin           string                  `json:"nativeCoin"`
 }
 
 type GodWallet struct {
@@ -162,7 +161,8 @@ type AssetDetails struct {
 }
 
 type TransferEndEvent struct {
-	From string
-	Sn   *big.Int
-	Code *big.Int
+	From     string
+	Sn       *big.Int
+	Code     *big.Int
+	Response string
 }

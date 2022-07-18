@@ -41,7 +41,7 @@ func TestTransferIntraChain(t *testing.T) {
 	amount := new(big.Int)
 	amount.SetString("10000000000000000", 10)
 
-	for _, coinName := range []string{"ICX", "TICX"} {
+	for _, coinName := range []string{"ETH"} {
 		txnHash, err := api.Transfer(coinName, GodKey, DemoSrcAddr, *amount)
 		if err != nil {
 			t.Fatal(err)
@@ -67,7 +67,7 @@ func TestTransferIntraChain(t *testing.T) {
 
 func TestApprove(t *testing.T) {
 	showBalance(DemoSrcAddr)
-	coin := "TICX"
+	coin := "ETH"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -92,7 +92,7 @@ func TestTransferInterChain(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
-	coin := "TICX"
+	coin := "ETH"
 	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
 		t.Fatal(err)
 	} else {
@@ -140,8 +140,9 @@ func showBalance(addr string) error {
 	if err != nil {
 		return err
 	}
-	for _, coinName := range []string{"ICX", "TICX", "BNB", "TBNB"} {
-		res, err := api.GetCoinBalance(coinName, addr)
+
+	for _, coinName := range []string{"ICX", "TICX", "ETH", "BNB", "TBNB"} {
+		res, err := api.GetCoinBalance(coinName, DemoSrcAddr)
 		if err != nil {
 			return err
 		}
@@ -201,13 +202,23 @@ func TestReceiver(t *testing.T) {
 func getNewApi() (chain.ChainAPI, error) {
 	srcEndpoint := "http://localhost:9080/api/v3/icon"
 	addrToName := map[chain.ContractName]string{
-		chain.BTSIcon:  "cxa003ac7b55a5fd0f563353769d63ae9d098fc7f9",
-		chain.TICXIcon: "cx6135bc6b649125603598103e006ad3079401ddd8", //irc2
+		chain.BTSIcon: "cx5c66ad109920b5902776e6c3eba5a296d28caff4",
+	}
+	coinMap := map[string]string{
+		"ETH":  "cxd99f97351744c0930b5086951ff0365ebfd3d003",
+		"TICX": "cxb82fff0e299b76952dacba39b80358312ef2ded3",
 	}
 	l := log.New()
 	log.SetGlobalLogger(l)
 	networkID := "0x613f17"
-	return icon.NewApi(l, &chain.ChainConfig{Name: chain.ICON, URL: srcEndpoint, ConftractAddresses: addrToName, NetworkID: networkID})
+	return icon.NewApi(l, &chain.ChainConfig{
+		Name:                 chain.ICON,
+		URL:                  srcEndpoint,
+		ContractAddresses:    addrToName,
+		NetworkID:            networkID,
+		NativeCoin:           "ICX",
+		NativeTokenAddresses: coinMap,
+	})
 }
 
 /*

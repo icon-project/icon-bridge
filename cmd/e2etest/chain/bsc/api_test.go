@@ -43,6 +43,7 @@ func TestTransferIntraChain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
+
 	for _, coin := range []string{"BNB", "TBNB"} {
 		amt := new(big.Int)
 		amt.SetString("1020000000000000000", 10)
@@ -98,7 +99,8 @@ func TestGetCoinBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	for _, coin := range []string{"BNB", "TBNB", "ICX", "TICX"} {
+
+	for _, coin := range []string{"TBNB", "BNB", "ETH", "ICX", "TICX"} {
 		res, err := rpi.GetCoinBalance(coin, DemoSrcAddr)
 		if err != nil {
 			t.Fatalf("%+v", err)
@@ -135,11 +137,22 @@ func getNewApi() (chain.ChainAPI, error) {
 	ctrMap := map[chain.ContractName]string{
 		chain.BTSCoreBsc:      "0x71a1520bBb7e6072Bbf3682A60c73D63b693690A",
 		chain.BTSPeripheryBsc: "0x3abC8DFF0C95B8982399daCf6ED5bD7b94a40068",
-		chain.TBNBBsc:         "0xBA34F3c6893b12fF4115ACf1b4712C6E2783aD83",
+		// chain.TBNBBsc:         "0xBA34F3c6893b12fF4115ACf1b4712C6E2783aD83",
+	}
+	coinMap := map[string]string{
+		"ETH":  "0x81C0094F73123EeBd250Ab4ee1e8aA6e82A7cA6F",
+		"TBNB": "0xBA34F3c6893b12fF4115ACf1b4712C6E2783aD83",
 	}
 	l := log.New()
 	log.SetGlobalLogger(l)
-	rx, err := NewApi(l, &chain.ChainConfig{Name: chain.HMNY, URL: "http://localhost:8545", ConftractAddresses: ctrMap, NetworkID: "0x61.bsc"})
+	rx, err := NewApi(l, &chain.ChainConfig{
+		Name:                 chain.BSC,
+		URL:                  "http://localhost:8545",
+		ContractAddresses:    ctrMap,
+		NativeTokenAddresses: coinMap,
+		NativeCoin:           "BNB",
+		NetworkID:            "0x61.bsc",
+	})
 	if err != nil {
 		return nil, err
 	}

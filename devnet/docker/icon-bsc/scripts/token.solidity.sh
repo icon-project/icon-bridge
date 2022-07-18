@@ -101,8 +101,7 @@ bsc_register_tbnb() {
   echo "bts: Register TBNB: "
   local btp_bts_fee_numerator=100
   local btp_bts_fixed_fee=5000
-  local addr=$(cat $CONFIG_DIR/btp.bsc.tbnb)
-  echo "Registering tbnb"
+  local addr=$(cat $CONFIG_DIR/btp.bsc.tbnb) 
   cd $CONTRACTS_DIR/solidity/bts
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
     --method register --name "TBNB" --symbol "TBNB" --decimals 18 --addr $addr --feeNumerator $btp_bts_fee_numerator --fixedFee ${btp_bts_fixed_fee})
@@ -115,6 +114,25 @@ get_coinID_tbnb() {
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
     --method coinId --coinName "TBNB")
   echo "$tx" >$CONFIG_DIR/tx/coinID.tbnb
+}
+
+bsc_register_eth() {
+  echo "bts: Register ETH: "
+  local btp_bts_fee_numerator=100
+  local btp_bts_fixed_fee=5000
+  local addr=$(cat $CONFIG_DIR/btp.bsc.eth) 
+  cd $CONTRACTS_DIR/solidity/bts
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+    --method register --name "ETH" --symbol "ETH" --decimals 18 --addr $addr --feeNumerator $btp_bts_fee_numerator --fixedFee ${btp_bts_fixed_fee})
+  echo "$tx" >$CONFIG_DIR/tx/register.eth.bsc
+}
+
+get_coinID_eth() {
+  echo "getCoinID ETH"
+  cd $CONTRACTS_DIR/solidity/bts
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+    --method coinId --coinName "ETH")
+  echo "$tx" >$CONFIG_DIR/tx/coinID.eth
 }
 
 bsc_register_ticx() {
@@ -236,6 +254,8 @@ generate_metadata() {
     wait_for_file $CONFIG_DIR/btp.bsc.bts.periphery
     jq -r '.networks[] | .address' build/contracts/HRC20.json >$CONFIG_DIR/btp.bsc.tbnb
     wait_for_file $CONFIG_DIR/btp.bsc.tbnb
+    jq -r '.networks[] | .address' build/contracts/ERC20TKN.json >$CONFIG_DIR/btp.bsc.eth
+    wait_for_file $CONFIG_DIR/btp.bsc.eth
 
     echo "DONE."
     ;;

@@ -28,7 +28,7 @@ var Transfer Script = Script{
 		if initSrcBalance.Usable.Cmp(amt) == -1 {
 			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
-		if args.coinName != args.src.NativeCoinName() {
+		if args.coinName != args.src.NativeCoin() {
 			if approveHash, err := args.src.Approve(args.coinName, args.srcKey, *amt); err != nil {
 				return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
 			}
@@ -148,7 +148,7 @@ var StressTransfer Script = Script{
 		if initSrcBalance.Usable.Cmp(amt) == -1 {
 			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
-		if args.coinName != args.src.NativeCoinName() {
+		if args.coinName != args.src.NativeCoin() {
 			if approveHash, err := args.src.Approve(args.coinName, args.srcKey, *amt); err != nil {
 				return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
 			}

@@ -121,13 +121,8 @@ func (r *requestAPI) callContract(contractAddress string, args map[string]string
 	return res, nil
 }
 
-func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount big.Int) (txHash string, logs interface{}, err error) {
+func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount big.Int, caddr string) (txHash string, logs interface{}, err error) {
 	args := map[string]string{"_to": recepientAddress, "_value": intconv.FormatBigInt(&amount)}
-	caddr, ok := r.contractNameToAddress[chain.TICXIcon]
-	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.TICXIcon)
-		return
-	}
 	return r.transactWithContract(senderKey, caddr, *big.NewInt(0), args, "transfer", "call")
 }
 
@@ -201,7 +196,7 @@ func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, am
 	return
 }
 
-func (r *requestAPI) transferWrappedCrossChain(coinName, senderKey, recepientAddress string, amount big.Int) (string, interface{}, error) {
+func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddress string, amount big.Int) (string, interface{}, error) {
 	args := map[string]string{"_coinName": coinName, "_value": intconv.FormatBigInt(&amount), "_to": recepientAddress}
 	btsaddr, ok := r.contractNameToAddress[chain.BTSIcon]
 	if !ok {
@@ -210,17 +205,13 @@ func (r *requestAPI) transferWrappedCrossChain(coinName, senderKey, recepientAdd
 	return r.transactWithContract(senderKey, btsaddr, *big.NewInt(0), args, "transfer", "call")
 }
 
-func (r *requestAPI) approveToken(coinName, senderKey string, amount big.Int) (hash string, log interface{}, err error) {
+func (r *requestAPI) approveToken(coinName, senderKey string, amount big.Int, caddr string) (hash string, log interface{}, err error) {
 	btsAddr, ok := r.contractNameToAddress[chain.BTSIcon]
 	if !ok {
 		return "", nil, fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
 	}
-	ticxAddr, ok := r.contractNameToAddress[chain.TICXIcon]
-	if !ok {
-		return "", nil, fmt.Errorf("contractNameToAddress doesn't include name %v", chain.TICXIcon)
-	}
 	arg1 := map[string]string{"_to": btsAddr, "_value": intconv.FormatBigInt(&amount)}
-	return r.transactWithContract(senderKey, ticxAddr, *big.NewInt(0), arg1, "transfer", "call")
+	return r.transactWithContract(senderKey, caddr, *big.NewInt(0), arg1, "transfer", "call")
 }
 
 func (r *requestAPI) transferTokenCrossChain(coinName, senderKey, recepientAddress string, amount big.Int) (string, interface{}, error) {
@@ -295,19 +286,23 @@ func (r *requestAPI) reclaim() {
 	return
 }
 
-func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalance, err error) {
+func (r *requestAPI) getNativeCoinBalance(coinName, addr string) (bal *chain.CoinBalance, err error) {
+	zeroBalance := big.NewInt(0)
+	bal = &chain.CoinBalance{Total: zeroBalance, Usable: zeroBalance, Refundable: zeroBalance, Locked: zeroBalance, Approved: zeroBalance}
+	// Native
+	bal.Usable, err = r.cl.GetBalance(&icon.AddressParam{Address: icon.Address(addr)})
+	if err != nil {
+		return nil, errors.Wrapf(err, "%v", err)
+	}
+	bal.Total = bal.Usable
+	return
+
+}
+
+func (r *requestAPI) getCoinBalance(coinName, addr string, isToken bool) (bal *chain.CoinBalance, err error) {
 	zeroBalance := big.NewInt(0)
 	bal = &chain.CoinBalance{Total: zeroBalance, Usable: zeroBalance, Refundable: zeroBalance, Locked: zeroBalance, Approved: zeroBalance}
 
-	// Native
-	if coinName == NativeCoinName {
-		bal.Usable, err = r.cl.GetBalance(&icon.AddressParam{Address: icon.Address(addr)})
-		if err != nil {
-			return nil, errors.Wrapf(err, "%v", err)
-		}
-		bal.Total = bal.Usable
-		return
-	}
 	// Tokens ..
 	btsAddr, ok := r.contractNameToAddress[chain.BTSIcon]
 	if !ok {
@@ -380,7 +375,7 @@ func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalan
 	ircBalance := new(big.Int)
 	ircBalance.SetString(resStr[2:], 16)
 
-	if coinName == NativeToken {
+	if isToken {
 		bal.Approved = btsUsable
 		bal.Locked = btsLocked
 		bal.Refundable = btsRefundable

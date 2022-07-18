@@ -262,14 +262,14 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	}
 
 	amountPerCoin := map[string]*big.Int{coinName: amount}
-	if src.NativeCoinName() != coinName { // Add native coin to cut gas fees
-		amountPerCoin[src.NativeCoinName()] = amount
+	if src.NativeCoin() != coinName { // Add native coin to cut gas fees
+		amountPerCoin[src.NativeCoin()] = amount
 	}
 	// Funding accounts
 	nativeCoinsPerChain := map[string]chain.ChainType{}
 	for cName, cl := range ex.clientsPerChain {
-		nativeCoinsPerChain[cl.NativeCoinName()] = cName
-		nativeCoinsPerChain[cl.NativeTokenName()] = cName
+		nativeCoinsPerChain[cl.NativeCoin()] = cName
+		nativeCoinsPerChain[cl.TokenName()] = cName
 	}
 	for coinName, amt := range amountPerCoin {
 		if chainType, ok := nativeCoinsPerChain[coinName]; !ok {
@@ -307,7 +307,7 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 }
 
 func (ex *executor) fund(api chain.ChainAPI, senderKey string, recepientAddr string, coin string, amount *big.Int) error {
-	if api.NativeCoinName() != coin {
+	if api.NativeCoin() != coin {
 		if _, err := api.Approve(coin, senderKey, *amount); err != nil {
 			return errors.Wrapf(err, "Approve(%v,%v,%v)", coin, senderKey, amount.String())
 		}
@@ -333,8 +333,8 @@ func (ex *executor) GetFundedAddresses(addressMap map[chain.ChainType]uint) (map
 	fundAmount.SetString("100000000000000000000", 10)
 	nativeCoinsPerChain := map[string]chain.ChainType{}
 	for cName, cl := range ex.clientsPerChain {
-		nativeCoinsPerChain[cl.NativeCoinName()] = cName
-		nativeCoinsPerChain[cl.NativeTokenName()] = cName
+		nativeCoinsPerChain[cl.NativeCoin()] = cName
+		nativeCoinsPerChain[cl.TokenName()] = cName
 	}
 	//TODO:
 	tokensToFund := []string{"ICX", "BNB", "TICX", "TBNB"}
