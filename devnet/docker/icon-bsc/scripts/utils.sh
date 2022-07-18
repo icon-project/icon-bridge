@@ -75,29 +75,21 @@ extractAddresses() {
 generate_addresses_json() {
   jq -n '
     .javascore.bmc = $bmc |
-    .javascore.TokenBSH = $token_bsh |
-    .javascore.IRC2 = $irc2_token |
-    .javascore.NativeBSH = $native_bsh |
-    .javascore.BNB = $bnb_token |
+    .javascore.bts = $bts |
+    .javascore.IRC2 = $irc2 |
     .solidity.BMCPeriphery = $bmc_periphery |
     .solidity.BMCManagement = $bmc_management |
-    .solidity.BSHImpl = $bsh_impl |
-    .solidity.BSHProxy = $bsh_proxy |
-    .solidity.BEP20TKN = $bep20_token |
-    .solidity.BSHPeriphery = $bsh_periphery |
-    .solidity.BSHCore = $bsh_core' \
-    --arg bmc "$(cat $CONFIG_DIR/bmc.icon)" \
-    --arg token_bsh "$(cat $CONFIG_DIR/token_bsh.icon)" \
-    --arg irc2_token "$(cat $CONFIG_DIR/irc2_token.icon)" \
-    --arg native_bsh "$(cat $CONFIG_DIR/nativebsh.icon)" \
-    --arg bnb_token "$(cat $CONFIG_DIR/irc2TradeableToken.icon)" \
-    --arg bmc_periphery "$(cat $CONFIG_DIR/bmc.periphery.bsc)" \
-    --arg bmc_management "$(cat $CONFIG_DIR/bmc.bsc)" \
-    --arg bsh_impl "$(cat $CONFIG_DIR/token_bsh.impl.bsc)" \
-    --arg bsh_proxy "$(cat $CONFIG_DIR/token_bsh.proxy.bsc)" \
-    --arg bep20_token "$(cat $CONFIG_DIR/bep20_token.bsc)" \
-    --arg bsh_periphery "$(cat $CONFIG_DIR/bsh.periphery.bsc)" \
-    --arg bsh_core "$(cat $CONFIG_DIR/bsh.core.bsc)"
+    .solidity.BTSCore = $bts_core | 
+    .solidity.BTSPeriphery = $bts_periphery |
+    .solidity.ERC20 = $erc20' \
+    --arg bmc "$(cat $CONFIG_DIR/btp.icon.bmc)" \
+    --arg bts "$(cat $CONFIG_DIR/btp.icon.bts)" \
+    --arg irc2 "$(cat $CONFIG_DIR/btp.icon.ticx)" \
+    --arg bmc_periphery "$(cat $CONFIG_DIR/btp.bsc.bmc.periphery)" \
+    --arg bmc_management "$(cat $CONFIG_DIR/btp.bsc.bmc.management)" \
+    --arg bts_periphery "$(cat $CONFIG_DIR/btp.bsc.bts.periphery)" \
+    --arg bts_core "$(cat $CONFIG_DIR/btp.bsc.bts.core)" \
+    --arg erc20 "$(cat $CONFIG_DIR/btp.bsc.tbnb)" 
 }
 
 create_abi() {

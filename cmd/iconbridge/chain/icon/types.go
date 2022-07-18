@@ -20,9 +20,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 
+	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 )
 
@@ -140,6 +142,10 @@ type CallParam struct {
 	DataType    string      `json:"dataType" validate:"required,call"`
 	Data        interface{} `json:"data"`
 }
+type AddressParam struct {
+	Address Address `json:"address" validate:"required,t_addr"`
+	Height  HexInt  `json:"height,omitempty" validate:"optional,t_int"`
+}
 
 type BMCStatusParams struct {
 	Target string `json:"_link"`
@@ -253,6 +259,15 @@ func (i HexInt) Int() (int, error) {
 	}
 	v, err := strconv.ParseInt(s, 16, 32)
 	return int(v), err
+}
+
+func (i HexInt) BigInt() (*big.Int, error) {
+	bi := new(big.Int)
+	if err := intconv.ParseBigInt(bi, string(i)); err != nil {
+		return nil, err
+	} else {
+		return bi, nil
+	}
 }
 
 func NewHexInt(v int64) HexInt {

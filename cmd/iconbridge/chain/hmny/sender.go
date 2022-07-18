@@ -55,7 +55,7 @@ func NewSender(
 		s.opts.BoostGasPrice = maxGasPriceBoost
 	}
 
-	s.cls, err = newClients(urls, dst.ContractAddress(), s.log)
+	s.cls, s.bmcs, err = newClients(urls, dst.ContractAddress(), s.log)
 	if err != nil {
 		return nil, err
 	}
@@ -82,11 +82,13 @@ type sender struct {
 	src  chain.BTPAddress
 	dst  chain.BTPAddress
 	opts senderOptions
-	cls  []*client
+	cls  []*Client
+	bmcs []*BMC
 }
 
-func (s *sender) client() *client {
-	return s.cls[rand.Intn(len(s.cls))]
+func (s *sender) jointClient() (*Client, *BMC) {
+	randInt := rand.Intn(len(s.cls))
+	return s.cls[randInt], s.bmcs[randInt]
 }
 
 // BMCLinkStatus ...
@@ -95,7 +97,8 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	status, err := s.client().bmc.GetStatus(&bind.CallOpts{Context: ctx}, s.src.String())
+	_, bmcCl := s.jointClient()
+	status, err := bmcCl.GetStatus(&bind.CallOpts{Context: ctx}, s.src.String())
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +180,7 @@ func (s *sender) Segment(
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*relayTx, error) {
-	client := s.client()
+	client, bmcClient := s.jointClient()
 	chainID, err := client.eth.ChainID(ctx)
 	if err != nil {
 		return nil, err
@@ -201,6 +204,7 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*
 		Message: message,
 		opts:    txOpts,
 		cl:      client,
+		bmcCl:   bmcClient,
 	}, nil
 }
 
@@ -210,7 +214,8 @@ type relayTx struct {
 
 	opts      *bind.TransactOpts
 	pendingTx *ethtypes.Transaction
-	cl        *client
+	cl        *Client
+	bmcCl     *BMC
 }
 
 func (tx *relayTx) ID() interface{} {
@@ -235,7 +240,7 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	}
 	txOpts.Nonce = (&big.Int{}).SetUint64(nonce)
 
-	tx.pendingTx, err = tx.cl.bmc.HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
+	tx.pendingTx, err = tx.bmcCl.HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
 	if err != nil {
 		tx.cl.log.WithFields(log.Fields{
 			"error": err}).Debug("handleRelayMessage: send tx")

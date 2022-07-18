@@ -15,10 +15,15 @@ module.exports = async function (callback) {
         console.log("Add link ", argv.link)
         tx = await bmcManagement.addLink(argv.link);
         console.log(tx)
-        console.log("Set link")
-        tx = await bmcManagement.setLink(argv.link, argv.blockInterval, argv.maxAggregation, argv.delayLimit);
-        console.log(tx)
+        // console.log("Set link")
+        // tx = await bmcManagement.setLink(argv.link, argv.blockInterval, argv.maxAggregation, argv.delayLimit);
+        // console.log(tx)
         break;
+      case "setLinkRxHeight":
+        console.log("SetLinkRxHeight link ", argv.link)
+        tx = await bmcManagement.setLinkRxHeight(argv.link, argv.height);
+        console.log(tx)
+        break
       case "addRelay":
         console.log("Add relay ", argv.link)
         let relays = [argv.addr]

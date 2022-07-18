@@ -16,90 +16,47 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-func TestReceiver(t *testing.T) {
-	recv, err := getNewApi()
-	if err != nil {
-		panic(err)
-	}
-	recv.WatchForTransferStart(1, "ICX", 10)
-	recv.WatchForTransferReceived(1, "TONE", 8)
-	recv.WatchForTransferEnd(1, "ICX", 10)
-
-	go func() {
-		if sinkChan, errChan, err := recv.Subscribe(context.Background()); err != nil {
-			panic(err)
-		} else {
-			for {
-				select {
-				case err := <-errChan:
-					panic(err)
-				case msg := <-sinkChan:
-					t.Logf("\nMessage %+v\n", msg)
-				}
-			}
-		}
-	}()
-	time.Sleep(time.Second * 3000)
-}
-
-func getNewApi() (chain.ChainAPI, error) {
-	//ICONDemo [f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5 btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee]
-	//HmnyDemo [564971a566ce839535681eef81ccd44005944b98f7409cb5c0f5684ae862a530 btp://0x6357d2e0.hmny/0x8Fc668275b4fA032342eA3039653D841f069a83b]
-
-	srcAddress := "btp://0x5b9a77.icon/cxb70a4eb562081251e0d7a56454fb79f604ab73d4"
-	dstAddress := "btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91"
-	srcEndpoint := "http://localhost:9080/api/v3/default"
-
-	addrToName := map[chain.ContractName]string{
-		chain.BTSIcon:  "cx3781bee9a0e97c508bb9f382cccbe27f9630cfd4",
-		chain.TICXIcon: "cx0addeee2c20ca3c9636cbb4b51515976c26a4230", //irc2
-	}
-
-	l := log.New()
-	log.SetGlobalLogger(l)
-	networkID := "0x5b9a77"
-	return icon.NewApi(l, &chain.ChainConfig{Name: chain.ICON, URL: srcEndpoint, ConftractAddresses: addrToName, Src: chain.BTPAddress(srcAddress), Dst: chain.BTPAddress(dstAddress), NetworkID: networkID})
-}
+const (
+	GodKey      = "c4a15fbef04e99892caaa11374b115795c182d290d5d8bd7821a9ef16f4a9bcf"
+	GodAddr     = "btp://0x613f17.icon/hxad8eec2e167c24020600ddf1acd4d03673d3f49b"
+	DemoSrcKey  = "f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5"
+	DemoSrcAddr = "btp://0x613f17.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
+	DemoDstAddr = "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
+)
 
 func TestTransferIntraChain(t *testing.T) {
-	godKeyPair, err := getKeyPairFromFile("/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/icon.god.wallet.json", "gochain")
+	godKeyPair, err := getKeyPairFromFile("../../icon.god.wallet.json", "01fe7d1fb8593bf5")
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
-	t.Logf("God KeyPair %v", godKeyPair)
+	t.Log(godKeyPair)
 
 	api, err := getNewApi()
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
-	// demoKeyPair, err := api.GetKeyPairs(1)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	demoKeyPair := [][2]string{{"f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5", "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"}}
 
 	amount := new(big.Int)
 	amount.SetString("10000000000000000", 10)
-	t.Logf("Demo KeyPair %v", demoKeyPair)
 
 	for _, coinName := range []string{"ICX", "TICX"} {
-		txnHash, err := api.Transfer(coinName, godKeyPair[0], api.GetBTPAddress(demoKeyPair[0][1]), *amount)
+		txnHash, err := api.Transfer(coinName, GodKey, DemoSrcAddr, *amount)
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Logf("Transaction Hash %v", txnHash)
-		res, elInfo, err := api.WaitForTxnResult(context.TODO(), txnHash)
+		res, err := api.WaitForTxnResult(context.TODO(), txnHash)
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Logf("Receipt %+v", res)
-		for _, lin := range elInfo {
+		for _, lin := range res.ElInfo {
 			t.Logf("Log %+v ", lin)
 		}
 
-		if val, err := api.GetCoinBalance(coinName, demoKeyPair[0][1]); err != nil {
+		if val, err := api.GetCoinBalance(coinName, DemoSrcAddr); err != nil {
 			t.Fatal(err)
 		} else {
 			t.Logf("Balance %v", val.String())
@@ -108,53 +65,89 @@ func TestTransferIntraChain(t *testing.T) {
 	return
 }
 
-func TestGetCoinBalance(t *testing.T) {
-	demoKeyPair := [][2]string{{"f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5", "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"}}
-	showBalance(demoKeyPair[0])
+func TestApprove(t *testing.T) {
+	showBalance(DemoSrcAddr)
+	coin := "TICX"
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	amt := new(big.Int)
+	amt.SetString("100000000000000", 10)
+	approveHash, err := rpi.Approve(coin, DemoSrcKey, *amt)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	res, err := rpi.WaitForTxnResult(context.TODO(), approveHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Hash %v Receipt %+v", approveHash, res.Raw)
+	showBalance(DemoSrcAddr)
 }
 
-func TestTransferCrossChain(t *testing.T) {
-	senderKey := "f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5"
-	senderAddress := "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
-	rxAddress := "btp://0x6357d2e0.hmny/0x8Fc668275b4fA032342eA3039653D841f069a83b"
+func TestTransferInterChain(t *testing.T) {
 	api, err := getNewApi()
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
-	if val, err := api.GetCoinBalance("ICX", senderAddress); err != nil {
+	coin := "TICX"
+	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Logf("Initial Balance %v", val.String())
 	}
 
 	amount := new(big.Int)
-	amount.SetString("1000000000000000000", 10)
-	// txnHash, err := api.Approve("TICX", senderKey, *amount)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	time.Sleep(5 * time.Second)
-	txnHash, err := api.Transfer("ICX", senderKey, rxAddress, *amount)
+	amount.SetString("100000000000000", 10)
+
+	txnHash, err := api.Transfer(coin, DemoSrcKey, DemoDstAddr, *amount)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("Transaction Hash  %v", txnHash)
-	res, elInfo, err := api.WaitForTxnResult(context.TODO(), txnHash)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Receipt %+v", res)
-	for _, lin := range elInfo {
-		seq, _ := lin.GetSeq()
-		t.Logf("Log %+v and Seq %v", lin, seq)
-	}
-	time.Sleep(5 * time.Second)
-	if val, err := api.GetCoinBalance("ICX", senderAddress); err != nil {
+	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Logf("Final Balance %v", val.String())
 	}
+
+	res, err := api.WaitForTxnResult(context.TODO(), txnHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Receipt %+v", res)
+	for _, lin := range res.ElInfo {
+		seq, _ := lin.GetSeq()
+		t.Logf("Log %+v and Seq %v", lin, seq)
+	}
+	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("Final Balance %v", val.String())
+	}
+}
+
+func TestGetCoinBalance(t *testing.T) {
+	if err := showBalance(DemoSrcAddr); err != nil {
+		t.Fatalf(" %+v", err)
+	}
+}
+
+func showBalance(addr string) error {
+	api, err := getNewApi()
+	if err != nil {
+		return err
+	}
+	for _, coinName := range []string{"ICX", "TICX", "BNB", "TBNB"} {
+		res, err := api.GetCoinBalance(coinName, addr)
+		if err != nil {
+			return err
+		}
+		log.Infof("coin %v amount %v", coinName, res.String())
+	}
+	return nil
 }
 
 func getKeyPairFromFile(walFile string, password string) (pair [2]string, err error) {
@@ -179,19 +172,42 @@ func getKeyPairFromFile(walFile string, password string) (pair [2]string, err er
 	return
 }
 
-func showBalance(demoKeyPair [2]string) error {
-	api, err := getNewApi()
+func TestReceiver(t *testing.T) {
+	recv, err := getNewApi()
 	if err != nil {
-		return err
+		panic(err)
 	}
-	for _, coinName := range []string{"ICX", "ONE", "TICX", "TONE"} {
-		res, err := api.GetCoinBalance(coinName, demoKeyPair[1])
-		if err != nil {
-			return err
+	// recv.WatchForTransferStart(1, "ICX", 10)
+	// recv.WatchForTransferReceived(1, "TONE", 8)
+	// recv.WatchForTransferEnd(1, "ICX", 10)
+
+	go func() {
+		if sinkChan, errChan, err := recv.Subscribe(context.Background()); err != nil {
+			panic(err)
+		} else {
+			for {
+				select {
+				case err := <-errChan:
+					panic(err)
+				case msg := <-sinkChan:
+					t.Logf("\nMessage %+v\n", msg)
+				}
+			}
 		}
-		log.Infof("coin %v amount %v", coinName, res.String())
+	}()
+	time.Sleep(time.Second * 3000)
+}
+
+func getNewApi() (chain.ChainAPI, error) {
+	srcEndpoint := "http://localhost:9080/api/v3/icon"
+	addrToName := map[chain.ContractName]string{
+		chain.BTSIcon:  "cxa003ac7b55a5fd0f563353769d63ae9d098fc7f9",
+		chain.TICXIcon: "cx6135bc6b649125603598103e006ad3079401ddd8", //irc2
 	}
-	return nil
+	l := log.New()
+	log.SetGlobalLogger(l)
+	networkID := "0x613f17"
+	return icon.NewApi(l, &chain.ChainConfig{Name: chain.ICON, URL: srcEndpoint, ConftractAddresses: addrToName, NetworkID: networkID})
 }
 
 /*

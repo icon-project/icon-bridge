@@ -72,6 +72,8 @@ type TxResult struct {
 	EventLogs          []EventLog
 	ScoreAddress       []byte
 	EventLogsHash      common.HexBytes
+	TxIndex            HexInt
+	BlockHeight        HexInt
 }
 
 type Verifier struct {

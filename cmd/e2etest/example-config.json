@@ -2,36 +2,30 @@
     "chains":[
         {
             "name":"ICON",
-            "url":"http://127.0.0.1:9080/api/v3/default",
+            "url":"http://127.0.0.1:9080/api/v3/icon",
             "contract_addresses": {
-                "BTSIcon":  "cx3781bee9a0e97c508bb9f382cccbe27f9630cfd4",
-                "TICXIcon": "cx0addeee2c20ca3c9636cbb4b51515976c26a4230"
+                "BTSIcon":  "cxf9a4556e7049bf81bf4fb3ffb4f5c23691d3aef6",
+                "TICXIcon": "cxc39fce2d84ad7a49c07f967f08341900023f1566"
             },
             "god_wallet":{
-                "path":"/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/icon.god.wallet.json",
-                "password":"gochain"
+                "path":"./icon.god.wallet.json",
+                "password":"d7b864bc6b02cc30"
             },
-            "network_id":"0x5b9a77",
-            "src":"btp://0x5b9a77.icon/cxb70a4eb562081251e0d7a56454fb79f604ab73d4",
-            "dst":"btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91"
-       
+            "network_id":"0xdf6463"
         },
         {
-            "name":"HMNY",
-            "url":"http://127.0.0.1:9500",
+            "name":"BSC",
+            "url":"http://127.0.0.1:8545",
             "contract_addresses": {
-                "BTSCoreHmny":      "0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
-                "Erc20Hmy":         "0xB20CCD2a42e5486054AE3439f2bDa95DC75d9B75",
-                "BTSPeripheryHmny": "0xfad748a1063a40FF447B5D766331904d9bedDC26",
-                "TONEHmny":         "0xB20CCD2a42e5486054AE3439f2bDa95DC75d9B75"
+                "BTSCoreBsc":      "0x71a1520bBb7e6072Bbf3682A60c73D63b693690A",
+                "BTSPeripheryBsc": "0x3abC8DFF0C95B8982399daCf6ED5bD7b94a40068",
+                "TBNBBsc":         "0xBA34F3c6893b12fF4115ACf1b4712C6E2783aD83"
             },
             "god_wallet":{
-                "path":"/home/manish/go/src/work/icon-bridge/devnet/docker/icon-hmny/src/hmny.god.wallet.json",
-                "password":""
+                "path":"./bsc.god.wallet.json",
+                "password":"Perlia0"
             },
-            "network_id":"0x6357d2e0",
-            "src":"btp://0x6357d2e0.hmny/0x7a6DF2a2CC67B38E52d2340BF2BDC7c9a32AaE91",
-            "dst":"btp://0x5b9a77.icon/cxb70a4eb562081251e0d7a56454fb79f604ab73d4"
+            "network_id":"0x61"
         }
     ]
 } 

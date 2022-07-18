@@ -24,6 +24,19 @@ func newTestClient(t *testing.T) *client {
 	return cls
 }
 
+func TestMedianGasPrice(t *testing.T) {
+	url := "http://localhost:8545"
+	cls, err := NewClient([]string{url}, "", log.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if val, err := cls.GetMedianGasPriceForBlock(25007); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(val.String())
+	}
+}
+
 func TestSubscribeMessage(t *testing.T) {
 	var src, dst chain.BTPAddress
 	err := src.Set("btp://0x97.icon/0xAaFc8EeaEE8d9C8bD3262CCE3D73E56DeE3FB776")

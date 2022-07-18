@@ -60,7 +60,7 @@ func NewSender(
 	if err := s.opts.Unmarshal(opts); err != nil {
 		return nil, err
 	}
-	s.cl = newClient(urls[0], l)
+	s.cl = NewClient(urls[0], l)
 	return s, nil
 }
 
@@ -83,7 +83,7 @@ type sender struct {
 	src  chain.BTPAddress
 	dst  chain.BTPAddress
 	opts senderOptions
-	cl   *client
+	cl   *Client
 }
 
 func hexInt2Uint64(hi HexInt) uint64 {
@@ -223,7 +223,7 @@ type relayTx struct {
 
 	txParam     *TransactionParam
 	txHashParam *TransactionHashParam
-	cl          *client
+	cl          *Client
 	w           wallet.Wallet
 }
 

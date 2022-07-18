@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -39,6 +40,8 @@ const (
 	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale)
 	defaultSendTxTimeout = 15 * time.Second
 	defaultReadTimeout   = 15 * time.Second
+	defaultGasPrice      = 30000000000
+	maxGasPriceBoost     = 10.0
 )
 
 /*
@@ -68,8 +71,9 @@ type sender struct {
 */
 
 type senderOptions struct {
-	GasLimit        uint64 `json:"gas_limit"`
-	TxDataSizeLimit uint64 `json:"tx_data_size_limit"`
+	GasLimit        uint64  `json:"gas_limit"`
+	TxDataSizeLimit uint64  `json:"tx_data_size_limit"`
+	BoostGasPrice   float64 `json:"boost_gas_price"`
 }
 
 type sender struct {
@@ -102,7 +106,12 @@ func NewSender(
 	if err = json.Unmarshal(b, &s.opts); err != nil {
 		l.Panicf("fail to unmarshal opt:%#v err:%+v", opts, err)
 	}
-
+	if s.opts.BoostGasPrice < 1.0 {
+		s.opts.BoostGasPrice = 1.0
+	}
+	if s.opts.BoostGasPrice > maxGasPriceBoost {
+		s.opts.BoostGasPrice = maxGasPriceBoost
+	}
 	s.cl, err = NewClient(urls, dst.ContractAddress(), s.log)
 	if err != nil {
 		return nil, err
@@ -141,7 +150,6 @@ func (s *sender) Segment(
 		limit := defaultTxSizeLimit
 		s.opts.TxDataSizeLimit = uint64(limit)
 	}
-
 	if len(msg.Receipts) == 0 {
 		return nil, msg, nil
 	}
@@ -156,7 +164,6 @@ func (s *sender) Segment(
 		From:     msg.From,
 		Receipts: msg.Receipts,
 	}
-
 	for i, receipt := range msg.Receipts {
 		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events)
 		if err != nil {
@@ -178,13 +185,20 @@ func (s *sender) Segment(
 		msgSize = newMsgSize
 		rm.Receipts = append(rm.Receipts, rlpReceipt)
 	}
-
 	message, err := codec.RLP.MarshalToBytes(rm)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	tx, err = s.newRelayTx(ctx, msg.From.String(), message)
+	gasPrice, err := s.cl.GetMedianGasPriceForBlock()
+	if err != nil || gasPrice.Int64() == 0 {
+		s.log.Infof("GetMedianGasPriceForBlock Msg: %v. Using default value for gas price", err)
+		gasPrice = big.NewInt(defaultGasPrice)
+	}
+	boostedGasPrice, _ := (&big.Float{}).Mul(
+		(&big.Float{}).SetInt64(gasPrice.Int64()),
+		(&big.Float{}).SetFloat64(s.opts.BoostGasPrice),
+	).Int(nil)
+	tx, err = s.newRelayTx(ctx, msg.From.String(), message, boostedGasPrice)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -192,7 +206,7 @@ func (s *sender) Segment(
 	return tx, newMsg, nil
 }
 
-func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*relayTx, error) {
+func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, gasPrice *big.Int) (*relayTx, error) {
 	client := s.cl
 	txOpts, err := client.newTransactOpts(s.w)
 	if err != nil {
@@ -202,6 +216,7 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*
 	if s.opts.GasLimit > 0 {
 		txOpts.GasLimit = s.opts.GasLimit
 	}
+	txOpts.GasPrice = gasPrice
 	return &relayTx{
 		Prev:    prev,
 		Message: message, // base64.URLEncoding.EncodeToString(rlpCrm),

@@ -1,7 +1,5 @@
 //go:build hmny
 // +build hmny
-
-// TODO add more receiver tests
 package hmny
 
 import (
@@ -26,7 +24,7 @@ func newTestReceiver(t *testing.T) chain.Receiver {
 }
 
 func TestSubscribeMessage(t *testing.T) {
-	cl := newTestClient(t)
+	cl, _ := newTestClient(t)
 	recv := newTestReceiver(t).(*receiver)
 
 	height := uint64(1000000)

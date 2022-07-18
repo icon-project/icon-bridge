@@ -45,19 +45,19 @@ func NewReceiver(
 	if err != nil {
 		return nil, err
 	}
-	r.cls, err = newClients(urls, src.ContractAddress(), r.log)
+	r.cls, r.bmcs, err = newClients(urls, src.ContractAddress(), r.log)
 	if err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
-type receiverOptions struct {
+type ReceiverOptions struct {
 	Verifier        *VerifierOptions `json:"verifier"`
 	SyncConcurrency uint64           `json:"syncConcurrency"`
 }
 
-func (opts *receiverOptions) Unmarshal(v map[string]interface{}) error {
+func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -69,12 +69,19 @@ type receiver struct {
 	log  log.Logger
 	src  chain.BTPAddress
 	dst  chain.BTPAddress
-	opts receiverOptions
-	cls  []*client
+	opts ReceiverOptions
+	cls  []*Client
+	bmcs []*BMC
 }
 
-func (r *receiver) client() *client {
-	return r.cls[rand.Intn(len(r.cls))]
+func (r *receiver) client() *Client {
+	randInt := rand.Intn(len(r.cls))
+	return r.cls[randInt]
+}
+
+func (r *receiver) bmcClient() *BMC {
+	randInt := rand.Intn(len(r.cls))
+	return r.bmcs[randInt]
 }
 
 func (r *receiver) rpcConsensusCall(
@@ -137,13 +144,13 @@ func (r *receiver) rpcConsensusCall(
 }
 
 // Options for a new block notifications channel
-type bnOptions struct {
+type BnOptions struct {
 	StartHeight     uint64
 	Concurrency     uint64
 	VerifierOptions *VerifierOptions
 }
 
-func (r *receiver) receiveLoop(ctx context.Context, opts *bnOptions, callback func(v *BlockNotification) error) error {
+func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback func(v *BlockNotification) error) error {
 
 	if opts == nil {
 		return errors.New("receiveLoop: invalid options: <nil>")
@@ -364,7 +371,7 @@ func (r *receiver) getRelayReceipts(v *BlockNotification) []*chain.Receipt {
 			if !bytes.Equal(log.Address.Bytes(), sc.Bytes()) {
 				continue
 			}
-			msg, err := r.client().bmc.ParseMessage(ethtypes.Log{
+			msg, err := r.bmcClient().ParseMessage(ethtypes.Log{
 				Data: log.Data, Topics: log.Topics,
 			})
 			if err == nil {
@@ -397,7 +404,7 @@ func (r *receiver) Subscribe(
 		defer close(_errCh)
 		lastHeight := opts.Height - 1
 		if err := r.receiveLoop(ctx,
-			&bnOptions{
+			&BnOptions{
 				StartHeight:     opts.Height,
 				VerifierOptions: r.opts.Verifier,
 				Concurrency:     r.opts.SyncConcurrency,

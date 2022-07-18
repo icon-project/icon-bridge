@@ -11,17 +11,20 @@ type ChainType string
 const (
 	ICON ChainType = "ICON"
 	HMNY ChainType = "HMNY"
+	BSC  ChainType = "BSC"
 )
 
 type ContractName string
 
 const (
-	Erc20Hmy         ContractName = "Erc20Hmy"
-	BTSIcon          ContractName = "BTSIcon"
+	TBNBBsc          ContractName = "TBNBBsc"
 	TONEHmny         ContractName = "TONEHmny"
 	TICXIcon         ContractName = "TICXIcon"
+	BTSIcon          ContractName = "BTSIcon"
 	BTSCoreHmny      ContractName = "BTSCoreHmny"
 	BTSPeripheryHmny ContractName = "BTSPeripheryHmny"
+	BTSCoreBsc       ContractName = "BTSCoreBsc"
+	BTSPeripheryBsc  ContractName = "BTSPeripheryBsc"
 )
 
 type EventLogType string
@@ -36,20 +39,41 @@ func (e EventLogType) String() string {
 	return string(e)
 }
 
+type CoinBalance struct {
+	Total      *big.Int
+	Approved   *big.Int
+	Usable     *big.Int
+	Locked     *big.Int
+	Refundable *big.Int
+}
+
+func (cb *CoinBalance) String() string {
+	return " Total: " + cb.Total.String() + " Approved: " + cb.Approved.String() + " Usable: " + cb.Usable.String() +
+		" Locked: " + cb.Locked.String() + " Refundable: " + cb.Refundable.String()
+}
+
 type SrcAPI interface {
 	Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error)
-	WaitForTxnResult(ctx context.Context, hash string) (txr interface{}, elInfo []*EventLogInfo, err error)
-	WatchForTransferStart(requestID uint64, coinName string, seq int64) error
-	WatchForTransferEnd(ID uint64, coinName string, seq int64) error
+	WaitForTxnResult(ctx context.Context, hash string) (txnr *TxnResult, err error)
+	WatchForTransferStart(requestID uint64, seq int64) error
+	WatchForTransferEnd(ID uint64, seq int64) error
 	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
-	GetCoinBalance(coinName string, addr string) (*big.Int, error)
+	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	GetChainType() ChainType
+	NativeCoinName() string
+	NativeTokenName() string
 }
 
 type DstAPI interface {
-	GetCoinBalance(coinName string, addr string) (*big.Int, error)
-	WatchForTransferReceived(requestID uint64, coinName string, seq int64) error
+	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
+	WatchForTransferReceived(requestID uint64, seq int64) error
 	GetChainType() ChainType
+}
+
+type TxnResult struct {
+	StatusCode int
+	ElInfo     []*EventLogInfo
+	Raw        interface{}
 }
 
 type ChainAPI interface {
@@ -58,13 +82,15 @@ type ChainAPI interface {
 	GetBTPAddress(addr string) string
 
 	Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error)
-	WaitForTxnResult(ctx context.Context, hash string) (txr interface{}, elInfo []*EventLogInfo, err error)
-	WatchForTransferStart(ID uint64, coinName string, seq int64) error
-	WatchForTransferReceived(ID uint64, coinName string, seq int64) error
-	WatchForTransferEnd(ID uint64, coinName string, seq int64) error
+	WaitForTxnResult(ctx context.Context, hash string) (txnr *TxnResult, err error)
+	WatchForTransferStart(ID uint64, seq int64) error
+	WatchForTransferReceived(ID uint64, seq int64) error
+	WatchForTransferEnd(ID uint64, seq int64) error
 	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
-	GetCoinBalance(coinName string, addr string) (*big.Int, error)
+	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	GetChainType() ChainType
+	NativeCoinName() string
+	NativeTokenName() string
 }
 
 type ChainConfig struct {
@@ -73,8 +99,6 @@ type ChainConfig struct {
 	ConftractAddresses map[ContractName]string `json:"contract_addresses"`
 	GodWallet          GodWallet               `json:"god_wallet"`
 	NetworkID          string                  `json:"network_id"`
-	Src                BTPAddress              `json:"src"`
-	Dst                BTPAddress              `json:"dst"`
 }
 
 type GodWallet struct {

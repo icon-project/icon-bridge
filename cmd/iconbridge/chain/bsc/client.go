@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/wallet"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/binding"
@@ -96,6 +97,35 @@ func (c *client) SendTransaction(tx *types.Transaction) error {
 	}
 
 	return nil
+}
+
+func (c *client) GetMedianGasPriceForBlock() (gasPrice *big.Int, err error) {
+	gasPrice = big.NewInt(0)
+	header, err := c.ethClient().HeaderByNumber(context.TODO(), nil)
+	if err != nil {
+		err = errors.Wrapf(err, "GetHeaderByNumber(height:latest) Err: %v", err)
+		return
+	}
+	height := header.Number
+	txnCount, err := c.ethClient().TransactionCount(context.TODO(), header.Hash())
+	if err != nil {
+		err = errors.Wrapf(err, "GetTransactionCount(height:%v, headerHash: %v) Err: %v", height, header.Hash(), err)
+		return
+	} else if err == nil && txnCount == 0 {
+		return nil, fmt.Errorf("TransactionCount is zero for height(%v, headerHash %v)", height, header.Hash())
+	}
+
+	txnF, err := c.ethClient().TransactionInBlock(context.TODO(), header.Hash(), 0)
+	if err != nil {
+		return nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, 0, err)
+	}
+	txnS, err := c.ethClient().TransactionInBlock(context.TODO(), header.Hash(), txnCount-1)
+	if err != nil {
+		return nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, txnCount-1, err)
+	}
+	gasPrice = gasPrice.Add(txnF.GasPrice(), txnS.GasPrice())
+	gasPrice.Div(gasPrice, big.NewInt(2))
+	return
 }
 
 func (c *client) CallContract(callData ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {

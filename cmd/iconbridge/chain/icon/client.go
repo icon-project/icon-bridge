@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -50,7 +51,7 @@ type Wallet interface {
 	Address() string
 }
 
-type client struct {
+type Client struct {
 	*jsonrpc.Client
 	conns map[string]*websocket.Conn
 	log   log.Logger
@@ -59,7 +60,7 @@ type client struct {
 
 var txSerializeExcludes = map[string]bool{"signature": true}
 
-func (c *client) SignTransaction(w Wallet, p *TransactionParam) error {
+func (c *Client) SignTransaction(w Wallet, p *TransactionParam) error {
 	p.Timestamp = NewHexInt(time.Now().UnixNano() / int64(time.Microsecond))
 	js, err := json.Marshal(p)
 	if err != nil {
@@ -81,7 +82,7 @@ func (c *client) SignTransaction(w Wallet, p *TransactionParam) error {
 	return nil
 }
 
-func (c *client) SendTransaction(p *TransactionParam) (*HexBytes, error) {
+func (c *Client) SendTransaction(p *TransactionParam) (*HexBytes, error) {
 	var result HexBytes
 	if _, err := c.Do("icx_sendTransaction", p, &result); err != nil {
 		return nil, err
@@ -89,7 +90,7 @@ func (c *client) SendTransaction(p *TransactionParam) (*HexBytes, error) {
 	return &result, nil
 }
 
-func (c *client) SendTransactionAndWait(p *TransactionParam) (*HexBytes, error) {
+func (c *Client) SendTransactionAndWait(p *TransactionParam) (*HexBytes, error) {
 	var result HexBytes
 	if _, err := c.Do("icx_sendTransactionAndWait", p, &result); err != nil {
 		return nil, err
@@ -97,7 +98,7 @@ func (c *client) SendTransactionAndWait(p *TransactionParam) (*HexBytes, error) 
 	return &result, nil
 }
 
-func (c *client) GetTransactionResult(p *TransactionHashParam) (*TransactionResult, error) {
+func (c *Client) GetTransactionResult(p *TransactionHashParam) (*TransactionResult, error) {
 	tr := &TransactionResult{}
 	if _, err := c.Do("icx_getTransactionResult", p, tr); err != nil {
 		return nil, err
@@ -105,7 +106,7 @@ func (c *client) GetTransactionResult(p *TransactionHashParam) (*TransactionResu
 	return tr, nil
 }
 
-func (c *client) WaitTransactionResult(p *TransactionHashParam) (*TransactionResult, error) {
+func (c *Client) WaitTransactionResult(p *TransactionHashParam) (*TransactionResult, error) {
 	tr := &TransactionResult{}
 	if _, err := c.Do("icx_waitTransactionResult", p, tr); err != nil {
 		return nil, err
@@ -113,12 +114,12 @@ func (c *client) WaitTransactionResult(p *TransactionHashParam) (*TransactionRes
 	return tr, nil
 }
 
-func (c *client) Call(p *CallParam, r interface{}) error {
+func (c *Client) Call(p *CallParam, r interface{}) error {
 	_, err := c.Do("icx_call", p, r)
 	return err
 }
 
-func (c *client) SendTransactionAndGetResult(p *TransactionParam) (*HexBytes, *TransactionResult, error) {
+func (c *Client) SendTransactionAndGetResult(p *TransactionParam) (*HexBytes, *TransactionResult, error) {
 	thp := &TransactionHashParam{}
 txLoop:
 	for {
@@ -174,7 +175,49 @@ txrLoop:
 	}
 }
 
-func (c *client) GetBlockByHeight(p *BlockHeightParam) (*Block, error) {
+func (c *Client) WaitForResults(ctx context.Context, thp *TransactionHashParam) (txh *HexBytes, txr *TransactionResult, err error) {
+	ticker := time.NewTicker(time.Duration(DefaultGetTransactionResultPollingInterval) * time.Nanosecond)
+	retryLimit := 10
+	retryCounter := 0
+	txh = &thp.Hash
+	for {
+		defer ticker.Stop()
+		select {
+		case <-ctx.Done():
+			err = errors.New("Context Cancelled ReceiptWait Exiting ")
+			return
+		case <-ticker.C:
+			if retryCounter >= retryLimit {
+				err = errors.New("Retry Limit Exceeded while waiting for results of transaction")
+				return
+			}
+			retryCounter++
+			//c.log.Debugf("GetTransactionResult Attempt: %d", retryCounter)
+			txr, err = c.GetTransactionResult(thp)
+			if err != nil {
+				switch re := err.(type) {
+				case *jsonrpc.Error:
+					switch re.Code {
+					case JsonrpcErrorCodePending, JsonrpcErrorCodeExecuting:
+						continue
+					}
+				}
+			}
+			//c.log.Debugf("GetTransactionResult hash:%v, txr:%+v, err:%+v", thp.Hash, txr, err)
+			return
+		}
+	}
+}
+
+func (c *Client) GetLastBlock() (*Block, error) {
+	result := &Block{}
+	if _, err := c.Do("icx_getLastBlock", struct{}{}, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (c *Client) GetBlockByHeight(p *BlockHeightParam) (*Block, error) {
 	result := &Block{}
 	if _, err := c.Do("icx_getBlockByHeight", p, &result); err != nil {
 		return nil, err
@@ -182,7 +225,7 @@ func (c *client) GetBlockByHeight(p *BlockHeightParam) (*Block, error) {
 	return result, nil
 }
 
-func (c *client) GetBlockHeaderByHeight(p *BlockHeightParam) ([]byte, error) {
+func (c *Client) GetBlockHeaderByHeight(p *BlockHeightParam) ([]byte, error) {
 	var result []byte
 	if _, err := c.Do("icx_getBlockHeaderByHeight", p, &result); err != nil {
 		return nil, err
@@ -190,7 +233,7 @@ func (c *client) GetBlockHeaderByHeight(p *BlockHeightParam) ([]byte, error) {
 	return result, nil
 }
 
-func (c *client) GetVotesByHeight(p *BlockHeightParam) ([]byte, error) {
+func (c *Client) GetVotesByHeight(p *BlockHeightParam) ([]byte, error) {
 	var result []byte
 	if _, err := c.Do("icx_getVotesByHeight", p, &result); err != nil {
 		return nil, err
@@ -198,7 +241,7 @@ func (c *client) GetVotesByHeight(p *BlockHeightParam) ([]byte, error) {
 	return result, nil
 }
 
-func (c *client) GetDataByHash(p *DataHashParam) ([]byte, error) {
+func (c *Client) GetDataByHash(p *DataHashParam) ([]byte, error) {
 	var result []byte
 	_, err := c.Do("icx_getDataByHash", p, &result)
 	if err != nil {
@@ -207,7 +250,7 @@ func (c *client) GetDataByHash(p *DataHashParam) ([]byte, error) {
 	return result, nil
 }
 
-func (c *client) GetProofForResult(p *ProofResultParam) ([][]byte, error) {
+func (c *Client) GetProofForResult(p *ProofResultParam) ([][]byte, error) {
 	var result [][]byte
 	if _, err := c.Do("icx_getProofForResult", p, &result); err != nil {
 		return nil, err
@@ -215,7 +258,7 @@ func (c *client) GetProofForResult(p *ProofResultParam) ([][]byte, error) {
 	return result, nil
 }
 
-func (c *client) GetProofForEvents(p *ProofEventsParam) ([][][]byte, error) {
+func (c *Client) GetProofForEvents(p *ProofEventsParam) ([][][]byte, error) {
 	var result [][][]byte
 	if _, err := c.Do("icx_getProofForEvents", p, &result); err != nil {
 		return nil, err
@@ -223,7 +266,7 @@ func (c *client) GetProofForEvents(p *ProofEventsParam) ([][][]byte, error) {
 	return result, nil
 }
 
-func (c *client) MonitorBlock(ctx context.Context, p *BlockRequest, cb func(conn *websocket.Conn, v *BlockNotification) error, scb func(conn *websocket.Conn), errCb func(*websocket.Conn, error)) error {
+func (c *Client) MonitorBlock(ctx context.Context, p *BlockRequest, cb func(conn *websocket.Conn, v *BlockNotification) error, scb func(conn *websocket.Conn), errCb func(*websocket.Conn, error)) error {
 	resp := &BlockNotification{}
 	return c.Monitor(ctx, "/block", p, resp, func(conn *websocket.Conn, v interface{}) error {
 		switch t := v.(type) {
@@ -253,7 +296,7 @@ func (c *client) MonitorBlock(ctx context.Context, p *BlockRequest, cb func(conn
 	})
 }
 
-func (c *client) MonitorEvent(ctx context.Context, p *EventRequest, cb func(conn *websocket.Conn, v *EventNotification) error, errCb func(*websocket.Conn, error)) error {
+func (c *Client) MonitorEvent(ctx context.Context, p *EventRequest, cb func(conn *websocket.Conn, v *EventNotification) error, errCb func(*websocket.Conn, error)) error {
 	resp := &EventNotification{}
 	return c.Monitor(ctx, "/event", p, resp, func(conn *websocket.Conn, v interface{}) error {
 		switch t := v.(type) {
@@ -270,7 +313,7 @@ func (c *client) MonitorEvent(ctx context.Context, p *EventRequest, cb func(conn
 	})
 }
 
-func (c *client) Monitor(ctx context.Context, reqUrl string, reqPtr, respPtr interface{}, cb wsReadCallback) error {
+func (c *Client) Monitor(ctx context.Context, reqUrl string, reqPtr, respPtr interface{}, cb wsReadCallback) error {
 	if cb == nil {
 		return fmt.Errorf("callback function cannot be nil")
 	}
@@ -291,12 +334,12 @@ func (c *client) Monitor(ctx context.Context, reqUrl string, reqPtr, respPtr int
 	return c.wsReadJSONLoop(ctx, conn, respPtr, cb)
 }
 
-func (c *client) CloseMonitor(conn *websocket.Conn) {
+func (c *Client) CloseMonitor(conn *websocket.Conn) {
 	c.log.Debugf("CloseMonitor %s", conn.LocalAddr().String())
 	c.wsClose(conn)
 }
 
-func (c *client) CloseAllMonitor() {
+func (c *Client) CloseAllMonitor() {
 	for _, conn := range c.conns {
 		c.log.Debugf("CloseAllMonitor %s", conn.LocalAddr().String())
 		c.wsClose(conn)
@@ -305,7 +348,7 @@ func (c *client) CloseAllMonitor() {
 
 type wsReadCallback func(*websocket.Conn, interface{}) error
 
-func (c *client) _addWsConn(conn *websocket.Conn) {
+func (c *Client) _addWsConn(conn *websocket.Conn) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 
@@ -313,7 +356,7 @@ func (c *client) _addWsConn(conn *websocket.Conn) {
 	c.conns[la] = conn
 }
 
-func (c *client) _removeWsConn(conn *websocket.Conn) {
+func (c *Client) _removeWsConn(conn *websocket.Conn) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 
@@ -329,7 +372,7 @@ type wsConnectError struct {
 	httpResp *http.Response
 }
 
-func (c *client) wsConnect(reqUrl string, reqHeader http.Header) (*websocket.Conn, error) {
+func (c *Client) wsConnect(reqUrl string, reqHeader http.Header) (*websocket.Conn, error) {
 	wsEndpoint := strings.Replace(c.Endpoint, "http", "ws", 1)
 	conn, httpResp, err := websocket.DefaultDialer.Dial(wsEndpoint+reqUrl, reqHeader)
 	if err != nil {
@@ -346,7 +389,7 @@ type wsRequestError struct {
 	wsResp *WSResponse
 }
 
-func (c *client) wsRequest(conn *websocket.Conn, reqPtr interface{}) error {
+func (c *Client) wsRequest(conn *websocket.Conn, reqPtr interface{}) error {
 	if reqPtr == nil {
 		log.Panicf("reqPtr cannot be nil")
 	}
@@ -368,7 +411,7 @@ func (c *client) wsRequest(conn *websocket.Conn, reqPtr interface{}) error {
 	return nil
 }
 
-func (c *client) wsClose(conn *websocket.Conn) {
+func (c *Client) wsClose(conn *websocket.Conn) {
 	c._removeWsConn(conn)
 	if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
 		c.log.Debugf("fail to WriteMessage CloseNormalClosure err:%+v", err)
@@ -378,7 +421,7 @@ func (c *client) wsClose(conn *websocket.Conn) {
 	}
 }
 
-func (c *client) wsRead(conn *websocket.Conn, respPtr interface{}) error {
+func (c *Client) wsRead(conn *websocket.Conn, respPtr interface{}) error {
 	mt, r, err := conn.NextReader()
 	if err != nil {
 		return err
@@ -389,7 +432,7 @@ func (c *client) wsRead(conn *websocket.Conn, respPtr interface{}) error {
 	return json.NewDecoder(r).Decode(respPtr)
 }
 
-func (c *client) wsReadJSONLoop(ctx context.Context, conn *websocket.Conn, respPtr interface{}, cb wsReadCallback) error {
+func (c *Client) wsReadJSONLoop(ctx context.Context, conn *websocket.Conn, respPtr interface{}, cb wsReadCallback) error {
 	elem := reflect.ValueOf(respPtr).Elem()
 	for {
 		select {
@@ -417,9 +460,9 @@ func (c *client) wsReadJSONLoop(ctx context.Context, conn *websocket.Conn, respP
 	}
 }
 
-func (cl *client) getBlockHeaderByHeight(height int64) (*BlockHeader, error) {
+func (c *Client) getBlockHeaderByHeight(height int64) (*BlockHeader, error) {
 	p := &BlockHeightParam{Height: NewHexInt(height)}
-	b, err := cl.GetBlockHeaderByHeight(p)
+	b, err := c.GetBlockHeaderByHeight(p)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -432,9 +475,9 @@ func (cl *client) getBlockHeaderByHeight(height int64) (*BlockHeader, error) {
 	return &bh, nil
 }
 
-func (cl *client) getCommitVoteListByHeight(height int64) (*commitVoteList, error) {
+func (c *Client) getCommitVoteListByHeight(height int64) (*commitVoteList, error) {
 	p := &BlockHeightParam{Height: NewHexInt(height)}
-	b, err := cl.GetVotesByHeight(p)
+	b, err := c.GetVotesByHeight(p)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -446,8 +489,8 @@ func (cl *client) getCommitVoteListByHeight(height int64) (*commitVoteList, erro
 	return &cvl, nil
 }
 
-func (cl *client) getValidatorsByHash(hash common.HexBytes) ([]common.HexBytes, error) {
-	data, err := cl.GetDataByHash(&DataHashParam{Hash: NewHexBytes(hash.Bytes())})
+func (c *Client) getValidatorsByHash(hash common.HexBytes) ([]common.HexBytes, error) {
+	data, err := c.GetDataByHash(&DataHashParam{Hash: NewHexBytes(hash.Bytes())})
 	if err != nil {
 		return nil, errors.Wrapf(err, "GetDataByHash; %v", err)
 	}
@@ -461,6 +504,19 @@ func (cl *client) getValidatorsByHash(hash common.HexBytes) ([]common.HexBytes, 
 		return nil, errors.Wrapf(err, "Unmarshal Validators: %v", err)
 	}
 	return vs, nil
+}
+
+func (c *Client) GetBalance(param *AddressParam) (*big.Int, error) {
+	var result HexInt
+	_, err := c.Do("icx_getBalance", param, &result)
+	if err != nil {
+		return nil, err
+	}
+	bInt, err := result.BigInt()
+	if err != nil {
+		return nil, err
+	}
+	return bInt, nil
 }
 
 const (
@@ -539,10 +595,10 @@ func NewIconOptionsByHeader(h http.Header) IconOptions {
 	return nil
 }
 
-func newClient(uri string, l log.Logger) *client {
+func NewClient(uri string, l log.Logger) *Client {
 	//TODO options {MaxRetrySendTx, MaxRetryGetResult, MaxIdleConnsPerHost, Debug, Dump}
 	tr := &http.Transport{MaxIdleConnsPerHost: 1000}
-	c := &client{
+	c := &Client{
 		Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: tr}, uri),
 		conns:  make(map[string]*websocket.Conn),
 		log:    l,

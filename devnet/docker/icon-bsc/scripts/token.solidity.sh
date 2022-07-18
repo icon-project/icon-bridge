@@ -1,6 +1,12 @@
 #!/bin/sh
 source utils.sh
 # Parts of this code is adapted from https://github.com/icon-project/btp/blob/goloop2moonbeam/testnet/goloop2moonbeam/scripts
+
+eth_blocknumber() {
+  curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' \
+    --data-raw '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[], "id": 1}' | jq -r .result | xargs printf "%d\n"
+}
+
 deploy_solidity_bmc() {
   echo "deploying solidity bmc"
   cd $CONTRACTS_DIR/solidity/bmc
@@ -8,59 +14,125 @@ deploy_solidity_bmc() {
   rm -rf contracts/test build .openzeppelin
   BMC_BTP_NET=$BSC_BMC_NET \
     truffle migrate --network bsc --compile-all
-
+  eth_blocknumber > $CONFIG_DIR/btp.bsc.block.height
   generate_metadata "BMC"
-}
+} 
 
-deploy_solidity_tokenBSH_BEP20() {
-  echo "deploying solidity Token BSH"
-  cd $CONTRACTS_DIR/solidity/TokenBSH
+
+
+deploy_solidity_bts() {
+  echo "deploying solidity bts"
+  cd $CONTRACTS_DIR/solidity/bts
   cp $ICONBRIDGE_BASE_DIR/bin/env ./.env
   rm -rf contracts/test build .openzeppelin
-  #npm install --legacy-peer-deps
-  SVC_NAME=TokenBSH
 
-  BSH_TOKEN_FEE=1 \
-    BMC_PERIPHERY_ADDRESS=$BMC_ADDRESS \
-    BSH_SERVICE=$SVC_NAME \
-    truffle migrate --compile-all --network bsc
-
-  generate_metadata "TOKEN_BSH"
+  BSH_COIN_NAME="BNB" \
+  BSH_COIN_FEE=100 \
+  BSH_FIXED_FEE=5000 \
+  BMC_PERIPHERY_ADDRESS="$(cat $CONFIG_DIR/btp.bsc.bmc.periphery)" \
+  BSH_SERVICE=$SVC_NAME \
+  truffle migrate --compile-all --network bsc 
+  generate_metadata "BTS"
 }
 
-add_icon_link() {
-  echo "adding icon link $(cat $CONFIG_DIR/btp.icon)"
+configure_solidity_add_bts_service() {
+  echo "adding ${SVC_NAME} service into BMC"
   cd $CONTRACTS_DIR/solidity/bmc
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
-    --method addLink --link $(cat $CONFIG_DIR/btp.icon) --blockInterval 3000 --maxAggregation 2 --delayLimit 3)
+    --method addService --name $SVC_NAME --addr $(cat $CONFIG_DIR/btp.bsc.bts.periphery))
+  echo "$tx" >$CONFIG_DIR/tx/addService.bsc
+}
+ 
+ 
+configure_solidity_set_fee_ratio() {
+  echo "SetFee Ratio"
+  cd $CONTRACTS_DIR/solidity/bts
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+    --method setFeeRatio --name BNB --feeNumerator 100 --fixedFee 5000)
+  echo "$tx" >$CONFIG_DIR/tx/setFee.bsc
+}
+ 
+add_icon_link() {
+  echo "adding icon link $(cat $CONFIG_DIR/btp.icon.btp.address)"
+  cd $CONTRACTS_DIR/solidity/bmc
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
+    --method addLink --link $(cat $CONFIG_DIR/btp.icon.btp.address) --blockInterval 3000 --maxAggregation 2 --delayLimit 3)
   echo "$tx" >$CONFIG_DIR/tx/addLink.bsc
 }
 
+set_link_height() {
+  echo "set link height"
+  cd $CONTRACTS_DIR/solidity/bmc
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
+    --method setLinkRxHeight --link $(cat $CONFIG_DIR/btp.icon.btp.address) --height $(cat $CONFIG_DIR/btp.icon.block.height))
+  echo "$tx" >$CONFIG_DIR/tx/setLinkRxHeight.bsc
+}
+
 add_icon_relay() {
-  echo "adding icon link $(cat $CONFIG_DIR/btp.icon)"
-  BSC_RELAY_USER=$(cat $CONFIG_DIR/bsc.ks.json | jq -r .address)
+  echo "adding icon link"
+  BSC_RELAY_USER=$(cat $BSC_KEY_STORE | jq -r .address)
   cd $CONTRACTS_DIR/solidity/bmc
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
-    --method addRelay --link $(cat $CONFIG_DIR/btp.icon) --addr "0x${BSC_RELAY_USER}")
+    --method addRelay --link $(cat $CONFIG_DIR/btp.icon.btp.address) --addr "0x${BSC_RELAY_USER}")
   echo "$tx" >$CONFIG_DIR/tx/addRelay.bsc
+} 
+
+
+bsc_register_icx() {
+  echo "bts: Register ICX: "
+  local btp_bts_fee_numerator=100
+  local btp_bts_fixed_fee=5000
+  echo "Registering ICX"
+  cd $CONTRACTS_DIR/solidity/bts
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+    --method register --name "ICX" --symbol "ICX" --decimals 18 --addr "0x0000000000000000000000000000000000000000" --feeNumerator ${btp_bts_fee_numerator} --fixedFee ${btp_bts_fixed_fee})
+  echo "$tx" >$CONFIG_DIR/tx/register.icx.bsc
 }
 
-bsc_addService() {
-  echo "adding ${SVC_NAME} service into BMC"
-  cd $CONTRACTS_DIR/solidity/bmc
-  BSH_IMPL_ADDRESS=$(cat $CONFIG_DIR/token_bsh.impl.bsc)
-  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
-    --method addService --name $SVC_NAME --addr "$BSH_IMPL_ADDRESS")
-  echo "$tx" >$CONFIG_DIR/tx/addService.bsc
+get_coinID_icx() {
+  echo "getCoinID ICX"
+  cd $CONTRACTS_DIR/solidity/bts
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+    --method coinId --coinName "ICX")
+  echo "$tx" >$CONFIG_DIR/tx/coinID.icx
 }
 
-bsc_registerToken() {
-  echo "Registering ${TOKEN_NAME} into tokenBSH"
-  cd $CONTRACTS_DIR/solidity/bsh
-  BEP20_TKN_ADDRESS=$(cat $CONFIG_DIR/bep20_token.bsc)
-  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.token.js \
-    --method registerToken --name $TOKEN_NAME --symbol $TOKEN_SYM --addr "$BEP20_TKN_ADDRESS" --feeNumerator 100 --fixedFee 50000)
-  echo "$tx" >$CONFIG_DIR/tx/register.token.bsc
+bsc_register_tbnb() {
+  echo "bts: Register TBNB: "
+  local btp_bts_fee_numerator=100
+  local btp_bts_fixed_fee=5000
+  local addr=$(cat $CONFIG_DIR/btp.bsc.tbnb)
+  echo "Registering tbnb"
+  cd $CONTRACTS_DIR/solidity/bts
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+    --method register --name "TBNB" --symbol "TBNB" --decimals 18 --addr $addr --feeNumerator $btp_bts_fee_numerator --fixedFee ${btp_bts_fixed_fee})
+  echo "$tx" >$CONFIG_DIR/tx/register.tbnb.bsc
+}
+
+get_coinID_tbnb() {
+  echo "getCoinID TBNB"
+  cd $CONTRACTS_DIR/solidity/bts
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+    --method coinId --coinName "TBNB")
+  echo "$tx" >$CONFIG_DIR/tx/coinID.tbnb
+}
+
+bsc_register_ticx() {
+  local btp_bts_fee_numerator=100
+  local btp_bts_fixed_fee=5000
+  echo "Registering TICX"
+  cd $CONTRACTS_DIR/solidity/bts
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+    --method register --name "TICX" --symbol "TICX" --decimals 18 --addr "0x0000000000000000000000000000000000000000" --feeNumerator ${btp_bts_fee_numerator} --fixedFee ${btp_bts_fixed_fee})
+  echo "$tx" >$CONFIG_DIR/tx/register.ticx.bsc
+}
+
+get_coinID_ticx() {
+  echo "getCoinID TICX"
+  cd $CONTRACTS_DIR/solidity/bts
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+    --method coinId --coinName "TICX")
+  echo "$tx" >$CONFIG_DIR/tx/coinID.ticx
 }
 
 bsc_updateRxSeq() {
@@ -144,39 +216,29 @@ generate_metadata() {
   BMC)
     echo "###################  Generating BMC Solidity metadata ###################"
 
-    BMC_ADDRESS=$(jq -r '.networks[] | .address' build/contracts/BMCPeriphery.json)
-    echo btp://$BSC_BMC_NET/"${BMC_ADDRESS}" >$CONFIG_DIR/btp.bsc
-    echo "${BMC_ADDRESS}" >$CONFIG_DIR/bmc.periphery.bsc
-    wait_for_file $CONFIG_DIR/bmc.periphery.bsc
+    local BMC_ADDRESS=$(jq -r '.networks[] | .address' build/contracts/BMCPeriphery.json)
+    echo btp://$BSC_BMC_NET/"${BMC_ADDRESS}" >$CONFIG_DIR/btp.bsc.btp.address
+    echo "${BMC_ADDRESS}" >$CONFIG_DIR/btp.bsc.bmc.periphery
+    wait_for_file $CONFIG_DIR/btp.bsc.bmc.periphery
 
-    jq -r '.networks[] | .address' build/contracts/BMCManagement.json >$CONFIG_DIR/bmc.bsc
-    wait_for_file $CONFIG_DIR/bmc.bsc
-
-    create_abi "BMCPeriphery"
-    create_abi "BMCManagement"
+    jq -r '.networks[] | .address' build/contracts/BMCManagement.json >$CONFIG_DIR/btp.bsc.bmc.management
+    wait_for_file $CONFIG_DIR/btp.bsc.bmc.management
     echo "DONE."
     ;;
 
   \
-    TOKEN_BSH)
-    echo "################### Generating Token BSH & BEP20  Solidity metadata ###################"
+    BTS)
+    echo "################### Generating BTS  Solidity metadata ###################"
 
-    # BSH_IMPL_ADDRESS=$(jq -r '.networks[] | .address' build/contracts/BSHImpl.json)
-    # jq -r '.networks[] | .address' build/contracts/BSHImpl.json >$CONFIG_DIR/token_bsh.impl.bsc
-    # jq -r '.networks[] | .address' build/contracts/BSHProxy.json >$CONFIG_DIR/token_bsh.proxy.bsc
+    jq -r '.networks[] | .address' build/contracts/BTSCore.json >$CONFIG_DIR/btp.bsc.bts.core
+    wait_for_file $CONFIG_DIR/btp.bsc.bts.core
+    jq -r '.networks[] | .address' build/contracts/BTSPeriphery.json >$CONFIG_DIR/btp.bsc.bts.periphery
+    wait_for_file $CONFIG_DIR/btp.bsc.bts.periphery
+    jq -r '.networks[] | .address' build/contracts/HRC20.json >$CONFIG_DIR/btp.bsc.tbnb
+    wait_for_file $CONFIG_DIR/btp.bsc.tbnb
 
-    # wait_for_file $CONFIG_DIR/token_bsh.impl.bsc
-    # wait_for_file $CONFIG_DIR/token_bsh.proxy.bsc
-
-    jq -r '.networks[] | .address' build/contracts/ERC20TKN.json >$CONFIG_DIR/bep20_token.bsc
-    wait_for_file $CONFIG_DIR/bep20_token.bsc
-
-    #create_abi "BSHProxy"
-    #create_abi "BSHImpl"
-    create_abi "ERC20TKN"
     echo "DONE."
     ;;
-
   *)
     echo "Invalid option for generating meta data"
     ;;

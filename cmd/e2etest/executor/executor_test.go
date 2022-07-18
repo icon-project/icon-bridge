@@ -30,7 +30,7 @@ func TestExecutor(t *testing.T) {
 		return cfg, nil
 	}
 	var err error
-	cfg, err := loadConfig("/home/manish/go/src/work/icon-bridge/cmd/e2etest/example-config.json")
+	cfg, err := loadConfig("../example-config.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,16 +51,15 @@ func TestExecutor(t *testing.T) {
 
 	amount := new(big.Int)
 	amount.SetString("10000000000000000000", 10)
-	for tsi, ts := range executor.TestScripts {
-		l.Info("Running TestScript SN.", tsi)
-		go func() {
-			err = ex.Execute(ctx, chain.ICON, chain.HMNY, amount, ts)
-			if err != nil {
-				log.Errorf("%+v", err)
-			}
-		}()
-		time.Sleep(time.Second * 5)
-	}
+
+	go func() {
+		err = ex.Execute(ctx, chain.ICON, chain.BSC, "ICX", amount, executor.Transfer)
+		if err != nil {
+			log.Errorf("%+v", err)
+		}
+	}()
+	time.Sleep(time.Second * 5)
+
 	defer func() {
 		cancel()
 	}()

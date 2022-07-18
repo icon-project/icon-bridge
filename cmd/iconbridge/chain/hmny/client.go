@@ -16,7 +16,7 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-func newClients(urls []string, bmc string, l log.Logger) (cls []*client, err error) {
+func NewClients(urls []string, l log.Logger) (cls []*Client, err error) {
 	for _, url := range urls {
 		clrpc, err := rpc.Dial(url)
 		if err != nil {
@@ -24,30 +24,49 @@ func newClients(urls []string, bmc string, l log.Logger) (cls []*client, err err
 			return nil, err
 		}
 		cleth := ethclient.NewClient(clrpc)
-		clbmc, err := NewBMC(common.HexToAddress(bmc), cleth)
-		if err != nil {
-			l.Errorf("failed to create bmc binding to hmny ethclient: url=%v, %v", url, err)
-			return nil, err
-		}
-		cls = append(cls, &client{
+		cls = append(cls, &Client{
 			log: l,
 			rpc: clrpc,
 			eth: cleth,
-			bmc: clbmc,
+			//bmc: clbmc,
 		})
 	}
 	return cls, nil
 }
 
+func newClients(urls []string, bmc string, l log.Logger) (cls []*Client, bmcs []*BMC, err error) {
+	for _, url := range urls {
+		clrpc, err := rpc.Dial(url)
+		if err != nil {
+			l.Errorf("failed to create hmny rpc client: url=%v, %v", url, err)
+			return nil, nil, err
+		}
+		cleth := ethclient.NewClient(clrpc)
+		clbmc, err := NewBMC(common.HexToAddress(bmc), cleth)
+		if err != nil {
+			l.Errorf("failed to create bmc binding to hmny ethclient: url=%v, %v", url, err)
+			return nil, nil, err
+		}
+		bmcs = append(bmcs, clbmc)
+		cls = append(cls, &Client{
+			log: l,
+			rpc: clrpc,
+			eth: cleth,
+			//bmc: clbmc,
+		})
+	}
+	return cls, bmcs, nil
+}
+
 // grouped rpc api clients
-type client struct {
+type Client struct {
 	log log.Logger
 	rpc *rpc.Client
 	eth *ethclient.Client
-	bmc *BMC
+	//bmc *BMC
 }
 
-func (cl *client) newVerifier(opts *VerifierOptions) (Verifier, error) {
+func (cl *Client) newVerifier(opts *VerifierOptions) (Verifier, error) {
 	h, err := cl.GetHmyV2HeaderByHeight((&big.Int{}).SetUint64(opts.BlockHeight))
 	if err != nil {
 		return nil, errors.Wrapf(err, "cl.GetHeaderByHeight(%d): %v", opts.BlockHeight, err)
@@ -82,7 +101,7 @@ func (cl *client) newVerifier(opts *VerifierOptions) (Verifier, error) {
 	return vr, nil
 }
 
-func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
+func (cl *Client) syncVerifier(vr Verifier, height uint64) (err error) {
 	h, err := cl.GetHmyV2HeaderByHeight((&big.Int{}).SetUint64(height))
 	if err != nil {
 		return err
@@ -115,13 +134,13 @@ func (cl *client) syncVerifier(vr Verifier, height uint64) (err error) {
 	return nil
 }
 
-func (cl *client) GetChainID() (*big.Int, error) {
+func (cl *Client) GetChainID() (*big.Int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	return cl.eth.ChainID(ctx)
 }
 
-func (cl *client) GetBlockNumber() (uint64, error) {
+func (cl *Client) GetBlockNumber() (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	bn, err := cl.eth.BlockNumber(ctx)
@@ -131,7 +150,7 @@ func (cl *client) GetBlockNumber() (uint64, error) {
 	return bn, nil
 }
 
-func (cl *client) GetTransaction(hash common.Hash) (*ethtypes.Transaction, bool, error) {
+func (cl *Client) GetTransaction(hash common.Hash) (*ethtypes.Transaction, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	tx, pending, err := cl.eth.TransactionByHash(ctx, hash)
@@ -141,7 +160,7 @@ func (cl *client) GetTransaction(hash common.Hash) (*ethtypes.Transaction, bool,
 	return tx, pending, err
 }
 
-func (cl *client) GetTransactionReceipt(hash common.Hash) (*types.Receipt, error) {
+func (cl *Client) GetTransactionReceipt(hash common.Hash) (*types.Receipt, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	tr := new(types.Receipt)
@@ -152,7 +171,7 @@ func (cl *client) GetTransactionReceipt(hash common.Hash) (*types.Receipt, error
 	return tr, nil
 }
 
-func (cl *client) GetEpochLastBlock(epoch *big.Int) (*big.Int, error) {
+func (cl *Client) GetEpochLastBlock(epoch *big.Int) (*big.Int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	lbn := big.NewInt(0)
@@ -163,7 +182,7 @@ func (cl *client) GetEpochLastBlock(epoch *big.Int) (*big.Int, error) {
 	return lbn, nil
 }
 
-func (cl *client) GetHmyBlockByHeight(height *big.Int) (*BlockWithTxHash, error) {
+func (cl *Client) GetHmyBlockByHeight(height *big.Int) (*BlockWithTxHash, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	hb := new(BlockWithTxHash)
@@ -174,7 +193,7 @@ func (cl *client) GetHmyBlockByHeight(height *big.Int) (*BlockWithTxHash, error)
 	return hb, nil
 }
 
-func (cl *client) GetHmyV2BlockByHeight(height *big.Int) (*BlockV2WithTxHash, error) {
+func (cl *Client) GetHmyV2BlockByHeight(height *big.Int) (*BlockV2WithTxHash, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	hb := new(BlockV2WithTxHash)
@@ -185,7 +204,7 @@ func (cl *client) GetHmyV2BlockByHeight(height *big.Int) (*BlockV2WithTxHash, er
 	return hb, nil
 }
 
-func (cl *client) GetHmyBlockByHash(hash common.Hash) (*BlockWithTxHash, error) {
+func (cl *Client) GetHmyBlockByHash(hash common.Hash) (*BlockWithTxHash, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	hb := new(BlockWithTxHash)
@@ -196,7 +215,7 @@ func (cl *client) GetHmyBlockByHash(hash common.Hash) (*BlockWithTxHash, error) 
 	return hb, nil
 }
 
-func (cl *client) GetHmyV2BlockByHash(hash common.Hash) (*BlockV2WithTxHash, error) {
+func (cl *Client) GetHmyV2BlockByHash(hash common.Hash) (*BlockV2WithTxHash, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	hb := new(BlockV2WithTxHash)
@@ -207,7 +226,7 @@ func (cl *client) GetHmyV2BlockByHash(hash common.Hash) (*BlockV2WithTxHash, err
 	return hb, nil
 }
 
-func (cl *client) GetHmyV2HeaderByHeight(height *big.Int) (*Header, error) {
+func (cl *Client) GetHmyV2HeaderByHeight(height *big.Int) (*Header, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	hb := new(Header)
@@ -218,7 +237,7 @@ func (cl *client) GetHmyV2HeaderByHeight(height *big.Int) (*Header, error) {
 	return hb, nil
 }
 
-func (cl *client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
+func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
 	receipts, err := cl.getHmyBlockReceipts(hash)
 	if err != nil {
 		return cl.getHmyTxnReceiptsByBlockHash(hash)
@@ -226,7 +245,7 @@ func (cl *client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
 	return receipts, nil
 }
 
-func (cl *client) getHmyBlockReceipts(hash common.Hash) (types.Receipts, error) {
+func (cl *Client) getHmyBlockReceipts(hash common.Hash) (types.Receipts, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	receipts := make([]*types.Receipt, 0)
@@ -237,7 +256,7 @@ func (cl *client) getHmyBlockReceipts(hash common.Hash) (types.Receipts, error) 
 	return receipts, nil
 }
 
-func (cl *client) getHmyTxnReceiptsByBlockHash(hash common.Hash) (types.Receipts, error) {
+func (cl *Client) getHmyTxnReceiptsByBlockHash(hash common.Hash) (types.Receipts, error) {
 	b, err := cl.GetHmyBlockByHash(hash)
 	if err != nil {
 		return nil, err
