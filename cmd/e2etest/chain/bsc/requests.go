@@ -119,23 +119,6 @@ func generateKeyPair() ([2]string, error) {
 	return [2]string{privStr, pubAddress}, nil
 }
 
-func (r *requestAPI) getBscBalance(addr string) (*big.Int, error) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	return r.ethCl.BalanceAt(ctx, common.HexToAddress(addr), nil)
-}
-
-func (r *requestAPI) getWrappedCoinBalance(coinName string, addr string) (val *big.Int, err error) {
-	v, err := r.btsc.BalanceOf(&bind.CallOpts{Pending: false, Context: context.Background()}, common.HexToAddress(addr), coinName)
-	if err != nil {
-		err = errors.Wrap(err, "btsc.GetBalanceOf ")
-		return
-	}
-	r.log.Infof("Locked %v Refundable %v Usable %v", v.LockedBalance, v.RefundableBalance, v.UsableBalance)
-	return v.UsableBalance, nil
-}
-
 func (r *requestAPI) getTransactionRequest(senderKey string) (*bind.TransactOpts, error) {
 	_, senderPrivKey, err := GetWalletFromPrivKey(senderKey)
 	if err != nil {
@@ -216,7 +199,7 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 	}
 
 	if err = r.ethCl.SendTransaction(context.TODO(), signedTx); err != nil {
-		err = errors.Wrap(err, "SendTransaction ")
+		err = errors.Wrap(err, "SendNativeTransaction ")
 		return
 	}
 	txnHash = signedTx.Hash().String()
@@ -351,6 +334,80 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount big.Int) (ap
 	return
 }
 
+func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalance, err error) {
+	b, err := r.btsc.BalanceOf(&bind.CallOpts{Pending: false, Context: context.Background()}, common.HexToAddress(addr), coinName)
+	if err != nil {
+		err = errors.Wrap(err, "btsc.GetBalanceOf ")
+		return
+	}
+	erc := &erc20.Erc20tradable{}
+	res, ok := r.ercPerCoin.Load(coinName)
+
+	if !ok {
+		//r.log.Debugf("Registering Input coinName %v ", coinName)
+		coinAddress, errs := r.btsc.CoinId(&bind.CallOpts{Pending: false, Context: nil}, coinName)
+		if err != nil {
+			err = errors.Wrap(errs, "btsc.CoinId ")
+			return
+		}
+		if erc, err = erc20.NewErc20tradable(coinAddress, r.ethCl); err != nil {
+			err = errors.Wrap(err, "NewErc20tradable")
+			return
+		}
+		r.ercPerCoin.Store(coinName, erc)
+		res = erc
+	} else if ok && res == nil {
+		err = fmt.Errorf("ercPerCoin includes coin %v but value is nil", coinName)
+		return
+	}
+
+	// ok && res != nil
+	if erc, ok = res.(*erc20.Erc20tradable); !ok {
+		err = fmt.Errorf("Expected type *erc20.Erc20tradable; Got %T", res)
+		return
+	}
+	btscaddr, ok := r.contractNameToAddress[chain.BTSCoreBsc]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTSCoreBsc)
+		return
+	}
+
+	allowance, err := erc.Allowance(&bind.CallOpts{Pending: false, Context: context.TODO()}, common.HexToAddress(addr), common.HexToAddress(btscaddr))
+	if err != nil || allowance == nil {
+		allowance = big.NewInt(0)
+	}
+
+	bal = &chain.CoinBalance{
+		Approved:   allowance,
+		Usable:     b.UsableBalance,
+		Locked:     b.LockedBalance,
+		Refundable: b.RefundableBalance,
+		Total:      big.NewInt(0),
+	}
+	bal.Total = bal.Total.Add(bal.Locked, b.UsableBalance)
+	bal.Total = bal.Total.Add(bal.Total, bal.Refundable)
+	return bal, nil
+}
+
+/*
+func (r *requestAPI) getBscBalance(addr string) (*big.Int, error) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	return r.ethCl.BalanceAt(ctx, common.HexToAddress(addr), nil)
+}
+
+func (r *requestAPI) getWrappedCoinBalance(coinName string, addr string) (val *big.Int, err error) {
+	v, err := r.btsc.BalanceOf(&bind.CallOpts{Pending: false, Context: context.Background()}, common.HexToAddress(addr), coinName)
+	if err != nil {
+		err = errors.Wrap(err, "btsc.GetBalanceOf ")
+		return
+	}
+	r.log.Infof("Locked %v Refundable %v Usable %v", v.LockedBalance, v.RefundableBalance, v.UsableBalance)
+	return v.UsableBalance, nil
+}
+
+
 func (r *requestAPI) getAllowance(coinName, ownerAddr string) (amount *big.Int, err error) {
 	erc := &erc20.Erc20tradable{}
 	res, ok := r.ercPerCoin.Load(coinName)
@@ -383,3 +440,5 @@ func (r *requestAPI) getAllowance(coinName, ownerAddr string) (amount *big.Int, 
 	}
 	return erc.Allowance(&bind.CallOpts{Pending: false, Context: context.TODO()}, common.HexToAddress(ownerAddr), common.HexToAddress(btscaddr))
 }
+
+*/

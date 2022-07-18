@@ -100,6 +100,8 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 							continue
 						}
 						nel := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
+						//r.Log.Infof("BFirst  %+v", nel)
+						//r.Log.Infof("BSecond  %+v", nel.EventLog)
 						if r.fd.Match(nel) {
 							//r.log.Infof("Matched %+v", el)
 							r.sinkChan <- nel
@@ -121,7 +123,7 @@ func (r *api) GetChainType() chain.ChainType {
 	return chain.BSC
 }
 
-func (r *api) GetCoinBalance(coinName string, addr string) (*big.Int, error) {
+func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, error) {
 	if !strings.Contains(addr, "btp://") {
 		return nil, errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -130,14 +132,11 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*big.Int, error) {
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-	// if coinName == NativeCoinName {
-	// 	return r.requester.getBscBalance(address)
-	// }
-	return r.requester.getWrappedCoinBalance(coinName, address)
+	return r.requester.getCoinBalance(coinName, address)
 }
 
 func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
-	if !strings.Contains(recepientAddress, "btp://") {
+	if !strings.Contains(recepientAddress, "btp:") {
 		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
 	within := false
@@ -198,7 +197,7 @@ func (r *api) NativeCoinName() string {
 	return NativeCoinName
 }
 
-func (r *api) TokenName() string {
+func (r *api) NativeTokenName() string {
 	return TokenName
 }
 
@@ -224,8 +223,4 @@ func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
 
 func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
-}
-
-func (r *api) GetAllowance(coinName, ownerAddr string) (amont *big.Int, err error) {
-	return r.requester.getAllowance(coinName, chain.BTPAddress(ownerAddr).ContractAddress())
 }

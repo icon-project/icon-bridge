@@ -269,7 +269,7 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	nativeCoinsPerChain := map[string]chain.ChainType{}
 	for cName, cl := range ex.clientsPerChain {
 		nativeCoinsPerChain[cl.NativeCoinName()] = cName
-		nativeCoinsPerChain[cl.TokenName()] = cName
+		nativeCoinsPerChain[cl.NativeTokenName()] = cName
 	}
 	for coinName, amt := range amountPerCoin {
 		if chainType, ok := nativeCoinsPerChain[coinName]; !ok {
@@ -334,7 +334,7 @@ func (ex *executor) GetFundedAddresses(addressMap map[chain.ChainType]uint) (map
 	nativeCoinsPerChain := map[string]chain.ChainType{}
 	for cName, cl := range ex.clientsPerChain {
 		nativeCoinsPerChain[cl.NativeCoinName()] = cName
-		nativeCoinsPerChain[cl.TokenName()] = cName
+		nativeCoinsPerChain[cl.NativeTokenName()] = cName
 	}
 	//TODO:
 	tokensToFund := []string{"ICX", "BNB", "TICX", "TBNB"}

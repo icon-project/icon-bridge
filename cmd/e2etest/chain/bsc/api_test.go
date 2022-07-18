@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/common/log"
 )
@@ -16,23 +15,8 @@ const (
 	GodAddr     = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
 	DemoSrcKey  = "ce69f928c68b0b7bc198824b081cfbde60d6b1e0f1695d5aaa9d8564bb35dcb3"
 	DemoSrcAddr = "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
-	DemoDstAddr = "btp://0xdf6463.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
+	DemoDstAddr = "btp://0x613f17.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
 )
-
-func TestAllowance(t *testing.T) {
-	rpi, err := getNewApi()
-	if err != nil {
-		t.Fatalf("%+v", err)
-	}
-	for _, coin := range []string{"ICX", "TICX", "TBNB"} {
-		if allowanceAmt, err := rpi.GetAllowance(coin, DemoSrcAddr); err != nil {
-			t.Fatalf("%+v", err)
-		} else {
-			t.Logf("Allowance %v: %v", coin, allowanceAmt)
-		}
-	}
-	return
-}
 
 func TestApprove(t *testing.T) {
 
@@ -42,7 +26,7 @@ func TestApprove(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	amt := new(big.Int)
-	amt.SetString("20000000000000000000", 10)
+	amt.SetString("200000000000000", 10)
 	approveHash, err := rpi.Approve(coin, DemoSrcKey, *amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -55,18 +39,19 @@ func TestApprove(t *testing.T) {
 }
 
 func TestTransferIntraChain(t *testing.T) {
-	coin := "BNB"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	amt := new(big.Int)
-	amt.SetString("5000000000000000000", 10)
-	hash, err := rpi.Transfer(coin, GodKey, DemoSrcAddr, *amt)
-	if err != nil {
-		t.Fatalf("%+v", err)
+	for _, coin := range []string{"BNB", "TBNB"} {
+		amt := new(big.Int)
+		amt.SetString("1020000000000000000", 10)
+		hash, err := rpi.Transfer(coin, GodKey, DemoSrcAddr, *amt)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+		t.Logf("Hash %v", hash)
 	}
-	t.Logf("Hash %v", hash)
 }
 
 func TestTransferInterChain(t *testing.T) {
@@ -84,7 +69,7 @@ func TestTransferInterChain(t *testing.T) {
 		t.Logf("%v %v", coin, res.String())
 	}
 	amt := new(big.Int)
-	amt.SetString("10000000000000", 10)
+	amt.SetString("100000000000000", 10)
 	txnHash, err := rpi.Transfer(coin, DemoSrcKey, DemoDstAddr, *amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -96,7 +81,8 @@ func TestTransferInterChain(t *testing.T) {
 	}
 	t.Logf("Receipt %+v", res)
 	for _, lin := range res.ElInfo {
-		t.Logf("Log %+v ", lin)
+		seq, _ := lin.GetSeq()
+		t.Logf("Log %+v %v", lin, seq)
 	}
 	for _, coin := range []string{"BNB", "TBNB", "ICX", "TICX"} {
 		res, err := rpi.GetCoinBalance(coin, DemoSrcAddr)
@@ -160,7 +146,12 @@ func getNewApi() (chain.ChainAPI, error) {
 	return rx, nil
 }
 
-func TestNew(t *testing.T) {
-	hx := crypto.Keccak256Hash([]byte("0xdf6463.icon"))
-	t.Log(hx)
+func getNewClient() (*Client, error) {
+	l := log.New()
+	log.SetGlobalLogger(l)
+	cls, err := NewClients([]string{"http://localhost:8545"}, l)
+	if err != nil {
+		return nil, err
+	}
+	return cls[0], nil
 }

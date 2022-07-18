@@ -129,7 +129,7 @@ func (r *api) GetChainType() chain.ChainType {
 	return chain.HMNY
 }
 
-func (r *api) GetCoinBalance(coinName string, addr string) (*big.Int, error) {
+func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, error) {
 	if !strings.Contains(addr, "btp://") {
 		return nil, errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -138,10 +138,8 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*big.Int, error) {
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-	if coinName == NativeCoinName {
-		return r.requester.getHmnyBalance(address)
-	}
-	return r.requester.getWrappedCoinBalance(coinName, address)
+
+	return r.requester.getCoinBalance(coinName, address)
 }
 
 func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
@@ -206,7 +204,7 @@ func (r *api) NativeCoinName() string {
 	return NativeCoinName
 }
 
-func (r *api) TokenName() string {
+func (r *api) NativeTokenName() string {
 	return TokenName
 }
 
@@ -232,8 +230,4 @@ func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
 
 func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
-}
-
-func (r *api) GetAllowance(coinName, ownerAddr string) (amont *big.Int, err error) {
-	return r.requester.getAllowance(coinName, chain.BTPAddress(ownerAddr).ContractAddress())
 }

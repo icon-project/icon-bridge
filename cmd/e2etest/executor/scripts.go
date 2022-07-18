@@ -25,7 +25,7 @@ var Transfer Script = Script{
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
-		if initSrcBalance.Cmp(amt) == -1 {
+		if initSrcBalance.Usable.Cmp(amt) == -1 {
 			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		if args.coinName != args.src.NativeCoinName() {
@@ -117,13 +117,13 @@ var Transfer Script = Script{
 					}
 					//args.log.Infof("Src Balance Init %v Final %v ", initSrcBalance.String(), finalSrcBalance.String())
 					//args.log.Infof("Dst Balance Init %v Final %v ", initDstBalance.String(), finalDstBalance.String())
-					if finalDstBalance.Cmp(startEvent.Assets[0].Value) != 0 {
+					if finalDstBalance.Usable.Cmp(startEvent.Assets[0].Value) != 0 {
 						return fmt.Errorf("Balance Compare after Transfer; Dst; Got Unequal Destination Balance %v EventAssets Value %v", finalDstBalance.String(), startEvent.Assets[0].Value.String())
 					}
-					if finalDstBalance.Cmp(initDstBalance) != 1 {
+					if finalDstBalance.Usable.Cmp(initDstBalance.Usable) != 1 {
 						return fmt.Errorf("Balance Compare after Transfer; Dst; final Balance should have been greater than initial balance; Got Final %v Initial %v", finalDstBalance.String(), initDstBalance.String())
 					}
-					if finalSrcBalance.Cmp(initSrcBalance) != -1 {
+					if finalSrcBalance.Usable.Cmp(initSrcBalance.Usable) != -1 {
 						return fmt.Errorf("Balance Compare after Transfer; Src; final Balance should have been less than initial balance; Got Final %v Initial %v", finalSrcBalance.String(), initSrcBalance.String())
 					}
 					return nil
@@ -145,7 +145,7 @@ var StressTransfer Script = Script{
 		if err != nil {
 			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
-		if initSrcBalance.Cmp(amt) == -1 {
+		if initSrcBalance.Usable.Cmp(amt) == -1 {
 			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
 		}
 		if args.coinName != args.src.NativeCoinName() {

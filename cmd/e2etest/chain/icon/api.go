@@ -19,7 +19,7 @@ const (
 )
 const (
 	NativeCoinName = "ICX"
-	TokenName      = "TICX"
+	NativeToken    = "TICX"
 )
 
 type api struct {
@@ -120,7 +120,7 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 }
 
 func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
-	if !strings.Contains(recepientAddress, "btp://") {
+	if !strings.Contains(recepientAddress, "btp:") {
 		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
 	within := false
@@ -132,7 +132,7 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.
 	if within {
 		if coinName == NativeCoinName {
 			txnHash, _, err = r.requester.transferNativeIntraChain(senderKey, recepientAddress, amount)
-		} else if coinName == TokenName {
+		} else if coinName == NativeToken {
 			txnHash, _, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount)
 		} else {
 			err = fmt.Errorf("IntraChain transfers are supported for coins ICX and TICX only")
@@ -147,7 +147,7 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.
 	return
 }
 
-func (r *api) GetCoinBalance(coinName string, addr string) (*big.Int, error) {
+func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, error) {
 	if !strings.Contains(addr, "btp://") {
 		return nil, errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -156,10 +156,7 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*big.Int, error) {
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-	if coinName == NativeCoinName {
-		return r.requester.getICXBalance(address)
-	}
-	return r.requester.getWrappedCoinBalance(coinName, address)
+	return r.requester.getCoinBalance(coinName, address)
 }
 
 func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
@@ -167,6 +164,7 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 	if err != nil {
 		return nil, errors.Wrapf(err, "waitForResults(%v)", hash)
 	}
+
 	plogs := []*chain.EventLogInfo{}
 	for _, v := range txRes.EventLogs {
 		decodedLog, eventType, err := r.par.ParseTxn(&TxnEventLog{Addr: icon.Address(v.Addr), Indexed: v.Indexed, Data: v.Data})
@@ -186,7 +184,7 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 }
 
 func (r *api) Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error) {
-	if coinName == TokenName {
+	if coinName == NativeToken {
 		txnHash, _, err = r.requester.approveToken(coinName, ownerKey, amount)
 	} else if coinName == NativeCoinName {
 		r.Log.Infof("No Handler for Approve Call on NativeCoin: %v, because not needed")
@@ -209,8 +207,8 @@ func (r *api) NativeCoinName() string {
 	return NativeCoinName
 }
 
-func (r *api) TokenName() string {
-	return TokenName
+func (r *api) NativeTokenName() string {
+	return NativeToken
 }
 
 func (r *api) GetKeyPairs(num int) ([][2]string, error) {
@@ -235,13 +233,4 @@ func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
 
 func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
-}
-
-func (r *api) GetAllowance(coinName, ownerAddr string) (amont *big.Int, err error) {
-	if coinName == NativeCoinName {
-		return big.NewInt(0), nil
-	} else if coinName == r.TokenName() {
-		return r.requester.getAllowanceForNativeTokens(coinName, chain.BTPAddress(ownerAddr).ContractAddress())
-	}
-	return r.requester.getAllowanceForWrappedCoins(coinName, chain.BTPAddress(ownerAddr).ContractAddress())
 }

@@ -39,21 +39,33 @@ func (e EventLogType) String() string {
 	return string(e)
 }
 
+type CoinBalance struct {
+	Total      *big.Int
+	Approved   *big.Int
+	Usable     *big.Int
+	Locked     *big.Int
+	Refundable *big.Int
+}
+
+func (cb *CoinBalance) String() string {
+	return " Total: " + cb.Total.String() + " Approved: " + cb.Approved.String() + " Usable: " + cb.Usable.String() +
+		" Locked: " + cb.Locked.String() + " Refundable: " + cb.Refundable.String()
+}
+
 type SrcAPI interface {
 	Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error)
 	WaitForTxnResult(ctx context.Context, hash string) (txnr *TxnResult, err error)
 	WatchForTransferStart(requestID uint64, seq int64) error
 	WatchForTransferEnd(ID uint64, seq int64) error
 	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
-	GetCoinBalance(coinName string, addr string) (*big.Int, error)
+	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	GetChainType() ChainType
 	NativeCoinName() string
-	TokenName() string
-	GetAllowance(coinName, ownerAddr string) (amont *big.Int, err error)
+	NativeTokenName() string
 }
 
 type DstAPI interface {
-	GetCoinBalance(coinName string, addr string) (*big.Int, error)
+	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	WatchForTransferReceived(requestID uint64, seq int64) error
 	GetChainType() ChainType
 }
@@ -75,11 +87,10 @@ type ChainAPI interface {
 	WatchForTransferReceived(ID uint64, seq int64) error
 	WatchForTransferEnd(ID uint64, seq int64) error
 	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
-	GetCoinBalance(coinName string, addr string) (*big.Int, error)
+	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	GetChainType() ChainType
 	NativeCoinName() string
-	TokenName() string
-	GetAllowance(coinName, ownerAddr string) (amont *big.Int, err error)
+	NativeTokenName() string
 }
 
 type ChainConfig struct {

@@ -121,10 +121,6 @@ func (r *requestAPI) callContract(contractAddress string, args map[string]string
 	return res, nil
 }
 
-func (r *requestAPI) getICXBalance(addr string) (*big.Int, error) {
-	return r.cl.GetBalance(&icon.AddressParam{Address: icon.Address(addr)})
-}
-
 func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount big.Int) (txHash string, logs interface{}, err error) {
 	args := map[string]string{"_to": recepientAddress, "_value": intconv.FormatBigInt(&amount)}
 	caddr, ok := r.contractNameToAddress[chain.TICXIcon]
@@ -280,6 +276,149 @@ func generateKeyPair() ([2]string, error) {
 	return [2]string{hex.EncodeToString(priv), addr}, nil
 }
 
+func (r *requestAPI) reclaim() {
+	coinName := "TICX"
+	amount := big.NewInt(10100000000000000)
+	senderKey := "f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5"
+	args := map[string]string{"_coinName": coinName, "_value": intconv.FormatBigInt(amount)}
+	btsAddr, ok := r.contractNameToAddress[chain.BTSIcon]
+	if !ok {
+		fmt.Printf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+		return
+	}
+	hash, _, err := r.transactWithContract(senderKey, btsAddr, *big.NewInt(0), args, "reclaim", "call")
+	if err != nil {
+		fmt.Println(errors.Wrap(err, "callContract coinAddress "))
+		return
+	}
+	fmt.Println("Hash ", hash)
+	return
+}
+
+func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalance, err error) {
+	zeroBalance := big.NewInt(0)
+	bal = &chain.CoinBalance{Total: zeroBalance, Usable: zeroBalance, Refundable: zeroBalance, Locked: zeroBalance, Approved: zeroBalance}
+
+	// Native
+	if coinName == NativeCoinName {
+		bal.Usable, err = r.cl.GetBalance(&icon.AddressParam{Address: icon.Address(addr)})
+		if err != nil {
+			return nil, errors.Wrapf(err, "%v", err)
+		}
+		bal.Total = bal.Usable
+		return
+	}
+	// Tokens ..
+	btsAddr, ok := r.contractNameToAddress[chain.BTSIcon]
+	if !ok {
+		return nil, fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+	}
+	// BTS BALANCEOF
+	res, err := r.callContract(btsAddr, map[string]string{"_coinName": coinName, "_owner": addr}, "balanceOf")
+	if err != nil {
+		return nil, errors.Wrap(err, "callContract coinAddress ")
+	} else if res == nil {
+		return nil, errors.New("callContract returned nil value ")
+	}
+	balanceMap, ok := res.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Expected type map[string]interface{} Got %T", res)
+	}
+	tmp, ok := balanceMap["usable"]
+	if !ok {
+		return nil, fmt.Errorf("")
+	}
+	tmpStr, ok := tmp.(string)
+	if !ok {
+		return nil, fmt.Errorf("Expected type string Got %T", tmp)
+	}
+	btsUsable := new(big.Int)
+	btsUsable.SetString(tmpStr[2:], 16)
+	tmp, ok = balanceMap["locked"]
+	if !ok {
+		return nil, fmt.Errorf("")
+	}
+	tmpStr, ok = tmp.(string)
+	if !ok {
+		return nil, fmt.Errorf("Expected type string Got %T", tmp)
+	}
+	btsLocked := new(big.Int)
+	btsLocked.SetString(tmpStr[2:], 16)
+	tmp, ok = balanceMap["refundable"]
+	if !ok {
+		return nil, fmt.Errorf("")
+	}
+	tmpStr, ok = tmp.(string)
+	if !ok {
+		return nil, fmt.Errorf("Expected type string Got %T", tmp)
+	}
+	btsRefundable := new(big.Int)
+	btsRefundable.SetString(tmpStr[2:], 16)
+
+	// IRC2/IRC2Tradeable contracts
+	res, err = r.callContract(btsAddr, map[string]string{"_coinName": coinName}, "coinAddress")
+	if err != nil {
+		return nil, errors.Wrap(err, "callContract coinAddress ")
+	} else if res == nil {
+		return nil, errors.New("callContract returned nil value ")
+	}
+	coinAddress, ok := res.(string)
+	if !ok {
+		return nil, fmt.Errorf("Expected type string Got %T", res)
+	}
+
+	res, err = r.callContract(coinAddress, map[string]string{"_owner": addr}, "balanceOf")
+	if err != nil {
+		return nil, errors.Wrap(err, "callContract balanceOf ")
+	} else if res == nil {
+		return nil, errors.New("callContract returned nil value ")
+	}
+	resStr, ok := res.(string)
+	if !ok {
+		return nil, fmt.Errorf("Expected type string Got %T", res)
+	}
+	ircBalance := new(big.Int)
+	ircBalance.SetString(resStr[2:], 16)
+
+	if coinName == NativeToken {
+		bal.Approved = btsUsable
+		bal.Locked = btsLocked
+		bal.Refundable = btsRefundable
+		bal.Usable = ircBalance
+		bal.Total = bal.Total.Add(bal.Approved, bal.Locked)
+		bal.Total = bal.Total.Add(bal.Total, bal.Usable)
+		bal.Total = bal.Total.Add(bal.Total, bal.Refundable)
+		return
+	}
+
+	// IRC2Tradeable Allowance
+	res, err = r.callContract(coinAddress, map[string]string{"owner": addr, "spender": btsAddr}, "allowance")
+	if err != nil {
+		return nil, errors.Wrap(err, "callContract allowance ")
+	} else if res == nil {
+		return nil, errors.New("callContract returned nil value ")
+	}
+	resStr, ok = res.(string)
+	if !ok {
+		return nil, fmt.Errorf("Expected type string Got %T", res)
+	}
+	allowance := new(big.Int)
+	allowance.SetString(resStr[2:], 16)
+
+	bal.Approved = allowance
+	bal.Usable = ircBalance
+	bal.Locked = btsLocked
+	bal.Refundable = btsRefundable
+	bal.Total = bal.Total.Add(bal.Locked, bal.Usable)
+	bal.Total = bal.Total.Add(bal.Total, bal.Refundable)
+	return
+}
+
+/*
+func (r *requestAPI) getICXBalance(addr string) (*big.Int, error) {
+	return r.cl.GetBalance(&icon.AddressParam{Address: icon.Address(addr)})
+}
+
 func (r *requestAPI) getWrappedCoinBalance(coinName, addr string) (*big.Int, error) {
 	args := map[string]string{"_coinName": coinName}
 	btsAddr, ok := r.contractNameToAddress[chain.BTSIcon]
@@ -325,7 +464,7 @@ func (r *requestAPI) getAllowanceForNativeTokens(coinName string, addr string) (
 	} else if res == nil {
 		return nil, errors.New("callContract returned nil value ")
 	}
-	// fmt.Println(res)
+	fmt.Println(res)
 	balanceMap, ok := res.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("Expected type map[string]interface{} Got %T", res)
@@ -375,3 +514,4 @@ func (r *requestAPI) getAllowanceForWrappedCoins(coinName string, addr string) (
 	n.SetString(resStr[2:], 16)
 	return n, nil
 }
+*/
