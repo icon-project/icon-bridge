@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"math/big"
 	"math/rand"
 	"os"
 	"time"
@@ -44,15 +43,13 @@ func main() {
 		return
 	}
 	ex.Subscribe(ctx)
-
+	time.Sleep(5) // wait for subscription to start
 	if !testCfg.FlowTest.Disable {
 		log.Info("Starting Flow Test ....")
-		fundAmount := new(big.Int)
-		fundAmount.SetString("10000000000000000000", 10)
 		for _, fts := range testCfg.FlowTest.Chains {
 			for _, coinName := range fts.CoinNames {
 				go func(coinName string) {
-					err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, coinName, fundAmount, executor.Transfer)
+					err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, coinName, executor.Transfer)
 					if err != nil {
 						log.Errorf("%+v", err)
 					}
@@ -62,41 +59,41 @@ func main() {
 		}
 		<-ex.Done()
 	}
-
-	if !testCfg.StressTest.Disable {
-		log.Info("Starting Stress Test ....")
-		if len(testCfg.StressTest.AddressMap) <= 1 {
-			log.Error("Require at least two chains for inter chain tests")
-		}
-		log.Info("Fund addresses ....")
-		if addrsPerChain, err := ex.GetFundedAddresses(testCfg.StressTest.AddressMap); err != nil {
-			log.Errorf("%v", err)
-			return
-		} else {
-			cns := []chain.ChainType{}
-			for cn := range addrsPerChain {
-				cns = append(cns, cn)
+	/*
+		if !testCfg.StressTest.Disable {
+			log.Info("Starting Stress Test ....")
+			if len(testCfg.StressTest.AddressMap) <= 1 {
+				log.Error("Require at least two chains for inter chain tests")
 			}
-			// TODO
-			allCoins := []string{"ICX", "TICX", "BNB", "TBNB"}
-			log.Error("Run Jobs")
-			for j := 0; j < int(testCfg.StressTest.JobsCount); j++ {
-				rand.Seed(time.Now().UnixNano())
-				go func() {
-					srcChainType, dstChainType := getRandomChains(cns)
-					coin := allCoins[rand.Intn(len(allCoins))]
-					srcAddr := addrsPerChain[srcChainType][rand.Intn(len(addrsPerChain[srcChainType]))]
-					dstAddr := addrsPerChain[dstChainType][rand.Intn(len(addrsPerChain[dstChainType]))]
-					if err := ex.ExecuteOnAddr(ctx, srcChainType, dstChainType, coin, srcAddr, dstAddr, executor.StressTransfer); err != nil {
-						log.Errorf("%v", err)
-					}
-				}()
-				time.Sleep(time.Second * 5)
+			log.Info("Fund addresses ....")
+			if addrsPerChain, err := ex.GetFundedAddresses(testCfg.StressTest.AddressMap); err != nil {
+				log.Errorf("%v", err)
+				return
+			} else {
+				cns := []chain.ChainType{}
+				for cn := range addrsPerChain {
+					cns = append(cns, cn)
+				}
+				// TODO
+				allCoins := []string{"ICX", "TICX", "BNB", "TBNB"}
+				log.Error("Run Jobs")
+				for j := 0; j < int(testCfg.StressTest.JobsCount); j++ {
+					rand.Seed(time.Now().UnixNano())
+					go func() {
+						srcChainType, dstChainType := getRandomChains(cns)
+						coin := allCoins[rand.Intn(len(allCoins))]
+						srcAddr := addrsPerChain[srcChainType][rand.Intn(len(addrsPerChain[srcChainType]))]
+						dstAddr := addrsPerChain[dstChainType][rand.Intn(len(addrsPerChain[dstChainType]))]
+						if err := ex.ExecuteOnAddr(ctx, srcChainType, dstChainType, coin, srcAddr, dstAddr, executor.Transfer); err != nil {
+							log.Errorf("%v", err)
+						}
+					}()
+					time.Sleep(time.Second * 5)
+				}
+				<-ex.Done()
 			}
-			<-ex.Done()
 		}
-	}
-
+	*/
 	cancel()
 	time.Sleep(time.Second * 2)
 	log.Warn("Exit...")

@@ -89,7 +89,6 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 		return nil, nil, errors.Wrap(err, "GetLastBlock ")
 	}
 	height := uint64(blk.Height)
-	height = 1
 	r.Log.Infof("Subscribe Start Height %v", height)
 	// _errCh := make(chan error)
 	go func() {
@@ -104,8 +103,6 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 						continue
 					}
 					nel := &chain.EventLogInfo{ContractAddress: common.NewAddress(el.Addr).String(), EventType: evtType, EventLog: res}
-					r.Log.Infof("IFirst %+v", nel)
-					r.Log.Infof("ISecond %+v", nel.EventLog)
 					if r.fd.Match(nel) { //el.IDs is updated by match if matched
 						//r.Log.Infof("Matched %+v", el)
 						r.sinkChan <- nel

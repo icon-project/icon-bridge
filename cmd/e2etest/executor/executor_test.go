@@ -53,7 +53,7 @@ func TestExecutor(t *testing.T) {
 	amount.SetString("10000000000000000000", 10)
 
 	go func() {
-		err = ex.Execute(ctx, chain.ICON, chain.BSC, "ICX", amount, executor.Transfer)
+		err = ex.Execute(ctx, chain.ICON, chain.BSC, "ICX", executor.Transfer)
 		if err != nil {
 			log.Errorf("%+v", err)
 		}
