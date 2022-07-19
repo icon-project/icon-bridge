@@ -20,14 +20,15 @@ const (
 
 type api struct {
 	*icon.ReceiverCore
-	networkID       string
-	sinkChan        chan *chain.EventLogInfo
-	errChan         chan error
-	par             *parser
-	fd              *finder
-	requester       *requestAPI
-	nativeCoin      string
-	tokenNameToAddr map[string]string
+	networkID          string
+	sinkChan           chan *chain.EventLogInfo
+	errChan            chan error
+	par                *parser
+	fd                 *finder
+	requester          *requestAPI
+	nativeCoin         string
+	tokenNameToAddr    map[string]string
+	contractNameToAddr map[chain.ContractName]string
 }
 
 func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
@@ -68,12 +69,13 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 			BlockReq: evtReq,
 			Opts:     icon.ReceiverOptions{},
 		},
-		sinkChan:        make(chan *chain.EventLogInfo),
-		errChan:         make(chan error),
-		fd:              NewFinder(l, cfg.ContractAddresses),
-		networkID:       cfg.NetworkID,
-		nativeCoin:      cfg.NativeCoin,
-		tokenNameToAddr: cfg.NativeTokenAddresses,
+		sinkChan:           make(chan *chain.EventLogInfo),
+		errChan:            make(chan error),
+		fd:                 NewFinder(l, cfg.ContractAddresses),
+		networkID:          cfg.NetworkID,
+		nativeCoin:         cfg.NativeCoin,
+		tokenNameToAddr:    cfg.NativeTokenAddresses,
+		contractNameToAddr: cfg.ContractAddresses,
 	}
 	recvr.par, err = NewParser(cfg.ContractAddresses)
 	if err != nil {
@@ -103,6 +105,8 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 						continue
 					}
 					nel := &chain.EventLogInfo{ContractAddress: common.NewAddress(el.Addr).String(), EventType: evtType, EventLog: res}
+					//r.Log.Infof("IFirst %+v", nel)
+					//r.Log.Infof("ISecond %+v", nel.EventLog)
 					if r.fd.Match(nel) { //el.IDs is updated by match if matched
 						//r.Log.Infof("Matched %+v", el)
 						r.sinkChan <- nel
@@ -242,4 +246,14 @@ func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
 
 func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
+}
+
+func (r *api) GetBTPAddressOfBTS() (btpaddr string, err error) {
+	addr, ok := r.contractNameToAddr[chain.BTSIcon]
+	if !ok {
+		err = fmt.Errorf("Contract %v does not exist ", chain.BTSIcon)
+		return
+	}
+	btpaddr = r.GetBTPAddress(addr)
+	return
 }

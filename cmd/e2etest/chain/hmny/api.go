@@ -39,13 +39,14 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 		ReceiverCore: &hmny.ReceiverCore{
 			Log: l, Opts: hmny.ReceiverOptions{}, Cls: cls,
 		},
-		log:             l,
-		networkID:       cfg.NetworkID,
-		fd:              NewFinder(l, cfg.ContractAddresses),
-		sinkChan:        make(chan *chain.EventLogInfo),
-		errChan:         make(chan error),
-		nativeCoin:      cfg.NativeCoin,
-		tokenNameToAddr: cfg.NativeTokenAddresses,
+		log:                l,
+		networkID:          cfg.NetworkID,
+		fd:                 NewFinder(l, cfg.ContractAddresses),
+		sinkChan:           make(chan *chain.EventLogInfo),
+		errChan:            make(chan error),
+		nativeCoin:         cfg.NativeCoin,
+		tokenNameToAddr:    cfg.NativeTokenAddresses,
+		contractNameToAddr: cfg.ContractAddresses,
 	}
 
 	r.par, err = NewParser(cfg.URL, cfg.ContractAddresses)
@@ -61,15 +62,16 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 
 type api struct {
 	*hmny.ReceiverCore
-	log             log.Logger
-	sinkChan        chan *chain.EventLogInfo
-	errChan         chan error
-	par             *parser
-	fd              *finder
-	requester       *requestAPI
-	networkID       string
-	nativeCoin      string
-	tokenNameToAddr map[string]string
+	log                log.Logger
+	sinkChan           chan *chain.EventLogInfo
+	errChan            chan error
+	par                *parser
+	fd                 *finder
+	requester          *requestAPI
+	networkID          string
+	nativeCoin         string
+	tokenNameToAddr    map[string]string
+	contractNameToAddr map[chain.ContractName]string
 }
 
 func (r *api) client() *hmny.Client {
@@ -240,11 +242,12 @@ func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
 }
 
-func exists(arr []string, val string) bool {
-	for _, v := range arr {
-		if v == val {
-			return true
-		}
+func (r *api) GetBTPAddressOfBTS() (btpaddr string, err error) {
+	addr, ok := r.contractNameToAddr[chain.BTSCoreHmny]
+	if !ok {
+		err = fmt.Errorf("Contract %v does not exist ", chain.BTSCoreHmny)
+		return
 	}
-	return false
+	btpaddr = r.GetBTPAddress(addr)
+	return
 }

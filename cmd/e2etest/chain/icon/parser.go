@@ -141,14 +141,15 @@ func parseTransferEnd(log *icon.EventLog) (*chain.TransferEndEvent, error) {
 
 	var cd common.HexInt
 	cd.SetBytes(log.Data[1])
-
+	response := ""
 	if len(log.Data[2]) > 0 {
-		fmt.Println("Parse End ", string(log.Data[2]))
+		response = string(log.Data[2])
 	}
 	te := &chain.TransferEndEvent{
-		From: common.NewAddress(log.Indexed[1]).String(),
-		Sn:   big.NewInt(sn.Int64()),
-		Code: big.NewInt(cd.Int64()),
+		From:     common.NewAddress(log.Indexed[1]).String(),
+		Sn:       big.NewInt(sn.Int64()),
+		Code:     big.NewInt(cd.Int64()),
+		Response: response,
 	}
 	return te, nil
 }
@@ -231,11 +232,13 @@ func parseTransferEndTxn(log *TxnEventLog) (*chain.TransferEndEvent, error) {
 	if strings.HasPrefix(data[1], "0x") {
 		data[1] = data[1][2:]
 	}
+
 	cd.SetString(data[1], 16)
 	te := &chain.TransferEndEvent{
-		From: log.Indexed[1],
-		Sn:   sn,
-		Code: cd,
+		From:     log.Indexed[1],
+		Sn:       sn,
+		Code:     cd,
+		Response: data[2],
 	}
 	return te, nil
 }

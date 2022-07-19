@@ -231,9 +231,9 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	for k, v := range ex.clientsPerChain {
 		reqClients[k] = v
 	}
-	reqGodKeys := map[chain.ChainType]string{}
+	reqGodKeys := map[chain.ChainType]keypair{}
 	for k, v := range ex.godKeysPerChain {
-		reqGodKeys[k] = v[PRIVKEYPOS]
+		reqGodKeys[k] = keypair{PrivKey: v[0], PubKey: v[1]}
 	}
 	ts := &testSuite{
 		id:              id,

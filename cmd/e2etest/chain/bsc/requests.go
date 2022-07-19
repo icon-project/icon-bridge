@@ -203,7 +203,7 @@ func (r *requestAPI) getERC(coinName string) (erc *erc20tradeable.Erc20tradable,
 	erc = &erc20tradeable.Erc20tradable{}
 	res, ok := r.ercPerCoin.Load(coinName)
 	if !ok {
-		r.log.Debugf("Registering Input coinName %v ", coinName)
+		//r.log.Debugf("Registering Input coinName %v ", coinName)
 		coinAddress, errs := r.btsc.CoinId(&bind.CallOpts{Pending: false, Context: nil}, coinName)
 		if err != nil {
 			err = errors.Wrap(errs, "btsc.CoinId ")

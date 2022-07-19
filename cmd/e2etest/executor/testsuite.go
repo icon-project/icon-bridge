@@ -12,10 +12,15 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
+type keypair struct {
+	PrivKey string
+	PubKey  string
+}
+
 type testSuite struct {
 	id              uint64
 	clsPerChain     map[chain.ChainType]chain.ChainAPI
-	godKeysPerChain map[chain.ChainType]string
+	godKeysPerChain map[chain.ChainType]keypair
 	logger          log.Logger
 	src             chain.ChainType
 	dst             chain.ChainType
@@ -62,7 +67,7 @@ func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 	if !ok {
 		return fmt.Errorf("Chain %v not found", ts.src)
 	}
-	srcGodKey, ok := ts.godKeysPerChain[ts.src]
+	srcKeys, ok := ts.godKeysPerChain[ts.src]
 	if !ok {
 		return fmt.Errorf("GodKeys %v not found", ts.src)
 	}
@@ -71,7 +76,7 @@ func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 		if scoin != coinName {
 			continue
 		}
-		hash, err := srcCl.Transfer(coinName, srcGodKey, addr, *amount)
+		hash, err := srcCl.Transfer(coinName, srcKeys.PrivKey, addr, *amount)
 		if err != nil {
 			return errors.Wrapf(err, "srcCl.Transfer err=%v", err)
 		}
@@ -82,7 +87,7 @@ func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 	if !ok {
 		return fmt.Errorf("Chain %v not found", ts.dst)
 	}
-	dstGodKey, ok := ts.godKeysPerChain[ts.dst]
+	dstKeys, ok := ts.godKeysPerChain[ts.dst]
 	if !ok {
 		return fmt.Errorf("GodKeys %v not found", ts.dst)
 	}
@@ -92,11 +97,11 @@ func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 			continue
 		}
 		if coinName != dstCl.NativeCoin() {
-			if _, err := dstCl.Approve(coinName, dstGodKey, *amount); err != nil {
+			if _, err := dstCl.Approve(coinName, dstKeys.PrivKey, *amount); err != nil {
 				return errors.Wrapf(err, "dstCl.Approve %v", err)
 			}
 		}
-		hash, err := dstCl.Transfer(coinName, dstGodKey, addr, *amount)
+		hash, err := dstCl.Transfer(coinName, dstKeys.PrivKey, addr, *amount)
 		if err != nil {
 			return errors.Wrapf(err, "dstCl.Transfer err=%v", err)
 		}

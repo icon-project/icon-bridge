@@ -59,12 +59,16 @@ type SrcAPI interface {
 	GetChainType() ChainType
 	NativeCoin() string
 	NativeTokens() []string
+	GetBTPAddressOfBTS() (string, error)
+	GetBTPAddress(addr string) string
 }
 
 type DstAPI interface {
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	WatchForTransferReceived(requestID uint64, seq int64) error
 	GetChainType() ChainType
+	GetBTPAddressOfBTS() (string, error)
+	GetBTPAddress(addr string) string
 }
 
 type TxnResult struct {
@@ -88,6 +92,7 @@ type ChainAPI interface {
 	GetChainType() ChainType
 	NativeCoin() string
 	NativeTokens() []string
+	GetBTPAddressOfBTS() (string, error)
 }
 
 type ChainConfig struct {

@@ -25,13 +25,14 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 		return nil, err
 	}
 	r := &api{
-		log:             l,
-		fd:              NewFinder(l, cfg.ContractAddresses),
-		sinkChan:        make(chan *chain.EventLogInfo),
-		errChan:         make(chan error),
-		networkID:       cfg.NetworkID,
-		nativeCoin:      cfg.NativeCoin,
-		tokenNameToAddr: cfg.NativeTokenAddresses,
+		log:                l,
+		fd:                 NewFinder(l, cfg.ContractAddresses),
+		sinkChan:           make(chan *chain.EventLogInfo),
+		errChan:            make(chan error),
+		networkID:          cfg.NetworkID,
+		nativeCoin:         cfg.NativeCoin,
+		tokenNameToAddr:    cfg.NativeTokenAddresses,
+		contractNameToAddr: cfg.ContractAddresses,
 		ReceiverCore: &ReceiverCore{
 			Log:  l,
 			Opts: ReceiverOptions{},
@@ -56,15 +57,16 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 
 type api struct {
 	*ReceiverCore
-	log             log.Logger
-	par             *parser
-	requester       *requestAPI
-	networkID       string
-	fd              *finder
-	sinkChan        chan *chain.EventLogInfo
-	errChan         chan error
-	nativeCoin      string
-	tokenNameToAddr map[string]string
+	log                log.Logger
+	par                *parser
+	requester          *requestAPI
+	networkID          string
+	fd                 *finder
+	sinkChan           chan *chain.EventLogInfo
+	errChan            chan error
+	nativeCoin         string
+	tokenNameToAddr    map[string]string
+	contractNameToAddr map[chain.ContractName]string
 }
 
 func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
@@ -94,11 +96,13 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 					for _, txnLog := range v.Logs {
 						res, evtType, err := r.par.Parse(&txnLog)
 						if err != nil {
-							r.log.Trace(errors.Wrap(err, "Parse "))
+							r.log.Warn(errors.Wrap(err, "Parse "))
 							err = nil
 							continue
 						}
 						nel := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
+						//r.Log.Infof("BFirst  %+v", nel)
+						//r.Log.Infof("BSecond  %+v", nel.EventLog)
 						if r.fd.Match(nel) {
 							//r.log.Infof("Matched %+v", el)
 							r.sinkChan <- nel
@@ -229,11 +233,12 @@ func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
 }
 
-func exists(arr []string, val string) bool {
-	for _, v := range arr {
-		if v == val {
-			return true
-		}
+func (r *api) GetBTPAddressOfBTS() (btpaddr string, err error) {
+	addr, ok := r.contractNameToAddr[chain.BTSCoreBsc]
+	if !ok {
+		err = fmt.Errorf("Contract %v does not exist ", chain.BTSCoreBsc)
+		return
 	}
-	return false
+	btpaddr = r.GetBTPAddress(addr)
+	return
 }

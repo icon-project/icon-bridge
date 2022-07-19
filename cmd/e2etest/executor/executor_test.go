@@ -3,7 +3,6 @@ package executor_test
 import (
 	"context"
 	"encoding/json"
-	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -30,7 +29,7 @@ func TestExecutor(t *testing.T) {
 		return cfg, nil
 	}
 	var err error
-	cfg, err := loadConfig("../example-config.json")
+	cfg, err := loadConfig("/home/manish/go/src/work/icon-bridge/cmd/e2etest/example-config.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,28 +42,26 @@ func TestExecutor(t *testing.T) {
 	log.SetGlobalLogger(l)
 	ex, err := executor.New(l, cfgPerMap)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 240*time.Second)
-
 	ex.Subscribe(ctx)
-
-	amount := new(big.Int)
-	amount.SetString("10000000000000000000", 10)
-
+	time.Sleep(5 * time.Second)
 	go func() {
-		err = ex.Execute(ctx, chain.ICON, chain.BSC, "ICX", executor.Transfer)
+		err = ex.Execute(ctx, chain.BSC, chain.ICON, "ETH", executor.TransferExceedingContractsBalance)
 		if err != nil {
 			log.Errorf("%+v", err)
 		}
 	}()
-	time.Sleep(time.Second * 5)
-
-	defer func() {
-		cancel()
-	}()
 	<-ex.Done()
 	cancel()
-	time.Sleep(time.Second * 3)
-	l.Info("Exit")
+	time.Sleep(time.Second * 2)
+
+	// defer func() {
+	// 	cancel()
+	// }()
+	// <-ex.Done()
+	// cancel()
+	// time.Sleep(time.Second * 3)
+	// l.Info("Exit")
 }
