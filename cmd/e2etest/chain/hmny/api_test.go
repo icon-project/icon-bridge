@@ -31,9 +31,8 @@ func getNewApi() (chain.ChainAPI, error) {
 	addrToName := map[chain.ContractName]string{
 		chain.BTSCoreHmny:      "0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
 		chain.BTSPeripheryHmny: "0xfad748a1063a40FF447B5D766331904d9bedDC26",
-		chain.TONEHmny:         "0xB20CCD2a42e5486054AE3439f2bDa95DC75d9B75",
 	}
-	rx, err := hmny.NewApi(l, &chain.ChainConfig{Name: chain.HMNY, URL: url, ConftractAddresses: addrToName, NetworkID: "0x6357d2e0"})
+	rx, err := hmny.NewApi(l, &chain.ChainConfig{Name: chain.HMNY, URL: url, ContractAddresses: addrToName, NetworkID: "0x6357d2e0"})
 	if err != nil {
 		return nil, err
 	}

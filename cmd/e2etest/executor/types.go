@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
-	"github.com/icon-project/icon-bridge/common/log"
 )
 
 const (
@@ -17,19 +16,7 @@ type evt struct {
 	chainType chain.ChainType
 }
 
-type args struct {
-	watchRequestID uint64
-	log            log.Logger
-	src            chain.SrcAPI
-	dst            chain.DstAPI
-	srcKey         string
-	srcAddr        string
-	dstAddr        string
-	coinName       string
-	sinkChan       <-chan *evt
-}
-
-type callBackFunc func(ctx context.Context, args *args) error
+type callBackFunc func(ctx context.Context, srcChain, dstChain chain.ChainType, coinName string, ts *testSuite) error
 
 type Script struct {
 	Name        string

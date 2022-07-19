@@ -15,21 +15,20 @@ import (
 
 const (
 	EventSignature             = "Message(str,int,bytes)"
-	MonitorBlockMaxConcurrency = 50
-)
-const (
-	NativeCoinName = "ICX"
-	NativeToken    = "TICX"
+	MonitorBlockMaxConcurrency = 1
 )
 
 type api struct {
 	*icon.ReceiverCore
-	networkID string
-	sinkChan  chan *chain.EventLogInfo
-	errChan   chan error
-	par       *parser
-	fd        *finder
-	requester *requestAPI
+	networkID          string
+	sinkChan           chan *chain.EventLogInfo
+	errChan            chan error
+	par                *parser
+	fd                 *finder
+	requester          *requestAPI
+	nativeCoin         string
+	tokenNameToAddr    map[string]string
+	contractNameToAddr map[chain.ContractName]string
 }
 
 func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
@@ -39,7 +38,7 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 	}
 	client := icon.NewClient(cfg.URL, l)
 
-	btsIconAddr, ok := cfg.ConftractAddresses[chain.BTSIcon]
+	btsIconAddr, ok := cfg.ContractAddresses[chain.BTSIcon]
 	if !ok {
 		return nil, errors.New("cfg.ConftractAddresses does not include chain.BTSIcon")
 	}
@@ -70,16 +69,19 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 			BlockReq: evtReq,
 			Opts:     icon.ReceiverOptions{},
 		},
-		sinkChan:  make(chan *chain.EventLogInfo),
-		errChan:   make(chan error),
-		fd:        NewFinder(l, cfg.ConftractAddresses),
-		networkID: cfg.NetworkID,
+		sinkChan:           make(chan *chain.EventLogInfo),
+		errChan:            make(chan error),
+		fd:                 NewFinder(l, cfg.ContractAddresses),
+		networkID:          cfg.NetworkID,
+		nativeCoin:         cfg.NativeCoin,
+		tokenNameToAddr:    cfg.NativeTokenAddresses,
+		contractNameToAddr: cfg.ContractAddresses,
 	}
-	recvr.par, err = NewParser(cfg.ConftractAddresses)
+	recvr.par, err = NewParser(cfg.ContractAddresses)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewParser ")
 	}
-	recvr.requester, err = newRequestAPI(client, cfg.ConftractAddresses, cfg.NetworkID)
+	recvr.requester, err = newRequestAPI(client, cfg.ContractAddresses, cfg.NetworkID)
 	return recvr, nil
 }
 
@@ -103,6 +105,8 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 						continue
 					}
 					nel := &chain.EventLogInfo{ContractAddress: common.NewAddress(el.Addr).String(), EventType: evtType, EventLog: res}
+					//r.Log.Infof("IFirst %+v", nel)
+					//r.Log.Infof("ISecond %+v", nel.EventLog)
 					if r.fd.Match(nel) { //el.IDs is updated by match if matched
 						//r.Log.Infof("Matched %+v", el)
 						r.sinkChan <- nel
@@ -130,18 +134,18 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.
 		recepientAddress = splts[len(splts)-1]
 	}
 	if within {
-		if coinName == NativeCoinName {
+		if coinName == r.nativeCoin {
 			txnHash, _, err = r.requester.transferNativeIntraChain(senderKey, recepientAddress, amount)
-		} else if coinName == NativeToken {
-			txnHash, _, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount)
+		} else if addr, ok := r.tokenNameToAddr[coinName]; ok {
+			txnHash, _, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount, addr)
 		} else {
-			err = fmt.Errorf("IntraChain transfers are supported for coins ICX and TICX only")
+			err = fmt.Errorf("IntraChain transfers are supported for NativeCoins/Tokens only")
 		}
 	} else {
-		if coinName == NativeCoinName {
+		if coinName == r.nativeCoin {
 			txnHash, _, err = r.requester.transferNativeCrossChain(senderKey, recepientAddress, amount)
 		} else { // ONE, TONE, TICX
-			txnHash, _, err = r.requester.transferWrappedCrossChain(coinName, senderKey, recepientAddress, amount)
+			txnHash, _, err = r.requester.transferTokensCrossChain(coinName, senderKey, recepientAddress, amount)
 		}
 	}
 	return
@@ -156,7 +160,12 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-	return r.requester.getCoinBalance(coinName, address)
+	if coinName == r.nativeCoin {
+		return r.requester.getNativeCoinBalance(coinName, address)
+	} else if _, ok := r.tokenNameToAddr[coinName]; ok {
+		return r.requester.getCoinBalance(coinName, address, true)
+	}
+	return r.requester.getCoinBalance(coinName, address, false)
 }
 
 func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
@@ -169,7 +178,7 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 	for _, v := range txRes.EventLogs {
 		decodedLog, eventType, err := r.par.ParseTxn(&TxnEventLog{Addr: icon.Address(v.Addr), Indexed: v.Indexed, Data: v.Data})
 		if err != nil {
-			r.Log.Trace(errors.Wrap(err, "waitForResults.Parse "))
+			r.Log.Trace(errors.Wrapf(err, "waitForResults.Parse %v", err))
 			err = nil
 			continue
 			//return nil, nil, err
@@ -184,9 +193,9 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 }
 
 func (r *api) Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error) {
-	if coinName == NativeToken {
-		txnHash, _, err = r.requester.approveToken(coinName, ownerKey, amount)
-	} else if coinName == NativeCoinName {
+	if addr, ok := r.tokenNameToAddr[coinName]; ok {
+		txnHash, _, err = r.requester.approveToken(coinName, ownerKey, amount, addr)
+	} else if coinName == r.nativeCoin {
 		r.Log.Infof("No Handler for Approve Call on NativeCoin: %v, because not needed")
 	} else {
 		txnHash, _, err = r.requester.approveCrossNativeCoin(coinName, ownerKey, amount)
@@ -203,12 +212,16 @@ func (r *api) GetBTPAddress(addr string) string {
 	return fullAddr
 }
 
-func (r *api) NativeCoinName() string {
-	return NativeCoinName
+func (r *api) NativeCoin() string {
+	return r.nativeCoin
 }
 
-func (r *api) NativeTokenName() string {
-	return NativeToken
+func (r *api) NativeTokens() []string {
+	tks := []string{}
+	for tk := range r.tokenNameToAddr {
+		tks = append(tks, tk)
+	}
+	return tks
 }
 
 func (r *api) GetKeyPairs(num int) ([][2]string, error) {
@@ -233,4 +246,14 @@ func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
 
 func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
+}
+
+func (r *api) GetBTPAddressOfBTS() (btpaddr string, err error) {
+	addr, ok := r.contractNameToAddr[chain.BTSIcon]
+	if !ok {
+		err = fmt.Errorf("Contract %v does not exist ", chain.BTSIcon)
+		return
+	}
+	btpaddr = r.GetBTPAddress(addr)
+	return
 }

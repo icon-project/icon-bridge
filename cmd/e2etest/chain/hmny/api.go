@@ -21,10 +21,10 @@ const (
 	monitorBlockMaxConcurrency = 50 // number of concurrent requests to synchronize older blocks from source chain
 )
 
-const (
-	NativeCoinName = "ONE"
-	TokenName      = "TONE"
-)
+// const (
+// 	NativeCoinName = "ONE"
+// 	TokenName      = "TONE"
+// )
 
 func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 	if len(cfg.URL) == 0 {
@@ -39,18 +39,21 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 		ReceiverCore: &hmny.ReceiverCore{
 			Log: l, Opts: hmny.ReceiverOptions{}, Cls: cls,
 		},
-		log:       l,
-		networkID: cfg.NetworkID,
-		fd:        NewFinder(l, cfg.ConftractAddresses),
-		sinkChan:  make(chan *chain.EventLogInfo),
-		errChan:   make(chan error),
+		log:                l,
+		networkID:          cfg.NetworkID,
+		fd:                 NewFinder(l, cfg.ContractAddresses),
+		sinkChan:           make(chan *chain.EventLogInfo),
+		errChan:            make(chan error),
+		nativeCoin:         cfg.NativeCoin,
+		tokenNameToAddr:    cfg.NativeTokenAddresses,
+		contractNameToAddr: cfg.ContractAddresses,
 	}
 
-	r.par, err = NewParser(cfg.URL, cfg.ConftractAddresses)
+	r.par, err = NewParser(cfg.URL, cfg.ContractAddresses)
 	if err != nil {
 		return nil, errors.Wrap(err, "newParser ")
 	}
-	r.requester, err = newRequestAPI(cfg.URL, l, cfg.ConftractAddresses, cfg.NetworkID)
+	r.requester, err = newRequestAPI(cfg.URL, l, cfg.ContractAddresses, cfg.NetworkID, r.tokenNameToAddr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "newRequestAPI %v", err)
 	}
@@ -59,13 +62,16 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 
 type api struct {
 	*hmny.ReceiverCore
-	log       log.Logger
-	sinkChan  chan *chain.EventLogInfo
-	errChan   chan error
-	par       *parser
-	fd        *finder
-	requester *requestAPI
-	networkID string
+	log                log.Logger
+	sinkChan           chan *chain.EventLogInfo
+	errChan            chan error
+	par                *parser
+	fd                 *finder
+	requester          *requestAPI
+	networkID          string
+	nativeCoin         string
+	tokenNameToAddr    map[string]string
+	contractNameToAddr map[chain.ContractName]string
 }
 
 func (r *api) client() *hmny.Client {
@@ -153,18 +159,18 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.
 		recepientAddress = splts[len(splts)-1]
 	}
 	if within {
-		if coinName == NativeCoinName {
+		if coinName == r.nativeCoin {
 			txnHash, err = r.requester.transferNativeIntraChain(senderKey, recepientAddress, amount)
-		} else if coinName == TokenName {
-			txnHash, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount)
+		} else if _, ok := r.tokenNameToAddr[coinName]; ok {
+			txnHash, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount, coinName)
 		} else {
 			err = fmt.Errorf("IntraChain transfers are supported for coins ONE and TONE only")
 		}
 	} else {
-		if coinName == NativeCoinName {
+		if coinName == r.nativeCoin {
 			txnHash, err = r.requester.transferNativeCrossChain(senderKey, recepientAddress, amount)
 		} else { // TONE,ICX.TICX
-			txnHash, err = r.requester.transferWrappedCrossChain(coinName, senderKey, recepientAddress, amount)
+			txnHash, err = r.requester.transferTokensCrossChain(coinName, senderKey, recepientAddress, amount)
 		}
 	}
 
@@ -200,12 +206,16 @@ func (r *api) GetBTPAddress(addr string) string {
 	return fullAddr
 }
 
-func (r *api) NativeCoinName() string {
-	return NativeCoinName
+func (r *api) NativeCoin() string {
+	return r.nativeCoin
 }
 
-func (r *api) NativeTokenName() string {
-	return TokenName
+func (r *api) NativeTokens() []string {
+	nativeTokens := []string{}
+	for nt := range r.tokenNameToAddr {
+		nativeTokens = append(nativeTokens, nt)
+	}
+	return nativeTokens
 }
 
 func (r *api) GetKeyPairs(num int) ([][2]string, error) {
@@ -230,4 +240,14 @@ func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
 
 func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
+}
+
+func (r *api) GetBTPAddressOfBTS() (btpaddr string, err error) {
+	addr, ok := r.contractNameToAddr[chain.BTSCoreHmny]
+	if !ok {
+		err = fmt.Errorf("Contract %v does not exist ", chain.BTSCoreHmny)
+		return
+	}
+	btpaddr = r.GetBTPAddress(addr)
+	return
 }
