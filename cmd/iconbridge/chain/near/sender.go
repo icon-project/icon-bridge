@@ -5,6 +5,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"math/rand"
+	"time"
+
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/account"
@@ -12,9 +16,6 @@ import (
 	"github.com/icon-project/icon-bridge/common/codec"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
-	"math/big"
-	"math/rand"
-	"time"
 )
 
 const (
@@ -222,10 +223,9 @@ func (relayTx *RelayTransaction) Send(ctx context.Context) (err error) {
 
 	relayTx.Transaction.BlockHash = base58.Decode(blockHash)
 
-	if err := relayTx.Transaction.Sign(relayTx.wallet); err != nil {
-		return err
-	}
+	payload, err := relayTx.Transaction.Payload(relayTx.wallet)
 
+	
 	return nil
 }
 
