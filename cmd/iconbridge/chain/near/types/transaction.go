@@ -2,6 +2,7 @@ package types
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/icon-project/icon-bridge/common/wallet"
@@ -26,14 +27,57 @@ type Transaction struct {
 	Txid       CryptoHash `json:"hash"`
 }
 
-func (t *Transaction) serialize() ([]byte, error) {
-	return borsh.Serialize(struct {
-		SignerId   AccountId `json:"signer_id"`
-		PublicKey  PublicKey `json:"public_key"`
-		Nonce      int       `json:"nonce"`
-		ReceiverId AccountId `json:"receiver_id"`
+func (t *Transaction) Payload(wallet *wallet.NearWallet) (string, error) {
+	if err := t.sign(wallet); err != nil {
+		return "", err
+	}
+
+	serializedSignedTransaction, err := borsh.Serialize(struct {
+		Transaction struct {
+			SignerId   AccountId
+			PublicKey  PublicKey
+			Nonce      int
+			ReceiverId AccountId
+			BlockHash  CryptoHash
+			Actions    []Action
+			Signature  Signature
+		}
+		Signature Signature
+	}{
+		Transaction: struct {
+			SignerId   AccountId
+			PublicKey  PublicKey
+			Nonce      int
+			ReceiverId AccountId
+			BlockHash  CryptoHash
+			Actions    []Action
+			Signature  Signature
+		}{
+			SignerId:   t.SignerId,
+			PublicKey:  t.PublicKey,
+			Nonce:      t.Nonce,
+			ReceiverId: t.ReceiverId,
+			BlockHash:  t.BlockHash,
+			Actions:    t.Actions,
+			Signature:  t.Signature,
+		},
+		Signature: t.Signature,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(serializedSignedTransaction[:]), nil
+}
+
+func (t *Transaction) sign(wallet *wallet.NearWallet) error {
+	serializedTransaction, err := borsh.Serialize(struct {
+		SignerId   AccountId
+		PublicKey  PublicKey
+		Nonce      int
+		ReceiverId AccountId
 		BlockHash  CryptoHash
-		Actions    []Action `json:"actions"` // TODO: ActionView
+		Actions    []Action
 	}{
 		SignerId:   t.SignerId,
 		PublicKey:  t.PublicKey,
@@ -42,10 +86,6 @@ func (t *Transaction) serialize() ([]byte, error) {
 		BlockHash:  t.BlockHash,
 		Actions:    t.Actions,
 	})
-}
-
-func (t *Transaction) Sign(wallet *wallet.NearWallet) error {
-	serializedTransaction, err := t.serialize()
 	if err != nil {
 		return err
 	}
