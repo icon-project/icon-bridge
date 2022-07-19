@@ -4,7 +4,6 @@ type BmcStatus struct {
 	TxSeq            uint64        `json:"tx_seq"`
 	RxSeq            uint64        `json:"rx_seq"`
 	Verifier         AccountId     `json:"verifier"`
-	BMRs             []RelayStatus `json:"relays"`
 	BMRIndex         uint          `json:"relay_index"`
 	RotateHeight     uint64        `json:"rotate_height"`
 	RotateTerm       uint          `json:"rotate_term"`

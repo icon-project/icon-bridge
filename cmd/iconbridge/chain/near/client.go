@@ -1,16 +1,16 @@
 package near
 
 import (
-	"fmt"
 	"encoding/hex"
-	"strings"
+	"fmt"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/account"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
 	"net/http"
+	"strings"
 )
 
 type Client struct {
@@ -88,16 +88,16 @@ func (c *Client) GetNonce(publicKey string, accountId string) (int64, error) {
 
 	if !strings.HasPrefix(publicKey, "ed25519:") {
 		var publicKeyBytes []byte
-		if len(publicKey) == 64 {
 
+		if len(publicKey) == 64 {
 			publicKeyBytes, err = hex.DecodeString(publicKey)
 			if err != nil {
 				return -1, err
 			}
 
 			publicKeyString = account.PublicKeyToString(publicKeyBytes)
-		} else {
 
+		} else {
 			publicKeyBytes = base58.Decode(publicKey)
 			if len(publicKeyBytes) == 0 {
 				return -1, fmt.Errorf("b58 decode public key error, %s", publicKey)

@@ -107,11 +107,7 @@ func (s Signature) Base58Encode() string {
 }
 
 func (s *Signature) Bytes() []byte {
-	if s.KeyType == ED25519 {
-		return append([]byte{ED25519}, s.Data...)
-	} else {
-		return append([]byte{SECP256K1}, s.Data...)
-	}
+	return append([]byte{s.KeyType}, s.Data...)
 }
 
 func (s *Signature) UnmarshalJSON(p []byte) error {
