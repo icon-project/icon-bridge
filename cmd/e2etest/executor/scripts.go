@@ -9,14 +9,102 @@ import (
 	"github.com/icon-project/icon-bridge/common/errors"
 )
 
+var TransferToIncorrectAddress Script = Script{
+	Name:        "TransferToIncorrectAddress",
+	Description: "Transfer Address that does not comply to the format that the recipeient accepts",
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinName string, ts *testSuite) error {
+		src, _, err := ts.GetChainPair(srcChain, dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetChainPair %v", err)
+		}
+		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+		_, dstAddr, err := ts.GetKeyPairs(dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+		//Make incorrect by adding a string at the end
+		dstAddr += "1"
+
+		amt := new(big.Int)
+		amt.SetString("1000000000000000000", 10)
+		if err := ts.Fund(srcAddr, amt, coinName); err != nil {
+			return errors.Wrapf(err, "Fund %v", err)
+		}
+		if coinName != src.NativeCoin() {
+			gasFee := new(big.Int)
+			gasFee.SetString("1000000000000000000", 10)
+			if err := ts.Fund(srcAddr, gasFee, src.NativeCoin()); err != nil {
+				return errors.Wrapf(err, "Fund %v", err)
+			}
+		}
+
+		// Approve
+		if coinName != src.NativeCoin() {
+			if approveHash, err := src.Approve(coinName, srcKey, *amt); err != nil {
+				return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+			} else {
+				if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
+					return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+				}
+			}
+		}
+
+		// Transfer
+		hash, err := src.Transfer(coinName, srcKey, dstAddr, *amt)
+		if err != nil {
+			return errors.Wrapf(err, "Transfer Err: %v", err)
+		}
+		if err := ts.ValidateTransactionResultEvents(ctx, hash, coinName, srcAddr, dstAddr, amt); err != nil {
+			return errors.Wrapf(err, "ValidateTransactionResultEvents %v", err)
+		}
+		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
+			chain.TransferEnd: func(e *evt) error {
+				endEvt, ok := e.msg.EventLog.(chain.TransferEndEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", e.msg.EventLog)
+				}
+				if endEvt.Code.Cmp(big.NewInt(1)) == 0 { //&& endEvt.Response == "InvalidAddress" {
+					return nil
+				}
+				return fmt.Errorf("Unexpected code %v and response %v", endEvt.Code, endEvt.Response)
+			},
+		})
+		if err != nil {
+			return errors.Wrapf(err, "WaitForEvents %v", err)
+		}
+
+		return nil
+	},
+}
+
 var TransferExceedingContractsBalance Script = Script{
 	Name:        "TransferExceedingContractsBalance",
-	Description: "Transfer Native Tokens, which are of fixed supply, in different amounts",
+	Description: "Transfer Native Tokens, which are of fixed supply, in different amounts. The Token should be native for both chains",
 	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinName string, ts *testSuite) error {
 		src, dst, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
 			return errors.Wrapf(err, "GetChainPair %v", err)
 		}
+		// coinName should be a token common on both chains
+		tokenExists := false
+		for _, stkn := range src.NativeTokens() {
+			if stkn == coinName {
+				for _, dtkn := range dst.NativeTokens() {
+					if dtkn == coinName {
+						tokenExists = true
+						break
+					}
+				}
+				break
+			}
+		}
+		if !tokenExists {
+			return fmt.Errorf("Token %v does not exist on source chain %v", coinName, srcChain)
+		}
+
 		btsAddr, err := dst.GetBTPAddressOfBTS()
 		if err != nil {
 			return errors.Wrapf(err, "dst.GetBTPAddressOfBTS %v", err)
@@ -25,28 +113,16 @@ var TransferExceedingContractsBalance Script = Script{
 		if err != nil {
 			return errors.Wrapf(err, "dst.getCoinBalance %v", err)
 		}
-		fmt.Printf("Init %+v \n", btsBalance)
+
 		// prepare accounts
 		amt := big.NewInt(1).Mul(btsBalance.Total, big.NewInt(2))
-		fmt.Printf("Transferring %+v \n", amt.String())
-		return nil
+		srcKey, srcAddr, err := ts.GetGodKeyPairs(srcChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetGodKeyPairs %v", err)
+		}
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
 			return errors.Wrapf(err, "GetKeyPairs %v", err)
-		}
-		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
-		if err != nil {
-			return errors.Wrapf(err, "GetKeyPairs %v", err)
-		}
-		if err := ts.Fund(srcAddr, amt, coinName); err != nil {
-			return errors.Wrapf(err, "Fund %v", err)
-		}
-		if coinName != src.NativeCoin() {
-			gasFee := new(big.Int)
-			gasFee.SetString("10000000000000000000", 10)
-			if err := ts.Fund(srcAddr, gasFee, src.NativeCoin()); err != nil {
-				return errors.Wrapf(err, "Fund %v", err)
-			}
 		}
 
 		// approve
@@ -75,7 +151,7 @@ var TransferExceedingContractsBalance Script = Script{
 				if !ok {
 					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", e.msg.EventLog)
 				}
-				if endEvt.Code.Cmp(big.NewInt(1)) == 0 && endEvt.Response == "TransferFailed" {
+				if endEvt.Code.Cmp(big.NewInt(1)) == 0 { //&& endEvt.Response == "TransferFailed" {
 					return nil
 				}
 				return fmt.Errorf("Unexpected code %v and response %v", endEvt.Code, endEvt.Response)
@@ -138,6 +214,10 @@ var Transfer Script = Script{
 		if coinName != src.NativeCoin() {
 			if approveHash, err := src.Approve(coinName, srcKey, *amt); err != nil {
 				return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+			} else {
+				if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
+					return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+				}
 			}
 		}
 

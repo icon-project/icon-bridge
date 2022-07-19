@@ -60,6 +60,22 @@ func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, e
 	return
 }
 
+func (ts *testSuite) GetGodKeyPairs(chainName chain.ChainType) (key, addr string, err error) {
+	godkeyPair, ok := ts.godKeysPerChain[chainName]
+	if !ok {
+		err = errors.Wrapf(err, "GetKeyPairs %v", err)
+		return
+	}
+	cl, ok := ts.clsPerChain[chainName]
+	if !ok {
+		err = fmt.Errorf("Chain %v not found", chainName)
+		return
+	}
+	key = godkeyPair.PrivKey
+	addr = cl.GetBTPAddress(godkeyPair.PubKey)
+	return
+}
+
 func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 	// If coin is a native, intrachain-tranfer,
 	// else if it's wrapped inter-chain, else not found
@@ -71,8 +87,8 @@ func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 	if !ok {
 		return fmt.Errorf("GodKeys %v not found", ts.src)
 	}
-	srcNatives := append(srcCl.NativeTokens(), srcCl.NativeCoin())
-	for _, scoin := range srcNatives {
+
+	for _, scoin := range append(srcCl.NativeTokens(), srcCl.NativeCoin()) {
 		if scoin != coinName {
 			continue
 		}
@@ -91,8 +107,8 @@ func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 	if !ok {
 		return fmt.Errorf("GodKeys %v not found", ts.dst)
 	}
-	dstNatives := append(dstCl.NativeTokens(), dstCl.NativeCoin())
-	for _, dcoin := range dstNatives {
+
+	for _, dcoin := range append(dstCl.NativeTokens(), dstCl.NativeCoin()) {
 		if dcoin != coinName {
 			continue
 		}

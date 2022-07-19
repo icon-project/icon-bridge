@@ -69,6 +69,7 @@ type DstAPI interface {
 	GetChainType() ChainType
 	GetBTPAddressOfBTS() (string, error)
 	GetBTPAddress(addr string) string
+	NativeTokens() []string
 }
 
 type TxnResult struct {
@@ -93,6 +94,7 @@ type ChainAPI interface {
 	NativeCoin() string
 	NativeTokens() []string
 	GetBTPAddressOfBTS() (string, error)
+	GetPubKey(privkey string) (string, error)
 }
 
 type ChainConfig struct {

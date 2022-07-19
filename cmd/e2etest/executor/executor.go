@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -227,20 +228,40 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	ex.addChan(id, sinkChan)
 	defer ex.removeChan(id) // should defer be called by cb() instead to make sure cb() was done
 
-	reqClients := map[chain.ChainType]chain.ChainAPI{}
-	for k, v := range ex.clientsPerChain {
-		reqClients[k] = v
+	srcCl, ok := ex.clientsPerChain[srcChainName]
+	if !ok {
+		return fmt.Errorf("Client for chain %v not found", srcChainName)
 	}
-	reqGodKeys := map[chain.ChainType]keypair{}
-	for k, v := range ex.godKeysPerChain {
-		reqGodKeys[k] = keypair{PrivKey: v[0], PubKey: v[1]}
+	dstCl, ok := ex.clientsPerChain[dstChainName]
+	if !ok {
+		return fmt.Errorf("Client for chain %v not found", dstChainName)
 	}
+	srcGod, ok := ex.godKeysPerChain[srcChainName]
+	if !ok {
+		return fmt.Errorf("GodKeys for chain %v not found", srcChainName)
+	}
+	dstGod, ok := ex.godKeysPerChain[dstChainName]
+	if !ok {
+		return fmt.Errorf("GodKeys for chain %v not found", dstChainName)
+	}
+	srcGodPub, err := srcCl.GetPubKey(srcGod[PRIVKEYPOS])
+	if err != nil {
+		return errors.Wrapf(err, "srcCl.GetPubKey %v", err)
+	}
+	dstGodPub, err := dstCl.GetPubKey(dstGod[PRIVKEYPOS])
+	if err != nil {
+		return errors.Wrapf(err, "dstCl.GetPubKey %v", err)
+	}
+
 	ts := &testSuite{
-		id:              id,
-		logger:          log,
-		subChan:         sinkChan,
-		clsPerChain:     reqClients,
-		godKeysPerChain: reqGodKeys,
+		id:          id,
+		logger:      log,
+		subChan:     sinkChan,
+		clsPerChain: map[chain.ChainType]chain.ChainAPI{srcChainName: srcCl, dstChainName: dstCl},
+		godKeysPerChain: map[chain.ChainType]keypair{
+			srcChainName: {PrivKey: srcGod[PRIVKEYPOS], PubKey: srcGodPub},
+			dstChainName: {PrivKey: dstGod[PRIVKEYPOS], PubKey: dstGodPub},
+		},
 	}
 
 	ex.log.Infof("Run ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinName, srcChainName, dstChainName)

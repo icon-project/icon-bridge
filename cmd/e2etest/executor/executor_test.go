@@ -48,7 +48,7 @@ func TestExecutor(t *testing.T) {
 	ex.Subscribe(ctx)
 	time.Sleep(5 * time.Second)
 	go func() {
-		err = ex.Execute(ctx, chain.BSC, chain.ICON, "ETH", executor.TransferExceedingContractsBalance)
+		err = ex.Execute(ctx, chain.BSC, chain.ICON, "TBNB", executor.TransferToIncorrectAddress)
 		if err != nil {
 			log.Errorf("%+v", err)
 		}

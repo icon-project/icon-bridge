@@ -251,3 +251,12 @@ func (r *api) GetBTPAddressOfBTS() (btpaddr string, err error) {
 	btpaddr = r.GetBTPAddress(addr)
 	return
 }
+
+func (r *api) GetPubKey(privkey string) (string, error) {
+	w, _, err := GetWalletFromPrivKey(privkey)
+	if err != nil {
+		return "", errors.Wrapf(err, "GetWalletFromPrivKey %v", err)
+	}
+	pubKey := w.PublicKey()
+	return string(pubKey), nil
+}
