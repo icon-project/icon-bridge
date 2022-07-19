@@ -25,11 +25,11 @@ var TransferExceedingContractsBalance Script = Script{
 		if err != nil {
 			return errors.Wrapf(err, "dst.getCoinBalance %v", err)
 		}
-		fmt.Printf("Init %+v \n", btsBalance)
+		//fmt.Printf("Init %+v \n", btsBalance)
 		// prepare accounts
 		amt := big.NewInt(1).Mul(btsBalance.Total, big.NewInt(2))
-		fmt.Printf("Transferring %+v \n", amt.String())
-		return nil
+		//fmt.Printf("Transferring %+v \n", amt.String())
+
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
 			return errors.Wrapf(err, "GetKeyPairs %v", err)
