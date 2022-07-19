@@ -1,0 +1,18 @@
+name: Build Contracts
+on:
+  push:
+    paths:
+      - 'javascore'
+      - 'solidity'
+  workflow_call:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Contracts
+        working-directory: ./javascore/bsc/build
+        run: |
+             gradle build

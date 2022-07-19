@@ -1,0 +1,6 @@
+version: '3'
+services:
+  bsc:
+    container_name: bsc
+    restart: always
+    image: nginx:alpine

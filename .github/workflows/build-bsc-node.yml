@@ -1,0 +1,17 @@
+name: Build BSC Node
+on:
+  push:
+    paths:
+      - 'provision/bsc/build'
+  workflow_call:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build bsc image
+        working-directory: ./provision/bsc/build
+        run: |
+             ./build.sh
