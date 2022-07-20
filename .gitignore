@@ -1,9 +1,7 @@
-.?*
 !.dockerignore
 __pycache__
 **/.DS_Store
 **/*.iml
-build/
 bin/
 **/*/node_modules/
 abigenBindings/

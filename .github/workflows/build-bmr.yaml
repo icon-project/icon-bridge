@@ -28,7 +28,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Build image
-        working-directory: ./provision/icon/build_bmr
+        working-directory: ./provision/hmny/bmr/build
         run: |
              ./build.sh
 
