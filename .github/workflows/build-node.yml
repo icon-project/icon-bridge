@@ -46,7 +46,7 @@ jobs:
       #   run: |
       #        ./build.sh
 
-    # uses: dwdraju/bridge-test/.github/workflows/build-icon-node.yml@repo_mgmt_and_github_actions
+    # uses: icon-project/icon-bridge/.github/workflows/build-icon-node.yml@repo_mgmt_and_github_actions
 
   # build-bsc:
   #   runs-on: ubuntu-latest
