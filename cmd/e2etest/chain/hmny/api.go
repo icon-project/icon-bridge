@@ -113,6 +113,8 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 								continue
 							}
 							nel := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
+							//r.Log.Infof("HFirst %+v", nel)
+							//r.Log.Infof("HSecond %+v", nel.EventLog)
 							if r.fd.Match(nel) {
 								//r.log.Infof("Matched %+v", el)
 								r.sinkChan <- nel
@@ -144,7 +146,9 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-
+	if coinName == r.nativeCoin {
+		return r.requester.getNativeCoinBalance(coinName, address)
+	}
 	return r.requester.getCoinBalance(coinName, address)
 }
 
