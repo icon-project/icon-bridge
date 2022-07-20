@@ -2,11 +2,11 @@ name: HMNY Build
 
 on:
   push:
-    branches: [ e2eTestCI ]
+    branches: [ repo_mgmt_and_github_actions ]
     # paths:
     #   - 'cmd'
   pull_request:
-    branches: [ e2eTestCI ]
+    branches: [ repo_mgmt_and_github_actions ]
     # paths:
     #   - 'cmd'
 

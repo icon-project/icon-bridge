@@ -2,7 +2,7 @@ name: Bump version
 on:
   push:
     branches:
-      - e2eTestCI-test
+      - repo_mgmt_and_github_actions
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -2,11 +2,11 @@ name: E2 Test
 on:
   push:
     branches:
-      - e2eTestCI-test1
+      - repo_mgmt_and_github_actions
 jobs:
   build:
-    uses: dwdraju/bridge-test/.github/workflows/build-node.yml@e2eTestCI-test1
+    uses: dwdraju/bridge-test/.github/workflows/build-node.yml@repo_mgmt_and_github_actions
 
   deploy:
     needs: [build]
-    uses: dwdraju/bridge-test/.github/workflows/deploy-node.yml@e2eTestCI-test1
+    uses: dwdraju/bridge-test/.github/workflows/deploy-node.yml@repo_mgmt_and_github_actions
