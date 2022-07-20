@@ -1,8 +1,8 @@
 name: Deploy Node
 on:
-  push:
-    paths:
-      - 'provision/'
+  # push:
+  #   paths:
+  #     - 'provision/'
   workflow_call:
 jobs:
   build:

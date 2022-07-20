@@ -1,0 +1,44 @@
+name: Build hmny
+
+on:
+  push:
+    branches: [ repo_mgmt_cicd ]
+    # paths:
+    #   - 'cmd'
+  pull_request:
+    branches: [ repo_mgmt_cicd ]
+    # paths:
+    #   - 'cmd'
+
+jobs:
+  build-bmr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # setup Docker build action
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build image
+        working-directory: ./provision/hmny/bmr/build
+        run: |
+             ./build.sh
+
+  build-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # setup Docker build action
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build image
+        working-directory: ./provision/hmny/chain/build
+        run: |
+             ./build.sh

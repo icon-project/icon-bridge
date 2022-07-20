@@ -1,8 +1,8 @@
 name: Build Node
 on:
-  push:
-    paths:
-      - 'provision/*/build'
+  # push:
+  #   paths:
+  #     - 'provision/*/build'
   workflow_call:
 jobs:
   build:

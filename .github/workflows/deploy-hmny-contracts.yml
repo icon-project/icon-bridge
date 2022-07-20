@@ -1,9 +1,8 @@
-name: Build Contracts
+name: Deploy hmny contracts
 on:
-  push:
-    paths:
-      - 'javascore'
-      - 'solidity'
+  # push:
+  #   paths:
+  #     - 'provision/hmny/contracts'
   workflow_call:
 jobs:
   build:
@@ -13,6 +12,6 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build Contracts
-        working-directory: ./javascore/bsc/build
+        working-directory: ./hmny/contracts/deploy
         run: |
-             gradle build
+             ./deploy.sh
