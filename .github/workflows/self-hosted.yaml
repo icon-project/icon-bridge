@@ -1,8 +1,8 @@
 name: Self Hosted
 on:
   push:
-    # paths:
-    #   - ''
+    branches:
+      - repo_mgmt_and_github_actions-self
 jobs:
   build:
     runs-on: self-hosted

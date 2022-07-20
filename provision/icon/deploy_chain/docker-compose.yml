@@ -1,9 +1,0 @@
-version: '3.8'
-services:
-  icon:
-    image: ${docker_registry}/icon:latest
-    container_name: icon
-    network_mode: host
-    restart: unless-stopped
-    # ports:
-    #   - 9080:9080
