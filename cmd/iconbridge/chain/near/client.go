@@ -27,7 +27,7 @@ type Wallet interface {
 
 type Api interface {
 	broadcastTransaction(string) (string, error)
-	broadcastTransactionAsync(string) (string, error)
+	broadcastTransactionAsync(string) (types.CryptoHash, error)
 	getBlockByHash(string) (types.Block, error)
 	getBlockByHeight(int64) (types.Block, error)
 	getBmcLinkStatus(accountId string, link *chain.BTPAddress) (types.BmcStatus, error)
@@ -114,4 +114,15 @@ func (c *Client) GetNonce(publicKey string, accountId string) (int64, error) {
 		return -1, err
 	}
 	return nonce, nil
+}
+
+func (c *Client) SendTransaction(payload string) (types.CryptoHash, error) {
+	txId, err := c.api.broadcastTransactionAsync(payload)
+
+	if err != nil {
+		return  nil, err
+	}
+
+	return txId, nil
+
 }

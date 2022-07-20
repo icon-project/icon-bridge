@@ -188,7 +188,7 @@ func LoadTransactionResultFromFile(names []string) map[string]Response {
 
 		err := json.Unmarshal(buffer, &transactionResult)
 		if err != nil {
-			panic(fmt.Errorf("error [LoadBlock][ParseJson]: %v", err))
+			panic(fmt.Errorf("error [LoadTransactionResult][ParseJson]: %v", err))
 		}
 
 		transactionResultMap[names[index]] = Response{
