@@ -123,7 +123,7 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 	return r.sinkChan, r.errChan, nil
 }
 
-func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
+func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
 	if !strings.Contains(recepientAddress, "btp:") {
 		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -135,18 +135,36 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.
 	}
 	if within {
 		if coinName == r.nativeCoin {
-			txnHash, _, err = r.requester.transferNativeIntraChain(senderKey, recepientAddress, amount)
+			txnHash, err = r.requester.transferNativeIntraChain(senderKey, recepientAddress, amount)
 		} else if addr, ok := r.tokenNameToAddr[coinName]; ok {
-			txnHash, _, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount, addr)
+			txnHash, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount, addr)
 		} else {
 			err = fmt.Errorf("IntraChain transfers are supported for NativeCoins/Tokens only")
 		}
 	} else {
 		if coinName == r.nativeCoin {
-			txnHash, _, err = r.requester.transferNativeCrossChain(senderKey, recepientAddress, amount)
+			txnHash, err = r.requester.transferNativeCrossChain(senderKey, recepientAddress, amount)
 		} else { // ONE, TONE, TICX
-			txnHash, _, err = r.requester.transferTokensCrossChain(coinName, senderKey, recepientAddress, amount)
+			txnHash, err = r.requester.transferTokensCrossChain(coinName, senderKey, recepientAddress, amount)
 		}
+	}
+	return
+}
+
+func (r *api) TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
+	if !strings.Contains(recepientAddress, "btp:") {
+		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
+	}
+	within := false
+	if strings.Contains(recepientAddress, ".icon") {
+		within = true
+		splts := strings.Split(recepientAddress, "/")
+		recepientAddress = splts[len(splts)-1]
+	}
+	if within {
+		err = fmt.Errorf("Batch Transfers are supported for inter chain transfers only")
+	} else {
+		txnHash, err = r.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts, r.nativeCoin)
 	}
 	return
 }
@@ -192,13 +210,13 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 	return &chain.TxnResult{StatusCode: int(statusCode), ElInfo: plogs, Raw: txRes}, nil
 }
 
-func (r *api) Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error) {
+func (r *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
 	if addr, ok := r.tokenNameToAddr[coinName]; ok {
-		txnHash, _, err = r.requester.approveToken(coinName, ownerKey, amount, addr)
+		txnHash, err = r.requester.approveToken(coinName, ownerKey, amount, addr)
 	} else if coinName == r.nativeCoin {
-		r.Log.Infof("No Handler for Approve Call on NativeCoin: %v, because not needed")
+		r.Log.Infof("No Handler for Approve Call on NativeCoin: %v, because not needed", r.nativeCoin)
 	} else {
-		txnHash, _, err = r.requester.approveCrossNativeCoin(coinName, ownerKey, amount)
+		txnHash, err = r.requester.approveCrossNativeCoin(coinName, ownerKey, amount)
 	}
 	return
 }

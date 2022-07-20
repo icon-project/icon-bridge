@@ -113,7 +113,7 @@ func TestTransferIntraChain(t *testing.T) {
 	amount.SetString("10000000000000000000", 10)
 	t.Logf("Demo KeyPair  %v", demoKeyPair)
 
-	txnHash, err := api.Transfer("TONE", godKeyPair[0], api.GetBTPAddress(demoKeyPair[0][1]), *amount)
+	txnHash, err := api.Transfer("TONE", godKeyPair[0], api.GetBTPAddress(demoKeyPair[0][1]), amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestTransferCrossChain(t *testing.T) {
 	}
 	amount := new(big.Int)
 	amount.SetString("10000000000000000000", 10)
-	txnHash, err := api.Approve("TONE", senderKey, *amount)
+	txnHash, err := api.Approve("TONE", senderKey, amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func TestTransferCrossChain(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(5 * time.Second)
-	txnHash, err = api.Transfer("TONE", senderKey, rxAddress, *amount)
+	txnHash, err = api.Transfer("TONE", senderKey, rxAddress, amount)
 	if err != nil {
 		t.Fatal(err)
 	}

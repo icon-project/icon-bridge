@@ -50,11 +50,12 @@ func (cb *CoinBalance) String() string {
 }
 
 type SrcAPI interface {
-	Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error)
+	Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error)
+	TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error)
 	WaitForTxnResult(ctx context.Context, hash string) (txnr *TxnResult, err error)
 	WatchForTransferStart(requestID uint64, seq int64) error
 	WatchForTransferEnd(ID uint64, seq int64) error
-	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
+	Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	GetChainType() ChainType
 	NativeCoin() string
@@ -83,12 +84,13 @@ type ChainAPI interface {
 	GetKeyPairs(num int) ([][2]string, error)
 	GetBTPAddress(addr string) string
 
-	Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error)
+	TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error)
+	Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error)
 	WaitForTxnResult(ctx context.Context, hash string) (txnr *TxnResult, err error)
 	WatchForTransferStart(ID uint64, seq int64) error
 	WatchForTransferReceived(ID uint64, seq int64) error
 	WatchForTransferEnd(ID uint64, seq int64) error
-	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
+	Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	GetChainType() ChainType
 	NativeCoin() string

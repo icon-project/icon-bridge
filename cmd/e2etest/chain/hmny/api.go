@@ -148,7 +148,7 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	return r.requester.getCoinBalance(coinName, address)
 }
 
-func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
+func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
 	if !strings.Contains(recepientAddress, "btp://") {
 		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -177,7 +177,25 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.
 	return
 }
 
-func (r *api) Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error) {
+func (r *api) TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
+	if !strings.Contains(recepientAddress, "btp:") {
+		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
+	}
+	within := false
+	if strings.Contains(recepientAddress, ".hmny") {
+		within = true
+		splts := strings.Split(recepientAddress, "/")
+		recepientAddress = splts[len(splts)-1]
+	}
+	if within {
+		err = fmt.Errorf("Batch Transfers are supported for inter chain transfers only")
+	} else {
+		txnHash, err = r.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts, r.nativeCoin)
+	}
+	return
+}
+
+func (r *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
 	txnHash, err = r.requester.approveCoin(coinName, ownerKey, amount)
 	return
 }

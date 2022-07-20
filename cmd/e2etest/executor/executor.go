@@ -218,7 +218,7 @@ func (ex *executor) Subscribe(ctx context.Context) {
 	}()
 }
 
-func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, coinName string, scr Script) (err error) {
+func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, coinNames []string, scr Script) (err error) {
 	id, err := ex.getID()
 	if err != nil {
 		return errors.Wrap(err, "getID ")
@@ -264,14 +264,14 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 		},
 	}
 
-	ex.log.Infof("Run ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinName, srcChainName, dstChainName)
+	ex.log.Infof("Run ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinNames, srcChainName, dstChainName)
 	if scr.Callback == nil {
 		return errors.New("Callback function was nil")
 	}
-	if err := scr.Callback(ctx, srcChainName, dstChainName, coinName, ts); err != nil {
+	if err := scr.Callback(ctx, srcChainName, dstChainName, coinNames, ts); err != nil {
 		return errors.Wrap(err, "CallBackFunc ")
 	}
-	ex.log.Infof("Completed Succesfully. ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinName, srcChainName, dstChainName)
+	ex.log.Infof("Completed Succesfully. ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinNames, srcChainName, dstChainName)
 	// CleanupFunc removeChan() is called after cb() on function return
 	// so make sure cb() returns only after all the test logic is finished
 	return

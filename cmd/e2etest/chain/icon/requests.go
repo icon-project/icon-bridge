@@ -61,22 +61,23 @@ func SignTransactionParam(wallet module.Wallet, param *icon.TransactionParam) er
 }
 
 func (r *requestAPI) transactWithContract(senderKey string, contractAddress string,
-	amount big.Int, args map[string]string, method string, dataType string) (txHash string, logs interface{}, err error) {
+	amount *big.Int, args map[string]interface{}, method string) (txHash string, err error) {
 	var senderWallet module.Wallet
 	senderWallet, err = GetWalletFromPrivKey(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
 	}
+
 	param := icon.TransactionParam{
 		Version:     icon.NewHexInt(icon.JsonrpcApiVersion),
 		ToAddress:   icon.Address(contractAddress),
-		Value:       icon.HexInt(intconv.FormatBigInt(&amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
+		Value:       icon.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
 		FromAddress: icon.Address(senderWallet.Address().String()),
 		StepLimit:   icon.NewHexInt(StepLimit),
 		Timestamp:   icon.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
 		NetworkID:   icon.HexInt(r.networkID),
-		DataType:    dataType,
+		DataType:    "call",
 	}
 	argMap := map[string]interface{}{}
 	argMap["method"] = method
@@ -92,7 +93,6 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 		err = errors.Wrap(err, "SendTransaction ")
 		return
 	}
-
 	txBytes, err := txH.Value()
 	if err != nil {
 		err = errors.Wrap(err, "HexBytes.Value() ")
@@ -121,12 +121,12 @@ func (r *requestAPI) callContract(contractAddress string, args map[string]string
 	return res, nil
 }
 
-func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount big.Int, caddr string) (txHash string, logs interface{}, err error) {
-	args := map[string]string{"_to": recepientAddress, "_value": intconv.FormatBigInt(&amount)}
-	return r.transactWithContract(senderKey, caddr, *big.NewInt(0), args, "transfer", "call")
+func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount *big.Int, caddr string) (txHash string, err error) {
+	args := map[string]interface{}{"_to": recepientAddress, "_value": intconv.FormatBigInt(amount)}
+	return r.transactWithContract(senderKey, caddr, big.NewInt(0), args, "transfer")
 }
 
-func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount big.Int) (txHash string, logs interface{}, err error) {
+func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount *big.Int) (txHash string, err error) {
 	var senderWallet module.Wallet
 	senderWallet, err = GetWalletFromPrivKey(senderKey)
 	if err != nil {
@@ -136,7 +136,7 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 	param := icon.TransactionParam{
 		Version:     icon.NewHexInt(icon.JsonrpcApiVersion),
 		ToAddress:   icon.Address(recepientAddress),
-		Value:       icon.HexInt(intconv.FormatBigInt(&amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
+		Value:       icon.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
 		FromAddress: icon.Address(senderWallet.Address().String()),
 		StepLimit:   icon.NewHexInt(StepLimit),
 		Timestamp:   icon.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
@@ -160,17 +160,17 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 	return
 }
 
-func (r *requestAPI) transferNativeCrossChain(senderKey, recepientAddress string, amount big.Int) (txHash string, logs interface{}, err error) {
-	args := map[string]string{"_to": recepientAddress}
+func (r *requestAPI) transferNativeCrossChain(senderKey, recepientAddress string, amount *big.Int) (txHash string, err error) {
+	args := map[string]interface{}{"_to": recepientAddress}
 	caddr, ok := r.contractNameToAddress[chain.BTSIcon]
 	if !ok {
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
 		return
 	}
-	return r.transactWithContract(senderKey, caddr, amount, args, "transferNativeCoin", "call")
+	return r.transactWithContract(senderKey, caddr, amount, args, "transferNativeCoin")
 }
 
-func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, amount big.Int) (approveTxnHash string, logs interface{}, err error) {
+func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, amount *big.Int) (approveTxnHash string, err error) {
 	coinAddressArgs := map[string]string{"_coinName": coinName}
 	btsaddr, ok := r.contractNameToAddress[chain.BTSIcon]
 	if !ok {
@@ -187,8 +187,8 @@ func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, am
 	}
 	coinAddress := res.(string)
 
-	approveArgs := map[string]string{"spender": btsaddr, "amount": intconv.FormatBigInt(&amount)}
-	approveTxnHash, logs, err = r.transactWithContract(ownerKey, coinAddress, *big.NewInt(0), approveArgs, "approve", "call")
+	approveArgs := map[string]interface{}{"spender": btsaddr, "amount": intconv.FormatBigInt(amount)}
+	approveTxnHash, err = r.transactWithContract(ownerKey, coinAddress, big.NewInt(0), approveArgs, "approve")
 	if err != nil {
 		err = errors.Wrapf(err, "transactWithContract %v", coinAddress)
 		return
@@ -196,31 +196,57 @@ func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, am
 	return
 }
 
-func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddress string, amount big.Int) (string, interface{}, error) {
-	args := map[string]string{"_coinName": coinName, "_value": intconv.FormatBigInt(&amount), "_to": recepientAddress}
+func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddress string, amount *big.Int) (string, error) {
+	args := map[string]interface{}{"_coinName": coinName, "_value": intconv.FormatBigInt(amount), "_to": recepientAddress}
 	btsaddr, ok := r.contractNameToAddress[chain.BTSIcon]
 	if !ok {
-		return "", nil, fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
 	}
-	return r.transactWithContract(senderKey, btsaddr, *big.NewInt(0), args, "transfer", "call")
+	return r.transactWithContract(senderKey, btsaddr, big.NewInt(0), args, "transfer")
 }
 
-func (r *requestAPI) approveToken(coinName, senderKey string, amount big.Int, caddr string) (hash string, log interface{}, err error) {
+func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int, nativeCoin string) (txnHash string, err error) {
+	if len(amounts) != len(coinNames) {
+		return "", fmt.Errorf("Amount and CoinNames len should be same; Got %v and %v", len(amounts), len(coinNames))
+	}
+	nativeAmount := big.NewInt(0)
+	filterNames := []string{}
+	filterAmounts := []string{}
+	for i := 0; i < len(amounts); i++ {
+		if coinNames[i] == nativeCoin {
+			nativeAmount = amounts[i]
+			continue
+		}
+		filterAmounts = append(filterAmounts, intconv.FormatBigInt(amounts[i]))
+		filterNames = append(filterNames, coinNames[i])
+	}
+
+	args := map[string]interface{}{"_coinNames": filterNames, "_values": filterAmounts, "_to": recepientAddress}
+	btsaddr, ok := r.contractNameToAddress[chain.BTSIcon]
+	if !ok {
+		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+	}
+
+	txnHash, err = r.transactWithContract(senderKey, btsaddr, nativeAmount, args, "transferBatch")
+	return
+}
+
+func (r *requestAPI) approveToken(coinName, senderKey string, amount *big.Int, caddr string) (hash string, err error) {
 	btsAddr, ok := r.contractNameToAddress[chain.BTSIcon]
 	if !ok {
-		return "", nil, fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
 	}
-	arg1 := map[string]string{"_to": btsAddr, "_value": intconv.FormatBigInt(&amount)}
-	return r.transactWithContract(senderKey, caddr, *big.NewInt(0), arg1, "transfer", "call")
+	arg1 := map[string]interface{}{"_to": btsAddr, "_value": intconv.FormatBigInt(amount)}
+	return r.transactWithContract(senderKey, caddr, big.NewInt(0), arg1, "transfer")
 }
 
-func (r *requestAPI) transferTokenCrossChain(coinName, senderKey, recepientAddress string, amount big.Int) (string, interface{}, error) {
+func (r *requestAPI) transferTokenCrossChain(coinName, senderKey, recepientAddress string, amount *big.Int) (string, error) {
 	btsaddr, ok := r.contractNameToAddress[chain.BTSIcon]
 	if !ok {
-		return "", nil, fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
 	}
-	arg2 := map[string]string{"_coinName": coinName, "_value": intconv.FormatBigInt(&amount), "_to": recepientAddress}
-	return r.transactWithContract(senderKey, btsaddr, *big.NewInt(0), arg2, "transfer", "call")
+	arg2 := map[string]interface{}{"_coinName": coinName, "_value": intconv.FormatBigInt(amount), "_to": recepientAddress}
+	return r.transactWithContract(senderKey, btsaddr, big.NewInt(0), arg2, "transfer")
 }
 
 func GetWalletFromFile(walFile string, password string) (module.Wallet, error) {
@@ -271,13 +297,13 @@ func (r *requestAPI) reclaim() {
 	coinName := "TICX"
 	amount := big.NewInt(10100000000000000)
 	senderKey := "f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5"
-	args := map[string]string{"_coinName": coinName, "_value": intconv.FormatBigInt(amount)}
+	args := map[string]interface{}{"_coinName": coinName, "_value": intconv.FormatBigInt(amount)}
 	btsAddr, ok := r.contractNameToAddress[chain.BTSIcon]
 	if !ok {
 		fmt.Printf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
 		return
 	}
-	hash, _, err := r.transactWithContract(senderKey, btsAddr, *big.NewInt(0), args, "reclaim", "call")
+	hash, err := r.transactWithContract(senderKey, btsAddr, big.NewInt(0), args, "reclaim")
 	if err != nil {
 		fmt.Println(errors.Wrap(err, "callContract coinAddress "))
 		return

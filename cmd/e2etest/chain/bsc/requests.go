@@ -155,7 +155,7 @@ func (r *requestAPI) waitForResults(ctx context.Context, txHash common.Hash) (tx
 	}
 }
 
-func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
+func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
 	senderWallet, senderPrivKey, err := GetWalletFromPrivKey(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
@@ -176,7 +176,7 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 		err = errors.Wrap(err, "ChainID ")
 		return
 	}
-	tx := types.NewTransaction(nonce, common.HexToAddress(recepientAddress), &amount, uint64(DefaultGasLimit), gasPrice, []byte{})
+	tx := types.NewTransaction(nonce, common.HexToAddress(recepientAddress), amount, uint64(DefaultGasLimit), gasPrice, []byte{})
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), senderPrivKey)
 	if err != nil {
 		err = errors.Wrap(err, "SignTx ")
@@ -227,7 +227,7 @@ func (r *requestAPI) getERC(coinName string) (erc *erc20tradeable.Erc20tradable,
 	return erc, nil
 }
 
-func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount big.Int, coinName string) (txnHash string, err error) {
+func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount *big.Int, coinName string) (txnHash string, err error) {
 	erc, err := r.getERC(coinName)
 	if err != nil {
 		err = fmt.Errorf("GetERC %v", err)
@@ -240,7 +240,7 @@ func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string,
 		return
 	}
 	txo.Context = context.Background()
-	txn, err := erc.Transfer(txo, common.HexToAddress(recepientAddress), &amount)
+	txn, err := erc.Transfer(txo, common.HexToAddress(recepientAddress), amount)
 	if err != nil {
 		err = errors.Wrap(err, "hrc.Transfer ")
 		return
@@ -249,13 +249,13 @@ func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string,
 	return
 }
 
-func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress string, amount big.Int) (txnHash string, err error) {
+func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress string, amount *big.Int) (txnHash string, err error) {
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
-	txo.Value = &amount
+	txo.Value = amount
 	txo.Context = context.Background()
 	txn, err := r.btsc.TransferNativeCoin(txo, recepientAddress)
 	if err != nil {
@@ -274,7 +274,7 @@ func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress
 	return
 }
 
-func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
+func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
 
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
@@ -282,7 +282,7 @@ func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepi
 		return
 	}
 	txo.Context = context.Background()
-	txn, err := r.btsc.Transfer(txo, coinName, &amount, recepientAddress)
+	txn, err := r.btsc.Transfer(txo, coinName, amount, recepientAddress)
 	if err != nil {
 		err = errors.Wrap(err, "btsc.Transfer ")
 		return
@@ -299,12 +299,38 @@ func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepi
 	return
 }
 
-func (r *requestAPI) approveCoin(coinName, senderKey string, amount big.Int) (approveTxnHash string, err error) {
+func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int, nativeCoin string) (txnHash string, err error) {
+	if len(amounts) != len(coinNames) {
+		return "", fmt.Errorf("Amount and CoinNames len should be same; Got %v and %v", len(amounts), len(coinNames))
+	}
+	txo, err := r.getTransactionRequest(senderKey)
+	if err != nil {
+		err = errors.Wrap(err, "getTransactionRequest ")
+		return
+	}
+	txo.Context = context.Background()
+	filterNames := []string{}
+	filterAmounts := []*big.Int{}
+	for i := 0; i < len(amounts); i++ {
+		if coinNames[i] == nativeCoin {
+			txo.Value = amounts[i]
+			continue
+		}
+		filterAmounts = append(filterAmounts, amounts[i])
+		filterNames = append(filterNames, coinNames[i])
+	}
+	txn, err := r.btsc.TransferBatch(txo, filterNames, filterAmounts, recepientAddress)
+	txnHash = txn.Hash().String()
+	return
+}
+
+func (r *requestAPI) approveCoin(coinName, senderKey string, amount *big.Int) (approveTxnHash string, err error) {
 	erc, err := r.getERC(coinName)
 	if err != nil {
 		err = fmt.Errorf("GetERC %v", err)
 		return
 	}
+
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
@@ -316,7 +342,7 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount big.Int) (ap
 		return
 	}
 	txo.Context = context.Background()
-	approveTxn, err := erc.Approve(txo, common.HexToAddress(btscaddr), &amount)
+	approveTxn, err := erc.Approve(txo, common.HexToAddress(btscaddr), amount)
 	if err != nil {
 		err = errors.Wrap(err, "erc.Approve ")
 		return

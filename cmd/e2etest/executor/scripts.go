@@ -12,7 +12,11 @@ import (
 var TransferToIncorrectAddress Script = Script{
 	Name:        "TransferToIncorrectAddress",
 	Description: "Transfer Address that does not comply to the format that the recipeient accepts",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinName string, ts *testSuite) error {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+		coinName := coinNames[0]
 		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
 			return errors.Wrapf(err, "GetChainPair %v", err)
@@ -43,7 +47,7 @@ var TransferToIncorrectAddress Script = Script{
 
 		// Approve
 		if coinName != src.NativeCoin() {
-			if approveHash, err := src.Approve(coinName, srcKey, *amt); err != nil {
+			if approveHash, err := src.Approve(coinName, srcKey, amt); err != nil {
 				return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
@@ -53,11 +57,11 @@ var TransferToIncorrectAddress Script = Script{
 		}
 
 		// Transfer
-		hash, err := src.Transfer(coinName, srcKey, dstAddr, *amt)
+		hash, err := src.Transfer(coinName, srcKey, dstAddr, amt)
 		if err != nil {
 			return errors.Wrapf(err, "Transfer Err: %v", err)
 		}
-		if err := ts.ValidateTransactionResultEvents(ctx, hash, coinName, srcAddr, dstAddr, amt); err != nil {
+		if err := ts.ValidateTransactionResultEvents(ctx, hash, []string{coinName}, srcAddr, dstAddr, []*big.Int{amt}); err != nil {
 			return errors.Wrapf(err, "ValidateTransactionResultEvents %v", err)
 		}
 		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
@@ -83,7 +87,11 @@ var TransferToIncorrectAddress Script = Script{
 var TransferExceedingContractsBalance Script = Script{
 	Name:        "TransferExceedingContractsBalance",
 	Description: "Transfer Native Tokens, which are of fixed supply, in different amounts. The Token should be native for both chains",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinName string, ts *testSuite) error {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+		coinName := coinNames[0]
 		src, dst, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
 			return errors.Wrapf(err, "GetChainPair %v", err)
@@ -102,7 +110,7 @@ var TransferExceedingContractsBalance Script = Script{
 			}
 		}
 		if !tokenExists {
-			return fmt.Errorf("Token %v does not exist on source chain %v", coinName, srcChain)
+			return fmt.Errorf("Token %v does not exist on both chains %v and %v", coinName, srcChain, dstChain)
 		}
 
 		btsAddr, err := dst.GetBTPAddressOfBTS()
@@ -126,7 +134,7 @@ var TransferExceedingContractsBalance Script = Script{
 		}
 
 		// approve
-		if approveHash, err := src.Approve(coinName, srcKey, *amt); err != nil {
+		if approveHash, err := src.Approve(coinName, srcKey, amt); err != nil {
 			return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
 		} else {
 			if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
@@ -134,11 +142,11 @@ var TransferExceedingContractsBalance Script = Script{
 			}
 		}
 		// Transfer
-		hash, err := src.Transfer(coinName, srcKey, dstAddr, *amt)
+		hash, err := src.Transfer(coinName, srcKey, dstAddr, amt)
 		if err != nil {
 			return errors.Wrapf(err, "Transfer %v", err)
 		}
-		if err := ts.ValidateTransactionResultEvents(ctx, hash, coinName, srcAddr, dstAddr, amt); err != nil {
+		if err := ts.ValidateTransactionResultEvents(ctx, hash, []string{coinName}, srcAddr, dstAddr, []*big.Int{amt}); err != nil {
 			return errors.Wrapf(err, "ValidateTransactionResultEvents %v", err)
 		}
 		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
@@ -171,10 +179,14 @@ var TransferExceedingContractsBalance Script = Script{
 	},
 }
 
-var Transfer Script = Script{
-	Name:        "Transfer",
+var BasicTransfer Script = Script{
+	Name:        "BasicTransfer",
 	Description: "Transfer Fixed Amount of coin with approve and monitor eventlogs TransferReceived and TransferEnd",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinName string, ts *testSuite) error {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+
 		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
 			return errors.Wrapf(err, "GetChainPair %v", err)
@@ -188,44 +200,57 @@ var Transfer Script = Script{
 			return errors.Wrapf(err, "GetKeyPairs %v", err)
 		}
 
-		amt := new(big.Int)
-		amt.SetString("1000000000000000000", 10)
-		if err := ts.Fund(srcAddr, amt, coinName); err != nil {
-			return errors.Wrapf(err, "Fund %v", err)
+		tmpAmt := new(big.Int)
+		tmpAmt.SetString("1000000000000000000", 10)
+		amts := make([]*big.Int, len(coinNames))
+		for i := 0; i < len(coinNames); i++ {
+			amts[i] = tmpAmt
 		}
-		if coinName != src.NativeCoin() {
-			if err := ts.Fund(srcAddr, amt, src.NativeCoin()); err != nil {
+
+		hasNative := false
+		for i, coinName := range coinNames {
+			if err := ts.Fund(srcAddr, amts[i], coinName); err != nil {
+				return errors.Wrapf(err, "Fund %v", err)
+			}
+			if coinName == src.NativeCoin() {
+				hasNative = true
+			}
+		}
+		if !hasNative {
+			gasFee := new(big.Int)
+			gasFee.SetString("1000000000000000000", 10)
+			if err := ts.Fund(srcAddr, gasFee, src.NativeCoin()); err != nil {
 				return errors.Wrapf(err, "Fund %v", err)
 			}
 		}
 
-		initSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
-		if err != nil {
-			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
-		}
-
-		// initDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
-		// if err != nil {
-		// 	return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
-		// }
-		if initSrcBalance.Usable.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
-		}
-		if coinName != src.NativeCoin() {
-			if approveHash, err := src.Approve(coinName, srcKey, *amt); err != nil {
-				return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
-			} else {
-				if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
-					return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+		// Approve
+		for i, coinName := range coinNames {
+			if coinName != src.NativeCoin() {
+				if approveHash, err := src.Approve(coinName, srcKey, amts[i]); err != nil {
+					return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				} else {
+					if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
+						return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					}
 				}
 			}
 		}
 
-		hash, err := src.Transfer(coinName, srcKey, dstAddr, *amt)
-		if err != nil {
-			return errors.Wrapf(err, "Transfer Err: %v", err)
+		var hash string
+		if len(coinNames) == 1 {
+			hash, err = src.Transfer(coinNames[0], srcKey, dstAddr, amts[0])
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		} else {
+			hash, err = src.TransferBatch(coinNames, srcKey, dstAddr, amts)
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
 		}
-		if err := ts.ValidateTransactionResultEvents(ctx, hash, coinName, srcAddr, dstAddr, amt); err != nil {
+
+		if err := ts.ValidateTransactionResultEvents(ctx, hash, coinNames, srcAddr, dstAddr, amts); err != nil {
 			return errors.Wrapf(err, "ValidateTransactionResultEvents %v", err)
 		}
 		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
