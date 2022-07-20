@@ -1,10 +1,7 @@
 !.dockerignore
-__pycache__
+**/__pycache__
+**/.vscode
 **/.DS_Store
 **/*.iml
-bin/
-**/*/node_modules/
-abigenBindings/
-_ixh/
-hmny_wallets/
-tmp/
+**/node_modules/
+**/abigenBindings/

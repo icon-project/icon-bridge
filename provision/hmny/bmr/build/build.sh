@@ -1,4 +1,8 @@
 #!/bin/bash
-echo 'building bmr'
 
-# TODO
+DOCKER_REPO=${DOCKER_REPO:-localhost:5000}
+DOCKER_IMG=${DOCKER_IMG:-bmr-hmny}
+DOCKER_TAG=${DOCKER_TAG:-latest}
+DOCKER_IMGTAG=${DOCKER_IMGTAG:-"$DOCKER_REPO/$DOCKER_IMG:$DOCKER_TAG"}
+
+docker build -t $DOCKER_IMGTAG .

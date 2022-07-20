@@ -1,11 +1,8 @@
 #!/bin/bash
 
 DOCKER_REPO=${DOCKER_REPO:-localhost:5000}
-DOCKER_IMG=${DOCKER_IMG:-hmny}
+DOCKER_IMG=${DOCKER_IMG:-bmr-bsc}
 DOCKER_TAG=${DOCKER_TAG:-latest}
 DOCKER_IMGTAG=${DOCKER_IMGTAG:-"$DOCKER_REPO/$DOCKER_IMG:$DOCKER_TAG"}
-SHARDING_HOST=${SHARDING_HOST:-localhost}
 
-docker build \
-    --build-arg SHARDING_HOST="$SHARDING_HOST" \
-    -t $DOCKER_IMGTAG .
+docker build -t $DOCKER_IMGTAG .
