@@ -325,6 +325,24 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount *big.Int) (a
 	return
 }
 
+func (r *requestAPI) getNativeCoinBalance(coinName, addr string) (bal *chain.CoinBalance, err error) {
+	b, err := r.btsc.BalanceOf(&bind.CallOpts{Pending: false, Context: context.Background()}, common.HexToAddress(addr), coinName)
+	if err != nil {
+		err = errors.Wrap(err, "btsc.GetBalanceOf ")
+		return
+	}
+	bal = &chain.CoinBalance{
+		Approved:   big.NewInt(0),
+		Usable:     b.UsableBalance,
+		Locked:     b.LockedBalance,
+		Refundable: b.RefundableBalance,
+		Total:      big.NewInt(0),
+	}
+	bal.Total = bal.Total.Add(bal.Total, bal.Refundable)
+	bal.Total = bal.Total.Add(bal.Locked, b.UsableBalance)
+	return
+}
+
 func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalance, err error) {
 	b, err := r.btsc.BalanceOf(&bind.CallOpts{Pending: false, Context: context.Background()}, common.HexToAddress(addr), coinName)
 	if err != nil {
@@ -351,6 +369,7 @@ func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalan
 		Usable:     b.UsableBalance,
 		Locked:     b.LockedBalance,
 		Refundable: b.RefundableBalance,
+		Total:      big.NewInt(0),
 	}
 	bal.Total = bal.Total.Add(bal.Locked, b.UsableBalance)
 	bal.Total = bal.Total.Add(bal.Total, bal.Refundable)
