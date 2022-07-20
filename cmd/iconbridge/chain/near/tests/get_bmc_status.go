@@ -1,4 +1,4 @@
-package testdata
+package tests
 
 import "github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 

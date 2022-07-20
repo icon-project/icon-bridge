@@ -1,10 +1,10 @@
-package testdata
+package tests
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/testdata/mock"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
 	"github.com/stretchr/testify/assert"
 )
 

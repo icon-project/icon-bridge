@@ -1,6 +1,6 @@
-package testdata
+package tests
 
-import "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/testdata/mock"
+import "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
 
 type MonitorSenderBlock struct {
 	description string

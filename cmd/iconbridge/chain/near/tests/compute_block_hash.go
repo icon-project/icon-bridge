@@ -1,8 +1,8 @@
-package testdata
+package tests
 
 import (
 	"github.com/btcsuite/btcutil/base58"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/testdata/mock"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
 )
 
 type ComputeBlockHashTest struct {

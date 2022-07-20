@@ -10,7 +10,7 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 )
 
-const mockDataPath = "./testdata/mock/data"
+const mockDataPath = "./tests/mock/data"
 
 func loadFiles(files []string, directory string) [][]byte {
 	var fileBuffers = make([][]byte, 0)
