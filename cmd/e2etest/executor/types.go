@@ -16,7 +16,7 @@ type evt struct {
 	chainType chain.ChainType
 }
 
-type callBackFunc func(ctx context.Context, srcChain, dstChain chain.ChainType, coinName string, ts *testSuite) error
+type callBackFunc func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error
 
 type Script struct {
 	Name        string

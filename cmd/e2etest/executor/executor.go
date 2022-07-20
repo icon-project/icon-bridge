@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -217,7 +218,7 @@ func (ex *executor) Subscribe(ctx context.Context) {
 	}()
 }
 
-func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, coinName string, scr Script) (err error) {
+func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, coinNames []string, scr Script) (err error) {
 	id, err := ex.getID()
 	if err != nil {
 		return errors.Wrap(err, "getID ")
@@ -227,30 +228,50 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	ex.addChan(id, sinkChan)
 	defer ex.removeChan(id) // should defer be called by cb() instead to make sure cb() was done
 
-	reqClients := map[chain.ChainType]chain.ChainAPI{}
-	for k, v := range ex.clientsPerChain {
-		reqClients[k] = v
+	srcCl, ok := ex.clientsPerChain[srcChainName]
+	if !ok {
+		return fmt.Errorf("Client for chain %v not found", srcChainName)
 	}
-	reqGodKeys := map[chain.ChainType]keypair{}
-	for k, v := range ex.godKeysPerChain {
-		reqGodKeys[k] = keypair{PrivKey: v[0], PubKey: v[1]}
+	dstCl, ok := ex.clientsPerChain[dstChainName]
+	if !ok {
+		return fmt.Errorf("Client for chain %v not found", dstChainName)
 	}
-	ts := &testSuite{
-		id:              id,
-		logger:          log,
-		subChan:         sinkChan,
-		clsPerChain:     reqClients,
-		godKeysPerChain: reqGodKeys,
+	srcGod, ok := ex.godKeysPerChain[srcChainName]
+	if !ok {
+		return fmt.Errorf("GodKeys for chain %v not found", srcChainName)
+	}
+	dstGod, ok := ex.godKeysPerChain[dstChainName]
+	if !ok {
+		return fmt.Errorf("GodKeys for chain %v not found", dstChainName)
+	}
+	srcGodPub, err := srcCl.GetPubKey(srcGod[PRIVKEYPOS])
+	if err != nil {
+		return errors.Wrapf(err, "srcCl.GetPubKey %v", err)
+	}
+	dstGodPub, err := dstCl.GetPubKey(dstGod[PRIVKEYPOS])
+	if err != nil {
+		return errors.Wrapf(err, "dstCl.GetPubKey %v", err)
 	}
 
-	ex.log.Infof("Run ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinName, srcChainName, dstChainName)
+	ts := &testSuite{
+		id:          id,
+		logger:      log,
+		subChan:     sinkChan,
+		clsPerChain: map[chain.ChainType]chain.ChainAPI{srcChainName: srcCl, dstChainName: dstCl},
+		godKeysPerChain: map[chain.ChainType]keypair{
+			srcChainName: {PrivKey: srcGod[PRIVKEYPOS], PubKey: srcGodPub},
+			dstChainName: {PrivKey: dstGod[PRIVKEYPOS], PubKey: dstGodPub},
+		},
+	}
+
+	ex.log.Infof("Run ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinNames, srcChainName, dstChainName)
 	if scr.Callback == nil {
 		return errors.New("Callback function was nil")
 	}
-	if err := scr.Callback(ctx, srcChainName, dstChainName, coinName, ts); err != nil {
+	if err := scr.Callback(ctx, srcChainName, dstChainName, coinNames, ts); err != nil {
 		return errors.Wrap(err, "CallBackFunc ")
 	}
-	ex.log.Infof("Completed Succesfully. ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinName, srcChainName, dstChainName)
+	ex.log.Infof("Completed Succesfully. ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinNames, srcChainName, dstChainName)
 	// CleanupFunc removeChan() is called after cb() on function return
 	// so make sure cb() returns only after all the test logic is finished
 	return
