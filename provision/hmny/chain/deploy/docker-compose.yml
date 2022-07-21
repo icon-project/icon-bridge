@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  chain:
+    image: ${DOCKER_REPO}:chain-hmny
+    container_name: chain
+    network_mode: host
+    restart: unless-stopped
+    # # ports:
+    # #   - 6060:6060 # golang pprof
+    # entrypoint: ["/bin/bash", "-c"]
+    # command:
+    # - |
+    #   echo '$chain_config_json' >/config.json
+    #   /bin/iconbridge -config /config.json
+    # environment:
+    #   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+    #   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}

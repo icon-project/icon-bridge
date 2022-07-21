@@ -1,3 +1,3 @@
 #!/bin/bash
-echo "deploying bmr-hmny"
+echo "deploying chain-hmny"
 docker-compose up -d
