@@ -114,23 +114,28 @@ func parseTransferReceived(log *icon.EventLog) (*chain.TransferReceivedEvent, er
 		return nil, fmt.Errorf("Unexpected length. Got %v and %v. Expected 2 and 3", len(log.Data), len(log.Indexed))
 	}
 
-	res := &[]chain.AssetDetails{}
-	err := rlpDecodeHex(common.HexBytes(log.Data[1]).String(), res)
+	res := []AssetTx{}
+	err := rlpDecodeHex(common.HexBytes(log.Data[1]).String(), &res)
 	if err != nil {
 		return nil, errors.Wrap(err, "rlp.DecodeHex ")
 	}
 	var sn common.HexInt
 	sn.SetBytes(log.Data[0])
-	newAssetDetails := make([]chain.AssetTransferDetails, len(*res))
-	for i, v := range *res {
-		newAssetDetails[i].Name = v.Name
-		newAssetDetails[i].Value = v.Value
-	}
+
 	ts := &chain.TransferReceivedEvent{
 		From:   string(log.Indexed[1]),
 		To:     common.NewAddress(log.Indexed[2]).String(),
 		Sn:     big.NewInt(sn.Int64()),
-		Assets: newAssetDetails,
+		Assets: []chain.AssetTransferDetails{},
+	}
+	for _, r := range res {
+		v := new(big.Int)
+		v.SetString(hexutil.Encode(r.Value)[2:], 16)
+
+		ts.Assets = append(ts.Assets, chain.AssetTransferDetails{
+			Name:  r.Name,
+			Value: v,
+		})
 	}
 	return ts, nil
 }
@@ -196,8 +201,8 @@ func parseTransferReceivedTxn(log *TxnEventLog) (*chain.TransferReceivedEvent, e
 		return nil, fmt.Errorf("Unexpected length. Got %v and %v. Expected 2 and 3", len(log.Data), len(log.Indexed))
 	}
 	data := log.Data
-	res := &[]chain.AssetDetails{}
-	err := rlpDecodeHex(data[len(data)-1], res)
+	res := []AssetTx{}
+	err := rlpDecodeHex(data[len(data)-1], &res)
 	if err != nil {
 		return nil, errors.Wrap(err, "rlp.DecodeHex ")
 	}
@@ -206,16 +211,21 @@ func parseTransferReceivedTxn(log *TxnEventLog) (*chain.TransferReceivedEvent, e
 		data[0] = data[0][2:]
 	}
 	sn.SetString(data[0], 16)
-	newAssetDetails := make([]chain.AssetTransferDetails, len(*res))
-	for i, v := range *res {
-		newAssetDetails[i].Name = v.Name
-		newAssetDetails[i].Value = v.Value
-	}
+
 	ts := &chain.TransferReceivedEvent{
 		From:   log.Indexed[1],
 		To:     log.Indexed[2],
 		Sn:     sn,
-		Assets: newAssetDetails,
+		Assets: []chain.AssetTransferDetails{},
+	}
+	for _, r := range res {
+		v := new(big.Int)
+		v.SetString(hexutil.Encode(r.Value)[2:], 16)
+
+		ts.Assets = append(ts.Assets, chain.AssetTransferDetails{
+			Name:  r.Name,
+			Value: v,
+		})
 	}
 	return ts, nil
 }
@@ -247,4 +257,9 @@ type AssetTxDetails struct {
 	Name  string
 	Value []byte
 	Fee   []byte
+}
+
+type AssetTx struct {
+	Name  string
+	Value []byte
 }
