@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "license": "Apache-2.0",
     "dependencies": {
-        "@openzeppelin/contracts-upgradeable": "4.1.0",
+        "@openzeppelin/contracts-upgradeable": "4.7.1",
         "@openzeppelin/contracts": "^4.0.0",
         "@openzeppelin/truffle-upgrades": "^1.7.0",
         "@truffle/hdwallet-provider": "^1.4.0",
