@@ -1,8 +1,9 @@
 name: Build Icon Node
 on:
   push:
-    paths:
-      - 'provision/icon/chain/build'
+    branches: [ repo_mgmt_cicd ]
+    # paths:
+    #   - 'provision/icon/chain/build'
   workflow_call:
 jobs:
   build:
