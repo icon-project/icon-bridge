@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   chain:
-    image: ${DOCKER_REPO}:chain-hmny
+    image: ${DOCKER_REPO}:hmny-chain
     container_name: chain
     network_mode: host
     restart: unless-stopped
