@@ -4,8 +4,10 @@ on:
   #   paths:
   #     - 'provision/hmny/contracts'
   push:
-    branches: [ repo_mgmt_cicd ]
+    branches: [ repo_mgmt_and_github_actions ]
   workflow_call:
+  paths:
+    - 'provision/hmny/contracts'
 jobs:
   deploy:
     runs-on: self-hosted

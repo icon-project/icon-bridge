@@ -4,8 +4,10 @@ on:
   #   paths:
   #     - 'provision/icon/contracts'
   push:
-    branches: [ repo_mgmt_cicd ]
+    branches: [ repo_mgmt_and_github_actions ]
   workflow_call:
+  paths:
+    - 'provision/icon/contracts'
 jobs:
   deploy:
     runs-on: self-hosted

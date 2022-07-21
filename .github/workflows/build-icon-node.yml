@@ -1,10 +1,12 @@
 name: Build Icon Node
 on:
   push:
-    branches: [ repo_mgmt_cicd ]
+    branches: [ repo_mgmt_and_github_actions ]
     # paths:
     #   - 'provision/icon/chain/build'
   workflow_call:
+  paths:
+    - 'provision/icon'
 jobs:
   build:
     runs-on: ubuntu-latest
