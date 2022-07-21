@@ -1,4 +1,4 @@
 #!/bin/bash
 echo 'deploying contracts'
 
-## TODO
+docker-compose up -d
