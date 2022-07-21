@@ -72,7 +72,7 @@ jobs:
 
       - name: Push image
         run: |
-             docker tag localhost:5000/chain-hmny ${{ secrets.DOCKER_REPO }}:chain-hmny-${SHORT_SHA} 
-             docker tag localhost:5000/chain-hmny ${{ secrets.DOCKER_REPO }}:chain-hmny
-             docker push ${{ secrets.DOCKER_REPO }}:chain-hmny-${SHORT_SHA}
-             docker push ${{ secrets.DOCKER_REPO }}:chain-hmny
+             docker tag localhost:5000/hmny-chain ${{ secrets.DOCKER_REPO }}:hmny-chain-${SHORT_SHA} 
+             docker tag localhost:5000/hmny-chain ${{ secrets.DOCKER_REPO }}:hmny-chain
+             docker push ${{ secrets.DOCKER_REPO }}:hmny-chain-${SHORT_SHA}
+             docker push ${{ secrets.DOCKER_REPO }}:hmny-chain
