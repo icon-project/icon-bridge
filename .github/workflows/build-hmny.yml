@@ -27,10 +27,6 @@ jobs:
 
       - name: Build image
         working-directory: ./provision/hmny/bmr/build
-        env:
-          DOCKER_TAG: ${SHORT_SHA}
-          DOCKER_REPO: ${DOCKER_USER}
-          DOCKER_IMG: "bmr-hmny"
         run: |
              ./build.sh
 
@@ -43,7 +39,7 @@ jobs:
 
       - name: Push image
         run: |
-             docker tag localhost:5000/bmr ${DOCKER_REPO}:bmr-hmny-${SHORT_SHA}
+             docker tag localhost:5000/bmr-hmny ${DOCKER_REPO}:bmr-hmny-${SHORT_SHA}
              docker push ${DOCKER_REPO}:bmr-hmny-${SHORT_SHA}
 
   build-chain:
