@@ -1,9 +1,7 @@
 version: '3.8'
-
 services:
-
   bmr:
-    image: ${docker_registry}/bmr:latest
+    image: ${DOCKER_REPO}:bmr-hmny
     container_name: bmr
     network_mode: host
     restart: unless-stopped

@@ -39,7 +39,8 @@ jobs:
 
       - name: Push image
         run: |
-             docker tag localhost:5000/bmr-hmny ${{ secrets.DOCKER_REPO }}:bmr-hmny-${SHORT_SHA} ${{ secrets.DOCKER_REPO }}:bmr-hmny
+             docker tag localhost:5000/bmr-hmny ${{ secrets.DOCKER_REPO }}:bmr-hmny-${SHORT_SHA} 
+             docker tag localhost:5000/bmr-hmny ${{ secrets.DOCKER_REPO }}:bmr-hmny
              docker push ${{ secrets.DOCKER_REPO }}:bmr-hmny-${SHORT_SHA}
              docker push ${{ secrets.DOCKER_REPO }}:bmr-hmny
 
