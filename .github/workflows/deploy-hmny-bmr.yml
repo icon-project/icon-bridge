@@ -16,6 +16,6 @@ jobs:
       - name: Deploy
         working-directory: ./provision/hmny/bmr/deploy
         env:
-          DOCKER_REPO: ${{ secrets.DOCKER_REPO }}
+          DOCKER_REPO: dwdraju/bridge-test
         run: |
              ./deploy.sh
