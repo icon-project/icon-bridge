@@ -1,0 +1,7 @@
+version: '3.8'
+services:
+  bsc-chain:
+    image: ${docker_registry}/bsc-chain:latest
+    container_name: bsc-chain
+    network_mode: host
+    restart: unless-stopped
