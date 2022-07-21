@@ -7,7 +7,7 @@ on:
     branches: [ repo_mgmt_cicd ]
   workflow_call:
 jobs:
-  build:
+  deploy:
     runs-on: self-hosted
     steps:
       - name: Checkout code
@@ -23,6 +23,6 @@ jobs:
       - name: Deploy
         working-directory: ./provision/hmny/bmr/deploy
         env:
-          DOCKER_REPO: dwdraju/bridge-test
+          DOCKER_REPO: ${{ secrets.DOCKER_REPO }}
         run: |
              ./deploy.sh
