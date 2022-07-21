@@ -37,14 +37,14 @@ RUN git clone https://github.com/harmony-one/mcl.git
 RUN cd bls && make -j8 BLS_SWAP_G=1 && make install && cd ..
 RUN cd mcl && make install && cd ..
 
-COPY . bmr
-RUN cd bmr/cmd/iconbridge && go build -tags hmny .
+COPY . /src
+RUN cd /src/bmr/cmd/iconbridge && go build -tags hmny .
 
 # prod build
 FROM ubuntu:18.04
 SHELL ["/bin/bash", "-c"]
 RUN apt update -y && apt install -y make ca-certificates libssl-dev
-COPY --from=0 /bmr/cmd/iconbridge/iconbridge /bin/iconbridge
+COPY --from=0 /src/bmr/cmd/iconbridge/iconbridge /bin/iconbridge
 COPY --from=0 /bls bls
 COPY --from=0 /mcl mcl
 RUN cd bls && make install && cd ..
