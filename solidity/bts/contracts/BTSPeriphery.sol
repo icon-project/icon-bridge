@@ -259,9 +259,9 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         require(_svc.compareTo(serviceName) == true, "InvalidSvc");
         require(bytes(requests[_sn].from).length != 0, "InvalidSN");
         string memory _emitMsg = string("errCode: ")
-            .concat(_code.toString())
             .concat(", errMsg: ")
             .concat(_msg);
+        // .concat(_code.toString())
         handleResponseService(_sn, RC_ERR, _emitMsg);
     }
 
