@@ -65,7 +65,7 @@ func NewSender(source, destination chain.BTPAddress, urls []string, wallet walle
 	return sender, nil
 }
 
-func newMockSender(source, destination chain.BTPAddress, client *Client, wallet wallet.Wallet, options map[string]interface{}, logger log.Logger) (*Sender, error) {
+func newMockSender(source, destination chain.BTPAddress, client *Client, wallet wallet.Wallet, _ map[string]interface{}, logger log.Logger) (*Sender, error) {
 	clients := make([]*Client, 0)
 	clients = append(clients, client)
 	sender := &Sender{
@@ -75,6 +75,7 @@ func newMockSender(source, destination chain.BTPAddress, client *Client, wallet 
 		wallet:      wallet,
 		logger:      logger,
 	}
+
 	return sender, nil
 }
 
