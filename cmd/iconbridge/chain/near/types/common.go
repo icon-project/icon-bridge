@@ -98,6 +98,14 @@ func (pk *PublicKey) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
+func (pk *PublicKey) Base58Encode() string {
+	if pk.KeyType == ED25519 {
+		return "ed25519:" + base58.Encode(pk.Data[:])
+	} else {
+		return "secp256k1:" + base58.Encode(pk.Data[:])
+	}
+}
+
 func NewPublicKeyFromED25519(pk ed25519.PublicKey) PublicKey {
 	return PublicKey{
 		KeyType: ED25519,

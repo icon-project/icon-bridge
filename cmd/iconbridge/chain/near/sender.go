@@ -11,7 +11,6 @@ import (
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/account"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/errors"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/codec"
@@ -234,7 +233,7 @@ func (relayTx *RelayTransaction) Send(ctx context.Context) (err error) {
 	defer cancel()
 
 	relayTx.context = _ctx
-	publicKey := account.PublicKeyToString(*relayTx.wallet.Pkey)
+	publicKey := types.NewPublicKeyFromED25519(*relayTx.wallet.Pkey)
 	nonce, err := relayTx.client.GetNonce(publicKey, string(relayTx.Transaction.SignerId))
 	if nonce == -1 || err != nil {
 		return err
