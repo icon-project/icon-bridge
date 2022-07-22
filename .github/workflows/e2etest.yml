@@ -1,15 +1,9 @@
 name: E2ETest
-# on: [workflow_dispatch]
 on:
   push:
     branches: [ repo_mgmt_and_github_actions ]
-    # paths:
-    #   - 'cmd'
   pull_request:
     branches: [ repo_mgmt_and_github_actions ]
-    # paths:
-    #   - 'cmd'
-
 jobs:
   build:
     runs-on: ubuntu-latest

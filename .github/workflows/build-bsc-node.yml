@@ -1,6 +1,9 @@
 name: Build BSC Node
 on:
   push:
+    branches:
+      - repo_mgmt_and_github_actions
+      - repo_mgmt_cicd
     paths:
       - 'provision/bsc'
   workflow_call:
