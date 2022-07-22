@@ -65,12 +65,15 @@ public class Balance {
     }
 
     public Map<String, BigInteger> addUserBalance(BigInteger userBalance) {
-        Map<String, BigInteger> bal = new HashMap<>();
-        bal.put("usable", usable);
-        bal.put("locked", locked);
-        bal.put("refundable", refundable);
-        bal.put("userBalance", userBalance);
-        return bal;
+        if (userBalance == null) {
+            userBalance = BigInteger.ZERO;
+        }
+        return Map.of(
+                "usable", usable,
+                "locked", locked,
+                "refundable", refundable,
+                "userBalance", userBalance
+        );
     }
 
     public static void writeObject(ObjectWriter writer, Balance obj) {
