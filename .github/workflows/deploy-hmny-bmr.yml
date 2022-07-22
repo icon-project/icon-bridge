@@ -6,6 +6,10 @@ on:
       - repo_mgmt_cicd
     paths:
       - 'provision/hmny/bmr'
+  pull_request:
+    branches:
+      - repo_mgmt_and_github_actions
+      - repo_mgmt_cicd
   workflow_call:
 jobs:
   deploy:

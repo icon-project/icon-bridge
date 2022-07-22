@@ -1,9 +1,13 @@
 name: E2ETest
 on:
   push:
-    branches: [ repo_mgmt_and_github_actions ]
+    branches:
+      - repo_mgmt_and_github_actions
+      - repo_mgmt_cicd
   pull_request:
-    branches: [ repo_mgmt_and_github_actions ]
+    branches:
+      - repo_mgmt_and_github_actions
+      - repo_mgmt_cicd
 jobs:
   build:
     runs-on: ubuntu-latest
