@@ -1,13 +1,12 @@
 name: Deploy hmny bmr
 on:
-  # push:
-  #   paths:
-  #     - 'provision/hmny/contracts'
   push:
-    branches: [ repo_mgmt_and_github_actions ]
+    branches:
+      - repo_mgmt_and_github_actions
+      - repo_mgmt_cicd
+    paths:
+      - 'provision/hmny/bmr'
   workflow_call:
-  paths:
-    - 'provision/hmny/bmr'
 jobs:
   deploy:
     runs-on: self-hosted

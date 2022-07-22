@@ -1,13 +1,12 @@
 name: Deploy hmny contracts
 on:
-  # push:
-  #   paths:
-  #     - 'provision/hmny/contracts'
   push:
-    branches: [ repo_mgmt_and_github_actions ]
+    branches:
+      - repo_mgmt_and_github_actions
+      - repo_mgmt_cicd
+    paths:
+      - 'provision/hmny/contracts'
   workflow_call:
-  paths:
-    - 'provision/hmny/contracts'
 jobs:
   deploy:
     runs-on: self-hosted

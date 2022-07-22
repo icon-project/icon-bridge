@@ -1,13 +1,12 @@
 name: Deploy icon contracts
 on:
-  # push:
-  #   paths:
-  #     - 'provision/icon/contracts'
   push:
-    branches: [ repo_mgmt_and_github_actions ]
+    branches:
+      - repo_mgmt_and_github_actions
+      - repo_mgmt_cicd
+    paths:
+      - 'provision/icon/contracts'
   workflow_call:
-  paths:
-    - 'provision/icon/contracts'
 jobs:
   deploy:
     runs-on: self-hosted

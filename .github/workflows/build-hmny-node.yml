@@ -1,21 +1,15 @@
 name: Build hmny
-
 on:
   push:
     branches:
       - repo_mgmt_and_github_actions
       - repo_mgmt_cicd
-    # paths:
-    #   - 'cmd'
     paths:
       - 'provision/hmny'
   pull_request:
     branches:
       - repo_mgmt_and_github_actions
       - repo_mgmt_cicd
-    # paths:
-    #   - 'cmd'
-
 jobs:
   build-bmr:
     runs-on: ubuntu-latest
