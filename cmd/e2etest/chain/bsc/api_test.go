@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	RPC_URI     = "http://localhost:8545"
 	GodKey      = "1deb607f38b0bd1390df3b312a1edc11a00a34f248b5d53f4157de054f3c71ae"
 	GodAddr     = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
 	DemoSrcKey  = "ce69f928c68b0b7bc198824b081cfbde60d6b1e0f1695d5aaa9d8564bb35dcb3"
@@ -22,14 +23,14 @@ const (
 
 func TestApprove(t *testing.T) {
 
-	coin := "BNB"
+	coin := "TBNB"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	amt := new(big.Int)
 	amt.SetString("1000000000000", 10)
-	approveHash, err := rpi.Approve(coin, DemoSrcKey, amt)
+	approveHash, err := rpi.Approve(coin, GodKey, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -59,7 +60,7 @@ func TestTransferIntraChain(t *testing.T) {
 
 func TestTransferInterChain(t *testing.T) {
 
-	coin := "ETH"
+	coin := "TBNB"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -69,10 +70,10 @@ func TestTransferInterChain(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
-		t.Logf("%v %v", coin, res.String())
+		t.Logf("%v %v", coin, res)
 	}
 	amt := new(big.Int)
-	amt.SetString("2039709999998000000", 10)
+	amt.SetString("1000000000000", 10)
 	txnHash, err := rpi.Transfer(coin, GodKey, DemoDstAddr, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -92,7 +93,7 @@ func TestTransferInterChain(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
-		t.Logf("%v %v", coin, res.String())
+		t.Logf("%v %v", coin, res)
 	}
 }
 
@@ -151,7 +152,7 @@ func TestGetCoinBalance(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
-		t.Logf("%v %v", coin, res.String())
+		t.Logf("%v %v", coin, res)
 	}
 }
 
@@ -193,7 +194,7 @@ func getNewApi() (chain.ChainAPI, error) {
 	log.SetGlobalLogger(l)
 	rx, err := NewApi(l, &chain.ChainConfig{
 		Name:                 chain.BSC,
-		URL:                  "http://localhost:8545",
+		URL:                  RPC_URI,
 		ContractAddresses:    ctrMap,
 		NativeTokenAddresses: coinMap,
 		NativeCoin:           "BNB",

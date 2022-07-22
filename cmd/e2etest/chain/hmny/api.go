@@ -146,9 +146,6 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-	if coinName == r.nativeCoin {
-		return r.requester.getNativeCoinBalance(coinName, address)
-	}
 	return r.requester.getCoinBalance(coinName, address)
 }
 

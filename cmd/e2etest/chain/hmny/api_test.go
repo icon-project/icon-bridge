@@ -119,7 +119,7 @@ func showBalance(addr string) error {
 		if err != nil {
 			return err
 		}
-		log.Infof("coin %v amount %v", coinName, res.String())
+		log.Infof("coin %v amount %v", coinName, res)
 	}
 	return nil
 }
@@ -158,7 +158,7 @@ func TestTransferIntraChain(t *testing.T) {
 		if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
 			t.Fatal(err)
 		} else {
-			t.Logf("Balance %v", val.String())
+			t.Logf("Balance %v", val)
 		}
 	}
 	return
@@ -176,7 +176,7 @@ func TestTransferInterChain(t *testing.T) {
 	if val, err := api.GetCoinBalance("TONE", DemoSrcAddr); err != nil {
 		t.Fatal(err)
 	} else {
-		t.Logf("Initial  Balance %v", val.String())
+		t.Logf("Initial  Balance %v", val)
 	}
 	amount := new(big.Int)
 	amount.SetString("9000000000000000000", 10)
@@ -198,7 +198,7 @@ func TestTransferInterChain(t *testing.T) {
 	if val, err := api.GetCoinBalance("TONE", DemoSrcAddr); err != nil {
 		t.Fatal(err)
 	} else {
-		t.Logf("Final Balance %v", val.String())
+		t.Logf("Final Balance %v", val)
 	}
 
 }

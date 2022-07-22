@@ -350,54 +350,19 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount *big.Int) (a
 	approveTxnHash = approveTxn.Hash().String()
 	return
 }
-func (r *requestAPI) getNativeCoinBalance(coinName, addr string) (bal *chain.CoinBalance, err error) {
-	b, err := r.btsc.BalanceOf(&bind.CallOpts{Pending: false, Context: context.Background()}, common.HexToAddress(addr), coinName)
-	if err != nil {
-		err = errors.Wrap(err, "btsc.GetBalanceOf ")
-		return
-	}
-	bal = &chain.CoinBalance{
-		Approved:   big.NewInt(0),
-		Usable:     b.UsableBalance,
-		Locked:     b.LockedBalance,
-		Refundable: b.RefundableBalance,
-		Total:      big.NewInt(0),
-	}
-	bal.Total = bal.Total.Add(bal.Total, bal.Refundable)
-	bal.Total = bal.Total.Add(bal.Locked, b.UsableBalance)
-	return
-}
+
 func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalance, err error) {
 	b, err := r.btsc.BalanceOf(&bind.CallOpts{Pending: false, Context: context.Background()}, common.HexToAddress(addr), coinName)
 	if err != nil {
 		err = errors.Wrap(err, "btsc.GetBalanceOf ")
 		return
 	}
-
-	erc, err := r.getERC(coinName)
-	if err != nil {
-		err = fmt.Errorf("GetERC %v", err)
-		return
-	}
-	btscaddr, ok := r.contractNameToAddress[chain.BTSCoreBsc]
-	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTSCoreBsc)
-		return
-	}
-	allowance, err := erc.Allowance(&bind.CallOpts{Pending: false, Context: context.TODO()}, common.HexToAddress(addr), common.HexToAddress(btscaddr))
-	if err != nil {
-		err = fmt.Errorf("Allowance; err: %v", err)
-	}
-
 	bal = &chain.CoinBalance{
-		Approved:   allowance,
-		Usable:     b.UsableBalance,
-		Locked:     b.LockedBalance,
-		Refundable: b.RefundableBalance,
-		Total:      big.NewInt(0),
+		UsableBalance:     b.UsableBalance,
+		LockedBalance:     b.LockedBalance,
+		RefundableBalance: b.RefundableBalance,
+		UserBalance:       b.UserBalance,
 	}
-	bal.Total = bal.Total.Add(bal.Total, bal.Refundable)
-	bal.Total = bal.Total.Add(bal.Locked, b.UsableBalance)
 	return bal, nil
 }
 

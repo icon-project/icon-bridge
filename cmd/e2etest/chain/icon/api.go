@@ -180,8 +180,6 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	address := splts[len(splts)-1]
 	if coinName == r.nativeCoin {
 		return r.requester.getNativeCoinBalance(coinName, address)
-	} else if _, ok := r.tokenNameToAddr[coinName]; ok {
-		return r.requester.getCoinBalance(coinName, address, true)
 	}
 	return r.requester.getCoinBalance(coinName, address, false)
 }

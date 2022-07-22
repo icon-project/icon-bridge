@@ -37,16 +37,10 @@ func (e EventLogType) String() string {
 }
 
 type CoinBalance struct {
-	Total      *big.Int
-	Approved   *big.Int
-	Usable     *big.Int
-	Locked     *big.Int
-	Refundable *big.Int
-}
-
-func (cb *CoinBalance) String() string {
-	return " Total: " + cb.Total.String() + " Approved: " + cb.Approved.String() + " Usable: " + cb.Usable.String() +
-		" Locked: " + cb.Locked.String() + " Refundable: " + cb.Refundable.String()
+	UsableBalance     *big.Int
+	LockedBalance     *big.Int
+	RefundableBalance *big.Int
+	UserBalance       *big.Int
 }
 
 type SrcAPI interface {

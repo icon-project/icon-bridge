@@ -123,7 +123,7 @@ var TransferExceedingContractsBalance Script = Script{
 		}
 
 		// prepare accounts
-		amt := big.NewInt(1).Mul(btsBalance.Total, big.NewInt(2))
+		amt := big.NewInt(1).Mul(btsBalance.UserBalance, big.NewInt(2))
 		srcKey, srcAddr, err := ts.GetGodKeyPairs(srcChain)
 		if err != nil {
 			return errors.Wrapf(err, "GetGodKeyPairs %v", err)
@@ -172,8 +172,8 @@ var TransferExceedingContractsBalance Script = Script{
 		if err != nil {
 			return errors.Wrapf(err, "dst.getCoinBalance %v", err)
 		}
-		if finalBtsBalance.Usable.Cmp(btsBalance.Usable) != 0 {
-			return fmt.Errorf("BTS Balance should have been same since txn does not succeed. Init %v  Final %v", btsBalance.Usable.String(), finalBtsBalance.Usable.String())
+		if finalBtsBalance.UserBalance.Cmp(btsBalance.UserBalance) != 0 {
+			return fmt.Errorf("BTS Balance should have been same since txn does not succeed. Init %v  Final %v", btsBalance.UserBalance.String(), finalBtsBalance.UserBalance.String())
 		}
 		return nil
 	},
