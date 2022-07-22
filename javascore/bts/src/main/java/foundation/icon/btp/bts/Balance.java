@@ -16,6 +16,8 @@
 
 package foundation.icon.btp.bts;
 
+import java.util.HashMap;
+import java.util.Map;
 import score.ByteArrayObjectWriter;
 import score.Context;
 import score.ObjectReader;
@@ -60,6 +62,15 @@ public class Balance {
         sb.append(", refundable=").append(refundable);
         sb.append('}');
         return sb.toString();
+    }
+
+    public Map<String, BigInteger> addUserBalance(BigInteger userBalance) {
+        Map<String, BigInteger> bal = new HashMap<>();
+        bal.put("usable", usable);
+        bal.put("locked", locked);
+        bal.put("refundable", refundable);
+        bal.put("userBalance", userBalance);
+        return bal;
     }
 
     public static void writeObject(ObjectWriter writer, Balance obj) {

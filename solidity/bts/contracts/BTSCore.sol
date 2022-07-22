@@ -276,24 +276,35 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         returns (
             uint256 _usableBalance,
             uint256 _lockedBalance,
-            uint256 _refundableBalance
+            uint256 _refundableBalance,
+            uint256 _userBalance
         )
     {
         if (_coinName.compareTo(nativeCoinName)) {
+            uint balance = address(_owner).balance;
             return (
-                address(_owner).balance,
+                balance,
                 balances[_owner][_coinName].lockedBalance,
-                balances[_owner][_coinName].refundableBalance
+                balances[_owner][_coinName].refundableBalance,
+                balance
             );
         }
         address _erc20Address = coins[_coinName];
-        _usableBalance = _erc20Address != address(0)
-            ? IERC20(_erc20Address).balanceOf(_owner)
+        IERC20 ierc20 = IERC20(_erc20Address);
+        _userBalance = _erc20Address != address(0)
+            ? ierc20.balanceOf(_owner)
             : 0;
+        uint allowance = _erc20Address != address(0)
+            ? ierc20.allowances(_owner, address(this))
+            : 0;
+        _usableBalance = allowance > _userBalance
+            ? _userBalance
+            : allowance;
         return (
             _usableBalance,
             balances[_owner][_coinName].lockedBalance,
-            balances[_owner][_coinName].refundableBalance
+            balances[_owner][_coinName].refundableBalance,
+            _userBalance
         );
     }
 
@@ -313,19 +324,22 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
             uint256[] memory _usableBalances,
             uint256[] memory _lockedBalances,
             uint256[] memory _refundableBalances
+            uint256[] memory _userBalances
         )
     {
         _usableBalances = new uint256[](_coinNames.length);
         _lockedBalances = new uint256[](_coinNames.length);
         _refundableBalances = new uint256[](_coinNames.length);
+        _userBalances = new uint256[](_coinNames.length);
         for (uint256 i = 0; i < _coinNames.length; i++) {
             (
                 _usableBalances[i],
                 _lockedBalances[i],
-                _refundableBalances[i]
+                _refundableBalances[i],
+                _userBalances[i]
             ) = this.balanceOf(_owner, _coinNames[i]);
         }
-        return (_usableBalances, _lockedBalances, _refundableBalances);
+        return (_usableBalances, _lockedBalances, _refundableBalances, _userBalances);
     }
 
     /**
