@@ -295,7 +295,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
             ? ierc20.balanceOf(_owner)
             : 0;
         uint allowance = _erc20Address != address(0)
-            ? ierc20.allowances(_owner, address(this))
+            ? ierc20.allowance(_owner, address(this))
             : 0;
         _usableBalance = allowance > _userBalance
             ? _userBalance
@@ -323,7 +323,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         returns (
             uint256[] memory _usableBalances,
             uint256[] memory _lockedBalances,
-            uint256[] memory _refundableBalances
+            uint256[] memory _refundableBalances,
             uint256[] memory _userBalances
         )
     {
