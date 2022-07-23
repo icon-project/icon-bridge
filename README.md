@@ -10,6 +10,7 @@ Target chains
 - Polkadot parachain
 - Binance Smart Chain
 - Harmony One
+- NEAR Protocol
 
 Terminologies
 

@@ -10,3 +10,9 @@ abigenBindings/
 _ixh/
 hmny_wallets/
 tmp/
+docker-compose/logs
+**/target/**/*
+
+**/**.profraw
+**/lcov.info
+rust/**/coverage
