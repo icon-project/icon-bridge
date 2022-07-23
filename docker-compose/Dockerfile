@@ -4,7 +4,7 @@ ARG GOLOOP_IMAGE=goloop:latest
 FROM iconbridge:${ICONBRIDGE_VERSION} AS iconbridge
 FROM ${GOLOOP_IMAGE}
 
-RUN apk add --no-cache jq curl
+RUN apk add --no-cache jq
 
 ENV GOLOOP_PROVISION=/goloop/provisioning
 ENV GOLOOP_PROVISION_CONFIG=${GOLOOP_PROVISION}/config

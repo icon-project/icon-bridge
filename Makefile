@@ -7,7 +7,6 @@
 BUILD_ROOT = $(abspath ./)
 BIN_DIR = ./bin
 LINUX_BIN_DIR = ./build/linux
-
 GOBUILD = go build
 GOBUILD_TAGS =
 # GOBUILD_ENVS = CGO_ENABLED=0
