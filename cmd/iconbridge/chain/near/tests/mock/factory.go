@@ -10,7 +10,7 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 )
 
-const mockDataPath = "./testdata/mock/data"
+const mockDataPath = "./tests/mock/data"
 
 func loadFiles(files []string, directory string) [][]byte {
 	var fileBuffers = make([][]byte, 0)
@@ -188,7 +188,7 @@ func LoadTransactionResultFromFile(names []string) map[string]Response {
 
 		err := json.Unmarshal(buffer, &transactionResult)
 		if err != nil {
-			panic(fmt.Errorf("error [LoadBlock][ParseJson]: %v", err))
+			panic(fmt.Errorf("error [LoadTransactionResult][ParseJson]: %v", err))
 		}
 
 		transactionResultMap[names[index]] = Response{

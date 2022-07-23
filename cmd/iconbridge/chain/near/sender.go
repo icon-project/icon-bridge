@@ -11,7 +11,7 @@ import (
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/account"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/errors"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/codec"
 	"github.com/icon-project/icon-bridge/common/log"
@@ -23,11 +23,12 @@ const (
 	functionCallMethod   = "handle_relay_message"
 	gas                  = uint64(300000000000000)
 	defaultSendTxTimeout = 15 * time.Second
+	defaultGetTxTimeout  = 15 * time.Second
 )
 
 var balance = *big.NewInt(0)
 
-type sender struct {
+type Sender struct {
 	clients     []*Client
 	source      chain.BTPAddress
 	destination chain.BTPAddress
@@ -41,7 +42,7 @@ func NewSender(source, destination chain.BTPAddress, urls []string, wallet walle
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
 
-	sender := &sender{
+	sender := &Sender{
 		clients:     newClients(urls, logger),
 		source:      source,
 		destination: destination,
@@ -63,24 +64,25 @@ func NewSender(source, destination chain.BTPAddress, urls []string, wallet walle
 	return sender, nil
 }
 
-func newMockSender(source, destination chain.BTPAddress, client *Client, wallet wallet.Wallet, options map[string]interface{}, logger log.Logger) (chain.Sender, error) {
+func newMockSender(source, destination chain.BTPAddress, client *Client, wallet wallet.Wallet, _ map[string]interface{}, logger log.Logger) (*Sender, error) {
 	clients := make([]*Client, 0)
 	clients = append(clients, client)
-	sender := &sender{
+	sender := &Sender{
 		clients:     clients,
 		source:      source,
 		destination: destination,
 		wallet:      wallet,
 		logger:      logger,
 	}
+
 	return sender, nil
 }
 
-func (s *sender) client() *Client {
+func (s *Sender) client() *Client {
 	return s.clients[rand.Intn(len(s.clients))]
 }
 
-func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.RelayTx, newMsg *chain.Message, err error) {
+func (s *Sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.RelayTx, newMsg *chain.Message, err error) {
 	if ctx.Err() != nil {
 		return nil, nil, ctx.Err()
 	}
@@ -134,7 +136,7 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 	return tx, newMsg, nil
 }
 
-func (s *sender) newRelayTransaction(ctx context.Context, prev string, message []byte) (*RelayTransaction, error) {
+func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message []byte) (*RelayTransaction, error) {
 	if nearWallet, Ok := (s.wallet).(*wallet.NearWallet); Ok {
 		accountId := nearWallet.Address()
 
@@ -165,7 +167,7 @@ func (s *sender) newRelayTransaction(ctx context.Context, prev string, message [
 		transaction := types.Transaction{
 			SignerId:   types.AccountId(accountId),
 			ReceiverId: types.AccountId(s.destination.ContractAddress()),
-			PublicKey:  PublicKeyFromEd25519(*nearWallet.Pkey),
+			PublicKey:  types.NewPublicKeyFromED25519(*nearWallet.Pkey),
 			Actions:    actions,
 		}
 
@@ -177,7 +179,7 @@ func (s *sender) newRelayTransaction(ctx context.Context, prev string, message [
 			wallet:      nearWallet,
 		}, nil
 	}
-	return nil, nil
+	return nil, fmt.Errorf("failed to cast wallet")
 }
 
 type RelayTransaction struct {
@@ -197,10 +199,32 @@ func (relayTx *RelayTransaction) ID() interface{} {
 }
 
 func (relayTx *RelayTransaction) Receipt(ctx context.Context) (blockHeight uint64, err error) {
+	var txStatus types.TransactionResult
 	if relayTx.Transaction.Txid == nil {
 		return 0, fmt.Errorf("no pending tx")
 	}
-	return 0, nil
+	for i, isPending := 0, true; i < 5 && (isPending || err == errors.ErrUnknownTransaction); i++ {
+		time.Sleep(time.Second)
+		_, cancel := context.WithTimeout(ctx, defaultGetTxTimeout)
+		defer cancel()
+
+		txStatus, err = relayTx.client.api.getTransactionResult(relayTx.Transaction.Txid.Base58Encode(), string(relayTx.Transaction.SignerId))
+		if err != nil {
+			return blockHeight, err 
+		}
+	}
+
+	if txStatus.TransactionOutcome.BlockHash != nil {
+		block, err := relayTx.client.api.getBlockByHash(txStatus.TransactionOutcome.BlockHash.Base58Encode())
+		if err != nil {
+			return 0, err
+		}
+
+		blockHeight = uint64(block.Height())
+	}
+
+	//TODO: Handle errors
+	return blockHeight, err
 }
 
 func (relayTx *RelayTransaction) Send(ctx context.Context) (err error) {
@@ -209,7 +233,7 @@ func (relayTx *RelayTransaction) Send(ctx context.Context) (err error) {
 	defer cancel()
 
 	relayTx.context = _ctx
-	publicKey := account.PublicKeyToString(*relayTx.wallet.Pkey)
+	publicKey := types.NewPublicKeyFromED25519(*relayTx.wallet.Pkey)
 	nonce, err := relayTx.client.GetNonce(publicKey, string(relayTx.Transaction.SignerId))
 	if nonce == -1 || err != nil {
 		return err
@@ -224,12 +248,22 @@ func (relayTx *RelayTransaction) Send(ctx context.Context) (err error) {
 	relayTx.Transaction.BlockHash = base58.Decode(blockHash)
 
 	payload, err := relayTx.Transaction.Payload(relayTx.wallet)
+	if err != nil {
+		return err
+	}
 
-	
+	txId, err := relayTx.client.SendTransaction(payload)
+	if err != nil {
+		return err
+	}
+
+	relayTx.Transaction.Txid = txId
+	relayTx.client.logger.WithFields(log.Fields{"tx": txId.Base58Encode()}).Debug("handleRelayMessage: tx sent")
+
 	return nil
 }
 
-func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
+func (s *Sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}

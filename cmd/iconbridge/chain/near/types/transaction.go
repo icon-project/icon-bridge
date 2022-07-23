@@ -11,9 +11,19 @@ import (
 
 type TransactionResult struct {
 	Status             ExecutionStatus              `json:"status"`
-	Transaction        Transaction                  `json:"transaction"`
+	Transaction        TransactionView                  `json:"transaction"`
 	TransactionOutcome ExecutionOutcomeWithIdView   `json:"transaction_outcome"`
 	ReceiptsOutcome    []ExecutionOutcomeWithIdView `json:"receipts_outcome"`
+}
+
+type TransactionView struct {
+	SignerId   AccountId `json:"signer_id"`
+	PublicKey  PublicKey `json:"public_key"`
+	Nonce      int       `json:"nonce"`
+	ReceiverId AccountId `json:"receiver_id"`
+	Actions    []Action   `json:"actions"` // TODO: ActionView
+	Signature  Signature  `json:"signature"`
+	Txid       CryptoHash `json:"hash"`
 }
 
 type Transaction struct {
@@ -105,16 +115,4 @@ func (t *Transaction) sign(wallet *wallet.NearWallet) error {
 		Data:    signature,
 	}
 	return nil
-}
-
-type RelayMessageParam struct {
-	Previous string `json:"_prev"`
-	Message  string `json:"_msg"`
-}
-
-type TransactionParam struct {
-	From              string
-	To                string
-	RelayMessage      RelayMessageParam
-	Base64encodedData string
 }

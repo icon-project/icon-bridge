@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/testdata/mock"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 )
 
@@ -36,21 +36,24 @@ func NewMockApi(storage mock.Storage) Mockapi {
 		storage.TransactionHash = defaults.TransactionHash
 	}
 
+	for key, value := range storage.TransactionResultMap {
+		defaults.TransactionResultMap[key] = value
+	}
+	storage.TransactionResultMap = defaults.TransactionResultMap
+
 	for key, value := range storage.BlockByHeightMap {
 		defaults.BlockByHeightMap[key] = value
 	}
-
 	storage.BlockByHeightMap = defaults.BlockByHeightMap
 
 	for key, value := range storage.BlockByHashMap {
 		defaults.BlockByHashMap[key] = value
 	}
-
 	storage.BlockByHashMap = defaults.BlockByHashMap
+
 	for key, value := range storage.NonceMap {
 		defaults.NonceMap[key] = value
 	}
-
 	storage.NonceMap = defaults.NonceMap
 
 	for key, value := range storage.BmcLinkStatusMap {
@@ -126,16 +129,16 @@ func (api *Mockapi) getBlockByHash(blockHash string) (types.Block, error) {
 	return block, fmt.Errorf("failed to cast Block to []byte")
 }
 
-func (api *Mockapi) broadcastTransactionAsync(string) (string, error) {
+func (api *Mockapi) broadcastTransactionAsync(string) (types.CryptoHash, error) {
 	if api.TransactionHash.Error != nil {
-		return "", api.TransactionHash.Error
+		return nil, api.TransactionHash.Error
 	}
 
 	if transactionHash, Ok := (api.TransactionHash.Reponse).(string); Ok {
-		return transactionHash, nil
+		return types.NewCryptoHash(transactionHash), nil
 	}
 
-	return "", fmt.Errorf("failed to cast TransactionHash to string")
+	return nil, fmt.Errorf("failed to cast TransactionHash to string")
 }
 
 func (api *Mockapi) broadcastTransaction(string) (string, error) {

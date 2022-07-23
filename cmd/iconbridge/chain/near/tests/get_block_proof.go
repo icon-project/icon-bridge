@@ -1,9 +1,9 @@
-package testdata
+package tests
 
 import (
 	"encoding/hex"
 
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/testdata/mock"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
 )
 
 type GetBlockProofTest struct {

@@ -1,4 +1,4 @@
-package testdata
+package tests
 
 type GetNonceTest struct {
 	description string

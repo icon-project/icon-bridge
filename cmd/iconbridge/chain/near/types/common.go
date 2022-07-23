@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -34,6 +35,10 @@ func (c *CryptoHash) UnmarshalJSON(p []byte) error {
 	}
 	*c = CryptoHash(base58.Decode(cryptoHash))
 	return nil
+}
+
+func NewCryptoHash(hash string) CryptoHash {
+	return CryptoHash(base58.Decode(hash))
 }
 
 func (c *CryptoHash) Base58Encode() string {
@@ -91,6 +96,21 @@ func (pk *PublicKey) UnmarshalJSON(p []byte) error {
 		pk = nil
 	}
 	return nil
+}
+
+func (pk *PublicKey) Base58Encode() string {
+	if pk.KeyType == ED25519 {
+		return "ed25519:" + base58.Encode(pk.Data[:])
+	} else {
+		return "secp256k1:" + base58.Encode(pk.Data[:])
+	}
+}
+
+func NewPublicKeyFromED25519(pk ed25519.PublicKey) PublicKey {
+	return PublicKey{
+		KeyType: ED25519,
+		Data: pk,
+	}
 }
 
 type Signature struct {

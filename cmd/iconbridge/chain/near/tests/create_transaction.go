@@ -1,11 +1,11 @@
-package testdata
+package tests
 
 // import (
 // 	"crypto/ed25519"
 
 // 	"github.com/btcsuite/btcutil/base58"
 // 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/base"
-// 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/testdata/mock"
+// 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
 // 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 // 	"github.com/icon-project/icon-bridge/common/wallet"
 // )

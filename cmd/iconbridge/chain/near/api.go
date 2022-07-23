@@ -68,15 +68,14 @@ func (api *api) broadcastTransaction(base64EncodedData string) (string, error) {
 }
 
 //Sends a transaction and immediately returns transaction hash.
-func (api *api) broadcastTransactionAsync(base64EncodedData string) (string, error) {
+func (api *api) broadcastTransactionAsync(base64EncodedData string) (types.CryptoHash, error) {
 	var transactionStatus string
 
 	if _, err := api.Do("broadcast_tx_async", []interface{}{base64EncodedData}, &transactionStatus); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	// Return Transaction ID
-	return transactionStatus, nil
+	return types.NewCryptoHash(transactionStatus), nil
 }
 
 func (api *api) getBlockByHash(blockHash string) (types.Block, error) {

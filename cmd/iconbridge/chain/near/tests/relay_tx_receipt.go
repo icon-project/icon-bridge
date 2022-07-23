@@ -1,17 +1,17 @@
-package testdata
+package tests
 
 import "github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 
-type GetBmcLinkStatus struct {
+type RelayTxReceiptTest struct {
 	description string
 	testData    []TestData
 }
 
-func (t GetBmcLinkStatus) Description() string {
+func (t RelayTxReceiptTest) Description() string {
 	return t.description
 }
 
-func (t GetBmcLinkStatus) TestDatas() []TestData {
+func (t RelayTxReceiptTest) TestDatas() []TestData {
 	return t.testData
 }
 
@@ -20,20 +20,19 @@ func init() {
 	destination := chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598")
 	var testData = []TestData{
 		{
-			Description: "GetBmcStatus Sucess",
+			Description: "RelayTx Receipt Success",
 			Input:       []chain.BTPAddress{destination, source},
 			Expected: struct {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: 73935506,
-				Fail:    nil,
+				Success: 377842,
 			},
 		},
 	}
 
-	RegisterTest("GetBmcLinkStatus", GetBmcLinkStatus{
-		description: "Test_GetBmcStatus",
+	RegisterTest("RelayTxReceipt", RelayTxReceiptTest{
+		description: "Test RelayTx Receipt",
 		testData:    testData,
 	})
 }
