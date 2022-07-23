@@ -10,7 +10,7 @@ LINUX_BIN_DIR = ./build/linux
 
 GOBUILD = go build
 GOBUILD_TAGS =
-GOBUILD_ENVS = CGO_ENABLED=0
+# GOBUILD_ENVS = CGO_ENABLED=0
 GOBUILD_LDFLAGS =
 GOBUILD_FLAGS = -tags "$(GOBUILD_TAGS)" -ldflags "$(GOBUILD_LDFLAGS)"
 GOBUILD_ENVS_LINUX = $(GOBUILD_ENVS) GOOS=linux GOARCH=amd64
@@ -50,13 +50,25 @@ endef
 $(foreach M,$(CMDS),$(eval $(call CMD_template,$(M))))
 
 # Build flags for each command
-btpsimple_LDFLAGS = -X 'main.version=$(GL_VERSION)' -X 'main.build=$(BUILD_INFO)'
-BUILD_TARGETS += btpsimple
+iconbridge_LDFLAGS = -X 'main.version=$(GL_VERSION)' -X 'main.build=$(BUILD_INFO)'
+BUILD_TARGETS += iconbridge
 
 linux : $(addsuffix -linux,$(BUILD_TARGETS))
 
-CONTRACTS_DIST_DIR = $(BUILD_ROOT)/build/contracts
-PYSCORE_DIST_DIR = $(CONTRACTS_DIST_DIR)/pyscore
+PYSCORE_DIST_DIR = $(BUILD_ROOT)/build/contracts/pyscore
+SOLIDITY_DIST_DIR = $(BUILD_ROOT)/build/contracts/solidity
+
+$(SOLIDITY_DIST_DIR)/%:
+	$(eval MODULE := $(patsubst $(SOLIDITY_DIST_DIR)/%,%,$@))
+	mkdir -p $@/contracts ; \
+	mkdir -p $@/migrations ; \
+	cp -r solidity/$(MODULE)/contracts/* $@/contracts ; \
+	cp -r solidity/$(MODULE)/migrations/* $@/migrations ; \
+	cp solidity/$(MODULE)/{truffle-config.js,*.json,*.lock} $@/ ; \
+	cp solidity/$(MODULE)/truffle-config.js $@/ ; \
+	cp solidity/$(MODULE)/*.json $@/ ; \
+	cp solidity/$(MODULE)/*.lock $@/ ; \
+	rm -rf $@/contracts/Mock ; \
 
 $(PYSCORE_DIST_DIR)/%:
 	$(eval MODULE := $(patsubst $(PYSCORE_DIST_DIR)/%.zip,%,$@))
@@ -75,98 +87,65 @@ dist-py-bmv: $(PYSCORE_DIST_DIR)/bmv.zip
 ifeq (,$(wildcard $(PYSCORE_DIST_DIR)/bmv.zip))
 	cd $(PYSCORE_DIST_DIR)/bmv ; \
 	echo '{"version": "0.0.1","main_module": "bmv.icon.icon","main_score": "BTPMessageVerifier"}' > package.json ; \
-	zip -r -v $(PYSCORE_DIST_DIR)/bmv.zip bmv lib package.json -x *__pycache__* -x *tests* ; \
-	rm -rf $(PYSCORE_DIST_DIR)/bmv ;
-endif
+	zip -r -v $(PYSCORE_DIST_DIR)/bmv.zip bmv lib package.json -x *__pycache__* -x *tests*
 
-dist-py-token: $(PYSCORE_DIST_DIR)/token.zip
-ifeq (,$(wildcard $(PYSCORE_DIST_DIR)/token.zip))
-	cd $(PYSCORE_DIST_DIR)/token ; \
-	echo '{"version": "0.0.1","main_module": "token.token_bsh","main_score": "TokenBSH"}' > package.json ; \
-	zip -r -v $(PYSCORE_DIST_DIR)/token.zip token lib package.json -x *__pycache__* -x *tests* -x *sample* ; \
-	cd token/sample/irc2 ; \
-    zip -r -v $(PYSCORE_DIST_DIR)/irc2.zip * -x *__pycache__* -x *tests* ; \
-    rm -rf $(PYSCORE_DIST_DIR)/token ;
-endif
+dist-py-irc2: $(PYSCORE_DIST_DIR)/token_bsh
+	cd $(PYSCORE_DIST_DIR)/token_bsh ; \
+	echo '{"version": "0.0.1","main_module": "token_bsh.token_bsh","main_score": "TokenBSH"}' > package.json ; \
+	zip -r -v $(PYSCORE_DIST_DIR)/token_bsh.zip token_bsh lib package.json -x *__pycache__* -x *tests* -x *sample* ; \
+	cd token_bsh/sample/irc2_token ; \
+    zip -r -v $(PYSCORE_DIST_DIR)/irc2_token.zip * -x *__pycache__* -x *tests*
 
-dist-py: dist-py-bmc dist-py-bmv dist-py-token
+dist-sol-bmc: $(SOLIDITY_DIST_DIR)/bmc
+	cd $(SOLIDITY_DIST_DIR)/bmc ; 
+
+dist-sol-bmv: $(SOLIDITY_DIST_DIR)/bmv
+	cd $(SOLIDITY_DIST_DIR)/bmv ; 
+
+dist-sol-bts: $(SOLIDITY_DIST_DIR)/bts
+	cd $(SOLIDITY_DIST_DIR)/bts ;
+
+# dist-sol-native_bsh: $(SOLIDITY_DIST_DIR)/bsh
+# 	cd $(SOLIDITY_DIST_DIR)/bsh ;
+
+dist-sol-token_bsh: $(SOLIDITY_DIST_DIR)/TokenBSH
+	cd $(SOLIDITY_DIST_DIR)/TokenBSH ;
+
+dist-py: dist-py-bmc dist-py-bmv dist-py-irc2
 
 clean-dist-py:
 	rm -rf $(PYSCORE_DIST_DIR)/*
 
-JAVASCORE_DIST_DIR = $(CONTRACTS_DIST_DIR)/javascore
+clean-dist-sol:
+	rm -rf $(SOLIDITY_DIST_DIR)
 
-$(JAVASCORE_DIST_DIR)/%:
-	$(eval MODULE := $(patsubst $(JAVASCORE_DIST_DIR)/%,%,$@))
-	mkdir -p $(JAVASCORE_DIST_DIR)
+dist-sol: dist-sol-bmc dist-sol-bts
 
-dist-lib:
-	cd javascore/lib ; \
-    gradle build
+dist-javascore:
+	$(BUILD_ROOT)/docker/javascore/build.sh
 
-dist-java-bmc: $(JAVASCORE_DIST_DIR)/bmc.jar
-	cd javascore ; \
-    ./gradlew :bmc:optimizedJar ; \
-    cp ./bmc/build/libs/bmc-?.?.?-*.jar $(JAVASCORE_DIST_DIR)/bmc.jar
+ICONBRIDGE_IMAGE = iconbridge:$(GL_TAG)
+ICONBRIDGE_DOCKER_DIR = $(BUILD_ROOT)/build/iconbridge
 
-dist-java-bmv-icon: $(JAVASCORE_DIST_DIR)/bmv-icon.jar
-	cd javascore ; \
-    ./gradlew :bmv:icon:optimizedJar ; \
-    cp ./bmv/icon/build/libs/bmv-icon-?.?.?-*.jar $(JAVASCORE_DIST_DIR)/bmv-icon.jar
-
-dist-java-bsh: $(JAVASCORE_DIST_DIR)/bsh.jar
-	cd javascore ; \
-    ./gradlew :bsh:optimizedJar ; \
-    cp ./bsh/build/libs/bsh-?.?.?-*.jar $(JAVASCORE_DIST_DIR)/bsh.jar ; \
-    ./gradlew :bsh:optimizedJarIRC2 ; \
-    cp ./bsh/build/libs/irc2-?.?.?-*.jar $(JAVASCORE_DIST_DIR)/irc2.jar
-
-dist-java-nativecoin: $(JAVASCORE_DIST_DIR)/nativecoin.jar
-	cd javascore ; \
-    ./gradlew :nativecoin:optimizedJar ; \
-    cp ./nativecoin/build/libs/nativecoin-?.?.?-*.jar $(JAVASCORE_DIST_DIR)/nativecoin.jar; \
-    ./gradlew :nativecoin:optimizedJarIRC31 ; \
-    cp ./nativecoin/build/libs/irc31-?.?.?-*.jar $(JAVASCORE_DIST_DIR)/irc31.jar
-
-dist-java-feeaggregation: $(JAVASCORE_DIST_DIR)/fee-aggregation.jar
-	cd javascore ; \
-    ./gradlew :fee-aggregation:optimizedJar ; \
-    cp ./fee-aggregation/build/libs/fee-aggregation-?.?-*.jar $(JAVASCORE_DIST_DIR)/fee-aggregation.jar ; \
-
-dist-java: dist-lib dist-java-bmc dist-java-bmv-icon dist-java-bsh dist-java-nativecoin dist-java-feeaggregation
-
-clean-java-build:
-	cd javascore ; \
-	rm -rf lib/build bmc/build bmv/icon/build bsh/build nativecoin/build score-util/build fee_aggregation/build
-
-clean-dist-java:
-	rm -rf $(JAVASCORE_DIST_DIR)/*
-
-clean-dist:
-	rm -rf $(CONTRACTS_DIST_DIR)/*
-
-BTPSIMPLE_IMAGE = btpsimple:$(GL_TAG)
-BTPSIMPLE_DOCKER_DIR = $(BUILD_ROOT)/build/btpsimple
-
-btpsimple-image: btpsimple-linux dist-py dist-java
-	@ echo "[#] Building image $(BTPSIMPLE_IMAGE) for $(GL_VERSION)"
-	@ rm -rf $(BTPSIMPLE_DOCKER_DIR)
+iconbridge-image: iconbridge-linux
+	@ echo "[#] Building image $(ICONBRIDGE_IMAGE) for $(GL_VERSION)"
+	@ rm -rf $(ICONBRIDGE_DOCKER_DIR)
 	@ \
 	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
 	BIN_VERSION=$(GL_VERSION) \
 	BUILD_TAGS="$(GOBUILD_TAGS)" \
-	CONTRACTS_DIST_DIR="$(CONTRACTS_DIST_DIR)" \
-	$(BUILD_ROOT)/docker/btpsimple/build.sh $(BTPSIMPLE_IMAGE) $(BUILD_ROOT) $(BTPSIMPLE_DOCKER_DIR)
+	DIST_DIR="$(BUILD_ROOT)/build/contracts" \
+	$(BUILD_ROOT)/docker/iconbridge/build.sh $(ICONBRIDGE_IMAGE) $(BUILD_ROOT) $(ICONBRIDGE_DOCKER_DIR)
 
-btpsimple-debug: btpsimple-linux dist-py dist-java 
-	@ echo "[#] Building image $(BTPSIMPLE_IMAGE) for $(GL_VERSION)"
-	@ rm -rf $(BTPSIMPLE_DOCKER_DIR)
+iconbridge-debug: iconbridge-linux dist-py
+	@ echo "[#] Building image $(ICONBRIDGE_IMAGE) for $(GL_VERSION)"
+	@ rm -rf $(ICONBRIDGE_DOCKER_DIR)
 	@ \
 	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
 	BIN_VERSION=$(GL_VERSION) \
 	BUILD_TAGS="$(GOBUILD_TAGS)" \
 	DIST_DIR="$(PYSCORE_DIST_DIR)" \
-	$(BUILD_ROOT)/docker/btpsimple/build-debug.sh $(BTPSIMPLE_IMAGE) $(BUILD_ROOT) $(BTPSIMPLE_DOCKER_DIR)
+	$(BUILD_ROOT)/docker/iconbridge/build-debug.sh $(ICONBRIDGE_IMAGE) $(BUILD_ROOT) $(ICONBRIDGE_DOCKER_DIR)
 
 .PHONY: test
 

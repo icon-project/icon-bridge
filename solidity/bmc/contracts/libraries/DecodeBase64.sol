@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
+pragma solidity >=0.8.0 <0.8.5;
 
 /**
  * @title DecodeBase64
@@ -88,11 +88,10 @@ library DecodeBase64 {
             bytes1
         )
     {
-        uint256 n =
-            ((a0 & 63) << 18) |
-                ((a1 & 63) << 12) |
-                ((a2 & 63) << 6) |
-                (a3 & 63);
+        uint256 n = ((a0 & 63) << 18) |
+            ((a1 & 63) << 12) |
+            ((a2 & 63) << 6) |
+            (a3 & 63);
         uint256 b0 = (n >> 16) & 255;
         uint256 b1 = (n >> 8) & 255;
         uint256 b2 = (n) & 255;

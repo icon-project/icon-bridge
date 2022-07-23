@@ -56,7 +56,6 @@ pub struct TokenService {
     serial_no: i128,
     bmc: AccountId,
     name: String,
-    fee_numerator: u128,
     registered_tokens: RegisteredTokens,
 
     #[cfg(feature = "testable")]
@@ -66,7 +65,7 @@ pub struct TokenService {
 #[near_bindgen]
 impl TokenService {
     #[init]
-    pub fn new(service_name: String, bmc: AccountId, network: String, fee_numerator: U128) -> Self {
+    pub fn new(service_name: String, bmc: AccountId, network: String) -> Self {
         require!(!env::state_exists(), "Already initialized");
         let mut owners = Owners::new();
         owners.add(&env::current_account_id());
@@ -81,7 +80,6 @@ impl TokenService {
             requests: Requests::new(),
             bmc,
             name: service_name,
-            fee_numerator: fee_numerator.into(),
             registered_tokens: RegisteredTokens::new(),
 
             #[cfg(feature = "testable")]

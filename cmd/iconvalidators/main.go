@@ -1,73 +1,95 @@
-/*
- * Copyright 2021 ICON Foundation
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
-	"github.com/icon-project/btp/cmd/btpsimple/module/icon"
-	"github.com/icon-project/btp/common/cli"
-	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/intconv"
-	"github.com/icon-project/btp/common/log"
-	"github.com/spf13/cobra"
+	"github.com/icon-project/goloop/client"
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/server/jsonrpc"
+	v3 "github.com/icon-project/goloop/server/v3"
 )
 
-var rootCmd, rootVc = cli.NewCommand(nil, nil, "iconvalidators", "ICON Validators for ICON BMV on other chains")
+var (
+	v2c = codec.BC
+	cl  *client.ClientV3
+)
+
+func init() {
+	cl = client.NewClientV3(os.Getenv("URI"))
+}
+
+type v2Header struct {
+	Version                int
+	Height                 int64
+	Timestamp              int64
+	Proposer               []byte
+	PrevID                 []byte
+	VotesHash              []byte
+	NextValidatorsHash     []byte
+	PatchTransactionsHash  []byte
+	NormalTransactionsHash []byte
+	LogsBloom              []byte
+	Result                 []byte
+}
+
+func (h *v2Header) Hash() []byte {
+	return crypto.SHA3Sum256(v2c.MustMarshalToBytes(h))
+}
+
+type validatorList []common.HexBytes
 
 func main() {
-	client := icon.NewClient(os.Getenv("GOLOOP_RPC_URI"), log.New())
 
-	rootCmd.AddCommand(&cobra.Command{
-		Use:  "build",
-		Args: cli.ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			height, err := intconv.ParseInt(args[0], 64)
-			if err != nil {
-				return err
-			}
-
-			previousBlockHeaderInByte, err := client.GetBlockHeaderByHeight(&icon.BlockHeightParam{
-				Height: icon.NewHexInt(height - 1),
-			})
-			if err != nil {
-				panic(err)
-			}
-			var previousBlockHeader icon.BlockHeader
-			_, err = codec.RLP.UnmarshalFromBytes(previousBlockHeaderInByte, &previousBlockHeader)
-			if err != nil {
-				panic(err)
-			}
-
-			validatorsInByte, err := client.GetDataByHash(&icon.DataHashParam{
-				Hash: icon.NewHexBytes(previousBlockHeader.NextValidatorsHash),
-			})
-
-			if err != nil {
-				panic(err)
-			}
-
-			return cli.JsonPrettyPrintln(os.Stdout, fmt.Sprintf("0x%x", validatorsInByte))
-		},
-	})
-
-	err := rootCmd.Execute()
+	hexInt := os.Getenv("HEIGHT")
+	v, err := getBlockHeaderByHeightInHexInt(hexInt)
 	if err != nil {
-		os.Exit(1)
+		panic("get block header: HEIGHT=" + hexInt + "; " + err.Error())
 	}
+
+	rlpv, err := cl.GetDataByHash(
+		&v3.DataHashParam{Hash: jsonrpc.HexBytes(
+			common.HexHash(v.NextValidatorsHash).String())})
+	if err != nil {
+		panic(err)
+	}
+	var vl validatorList
+	_, err = v2c.UnmarshalFromBytes(rlpv, &vl)
+	if err != nil {
+		panic(err)
+	}
+	var validators []common.HexBytes
+	for _, v := range vl {
+		validators = append(validators, v)
+	}
+	json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		"hash":       common.HexBytes(v.NextValidatorsHash),
+		"validators": validators,
+	})
+}
+
+func getBlockHeaderByHeightInHexInt(h string) (*v2Header, error) {
+	rlpn, err := cl.GetBlockHeaderByHeight(&v3.BlockHeightParam{
+		Height: jsonrpc.HexInt(h)})
+	if err != nil {
+		return nil, err
+	}
+	var v v2Header
+	_, err = codec.BC.UnmarshalFromBytes(rlpn, &v)
+	if err != nil {
+		return nil, err
+	}
+	return &v, nil
+
+}
+
+func getBlockHeaderByHeight(n int64) (*v2Header, error) {
+	return getBlockHeaderByHeightInHexInt(hexInt(n))
+}
+
+func hexInt(v int64) string {
+	return fmt.Sprintf("0x%x", v)
 }

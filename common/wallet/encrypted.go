@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/icon-project/btp/common/crypto"
+	"github.com/icon-project/icon-bridge/common/crypto"
 )
 
 const (
@@ -79,4 +79,3 @@ func NewEncrypted(w Wallet, pubKey, b []byte) (*Encrypted, error) {
 	copy(e.Param[EncryptSaltSize:], w.PublicKey())
 	return e, nil
 }
-

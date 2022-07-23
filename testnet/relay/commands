@@ -1,0 +1,3 @@
+./iconbridge start --config ./config/icon.config.json
+
+./iconbridge start --config ./config/bsc.config.json

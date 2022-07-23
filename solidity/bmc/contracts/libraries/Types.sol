@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
+pragma solidity >=0.8.0 <0.8.5;
 
 library Types {
     /**
@@ -64,8 +64,8 @@ library Types {
 
     struct ReceiptProof {
         uint256 index;
-        bytes[] txReceipts;
-        EventProof[] ep;
+        MessageEvent[] events;
+        uint256 height;
     }
 
     struct BlockProof {
@@ -194,17 +194,17 @@ library Types {
     struct LinkStats {
         uint256 rxSeq;
         uint256 txSeq;
-        VerifierStats verifier;
-        RelayStats[] relays;
-        uint256 relayIdx;
-        uint256 rotateHeight;
-        uint256 rotateTerm;
-        uint256 delayLimit;
-        uint256 maxAggregation;
-        uint256 rxHeightSrc;
+        // VerifierStats verifier;
+        // RelayStats[] relays;
+        // uint256 relayIdx;
+        // uint256 rotateHeight;
+        // uint256 rotateTerm;
+        // uint256 delayLimit;
+        // uint256 maxAggregation;
+        // uint256 rxHeightSrc;
         uint256 rxHeight;
-        uint256 blockIntervalSrc;
-        uint256 blockIntervalDst;
+        // uint256 blockIntervalSrc;
+        // uint256 blockIntervalDst;
         uint256 currentHeight;
     }
 
@@ -235,5 +235,23 @@ library Types {
     struct Tuple {
         string _prev;
         string _to;
+    }
+
+    struct MessageEvent {
+        string nextBmc;
+        uint256 seq;
+        bytes message;
+    }
+
+    struct TransferAssets {
+        string from;
+        string to;
+        TokenAsset[] asset;
+    }
+
+    struct TokenAsset {
+        string name;
+        uint256 value;
+        uint256 fee;
     }
 }

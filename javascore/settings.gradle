@@ -1,13 +1,10 @@
-rootProject.name = 'javascore'
+rootProject.name = 'javascore-btp'
+
 include (
-        'score-util',
         'lib',
-        'test-lib',
         'bmc',
-        'bmv:icon',
-        'bsh',
-        'nativecoin',
-        'fee-aggregation',
-        'bmv:near:verifier',
-        'bmv:near:proof-decoder'
+        'bts',
+        'bsr',
+        'token-bsh',
+        'integration-tests'
 )

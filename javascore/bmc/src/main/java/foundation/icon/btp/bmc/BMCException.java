@@ -67,8 +67,11 @@ public class BMCException extends BTPException.BMC {
     public static BMCException unreachable() {
         return new BMCException(Code.Unreachable);
     }
-    public static BMCException drop() {
-        return new BMCException(Code.Drop);
+    public static BMCException invalidRelayMessage() {
+        return new BMCException(Code.InvalidRelayMessage);
+    }
+    public static BMCException invalidSeqNumber() {
+        return new BMCException(Code.InvalidSeqNumber);
     }
 
     //BTPException.BMC => 10 ~ 24
@@ -85,7 +88,8 @@ public class BMCException extends BTPException.BMC {
         AlreadyExistsBMR(9),
         NotExistsBMR(10),
         Unreachable(11),
-        Drop(12);
+        InvalidRelayMessage(12),
+        InvalidSeqNumber(13);
 
         final int code;
         Code(int code){ this.code = code; }

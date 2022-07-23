@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.8.5;
+pragma abicoder v2;
 
 import "../interfaces/IBMCManagement.sol";
 import "../interfaces/IBMCPeriphery.sol";
-import "../interfaces/IBMV.sol";
 import "../libraries/ParseAddress.sol";
 import "../libraries/RLPEncodeStruct.sol";
 import "../libraries/String.sol";
 import "../libraries/Types.sol";
 import "../libraries/Utils.sol";
 
-import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract BMCManagementV2 is IBMCManagement, Initializable {
     using ParseAddress for address;
@@ -25,11 +24,9 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
     uint256 private numOfOwner;
 
     mapping(string => address) private bshServices;
-    mapping(string => address) private bmvServices;
     mapping(address => Types.RelayStats) private relayStats;
     mapping(string => string) private routes;
     mapping(string => Types.Link) internal links; // should be private, temporarily set internal for testing
-    string[] private listBMVNames;
     string[] private listBSHNames;
     string[] private listRouteKeys;
     string[] private listLinkNames;
@@ -46,7 +43,7 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
 
     uint256 private constant BLOCK_INTERVAL_MSEC = 1000;
 
-    modifier hasPermission {
+    modifier hasPermission() {
         //  As Soliditty Security Consideration mentioned: https://docs.soliditylang.org/en/v0.6.2/security-considerations.html
         //  tx.origin should not be used in checking authorization
         //  However, PyScore implementation have used both 'msg.sender' and 'tx.orgin'
@@ -58,7 +55,7 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         _;
     }
 
-    modifier onlyBMCPeriphery {
+    modifier onlyBMCPeriphery() {
         require(msg.sender == bmcPeriphery, "BMCRevertUnauthorized");
         _;
     }
@@ -149,8 +146,9 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         override
         returns (Types.Service[] memory)
     {
-        Types.Service[] memory services =
-            new Types.Service[](listBSHNames.length);
+        Types.Service[] memory services = new Types.Service[](
+            listBSHNames.length
+        );
         for (uint256 i = 0; i < listBSHNames.length; i++) {
             services[i] = Types.Service(
                 listBSHNames[i],
@@ -161,66 +159,12 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
     }
 
     /**
-       @notice Registers BMV for the network. 
-       @dev Caller must be an operator of BTP network.
-       @param _net     Network Address of the blockchain
-       @param _addr    Address of BMV
-     */
-    function addVerifier(string memory _net, address _addr)
-        external
-        override
-        hasPermission
-    {
-        require(bmvServices[_net] == address(0), "BMCRevertAlreadyExistsBMV");
-        bmvServices[_net] = _addr;
-        listBMVNames.push(_net);
-    }
-
-    /**
-       @notice Unregisters BMV for the network.
-       @dev Caller must be an operator of BTP network.
-       @param _net     Network Address of the blockchain
-     */
-    function removeVerifier(string memory _net)
-        external
-        override
-        hasPermission
-    {
-        require(bmvServices[_net] != address(0), "BMCRevertNotExistsBMV");
-        delete bmvServices[_net];
-        listBMVNames.remove(_net);
-    }
-
-    /**
-       @notice Get registered verifiers.
-       @return _verifiers   An array of Verifier.
-     */
-    function getVerifiers()
-        external
-        view
-        override
-        returns (Types.Verifier[] memory)
-    {
-        Types.Verifier[] memory verifiers =
-            new Types.Verifier[](listBMVNames.length);
-
-        for (uint256 i = 0; i < listBMVNames.length; i++) {
-            verifiers[i] = Types.Verifier(
-                listBMVNames[i],
-                bmvServices[listBMVNames[i]]
-            );
-        }
-        return verifiers;
-    }
-
-    /**
        @notice Initializes status information for the link.
        @dev Caller must be an operator of BTP network.
        @param _link    BTP Address of connected BMC
    */
     function addLink(string calldata _link) external override hasPermission {
         (string memory _net, ) = _link.splitBTPAddress();
-        require(bmvServices[_net] != address(0), "BMCRevertNotExistsBMV");
         require(
             links[_link].isConnected == false,
             "BMCRevertAlreadyExistsLink"
@@ -269,6 +213,16 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         return listLinkNames;
     }
 
+    function setLinkRxHeight(string calldata _link, uint256 _height)
+        external
+        override
+        hasPermission
+    {
+        require(links[_link].isConnected == true, "BMCRevertNotExistsLink");
+        require(_height > 0, "BMVRevertInvalidRxHeight");
+        links[_link].rxHeight = _height;
+    }
+
     function setLink(
         string memory _link,
         uint256 _blockInterval,
@@ -297,7 +251,6 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
             link.rxHeight = block.number;
             string memory _net;
             (_net, ) = _link.splitBTPAddress();
-            (link.rxHeightSrc, , ) = IBMV(bmvServices[_net]).getStatus();
         }
         links[_link] = link;
     }
@@ -327,11 +280,10 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
                 //  BMC starts guessing when an event of 'RelayMessage' was thrown by another BMC
                 //  which is 'guessHeight' and the time BMC receiving this event is 'currentHeight'
                 //  If there is any delay, 'guessHeight' is likely less than 'currentHeight'
-                uint256 _guessHeight =
-                    link.rxHeight +
-                        uint256((_relayMsgHeight - link.rxHeightSrc) * 10**6)
-                            .ceilDiv(_scale) -
-                        1;
+                uint256 _guessHeight = link.rxHeight +
+                    uint256((_relayMsgHeight - link.rxHeightSrc) * 10**6)
+                        .ceilDiv(_scale) -
+                    1;
 
                 if (_guessHeight > _currentHeight) {
                     _guessHeight = _currentHeight;
@@ -378,8 +330,9 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
                 //        => out of 'delay_limit'
                 //        => rejected and move to next Relay
                 */
-                uint256 _skipCount =
-                    (_currentHeight - _guessHeight).ceilDiv(link.delayLimit);
+                uint256 _skipCount = (_currentHeight - _guessHeight).ceilDiv(
+                    link.delayLimit
+                );
 
                 if (_skipCount > 0) {
                     _skipCount = _skipCount - 1;
@@ -398,8 +351,8 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
                         1;
                 } else {
                     _rotateCount = (_currentHeight - link.rotateHeight).ceilDiv(
-                        _rotateTerm
-                    );
+                            _rotateTerm
+                        );
                 }
                 _baseHeight =
                     link.rotateHeight +
@@ -567,15 +520,6 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         return address(0);
     }
 
-    function getBmvServiceByNet(string memory _net)
-        external
-        view
-        override
-        returns (address)
-    {
-        return bmvServices[_net];
-    }
-
     function getLink(string memory _to)
         external
         view
@@ -601,6 +545,15 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         returns (uint256)
     {
         return links[_prev].txSeq;
+    }
+
+    function getLinkRxHeight(string calldata _prev)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return links[_prev].rxHeight;
     }
 
     function getLinkRelays(string calldata _prev)
@@ -640,6 +593,14 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         links[_prev].txSeq++;
     }
 
+    function updateLinkRxHeight(string calldata _prev, uint256 _val)
+        external
+        override
+        onlyBMCPeriphery
+    {
+        links[_prev].rxHeight += _val;
+    }
+
     function updateLinkReachable(string memory _prev, string[] memory _to)
         external
         override
@@ -657,8 +618,9 @@ contract BMCManagementV2 is IBMCManagement, Initializable {
         override
         onlyBMCPeriphery
     {
-        (string memory _net, ) =
-            links[_prev].reachable[_index].splitBTPAddress();
+        (string memory _net, ) = links[_prev]
+            .reachable[_index]
+            .splitBTPAddress();
         delete getLinkFromReachableNet[_net];
         delete links[_prev].reachable[_index];
         links[_prev].reachable[_index] = links[_prev].reachable[

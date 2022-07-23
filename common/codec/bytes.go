@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 type bytesWrapper struct {

@@ -2,8 +2,7 @@
 
 rpchelp() {
   echo "rpcch CHANNEL"
-  echo "rpcks KEY_STORE [KEY_SECRET|KEY_PASSWORD]"
-  echo "rpceoa [KEY_STORE]"
+  echo "rpcks KEYSTORE_PATH"
 }
 
 rpcch() {
@@ -13,7 +12,7 @@ rpcch() {
     export GOLOOP_RPC_URI=$URI_PREFIX/v3/$GOLOOP_RPC_CHANNEL
     export GOLOOP_RPC_NID=$(goloop chain inspect $GOLOOP_RPC_CHANNEL --format {{.NID}})
     export GOLOOP_DEBUG_URI=$URI_PREFIX/v3d/$GOLOOP_RPC_CHANNEL
-    export GOLOOP_RPC_STEP_LIMIT=${GOLOOP_RPC_STEP_LIMIT:-0x10000000}
+    export GOLOOP_RPC_STEP_LIMIT=${GOLOOP_RPC_STEP_LIMIT:-1}
   fi
   echo $GOLOOP_RPC_CHANNEL
 }
@@ -41,19 +40,6 @@ rpceoa() {
   fi
 }
 
-rpc_transfer() {
-  if [ $# -lt 2 ] ; then
-    echo "Usage: rpc_transfer EOA VAL"
-    return 1
-  fi
-  local EOA=$(rpceoa $1)
-  local VAL=$2
-  TX=$(goloop rpc sendtx transfer \
-    --to $EOA \
-    --value $VAL | jq -r .)
-  ensure_txresult $TX
-}
-
 ensure_txresult() {
   OLD_SET_OPTS=$(set +o)
   set +e
@@ -67,7 +53,7 @@ ensure_txresult() {
   RESULT=$(goloop rpc txresult ${TX})
   RET=$?
   echo $RESULT
-  while [ "$RET" != "0" ] || [ "$(echo $RESULT | grep -E 'Executing|Pending')" == "$RESULT" ]; do
+  while [ "$RET" != "0" ] && [ "$(echo $RESULT | grep -E 'Executing|Pending')" == "$RESULT" ]; do
     sleep 1
     RESULT=$(goloop rpc txresult ${TX})
     RET=$?

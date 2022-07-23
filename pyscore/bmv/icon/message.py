@@ -23,13 +23,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from iconservice import *
+from iconservice import Address
 
 from ..exception import *
 from ...lib import BMVException
 from ...lib.icon import rlp, base64, Serializable
 from ...lib.icon.mta import MerkleTreeAccumulator, MTAException, InvalidWitnessOldException
 from ...lib.icon.mpt import MerklePatriciaTree, MPTException
+from ...lib.icon.wrap import get_hash, recover_public_key, address_by_public_key
 
 
 # ================================================
@@ -38,7 +39,7 @@ from ...lib.icon.mpt import MerklePatriciaTree, MPTException
 class BlockHeader(object):
     def __init__(self, serialized: bytes) -> None:
         self.__bytes = serialized
-        self.__hash = sha3_256(serialized)
+        self.__hash = get_hash(serialized)
 
         unpacked = rlp.rlp_decode(self.__bytes,
                                   [int, int, int, bytes, bytes, bytes, bytes, bytes, bytes, bytes, bytes])
@@ -95,7 +96,7 @@ class Validators(Serializable):
         self.__bytes = serialized
         self.__addresses = []
         if serialized is not None:
-            self.__hash = sha3_256(serialized)
+            self.__hash = get_hash(serialized)
             unpacked = rlp.rlp_decode(self.__bytes, {list: bytes})
             for b in unpacked:
                 address = Address.from_bytes(b)
@@ -194,9 +195,9 @@ class Votes(object):
         for vote_item in self.__vote_items:
             vote_msg.append(vote_item.timestamp)
             serialized_vote_msg = rlp.rlp_encode(vote_msg)
-            msg_hash = sha3_256(serialized_vote_msg)
-            public_key = recover_key(msg_hash, vote_item.signature)
-            addr = create_address_with_key(public_key)
+            msg_hash = get_hash(serialized_vote_msg)
+            public_key = recover_public_key(msg_hash, vote_item.signature)
+            addr = address_by_public_key(public_key)
             if not validators.contains(addr):
                 raise InvalidVotesException("invalid signature")
             if addr not in contained_validators:

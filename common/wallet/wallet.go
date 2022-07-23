@@ -1,8 +1,8 @@
 package wallet
 
 import (
-	"github.com/icon-project/btp/common"
-	"github.com/icon-project/btp/common/crypto"
+	"github.com/icon-project/icon-bridge/common"
+	"github.com/icon-project/icon-bridge/common/crypto"
 )
 
 type Wallet interface {

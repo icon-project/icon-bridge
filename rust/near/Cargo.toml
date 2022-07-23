@@ -7,7 +7,6 @@ edition = "2018"
 [workspace]
 members = [
     "bmc",
-    "bmv/icon",
     "bsh/token",
     "bsh/nativecoin",
     "bsh/nep141",

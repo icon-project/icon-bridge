@@ -15,7 +15,6 @@ type NearWallet struct {
 
 func (w *NearWallet) PublicKey() []byte {
 	pubKey := w.Skey.Public().(ed25519.PublicKey)
-
 	return pubKey
 }
 

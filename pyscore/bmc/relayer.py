@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from iconservice import *
+from iconservice import IconScoreDatabase, Address
 
 from ..lib import BTPException, BTPAddress
 from ..lib.icon import IterableDictDB, PropertiesDB

@@ -1,0 +1,32 @@
+version: "3.9" # optional since v1.27.0
+services:
+  btp_testnet:
+    container_name: btp-testnet
+    build:
+      context: .
+    volumes:      
+      - ./testnet/artifacts:/iconbridge/config
+      - ./testnet:/iconbridge/data
+      - ./testnet/keys:/iconbridge/keys
+    command: iconbridge --config /iconbridge/config/bmr.config.json
+    environment:
+      - GOLOOPCHAIN=berlin.net.solidwallet.io
+      - GOLOOP_RPC_NID=0x7
+      - GOLOOP_RPC_CHANNEL=icon_dex
+      - BASE_DIR=/iconbridge/data/btp
+      - LOG_FILENAME=/iconbridge/data/log/btp.log
+      - CONFIG=/iconbridge/config/bmr.config.json
+      - ICON_BTP_ADDRESS=/iconbridge/config/btp.icon
+      - ICON_ENDPOINT=https://berlin.net.solidwallet.io/api/v3/icon_dex
+      - ICON_KEY_STORE=/iconbridge/config/berlin.net.solidwallet.io.keystore.json
+      - ICON_SECRET=/iconbridge/config/berlin.net.solidwallet.io.keysecret
+      - BSC_ENDPOINT=https://nd-417-046-686.p2pify.com/cdb13d717192e3eeefa4535075260dd3
+      - BSC_KEY_STORE=/iconbridge/config/bsc.ks.json
+      - BSC_SECRET=/iconbridge/config/bsc.secret
+
+    # - binance_smart_chain
+    healthcheck:
+      test: [ "CMD-SHELL", "test -f /iconbridge/config/provision" ]
+      interval: 5s
+      timeout: 5s
+      retries: 300

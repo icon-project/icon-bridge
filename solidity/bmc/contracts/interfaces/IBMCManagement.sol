@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.8.5;
+pragma abicoder v2;
 
 import "../libraries/Types.sol";
 
@@ -50,21 +50,6 @@ interface IBMCManagement {
     function removeService(string calldata _svc) external;
 
     /**
-       @notice Registers BMV for the network. 
-       @dev Caller must be an operator of BTP network.
-       @param _net     Network Address of the blockchain
-       @param _addr    Address of BMV
-     */
-    function addVerifier(string calldata _net, address _addr) external;
-
-    /**
-       @notice De-registers BMV for the network.
-       @dev Caller must be an operator of BTP network.
-       @param _net     Network Address of the blockchain
-     */
-    function removeVerifier(string calldata _net) external;
-
-    /**
        @notice Initializes status information for the link.
        @dev Caller must be an operator of BTP network.
        @param _link    BTP Address of connected BMC
@@ -85,6 +70,8 @@ interface IBMCManagement {
         uint256 _maxAggregation,
         uint256 _delayLimit
     ) external;
+
+    function setLinkRxHeight(string calldata _link, uint256 _height) external;
 
     /**
        @notice Removes the link and status information. 
@@ -134,15 +121,6 @@ interface IBMCManagement {
         returns (Types.Service[] memory _servicers);
 
     /**
-       @notice Get registered verifiers.
-       @return _verifiers   An array of Verifier.
-     */
-    function getVerifiers()
-        external
-        view
-        returns (Types.Verifier[] memory _verifiers);
-
-    /**
        @notice Get registered links.
        @return _links   An array of links ( BTP Addresses of the BMCs ).
      */
@@ -175,16 +153,6 @@ interface IBMCManagement {
         returns (address);
 
     /**
-        @notice Get BMV services by net. Only called by BMC periphery.
-        @param _net net of the connected network 
-        @return BMV service address
-     */
-    function getBmvServiceByNet(string memory _net)
-        external
-        view
-        returns (address);
-
-    /**
         @notice Get link info. Only called by BMC periphery.
         @param _to link's BTP address
         @return Link info
@@ -210,6 +178,16 @@ interface IBMCManagement {
         @return Transaction sequence
      */
     function getLinkTxSeq(string calldata _prev)
+        external
+        view
+        returns (uint256);
+
+    /**
+        @notice Get link rxHeight of last received btp message's height. Only called by BMC periphery.
+        @param _prev BTP Address of the previous BMC
+        @return Rotation sequence
+     */
+    function getLinkRxHeight(string calldata _prev)
         external
         view
         returns (uint256);
@@ -246,6 +224,13 @@ interface IBMCManagement {
         @param _prev BTP Address of the previous BMC
      */
     function updateLinkTxSeq(string memory _prev) external;
+
+    /**
+        @notice Update link rxHeight of last received btp message's height. Only called by BMC periphery.
+        @param _prev BTP Address of the previous BMC
+        @param _val increment value
+     */
+    function updateLinkRxHeight(string calldata _prev, uint256 _val) external;
 
     /**
         @notice Add a reachable BTP address to link. Only called by BMC periphery.

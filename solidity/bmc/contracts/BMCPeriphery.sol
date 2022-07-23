@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.8.0 <0.8.5;
+pragma abicoder v2;
 
 import "./interfaces/IBSH.sol";
 import "./interfaces/IBMCPeriphery.sol";
 import "./interfaces/IBMCManagement.sol";
-import "./interfaces/IBMV.sol";
 import "./libraries/ParseAddress.sol";
 import "./libraries/RLPDecodeStruct.sol";
 import "./libraries/RLPEncodeStruct.sol";
@@ -13,7 +12,7 @@ import "./libraries/String.sol";
 import "./libraries/Types.sol";
 import "./libraries/Utils.sol";
 
-import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract BMCPeriphery is IBMCPeriphery, Initializable {
     using String for string;
@@ -22,14 +21,29 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
     using RLPEncodeStruct for Types.BMCMessage;
     using RLPEncodeStruct for Types.Response;
     using Utils for uint256;
+    using String for uint256;
 
-    uint256 internal constant UNKNOWN_ERR = 0;
     uint256 internal constant BMC_ERR = 10;
-    uint256 internal constant BMV_ERR = 25;
     uint256 internal constant BSH_ERR = 40;
+    uint256 internal constant UNKNOWN_ERR = 0;
 
-    string private bmcBtpAddress; // a network address BMV, i.e. btp://1234.pra/0xabcd
+    string internal constant BMCRevertUnauthorized = "Unauthorized";
+    string internal constant BMCRevertParseFailure = "ParseFailure";
+    string internal constant BMCRevertNotExistsBSH = "NotExistsBSH";
+    string internal constant BMCRevertNotExistsLink = "NotExistsLink";
+    string internal constant BMCRevertInvalidSn = "InvalidSn";
+    string internal constant BMCRevertInvalidSeqNumber =
+        "InvalidSeqNumber";
+    string internal constant BMCRevertNotExistsInternalHandler =
+        "NotExistsInternalHandler";
+    string internal constant BMCRevertUnknownHandleBTPError =
+        "UnknownHandleBTPError";
+    string internal constant BMCRevertUnknownHandleBTPMessage =
+        "UnknownHandleBTPMessage";
+
+    string private bmcBtpAddress; // a network address, i.e. btp://1234.pra/0xabcd
     address private bmcManagement;
+    bytes[] internal msgs;
 
     function initialize(string memory _network, address _bmcManagementAddr)
         public
@@ -41,11 +55,12 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         bmcManagement = _bmcManagementAddr;
     }
 
-    event Message(
-        string _next, //  an address of the next BMC (it could be a destination BMC)
-        uint256 _seq, //  a sequence number of BMC (NOT sequence number of BSH)
-        bytes _msg
-    );
+    /**
+        @param _next next BMC's BTP address
+        @param _seq a sequence number to keep track of BTP messages
+        @param _msg message from BSH
+    */
+    event Message(string _next, uint256 _seq, bytes _msg);
 
     // emit errors in BTP messages processing
     event ErrorOnBTPError(
@@ -61,111 +76,95 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         return bmcBtpAddress;
     }
 
+    function requireRegisteredRelay(string calldata _prev) internal view {
+        address relay = address(0);
+        address[] memory relays = IBMCManagement(bmcManagement).getLinkRelays(
+            _prev
+        );
+        for (uint256 i = 0; i < relays.length; i++) {
+            if (msg.sender == relays[i]) {
+                relay = msg.sender;
+                break;
+            }
+        }
+        require(relay == msg.sender, BMCRevertUnauthorized);
+    }
+
     /**
-       @notice Verify and decode RelayMessage with BMV, and dispatch BTP Messages to registered BSHs
+       @notice Verify and decode RelayMessage, and dispatch BTP Messages to registered BSHs
        @dev Caller must be a registered relayer.     
        @param _prev    BTP Address of the BMC generates the message
        @param _msg     base64 encoded string of serialized bytes of Relay Message refer RelayMessage structure
      */
-    function handleRelayMessage(string calldata _prev, string calldata _msg)
+    function handleRelayMessage(string calldata _prev, bytes calldata _msg)
         external
         override
     {
-        bytes[] memory serializedMsgs = decodeMsgAndValidateRelay(_prev, _msg);
+        requireRegisteredRelay(_prev);
 
-        // dispatch BTP Messages
-        Types.BMCMessage memory _message;
-        for (uint256 i = 0; i < serializedMsgs.length; i++) {
-            try this.decodeBTPMessage(serializedMsgs[i]) returns (
-                Types.BMCMessage memory _decoded
-            ) {
-                _message = _decoded;
-            } catch {
-                // ignore BTPMessage parse failure
-                continue;
+        uint256 linkRxSeq = IBMCManagement(bmcManagement).getLinkRxSeq(_prev);
+        uint256 linkRxHeight = IBMCManagement(bmcManagement).getLinkRxHeight(
+            _prev
+        );
+
+        uint256 rxSeq = linkRxSeq;
+        uint256 rxHeight = linkRxHeight;
+
+        Types.ReceiptProof[] memory rps = _msg.decodeReceiptProofs();
+
+        Types.BMCMessage memory bmcMsg;
+        Types.MessageEvent memory ev;
+
+        for (uint256 i = 0; i < rps.length; i++) {
+            if (rps[i].height < rxHeight) {
+                continue; // ignore lower block height
             }
-
-            if (_message.dst.compareTo(bmcBtpAddress)) {
-                handleMessage(_prev, _message);
-            } else {
-                (string memory _net, ) = _message.dst.splitBTPAddress();
+            rxHeight = rps[i].height;
+            for (uint256 j = 0; j < rps[i].events.length; j++) {
+                rxSeq++;
+                ev = rps[i].events[j];
+                if (ev.seq < rxSeq) {
+                    rxSeq--;
+                    continue;  // ignore lower sequence number
+                } else if (ev.seq > rxSeq) {
+                    revert(BMCRevertInvalidSeqNumber);
+                }
+                if (!ev.nextBmc.compareTo(bmcBtpAddress)) {
+                    continue;
+                }
+                try this.tryDecodeBTPMessage(ev.message) returns (
+                    Types.BMCMessage memory _decoded
+                ) {
+                    bmcMsg = _decoded;
+                } catch {
+                    continue;
+                }
+                if (bmcMsg.dst.compareTo(bmcBtpAddress)) {
+                    handleMessage(_prev, bmcMsg);
+                    continue;
+                }
+                (string memory _net, ) = bmcMsg.dst.splitBTPAddress();
                 try IBMCManagement(bmcManagement).resolveRoute(_net) returns (
                     string memory _nextLink,
                     string memory
                 ) {
-                    _sendMessage(_nextLink, serializedMsgs[i]);
+                    _sendMessage(_nextLink, ev.message);
                 } catch Error(string memory _error) {
-                    _sendError(_prev, _message, BMC_ERR, _error);
+                    _sendError(_prev, bmcMsg, BMC_ERR, _error);
                 }
             }
         }
-        IBMCManagement(bmcManagement).updateLinkRxSeq(
-            _prev,
-            serializedMsgs.length
-        );
-    }
 
-    function decodeMsgAndValidateRelay(
-        string calldata _prev,
-        string calldata _msg
-    ) internal returns (bytes[] memory) {
-        (string memory _net, ) = _prev.splitBTPAddress();
-        address _bmvAddr =
-            IBMCManagement(bmcManagement).getBmvServiceByNet(_net);
-
-        require(_bmvAddr != address(0), "BMCRevertNotExistsBMV");
-        (uint256 _prevHeight, , ) = IBMV(_bmvAddr).getStatus();
-
-        // decode and verify relay message
-        bytes[] memory serializedMsgs =
-            IBMV(_bmvAddr).handleRelayMessage(
-                bmcBtpAddress,
-                _prev,
-                IBMCManagement(bmcManagement).getLinkRxSeq(_prev),
-                bytes(_msg)
-            );
-
-        // rotate and check valid relay
-        (uint256 _height, uint256 _lastHeight, ) = IBMV(_bmvAddr).getStatus();
-        address relay =
-            IBMCManagement(bmcManagement).rotateRelay(
-                _prev,
-                block.number,
-                _lastHeight,
-                serializedMsgs.length > 0
-            );
-
-        if (relay == address(0)) {
-            address[] memory relays =
-                IBMCManagement(bmcManagement).getLinkRelays(_prev);
-            bool check;
-            for (uint256 i = 0; i < relays.length; i++)
-                if (msg.sender == relays[i]) {
-                    check = true;
-                    break;
-                }
-            require(check, "BMCRevertUnauthorized: not registered relay");
-            relay = msg.sender;
-        } else if (relay != msg.sender)
-            revert("BMCRevertUnauthorized: invalid relay");
-
+        IBMCManagement(bmcManagement).updateLinkRxSeq(_prev, rxSeq - linkRxSeq);
         IBMCManagement(bmcManagement).updateRelayStats(
-            relay,
-            _height - _prevHeight,
-            serializedMsgs.length
+            msg.sender,
+            0,
+            rxSeq - linkRxSeq
         );
-        return serializedMsgs;
-    }
-
-    //  @dev Despite this function was set as external, it should be called internally
-    //  since Solidity does not allow using try_catch with internal function
-    //  this solution can solve the issue
-    function decodeBTPMessage(bytes memory _rlp)
-        external
-        pure
-        returns (Types.BMCMessage memory)
-    {
-        return _rlp.decodeBMCMessage();
+        IBMCManagement(bmcManagement).updateLinkRxHeight(
+            _prev,
+            rxHeight - linkRxHeight
+        );
     }
 
     function handleMessage(string calldata _prev, Types.BMCMessage memory _msg)
@@ -179,7 +178,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
             ) {
                 _sm = res;
             } catch {
-                _sendError(_prev, _msg, BMC_ERR, "BMCRevertParseFailure");
+                _sendError(_prev, _msg, BMC_ERR, BMCRevertParseFailure);
                 return;
             }
 
@@ -190,7 +189,7 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                 ) {
                     _gatherFee = res;
                 } catch {
-                    _sendError(_prev, _msg, BMC_ERR, "BMCRevertParseFailure");
+                    _sendError(_prev, _msg, BMC_ERR, BMCRevertParseFailure);
                     return;
                 }
 
@@ -211,8 +210,9 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                 }
             } else if (_sm.serviceType.compareTo("Link")) {
                 string memory _to = _sm.payload.decodePropagateMessage();
-                Types.Link memory link =
-                    IBMCManagement(bmcManagement).getLink(_prev);
+                Types.Link memory link = IBMCManagement(bmcManagement).getLink(
+                    _prev
+                );
                 bool check;
                 if (link.isConnected) {
                     for (uint256 i = 0; i < link.reachable.length; i++)
@@ -231,8 +231,9 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                 }
             } else if (_sm.serviceType.compareTo("Unlink")) {
                 string memory _to = _sm.payload.decodePropagateMessage();
-                Types.Link memory link =
-                    IBMCManagement(bmcManagement).getLink(_prev);
+                Types.Link memory link = IBMCManagement(bmcManagement).getLink(
+                    _prev
+                );
                 if (link.isConnected) {
                     for (uint256 i = 0; i < link.reachable.length; i++) {
                         if (_to.compareTo(link.reachable[i]))
@@ -250,13 +251,13 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                 );
             } else if (_sm.serviceType.compareTo("Sack")) {
                 // skip this case since it has been removed from internal services
-            } else revert("BMCRevert: not exists internal handler");
+            } else revert(BMCRevertNotExistsInternalHandler);
         } else {
             _bshAddr = IBMCManagement(bmcManagement).getBshServiceByName(
                 _msg.svc
             );
             if (_bshAddr == address(0)) {
-                _sendError(_prev, _msg, BMC_ERR, "BMCRevertNotExistsBSH");
+                _sendError(_prev, _msg, BMC_ERR, BMCRevertNotExistsBSH);
                 return;
             }
 
@@ -269,40 +270,76 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                         uint256(_msg.sn),
                         _msg.message
                     )
-                {} catch Error(string memory _error) {
-                    _sendError(_prev, _msg, BSH_ERR, _error);
+                {} catch Error(string memory reason) {
+                    _sendError(_prev, _msg, BSH_ERR, reason);
+                    // } catch Panic(uint256 errorCode) {
+                    //     _sendError(
+                    //         _prev,
+                    //         _msg,
+                    //         BSH_ERR,
+                    //         string(
+                    //             abi.encodePacked(
+                    //                 "BMCPanicHandleBTPMessage:",
+                    //                 errorCode
+                    //             )
+                    //         )
+                    //     );
+                } catch (bytes memory) {
+                    _sendError(
+                        _prev,
+                        _msg,
+                        BSH_ERR,
+                        BMCRevertUnknownHandleBTPMessage
+                    );
                 }
             } else {
-                Types.Response memory _errMsg = _msg.message.decodeResponse();
+                Types.Response memory _res = _msg.message.decodeResponse();
+                uint256 _errCode;
+                bytes memory _errMsg;
                 try
                     IBSH(_bshAddr).handleBTPError(
                         _msg.src,
                         _msg.svc,
                         uint256(_msg.sn * -1),
-                        _errMsg.code,
-                        _errMsg.message
+                        _res.code,
+                        _res.message
                     )
-                {} catch Error(string memory _error) {
+                {} catch Error(string memory reason) {
+                    _errCode = BSH_ERR;
+                    _errMsg = bytes(reason);
+                    // } catch Panic(uint256 errorCode) {
+                    //     _errCode = UNKNOWN_ERR;
+                    //     _errMsg = abi.encodePacked(
+                    //         "BMCPanicHandleBTPError:",
+                    //         errorCode
+                    //     );
+                } catch (bytes memory) {
+                    _errCode = UNKNOWN_ERR;
+                    _errMsg = bytes(BMCRevertUnknownHandleBTPError);
+                }
+                if (_errMsg.length > 0) {
                     emit ErrorOnBTPError(
                         _msg.svc,
                         _msg.sn * -1,
-                        _errMsg.code,
-                        _errMsg.message,
-                        BSH_ERR,
-                        _error
-                    );
-                } catch (bytes memory _error) {
-                    emit ErrorOnBTPError(
-                        _msg.svc,
-                        _msg.sn * -1,
-                        _errMsg.code,
-                        _errMsg.message,
-                        UNKNOWN_ERR,
-                        string(_error)
+                        _res.code,
+                        _res.message,
+                        _errCode,
+                        string(_errMsg)
                     );
                 }
             }
         }
+    }
+
+    //  @dev Despite this function was set as external, it should be called internally
+    //  since Solidity does not allow using try_catch with internal function
+    //  this solution can solve the issue
+    function tryDecodeBTPMessage(bytes memory _rlp)
+        external
+        pure
+        returns (Types.BMCMessage memory)
+    {
+        return _rlp.decodeBMCMessage();
     }
 
     //  @dev Solidity does not allow using try_catch with internal function
@@ -342,18 +379,15 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         string memory _errMsg
     ) internal {
         if (_message.sn > 0) {
-            bytes memory _serializedMsg =
-                Types
-                    .BMCMessage(
+            bytes memory _serializedMsg = Types
+                .BMCMessage(
                     bmcBtpAddress,
-                    _message
-                        .src,
-                    _message
-                        .svc,
+                    _message.src,
+                    _message.svc,
                     _message.sn * -1,
                     Types.Response(_errCode, _errMsg).encodeResponse()
                 )
-                    .encodeBMCMessage();
+                .encodeBMCMessage();
             _sendMessage(_prev, _serializedMsg);
         }
     }
@@ -376,23 +410,18 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
             msg.sender == bmcManagement ||
                 IBMCManagement(bmcManagement).getBshServiceByName(_svc) ==
                 msg.sender,
-            "BMCRevertUnauthorized"
+            BMCRevertUnauthorized
         );
-        require(_sn >= 0, "BMCRevertInvalidSN");
+        require(_sn >= 0, BMCRevertInvalidSn);
         //  In case BSH sends a REQUEST_COIN_TRANSFER,
         //  but '_to' is a network which is not supported by BMC
         //  revert() therein
-        if (
-            IBMCManagement(bmcManagement).getBmvServiceByNet(_to) == address(0)
-        ) {
-            revert("BMCRevertNotExistsBMV");
-        }
-        (string memory _nextLink, string memory _dst) =
-            IBMCManagement(bmcManagement).resolveRoute(_to);
-        bytes memory _rlp =
-            Types
-                .BMCMessage(bmcBtpAddress, _dst, _svc, int256(_sn), _msg)
-                .encodeBMCMessage();
+        (string memory _nextLink, string memory _dst) = IBMCManagement(
+            bmcManagement
+        ).resolveRoute(_to);
+        bytes memory _rlp = Types
+            .BMCMessage(bmcBtpAddress, _dst, _svc, int256(_sn), _msg)
+            .encodeBMCMessage();
         _sendMessage(_nextLink, _rlp);
     }
 
@@ -410,36 +439,27 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
         returns (Types.LinkStats memory _linkStats)
     {
         Types.Link memory link = IBMCManagement(bmcManagement).getLink(_link);
-        require(link.isConnected == true, "BMCRevertNotExistsLink");
-        Types.RelayStats[] memory _relays =
-            IBMCManagement(bmcManagement).getRelayStatusByLink(_link);
-        (string memory _net, ) = _link.splitBTPAddress();
-        uint256 _height;
-        uint256 _offset;
-        uint256 _lastHeight;
-        (_height, _offset, _lastHeight) = IBMV(
-            IBMCManagement(bmcManagement).getBmvServiceByNet(_net)
-        )
-            .getStatus();
-        uint256 _rotateTerm =
-            link.maxAggregation.getRotateTerm(
-                link.blockIntervalSrc.getScale(link.blockIntervalDst)
-            );
+        require(link.isConnected == true, BMCRevertNotExistsLink);
+        // Types.RelayStats[] memory _relays = IBMCManagement(bmcManagement)
+        //     .getRelayStatusByLink(_link);
+        // uint256 _rotateTerm = link.maxAggregation.getRotateTerm(
+        //     link.blockIntervalSrc.getScale(link.blockIntervalDst)
+        // );
         return
             Types.LinkStats(
                 link.rxSeq,
                 link.txSeq,
-                Types.VerifierStats(_height, _offset, _lastHeight, ""),
-                _relays,
-                link.relayIdx,
-                link.rotateHeight,
-                _rotateTerm,
-                link.delayLimit,
-                link.maxAggregation,
-                link.rxHeightSrc,
+                // Types.VerifierStats(0, 0, 0, ""), //dummy
+                // _relays,
+                // link.relayIdx,
+                // link.rotateHeight,
+                // _rotateTerm,
+                // link.delayLimit,
+                // link.maxAggregation,
+                // link.rxHeightSrc,
                 link.rxHeight,
-                link.blockIntervalSrc,
-                link.blockIntervalDst,
+                // link.blockIntervalSrc,
+                // link.blockIntervalDst,
                 block.number
             );
     }

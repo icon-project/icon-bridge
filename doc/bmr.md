@@ -412,16 +412,4 @@ Example
 TODO wait for docker implementation
 
 ## Management
-* [btpsimple command line](btpsimple_cli.md)
-
-## Testing
-
-```bash
-# Test all in short mode, with log, without cache
-go test -v -count=1 -short ./...  
-```
-
-```bash
-# Test all with log, without cache
-go test -v -count=1 ./...  
-```
+* [iconbridge command line](iconbridge_cli.md)
