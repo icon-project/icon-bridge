@@ -25,11 +25,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/icon-project/btp/cmd/btpsimple/module/base"
 
-	"github.com/icon-project/btp/common/jsonrpc"
+	"github.com/icon-project/icon-bridge/common/jsonrpc"
 )
 
 const (
@@ -103,29 +101,14 @@ type TransactionParam struct {
 	TransactOpt *bind.TransactOpts
 }
 
-type CallData struct {
-	Method string      `json:"method"`
-	Params interface{} `json:"params,omitempty"`
-}
-
 type BMCRelayMethodParams struct {
 	Prev     string `json:"_prev"`
 	Messages string `json:"_msg"`
 }
 
 type BMCStatus struct {
-	TxSeq    HexInt `json:"tx_seq"`
-	RxSeq    HexInt `json:"rx_seq"`
-	Verifier struct {
-		Height     HexInt `json:"height"`
-		Offset     HexInt `json:"offset"`
-		LastHeight HexInt `json:"last_height"`
-	} `json:"verifier"`
-	BMRs []struct {
-		Address      Address `json:"address"`
-		BlockCount   HexInt  `json:"block_count"`
-		MessageCount HexInt  `json:"msg_count"`
-	} `json:"relays"`
+	TxSeq            HexInt `json:"tx_seq"`
+	RxSeq            HexInt `json:"rx_seq"`
 	BMRIndex         HexInt `json:"relay_idx"`
 	RotateHeight     HexInt `json:"rotate_height"`
 	RotateTerm       HexInt `json:"rotate_term"`
@@ -143,8 +126,9 @@ type TransactionHashParam struct {
 }
 
 type BlockRequest struct {
-	Height       *big.Int       `json:"height"`
-	EventFilters []*EventFilter `json:"eventFilters,omitempty"`
+	Height             *big.Int       `json:"height"`
+	EventFilters       []*EventFilter `json:"eventFilters,omitempty"`
+	SrcContractAddress common.Address `json:"srcContractAddress,omitempty"`
 }
 
 type EventFilter struct {
@@ -158,94 +142,21 @@ type BlockNotification struct {
 	Hash   common.Hash
 	Height *big.Int
 	Header *types.Header
-}
-
-type BlockUpdate struct {
-	BlockHeader []byte
-	Validators  []byte
-	EvmHeader   []byte
+	Logs   []types.Log
 }
 
 type RelayMessage struct {
-	BlockUpdates  [][]byte
-	BlockProof    []byte
 	ReceiptProofs [][]byte
 	//
-	height              int64
-	numberOfBlockUpdate int
-	eventSequence       int64
-	numberOfEvent       int
+	height        int64
+	eventSequence int64
+	numberOfEvent int
 }
 
 type ReceiptProof struct {
-	Index       int
-	Proof       []byte
-	EventProofs []*base.EventProof
-}
-
-type ConsensusStates struct {
-	PreValidatorSetChangeHeight uint64
-	AppHash                     [32]byte
-	CurValidatorSetHash         [32]byte
-	NextValidatorSet            []byte
-}
-
-type StorageProof struct {
-	StateRoot    common.Hash     `json:"stateRoot"`
-	Height       uint64          `json:"height"`
-	Address      common.Address  `json:"address"`
-	AccountProof []string        `json:"accountProof"`
-	Balance      uint64          `json:"balance"`
-	CodeHash     common.Hash     `json:"codeHash"`
-	Nonce        hexutil.Uint64  `json:"nonce"`
-	StorageHash  common.Hash     `json:"storageHash"`
-	StorageProof []StorageResult `json:"storageProof"`
-}
-
-type StorageResult struct {
-	Key   string       `json:"key"`
-	Value *hexutil.Big `json:"value"`
-	Proof []string     `json:"proof"`
-}
-
-// Header represents a block header in the Ethereum blockchain.
-type Header struct {
-	ParentHash  common.Hash
-	UncleHash   common.Hash
-	Coinbase    common.Address
-	Root        common.Hash
-	TxHash      common.Hash
-	ReceiptHash common.Hash
-	Bloom       []byte
-	Difficulty  uint64
-	Number      uint64
-	GasLimit    uint64
-	GasUsed     uint64
-	Time        uint64
-	Extra       []byte
-	MixDigest   common.Hash
-	Nonce       types.BlockNonce
-}
-
-func MakeHeader(header *types.Header) *Header {
-	// Convert Geth types to Goloop RLP friendly type
-	return &Header{
-		ParentHash:  header.ParentHash,
-		UncleHash:   header.UncleHash,
-		Coinbase:    header.Coinbase,
-		Root:        header.Root,
-		TxHash:      header.TxHash,
-		ReceiptHash: header.ReceiptHash,
-		Bloom:       header.Bloom.Bytes(),
-		Difficulty:  header.Difficulty.Uint64(),
-		Number:      header.Number.Uint64(),
-		GasLimit:    header.GasLimit,
-		GasUsed:     header.GasUsed,
-		Time:        header.Time,
-		Extra:       header.Extra,
-		MixDigest:   header.MixDigest,
-		Nonce:       header.Nonce,
-	}
+	Index  int
+	Events []byte
+	Height int64
 }
 
 type EVMLog struct {

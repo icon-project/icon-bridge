@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,12 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcutil/base58"
+	"github.com/near/borsh-go"
+)
+
+const (
+	ED25519   = 0
+	SECP256K1 = 1
 )
 
 type AccountId string
@@ -28,6 +35,10 @@ func (c *CryptoHash) UnmarshalJSON(p []byte) error {
 	}
 	*c = CryptoHash(base58.Decode(cryptoHash))
 	return nil
+}
+
+func NewCryptoHash(hash string) CryptoHash {
+	return CryptoHash(base58.Decode(hash))
 }
 
 func (c *CryptoHash) Base58Encode() string {
@@ -54,7 +65,10 @@ func (t *Timestamp) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
-type PublicKey []byte
+type PublicKey struct {
+	KeyType uint8
+	Data    []byte
+}
 
 func (pk *PublicKey) UnmarshalJSON(p []byte) error {
 	var publicKey string
@@ -64,21 +78,57 @@ func (pk *PublicKey) UnmarshalJSON(p []byte) error {
 	}
 
 	if publicKey == "" {
-		*pk = nil
+		pk = nil
 		return nil
 	}
 
 	if strings.Contains(publicKey, "ed25519:") {
-		*pk = PublicKey(append([]byte{0}, base58.Decode(publicKey[len("ed25519:"):])...))
+		pk = &PublicKey{
+			KeyType: ED25519,
+			Data:    base58.Decode(publicKey[len("ed25519:"):]),
+		}
 	} else if strings.Contains(publicKey, "secp256k1:") {
-		*pk = PublicKey(append([]byte{1}, base58.Decode(publicKey[len("secp256k1:"):])...))
+		pk = &PublicKey{
+			KeyType: SECP256K1,
+			Data:    base58.Decode(publicKey[len("secp256k1:"):]),
+		}
 	} else {
-		*pk = nil
+		pk = nil
 	}
 	return nil
 }
 
-type Signature []byte
+func (pk *PublicKey) Base58Encode() string {
+	if pk.KeyType == ED25519 {
+		return "ed25519:" + base58.Encode(pk.Data[:])
+	} else {
+		return "secp256k1:" + base58.Encode(pk.Data[:])
+	}
+}
+
+func NewPublicKeyFromED25519(pk ed25519.PublicKey) PublicKey {
+	return PublicKey{
+		KeyType: ED25519,
+		Data: pk,
+	}
+}
+
+type Signature struct {
+	KeyType uint8
+	Data    []byte
+}
+
+func (s Signature) Base58Encode() string {
+	if s.KeyType == ED25519 {
+		return "ed25519:" + base58.Encode(s.Data[:])
+	} else {
+		return "secp256k1:" + base58.Encode(s.Data[:])
+	}
+}
+
+func (s *Signature) Bytes() []byte {
+	return append([]byte{s.KeyType}, s.Data...)
+}
 
 func (s *Signature) UnmarshalJSON(p []byte) error {
 	var signature string
@@ -88,16 +138,22 @@ func (s *Signature) UnmarshalJSON(p []byte) error {
 	}
 
 	if signature == "" {
-		*s = nil
+		s = nil
 		return nil
 	}
 
 	if strings.Contains(signature, "ed25519:") {
-		*s = Signature(append([]byte{0}, base58.Decode(signature[len("ed25519:"):])...))
+		s = &Signature{
+			KeyType: ED25519,
+			Data:    base58.Decode(signature[len("ed25519:"):]),
+		}
 	} else if strings.Contains(signature, "secp256k1:") {
-		*s = Signature(append([]byte{1}, base58.Decode(signature[len("secp256k1:"):])...))
+		s = &Signature{
+			KeyType: SECP256K1,
+			Data:    base58.Decode(signature[len("secp256k1:"):]),
+		}
 	} else {
-		*s = nil
+		s = nil
 	}
 	return nil
 }
@@ -189,4 +245,66 @@ type ApprovalMessage struct {
 	PreviousBlockHash   CryptoHash
 	PreviousBlockHeight int64
 	TargetHeight        int64
+}
+
+type Action struct {
+	Enum           borsh.Enum `borsh_enum:"true"` // treat struct as complex enum when serializing/deserializing
+	CreateAccount  borsh.Enum
+	DeployContract DeployContract
+	FunctionCall   FunctionCall
+	Transfer       Transfer
+	Stake          Stake
+	AddKey         AddKey
+	DeleteKey      DeleteKey
+	DeleteAccount  DeleteAccount
+}
+
+type DeployContract struct {
+	Code []byte
+}
+
+type FunctionCall struct {
+	MethodName string
+	Args       []byte
+	Gas        uint64
+	Deposit    big.Int
+}
+
+type Transfer struct {
+	Deposit big.Int
+}
+
+type Stake struct {
+	Stake     big.Int
+	PublicKey PublicKey
+}
+
+type AddKey struct {
+	PublicKey PublicKey
+	AccessKey AccessKey
+}
+
+type DeleteKey struct {
+	PublicKey PublicKey
+}
+
+type DeleteAccount struct {
+	BeneficiaryID string
+}
+
+type AccessKey struct {
+	Nonce      uint64
+	Permission AccessKeyPermission
+}
+
+type AccessKeyPermission struct {
+	Enum         borsh.Enum `borsh_enum:"true"`
+	FunctionCall FunctionCallPermission
+	FullAccess   borsh.Enum
+}
+
+type FunctionCallPermission struct {
+	Allowance   *big.Int
+	ReceiverId  string
+	MethodNames []string
 }

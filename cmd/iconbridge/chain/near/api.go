@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/icon-project/btp/cmd/btpsimple/module/base"
-	"github.com/icon-project/btp/cmd/btpsimple/module/near/types"
-	"github.com/icon-project/btp/common/jsonrpc"
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
+	"github.com/icon-project/icon-bridge/common/jsonrpc"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 type api struct {
@@ -18,6 +18,12 @@ type api struct {
 
 type RequestParams struct {
 	BlockID int64 `json:"block_id"`
+}
+
+type CallFunctionResult struct {
+	Result      []byte `json:"result"`
+	BlockHeight int64  `json:"block_height"`
+	BlockHash   string `json:"block_hash"`
 }
 
 func (api *api) getNonce(accountId string, publicKey string) (int64, error) {
@@ -39,7 +45,6 @@ func (api *api) getNonce(accountId string, publicKey string) (int64, error) {
 	}
 
 	if response.Error != "" {
-
 		return -1, fmt.Errorf(response.Error)
 	}
 
@@ -51,7 +56,7 @@ func (api *api) getNonce(accountId string, publicKey string) (int64, error) {
 */
 //Sends a transaction and waits until transaction is fully complete. (Has a 10 second timeout)
 func (api *api) broadcastTransaction(base64EncodedData string) (string, error) {
-	var transactionStatus TransactionResult
+	var transactionStatus types.TransactionResult
 
 	if _, err := api.Do("broadcast_tx_commit", []interface{}{base64EncodedData}, &transactionStatus); err != nil {
 		return "", err
@@ -59,19 +64,18 @@ func (api *api) broadcastTransaction(base64EncodedData string) (string, error) {
 	// Return Transaction ID
 	transactionId := transactionStatus.Transaction.Txid
 
-	return transactionId, nil
+	return transactionId.Base58Encode(), nil
 }
 
 //Sends a transaction and immediately returns transaction hash.
-func (api *api) broadcastTransactionAsync(base64EncodedData string) (string, error) {
+func (api *api) broadcastTransactionAsync(base64EncodedData string) (types.CryptoHash, error) {
 	var transactionStatus string
 
 	if _, err := api.Do("broadcast_tx_async", []interface{}{base64EncodedData}, &transactionStatus); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	// Return Transaction ID
-	return transactionStatus, nil
+	return types.NewCryptoHash(transactionStatus), nil
 }
 
 func (api *api) getBlockByHash(blockHash string) (types.Block, error) {
@@ -170,7 +174,7 @@ func (api *api) getNextBlockProducers(blockHash *types.CryptoHash) (types.NextBl
 	return nextBlockProducers, nil
 }
 
-func (api *api) getBmcLinkStatus(accountId string, link *base.BtpAddress) (types.BmcStatus, error) {
+func (api *api) getBmcLinkStatus(accountId string, link *chain.BTPAddress) (types.BmcStatus, error) {
 	var response CallFunctionResult
 	var bmcStatus types.BmcStatus
 

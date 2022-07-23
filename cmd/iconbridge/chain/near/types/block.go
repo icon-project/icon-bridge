@@ -2,7 +2,7 @@ package types
 
 import (
 	"crypto/sha256"
-	"github.com/icon-project/btp/common/codec"
+	"github.com/icon-project/icon-bridge/common/codec"
 )
 
 type SerializableHeader struct {

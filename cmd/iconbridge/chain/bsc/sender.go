@@ -17,37 +17,38 @@
 package bsc
 
 import (
-	"encoding/base64"
+	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"net/url"
-	"strconv"
-	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/icon-project/btp/cmd/btpsimple/module/bsc/binding"
-
-	"github.com/icon-project/btp/cmd/btpsimple/module/base"
-	"github.com/icon-project/btp/common"
-	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/jsonrpc"
-	"github.com/icon-project/btp/common/log"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	btpcommon "github.com/icon-project/icon-bridge/common"
+	"github.com/icon-project/icon-bridge/common/codec"
+	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
 const (
-	txMaxDataSize                 = 524288 //512 * 1024 // 512kB
-	txOverheadScale               = 0.37   //base64 encoding overhead 0.36, rlp and other fields 0.01
-	txSizeLimit                   = txMaxDataSize / (1 + txOverheadScale)
-	DefaultGetRelayResultInterval = time.Second
-	DefaultRelayReSendInterval    = time.Second
+	txMaxDataSize        = 64 * 1024 // 64 KB
+	txOverheadScale      = 0.01      // base64 encoding overhead 0.36, rlp and other fields 0.01
+	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale)
+	defaultSendTxTimeout = 15 * time.Second
+	defaultReadTimeout   = 15 * time.Second
+	defaultGasPrice      = 30000000000
+	maxGasPriceBoost     = 10.0
 )
 
+/*
 type sender struct {
 	c   *Client
-	src base.BtpAddress
-	dst base.BtpAddress
+	src module.BtpAddress
+	dst module.BtpAddress
 	w   Wallet
 	l   log.Logger
 	opt struct {
@@ -63,11 +64,260 @@ type sender struct {
 	}
 	evtReq             *BlockRequest
 	isFoundOffsetBySeq bool
-	cb                 base.ReceiveCallback
+	cb                 module.ReceiveCallback
 
 	mutex sync.Mutex
 }
+*/
 
+type senderOptions struct {
+	GasLimit        uint64  `json:"gas_limit"`
+	TxDataSizeLimit uint64  `json:"tx_data_size_limit"`
+	BoostGasPrice   float64 `json:"boost_gas_price"`
+}
+
+type sender struct {
+	log  log.Logger
+	w    *wallet.EvmWallet
+	src  chain.BTPAddress
+	dst  chain.BTPAddress
+	opts senderOptions
+	cl   *client
+}
+
+func NewSender(
+	src, dst chain.BTPAddress,
+	urls []string, w wallet.Wallet,
+	opts map[string]interface{}, l log.Logger) (chain.Sender, error) {
+	s := &sender{
+		log: l,
+		w:   w.(*wallet.EvmWallet),
+		src: src,
+		dst: dst,
+	}
+	if len(urls) == 0 {
+		return nil, fmt.Errorf("empty urls: %v", urls)
+	}
+
+	b, err := json.Marshal(opts)
+	if err != nil {
+		l.Panicf("fail to marshal opt:%#v err:%+v", opts, err)
+	}
+	if err = json.Unmarshal(b, &s.opts); err != nil {
+		l.Panicf("fail to unmarshal opt:%#v err:%+v", opts, err)
+	}
+	if s.opts.BoostGasPrice < 1.0 {
+		s.opts.BoostGasPrice = 1.0
+	}
+	if s.opts.BoostGasPrice > maxGasPriceBoost {
+		s.opts.BoostGasPrice = maxGasPriceBoost
+	}
+	s.cl, err = NewClient(urls, dst.ContractAddress(), s.log)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// BMCLinkStatus ...
+// returns the BMCLinkStatus for "src" link
+func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	status, err := s.cl.bmcCl().GetStatus(&bind.CallOpts{Context: ctx}, s.src.String())
+	if err != nil {
+		s.log.Error("", "err", err)
+		return nil, err
+	}
+	ls := &chain.BMCLinkStatus{}
+	ls.TxSeq = status.TxSeq.Uint64()
+	ls.RxSeq = status.RxSeq.Uint64()
+	ls.RxHeight = status.RxHeight.Uint64()
+	ls.CurrentHeight = status.CurrentHeight.Uint64()
+	return ls, nil
+}
+
+// Segment ...
+func (s *sender) Segment(
+	ctx context.Context, msg *chain.Message,
+) (tx chain.RelayTx, newMsg *chain.Message, err error) {
+	if ctx.Err() != nil {
+		return nil, msg, ctx.Err()
+	}
+
+	if s.opts.TxDataSizeLimit == 0 {
+		limit := defaultTxSizeLimit
+		s.opts.TxDataSizeLimit = uint64(limit)
+	}
+	if len(msg.Receipts) == 0 {
+		return nil, msg, nil
+	}
+
+	rm := &chain.RelayMessage{
+		Receipts: make([][]byte, 0),
+	}
+
+	var msgSize uint64
+
+	newMsg = &chain.Message{
+		From:     msg.From,
+		Receipts: msg.Receipts,
+	}
+	for i, receipt := range msg.Receipts {
+		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events)
+		if err != nil {
+			return nil, nil, err
+		}
+		rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
+			Index:  receipt.Index,
+			Height: receipt.Height,
+			Events: rlpEvents,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		newMsgSize := msgSize + uint64(len(rlpReceipt))
+		if newMsgSize > s.opts.TxDataSizeLimit {
+			newMsg.Receipts = msg.Receipts[i:]
+			break
+		}
+		msgSize = newMsgSize
+		rm.Receipts = append(rm.Receipts, rlpReceipt)
+	}
+	message, err := codec.RLP.MarshalToBytes(rm)
+	if err != nil {
+		return nil, nil, err
+	}
+	gasPrice, err := s.cl.GetMedianGasPriceForBlock()
+	if err != nil || gasPrice.Int64() == 0 {
+		s.log.Infof("GetMedianGasPriceForBlock Msg: %v. Using default value for gas price", err)
+		gasPrice = big.NewInt(defaultGasPrice)
+	}
+	boostedGasPrice, _ := (&big.Float{}).Mul(
+		(&big.Float{}).SetInt64(gasPrice.Int64()),
+		(&big.Float{}).SetFloat64(s.opts.BoostGasPrice),
+	).Int(nil)
+	tx, err = s.newRelayTx(ctx, msg.From.String(), message, boostedGasPrice)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tx, newMsg, nil
+}
+
+func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, gasPrice *big.Int) (*relayTx, error) {
+	client := s.cl
+	txOpts, err := client.newTransactOpts(s.w)
+	if err != nil {
+		return nil, err
+	}
+	txOpts.Context = ctx
+	if s.opts.GasLimit > 0 {
+		txOpts.GasLimit = s.opts.GasLimit
+	}
+	txOpts.GasPrice = gasPrice
+	return &relayTx{
+		Prev:    prev,
+		Message: message, // base64.URLEncoding.EncodeToString(rlpCrm),
+		opts:    txOpts,
+		cl:      client,
+	}, nil
+}
+
+type relayTx struct {
+	Prev    string `json:"_prev"`
+	Message []byte `json:"_msg"`
+
+	opts      *bind.TransactOpts
+	pendingTx *ethtypes.Transaction
+	cl        *client
+}
+
+func (tx *relayTx) ID() interface{} {
+	if tx.pendingTx != nil {
+		return tx.pendingTx.Hash()
+	}
+	return nil
+}
+
+func (tx *relayTx) Send(ctx context.Context) (err error) {
+	tx.cl.log.WithFields(log.Fields{
+		"prev": tx.Prev}).Debug("handleRelayMessage: send tx")
+
+	_ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeout)
+	defer cancel()
+	txOpts := *tx.opts
+	txOpts.Context = _ctx
+	tx.pendingTx, err = tx.cl.bmcCl().HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
+	if err != nil {
+		tx.cl.log.WithFields(log.Fields{
+			"error": err}).Debug("handleRelayMessage: send tx")
+		if err.Error() == "insufficient funds for gas * price + value" {
+			return chain.ErrInsufficientBalance
+		}
+		return err
+	}
+
+	tx.cl.log.WithFields(log.Fields{
+		"txh": tx.pendingTx.Hash(),
+		"msg": btpcommon.HexBytes(tx.Message)}).Debug("handleRelayMessage: tx sent")
+	return nil
+}
+
+func (tx *relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) {
+	if tx.pendingTx == nil {
+		return 0, fmt.Errorf("no pending tx")
+	}
+
+	for i, isPending := 0, true; i < 5 && (isPending || err == ethereum.NotFound); i++ {
+		time.Sleep(time.Second)
+		_, isPending, err = tx.cl.GetTransaction(tx.pendingTx.Hash())
+	}
+	if err != nil {
+		return 0, err
+	}
+
+	txr, err := tx.cl.GetTransactionReceipt(tx.pendingTx.Hash())
+	if err != nil {
+		return 0, err
+	}
+
+	if txr.Status == 0 {
+		callMsg := ethereum.CallMsg{
+			From:       tx.opts.From,
+			To:         tx.pendingTx.To(),
+			Gas:        tx.pendingTx.Gas(),
+			GasPrice:   tx.pendingTx.GasPrice(),
+			Value:      tx.pendingTx.Value(),
+			AccessList: tx.pendingTx.AccessList(),
+			Data:       tx.pendingTx.Data(),
+		}
+
+		data, err := tx.cl.CallContract(callMsg, txr.BlockNumber)
+		if err != nil {
+			return 0, err
+		}
+
+		return 0, chain.RevertError(revertReason(data))
+	}
+
+	tx.cl.log.WithFields(log.Fields{
+		"txh": tx.pendingTx.Hash()}).Debug("handleRelayMessage: success")
+
+	return txr.BlockNumber.Uint64(), nil
+}
+
+func revertReason(data []byte) string {
+	if len(data) < 4+32+32 {
+		return ""
+	}
+	data = data[4+32:] // ignore method and index
+	length := binary.BigEndian.Uint64(data[24:32])
+	return string(data[32 : 32+length])
+}
+
+/*
 func (s *sender) newTransactionParam(prev string, rm *RelayMessage) (*TransactionParam, error) {
 	b, err := codec.RLP.MarshalToBytes(rm)
 	if err != nil {
@@ -75,155 +325,17 @@ func (s *sender) newTransactionParam(prev string, rm *RelayMessage) (*Transactio
 	}
 	rmp := BMCRelayMethodParams{
 		Prev: prev,
-		//Messages: base64.URLEncoding.EncodeToString(b),
+		//Messages: base64.URLEncoding.EncodeToString(b[:]),
 		Messages: string(b[:]),
 	}
+	s.l.Debugf("HandleRelayMessage msg: %s", base64.URLEncoding.EncodeToString(b))
 	p := &TransactionParam{
 		Params: rmp,
 	}
 	return p, nil
 }
 
-func (s *sender) Segment(rm *base.RelayMessage, height int64) ([]*base.Segment, error) {
-	segments := make([]*base.Segment, 0)
-	var err error
-	msg := &RelayMessage{
-		BlockUpdates:  make([][]byte, 0),
-		ReceiptProofs: make([][]byte, 0),
-	}
-	size := 0
-	//TODO rm.BlockUpdates[len(rm.BlockUpdates)-1].Height <= s.bmcStatus.Verifier.Height
-	//	using only rm.BlockProof
-	for _, bu := range rm.BlockUpdates {
-		if bu.Height <= height {
-			continue
-		}
-		buSize := len(bu.Proof)
-		if s.isOverLimit(buSize) {
-			return nil, fmt.Errorf("invalid BlockUpdate.StorageProof size")
-		}
-		size += buSize
-		if s.isOverLimit(size) {
-			segment := &base.Segment{
-				Height:              msg.height,
-				NumberOfBlockUpdate: msg.numberOfBlockUpdate,
-			}
-			if segment.TransactionParam, err = s.newTransactionParam(rm.From.String(), msg); err != nil {
-				return nil, err
-			}
-			segments = append(segments, segment)
-			msg = &RelayMessage{
-				BlockUpdates:  make([][]byte, 0),
-				ReceiptProofs: make([][]byte, 0),
-			}
-			size = buSize
-		}
-		msg.BlockUpdates = append(msg.BlockUpdates, bu.Proof)
-		msg.height = bu.Height
-		msg.numberOfBlockUpdate += 1
-	}
-
-	var bp []byte
-	if bp, err = codec.RLP.MarshalToBytes(rm.BlockProof); err != nil {
-		return nil, err
-	}
-	if s.isOverLimit(len(bp)) {
-		return nil, fmt.Errorf("invalid BlockProof size")
-	}
-
-	var b []byte
-	for _, rp := range rm.ReceiptProofs {
-		if s.isOverLimit(len(rp.Proof)) {
-			return nil, fmt.Errorf("invalid ReceiptProof.Proof size")
-		}
-		if len(msg.BlockUpdates) == 0 {
-			size += len(bp)
-			msg.BlockProof = bp
-			msg.height = rm.BlockProof.BlockWitness.Height
-		}
-		size += len(rp.Proof)
-		trp := &ReceiptProof{
-			Index:       rp.Index,
-			Proof:       rp.Proof,
-			EventProofs: make([]*base.EventProof, 0),
-		}
-		for j, ep := range rp.EventProofs {
-			if s.isOverLimit(len(ep.Proof)) {
-				return nil, fmt.Errorf("invalid EventProof.Proof size")
-			}
-			size += len(ep.Proof)
-			if s.isOverLimit(size) {
-				if j == 0 && len(msg.BlockUpdates) == 0 {
-					return nil, fmt.Errorf("BlockProof + ReceiptProof + EventProof > limit")
-				}
-				//
-				segment := &base.Segment{
-					Height:              msg.height,
-					NumberOfBlockUpdate: msg.numberOfBlockUpdate,
-					EventSequence:       msg.eventSequence,
-					NumberOfEvent:       msg.numberOfEvent,
-				}
-				if segment.TransactionParam, err = s.newTransactionParam(rm.From.String(), msg); err != nil {
-					return nil, err
-				}
-				segments = append(segments, segment)
-
-				msg = &RelayMessage{
-					BlockUpdates:  make([][]byte, 0),
-					ReceiptProofs: make([][]byte, 0),
-					BlockProof:    bp,
-				}
-				size = len(ep.Proof)
-				size += len(rp.Proof)
-				size += len(bp)
-
-				trp = &ReceiptProof{
-					Index:       rp.Index,
-					Proof:       rp.Proof,
-					EventProofs: make([]*base.EventProof, 0),
-				}
-			}
-			trp.EventProofs = append(trp.EventProofs, ep)
-			msg.eventSequence = rp.Events[j].Sequence
-			msg.numberOfEvent += 1
-		}
-
-		if b, err = codec.RLP.MarshalToBytes(trp); err != nil {
-			return nil, err
-		}
-		msg.ReceiptProofs = append(msg.ReceiptProofs, b)
-	}
-	//
-	segment := &base.Segment{
-		Height:              msg.height,
-		NumberOfBlockUpdate: msg.numberOfBlockUpdate,
-		EventSequence:       msg.eventSequence,
-		NumberOfEvent:       msg.numberOfEvent,
-	}
-	if segment.TransactionParam, err = s.newTransactionParam(rm.From.String(), msg); err != nil {
-		return nil, err
-	}
-	segments = append(segments, segment)
-	return segments, nil
-}
-
-func (s *sender) UpdateSegment(bp *base.BlockProof, segment *base.Segment) error {
-	//p := segment.TransactionParam.(*TransactionParam)
-	cd := CallData{}
-	rmp := cd.Params.(BMCRelayMethodParams)
-	msg := &RelayMessage{}
-	b, err := base64.URLEncoding.DecodeString(rmp.Messages)
-	if _, err = codec.RLP.UnmarshalFromBytes(b, msg); err != nil {
-		return err
-	}
-	if msg.BlockProof, err = codec.RLP.MarshalToBytes(bp); err != nil {
-		return err
-	}
-	segment.TransactionParam, err = s.newTransactionParam(rmp.Prev, msg)
-	return err
-}
-
-func (s *sender) Relay(segment *base.Segment) (base.GetResultParam, error) {
+func (s *sender) Relay(segment *module.Segment) (module.GetResultParam, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	p, ok := segment.TransactionParam.(*TransactionParam)
@@ -243,11 +355,11 @@ func (s *sender) Relay(segment *base.Segment) (base.GetResultParam, error) {
 	}
 	thp := &TransactionHashParam{}
 	thp.Hash = tx.Hash()
-	//s.l.Debugf("HandleRelayMessage tx hash:%s, prev %s, msg: %s", thp.Hash, rmp.Prev, base64.URLEncoding.EncodeToString([]byte(rmp.Messages)))
+	s.l.Debugf("HandleRelayMessage tx hash:%s, prev %s, msg: %s", thp.Hash, rmp.Prev, base64.URLEncoding.EncodeToString([]byte(rmp.Messages)))
 	return thp, nil
 }
 
-func (s *sender) GetResult(p base.GetResultParam) (base.TransactionResult, error) {
+func (s *sender) GetResult(p module.GetResultParam) (module.TransactionResult, error) {
 	if txh, ok := p.(*TransactionHashParam); ok {
 		for {
 			_, pending, err := s.c.GetTransaction(txh.Hash)
@@ -269,7 +381,7 @@ func (s *sender) GetResult(p base.GetResultParam) (base.TransactionResult, error
 	}
 }
 
-func (s *sender) GetStatus() (*base.BMCLinkStatus, error) {
+func (s *sender) GetStatus() (*module.BMCLinkStatus, error) {
 	var status binding.TypesLinkStats
 	status, err := s.bmc.GetStatus(nil, s.src.String())
 
@@ -278,22 +390,9 @@ func (s *sender) GetStatus() (*base.BMCLinkStatus, error) {
 		return nil, err
 	}
 
-	ls := &base.BMCLinkStatus{}
+	ls := &module.BMCLinkStatus{}
 	ls.TxSeq = status.TxSeq.Int64()
 	ls.RxSeq = status.RxSeq.Int64()
-	ls.Verifier.Height = status.Verifier.HeightMTA.Int64()
-	ls.Verifier.Offset = status.Verifier.OffsetMTA.Int64()
-	ls.Verifier.LastHeight = status.Verifier.LastHeight.Int64()
-	ls.BMRs = make([]struct {
-		Address      string
-		BlockCount   int64
-		MessageCount int64
-	}, len(status.Relays))
-	for i, bmr := range status.Relays {
-		ls.BMRs[i].Address = bmr.Addr.String()
-		ls.BMRs[i].BlockCount = bmr.BlockCount.Int64()
-		ls.BMRs[i].MessageCount = bmr.MsgCount.Int64()
-	}
 	ls.BMRIndex = int(status.RelayIdx.Int64())
 	ls.RotateHeight = status.RotateHeight.Int64()
 	ls.RotateTerm = int(status.RotateTerm.Int64())
@@ -309,7 +408,7 @@ func (s *sender) isOverLimit(size int) bool {
 	return txSizeLimit < float64(size)
 }
 
-func (s *sender) MonitorLoop(height int64, cb base.MonitorCallback, scb func()) error {
+func (s *sender) MonitorLoop(height int64, cb module.MonitorCallback, scb func()) error {
 	s.l.Debugf("MonitorLoop (sender) connected")
 	br := &BlockRequest{
 		Height: big.NewInt(height),
@@ -328,7 +427,7 @@ func (s *sender) FinalizeLatency() int {
 	return 1
 }
 
-func NewSender(src, dst base.BtpAddress, w Wallet, endpoint string, opt map[string]interface{}, l log.Logger) base.Sender {
+func NewSender(src, dst module.BtpAddress, w Wallet, endpoints []string, opt map[string]interface{}, l log.Logger) module.Sender {
 	s := &sender{
 		src: src,
 		dst: dst,
@@ -342,59 +441,10 @@ func NewSender(src, dst base.BtpAddress, w Wallet, endpoint string, opt map[stri
 	if err = json.Unmarshal(b, &s.opt); err != nil {
 		l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
 	}
-	s.c = NewClient(endpoint, l)
+	s.c = NewClient(endpoints, l)
 
-	s.bmc, _ = binding.NewBMC(HexToAddress(s.dst.ContractAddress()), s.c.ethClient)
+	s.bmc, _ = binding.NewBMC(HexToAddress(s.dst.ContractAddress()), s.c.ethcl)
 
 	return s
 }
-
-func mapError(err error) error {
-	if err != nil {
-		switch re := err.(type) {
-		case *jsonrpc.Error:
-			//fmt.Printf("jrResp.Error:%+v", re)
-			switch re.Code {
-			case JsonrpcErrorCodeTxPoolOverflow:
-				return base.ErrSendFailByOverflow
-			case JsonrpcErrorCodeSystem:
-				if subEc, err := strconv.ParseInt(re.Message[1:5], 0, 32); err == nil {
-					//TODO return JsonRPC Error
-					switch subEc {
-					case ExpiredTransactionError:
-						return base.ErrSendFailByExpired
-					case FutureTransactionError:
-						return base.ErrSendFailByFuture
-					case TransactionPoolOverflowError:
-						return base.ErrSendFailByOverflow
-					}
-				}
-			case JsonrpcErrorCodePending, JsonrpcErrorCodeExecuting:
-				return base.ErrGetResultFailByPending
-			}
-		case *common.HttpError:
-			fmt.Printf("*common.HttpError:%+v", re)
-			return base.ErrConnectFail
-		case *url.Error:
-			if common.IsConnectRefusedError(re.Err) {
-				//fmt.Printf("*url.Error:%+v", re)
-				return base.ErrConnectFail
-			}
-		}
-	}
-	return err
-}
-
-func mapErrorWithTransactionResult(txr *TransactionResult, err error) error {
-	err = mapError(err)
-	if err == nil && txr != nil && txr.Status != ResultStatusSuccess {
-		fc, _ := txr.Failure.CodeValue.Value()
-		if fc < ResultStatusFailureCodeRevert || fc > ResultStatusFailureCodeEnd {
-			err = fmt.Errorf("failure with code:%s, message:%s",
-				txr.Failure.CodeValue, txr.Failure.MessageValue)
-		} else {
-			err = base.NewRevertError(int(fc - ResultStatusFailureCodeRevert))
-		}
-	}
-	return err
-}
+*/

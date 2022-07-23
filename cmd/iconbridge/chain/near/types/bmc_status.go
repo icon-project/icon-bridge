@@ -1,18 +1,17 @@
 package types
 
 type BmcStatus struct {
-	TxSeq            int64         `json:"tx_seq"`
-	RxSeq            int64         `json:"rx_seq"`
+	TxSeq            uint64        `json:"tx_seq"`
+	RxSeq            uint64        `json:"rx_seq"`
 	Verifier         AccountId     `json:"verifier"`
-	BMRs             []RelayStatus `json:"relays"`
-	BMRIndex         int           `json:"relay_index"`
-	RotateHeight     int64         `json:"rotate_height"`
-	RotateTerm       int           `json:"rotate_term"`
-	DelayLimit       int           `json:"delay_limit"`
-	MaxAggregation   int           `json:"max_aggregation"`
-	CurrentHeight    int64         `json:"current_height"`
-	RxHeight         int64         `json:"rx_height"`
-	RxHeightSrc      int64         `json:"rx_height_src"`
-	BlockIntervalSrc int           `json:"block_interval_src"`
-	BlockIntervalDst int           `json:"block_interval_dst"`
+	BMRIndex         uint          `json:"relay_index"`
+	RotateHeight     uint64        `json:"rotate_height"`
+	RotateTerm       uint          `json:"rotate_term"`
+	DelayLimit       uint          `json:"delay_limit"`
+	MaxAggregation   uint          `json:"max_aggregation"`
+	CurrentHeight    uint64        `json:"current_height"`
+	RxHeight         uint64        `json:"rx_height"`
+	RxHeightSrc      uint64        `json:"rx_height_src"`
+	BlockIntervalSrc uint          `json:"block_interval_src"`
+	BlockIntervalDst uint          `json:"block_interval_dst"`
 }

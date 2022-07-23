@@ -20,20 +20,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-<<<<<<< HEAD:cmd/btpsimple/module/icon/type.go
-	"strconv"
-	"strings"
-
-	"github.com/icon-project/btp/cmd/btpsimple/module/base"
-	"github.com/icon-project/btp/common/jsonrpc"
-=======
 	"math/big"
 	"strconv"
 	"strings"
 
 	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/types.go
 )
 
 const (
@@ -65,19 +57,14 @@ const (
 )
 
 const (
-	ResultStatusSuccess = "0x1"
+	ResultStatusSuccess           = "0x1"
 	ResultStatusFailureCodeRevert = 32
-	ResultStatusFailureCodeEnd = 99
+	ResultStatusFailureCodeEnd    = 99
 )
 
 const (
-<<<<<<< HEAD:cmd/btpsimple/module/icon/type.go
-	BMCRelayMethod       = "handleRelayMessage"
-	BMCGetStatusMethod   = "getStatus"
-=======
 	BMCRelayMethod     = "handleRelayMessage"
 	BMCGetStatusMethod = "getStatus"
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/types.go
 )
 
 type BlockHeader struct {
@@ -149,23 +136,6 @@ type BMCRelayMethodParams struct {
 	Messages string `json:"_msg"`
 }
 
-<<<<<<< HEAD:cmd/btpsimple/module/icon/type.go
-type BMCLinkMethodParams struct {
-	Target string `json:"_link"`
-}
-type BMCUnlinkMethodParams struct {
-	Target string `json:"_link"`
-}
-type BMCAddRouteMethodParams struct {
-	Destination string `json:"_dst"`
-	Link        string `json:"_link"`
-}
-type BMCRemoveRouteMethodParams struct {
-	Destination string `json:"_dst"`
-}
-
-=======
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/types.go
 type CallParam struct {
 	FromAddress Address     `json:"from" validate:"optional,t_addr_eoa"`
 	ToAddress   Address     `json:"to" validate:"required,t_addr_score"`
@@ -291,8 +261,6 @@ func (i HexInt) Int() (int, error) {
 	return int(v), err
 }
 
-<<<<<<< HEAD:cmd/btpsimple/module/icon/type.go
-=======
 func (i HexInt) BigInt() (*big.Int, error) {
 	bi := new(big.Int)
 	if err := intconv.ParseBigInt(bi, string(i)); err != nil {
@@ -302,7 +270,6 @@ func (i HexInt) BigInt() (*big.Int, error) {
 	}
 }
 
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/types.go
 func NewHexInt(v int64) HexInt {
 	return HexInt("0x" + strconv.FormatInt(v, 16))
 }
@@ -349,16 +316,9 @@ type Signature string
 type RelayMessage struct {
 	ReceiptProofs [][]byte
 	//
-<<<<<<< HEAD:cmd/btpsimple/module/icon/type.go
-	height              int64
-	numberOfBlockUpdate int
-	eventSequence       int64
-	numberOfEvent       int
-=======
 	height        int64
 	eventSequence int64
 	numberOfEvent int
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/types.go
 }
 
 type ReceiptProof struct {

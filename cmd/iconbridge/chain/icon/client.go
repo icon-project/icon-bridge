@@ -42,7 +42,7 @@ import (
 )
 
 const (
-	DefaultSendTransactionRetryInterval = 3 * time.Second //3sec
+	DefaultSendTransactionRetryInterval        = 3 * time.Second         //3sec
 	DefaultGetTransactionResultPollingInterval = 1500 * time.Millisecond //1.5sec
 )
 
@@ -148,11 +148,7 @@ txLoop:
 					}
 				}
 			}
-<<<<<<< HEAD:cmd/btpsimple/module/icon/client.go
-			c.l.Debugf("fail to SendTransaction hash:%v, err:%+v",txh, err)
-=======
 			c.log.Debugf("fail to SendTransaction hash:%v, err:%+v", txh, err)
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/client.go
 			return &thp.Hash, nil, err
 		}
 		thp.Hash = *txh
@@ -174,11 +170,7 @@ txrLoop:
 				}
 			}
 		}
-<<<<<<< HEAD:cmd/btpsimple/module/icon/client.go
-		c.l.Debugf("GetTransactionResult hash:%v, txr:%+v, err:%+v",thp.Hash, txr, err)
-=======
 		c.log.Debugf("GetTransactionResult hash:%v, txr:%+v, err:%+v", thp.Hash, txr, err)
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/client.go
 		return &thp.Hash, txr, err
 	}
 }
@@ -280,18 +272,11 @@ func (c *Client) MonitorBlock(ctx context.Context, p *BlockRequest, cb func(conn
 		switch t := v.(type) {
 		case *BlockNotification:
 			if err := cb(conn, t); err != nil {
-<<<<<<< HEAD:cmd/btpsimple/module/icon/client.go
-				c.l.Debugf("MonitorBlock callback return err:%+v",err)
-			}
-		case WSEvent:
-			c.l.Debugf("MonitorBlock WSEvent %s %+v",conn.LocalAddr().String() ,t)
-=======
 				// c.log.Debugf("MonitorBlock callback return err:%+v", err)
 				return err
 			}
 		case WSEvent:
 			c.log.Debugf("MonitorBlock WSEvent %s %+v", conn.LocalAddr().String(), t)
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/client.go
 			switch t {
 			case WSEventInit:
 				if scb != nil {
@@ -317,11 +302,7 @@ func (c *Client) MonitorEvent(ctx context.Context, p *EventRequest, cb func(conn
 		switch t := v.(type) {
 		case *EventNotification:
 			if err := cb(conn, t); err != nil {
-<<<<<<< HEAD:cmd/btpsimple/module/icon/client.go
-				c.l.Debugf("MonitorEvent callback return err:%+v",err)
-=======
 				c.log.Debugf("MonitorEvent callback return err:%+v", err)
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/client.go
 			}
 		case error:
 			errCb(conn, t)
@@ -340,13 +321,8 @@ func (c *Client) Monitor(ctx context.Context, reqUrl string, reqPtr, respPtr int
 	if err != nil {
 		return ErrConnectFail
 	}
-<<<<<<< HEAD:cmd/btpsimple/module/icon/client.go
-	defer func(){
-		c.l.Debugf("Monitor finish %s",conn.LocalAddr().String())
-=======
 	defer func() {
 		c.log.Debugf("Monitor finish %s", conn.LocalAddr().String())
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/client.go
 		c.wsClose(conn)
 	}()
 	if err = c.wsRequest(conn, reqPtr); err != nil {
@@ -359,21 +335,13 @@ func (c *Client) Monitor(ctx context.Context, reqUrl string, reqPtr, respPtr int
 }
 
 func (c *Client) CloseMonitor(conn *websocket.Conn) {
-<<<<<<< HEAD:cmd/btpsimple/module/icon/client.go
-	c.l.Debugf("CloseMonitor %s",conn.LocalAddr().String())
-=======
 	c.log.Debugf("CloseMonitor %s", conn.LocalAddr().String())
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/client.go
 	c.wsClose(conn)
 }
 
 func (c *Client) CloseAllMonitor() {
 	for _, conn := range c.conns {
-<<<<<<< HEAD:cmd/btpsimple/module/icon/client.go
-		c.l.Debugf("CloseAllMonitor %s",conn.LocalAddr().String())
-=======
 		c.log.Debugf("CloseAllMonitor %s", conn.LocalAddr().String())
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/client.go
 		c.wsClose(conn)
 	}
 }
@@ -446,17 +414,10 @@ func (c *Client) wsRequest(conn *websocket.Conn, reqPtr interface{}) error {
 func (c *Client) wsClose(conn *websocket.Conn) {
 	c._removeWsConn(conn)
 	if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
-<<<<<<< HEAD:cmd/btpsimple/module/icon/client.go
-		c.l.Debugf("fail to WriteMessage CloseNormalClosure err:%+v",err)
-	}
-	if err := conn.Close(); err != nil {
-		c.l.Debugf("fail to Close err:%+v",err)
-=======
 		c.log.Debugf("fail to WriteMessage CloseNormalClosure err:%+v", err)
 	}
 	if err := conn.Close(); err != nil {
 		c.log.Debugf("fail to Close err:%+v", err)
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/client.go
 	}
 }
 
@@ -474,18 +435,6 @@ func (c *Client) wsRead(conn *websocket.Conn, respPtr interface{}) error {
 func (c *Client) wsReadJSONLoop(ctx context.Context, conn *websocket.Conn, respPtr interface{}, cb wsReadCallback) error {
 	elem := reflect.ValueOf(respPtr).Elem()
 	for {
-<<<<<<< HEAD:cmd/btpsimple/module/icon/client.go
-		v := reflect.New(elem.Type())
-		ptr := v.Interface()
-		if _, ok := c.conns[conn.LocalAddr().String()]; !ok {
-			c.l.Debugf("wsReadJSONLoop c.conns[%s] is nil",conn.LocalAddr().String())
-			return nil
-		}
-		if err := c.wsRead(conn, ptr); err != nil {
-			c.l.Debugf("wsReadJSONLoop c.conns[%s] ReadJSON err:%+v",conn.LocalAddr().String(), err)
-			if cErr, ok := err.(*websocket.CloseError); !ok || cErr.Code != websocket.CloseNormalClosure {
-				cb(conn, err)
-=======
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -505,28 +454,17 @@ func (c *Client) wsReadJSONLoop(ctx context.Context, conn *websocket.Conn, respP
 			}
 			if err := cb(conn, ptr); err != nil {
 				return err
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/client.go
 			}
 		}
 
 	}
 }
 
-<<<<<<< HEAD:cmd/btpsimple/module/icon/client.go
-func NewClient(uri string, l log.Logger) *Client {
-	//TODO options {MaxRetrySendTx, MaxRetryGetResult, MaxIdleConnsPerHost, Debug, Dump}
-	tr := &http.Transport{MaxIdleConnsPerHost: 1000}
-	c := &Client{
-		Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport:tr}, uri),
-		conns:  make(map[string]*websocket.Conn),
-		l:      l,
-=======
 func (c *Client) getBlockHeaderByHeight(height int64) (*BlockHeader, error) {
 	p := &BlockHeightParam{Height: NewHexInt(height)}
 	b, err := c.GetBlockHeaderByHeight(p)
 	if err != nil {
 		return nil, mapError(err)
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/client.go
 	}
 	var bh BlockHeader
 	_, err = codec.RLP.UnmarshalFromBytes(b, &bh)
@@ -657,8 +595,6 @@ func NewIconOptionsByHeader(h http.Header) IconOptions {
 	return nil
 }
 
-<<<<<<< HEAD:cmd/btpsimple/module/icon/client.go
-=======
 func NewClient(uri string, l log.Logger) *Client {
 	//TODO options {MaxRetrySendTx, MaxRetryGetResult, MaxIdleConnsPerHost, Debug, Dump}
 	tr := &http.Transport{MaxIdleConnsPerHost: 1000}
@@ -672,4 +608,3 @@ func NewClient(uri string, l log.Logger) *Client {
 	c.CustomHeader[HeaderKeyIconOptions] = opts.ToHeaderValue()
 	return c
 }
->>>>>>> hugobyte/development:cmd/iconbridge/chain/icon/client.go

@@ -151,8 +151,8 @@ func (h HeaderInnerRest) BorshSerialize() ([]byte, error) {
 
 	var approvals []byte
 	for i := 0; i < len(h.Approvals); i++ {
-		if h.Approvals[i] != nil {
-			approvals = append(approvals, append([]byte{1}, h.Approvals[i]...)...)
+		if &h.Approvals[i] != nil {
+			approvals = append(approvals, append([]byte{1}, h.Approvals[i].Bytes()...)...)
 		} else {
 			approvals = append(approvals, []byte{0}...)
 		}

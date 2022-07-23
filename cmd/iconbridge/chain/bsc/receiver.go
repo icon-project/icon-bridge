@@ -17,263 +17,36 @@
 package bsc
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"io"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
-	"github.com/ethereum/go-ethereum/light"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
-	"github.com/icon-project/btp/cmd/btpsimple/module/base"
-	"github.com/icon-project/btp/cmd/btpsimple/module/bsc/binding"
-	"github.com/icon-project/btp/common/codec"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/binding"
 
 	"math/big"
 
-	"github.com/icon-project/btp/common/log"
-)
-
-const (
-	EPOCH = 200
+	"github.com/icon-project/icon-bridge/common/errors"
+	"github.com/icon-project/icon-bridge/common/log"
 )
 
 type receiver struct {
-	c   *Client
-	src base.BtpAddress
-	dst base.BtpAddress
+	cl  *client
+	src chain.BTPAddress
+	dst chain.BTPAddress
 	log log.Logger
 	opt struct {
 	}
-	consensusStates    ConsensusStates
-	evtReq             *BlockRequest
-	isFoundOffsetBySeq bool
 }
 
-func (r *receiver) newBlockUpdate(v *BlockNotification) (*base.BlockUpdate, error) {
-	var err error
-
-	bu := &base.BlockUpdate{
-		BlockHash: v.Hash.Bytes(),
-		Height:    v.Height.Int64(),
-	}
-
-	header := MakeHeader(v.Header)
-	bu.Header, err = codec.RLP.MarshalToBytes(*header)
-	if err != nil {
-		return nil, err
-	}
-
-	encodedHeader, _ := rlp.EncodeToBytes(v.Header)
-	if !bytes.Equal(v.Header.Hash().Bytes(), crypto.Keccak256(encodedHeader)) {
-		return nil, fmt.Errorf("mismatch block hash with BlockNotification")
-	}
-
-	/*proof, err := r.c.GetProof(v.Height, HexToAddress(r.src.ContractAddress()))
-	if err != nil {
-		return nil, err
-	}*/
-
-	if (v.Height.Int64() % EPOCH) == 0 {
-		r.consensusStates, err = r.c.GetLatestConsensusState()
-	}
-
-	update := &BlockUpdate{}
-	update.BlockHeader, _ = codec.RLP.MarshalToBytes(*header)
-	update.Validators = r.consensusStates.NextValidatorSet
-	buf := new(bytes.Buffer)
-	encodeSigHeader(buf, v.Header)
-	update.EvmHeader = buf.Bytes()
-
-	bu.Proof, err = codec.RLP.MarshalToBytes(update)
-	if err != nil {
-		return nil, err
-	}
-
-	return bu, nil
-}
-
-func encodeSigHeader(w io.Writer, header *types.Header) {
-	err := rlp.Encode(w, []interface{}{
-		big.NewInt(97),
-		header.ParentHash,
-		header.UncleHash,
-		header.Coinbase,
-		header.Root,
-		header.TxHash,
-		header.ReceiptHash,
-		header.Bloom,
-		header.Difficulty,
-		header.Number,
-		header.GasLimit,
-		header.GasUsed,
-		header.Time,
-		header.Extra[:len(header.Extra)-65], // Yes, this will panic if extra is too short
-		header.MixDigest,
-		header.Nonce,
-	})
-
-	if err != nil {
-		panic("can't encode: " + err.Error())
-	}
-}
-
-func (r *receiver) newReceiptProofs(v *BlockNotification) ([]*base.ReceiptProof, error) {
-	rps := make([]*base.ReceiptProof, 0)
-
-	block, err := r.c.GetBlockByHeight(v.Height)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(block.Transactions()) == 0 {
-		return rps, nil
-	}
-
-	receipts, err := r.c.GetBlockReceipts(block)
-	if err != nil {
-		return nil, err
-	}
-
-	if block.GasUsed() == 0 {
-		r.log.Println("Block %s has 0 gas", block.Number(), len(block.Transactions()))
-		return rps, nil
-	}
-
-	srcContractAddress := HexToAddress(r.src.ContractAddress())
-
-	receiptTrie, err := trieFromReceipts(receipts) // receiptTrie.Hash() == block.ReceiptHash
-
-	for _, receipt := range receipts {
-		rp := &base.ReceiptProof{}
-
-		for _, eventLog := range receipt.Logs {
-			if eventLog.Address != srcContractAddress {
-				continue
-			}
-
-			if bmcMsg, err := binding.UnpackEventLog(eventLog.Data); err == nil {
-				rp.Events = append(rp.Events, &base.Event{
-					Message:  bmcMsg.Msg,
-					Next:     base.BtpAddress(bmcMsg.Next),
-					Sequence: bmcMsg.Seq.Int64(),
-				})
-			}
-
-			proof, err := codec.RLP.MarshalToBytes(*MakeLog(eventLog))
-			if err != nil {
-				return nil, err
-			}
-			rp.EventProofs = append(rp.EventProofs, &base.EventProof{
-				Index: int(eventLog.Index),
-				Proof: proof,
-			})
-		}
-
-		if len(rp.Events) > 0 {
-			key, err := rlp.EncodeToBytes(receipt.TransactionIndex)
-			r.log.Debugf("newReceiptProofs: height:%d hash:%s key:%d", v.Height, block.ReceiptHash(), key)
-			proofs, err := receiptProof(receiptTrie, key)
-			if err != nil {
-				return nil, err
-			}
-			rp.Index = int(receipt.TransactionIndex)
-			rp.Proof, err = codec.RLP.MarshalToBytes(proofs)
-			if err != nil {
-				return nil, err
-			}
-			rps = append(rps, rp)
-		}
-	}
-	return rps, nil
-}
-
-func trieFromReceipts(receipts []*types.Receipt) (*trie.Trie, error) {
-	tr, _ := trie.New(common.Hash{}, trie.NewDatabase(memorydb.New()))
-
-	for i, r := range receipts {
-		path, err := rlp.EncodeToBytes(uint(i))
-
-		if err != nil {
-			return nil, err
-		}
-
-		rawReceipt, err := rlp.EncodeToBytes(r)
-		if err != nil {
-			return nil, err
-		}
-
-		tr.Update(path, rawReceipt)
-	}
-
-	_, err := tr.Commit(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return tr, nil
-}
-
-func receiptProof(receiptTrie *trie.Trie, key []byte) ([][]byte, error) {
-	proofSet := light.NewNodeSet()
-	err := receiptTrie.Prove(key, 0, proofSet)
-	if err != nil {
-		return nil, err
-	}
-	proofs := make([][]byte, 0)
-	for _, node := range proofSet.NodeList() {
-		fmt.Println(hexutil.Encode(node))
-		proofs = append(proofs, node)
-	}
-	return proofs, nil
-}
-
-func (r *receiver) ReceiveLoop(height int64, seq int64, cb base.ReceiveCallback, scb func()) error {
-	r.log.Debugf("ReceiveLoop connected")
-	br := &BlockRequest{
-		Height: big.NewInt(height),
-	}
-	var err error
-	if seq < 1 {
-		r.isFoundOffsetBySeq = true
-	}
-	r.consensusStates, err = r.c.GetLatestConsensusState()
-	if err != nil {
-		r.log.Errorf(err.Error())
-	}
-	return r.c.MonitorBlock(br,
-		func(v *BlockNotification) error {
-			var bu *base.BlockUpdate
-			var rps []*base.ReceiptProof
-			if bu, err = r.newBlockUpdate(v); err != nil {
-				return err
-			}
-			if rps, err = r.newReceiptProofs(v); err != nil {
-				return err
-			} else if r.isFoundOffsetBySeq {
-				cb(bu, rps)
-			} else {
-				cb(bu, nil)
-			}
-			return nil
-		},
-	)
-}
-
-func (r *receiver) StopReceiveLoop() {
-	r.c.CloseAllMonitor()
-}
-
-func NewReceiver(src, dst base.BtpAddress, endpoint string, opt map[string]interface{}, l log.Logger) base.Receiver {
+func NewReceiver(src, dst chain.BTPAddress, endpoints []string, opt map[string]interface{}, l log.Logger) (chain.Receiver, error) {
 	r := &receiver{
 		src: src,
 		dst: dst,
 		log: l,
+	}
+	if len(endpoints) == 0 {
+		return nil, fmt.Errorf("empty urls: %v", endpoints)
 	}
 	b, err := json.Marshal(opt)
 	if err != nil {
@@ -282,13 +55,118 @@ func NewReceiver(src, dst base.BtpAddress, endpoint string, opt map[string]inter
 	if err = json.Unmarshal(b, &r.opt); err != nil {
 		l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
 	}
-	r.c = NewClient(endpoint, l)
-	return r
+	r.cl, err = NewClient(endpoints, src.ContractAddress(), l)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
-func (r *receiver) GetBlockUpdate(height int64) (*base.BlockUpdate, error) {
-	var bu *base.BlockUpdate
-	v := &BlockNotification{Height: big.NewInt(height)}
-	bu, err := r.newBlockUpdate(v)
-	return bu, err
+func (r *receiver) newBTPMessage(v *BlockNotification) ([]*chain.Receipt, error) {
+	var receipts []*chain.Receipt
+	var events []*chain.Event
+	srcContractAddress := HexToAddress(r.src.ContractAddress())
+
+	var index, BlockNumber uint64
+	events = events[:0]
+	for _, vLog := range v.Logs {
+		if bmcMsg, err := binding.UnpackEventLog(vLog.Data); err == nil {
+			events = append(events, &chain.Event{
+				Message:  bmcMsg.Msg,
+				Next:     chain.BTPAddress(bmcMsg.Next),
+				Sequence: bmcMsg.Seq.Uint64(),
+			})
+			index = uint64(vLog.Index)
+			BlockNumber = vLog.BlockNumber
+		}
+	}
+	if len(events) > 0 {
+		rp := &chain.Receipt{}
+		rp.Index = uint64(index)
+		rp.Height = BlockNumber
+		rp.Events = append(rp.Events, events...)
+		receipts = append(receipts, rp)
+		r.log.Debugf("event found for height %v & address: %v", rp.Height, srcContractAddress)
+	}
+
+	return receipts, nil
+}
+
+func (r *receiver) receiveLoop(ctx context.Context, height int64, callback func(v *BlockNotification) error) error {
+	r.log.Debugf("ReceiveLoop connected")
+	br := &BlockRequest{
+		Height:             big.NewInt(height),
+		SrcContractAddress: HexToAddress(r.src.ContractAddress()),
+	}
+	r.cl.MonitorBlock(ctx, br,
+		func(v *BlockNotification) error {
+			if err := callback(v); err != nil {
+				return errors.Wrapf(err, "receiveLoop: callback: %v", err)
+			}
+			return nil
+		},
+	)
+	return nil
+}
+
+func (r *receiver) StopReceiveLoop() {
+	r.cl.CloseAllMonitor()
+}
+
+func (r *receiver) Subscribe(
+	ctx context.Context, msgCh chan<- *chain.Message,
+	opts chain.SubscribeOptions) (errCh <-chan error, err error) {
+
+	opts.Seq++
+
+	_errCh := make(chan error)
+
+	go func() {
+		defer close(_errCh)
+		lastHeight := opts.Height - 1
+		if err := r.receiveLoop(ctx, int64(opts.Height),
+			func(v *BlockNotification) error {
+				r.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
+
+				if v.Height.Uint64() != lastHeight+1 {
+					r.log.Errorf("expected v.Height == %d, got %d", lastHeight+1, v.Height.Uint64())
+					return fmt.Errorf(
+						"block notification: expected=%d, got=%d",
+						lastHeight+1, v.Height.Uint64())
+				}
+
+				receipts, err := r.newBTPMessage(v)
+				if err != nil {
+					return fmt.Errorf("Error creating BTP message from block notification: %v", err)
+				}
+
+				for _, receipt := range receipts {
+					events := receipt.Events[:0]
+					for _, event := range receipt.Events {
+						r.log.Infof("evt seq %v seq no %v", event.Sequence, opts.Seq)
+						switch {
+						case event.Sequence == opts.Seq:
+							events = append(events, event)
+							opts.Seq++
+						case event.Sequence > opts.Seq:
+							r.log.WithFields(log.Fields{
+								"seq": log.Fields{"got": event.Sequence, "expected": opts.Seq},
+							}).Error("invalid event seq")
+							return fmt.Errorf("invalid event seq")
+						}
+					}
+					receipt.Events = events
+				}
+
+				msgCh <- &chain.Message{Receipts: receipts}
+				lastHeight++
+				return nil
+			}); err != nil {
+			// TODO decide whether to ignore or handle err
+			r.log.Errorf("receiveLoop terminated: %v", err)
+			_errCh <- err
+		}
+	}()
+
+	return _errCh, nil
 }
