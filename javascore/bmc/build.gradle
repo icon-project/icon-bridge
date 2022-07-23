@@ -6,19 +6,18 @@ dependencies {
     implementation fileTree(dir: '../lib', include: 'score-util.jar')
     implementation fileTree(dir: '../lib', include: 'lib-0.1.0.jar')
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.7.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.7.2")
+    testImplementation('org.junit.jupiter:junit-jupiter-api:5.8.2')
+    testRuntimeOnly('org.junit.jupiter:junit-jupiter-engine:5.8.2')
+    testImplementation('org.junit.jupiter:junit-jupiter-params:5.8.2')
 
     testImplementation("foundation.icon:javaee-unittest:$javaeeUnittestVersion")
     testAnnotationProcessor("foundation.icon:javaee-score-client:$scoreClientVersion")
     testImplementation("foundation.icon:javaee-score-client:$scoreClientVersion")
     testImplementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
     testImplementation("foundation.icon:icon-sdk:$iconsdkVersion")
-    testImplementation("com.github.javafaker:javafaker:1.0.2")
 
     testImplementation 'org.mockito:mockito-core:3.3.3'
-    testImplementation 'org.bouncycastle:bcprov-jdk15on:1.60'
+    testImplementation 'org.bouncycastle:bcprov-jdk15on:1.70'
 }
 
 optimizedJar {
@@ -35,6 +34,14 @@ deployJar {
         gangnam {
             uri = 'https://gicon.net.solidwallet.io/api/v3'
             nid = 7
+        }
+        berlin {
+            uri = 'https://berlin.net.solidwallet.io/api/v3'
+            nid = 0x7
+        }
+        local {
+            uri = 'http://localhost:9082/api/v3'
+            nid = 0x3
         }
 
     }

@@ -15,6 +15,7 @@ allprojects {
 
 dependencies {
     implementation project(':bts')
+    implementation project(':token-bsh')
     implementation 'foundation.icon:javaee-api:0.9.0'
     implementation 'foundation.icon:javaee-rt:0.9.0'
     implementation 'foundation.icon:javaee-tooling:0.9.0'
@@ -26,10 +27,10 @@ dependencies {
     testImplementation 'com.squareup.okhttp3:okhttp:3.11.0'
     testImplementation 'com.squareup.okhttp3:okhttp:3.11.0'
     testImplementation 'com.squareup.okhttp3:logging-interceptor:3.11.0'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
     testImplementation fileTree(dir: '../lib', include: 'goloop-testsuite.jar')
     //testImplementation fileTree(dir: '../lib', include: 'testsvc.jar')
-    testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.2"
+    testRuntime "org.junit.jupiter:junit-jupiter-engine:5.8.2"
 }
 
 class ChainTest extends Test {
