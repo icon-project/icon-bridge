@@ -3,38 +3,38 @@ set -e
 
 source provision.sh
 
-if [ "$BTPSIMPLE_OFFSET" != "" ] && [ -f "$BTPSIMPLE_OFFSET" ]; then
-   export BTPSIMPLE_OFFSET=$(cat ${BTPSIMPLE_OFFSET})
+if [ "$ICONBRIDGE_OFFSET" != "" ] && [ -f "$ICONBRIDGE_OFFSET" ]; then
+    export ICONBRIDGE_OFFSET=$(cat ${ICONBRIDGE_OFFSET})
 fi
 
-if [ "$BTPSIMPLE_CONFIG" != "" ] && [ ! -f "$BTPSIMPLE_CONFIG" ]; then
-    echo "Setup configuration $BTPSIMPLE_CONFIG"
-    UNSET="BTPSIMPLE_CONFIG"
-    CMD="btpsimple save $BTPSIMPLE_CONFIG"
-    if [ "$BTPSIMPLE_KEY_SECRET" != "" ] && [ ! -f "$BTPSIMPLE_KEY_SECRET" ]; then
-        mkdir -p $(dirname $BTPSIMPLE_KEY_SECRET)
-        printf $(date|md5sum|head -c16) > $BTPSIMPLE_KEY_SECRET
+if [ "$ICONBRIDGE_CONFIG" != "" ] && [ ! -f "$ICONBRIDGE_CONFIG" ]; then
+    echo "Setup configuration $ICONBRIDGE_CONFIG"
+    UNSET="ICONBRIDGE_CONFIG"
+    CMD="iconbridge save $ICONBRIDGE_CONFIG"
+    if [ "$ICONBRIDGE_KEY_SECRET" != "" ] && [ ! -f "$ICONBRIDGE_KEY_SECRET" ]; then
+        mkdir -p $(dirname $ICONBRIDGE_KEY_SECRET)
+        printf $(date | md5sum | head -c16) >$ICONBRIDGE_KEY_SECRET
     fi
-    if [ "$BTPSIMPLE_KEY_STORE" != "" ] && [ ! -f "$BTPSIMPLE_KEY_STORE" ]; then
-        echo "Save keystore $BTPSIMPLE_CONFIG"
-        UNSET="$UNSET BTPSIMPLE_KEY_STORE"
-        CMD="$CMD --save_key_store=$BTPSIMPLE_KEY_STORE"
+    if [ "$ICONBRIDGE_KEY_STORE" != "" ] && [ ! -f "$ICONBRIDGE_KEY_STORE" ]; then
+        echo "Save keystore $ICONBRIDGE_CONFIG"
+        UNSET="$UNSET ICONBRIDGE_KEY_STORE"
+        CMD="$CMD --save_key_store=$ICONBRIDGE_KEY_STORE"
     fi
-    if [ "$BTPSIMPLE_OFFSET" != "" ] && [ -f "$BTPSIMPLE_OFFSET" ]; then
-        export BTPSIMPLE_OFFSET=$(cat ${BTPSIMPLE_OFFSET})
+    if [ "$ICONBRIDGE_OFFSET" != "" ] && [ -f "$ICONBRIDGE_OFFSET" ]; then
+        export ICONBRIDGE_OFFSET=$(cat ${ICONBRIDGE_OFFSET})
     fi
 
-    if [ "$BTPSIMPLE_SRC_ADDRESS" != "" ] && [ -f "$BTPSIMPLE_SRC_ADDRESS" ]; then
-    export BTPSIMPLE_SRC_ADDRESS=$(cat ${BTPSIMPLE_SRC_ADDRESS})
+    if [ "$ICONBRIDGE_SRC_ADDRESS" != "" ] && [ -f "$ICONBRIDGE_SRC_ADDRESS" ]; then
+        export ICONBRIDGE_SRC_ADDRESS=$(cat ${ICONBRIDGE_SRC_ADDRESS})
     fi
-    if [ "$BTPSIMPLE_SRC_ENDPOINT" != "" ] && [ -f "$BTPSIMPLE_SRC_ENDPOINT" ]; then
-        export BTPSIMPLE_SRC_ENDPOINT=$(cat ${BTPSIMPLE_SRC_ENDPOINT})
+    if [ "$ICONBRIDGE_SRC_ENDPOINT" != "" ] && [ -f "$ICONBRIDGE_SRC_ENDPOINT" ]; then
+        export ICONBRIDGE_SRC_ENDPOINT=$(cat ${ICONBRIDGE_SRC_ENDPOINT})
     fi
-    if [ "$BTPSIMPLE_DST_ADDRESS" != "" ] && [ -f "$BTPSIMPLE_DST_ADDRESS" ]; then
-        export BTPSIMPLE_DST_ADDRESS=$(cat ${BTPSIMPLE_DST_ADDRESS})
+    if [ "$ICONBRIDGE_DST_ADDRESS" != "" ] && [ -f "$ICONBRIDGE_DST_ADDRESS" ]; then
+        export ICONBRIDGE_DST_ADDRESS=$(cat ${ICONBRIDGE_DST_ADDRESS})
     fi
-    if [ "$BTPSIMPLE_DST_ENDPOINT" != "" ] && [ -f "$BTPSIMPLE_DST_ENDPOINT" ]; then
-        export BTPSIMPLE_DST_ENDPOINT=$(cat ${BTPSIMPLE_DST_ENDPOINT})
+    if [ "$ICONBRIDGE_DST_ENDPOINT" != "" ] && [ -f "$ICONBRIDGE_DST_ENDPOINT" ]; then
+        export ICONBRIDGE_DST_ENDPOINT=$(cat ${ICONBRIDGE_DST_ENDPOINT})
     fi
     sh -c "unset $UNSET ; $CMD"
 fi

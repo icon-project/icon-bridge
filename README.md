@@ -51,7 +51,7 @@ Terminologies
 
 - [Build Guide](doc/build.md)
 - [Tutorial](doc/tutorial.md)
-- [btpsimple command line](doc/btpsimple_cli.md)
+- [iconbridge command line](doc/iconbridge_cli.md)
 - [Binance Smart Chain Guide](doc/bsc-guide.md)
 - [Harmony Guide](doc/hmny-guide.md)
 
@@ -60,10 +60,10 @@ Terminologies
 | Directory                            | Description                                                                                       |
 | :----------------------------------- | :------------------------------------------------------------------------------------------------ |
 | /cmd                                 | Root of implement of BMR                                                                          |
-| /cmd/btpsimple                       | Reference implement of BMR. only provide unidirectional relay. (golang)                           |
-| /cmd/btpsimple/relay                 | Implement of common logic of BMR, uses chain package                                              |
-| /cmd/btpsimple/chain                 | BMR module interface, common code, and chain specific packages                                    |
-| /cmd/btpsimple/chain/`<blockchain>`  | Implement of BMR module (`Sender`,`Receiver`), `<blockchain>` is name of blockchain               |
+| /cmd/iconbridge                       | Reference implement of BMR. only provide unidirectional relay. (golang)                           |
+| /cmd/iconbridge/relay                 | Implement of common logic of BMR, uses chain package                                              |
+| /cmd/iconbridge/chain                 | BMR module interface, common code, and chain specific packages                                    |
+| /cmd/iconbridge/chain/`<blockchain>`  | Implement of BMR module (`Sender`,`Receiver`), `<blockchain>` is name of blockchain               |
 | /common                              | Common code (golang)                                                                              |
 | /doc                                 | Documents                                                                                         |
 | /docker                              | Docker related resources                                                                          |
@@ -78,5 +78,5 @@ Terminologies
 
 | Directory                  | Description                       |
 | :------------------------- | :-------------------------------- |
-| /cmd/btpsimple/module/icon | BMR module for ICON blockchain    |
-| /cmd/btpsimple/module/hmny | BMR module for Harmony blockchain |
+| /cmd/iconbridge/module/icon | BMR module for ICON blockchain    |
+| /cmd/iconbridge/module/hmny | BMR module for Harmony blockchain |

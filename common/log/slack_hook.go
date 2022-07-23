@@ -147,8 +147,14 @@ func (sh *SlackHook) forward() {
 						if len(e.Data) > 0 { // If log was invoked WithFields, get the key value pairs
 							req = e.Data
 						}
-						req["Message"] = e.Message // Add the message passed to logging
+						// Add the message passed to logging
+						if e.Level == logrus.WarnLevel || e.Level == logrus.ErrorLevel || e.Level == logrus.FatalLevel || e.Level == logrus.PanicLevel {
+							req["Message"] = "*" + e.Message + "*"
+						} else {
+							req["Message"] = e.Message
+						}
 						req["Level"] = e.Level
+						req["Time"] = e.Time.UTC().Format("2006-01-02 15:04:05.000") // UTC Event log
 						if reqBytes, err := json.Marshal(req); err == nil && reqBytes != nil {
 							reqStr += string(reqBytes) + "\n"
 						} else {

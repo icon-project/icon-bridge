@@ -3,10 +3,9 @@
 # Parts of this code is adapted from https://github.com/icon-project/btp/blob/goloop2moonbeam/testnet/goloop2moonbeam/scripts
 source env.variables.sh
 source rpc.sh
-source /btpsimple/bin/keystore.sh
+source /iconbridge/bin/keystore.sh
 source utils.sh
 ensure_key_store alice.ks.json alice.secret
-
 
 deploy_javascore_nativeCoin_BSH() {
   echo "deploying javascore Native coin BSH"
@@ -18,6 +17,7 @@ deploy_javascore_nativeCoin_BSH() {
     --param _serializedIrc2=$IRC2_SERIALIZED_SCORE \
     --param _name=ICX | jq -r . >tx.nativebsh.icon
   extract_scoreAddress tx.nativebsh.icon nativebsh.icon
+  extract_scoreAddress tx.nativebsh.icon token_bsh.icon
 }
 
 bmc_javascore_addNativeService() {
@@ -33,27 +33,53 @@ bmc_javascore_addNativeService() {
 nativeBSH_javascore_register() {
   echo "Register Coin Name with NativeBSH"
   cd $CONFIG_DIR
+  FEE_NUMERATOR=0x64
+  FIXED_FEE=0x1388
   goloop rpc sendtx call --to $(cat nativebsh.icon) \
     --method register \
     --param _name=BNB \
     --param _symbol=BNB \
-    --param _decimals=18 | jq -r . >tx/register.nativeCoin.icon
+    --param _decimals=18 \
+    --param _feeNumerator=${FEE_NUMERATOR} \
+    --param _fixedFee=${FIXED_FEE} | jq -r . >tx/register.nativeCoin.icon
   ensure_txresult tx/register.nativeCoin.icon
 
   goloop rpc call --to $(cat nativebsh.icon) \
-        --method coinAddress --param _coinName=BNB | sed -e 's/^"//' -e 's/"$//' > irc2TradeableToken.icon
+    --method coinAddress --param _coinName=BNB | sed -e 's/^"//' -e 's/"$//' >irc2TradeableToken.icon
 }
+
+
+nativeBSH_javascore_register_token() {
+  echo "Register Coin Name with NativeBSH"
+  cd $CONFIG_DIR
+  FEE_NUMERATOR=0x64
+  FIXED_FEE=0x1388
+  goloop rpc sendtx call --to $(cat nativebsh.icon) \
+    --method register \
+    --param _addr=$(cat irc2_token.icon) \
+    --param _name=${TOKEN_NAME} \
+    --param _symbol=${TOKEN_SYM} \
+    --param _decimals=${TOKEN_DECIMALS}  \
+    --param _feeNumerator=${FEE_NUMERATOR} \
+    --param _fixedFee=${FIXED_FEE} | jq -r . >tx/register.token.icon
+  ensure_txresult tx/register.token.icon  
+}
+
 
 nativeBSH_javascore_setFeeRatio() {
   echo "Setting Fee ratio for NativeCoin"
   cd $CONFIG_DIR
+  FEE_NUMERATOR=0x64
+  FIXED_FEE=0x1388
   goloop rpc sendtx call --to $(cat nativebsh.icon) \
     --method setFeeRatio \
-    --param _feeNumerator=100 | jq -r . >tx/setFeeRatio.nativebsh.icon
+    --param _name=ICX \
+    --param _feeNumerator=${FEE_NUMERATOR} \
+    --param _fixedFee=${FIXED_FEE} | jq -r . >tx/setFeeRatio.nativebsh.icon
   ensure_txresult tx/setFeeRatio.nativebsh.icon
 }
 
-configure_javascore_NativeBSH_restrictor(){
+configure_javascore_NativeBSH_restrictor() {
   echo "configuring javascore Restrictor for TokenBSH"
   cd $CONFIG_DIR
   goloop rpc sendtx call --to $(cat nativebsh.icon) \
@@ -61,7 +87,6 @@ configure_javascore_NativeBSH_restrictor(){
     --param _address=$(cat restrictor.icon) | jq -r . >tx.configure.addRestrictor.nativebsh.icon
   ensure_txresult tx.configure.addRestrictor.nativebsh.icon
 
-  
   weiAmount=$(coin2wei 10000)
   goloop rpc sendtx call --to $(cat restrictor.icon) \
     --method registerTokenLimit \
@@ -108,7 +133,6 @@ transfer_ICX_from_Alice_to_Bob() {
     jq -r . >tx/Alice2Bob.transfer
   ensure_txresult tx/Alice2Bob.transfer
 }
-
 
 transfer_BNB_from_Alice_to_Bob() {
   BNB_TRANSER_AMOUNT=$1
@@ -176,7 +200,6 @@ check_alice_wrapped_native_balance_with_wait() {
   done
   echo "Alice's Balance after BTP transfer: $ALICE_CURR_BAL"
 }
-
 
 check_alice_native_balance_with_wait() {
   echo "Checking Alice's balance..."

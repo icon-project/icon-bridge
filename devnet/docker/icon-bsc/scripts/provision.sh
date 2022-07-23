@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 # Parts of this code is adapted from https://github.com/icon-project/btp/blob/goloop2moonbeam/testnet/goloop2moonbeam/scripts
@@ -6,101 +6,95 @@ source env.variables.sh
 
 source rpc.sh
 
-eth_blocknumber() {
-  curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' \
-    --data-raw '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[], "id": 1}' | jq -r .result | xargs printf "%d\n"
-}
-
-goloop_lastblock() {
-  goloop rpc lastblock
-}
 
 provision() {
-  
-  cp -r $BTPSIMPLE_BASE_DIR/keys/* $BTPSIMPLE_CONFIG_DIR
-  cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_BIN_DIR/env
+  cp -r $ICONBRIDGE_BASE_DIR/keys/* $ICONBRIDGE_CONFIG_DIR
+  cp $ICONBRIDGE_CONFIG_DIR/env $ICONBRIDGE_BIN_DIR/env
 
-  if [ ! -f $BTPSIMPLE_CONFIG_DIR/provision ]; then
-    echo "start provisioning..."    
-
-    # shellcheck disable=SC2059
-
-    echo "$GOLOOP_RPC_NID.icon" >net.btp.icon
-    mkdir -p $BTPSIMPLE_CONFIG_DIR/tx
-    eth_blocknumber >/btpsimple/config/offset.bsc
+  if [ ! -f $ICONBRIDGE_CONFIG_DIR/provision ]; then
+    echo "start provisioning..."
+    sleep 30
+    echo "$GOLOOP_RPC_NID.icon" >net.btp.icon #0x240fa7.icon
+    mkdir -p $ICONBRIDGE_CONFIG_DIR/tx
 
     source token.javascore.sh
     source token.solidity.sh
 
+    #deploy icon
     deploy_javascore_bmc
-    deploy_javascore_bsh
+    deploy_javascore_bsr
+    deploy_javascore_bts
     deploy_javascore_irc2
-
     deploy_solidity_bmc
+    deploy_solidity_bts
+    #deploy bsc
 
-    bmc_javascore_addService
-    bsh_javascore_register
 
-    source nativeCoin.javascore.sh
-    deploy_javascore_nativeCoin_BSH
-    bmc_javascore_addNativeService
-    nativeBSH_javascore_register
-    nativeBSH_javascore_setFeeRatio
+    generate_addresses_json >$ICONBRIDGE_CONFIG_DIR/addresses.json
+    cp $ICONBRIDGE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
+    cp $ICONBRIDGE_CONFIG_DIR/addresses.json $ICONBRIDGE_CONTRACTS_DIR/solidity/bts/
+    cp $ICONBRIDGE_CONFIG_DIR/addresses.json $ICONBRIDGE_CONTRACTS_DIR/solidity/bmc/
 
-    deploy_solidity_tokenBSH_BEP20
-    source nativeCoin.solidity.sh
-    deploy_solidity_nativeCoin_BSH
+    #configure icon
+    echo "CONFIGURE ICON"
+    configure_javascore_add_bmc_owner
+    configure_javascore_bmc_setFeeAggregator
+    configure_javascore_add_bts
+    configure_javascore_add_bts_owner
+    configure_javascore_set_bsr
+    configure_javascore_bts_setICXFee
+    #configure bsc    
+    echo "CONFIGURE BSC"
+    configure_solidity_add_bts_service
+    configure_solidity_set_fee_ratio
 
-    generate_addresses_json >$BTPSIMPLE_CONFIG_DIR/addresses.json
-    cp $BTPSIMPLE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
+    #Link icon
+    echo "LINK ICON"
+    configure_javascore_addLink
+    configure_bmc_javascore_addRelay
+    configure_javascore_register_bnb
+    get_btp_icon_bnb
+    configure_javascore_register_ticx
+    configure_javascore_register_tbnb
+    get_btp_icon_tbnb
 
-    bsc_addService
-    bsc_registerToken
-
-    bmc_solidity_addNativeService
-    nativeBSH_solidity_register
-
-    token_bsc_fundBSH
-    token_icon_fundBSH
-
-    deploy_javascore_restrictor
-    configure_javascore_TokenBSH_restrictor
-    configure_javascore_NativeBSH_restrictor
-
-    bmc_javascore_addLink
-    bmc_javascore_addRelay
-
+    #Link bsc
+    echo "LINK BSC"
     add_icon_link
+    set_link_height
     add_icon_relay
+    bsc_register_icx
+    get_coinID_icx
+    bsc_register_tbnb
+    get_coinID_tbnb
+    bsc_register_ticx
+    get_coinID_ticx
 
-    generate_relay_config >$BTPSIMPLE_CONFIG_DIR/bmr.config.json
-    wait_for_file $BTPSIMPLE_CONFIG_DIR/bmr.config.json
+    # token_bsc_fundBSH
+    # token_icon_fundBSH
 
-    cp $BTPSIMPLE_CONFIG_DIR/addresses.json $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/
-    cp $BTPSIMPLE_CONFIG_DIR/addresses.json $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/
-        
-    touch $BTPSIMPLE_CONFIG_DIR/provision
+    generate_relay_config >$ICONBRIDGE_CONFIG_DIR/bmr.config.json
+    wait_for_file $ICONBRIDGE_CONFIG_DIR/bmr.config.json
+
+
+
+    touch $ICONBRIDGE_CONFIG_DIR/provision
     echo "provision is now complete"
   else
     prepare_solidity_env
   fi
 }
 
-prepare_solidity_env(){
+prepare_solidity_env() {
 
-  cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/bmc/.env
-  cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/.env
-  cp $BTPSIMPLE_CONFIG_DIR/env $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/.env
-  
-  cp $BTPSIMPLE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
+  cp $ICONBRIDGE_CONFIG_DIR/env $ICONBRIDGE_CONTRACTS_DIR/solidity/bmc/.env
+  cp $ICONBRIDGE_CONFIG_DIR/env $ICONBRIDGE_CONTRACTS_DIR/solidity/bts/.env
 
-  if [ ! -f $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/build/contracts/BSHCore.json ]; then
-    cd $BTPSIMPLE_CONTRACTS_DIR/solidity/bsh/
+  cp $ICONBRIDGE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
+
+  if [ ! -f $ICONBRIDGE_CONTRACTS_DIR/solidity/bts/build/contracts/BTSCore.json ]; then
+    cd $ICONBRIDGE_CONTRACTS_DIR/solidity/bts/
     rm -rf contracts/test
-    truffle compile --network bsc
-  fi
-  if [ ! -f $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/build/contracts/BSHProxy.json ]; then
-    cd $BTPSIMPLE_CONTRACTS_DIR/solidity/TokenBSH/
     truffle compile --network bsc
   fi
 }
@@ -119,6 +113,8 @@ wait_for_file() {
     echo "waiting for the output file: $FILE_NAME"
   done
 }
+
+
 
 generate_relay_config() {
   jq -n '
@@ -139,31 +135,30 @@ generate_relay_config() {
             .dst.address = $dst_address |
             .dst.endpoint = [ $dst_endpoint ] |
             .dst.options = $dst_options |
-            .dst.tx_data_size_limit = $dst_tx_data_size_limit |
             .dst.key_store = $dst_key_store |
             .dst.key_store.coinType = $dst_key_store_cointype |
             .dst.key_password = $dst_key_password ' \
-        --arg src_address "$(cat $CONFIG_DIR/btp.bsc)" \
+        --arg src_address "$(cat $CONFIG_DIR/btp.bsc.btp.address)" \
         --arg src_endpoint "$BSC_ENDPOINT" \
-        --argjson src_offset "$(cat $CONFIG_DIR/offset.bsc)" \
+        --argjson src_offset "$(cat $CONFIG_DIR/btp.bsc.block.height)" \
         --argjson src_options "$(
           jq -n {}
         )" \
-        --arg dst_address "$(cat $CONFIG_DIR/btp.icon)" \
+        --arg dst_address "$(cat $CONFIG_DIR/btp.icon.btp.address)" \
         --arg dst_endpoint "$ICON_ENDPOINT" \
         --argfile dst_key_store "$GOLOOP_RPC_KEY_STORE" \
         --arg dst_key_store_cointype "icx" \
         --arg dst_key_password "$(cat $GOLOOP_RPC_KEY_SECRET)" \
-        --argjson dst_tx_data_size_limit 8192 \
-        --argjson dst_options '{"step_limit":13610920010}'
+        --argjson dst_options '{"step_limit":13610920010, "tx_data_size_limit":8192}'
     )" \
     --argjson i2b_relay "$(
       jq -n '
             .name = "i2b" |
             .src.address = $src_address |
             .src.endpoint = [ $src_endpoint ] |
-            .src.options = $src_options |
             .src.offset = $src_offset |
+            .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
+            .src.options.verifier.validatorsHash = $src_options_verifier_validatorsHash |
             .dst.address = $dst_address |
             .dst.endpoint = [ $dst_endpoint ] |
             .dst.options = $dst_options |
@@ -171,11 +166,12 @@ generate_relay_config() {
             .dst.key_store = $dst_key_store |
             .dst.key_store.coinType = $dst_key_store_cointype |
             .dst.key_password = $dst_key_password ' \
-        --arg src_address "$(cat $CONFIG_DIR/btp.icon)" \
+        --arg src_address "$(cat $CONFIG_DIR/btp.icon.btp.address)" \
         --arg src_endpoint "$ICON_ENDPOINT" \
-        --argjson src_offset "$(cat $CONFIG_DIR/offset.icon)" \
-        --argjson src_options "{}" \
-        --arg dst_address "$(cat $CONFIG_DIR/btp.bsc)" \
+        --argjson src_offset "$(cat $CONFIG_DIR/btp.icon.block.height)" \
+        --argjson src_options_verifier_blockHeight "$(cat $CONFIG_DIR/btp.icon.block.height)" \
+        --arg src_options_verifier_validatorsHash "$(cat $CONFIG_DIR/btp.icon.validators.hash)" \
+        --arg dst_address "$(cat $CONFIG_DIR/btp.bsc.btp.address)" \
         --arg dst_endpoint "$BSC_ENDPOINT" \
         --argfile dst_key_store "$BSC_KEY_STORE" \
         --arg dst_key_store_cointype "evm" \
@@ -184,7 +180,6 @@ generate_relay_config() {
         --argjson dst_options '{"gas_limit":8000000}'
     )"
 }
-
 
 wait-for-it.sh $GOLOOP_RPC_ADMIN_URI
 # run provisioning

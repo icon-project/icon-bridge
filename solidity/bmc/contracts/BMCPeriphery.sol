@@ -457,10 +457,10 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
                 // link.delayLimit,
                 // link.maxAggregation,
                 // link.rxHeightSrc,
-                link.rxHeight
+                link.rxHeight,
                 // link.blockIntervalSrc,
                 // link.blockIntervalDst,
-                // block.number
+                block.number
             );
     }
 }

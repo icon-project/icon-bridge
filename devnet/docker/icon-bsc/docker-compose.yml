@@ -5,8 +5,8 @@ services:
     build:
       context: ../goloop
       args:
-        BTPSIMPLE_VERSION: latest
-        GOLOOP_IMAGE: goloop:latest
+        ICONBRIDGE_VERSION: latest
+        GOLOOP_IMAGE: iconloop/goloop-icon:v0.9.7
     ports:
       - "9080:9080"
     volumes:
@@ -30,29 +30,29 @@ services:
     build:
       context: .
     volumes:
-      - ./local/artifacts:/btpsimple/config
-      - ./local:/btpsimple/data
-      - ./local/keys:/btpsimple/keys
-    command: btpsimple --config /btpsimple/config/bmr.config.json
+      - ./local/artifacts:/iconbridge/config
+      - ./local:/iconbridge/data
+      - ./local/keys:/iconbridge/keys
+    command: iconbridge --config /iconbridge/config/bmr.config.json
     depends_on:
       - goloop
       - binancesmartchain
     environment:
       - GOLOOPCHAIN=goloop:9080
       - GOLOOP_RPC_CHANNEL=icon
-      - BASE_DIR=/btpsimple/data/btp
-      - LOG_FILENAME=/btpsimple/data/log/btp.log
-      - CONFIG=/btpsimple/config/bmr.config.json
+      - BASE_DIR=/iconbridge/data/btp
+      - LOG_FILENAME=/iconbridge/data/log/btp.log
+      - CONFIG=/iconbridge/config/bmr.config.json
       - ICON_ENDPOINT=http://goloop:9080/api/v3/icon
-      - ICON_KEY_STORE=/btpsimple/config/goloop.keystore.json
-      - ICON_SECRET=/btpsimple/config/goloop.keysecret
+      - ICON_KEY_STORE=/iconbridge/config/goloop.keystore.json
+      - ICON_SECRET=/iconbridge/config/goloop.keysecret
       - BSC_ENDPOINT=http://binancesmartchain:8545
-      - BSC_KEY_STORE=/btpsimple/config/bsc.ks.json
-      - BSC_SECRET=/btpsimple/config/bsc.secret
+      - BSC_KEY_STORE=/iconbridge/config/bsc.ks.json
+      - BSC_SECRET=/iconbridge/config/bsc.secret
  
      # - binance_smart_chain
     healthcheck:
-      test: ["CMD-SHELL", "test -f /btpsimple/config/provision"]
+      test: ["CMD-SHELL", "test -f /iconbridge/config/provision"]
       interval: 5s
       timeout: 5s
       retries: 300

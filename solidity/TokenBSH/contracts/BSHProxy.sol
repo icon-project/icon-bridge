@@ -49,6 +49,7 @@ contract BSHProxy is IBSHProxy, Initializable {
         string symbol;
         uint256 decimals;
         uint256 feeNumerator;
+        uint256 fixedFee;
     }
 
     mapping(address => bool) private owners;
@@ -66,7 +67,7 @@ contract BSHProxy is IBSHProxy, Initializable {
 
     uint256 private constant RC_OK = 0;
     uint256 private constant RC_ERR = 1;
-    uint256 constant FEE_DENOMINATOR = 10**4; //TODO: keeping it simple for now
+    uint256 constant FEE_DENOMINATOR = 10**4;
     uint256 private feeNumerator;
 
     event Register(string indexed name, address addr);
@@ -153,30 +154,45 @@ contract BSHProxy is IBSHProxy, Initializable {
         @dev Caller must be an Owner of this contract
         The transfer fee is calculated by feeNumerator/FEE_DEMONINATOR. 
         The feeNumetator should be less than FEE_DEMONINATOR
-        _feeNumerator is set to `10` in construction by default, which means the default fee ratio is 0.1%.
+        _feeNumerator if it is set to `10`, which means the default fee ratio is 0.1%.
         @param _feeNumerator    the fee numerator
     */
-    function setFeeRatio(uint256 _feeNumerator) external override onlyOwner {
+    function setFeeRatio(
+        string calldata _name,
+        uint256 _feeNumerator,
+        uint256 _fixedFee
+    ) external override onlyOwner {
         require(_feeNumerator <= FEE_DENOMINATOR, "InvalidSetting");
-        feeNumerator = _feeNumerator;
+        address token_addr = tokenAddr[_name];
+        require(tokenAddr[_name] != address(0), "TokenNotRegistered");
+        Token memory _token = tokens[token_addr];
+        _token.feeNumerator = _feeNumerator;
+        _token.fixedFee = _fixedFee;
     }
 
     function register(
+        address _addr,
         string calldata _name,
         string calldata _symbol,
         uint256 _decimals,
         uint256 _feeNumerator,
-        address _addr
+        uint256 _fixedFee
     ) external override onlyOwner {
         require(tokenAddr[_name] == address(0), "TokenExists");
+        require(_feeNumerator <= FEE_DENOMINATOR, "InvalidFeeSetting");
         tokenAddr[_name] = _addr;
-        tokens[_addr] = Token(_name, _symbol, _decimals, _feeNumerator);
+        tokens[_addr] = Token(
+            _name,
+            _symbol,
+            _decimals,
+            _feeNumerator,
+            _fixedFee
+        );
         tokenNamesList.push(_name);
         numOfTokens++;
         emit Register(_name, _addr);
     }
 
-    //todo: check to optimize
     function tokenNames() external view returns (string[] memory _names) {
         _names = new string[](numOfTokens);
         uint256 temp = 0;
@@ -253,7 +269,6 @@ contract BSHProxy is IBSHProxy, Initializable {
         require(_value > 0, "InvalidAmount");
         IERC20(token_addr).transferFrom(msg.sender, address(this), _value);
         uint256 _fee;
-        //todo check if the locked balance should hold with fee or without fee
         (_value, _fee) = this.calculateTransferFee(token_addr, _value);
         balances[msg.sender][_tokenName].lockedBalance = _value.add(
             balances[msg.sender][_tokenName].lockedBalance
@@ -275,14 +290,15 @@ contract BSHProxy is IBSHProxy, Initializable {
         bshImpl.sendServiceMessage(_from, _to, _assets);
     }
 
-    //TODO: check for the decimals calulation && require for amount less than FEE_DENOMINATOR
     function calculateTransferFee(address token_addr, uint256 _value)
         public
         view
         returns (uint256 value, uint256 fee)
     {
         Token memory _token = tokens[token_addr];
-        fee = _value.mul(_token.feeNumerator).div(FEE_DENOMINATOR);
+        fee = _value.mul(_token.feeNumerator).div(FEE_DENOMINATOR).add(
+            _token.fixedFee
+        );
         value = _value.sub(fee);
         return (value, fee);
     }

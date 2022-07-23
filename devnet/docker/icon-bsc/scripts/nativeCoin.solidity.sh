@@ -7,7 +7,7 @@ source utils.sh
 deploy_solidity_nativeCoin_BSH() {
   echo "deploying solidity Native BSH"
   cd $CONTRACTS_DIR/solidity/bsh
-  cp $BTPSIMPLE_BASE_DIR/bin/env ./.env
+  cp $ICONBRIDGE_BASE_DIR/bin/env ./.env
   rm -rf contracts/test build .openzeppelin
   NODE_ENV=docker BSH_COIN_URL=https://ethereum.org/en/ \
     BSH_COIN_NAME=BNB \
@@ -32,7 +32,15 @@ nativeBSH_solidity_register() {
   echo "Register Coin Name with NativeBSH"
   cd $CONTRACTS_DIR/solidity/bsh
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.nativeCoin.js \
-    --method register --name "ICX" --symbol "ICX" --decimals 18)
+    --method register --name "ICX" --symbol "ICX" --decimals 18 --feeNumerator 100 --fixedFee 50000)
+  echo "$tx" >$CONFIG_DIR/tx/register.nativeCoin.bsc
+}
+
+nativeBSH_solidity_register_token() {
+  echo "Register Coin Name with NativeBSH"
+  cd $CONTRACTS_DIR/solidity/bsh
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bsh.nativeCoin.js \
+    --method register --name "ICX" --symbol "ICX" --decimals 18 --feeNumerator 100 --fixedFee 50000)
   echo "$tx" >$CONFIG_DIR/tx/register.nativeCoin.bsc
 }
 
@@ -51,7 +59,7 @@ bsc_init_wrapped_native_btp_transfer() {
   BTP_TO="btp://$ICON_NET/$ALICE_ADDRESS"
   cd $CONTRACTS_DIR/solidity/bsh
   truffle exec --network bsc "$SCRIPTS_DIR"/bsh.nativeCoin.js \
-    --method transferWrappedNativeCoin --to $BTP_TO --coinName $1 --amount $2 --from $(get_bob_address) 
+    --method transferWrappedNativeCoin --to $BTP_TO --coinName $1 --amount $2 --from $(get_bob_address)
 }
 
 get_bob_ICX_balance() {
@@ -83,8 +91,6 @@ get_Bob_ICX_Balance_with_wait() {
   done
   echo "Bob's Balance after BTP Native transfer: $BOB_CURRENT_BAL"
 }
-
-
 
 get_bob_BNB_balance() {
   cd $CONTRACTS_DIR/solidity/bsh
@@ -125,12 +131,24 @@ generate_native_metadata() {
     BSH_PERIPHERY_ADDRESS=$(jq -r '.networks[] | .address' build/contracts/BSHPeriphery.json)
     jq -r '.networks[] | .address' build/contracts/BSHCore.json >$CONFIG_DIR/bsh.core.bsc
     jq -r '.networks[] | .address' build/contracts/BSHPeriphery.json >$CONFIG_DIR/bsh.periphery.bsc
+    
+    jq -r '.networks[] | .address' build/contracts/BSHCore.json >$CONFIG_DIR/token_bsh.proxy.bsc
+    jq -r '.networks[] | .address' build/contracts/BSHPeriphery.json >$CONFIG_DIR/token_bsh.impl.bsc
 
     wait_for_file $CONFIG_DIR/bsh.core.bsc
     wait_for_file $CONFIG_DIR/bsh.periphery.bsc
     
+    wait_for_file $CONFIG_DIR/token_bsh.impl.bsc
+    wait_for_file $CONFIG_DIR/token_bsh.proxy.bsc
+
     create_abi "BSHPeriphery"
     create_abi "BSHCore"
+
+    jq -r '.networks[] | .address' build/contracts/ERC20TKN.json >$CONFIG_DIR/bep20_token.bsc
+    wait_for_file $CONFIG_DIR/bep20_token.bsc
+
+    create_abi "ERC20TKN"
+
     echo "DONE."
     ;;
 
