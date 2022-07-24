@@ -2,17 +2,13 @@ package executor
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"math/big"
 	"math/rand"
-	"os"
 	"reflect"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/bsc"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny"
@@ -21,57 +17,30 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
+const STEPLIMIT = 80000000
+
 type executor struct {
 	log             log.Logger
-	godKeysPerChain map[chain.ChainType][2]string
-	cfgPerChain     map[chain.ChainType]*chain.ChainConfig
+	godKeysPerChain map[chain.ChainType]keypair
+	cfgPerChain     map[chain.ChainType]*chain.Config
 	clientsPerChain map[chain.ChainType]chain.ChainAPI
 	sinkChanPerID   map[uint64]chan *evt
 	syncChanMtx     sync.RWMutex
 	stoppedChan     chan struct{}
 }
 
-func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ex *executor, err error) {
-	getKeyPairFromFile := func(walFile string, password string) (pair [2]string, err error) {
-		keyReader, err := os.Open(walFile)
-		if err != nil {
-			err = errors.Wrapf(err, "os.Open file %v", walFile)
-			return
-		}
-		defer keyReader.Close()
-
-		keyStore, err := ioutil.ReadAll(keyReader)
-		if err != nil {
-			err = errors.Wrapf(err, "ioutil.ReadAll %v", walFile)
-			return
-		}
-		key, err := keystore.DecryptKey(keyStore, password)
-		if err != nil {
-			err = errors.Wrapf(err, "keystore.Decrypt %v", walFile)
-			return
-		}
-		privBytes := ethcrypto.FromECDSA(key.PrivateKey)
-		privString := hex.EncodeToString(privBytes)
-		addr := ethcrypto.PubkeyToAddress(key.PrivateKey.PublicKey)
-		pair = [2]string{privString, addr.String()}
-		return
-	}
+func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.Config) (ex *executor, err error) {
 	ex = &executor{
 		log:             l,
 		cfgPerChain:     cfgPerChain,
-		godKeysPerChain: make(map[chain.ChainType][2]string),
+		godKeysPerChain: make(map[chain.ChainType]keypair),
 		clientsPerChain: make(map[chain.ChainType]chain.ChainAPI),
 		sinkChanPerID:   make(map[uint64]chan *evt),
 		syncChanMtx:     sync.RWMutex{},
 		stoppedChan:     make(chan struct{}),
 	}
 	for name, cfg := range cfgPerChain {
-		// GodKeys
-		if pair, err := getKeyPairFromFile(cfg.GodWallet.Path, cfg.GodWallet.Password); err != nil {
-			return nil, errors.Wrapf(err, "getKeyPairFromFile(%v)", cfg.GodWallet.Path)
-		} else {
-			ex.godKeysPerChain[name] = pair
-		}
+
 		//Clients
 		if name == chain.HMNY {
 			ex.clientsPerChain[name], err = hmny.NewApi(l, cfg)
@@ -93,6 +62,11 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ex *
 			}
 		} else {
 			return nil, errors.New("Unknown Chain Type supplied from config: " + string(name))
+		}
+		if priv, pub, err := ex.clientsPerChain[name].GetKeyPairFromKeystore(cfg.GodWalletKeystorePath, cfg.GodWalletSecretPath); err != nil {
+			return nil, errors.Wrapf(err, "GetKeyPairFromKeystore %v", err)
+		} else {
+			ex.godKeysPerChain[name] = keypair{PrivKey: priv, PubKey: pub}
 		}
 	}
 	return
@@ -244,24 +218,15 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	if !ok {
 		return fmt.Errorf("GodKeys for chain %v not found", dstChainName)
 	}
-	srcGodPub, err := srcCl.GetPubKey(srcGod[PRIVKEYPOS])
-	if err != nil {
-		return errors.Wrapf(err, "srcCl.GetPubKey %v", err)
-	}
-	dstGodPub, err := dstCl.GetPubKey(dstGod[PRIVKEYPOS])
-	if err != nil {
-		return errors.Wrapf(err, "dstCl.GetPubKey %v", err)
-	}
 
 	ts := &testSuite{
-		id:          id,
-		logger:      log,
-		subChan:     sinkChan,
-		clsPerChain: map[chain.ChainType]chain.ChainAPI{srcChainName: srcCl, dstChainName: dstCl},
-		godKeysPerChain: map[chain.ChainType]keypair{
-			srcChainName: {PrivKey: srcGod[PRIVKEYPOS], PubKey: srcGodPub},
-			dstChainName: {PrivKey: dstGod[PRIVKEYPOS], PubKey: dstGodPub},
-		},
+		id:                    id,
+		logger:                log,
+		subChan:               sinkChan,
+		clsPerChain:           map[chain.ChainType]chain.ChainAPI{srcChainName: srcCl, dstChainName: dstCl},
+		godKeysPerChain:       map[chain.ChainType]keypair{srcChainName: srcGod, dstChainName: dstGod},
+		nativeCoinAmoutForGas: new(big.Int).Mul(big.NewInt(12500000000), big.NewInt(STEPLIMIT)),
+		fee:                   fee{numerator: big.NewInt(100), denominator: big.NewInt(10000), fixed: big.NewInt(5000)},
 	}
 
 	ex.log.Infof("Run ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinNames, srcChainName, dstChainName)

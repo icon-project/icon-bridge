@@ -2,12 +2,17 @@ package hmny
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/hmny"
 	"github.com/icon-project/icon-bridge/common/errors"
@@ -21,12 +26,7 @@ const (
 	monitorBlockMaxConcurrency = 50 // number of concurrent requests to synchronize older blocks from source chain
 )
 
-// const (
-// 	NativeCoinName = "ONE"
-// 	TokenName      = "TONE"
-// )
-
-func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
+func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	if len(cfg.URL) == 0 {
 		return nil, errors.New("empty urls")
 	}
@@ -39,39 +39,31 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 		ReceiverCore: &hmny.ReceiverCore{
 			Log: l, Opts: hmny.ReceiverOptions{}, Cls: cls,
 		},
-		log:                l,
-		networkID:          cfg.NetworkID,
-		fd:                 NewFinder(l, cfg.ContractAddresses),
-		sinkChan:           make(chan *chain.EventLogInfo),
-		errChan:            make(chan error),
-		nativeCoin:         cfg.NativeCoin,
-		tokenNameToAddr:    cfg.NativeTokenAddresses,
-		contractNameToAddr: cfg.ContractAddresses,
+		log:      l,
+		fd:       NewFinder(l, cfg.ContractAddresses),
+		sinkChan: make(chan *chain.EventLogInfo),
+		errChan:  make(chan error),
 	}
 
 	r.par, err = NewParser(cfg.URL, cfg.ContractAddresses)
 	if err != nil {
 		return nil, errors.Wrap(err, "newParser ")
 	}
-	r.requester, err = newRequestAPI(cfg.URL, l, cfg.ContractAddresses, cfg.NetworkID, r.tokenNameToAddr)
+	r.requester, err = newRequestAPI(cfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "newRequestAPI %v", err)
 	}
-	return r, nil
+	return r, err
 }
 
 type api struct {
 	*hmny.ReceiverCore
-	log                log.Logger
-	sinkChan           chan *chain.EventLogInfo
-	errChan            chan error
-	par                *parser
-	fd                 *finder
-	requester          *requestAPI
-	networkID          string
-	nativeCoin         string
-	tokenNameToAddr    map[string]string
-	contractNameToAddr map[chain.ContractName]string
+	log       log.Logger
+	sinkChan  chan *chain.EventLogInfo
+	errChan   chan error
+	par       *parser
+	fd        *finder
+	requester *requestAPI
 }
 
 func (r *api) client() *hmny.Client {
@@ -133,10 +125,6 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 	return r.sinkChan, r.errChan, nil
 }
 
-func (r *api) GetChainType() chain.ChainType {
-	return chain.HMNY
-}
-
 func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, error) {
 	if !strings.Contains(addr, "btp://") {
 		return nil, errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
@@ -160,21 +148,10 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount *big
 		recepientAddress = splts[len(splts)-1]
 	}
 	if within {
-		if coinName == r.nativeCoin {
-			txnHash, err = r.requester.transferNativeIntraChain(senderKey, recepientAddress, amount)
-		} else if _, ok := r.tokenNameToAddr[coinName]; ok {
-			txnHash, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount, coinName)
-		} else {
-			err = fmt.Errorf("IntraChain transfers are supported for coins ONE and TONE only")
-		}
+		txnHash, err = r.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
 	} else {
-		if coinName == r.nativeCoin {
-			txnHash, err = r.requester.transferNativeCrossChain(senderKey, recepientAddress, amount)
-		} else { // TONE,ICX.TICX
-			txnHash, err = r.requester.transferTokensCrossChain(coinName, senderKey, recepientAddress, amount)
-		}
+		txnHash, err = r.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
 	}
-
 	return
 }
 
@@ -191,7 +168,7 @@ func (r *api) TransferBatch(coinNames []string, senderKey, recepientAddress stri
 	if within {
 		err = fmt.Errorf("Batch Transfers are supported for inter chain transfers only")
 	} else {
-		txnHash, err = r.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts, r.nativeCoin)
+		txnHash, err = r.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts)
 	}
 	return
 }
@@ -221,32 +198,16 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 }
 
 func (r *api) GetBTPAddress(addr string) string {
-	fullAddr := "btp://" + r.networkID + ".hmny/" + addr
+	fullAddr := "btp://" + r.requester.networkID + "/" + addr
 	return fullAddr
 }
 
 func (r *api) NativeCoin() string {
-	return r.nativeCoin
+	return r.requester.nativeCoin
 }
 
 func (r *api) NativeTokens() []string {
-	nativeTokens := []string{}
-	for nt := range r.tokenNameToAddr {
-		nativeTokens = append(nativeTokens, nt)
-	}
-	return nativeTokens
-}
-
-func (r *api) GetKeyPairs(num int) ([][2]string, error) {
-	var err error
-	res := make([][2]string, num)
-	for i := 0; i < num; i++ {
-		res[i], err = generateKeyPair()
-		if err != nil {
-			return nil, errors.Wrap(err, "generateKeyPair ")
-		}
-	}
-	return res, nil
+	return r.requester.nativeTokens
 }
 
 func (r *api) WatchForTransferStart(id uint64, seq int64) error {
@@ -261,21 +222,38 @@ func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
 }
 
-func (r *api) GetBTPAddressOfBTS() (btpaddr string, err error) {
-	addr, ok := r.contractNameToAddr[chain.BTSCoreHmny]
-	if !ok {
-		err = fmt.Errorf("Contract %v does not exist ", chain.BTSCoreHmny)
+func (r *api) GetKeyPairFromKeystore(walFile string, password string) (privKey, pubKey string, err error) {
+	keyReader, err := os.Open(walFile)
+	if err != nil {
+		err = errors.Wrapf(err, "os.Open file %v", walFile)
 		return
 	}
-	btpaddr = r.GetBTPAddress(addr)
+	defer keyReader.Close()
+
+	keyStore, err := ioutil.ReadAll(keyReader)
+	if err != nil {
+		err = errors.Wrapf(err, "ioutil.ReadAll %v", walFile)
+		return
+	}
+	key, err := keystore.DecryptKey(keyStore, password)
+	if err != nil {
+		err = errors.Wrapf(err, "keystore.Decrypt %v", walFile)
+		return
+	}
+	privBytes := crypto.FromECDSA(key.PrivateKey)
+	privKey = hex.EncodeToString(privBytes)
+	pubKey = crypto.PubkeyToAddress(key.PrivateKey.PublicKey).String()
 	return
 }
 
-func (r *api) GetPubKey(privkey string) (string, error) {
-	w, _, err := GetWalletFromPrivKey(privkey)
-	if err != nil {
-		return "", errors.Wrapf(err, "GetWalletFromPrivKey %v", err)
+func (r *api) GetKeyPairs(num int) ([][2]string, error) {
+	var err error
+	res := make([][2]string, num)
+	for i := 0; i < num; i++ {
+		res[i], err = generateKeyPair()
+		if err != nil {
+			return nil, errors.Wrap(err, "generateKeyPair ")
+		}
 	}
-	pubKey := w.PublicKey()
-	return string(pubKey), nil
+	return res, nil
 }

@@ -12,20 +12,17 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-type keypair struct {
-	PrivKey string
-	PubKey  string
-}
-
 type testSuite struct {
-	id              uint64
-	clsPerChain     map[chain.ChainType]chain.ChainAPI
-	godKeysPerChain map[chain.ChainType]keypair
-	logger          log.Logger
-	src             chain.ChainType
-	dst             chain.ChainType
-	subChan         <-chan *evt
-	report          string
+	id                    uint64
+	clsPerChain           map[chain.ChainType]chain.ChainAPI
+	godKeysPerChain       map[chain.ChainType]keypair
+	logger                log.Logger
+	subChan               <-chan *evt
+	nativeCoinAmoutForGas *big.Int
+	fee                   fee
+	src                   chain.ChainType
+	dst                   chain.ChainType
+	report                string
 }
 
 func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain.SrcAPI, dst chain.DstAPI, err error) {
@@ -42,6 +39,20 @@ func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain
 	ts.src = srcChain
 	ts.dst = dstChain
 	return
+}
+
+func (ts *testSuite) withFeeAdded(bal *big.Int) *big.Int {
+	// val  * ratio + fixed = charge
+	// val - charge = newVal
+	// for newVal to be zero, val = charge
+	// val = val*ratio + fixed
+	// val(1 - ratio) = fixed
+	// val = fixed/(1 - ratio)
+	// val = (fixed * denom)/(denom - num)
+	fd := new(big.Int).Mul(ts.fee.fixed, ts.fee.denominator)
+	dminusn := new(big.Int).Sub(ts.fee.denominator, ts.fee.numerator)
+	v := new(big.Int).Div(fd, dminusn)
+	return new(big.Int).Add(v, bal)
 }
 
 func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, err error) {
@@ -146,7 +157,7 @@ func (ts *testSuite) ValidateTransactionResult(ctx context.Context, hash string)
 	return
 }
 
-func (ts *testSuite) ValidateTransactionResultEvents(ctx context.Context, hash string, coinNames []string, srcAddr, dstAddr string, amts []*big.Int) (err error) {
+func (ts *testSuite) ValidateTransactionResultAndEvents(ctx context.Context, hash string, coinNames []string, srcAddr, dstAddr string, amts []*big.Int) (err error) {
 	srcCl, ok := ts.clsPerChain[ts.src]
 	if !ok {
 		return fmt.Errorf("Chain %v not found", ts.src)
@@ -273,12 +284,9 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, hash string, cbPerEvent 
 			return errors.New("Context Cancelled. Return from Callback watch")
 		case ev := <-ts.subChan:
 			if cb, ok := cbPerEvent[ev.msg.EventType]; ok {
-				if (ev.msg.EventType == chain.TransferReceived && ev.chainType == dstCl.GetChainType()) ||
-					(ev.msg.EventType == chain.TransferEnd && ev.chainType == srcCl.GetChainType()) {
-					if err := cb(ev); err != nil {
-						ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", ev.msg.EventType, err)
-					}
-					numExpectedEvents--
+				numExpectedEvents--
+				if cb != nil && cb(ev) != nil {
+					ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", ev.msg.EventType, err)
 				}
 			}
 			if numExpectedEvents == 0 {

@@ -42,7 +42,7 @@ func TestTransferIntraChain(t *testing.T) {
 	}
 
 	amount := new(big.Int)
-	amount.SetString("100000000000000", 10)
+	amount.SetString("1000000000000000", 10)
 
 	for _, coinName := range []string{"TICX", "ICX"} {
 		txnHash, err := api.Transfer(coinName, GodKey, DemoSrcAddr, amount)
@@ -69,15 +69,15 @@ func TestTransferIntraChain(t *testing.T) {
 }
 
 func TestApprove(t *testing.T) {
-	showBalance(GodAddr)
-	coin := "ETH"
+	showBalance(DemoSrcAddr)
+	coin := "TICX"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	amt := new(big.Int)
 	amt.SetString("1000000000000", 10)
-	approveHash, err := rpi.Approve(coin, GodKey, amt)
+	approveHash, err := rpi.Approve(coin, DemoSrcKey, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -86,7 +86,7 @@ func TestApprove(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("Hash %v Receipt %+v", approveHash, res.Raw)
-	showBalance(GodAddr)
+	showBalance(DemoSrcAddr)
 }
 
 func TestTransferInterChain(t *testing.T) {
@@ -96,21 +96,21 @@ func TestTransferInterChain(t *testing.T) {
 		return
 	}
 	coin := "ICX"
-	if val, err := api.GetCoinBalance(coin, GodAddr); err != nil {
+	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Logf("Initial Balance %v", val)
 	}
 
 	amount := new(big.Int)
-	amount.SetString("2038700000000000000", 10)
+	amount.SetString("1000000000000", 10)
 
-	txnHash, err := api.Transfer(coin, GodKey, DemoDstAddr, amount)
+	txnHash, err := api.Transfer(coin, DemoSrcKey, DemoDstAddr, amount)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("Transaction Hash  %v", txnHash)
-	if val, err := api.GetCoinBalance(coin, GodAddr); err != nil {
+	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Logf("Final Balance %v", val)
@@ -122,8 +122,8 @@ func TestTransferInterChain(t *testing.T) {
 	}
 	t.Logf("Receipt %+v", res)
 	for _, lin := range res.ElInfo {
-		seq, _ := lin.GetSeq()
-		t.Logf("Log %+v and Seq %v", lin, seq)
+		// seq, _ := lin.GetSeq()
+		t.Logf("Log %+v and Seq", lin)
 	}
 	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
 		t.Fatal(err)
@@ -173,7 +173,7 @@ func TestBatchTransfer(t *testing.T) {
 	}
 }
 func TestGetCoinBalance(t *testing.T) {
-	if err := showBalance(GodAddr); err != nil {
+	if err := showBalance(DemoSrcAddr); err != nil {
 		t.Fatalf(" %+v", err)
 	}
 }
@@ -189,7 +189,7 @@ func showBalance(addr string) error {
 		if err != nil {
 			return err
 		}
-		log.Infof("coin %v amount %v", coinName, res)
+		log.Infof("coin %v amount %v", coinName, res.String())
 	}
 	return nil
 }
@@ -245,43 +245,18 @@ func TestReceiver(t *testing.T) {
 func getNewApi() (chain.ChainAPI, error) {
 	srcEndpoint := RPC_URI
 	addrToName := map[chain.ContractName]string{
-		chain.BTSIcon: "cx76c75658848bb57d05767ca8b8ef5155645ae7a6",
-	}
-	coinMap := map[string]string{
-		"ETH":  "cx01ce43a49862e457e9b6015ee271f985dfafb038",
-		"TICX": "cx121361e1272a38a5a46cdbd73c2e64e4f1da4a11",
+		chain.BTSIcon: "cx79ba68ea1bb4591ef2b835d8a05d4953986f2b4c",
 	}
 	l := log.New()
 	log.SetGlobalLogger(l)
-	networkID := "0x613f17"
-	return icon.NewApi(l, &chain.ChainConfig{
-		Name:                 chain.ICON,
-		URL:                  srcEndpoint,
-		ContractAddresses:    addrToName,
-		NetworkID:            networkID,
-		NativeCoin:           "ICX",
-		NativeTokenAddresses: coinMap,
+	return icon.NewApi(l, &chain.Config{
+		Name:              chain.ICON,
+		URL:               srcEndpoint,
+		ContractAddresses: addrToName,
+		NetworkID:         "0x613f17.icon",
+		NativeCoin:        "ICX",
+		NativeTokens:      []string{"ETH", "TICX"},
+		WrappedCoins:      []string{"BNB", "TBNB"},
+		GasLimit:          8000000,
 	})
 }
-
-/*
-func TestIconEventParse(t *testing.T) {
-	m := map[chain.ContractName]string{
-		chain.TokenBSHIcon: btp_icon_token_bsh,
-	}
-	parser, err := icon.NewParser(m)
-	if err != nil {
-		t.Fatal(err)
-	}
-	log := &icon.TxnEventLog{
-		Addr:    icon.Address("cx5924a147ae30091ed9c6fe0c153ef77de4132902"),
-		Indexed: []string{"TransferStart(Address,str,int,bytes)", "hx4a707b2ecbb5f40a8d761976d99244f53575eeb6"},
-		Data:    []string{"btp://0x6357d2e0.hmny/0x8BE8641225CC0Afdb24499409863E8E3f6557C32", "0x25", "0xd6d583455448880dbd2fc137a30000872386f26fc10000"},
-	}
-	res, eventType, err := parser.Parse(log)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("EventType %v  Res %+v", eventType, res)
-}
-*/

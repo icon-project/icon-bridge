@@ -30,7 +30,7 @@ func TestApprove(t *testing.T) {
 	}
 	amt := new(big.Int)
 	amt.SetString("1000000000000", 10)
-	approveHash, err := rpi.Approve(coin, GodKey, amt)
+	approveHash, err := rpi.Approve(coin, DemoSrcKey, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -47,9 +47,9 @@ func TestTransferIntraChain(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	for _, coin := range []string{"BNB", "TBNB"} {
+	for _, coin := range []string{"BNB"} {
 		amt := new(big.Int)
-		amt.SetString("178199999998000000", 10)
+		amt.SetString("1000000000000000000", 10)
 		hash, err := rpi.Transfer(coin, GodKey, DemoSrcAddr, amt)
 		if err != nil {
 			t.Fatalf("%+v", err)
@@ -66,7 +66,7 @@ func TestTransferInterChain(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	for _, coin := range []string{coin} {
-		res, err := rpi.GetCoinBalance(coin, GodAddr)
+		res, err := rpi.GetCoinBalance(coin, DemoSrcAddr)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -74,7 +74,7 @@ func TestTransferInterChain(t *testing.T) {
 	}
 	amt := new(big.Int)
 	amt.SetString("1000000000000", 10)
-	txnHash, err := rpi.Transfer(coin, GodKey, DemoDstAddr, amt)
+	txnHash, err := rpi.Transfer(coin, DemoSrcKey, DemoDstAddr, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -85,11 +85,11 @@ func TestTransferInterChain(t *testing.T) {
 	}
 	t.Logf("Receipt %+v", res)
 	for _, lin := range res.ElInfo {
-		seq, _ := lin.GetSeq()
-		t.Logf("Log %+v %v", lin, seq)
+		//seq, _ := lin.GetSeq()
+		t.Logf("Log %+v ", lin)
 	}
 	for _, coin := range []string{coin} {
-		res, err := rpi.GetCoinBalance(coin, GodAddr)
+		res, err := rpi.GetCoinBalance(coin, DemoSrcAddr)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -148,7 +148,7 @@ func TestGetCoinBalance(t *testing.T) {
 	}
 
 	for _, coin := range []string{"TBNB", "BNB", "ETH", "ICX", "TICX"} {
-		res, err := rpi.GetCoinBalance(coin, GodAddr)
+		res, err := rpi.GetCoinBalance(coin, DemoSrcAddr)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -186,19 +186,21 @@ func getNewApi() (chain.ChainAPI, error) {
 		chain.BTSPeripheryBsc: "0x3abC8DFF0C95B8982399daCf6ED5bD7b94a40068",
 		// chain.TBNBBsc:         "0xBA34F3c6893b12fF4115ACf1b4712C6E2783aD83",
 	}
-	coinMap := map[string]string{
-		"ETH":  "0x81C0094F73123EeBd250Ab4ee1e8aA6e82A7cA6F",
-		"TBNB": "0xBA34F3c6893b12fF4115ACf1b4712C6E2783aD83",
-	}
+	// coinMap := map[string]string{
+	// 	"ETH":  "0x81C0094F73123EeBd250Ab4ee1e8aA6e82A7cA6F",
+	// 	"TBNB": "0xBA34F3c6893b12fF4115ACf1b4712C6E2783aD83",
+	// }
 	l := log.New()
 	log.SetGlobalLogger(l)
-	rx, err := NewApi(l, &chain.ChainConfig{
-		Name:                 chain.BSC,
-		URL:                  RPC_URI,
-		ContractAddresses:    ctrMap,
-		NativeTokenAddresses: coinMap,
-		NativeCoin:           "BNB",
-		NetworkID:            "0x61.bsc",
+	rx, err := NewApi(l, &chain.Config{
+		Name:              chain.BSC,
+		URL:               RPC_URI,
+		ContractAddresses: ctrMap,
+		NativeTokens:      []string{"ETH", "TBNB"},
+		WrappedCoins:      []string{"ICX", "TICX"},
+		NativeCoin:        "BNB",
+		NetworkID:         "0x61.bsc",
+		GasLimit:          2000000,
 	})
 	if err != nil {
 		return nil, err

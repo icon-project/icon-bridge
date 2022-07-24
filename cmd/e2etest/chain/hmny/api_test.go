@@ -29,9 +29,9 @@ func getNewApi() (chain.ChainAPI, error) {
 	//ICONDemo [f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5 btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee]
 	//HmnyDemo [564971a566ce839535681eef81ccd44005944b98f7409cb5c0f5684ae862a530 btp://0x6357d2e0.hmny/0x8fc668275b4fa032342ea3039653d841f069a83b]
 
-	coinMap := map[string]string{
-		"TONE": "0xB20CCD2a42e5486054AE3439f2bDa95DC75d9B75",
-	}
+	// coinMap := map[string]string{
+	// 	"TONE": "0xB20CCD2a42e5486054AE3439f2bDa95DC75d9B75",
+	// }
 	l := log.New()
 	log.SetGlobalLogger(l)
 
@@ -39,13 +39,13 @@ func getNewApi() (chain.ChainAPI, error) {
 		chain.BTSCoreHmny:      "0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
 		chain.BTSPeripheryHmny: "0xfad748a1063a40FF447B5D766331904d9bedDC26",
 	}
-	rx, err := hmny.NewApi(l, &chain.ChainConfig{
-		Name:                 chain.HMNY,
-		URL:                  "http://localhost:9500",
-		ContractAddresses:    addrToName,
-		NetworkID:            "0x6357d2e0",
-		NativeCoin:           "ONE",
-		NativeTokenAddresses: coinMap,
+	rx, err := hmny.NewApi(l, &chain.Config{
+		Name:              chain.HMNY,
+		URL:               "http://localhost:9500",
+		ContractAddresses: addrToName,
+		NetworkID:         "0x6357d2e0",
+		NativeCoin:        "ONE",
+		NativeTokens:      []string{"TONE"},
 	})
 	if err != nil {
 		return nil, err
@@ -152,8 +152,8 @@ func TestTransferIntraChain(t *testing.T) {
 		}
 		t.Logf("Receipt %+v", res)
 		for _, lin := range res.ElInfo {
-			seq, _ := lin.GetSeq()
-			t.Logf("Log %+v and Seq %v", lin, seq)
+			//seq, _ := lin.GetSeq()
+			t.Logf("Log %+v and Seq", lin)
 		}
 		if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
 			t.Fatal(err)
@@ -192,8 +192,8 @@ func TestTransferInterChain(t *testing.T) {
 	}
 	t.Logf("Receipt %+v", res)
 	for _, lin := range res.ElInfo {
-		seq, _ := lin.GetSeq()
-		t.Logf("Log %+v and Seq %v", lin, seq)
+		// seq, _ := lin.GetSeq()
+		t.Logf("Log %+v and Seq", lin)
 	}
 	if val, err := api.GetCoinBalance("TONE", DemoSrcAddr); err != nil {
 		t.Fatal(err)

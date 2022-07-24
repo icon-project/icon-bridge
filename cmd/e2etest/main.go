@@ -33,7 +33,7 @@ func main() {
 		cancel()
 	}()
 
-	cfgPerMap := map[chain.ChainType]*chain.ChainConfig{}
+	cfgPerMap := map[chain.ChainType]*chain.Config{}
 	for _, ch := range cfg.Chains {
 		cfgPerMap[ch.Name] = ch
 	}
@@ -142,7 +142,7 @@ func loadTestConfig(file string) (*TestConfig, error) {
 }
 
 type Config struct {
-	Chains []*chain.ChainConfig `json:"chains"`
+	Chains []*chain.Config `json:"chains"`
 }
 
 type TestConfig struct {
