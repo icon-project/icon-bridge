@@ -179,35 +179,26 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     @External(readonly = true)
     public Map<String, BigInteger> balanceOf(Address _owner, String _coinName) {
-        if (_owner.equals(Context.getAddress())) {
-            Balance balance = new Balance();
+        Balance balance = getBalance(_coinName, _owner);
+        Address _addr = coinAddresses.get(_coinName);
+        if (_addr == null) {
+            return balance.addUserBalance(BigInteger.ZERO);
+        }
+        Coin _coin = coinDb.get(_coinName);
+        if (_coinName.equals(name)) {
             BigInteger icxBalance = Context.getBalance(_owner);
             balance.setUsable(icxBalance);
-            balance.setLocked(BigInteger.ZERO);
-            balance.setRefundable(feeBalances.getOrDefault(_coinName, BigInteger.ZERO));
             return balance.addUserBalance(icxBalance);
+        } else if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
+            IRC2SupplierScoreInterface _irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());
+            BigInteger allowance = _irc2.allowance(_owner, Context.getAddress());
+            BigInteger tokenBalance = _irc2.balanceOf(_owner);
+            balance.setUsable(allowance.min(tokenBalance));
+            return balance.addUserBalance(tokenBalance);
         } else {
-            Balance balance = getBalance(_coinName, _owner);
-            Address _addr = coinAddresses.get(_coinName);
-            if (_addr == null) {
-                return balance.addUserBalance(BigInteger.ZERO);
-            }
-            Coin _coin = coinDb.get(_coinName);
-            if (_coinName.equals(name)) {
-                BigInteger icxBalance = Context.getBalance(_owner);
-                balance.setUsable(icxBalance);
-                return balance.addUserBalance(icxBalance);
-            } else if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
-                IRC2SupplierScoreInterface _irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());
-                BigInteger allowance = _irc2.allowance(_owner, Context.getAddress());
-                BigInteger tokenBalance = _irc2.balanceOf(_owner);
-                balance.setUsable(allowance.min(tokenBalance));
-                return balance.addUserBalance(tokenBalance);
-            } else {
-                IRC2SupplierScoreInterface _irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());
-                BigInteger tokenBalance = _irc2.balanceOf(_owner);
-                return balance.addUserBalance(tokenBalance);
-            }
+            IRC2ScoreInterface _irc2 = new IRC2ScoreInterface(_coin.getAddress());
+            BigInteger tokenBalance = _irc2.balanceOf(_owner);
+            return balance.addUserBalance(tokenBalance);
         }
     }
 
