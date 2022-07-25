@@ -17,7 +17,7 @@ go_library(
         "relay_status.go",
         "transaction.go",
     ],
-    importpath = "github.com/icon-project/btp/cmd/btpsimple/module/near/types",
+    importpath = "github.com/icon-project/iconbridge/cmd/iconbridge/module/near/types",
     visibility = ["//visibility:public"],
     deps = [
         "//common/codec",

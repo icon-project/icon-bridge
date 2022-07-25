@@ -6,7 +6,7 @@ go_library(
         "client.go",
         "type.go",
     ],
-    importpath = "github.com/icon-project/btp/common/jsonrpc",
+    importpath = "github.com/icon-project/iconbridge/common/jsonrpc",
     visibility = ["//visibility:public"],
     deps = [
         "//common",

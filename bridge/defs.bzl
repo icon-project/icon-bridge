@@ -40,10 +40,10 @@ def bridge(name, chains):
     )
 
     native.genrule(
-        name = "btpsimple_%s_configuration" % (chains[0]),
-        outs = ["btpsimple_%s_configuration.json" % (chains[0])],
+        name = "iconbridge_%s_configuration" % (chains[0]),
+        outs = ["iconbridge_%s_configuration.json" % (chains[0])],
         srcs = [
-            "@btp//cmd/btpsimple:btpsimple",
+            "@btp//cmd/iconbridge:iconbridge",
             "@%s//:bmr_config_dir" % (chains[0]),
             "@%s//cli:add_%s_bmr" % (chains[1], chains[0]),
             "@%s//cli:transfer_amount_%s_address" % (chains[1], chains[1]),
@@ -55,13 +55,13 @@ def bridge(name, chains):
             "@%s//:latest_block_height" % chains[0],
         ],
         cmd = """echo $$(cat $(location @%s//cli:transfer_amount_%s_address)) > $$(cat $(location @%s//:bmr_config_dir))/keystore.json
-        export BTPSIMPLE_SRC_OPTIONS=[mtaRootSize=8]
-        export BTPSIMPLE_DST_OPTIONS=[mtaRootSize=8]
-        export BTPSIMPLE_LOG_WRITER_MAXSIZE=1024
-        export BTPSIMPLE_BASE_DIR=\"./config/data\"
-        export BTPSIMPLE_OFFSET=$$(($$(cat $(location  @%s//:latest_block_height))+1))
-        export BTPSIMPLE_LOG_WRITER_FILENAME=\"./config/log/btpsimple.log\"
-        $(execpath @btp//cmd/btpsimple:btpsimple) --key_password $$(cat $(location @%s//cli:keysecret)) --key_store $$(cat $(location @%s//:bmr_config_dir))/keystore.json \
+        export ICONBRIDGE_SRC_OPTIONS=[mtaRootSize=8]
+        export ICONBRIDGE_DST_OPTIONS=[mtaRootSize=8]
+        export ICONBRIDGE_LOG_WRITER_MAXSIZE=1024
+        export ICONBRIDGE_BASE_DIR=\"./config/data\"
+        export ICONBRIDGE_OFFSET=$$(($$(cat $(location  @%s//:latest_block_height))+1))
+        export ICONBRIDGE_LOG_WRITER_FILENAME=\"./config/log/iconbridge.log\"
+        $(execpath @btp//cmd/iconbridge:iconbridge) --key_password $$(cat $(location @%s//cli:keysecret)) --key_store $$(cat $(location @%s//:bmr_config_dir))/keystore.json \
             --src.address $$(cat $(location @%s//:btp_address)) \
             --src.endpoint $$(cat $(location @%s//:endpoint_docker)) \
             --dst.address $$(cat $(location @%s//:btp_address)) \
@@ -72,10 +72,10 @@ def bridge(name, chains):
     )
 
     native.genrule(
-        name = "btpsimple_%s_configuration" % (chains[1]),
-        outs = ["btpsimple_%s_configuration.json" % (chains[1])],
+        name = "iconbridge_%s_configuration" % (chains[1]),
+        outs = ["iconbridge_%s_configuration.json" % (chains[1])],
         srcs = [
-            "@btp//cmd/btpsimple:btpsimple",
+            "@btp//cmd/iconbridge:iconbridge",
             "@%s//:bmr_config_dir" % (chains[1]),
             "@%s//cli:add_%s_bmr" % (chains[0], chains[1]),
             "@%s//cli:transfer_amount_%s_address" % (chains[0], chains[0]),
@@ -87,13 +87,13 @@ def bridge(name, chains):
             "@%s//:latest_block_height" % chains[1],
         ],
         cmd = """echo $$(cat $(location @%s//cli:transfer_amount_%s_address)) > $$(cat $(location @%s//:bmr_config_dir))/keystore.json
-        export BTPSIMPLE_SRC_OPTIONS=[mtaRootSize=8]
-        export BTPSIMPLE_DST_OPTIONS=[mtaRootSize=8]
-        export BTPSIMPLE_LOG_WRITER_MAXSIZE=1024
-        export BTPSIMPLE_BASE_DIR=\"./config/data\"
-        export BTPSIMPLE_OFFSET=$$(($$(cat $(location  @%s//:latest_block_height))+1))
-        export BTPSIMPLE_LOG_WRITER_FILENAME=\"./config/log/btpsimple.log\"
-        $(execpath @btp//cmd/btpsimple:btpsimple) --key_password $$(cat $(location @%s//cli:keysecret)) --key_store $$(cat $(location @%s//:bmr_config_dir))/keystore.json \
+        export ICONBRIDGE_SRC_OPTIONS=[mtaRootSize=8]
+        export ICONBRIDGE_DST_OPTIONS=[mtaRootSize=8]
+        export ICONBRIDGE_LOG_WRITER_MAXSIZE=1024
+        export ICONBRIDGE_BASE_DIR=\"./config/data\"
+        export ICONBRIDGE_OFFSET=$$(($$(cat $(location  @%s//:latest_block_height))+1))
+        export ICONBRIDGE_LOG_WRITER_FILENAME=\"./config/log/iconbridge.log\"
+        $(execpath @btp//cmd/iconbridge:iconbridge) --key_password $$(cat $(location @%s//cli:keysecret)) --key_store $$(cat $(location @%s//:bmr_config_dir))/keystore.json \
             --src.address $$(cat $(location @%s//:btp_address)) \
             --src.endpoint $$(cat $(location @%s//:endpoint_docker)) \
             --dst.address $$(cat $(location @%s//:btp_address)) \
@@ -107,12 +107,12 @@ def bridge(name, chains):
         name = "deploy_%s_bmr" % (chains[0]),
         outs = ["deploy_%s_bmr.out" % (chains[0])],
         cmd = """
-            docker run -d -v $$(cat $(location @%s//:bmr_config_dir)):/config bazel/cmd/btpsimple:btpsimple_image start --config "/config/btpsimple_%s_configuration.json" --key_password $$(cat $(location @%s//cli:keysecret))
+            docker run -d -v $$(cat $(location @%s//:bmr_config_dir)):/config bazel/cmd/iconbridge:iconbridge_image start --config "/config/iconbridge_%s_configuration.json" --key_password $$(cat $(location @%s//cli:keysecret))
             echo 'done'> \"$@\" """ % (chains[0], chains[0], chains[1]),
         executable = True,
         output_to_bindir = True,
         srcs = [
-            ":btpsimple_%s_configuration" % (chains[0]),
+            ":iconbridge_%s_configuration" % (chains[0]),
             "@%s//:bmr_config_dir" % (chains[0]),
             "@%s//cli:keysecret" % chains[1],
         ],
@@ -122,12 +122,12 @@ def bridge(name, chains):
         name = "deploy_%s_bmr" % (chains[1]),
         outs = ["deploy_%s_bmr.out" % (chains[1])],
         cmd = """
-            docker run -d -v $$(cat $(location @%s//:bmr_config_dir)):/config bazel/cmd/btpsimple:btpsimple_image start --config "/config/btpsimple_%s_configuration.json" --key_password $$(cat $(location @%s//cli:keysecret))
+            docker run -d -v $$(cat $(location @%s//:bmr_config_dir)):/config bazel/cmd/iconbridge:iconbridge_image start --config "/config/iconbridge_%s_configuration.json" --key_password $$(cat $(location @%s//cli:keysecret))
             echo 'done'> \"$@\" """ % (chains[1], chains[1], chains[0]),
         executable = True,
         output_to_bindir = True,
         srcs = [
-            ":btpsimple_%s_configuration" % (chains[1]),
+            ":iconbridge_%s_configuration" % (chains[1]),
             "@%s//:bmr_config_dir" % (chains[1]),
             "@%s//cli:keysecret" % chains[0],
         ],

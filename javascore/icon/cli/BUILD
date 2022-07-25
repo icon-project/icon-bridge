@@ -162,7 +162,7 @@ genrule(
     outs = [
         "keysecret.out",
     ],
-    cmd = "echo 'btpsimple' > $@",
+    cmd = "echo 'iconbridge' > $@",
     executable = True,
     local = True,
 )

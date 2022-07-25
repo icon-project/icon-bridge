@@ -10,7 +10,7 @@ go_library(
         "sender.go",
         "type.go",
     ],
-    importpath = "github.com/icon-project/btp/cmd/btpsimple/module/base",
+    importpath = "github.com/icon-project/iconbridge/cmd/iconbridge/module/base",
     visibility = ["//visibility:public"],
     deps = [
         "//common/codec",

@@ -26,7 +26,7 @@
 
     ```shell
     #!/bin/bash
-    while ! bin/btpsimple start --config /home/ubuntu/btp/.config/icon2pra.config.json # or pra2icon.config.json
+    while ! bin/iconbridge start --config /home/ubuntu/btp/.config/icon2pra.config.json # or pra2icon.config.json
     do
     sleep 0.1
     echo "Restarting program..."

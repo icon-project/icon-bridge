@@ -51,7 +51,7 @@ When the ReceiptProofs of the BTPMessage with found in the block smaller of BMV 
       $ goloop rpc --uri http://goloop:9080/api/v3/icon \
           call --to $JAVA_SCORE_BMC_ADDRESS \
           --method getStatus \
-          --param _link=$BTPSIMPLE_SRC_ADDRESS
+          --param _link=$ICONBRIDGE_SRC_ADDRESS
       # Example
       $ goloop rpc --uri http://goloop:9080/api/v3/icon \
         call --to cx8eb24849a7ceb16b8fa537f5a8b378c6af4a0247 \
@@ -165,36 +165,36 @@ When the ReceiptProofs of the BTPMessage with found in the block smaller of BMV 
       ]
       ```
 
-* Build btpsimple executable:
+* Build iconbridge executable:
 
 ```bash
 make
 # or
-make **btpsimple**
+make **iconbridge**
 ```
 
 * To create a configuration file
   ```bash
-    # Make sure btpsimple executable exist
-    make btpsimple
+    # Make sure iconbridge executable exist
+    make iconbridge
     
-    # Set btpsimple in path
+    # Set iconbridge in path
     export PATH="$PATH:${PWD}/bin"
 
-    BTPSIMPLE_CONFIG=path/to/config/dst.config.json \
-    BTPSIMPLE_SRC_ADDRESS=btp://0x3.icon/cx8eb24849a7ceb16b8fa537f5a8b378c6af4a0247 \
-    BTPSIMPLE_SRC_ENDPOINT=http://goloop:9080/api/v3/icon \
-    BTPSIMPLE_DST_ADDRESS=btp://0x501.pra/0x5b5B619E6A040EBCB620155E0aAAe89AfA45D090 \
-    BTPSIMPLE_DST_ENDPOINT=wss://moonbeam:34008 \
-    BTPSIMPLE_OFFSET=3562 \
-    BTPSIMPLE_KEY_STORE=path/to/config/dst.ks.json \
-    BTPSIMPLE_KEY_SECRET=path/to/config/dst.secret \
-    BTPSIMPLE_LOG_WRITER_FILENAME=path/to/config/log/dst.log \
+    ICONBRIDGE_CONFIG=path/to/config/dst.config.json \
+    ICONBRIDGE_SRC_ADDRESS=btp://0x3.icon/cx8eb24849a7ceb16b8fa537f5a8b378c6af4a0247 \
+    ICONBRIDGE_SRC_ENDPOINT=http://goloop:9080/api/v3/icon \
+    ICONBRIDGE_DST_ADDRESS=btp://0x501.pra/0x5b5B619E6A040EBCB620155E0aAAe89AfA45D090 \
+    ICONBRIDGE_DST_ENDPOINT=wss://moonbeam:34008 \
+    ICONBRIDGE_OFFSET=3562 \
+    ICONBRIDGE_KEY_STORE=path/to/config/dst.ks.json \
+    ICONBRIDGE_KEY_SECRET=path/to/config/dst.secret \
+    ICONBRIDGE_LOG_WRITER_FILENAME=path/to/config/log/dst.log \
     ./entrypoint.sh
   ```
-* To run a btpsimple
+* To run a iconbridge
   ```bash
-  bin/btpsimple start --config path/to/config/dst.config.json
+  bin/iconbridge start --config path/to/config/dst.config.json
   ```
 
 ## Run with Moonbeam Public Network and RelayChain
@@ -212,7 +212,7 @@ make **btpsimple**
       $ GOLOOP_RPC_URI="https://btp.net.solidwallet.io/api/v3/icon_dex" \
           call --to $JAVA_SCORE_BMC_ADDRESS \
           --method getStatus \
-          --param _link=$BTPSIMPLE_SRC_ADDRESS
+          --param _link=$ICONBRIDGE_SRC_ADDRESS
       # Example
       $ GOLOOP_RPC_URI="https://btp.net.solidwallet.io/api/v3/icon_dex" \
         goloop rpc call --to cx11a5a7510b128e0ab16546e1493e38b2d7e299c3 \
@@ -328,36 +328,36 @@ make **btpsimple**
       ]
       ```
 
-* Build btpsimple executable:
+* Build iconbridge executable:
 
 ```bash
 make
 # or
-make **btpsimple**
+make **iconbridge**
 ```
 
 * To create a configuration file
   ```bash
-    # Make sure btpsimple executable exist
-    make btpsimple
+    # Make sure iconbridge executable exist
+    make iconbridge
     
-    # Set btpsimple in path
+    # Set iconbridge in path
     export PATH="$PATH:${PWD}/bin"
 
-    BTPSIMPLE_CONFIG=path/to/config/dst.config.json \
-    BTPSIMPLE_SRC_ADDRESS=btp://0x42.icon/cx11a5a7510b128e0ab16546e1493e38b2d7e299c3 \
-    BTPSIMPLE_SRC_ENDPOINT=https://btp.net.solidwallet.io/api/v3/icon_dex \
-    BTPSIMPLE_DST_ADDRESS=btp://0x507.pra/0x3e525eD7a82B87bE30cdADE89d32204cA0F1C356 \
-    BTPSIMPLE_DST_ENDPOINT=wss://wss.testnet.moonbeam.network \
-    BTPSIMPLE_OFFSET=3562 \
-    BTPSIMPLE_KEY_STORE=path/to/config/dst.ks.json \
-    BTPSIMPLE_KEY_SECRET=path/to/config/dst.secret \
-    BTPSIMPLE_LOG_WRITER_FILENAME=log/icon2pra.btp.moonbase.log \
+    ICONBRIDGE_CONFIG=path/to/config/dst.config.json \
+    ICONBRIDGE_SRC_ADDRESS=btp://0x42.icon/cx11a5a7510b128e0ab16546e1493e38b2d7e299c3 \
+    ICONBRIDGE_SRC_ENDPOINT=https://btp.net.solidwallet.io/api/v3/icon_dex \
+    ICONBRIDGE_DST_ADDRESS=btp://0x507.pra/0x3e525eD7a82B87bE30cdADE89d32204cA0F1C356 \
+    ICONBRIDGE_DST_ENDPOINT=wss://wss.testnet.moonbeam.network \
+    ICONBRIDGE_OFFSET=3562 \
+    ICONBRIDGE_KEY_STORE=path/to/config/dst.ks.json \
+    ICONBRIDGE_KEY_SECRET=path/to/config/dst.secret \
+    ICONBRIDGE_LOG_WRITER_FILENAME=log/icon2pra.btp.moonbase.log \
     ./entrypoint.sh
   ```
-* To run a btpsimple
+* To run a iconbridge
   ```bash
-  bin/btpsimple start --config path/to/config/dst.config.json
+  bin/iconbridge start --config path/to/config/dst.config.json
   ```
 
 For the flow from Parachain to ICON, it's requires options in "src.options"

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "cli",
     srcs = ["helper.go"],
-    importpath = "github.com/icon-project/btp/common/cli",
+    importpath = "github.com/icon-project/iconbridge/common/cli",
     visibility = ["//visibility:public"],
     deps = [
         "//common/errors",

@@ -7,7 +7,7 @@ go_library(
         "key.go",
         "signature.go",
     ],
-    importpath = "github.com/icon-project/btp/common/crypto",
+    importpath = "github.com/icon-project/iconbridge/common/crypto",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_haltingstate_secp256k1_go//:secp256k1-go",

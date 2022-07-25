@@ -9,10 +9,10 @@ go_library(
         "serialize.go",
         "type.go",
     ],
-    importpath = "github.com/icon-project/btp/cmd/btpsimple/module/icon",
+    importpath = "github.com/icon-project/iconbridge/cmd/iconbridge/module/icon",
     visibility = ["//visibility:public"],
     deps = [
-        "//cmd/btpsimple/module/base",
+        "//cmd/iconbridge/module/base",
         "//common",
         "//common/codec",
         "//common/crypto",

@@ -7,14 +7,14 @@ load(
 package(default_visibility = ["//visibility:public"])
 
 go_library(
-    name = "btpsimple_lib",
+    name = "iconbridge_lib",
     srcs = [
         "main.go",
     ],
-    importpath = "github.com/icon-project/btp/cmd/btpsimple",
+    importpath = "github.com/icon-project/iconbridge/cmd/iconbridge",
     visibility = ["//visibility:private"],
     deps = [
-        "//cmd/btpsimple/chain",
+        "//cmd/iconbridge/chain",
         "//common/cli",
         "//common/crypto",
         "//common/errors",
@@ -26,22 +26,22 @@ go_library(
 )
 
 go_binary(
-    name = "btpsimple",
-    embed = [":btpsimple_lib"],
+    name = "iconbridge",
+    embed = [":iconbridge_lib"],
     visibility = ["//visibility:public"],
 )
 
 go_binary(
-    name = "btpsimple_linux",
-    embed = [":btpsimple_lib"],
+    name = "iconbridge_linux",
+    embed = [":iconbridge_lib"],
     goarch = "amd64",
     goos = "linux",
     visibility = ["//visibility:public"],
 )
 
 container_image(
-    name = "btpsimple_image",
+    name = "iconbridge_image",
     base = "@golang_base//image",
-    entrypoint = ["/btpsimple_linux"],
-    files = [":btpsimple_linux"],
+    entrypoint = ["/iconbridge_linux"],
+    files = [":iconbridge_linux"],
 )

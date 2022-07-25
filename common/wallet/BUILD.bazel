@@ -11,7 +11,7 @@ go_library(
         "wallet_evm.go",
         "wallet_near.go",
     ],
-    importpath = "github.com/icon-project/btp/common/wallet",
+    importpath = "github.com/icon-project/iconbridge/common/wallet",
     visibility = ["//visibility:public"],
     deps = [
         "//common",

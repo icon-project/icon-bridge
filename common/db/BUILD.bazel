@@ -10,7 +10,7 @@ go_library(
         "layer_db.go",
         "map_db.go",
     ],
-    importpath = "github.com/icon-project/btp/common/db",
+    importpath = "github.com/icon-project/iconbridge/common/db",
     visibility = ["//visibility:public"],
     deps = [
         "//common/errors",

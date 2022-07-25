@@ -9,7 +9,7 @@ go_library(
         "log.go",
         "writer.go",
     ],
-    importpath = "github.com/icon-project/btp/common/log",
+    importpath = "github.com/icon-project/iconbridge/common/log",
     visibility = ["//visibility:public"],
     deps = [
         "//common/errors",

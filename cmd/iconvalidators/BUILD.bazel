@@ -7,10 +7,10 @@ go_library(
     srcs = [
         "main.go",
     ],
-    importpath = "github.com/icon-project/btp/cmd/btpsimple",
+    importpath = "github.com/icon-project/iconbridge/cmd/iconbridge",
     visibility = ["//visibility:private"],
     deps = [
-        "//cmd/btpsimple/module/icon",
+        "//cmd/iconbridge/chain/icon",
         "//common/cli",
         "//common/codec",
         "//common/intconv",

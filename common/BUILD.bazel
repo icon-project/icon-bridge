@@ -9,7 +9,7 @@ go_library(
         "http.go",
         "string.go",
     ],
-    importpath = "github.com/icon-project/btp/common",
+    importpath = "github.com/icon-project/iconbridge/common",
     visibility = ["//visibility:public"],
     deps = [
         "//common/codec",

@@ -143,8 +143,8 @@ http_archive(
 load("@bazel-zig-cc//toolchain:defs.bzl", zig_register_toolchains = "register_toolchains")
 zig_register_toolchains()
 
-load("//cmd/btpsimple:dependencies.bzl", btpsimple_dependencies = "dependencies")
-btpsimple_dependencies()
+load("//cmd/iconbridge:dependencies.bzl", iconbridge_dependencies = "dependencies")
+iconbridge_dependencies()
 
 load("//chain_repositories:repositories.bzl", "chain_repositories")
 chain_repositories()
