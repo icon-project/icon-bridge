@@ -49,7 +49,7 @@ func main() {
 		for _, fts := range testCfg.FlowTest.Chains {
 			for _, coinName := range fts.CoinNames {
 				go func(coinName string) {
-					err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, []string{coinName}, executor.BasicTransfer)
+					err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, []string{coinName}, executor.TransferWithoutApprove)
 					if err != nil {
 						log.Errorf("%+v", err)
 					}

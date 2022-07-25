@@ -48,7 +48,7 @@ func TestExecutor(t *testing.T) {
 	ex.Subscribe(ctx)
 	time.Sleep(5 * time.Second)
 	go func() {
-		err = ex.Execute(ctx, chain.ICON, chain.BSC, []string{"TICX", "ICX"}, executor.BasicTransfer)
+		err = ex.Execute(ctx, chain.ICON, chain.BSC, []string{"ICX"}, executor.TransferToUnknownNetwork)
 		if err != nil {
 			log.Errorf("%+v", err)
 		}

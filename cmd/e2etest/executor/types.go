@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
+	"github.com/icon-project/icon-bridge/common/errors"
 )
 
 type evt struct {
@@ -30,3 +31,8 @@ type fee struct {
 	numerator   *big.Int
 	denominator *big.Int
 }
+
+var (
+	ZeroEvents     = errors.New("Got zero event logs, expected at least one")
+	StatusCodeZero = errors.New("Got status code zero(failed)")
+)

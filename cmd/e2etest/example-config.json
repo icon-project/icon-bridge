@@ -4,34 +4,30 @@
             "name":"ICON",
             "url":"http://127.0.0.1:9080/api/v3/icon",
             "contract_addresses": {
-                "BTSIcon":  "cx5c66ad109920b5902776e6c3eba5a296d28caff4"
+                "BTS":  "cx79ba68ea1bb4591ef2b835d8a05d4953986f2b4c"
             },
-            "native_coins": "ICX",
+            "native_coin": "ICX",
             "native_tokens":["ETH", "TICX"],
             "wrapped_coins":["BNB", "TBNB"],
-            "god_wallet":{
-                "path":"./icon.god.wallet.json",
-                "password":"./icon.god.wallet.secret"
-            },
+            "god_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/icon.god.wallet.json",
+            "god_wallet_secret_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/icon.god.wallet.secret",
             "network_id":"0x613f17.icon",
-            "gasLimit":8000000
-        },
+            "gas_limit":2000000
+        }, 
         {
             "name":"BSC", 
             "url":"http://127.0.0.1:8545",
             "contract_addresses": {
-                "BTSCoreBsc":      "0x71a1520bBb7e6072Bbf3682A60c73D63b693690A",
-                "BTSPeripheryBsc": "0x3abC8DFF0C95B8982399daCf6ED5bD7b94a40068"
+                "BTS":      "0x71a1520bBb7e6072Bbf3682A60c73D63b693690A",
+                "BTSPeriphery": "0x3abC8DFF0C95B8982399daCf6ED5bD7b94a40068"
             },
-            "native_coins": "BNB",
+            "native_coin": "BNB",
             "native_tokens":["ETH", "TBNB"],
             "wrapped_coins":["ICX", "TICX"],
-            "god_wallet":{
-                "path":"./bsc.god.wallet.json",
-                "password":"./bsc.god.wallet.secret"
-            },
+            "god_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/bsc.god.wallet.json",
+            "god_wallet_secret_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/bsc.god.wallet.secret",
             "network_id":"0x61.bsc",
-            "gasLimit":20000000
+            "gas_limit":2000000
         }
     ]
 } 

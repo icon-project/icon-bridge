@@ -13,16 +13,17 @@ import (
 )
 
 type testSuite struct {
-	id                    uint64
-	clsPerChain           map[chain.ChainType]chain.ChainAPI
-	godKeysPerChain       map[chain.ChainType]keypair
-	logger                log.Logger
-	subChan               <-chan *evt
-	nativeCoinAmoutForGas *big.Int
-	fee                   fee
-	src                   chain.ChainType
-	dst                   chain.ChainType
-	report                string
+	id                 uint64
+	clsPerChain        map[chain.ChainType]chain.ChainAPI
+	godKeysPerChain    map[chain.ChainType]keypair
+	logger             log.Logger
+	subChan            <-chan *evt
+	btsAddressPerChain map[chain.ChainType]string
+	gasLimitPerChain   map[chain.ChainType]int64
+	fee                fee
+	src                chain.ChainType
+	dst                chain.ChainType
+	report             string
 }
 
 func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain.SrcAPI, dst chain.DstAPI, err error) {
@@ -49,11 +50,32 @@ func (ts *testSuite) withFeeAdded(bal *big.Int) *big.Int {
 	// val(1 - ratio) = fixed
 	// val = fixed/(1 - ratio)
 	// val = (fixed * denom)/(denom - num)
-	fd := new(big.Int).Mul(ts.fee.fixed, ts.fee.denominator)
+	bplusf := bal.Add(bal, ts.fee.fixed)
+	bplusf.Mul(bplusf, ts.fee.denominator)
 	dminusn := new(big.Int).Sub(ts.fee.denominator, ts.fee.numerator)
-	v := new(big.Int).Div(fd, dminusn)
-	return new(big.Int).Add(v, bal)
+	bplusf.Div(bplusf, dminusn)
+	return bplusf
 }
+
+func (ts *testSuite) SuggestGasPrice() *big.Int {
+	pricePerUnitGas := big.NewInt(6000000000)                                            // this price will later be fetched from transactions
+	return pricePerUnitGas.Mul(pricePerUnitGas, big.NewInt(ts.gasLimitPerChain[ts.src])) // gasLimit depends on what kind of transactions we're doing
+}
+
+// func (ts *testSuite) returnSurplus(srcKey string, srcAddr string) (err error) {
+// 	cl, ok := ts.clsPerChain[ts.src]
+// 	if !ok {
+// 		err = fmt.Errorf("Chain %v not found", ts.src)
+// 		return
+// 	}
+// 	bal, err := cl.GetCoinBalance(cl.NativeCoin(), srcAddr)
+// 	if err != nil {
+// 		err = errors.Wrapf(err, "GetCoinBalance %v", err)
+// 	}
+
+// 	bal.UsableBalance
+// 	return nil
+// }
 
 func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, err error) {
 	cl, ok := ts.clsPerChain[chainName]
@@ -103,6 +125,7 @@ func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 		if scoin != coinName {
 			continue
 		}
+		ts.logger.Infof("Transfer coin %v addr %v amt %v ", coinName, addr, amount.String())
 		hash, err := srcCl.Transfer(coinName, srcKeys.PrivKey, addr, amount)
 		if err != nil {
 			return errors.Wrapf(err, "srcCl.Transfer err=%v", err)
@@ -153,6 +176,8 @@ func (ts *testSuite) ValidateTransactionResult(ctx context.Context, hash string)
 		err = fmt.Errorf("WaitForTxnResult; Transaction Result is nil. Hash %v", hash)
 	} else if res != nil && res.StatusCode != 1 {
 		err = errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
+		err = StatusCodeZero
+		return
 	}
 	return
 }
@@ -170,7 +195,8 @@ func (ts *testSuite) ValidateTransactionResultAndEvents(ctx context.Context, has
 	} else if res == nil {
 		return fmt.Errorf("WaitForTxnResult; Transaction Result is nil. Hash %v", hash)
 	} else if res != nil && res.StatusCode != 1 {
-		return errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
+		err = errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
+		return StatusCodeZero
 	} else if res != nil && len(res.ElInfo) == 0 {
 		return fmt.Errorf("WaitForTxnResult; Got zero parsed event logs. Hash %v", hash)
 	}
@@ -229,7 +255,8 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, hash string, cbPerEvent 
 		}
 		if startCb, ok := cbPerEvent[chain.TransferStart]; ok {
 			if err := startCb(&evt{chainType: ts.src, msg: el}); err != nil {
-				ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", "TransferStart", err)
+				return err
+				//ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", "TransferStart", err)
 			}
 		}
 		break
@@ -285,8 +312,11 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, hash string, cbPerEvent 
 		case ev := <-ts.subChan:
 			if cb, ok := cbPerEvent[ev.msg.EventType]; ok {
 				numExpectedEvents--
-				if cb != nil && cb(ev) != nil {
-					ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", ev.msg.EventType, err)
+				if cb != nil {
+					if err := cb(ev); err != nil {
+						return err
+						ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", ev.msg.EventType, err)
+					}
 				}
 			}
 			if numExpectedEvents == 0 {

@@ -17,7 +17,11 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-const STEPLIMIT = 80000000
+const (
+	FEE_NUMERATOR   = 100
+	FEE_DENOMINATOR = 10000
+	FIXED_PRICE     = 50000
+)
 
 type executor struct {
 	log             log.Logger
@@ -218,15 +222,33 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	if !ok {
 		return fmt.Errorf("GodKeys for chain %v not found", dstChainName)
 	}
+	srcCfg, ok := ex.cfgPerChain[srcChainName]
+	if !ok {
+		return fmt.Errorf("Cfg for chain %v not found", srcChainName)
+	}
+	dstCfg, ok := ex.cfgPerChain[dstChainName]
+	if !ok {
+		return fmt.Errorf("Cfg for chain %v not found", srcChainName)
+	}
+	btsAddressPerChain := map[chain.ChainType]string{
+		srcChainName: srcCfg.ContractAddresses[chain.BTS],
+		dstChainName: dstCfg.ContractAddresses[chain.BTS],
+	}
+
+	gasLimitPerChain := map[chain.ChainType]int64{
+		srcChainName: srcCfg.GasLimit,
+		dstChainName: dstCfg.GasLimit,
+	}
 
 	ts := &testSuite{
-		id:                    id,
-		logger:                log,
-		subChan:               sinkChan,
-		clsPerChain:           map[chain.ChainType]chain.ChainAPI{srcChainName: srcCl, dstChainName: dstCl},
-		godKeysPerChain:       map[chain.ChainType]keypair{srcChainName: srcGod, dstChainName: dstGod},
-		nativeCoinAmoutForGas: new(big.Int).Mul(big.NewInt(12500000000), big.NewInt(STEPLIMIT)),
-		fee:                   fee{numerator: big.NewInt(100), denominator: big.NewInt(10000), fixed: big.NewInt(5000)},
+		id:                 id,
+		logger:             log,
+		subChan:            sinkChan,
+		btsAddressPerChain: btsAddressPerChain,
+		gasLimitPerChain:   gasLimitPerChain,
+		clsPerChain:        map[chain.ChainType]chain.ChainAPI{srcChainName: srcCl, dstChainName: dstCl},
+		godKeysPerChain:    map[chain.ChainType]keypair{srcChainName: srcGod, dstChainName: dstGod},
+		fee:                fee{numerator: big.NewInt(FEE_NUMERATOR), denominator: big.NewInt(FEE_DENOMINATOR), fixed: big.NewInt(FIXED_PRICE)},
 	}
 
 	ex.log.Infof("Run ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinNames, srcChainName, dstChainName)
