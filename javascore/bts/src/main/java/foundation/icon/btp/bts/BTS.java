@@ -53,7 +53,7 @@ public interface BTS {
      * @return SCORE address
      */
     @External(readonly = true)
-    Address coinAddress(String _coinName);
+    Address coinId(String _coinName);
 
     /**
      * Return a usable/locked balance of an account based on coinName.

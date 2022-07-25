@@ -173,7 +173,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     @External(readonly = true)
-    public Address coinAddress(String _coinName) {
+    public Address coinId(String _coinName) {
         return this.coinAddresses.getOrDefault(_coinName, null);
     }
 
@@ -746,7 +746,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     private void transfer(Address to, String coinName, BigInteger amount) {
-        Address _coinAddr = coinAddress(coinName);
+        Address _coinAddr = coinId(coinName);
         if (_coinAddr == null) {
             throw BTSException.irc31Failure("Exception: CoinNotFound");
         }
