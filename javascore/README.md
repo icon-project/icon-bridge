@@ -92,7 +92,7 @@ BTS:
 
 
 
-//@Deprecated (this module was moved in the bts)
+//@Deprecated (this module was moved in to the bts)
 BSH:
 ``` gradle token-bsh:deployToLocal -DBMC_ADDRESS=<BMC_SCORE_ADDRESS> -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain ```
 
