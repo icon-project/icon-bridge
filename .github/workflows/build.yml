@@ -1,0 +1,62 @@
+name: 'Build icon bridge'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+
+jobs:
+
+  build:
+    name: Build icon-bridge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.5.0
+          cache: 'yarn'
+          cache-dependency-path: |
+            solidity/bmc/yarn.lock
+            solidity/bts/yarn.lock
+
+      - name: Install yarn packages
+        run: yarn install
+
+      - name: Build solidity bmc
+        working-directory: ./solidity/bmc
+        run: yarn
+
+      - name: Build solidity bts
+        working-directory: ./solidity/bts
+        run: yarn
+
+      - name: Build javascore bmc
+        working-directory: ./javascore
+        run: gradle bmc:build
+
+      - name: Run javascore bmc tests
+        working-directory: ./javascore
+        run: gradle bmc:test
+
+      - name: Build javascore bmc optimized jar
+        working-directory: ./javascore
+        run: gradle bmc:optimizedJar
+
+      - name: Build javascore bts
+        working-directory: ./javascore
+        run: gradle bts:build
+
+      - name: Run javascore bts tests
+        working-directory: ./javascore
+        run: gradle bts:test
+
+      - name: Build javascore bts optimized jar
+        working-directory: ./javascore
+        run: gradle bts:optimizedJar

@@ -5,6 +5,5 @@ include (
         'bmc',
         'bts',
         'bsr',
-        'token-bsh',
-        'integration-tests'
+        'token-bsh'
 )
