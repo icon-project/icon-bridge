@@ -9,8 +9,8 @@
             "native_coin": "ICX",
             "native_tokens":["ETH", "TICX"],
             "wrapped_coins":["BNB", "TBNB"],
-            "god_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/icon.god.wallet.json",
-            "god_wallet_secret_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/icon.god.wallet.secret",
+            "god_wallet_keystore_path":"./icon.god.wallet.json",
+            "god_wallet_secret_path":"./icon.god.wallet.secret",
             "network_id":"0x613f17.icon",
             "gas_limit":2000000
         }, 
@@ -24,8 +24,8 @@
             "native_coin": "BNB",
             "native_tokens":["ETH", "TBNB"],
             "wrapped_coins":["ICX", "TICX"],
-            "god_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/bsc.god.wallet.json",
-            "god_wallet_secret_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/bsc.god.wallet.secret",
+            "god_wallet_keystore_path":"./bsc.god.wallet.json",
+            "god_wallet_secret_path":"./bsc.god.wallet.secret",
             "network_id":"0x61.bsc",
             "gas_limit":2000000
         }
