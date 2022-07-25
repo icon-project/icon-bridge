@@ -177,6 +177,10 @@ func (r *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHas
 	txnHash, err = r.requester.approveCoin(coinName, ownerKey, amount)
 	return
 }
+func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
+	txnHash, err = a.requester.reclaim(coinName, ownerKey, amount)
+	return
+}
 
 func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
 	txRes, err := r.requester.waitForResults(ctx, common.HexToHash(hash))
@@ -198,7 +202,7 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 }
 
 func (r *api) GetBTPAddress(addr string) string {
-	fullAddr := "btp://" + r.requester.networkID + "/" + addr
+	fullAddr := "btp://" + r.requester.networkID + ".hmny/" + addr
 	return fullAddr
 }
 

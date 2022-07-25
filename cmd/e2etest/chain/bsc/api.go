@@ -40,7 +40,7 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 			Cls:  []*ethclient.Client{ethclient.NewClient(clrpc)},
 			BlockReq: ethereum.FilterQuery{
 				Addresses: []ethCommon.Address{
-					ethCommon.HexToAddress(cfg.ContractAddresses[chain.BTSPeripheryBsc]),
+					ethCommon.HexToAddress(cfg.ContractAddresses[chain.BTSPeriphery]),
 				},
 			},
 		},
@@ -170,6 +170,11 @@ func (r *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHas
 	return
 }
 
+func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
+	txnHash, err = a.requester.reclaim(coinName, ownerKey, amount)
+	return
+}
+
 func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
 	txRes, err := r.requester.waitForResults(ctx, ethCommon.HexToHash(hash))
 	if err != nil {
@@ -190,7 +195,7 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 }
 
 func (r *api) GetBTPAddress(addr string) string {
-	fullAddr := "btp://" + r.requester.networkID + "/" + addr
+	fullAddr := "btp://" + r.requester.networkID + ".bsc/" + addr
 	return fullAddr
 }
 
@@ -226,22 +231,35 @@ func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	return res, nil
 }
 
-func (r *api) GetKeyPairFromKeystore(walFile string, password string) (privKey, pubKey string, err error) {
-	keyReader, err := os.Open(walFile)
-	if err != nil {
-		err = errors.Wrapf(err, "os.Open file %v", walFile)
-		return
-	}
-	defer keyReader.Close()
+func (r *api) GetKeyPairFromKeystore(keystoreFile string, secretFile string) (privKey, pubKey string, err error) {
+	readFile := func(file string) (string, error) {
+		f, err := os.Open(file)
+		if err != nil {
+			return "", err
+		}
+		defer f.Close()
 
-	keyStore, err := ioutil.ReadAll(keyReader)
+		b, err := ioutil.ReadAll(f)
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(string(b)), nil
+	}
+
+	secret, err := readFile(secretFile)
 	if err != nil {
-		err = errors.Wrapf(err, "ioutil.ReadAll %v", walFile)
+		err = errors.Wrapf(err, "readPassFromFile(%v) %v", secretFile, err)
 		return
 	}
-	key, err := keystore.DecryptKey(keyStore, password)
+	wal, err := readFile(keystoreFile)
 	if err != nil {
-		err = errors.Wrapf(err, "keystore.Decrypt %v", walFile)
+		err = errors.Wrapf(err, "readKeystoreFromFile(%v) %v", keystoreFile, err)
+		return
+	}
+
+	key, err := keystore.DecryptKey([]byte(wal), secret)
+	if err != nil {
+		err = errors.Wrapf(err, "keystore.Decrypt %v", err)
 		return
 	}
 	privBytes := crypto.FromECDSA(key.PrivateKey)

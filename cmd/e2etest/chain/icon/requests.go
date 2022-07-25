@@ -183,9 +183,9 @@ func (r *requestAPI) transferInterChain(coinName, senderKey, recepientAddress st
 
 func (r *requestAPI) transferNativeCrossChain(senderKey, recepientAddress string, amount *big.Int) (txHash string, err error) {
 	args := map[string]interface{}{"_to": recepientAddress}
-	caddr, ok := r.contractNameToAddress[chain.BTSIcon]
+	caddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
 	return r.transactWithContract(senderKey, caddr, amount, args, "transferNativeCoin")
@@ -193,9 +193,9 @@ func (r *requestAPI) transferNativeCrossChain(senderKey, recepientAddress string
 
 func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddress string, amount *big.Int) (string, error) {
 	args := map[string]interface{}{"_coinName": coinName, "_value": intconv.FormatBigInt(amount), "_to": recepientAddress}
-	btsaddr, ok := r.contractNameToAddress[chain.BTSIcon]
+	btsaddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
-		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 	return r.transactWithContract(senderKey, btsaddr, big.NewInt(0), args, "transfer")
 }
@@ -214,9 +214,9 @@ func (r *requestAPI) approve(coinName string, ownerKey string, amount *big.Int) 
 }
 
 func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, amount *big.Int, coinAddress string) (approveTxnHash string, err error) {
-	btsaddr, ok := r.contractNameToAddress[chain.BTSIcon]
+	btsaddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
 	approveArgs := map[string]interface{}{"spender": btsaddr, "amount": intconv.FormatBigInt(amount)}
@@ -229,9 +229,9 @@ func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, am
 }
 
 func (r *requestAPI) approveToken(coinName, senderKey string, amount *big.Int, caddr string) (hash string, err error) {
-	btsAddr, ok := r.contractNameToAddress[chain.BTSIcon]
+	btsAddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
-		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 	arg1 := map[string]interface{}{"_to": btsAddr, "_value": intconv.FormatBigInt(amount)}
 	return r.transactWithContract(senderKey, caddr, big.NewInt(0), arg1, "transfer")
@@ -254,16 +254,40 @@ func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddre
 	}
 
 	args := map[string]interface{}{"_coinNames": filterNames, "_values": filterAmounts, "_to": recepientAddress}
-	btsaddr, ok := r.contractNameToAddress[chain.BTSIcon]
+	btsaddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
-		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 
 	txnHash, err = r.transactWithContract(senderKey, btsaddr, nativeAmount, args, "transferBatch")
 	return
 }
+func (r *requestAPI) getCoinBalanceOfBTS(coinName, addr string) (bal *chain.CoinBalance, err error) {
+	coinAddr, ok := r.nativeTokensAddr[coinName]
+	if !ok {
+		coinAddr, ok = r.wrappedCoinsAddr[coinName]
+		if !ok {
+			return nil, fmt.Errorf("CoinName %v not found", coinName)
+		}
+	}
+	// IRC BALANCEOF
+	zeroBalance := big.NewInt(0)
+	bal = &chain.CoinBalance{UsableBalance: zeroBalance, LockedBalance: zeroBalance, RefundableBalance: zeroBalance, UserBalance: new(big.Int)}
+	res, err := r.callContract(coinAddr, map[string]string{"_owner": addr}, "balanceOf")
+	if err != nil {
+		return nil, errors.Wrap(err, "callContract coinAddress ")
+	} else if res == nil {
+		return nil, errors.New("callContract returned nil value ")
+	}
+	tmpStr, ok := res.(string)
+	if !ok {
+		return nil, fmt.Errorf("Expected type map[string]interface{} Got %T", res)
+	}
+	bal.UserBalance.SetString(tmpStr[2:], 16)
+	return
+}
 
-func (r *requestAPI) getCoinBalance(coinName, addr string, isToken bool) (bal *chain.CoinBalance, err error) {
+func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalance, err error) {
 	if coinName == r.nativeCoin {
 		return r.getNativeCoinBalance(coinName, addr)
 	}
@@ -282,9 +306,12 @@ func (r *requestAPI) getCoinBalance(coinName, addr string, isToken bool) (bal *c
 	}
 
 	// Tokens ..
-	btsAddr, ok := r.contractNameToAddress[chain.BTSIcon]
+	btsAddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
-		return nil, fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+		return nil, fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+	}
+	if addr == btsAddr {
+		return r.getCoinBalanceOfBTS(coinName, addr)
 	}
 	// BTS BALANCEOF
 	res, err := r.callContract(btsAddr, map[string]string{"_coinName": coinName, "_owner": addr}, "balanceOf")
@@ -293,11 +320,13 @@ func (r *requestAPI) getCoinBalance(coinName, addr string, isToken bool) (bal *c
 	} else if res == nil {
 		return nil, errors.New("callContract returned nil value ")
 	}
+	fmt.Println(res)
+	zeroBalance := big.NewInt(0)
+	return &chain.CoinBalance{UsableBalance: zeroBalance, LockedBalance: zeroBalance, RefundableBalance: zeroBalance, UserBalance: zeroBalance}, nil
 	balanceMap, ok := res.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("Expected type map[string]interface{} Got %T", res)
 	}
-
 	bal = &chain.CoinBalance{}
 	bal.UsableBalance, err = getBalanceOfType(balanceMap, "usable")
 	if err != nil {
@@ -315,14 +344,13 @@ func (r *requestAPI) getCoinBalance(coinName, addr string, isToken bool) (bal *c
 	if err != nil {
 		return nil, errors.Wrapf(err, "getBalanceOfType(userBalance) %v", err)
 	}
-
 	return
 }
 
 func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (tokenAddrMap, wrappedAddrMap map[string]string, err error) {
-	btsaddr, ok := r.contractNameToAddress[chain.BTSIcon]
+	btsaddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTSIcon)
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
 	res, err := r.callContract(btsaddr, map[string]string{}, "coinNames")
@@ -358,6 +386,7 @@ func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (toke
 		}
 		return false
 	}
+
 	// all registered coins have to be given in input config
 	allInputCoins := append(nativeTokens, wrappedCoins...)
 	for _, coinName := range coinNames {
@@ -420,7 +449,7 @@ func generateKeyPair() ([2]string, error) {
 
 func (r *requestAPI) getNativeCoinBalance(coinName, addr string) (bal *chain.CoinBalance, err error) {
 	zeroBalance := big.NewInt(0)
-	bal = &chain.CoinBalance{UsableBalance: zeroBalance, RefundableBalance: zeroBalance, LockedBalance: zeroBalance, UserBalance: zeroBalance}
+	bal = &chain.CoinBalance{UsableBalance: zeroBalance, RefundableBalance: zeroBalance, LockedBalance: zeroBalance, UserBalance: new(big.Int)}
 	// Native
 	bal.UserBalance, err = r.cl.GetBalance(&icon.AddressParam{Address: icon.Address(addr)})
 	if err != nil {
@@ -462,4 +491,13 @@ func GetWalletFromPrivKey(privKey string) (module.Wallet, error) {
 		return nil, errors.Wrap(err, "crypto.NewFromPrivateKey ")
 	}
 	return wal, nil
+}
+
+func (r *requestAPI) reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
+	btsAddr, ok := r.contractNameToAddress[chain.BTS]
+	if !ok {
+		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+	}
+	arg1 := map[string]interface{}{"_coinName": coinName, "_value": intconv.FormatBigInt(amount)}
+	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), arg1, "reclaim")
 }

@@ -36,8 +36,8 @@ func getNewApi() (chain.ChainAPI, error) {
 	log.SetGlobalLogger(l)
 
 	addrToName := map[chain.ContractName]string{
-		chain.BTSCoreHmny:      "0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
-		chain.BTSPeripheryHmny: "0xfad748a1063a40FF447B5D766331904d9bedDC26",
+		chain.BTS:          "0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
+		chain.BTSPeriphery: "0xfad748a1063a40FF447B5D766331904d9bedDC26",
 	}
 	rx, err := hmny.NewApi(l, &chain.Config{
 		Name:              chain.HMNY,

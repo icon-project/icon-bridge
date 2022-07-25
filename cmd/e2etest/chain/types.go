@@ -16,11 +16,8 @@ const (
 type ContractName string
 
 const (
-	BTSIcon          ContractName = "BTSIcon"
-	BTSCoreHmny      ContractName = "BTSCoreHmny"
-	BTSPeripheryHmny ContractName = "BTSPeripheryHmny"
-	BTSCoreBsc       ContractName = "BTSCoreBsc"
-	BTSPeripheryBsc  ContractName = "BTSPeripheryBsc"
+	BTS          ContractName = "BTS"
+	BTSPeriphery ContractName = "BTSPeriphery"
 )
 
 type EventLogType string
@@ -84,6 +81,7 @@ type ChainAPI interface {
 	WatchForTransferEnd(ID uint64, seq int64) error
 	Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
+	Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
 
 	NativeCoin() string
 	NativeTokens() []string
@@ -100,7 +98,7 @@ type Config struct {
 	GodWalletKeystorePath string                  `json:"god_wallet_keystore_path"`
 	GodWalletSecretPath   string                  `json:"god_wallet_secret_path"`
 	NetworkID             string                  `json:"network_id"`
-	GasLimit              int64                   `json:"gasLimit"`
+	GasLimit              int64                   `json:"gas_limit"`
 }
 
 type EventLogInfo struct {

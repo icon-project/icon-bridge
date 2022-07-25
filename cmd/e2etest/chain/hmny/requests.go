@@ -49,9 +49,9 @@ func newRequestAPI(cfg *chain.Config) (*requestAPI, error) {
 	}
 	cleth := ethclient.NewClient(clrpc)
 
-	caddr, ok := cfg.ContractAddresses[chain.BTSCoreHmny]
+	caddr, ok := cfg.ContractAddresses[chain.BTS]
 	if !ok {
-		return nil, fmt.Errorf("contractNameToAddress doesn't include %v", chain.BTSCoreHmny)
+		return nil, fmt.Errorf("contractNameToAddress doesn't include %v", chain.BTS)
 	}
 	btscore, err := btscore.NewBtscore(common.HexToAddress(caddr), cleth)
 	if err != nil {
@@ -350,9 +350,9 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount *big.Int) (a
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
-	btscaddr, ok := r.contractNameToAddress[chain.BTSCoreHmny]
+	btscaddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTSCoreHmny)
+		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTS)
 		return
 	}
 	txo.Context = context.Background()
@@ -378,4 +378,16 @@ func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalan
 		UserBalance:       b.UserBalance,
 	}
 	return bal, nil
+}
+
+func (r *requestAPI) reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
+	txo, err := r.getTransactionRequest(ownerKey)
+	if err != nil {
+		err = errors.Wrap(err, "getTransactionRequest ")
+		return
+	}
+
+	txn, err := r.btsc.Reclaim(txo, coinName, amount)
+	txnHash = txn.Hash().String()
+	return
 }

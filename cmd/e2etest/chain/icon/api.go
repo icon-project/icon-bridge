@@ -2,16 +2,19 @@ package icon
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"strings"
 
+	gocommon "github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"
 	"github.com/icon-project/icon-bridge/common"
+
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
@@ -39,9 +42,9 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	}
 	client := icon.NewClient(cfg.URL, l)
 
-	btsIconAddr, ok := cfg.ContractAddresses[chain.BTSIcon]
+	btsIconAddr, ok := cfg.ContractAddresses[chain.BTS]
 	if !ok {
-		return nil, errors.New("cfg.ConftractAddresses does not include chain.BTSIcon")
+		return nil, errors.New("cfg.ConftractAddresses does not include chain.BTS")
 	}
 
 	evtReq := icon.BlockRequest{
@@ -168,7 +171,7 @@ func (a *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-	return a.requester.getCoinBalance(coinName, address, false)
+	return a.requester.getCoinBalance(coinName, address)
 }
 
 func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
@@ -200,8 +203,13 @@ func (a *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHas
 	return
 }
 
+func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
+	txnHash, err = a.requester.reclaim(coinName, ownerKey, amount)
+	return
+}
+
 func (a *api) GetBTPAddress(addr string) string {
-	fullAddr := "btp://" + a.requester.networkID + "/" + addr
+	fullAddr := "btp://" + a.requester.networkID + ".icon/" + addr
 	return fullAddr
 }
 
@@ -241,7 +249,7 @@ func (a *api) GetKeyPairs(num int) ([][2]string, error) {
 	return res, nil
 }
 
-func (a *api) GetKeyPairFromKeystore(keyFile, secretFile string) (priv string, pub string, err error) {
+func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv string, pub string, err error) {
 	readFile := func(file string) (string, error) {
 		f, err := os.Open(file)
 		if err != nil {
@@ -258,20 +266,20 @@ func (a *api) GetKeyPairFromKeystore(keyFile, secretFile string) (priv string, p
 
 	secret, err := readFile(secretFile)
 	if err != nil {
-		err = errors.Wrapf(err, "readPassFromFile %v", err)
+		err = errors.Wrapf(err, "readPassFromFile(%v) %v", secretFile, err)
 		return
 	}
-	keystore, err := readFile(keyFile)
+	wal, err := readFile(keystoreFile)
 	if err != nil {
-		err = errors.Wrapf(err, "readPassFromFile %v", err)
+		err = errors.Wrapf(err, "readKeystoreFromFile(%v) %v", keystoreFile, err)
 		return
 	}
 
-	privKey, err := wallet.DecryptKeyStore([]byte(keystore), []byte(secret))
+	privKey, err := wallet.DecryptKeyStore([]byte(wal), []byte(secret))
 	if err != nil {
 		err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
 	}
-	priv = privKey.String()
-	pub = privKey.PublicKey().String()
+	priv = hex.EncodeToString(privKey.Bytes())
+	pub = gocommon.NewAccountAddressFromPublicKey(privKey.PublicKey()).String()
 	return
 }
