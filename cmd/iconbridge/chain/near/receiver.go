@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/reactivex/rxgo/v2"
 	"math/rand"
 )
 
@@ -43,7 +45,35 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, opt map[string]interf
 }
 
 func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, opts chain.SubscribeOptions) (errCh <-chan error, err error) {
-	return nil, nil
+	opts.Seq++
+	_errCh := make(chan error)
+	go func() {
+		defer close(_errCh)
+		lastHeight := opts.Height - 1
+
+		if err := r.client().ReceiveBlocks(opts.Height,
+			func(observable rxgo.Observable) error {
+				result := observable.Observe()
+
+				for item := range result {
+					if err := item.E; err != nil {
+						return err
+					}
+
+					block, _ := item.V.(types.Block)
+					if uint64(block.Height()) != lastHeight+1 {
+						r.log.Errorf("expected v.Height == %d, got %d", lastHeight+1, block.Height())
+
+						return fmt.Errorf("block notification: expected=%d, got=%d", lastHeight+1, block.Height())
+					}
+				}
+				return nil
+			}); err != nil {
+			_errCh <- err
+		}
+	}()
+	
+	return errCh, nil
 }
 
 func (r *receiver) client() *Client {
