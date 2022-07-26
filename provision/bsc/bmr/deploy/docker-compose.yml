@@ -1,7 +1,5 @@
 version: '3.8'
-
 services:
-
   bmr:
     image: ${docker_registry}/bmr:latest
     container_name: bmr

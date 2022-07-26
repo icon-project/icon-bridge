@@ -1,8 +1,15 @@
 name: Build BSC Node
 on:
   push:
+    branches:
+      - repo_mgmt_and_github_actions
+      - repo_mgmt_cicd
     paths:
-      - 'provision/bsc/build'
+      - 'provision/bsc'
+  pull_request:
+    branches:
+      - repo_mgmt_and_github_actions
+      - repo_mgmt_cicd
   workflow_call:
 jobs:
   build:
@@ -12,6 +19,6 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build bsc image
-        working-directory: ./provision/bsc/build
+        working-directory: ./provision/bsc/bmr/build
         run: |
              ./build.sh

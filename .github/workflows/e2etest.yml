@@ -1,15 +1,13 @@
 name: E2ETest
-# on: [workflow_dispatch]
 on:
   push:
-    branches: [ repo_mgmt_and_github_actions ]
-    # paths:
-    #   - 'cmd'
+    branches:
+      - repo_mgmt_and_github_actions
+      - repo_mgmt_cicd
   pull_request:
-    branches: [ repo_mgmt_and_github_actions ]
-    # paths:
-    #   - 'cmd'
-
+    branches:
+      - repo_mgmt_and_github_actions
+      - repo_mgmt_cicd
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -50,7 +48,7 @@ jobs:
            sudo make install
 
     - name: Test
-      working-directory: ./cmd/e2etest
+      working-directory: ./bmr/cmd/e2etest
       run: |
            sudo apt-get install libc6-dev libgmp3-dev -y
            export LD_LIBRARY_PATH=/usr/local/lib
