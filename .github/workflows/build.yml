@@ -69,3 +69,21 @@ jobs:
         working-directory: ./javascore
         run: gradle bts:optimizedJar
 
+  build_bmr:
+    name: Build icon-bridge bmr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '^1.18.3'
+          cache: true
+
+      - run: go version
+
+      - name: Build BMR
+        working-directory: ./cmd/iconbridge
+        run: go build
