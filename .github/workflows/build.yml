@@ -5,13 +5,14 @@ on:
   push:
     branches:
       - main
+      - master
       - develop
   pull_request:
 
 jobs:
 
-  build:
-    name: Build icon-bridge
+  build_bsc:
+    name: Build icon-bridge bsc
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -37,6 +38,13 @@ jobs:
         working-directory: ./solidity/bts
         run: yarn
 
+  build_icon:
+    name: Build icon-bridge icon
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Build javascore bmc
         working-directory: ./javascore
         run: gradle bmc:build
@@ -60,3 +68,20 @@ jobs:
       - name: Build javascore bts optimized jar
         working-directory: ./javascore
         run: gradle bts:optimizedJar
+
+  build_bmr:
+    name: Build icon-bridge icon
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+      - uses: actions/setup-go@v3
+      with:
+        go-version: '^1.18.3'
+      - run: go version
+
+      - name: Build BMR
+        working-directory: ./cmd/iconbridge
+        run: go version
