@@ -16,15 +16,26 @@
 
 package foundation.icon.btp.bts;
 
-import foundation.icon.btp.lib.*;
 import foundation.icon.btp.bts.irc2.IRC2ScoreInterface;
 import foundation.icon.btp.bts.irc2.IRC2SupplierScoreInterface;
+import foundation.icon.btp.lib.BMCScoreInterface;
+import foundation.icon.btp.lib.BSH;
+import foundation.icon.btp.lib.BTPAddress;
+import foundation.icon.btp.lib.OwnerManager;
+import foundation.icon.btp.lib.OwnerManagerImpl;
 import foundation.icon.btp.restrictions.RestrictionsScoreInterface;
 import foundation.icon.score.util.ArrayUtil;
 import foundation.icon.score.util.Logger;
 import foundation.icon.score.util.StringUtil;
-import java.util.Map;
-import score.*;
+import score.Address;
+import score.ArrayDB;
+import score.BranchDB;
+import score.ByteArrayObjectWriter;
+import score.Context;
+import score.DictDB;
+import score.RevertedException;
+import score.UserRevertedException;
+import score.VarDB;
 import score.annotation.EventLog;
 import score.annotation.External;
 import score.annotation.Optional;
@@ -33,6 +44,7 @@ import scorex.util.ArrayList;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 
 public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     private static final Logger logger = Logger.getLogger(BTPTokenService.class);
