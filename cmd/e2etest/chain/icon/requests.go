@@ -262,30 +262,6 @@ func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddre
 	txnHash, err = r.transactWithContract(senderKey, btsaddr, nativeAmount, args, "transferBatch")
 	return
 }
-func (r *requestAPI) getCoinBalanceOfBTS(coinName, addr string) (bal *chain.CoinBalance, err error) {
-	coinAddr, ok := r.nativeTokensAddr[coinName]
-	if !ok {
-		coinAddr, ok = r.wrappedCoinsAddr[coinName]
-		if !ok {
-			return nil, fmt.Errorf("CoinName %v not found", coinName)
-		}
-	}
-	// IRC BALANCEOF
-	zeroBalance := big.NewInt(0)
-	bal = &chain.CoinBalance{UsableBalance: zeroBalance, LockedBalance: zeroBalance, RefundableBalance: zeroBalance, UserBalance: new(big.Int)}
-	res, err := r.callContract(coinAddr, map[string]string{"_owner": addr}, "balanceOf")
-	if err != nil {
-		return nil, errors.Wrap(err, "callContract coinAddress ")
-	} else if res == nil {
-		return nil, errors.New("callContract returned nil value ")
-	}
-	tmpStr, ok := res.(string)
-	if !ok {
-		return nil, fmt.Errorf("Expected type map[string]interface{} Got %T", res)
-	}
-	bal.UserBalance.SetString(tmpStr[2:], 16)
-	return
-}
 
 func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalance, err error) {
 	if coinName == r.nativeCoin {
@@ -310,19 +286,14 @@ func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalan
 	if !ok {
 		return nil, fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
-	if addr == btsAddr {
-		return r.getCoinBalanceOfBTS(coinName, addr)
-	}
+
 	// BTS BALANCEOF
 	res, err := r.callContract(btsAddr, map[string]string{"_coinName": coinName, "_owner": addr}, "balanceOf")
 	if err != nil {
-		return nil, errors.Wrap(err, "callContract coinAddress ")
+		return nil, errors.Wrap(err, "callContract balanceOf ")
 	} else if res == nil {
 		return nil, errors.New("callContract returned nil value ")
 	}
-	fmt.Println(res)
-	zeroBalance := big.NewInt(0)
-	return &chain.CoinBalance{UsableBalance: zeroBalance, LockedBalance: zeroBalance, RefundableBalance: zeroBalance, UserBalance: zeroBalance}, nil
 	balanceMap, ok := res.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("Expected type map[string]interface{} Got %T", res)
@@ -355,7 +326,7 @@ func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (toke
 	}
 	res, err := r.callContract(btsaddr, map[string]string{}, "coinNames")
 	if err != nil {
-		err = errors.Wrap(err, "callContract coinAddress ")
+		err = errors.Wrap(err, "callContract coinNames ")
 		return
 	} else if res == nil {
 		err = fmt.Errorf("Call to Method %v returned nil", "coinNames")
@@ -402,24 +373,24 @@ func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (toke
 			return
 		}
 	}
-	getAddr := func(coin string) (coinAddress string, err error) {
+	getAddr := func(coin string) (coinId string, err error) {
 		var res interface{}
-		res, err = r.callContract(btsaddr, map[string]string{"_coinName": coin}, "coinAddress")
+		res, err = r.callContract(btsaddr, map[string]string{"_coinName": coin}, "coinId")
 		if err != nil {
-			err = errors.Wrap(err, "callContract coinAddress ")
+			err = errors.Wrap(err, "callContract coinId ")
 			return
 		} else if res == nil {
-			err = fmt.Errorf("Call to Method %v returned nil for _coinName=%v", "coinAddress", coin)
+			err = fmt.Errorf("Call to Method %v returned nil for _coinName=%v", "coinId", coin)
 			return
 		}
-		coinAddress, ok := res.(string)
+		coinId, ok := res.(string)
 		if !ok {
-			err = fmt.Errorf("For method coinAddress, Expected Type string Got %T", res)
+			err = fmt.Errorf("For method coinId, Expected Type string Got %T", res)
 			return
 		}
-		return coinAddress, nil
+		return coinId, nil
 	}
-	// getCoinAddress
+
 	tokenAddrMap = map[string]string{}
 	for _, coin := range nativeTokens {
 		tokenAddrMap[coin], err = getAddr(coin)
