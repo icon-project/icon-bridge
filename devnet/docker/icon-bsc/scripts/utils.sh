@@ -92,8 +92,8 @@ generate_addresses_json() {
     --arg bmc_management "$(cat $CONFIG_DIR/btp.bsc.bmc.management)" \
     --arg bts_periphery "$(cat $CONFIG_DIR/btp.bsc.bts.periphery)" \
     --arg bts_core "$(cat $CONFIG_DIR/btp.bsc.bts.core)" \
-    --arg erc20 "$(cat $CONFIG_DIR/btp.bsc.tbnb)"  \
-    --arg etherc20 "$(cat $CONFIG_DIR/btp.bsc.eth)" 
+    --arg erc20 "$(cat $CONFIG_DIR/btp.bsc.TBNB)"  \
+    --arg etherc20 "$(cat $CONFIG_DIR/btp.bsc.ETH)" 
 }
 
 create_abi() {

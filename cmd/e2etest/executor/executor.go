@@ -2,16 +2,13 @@ package executor
 
 import (
 	"context"
-	"encoding/hex"
-	"io/ioutil"
+	"fmt"
+	"math/big"
 	"math/rand"
-	"os"
 	"reflect"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/bsc"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny"
@@ -20,57 +17,34 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
+const (
+	FEE_NUMERATOR   = 100
+	FEE_DENOMINATOR = 10000
+	FIXED_PRICE     = 50000
+)
+
 type executor struct {
 	log             log.Logger
-	godKeysPerChain map[chain.ChainType][2]string
-	cfgPerChain     map[chain.ChainType]*chain.ChainConfig
+	godKeysPerChain map[chain.ChainType]keypair
+	cfgPerChain     map[chain.ChainType]*chain.Config
 	clientsPerChain map[chain.ChainType]chain.ChainAPI
 	sinkChanPerID   map[uint64]chan *evt
 	syncChanMtx     sync.RWMutex
 	stoppedChan     chan struct{}
 }
 
-func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ex *executor, err error) {
-	getKeyPairFromFile := func(walFile string, password string) (pair [2]string, err error) {
-		keyReader, err := os.Open(walFile)
-		if err != nil {
-			err = errors.Wrapf(err, "os.Open file %v", walFile)
-			return
-		}
-		defer keyReader.Close()
-
-		keyStore, err := ioutil.ReadAll(keyReader)
-		if err != nil {
-			err = errors.Wrapf(err, "ioutil.ReadAll %v", walFile)
-			return
-		}
-		key, err := keystore.DecryptKey(keyStore, password)
-		if err != nil {
-			err = errors.Wrapf(err, "keystore.Decrypt %v", walFile)
-			return
-		}
-		privBytes := ethcrypto.FromECDSA(key.PrivateKey)
-		privString := hex.EncodeToString(privBytes)
-		addr := ethcrypto.PubkeyToAddress(key.PrivateKey.PublicKey)
-		pair = [2]string{privString, addr.String()}
-		return
-	}
+func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.Config) (ex *executor, err error) {
 	ex = &executor{
 		log:             l,
 		cfgPerChain:     cfgPerChain,
-		godKeysPerChain: make(map[chain.ChainType][2]string),
+		godKeysPerChain: make(map[chain.ChainType]keypair),
 		clientsPerChain: make(map[chain.ChainType]chain.ChainAPI),
 		sinkChanPerID:   make(map[uint64]chan *evt),
 		syncChanMtx:     sync.RWMutex{},
 		stoppedChan:     make(chan struct{}),
 	}
 	for name, cfg := range cfgPerChain {
-		// GodKeys
-		if pair, err := getKeyPairFromFile(cfg.GodWallet.Path, cfg.GodWallet.Password); err != nil {
-			return nil, errors.Wrapf(err, "getKeyPairFromFile(%v)", cfg.GodWallet.Path)
-		} else {
-			ex.godKeysPerChain[name] = pair
-		}
+
 		//Clients
 		if name == chain.HMNY {
 			ex.clientsPerChain[name], err = hmny.NewApi(l, cfg)
@@ -92,6 +66,11 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.ChainConfig) (ex *
 			}
 		} else {
 			return nil, errors.New("Unknown Chain Type supplied from config: " + string(name))
+		}
+		if priv, pub, err := ex.clientsPerChain[name].GetKeyPairFromKeystore(cfg.GodWalletKeystorePath, cfg.GodWalletSecretPath); err != nil {
+			return nil, errors.Wrapf(err, "GetKeyPairFromKeystore %v", err)
+		} else {
+			ex.godKeysPerChain[name] = keypair{PrivKey: priv, PubKey: pub}
 		}
 	}
 	return
@@ -217,7 +196,7 @@ func (ex *executor) Subscribe(ctx context.Context) {
 	}()
 }
 
-func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, coinName string, scr Script) (err error) {
+func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, coinNames []string, scr Script) (err error) {
 	id, err := ex.getID()
 	if err != nil {
 		return errors.Wrap(err, "getID ")
@@ -227,30 +206,59 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	ex.addChan(id, sinkChan)
 	defer ex.removeChan(id) // should defer be called by cb() instead to make sure cb() was done
 
-	reqClients := map[chain.ChainType]chain.ChainAPI{}
-	for k, v := range ex.clientsPerChain {
-		reqClients[k] = v
+	srcCl, ok := ex.clientsPerChain[srcChainName]
+	if !ok {
+		return fmt.Errorf("Client for chain %v not found", srcChainName)
 	}
-	reqGodKeys := map[chain.ChainType]keypair{}
-	for k, v := range ex.godKeysPerChain {
-		reqGodKeys[k] = keypair{PrivKey: v[0], PubKey: v[1]}
+	dstCl, ok := ex.clientsPerChain[dstChainName]
+	if !ok {
+		return fmt.Errorf("Client for chain %v not found", dstChainName)
 	}
-	ts := &testSuite{
-		id:              id,
-		logger:          log,
-		subChan:         sinkChan,
-		clsPerChain:     reqClients,
-		godKeysPerChain: reqGodKeys,
+	srcGod, ok := ex.godKeysPerChain[srcChainName]
+	if !ok {
+		return fmt.Errorf("GodKeys for chain %v not found", srcChainName)
+	}
+	dstGod, ok := ex.godKeysPerChain[dstChainName]
+	if !ok {
+		return fmt.Errorf("GodKeys for chain %v not found", dstChainName)
+	}
+	srcCfg, ok := ex.cfgPerChain[srcChainName]
+	if !ok {
+		return fmt.Errorf("Cfg for chain %v not found", srcChainName)
+	}
+	dstCfg, ok := ex.cfgPerChain[dstChainName]
+	if !ok {
+		return fmt.Errorf("Cfg for chain %v not found", srcChainName)
+	}
+	btsAddressPerChain := map[chain.ChainType]string{
+		srcChainName: srcCfg.ContractAddresses[chain.BTS],
+		dstChainName: dstCfg.ContractAddresses[chain.BTS],
 	}
 
-	ex.log.Infof("Run ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinName, srcChainName, dstChainName)
+	gasLimitPerChain := map[chain.ChainType]int64{
+		srcChainName: srcCfg.GasLimit,
+		dstChainName: dstCfg.GasLimit,
+	}
+
+	ts := &testSuite{
+		id:                 id,
+		logger:             log,
+		subChan:            sinkChan,
+		btsAddressPerChain: btsAddressPerChain,
+		gasLimitPerChain:   gasLimitPerChain,
+		clsPerChain:        map[chain.ChainType]chain.ChainAPI{srcChainName: srcCl, dstChainName: dstCl},
+		godKeysPerChain:    map[chain.ChainType]keypair{srcChainName: srcGod, dstChainName: dstGod},
+		fee:                fee{numerator: big.NewInt(FEE_NUMERATOR), denominator: big.NewInt(FEE_DENOMINATOR), fixed: big.NewInt(FIXED_PRICE)},
+	}
+
+	ex.log.Infof("Run ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinNames, srcChainName, dstChainName)
 	if scr.Callback == nil {
 		return errors.New("Callback function was nil")
 	}
-	if err := scr.Callback(ctx, srcChainName, dstChainName, coinName, ts); err != nil {
+	if err := scr.Callback(ctx, srcChainName, dstChainName, coinNames, ts); err != nil {
 		return errors.Wrap(err, "CallBackFunc ")
 	}
-	ex.log.Infof("Completed Succesfully. ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinName, srcChainName, dstChainName)
+	ex.log.Infof("Completed Succesfully. ID %v %v, Transfer %v From %v To %v", id, scr.Name, coinNames, srcChainName, dstChainName)
 	// CleanupFunc removeChan() is called after cb() on function return
 	// so make sure cb() returns only after all the test logic is finished
 	return

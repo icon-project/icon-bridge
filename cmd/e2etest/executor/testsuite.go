@@ -12,20 +12,18 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-type keypair struct {
-	PrivKey string
-	PubKey  string
-}
-
 type testSuite struct {
-	id              uint64
-	clsPerChain     map[chain.ChainType]chain.ChainAPI
-	godKeysPerChain map[chain.ChainType]keypair
-	logger          log.Logger
-	src             chain.ChainType
-	dst             chain.ChainType
-	subChan         <-chan *evt
-	report          string
+	id                 uint64
+	clsPerChain        map[chain.ChainType]chain.ChainAPI
+	godKeysPerChain    map[chain.ChainType]keypair
+	logger             log.Logger
+	subChan            <-chan *evt
+	btsAddressPerChain map[chain.ChainType]string
+	gasLimitPerChain   map[chain.ChainType]int64
+	fee                fee
+	src                chain.ChainType
+	dst                chain.ChainType
+	report             string
 }
 
 func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain.SrcAPI, dst chain.DstAPI, err error) {
@@ -44,6 +42,41 @@ func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain
 	return
 }
 
+func (ts *testSuite) withFeeAdded(bal *big.Int) *big.Int {
+	// val  * ratio + fixed = charge
+	// val - charge = newVal
+	// for newVal to be zero, val = charge
+	// val = val*ratio + fixed
+	// val(1 - ratio) = fixed
+	// val = fixed/(1 - ratio)
+	// val = (fixed * denom)/(denom - num)
+	bplusf := bal.Add(bal, ts.fee.fixed)
+	bplusf.Mul(bplusf, ts.fee.denominator)
+	dminusn := new(big.Int).Sub(ts.fee.denominator, ts.fee.numerator)
+	bplusf.Div(bplusf, dminusn)
+	return bplusf
+}
+
+func (ts *testSuite) SuggestGasPrice() *big.Int {
+	pricePerUnitGas := big.NewInt(6000000000)                                            // this price will later be fetched from transactions
+	return pricePerUnitGas.Mul(pricePerUnitGas, big.NewInt(ts.gasLimitPerChain[ts.src])) // gasLimit depends on what kind of transactions we're doing
+}
+
+// func (ts *testSuite) returnSurplus(srcKey string, srcAddr string) (err error) {
+// 	cl, ok := ts.clsPerChain[ts.src]
+// 	if !ok {
+// 		err = fmt.Errorf("Chain %v not found", ts.src)
+// 		return
+// 	}
+// 	bal, err := cl.GetCoinBalance(cl.NativeCoin(), srcAddr)
+// 	if err != nil {
+// 		err = errors.Wrapf(err, "GetCoinBalance %v", err)
+// 	}
+
+// 	bal.UsableBalance
+// 	return nil
+// }
+
 func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, err error) {
 	cl, ok := ts.clsPerChain[chainName]
 	if !ok {
@@ -60,6 +93,22 @@ func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, e
 	return
 }
 
+func (ts *testSuite) GetGodKeyPairs(chainName chain.ChainType) (key, addr string, err error) {
+	godkeyPair, ok := ts.godKeysPerChain[chainName]
+	if !ok {
+		err = errors.Wrapf(err, "GetKeyPairs %v", err)
+		return
+	}
+	cl, ok := ts.clsPerChain[chainName]
+	if !ok {
+		err = fmt.Errorf("Chain %v not found", chainName)
+		return
+	}
+	key = godkeyPair.PrivKey
+	addr = cl.GetBTPAddress(godkeyPair.PubKey)
+	return
+}
+
 func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 	// If coin is a native, intrachain-tranfer,
 	// else if it's wrapped inter-chain, else not found
@@ -71,12 +120,13 @@ func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 	if !ok {
 		return fmt.Errorf("GodKeys %v not found", ts.src)
 	}
-	srcNatives := append(srcCl.NativeTokens(), srcCl.NativeCoin())
-	for _, scoin := range srcNatives {
+
+	for _, scoin := range append(srcCl.NativeTokens(), srcCl.NativeCoin()) {
 		if scoin != coinName {
 			continue
 		}
-		hash, err := srcCl.Transfer(coinName, srcKeys.PrivKey, addr, *amount)
+		ts.logger.Infof("Transfer coin %v addr %v amt %v ", coinName, addr, amount.String())
+		hash, err := srcCl.Transfer(coinName, srcKeys.PrivKey, addr, amount)
 		if err != nil {
 			return errors.Wrapf(err, "srcCl.Transfer err=%v", err)
 		}
@@ -91,17 +141,17 @@ func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 	if !ok {
 		return fmt.Errorf("GodKeys %v not found", ts.dst)
 	}
-	dstNatives := append(dstCl.NativeTokens(), dstCl.NativeCoin())
-	for _, dcoin := range dstNatives {
+
+	for _, dcoin := range append(dstCl.NativeTokens(), dstCl.NativeCoin()) {
 		if dcoin != coinName {
 			continue
 		}
 		if coinName != dstCl.NativeCoin() {
-			if _, err := dstCl.Approve(coinName, dstKeys.PrivKey, *amount); err != nil {
+			if _, err := dstCl.Approve(coinName, dstKeys.PrivKey, amount); err != nil {
 				return errors.Wrapf(err, "dstCl.Approve %v", err)
 			}
 		}
-		hash, err := dstCl.Transfer(coinName, dstKeys.PrivKey, addr, *amount)
+		hash, err := dstCl.Transfer(coinName, dstKeys.PrivKey, addr, amount)
 		if err != nil {
 			return errors.Wrapf(err, "dstCl.Transfer err=%v", err)
 		}
@@ -126,11 +176,13 @@ func (ts *testSuite) ValidateTransactionResult(ctx context.Context, hash string)
 		err = fmt.Errorf("WaitForTxnResult; Transaction Result is nil. Hash %v", hash)
 	} else if res != nil && res.StatusCode != 1 {
 		err = errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
+		err = StatusCodeZero
+		return
 	}
 	return
 }
 
-func (ts *testSuite) ValidateTransactionResultEvents(ctx context.Context, hash, coinName, srcAddr, dstAddr string, amt *big.Int) (err error) {
+func (ts *testSuite) ValidateTransactionResultAndEvents(ctx context.Context, hash string, coinNames []string, srcAddr, dstAddr string, amts []*big.Int) (err error) {
 	srcCl, ok := ts.clsPerChain[ts.src]
 	if !ok {
 		return fmt.Errorf("Chain %v not found", ts.src)
@@ -143,7 +195,8 @@ func (ts *testSuite) ValidateTransactionResultEvents(ctx context.Context, hash, 
 	} else if res == nil {
 		return fmt.Errorf("WaitForTxnResult; Transaction Result is nil. Hash %v", hash)
 	} else if res != nil && res.StatusCode != 1 {
-		return errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
+		err = errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
+		return StatusCodeZero
 	} else if res != nil && len(res.ElInfo) == 0 {
 		return fmt.Errorf("WaitForTxnResult; Got zero parsed event logs. Hash %v", hash)
 	}
@@ -170,13 +223,15 @@ func (ts *testSuite) ValidateTransactionResultEvents(ctx context.Context, hash, 
 		} else if len(startEvent.Assets) == 0 {
 			return fmt.Errorf("EventLog; Got zero Asset Details")
 		} else if len(startEvent.Assets) > 0 {
-			sum := big.NewInt(0)
-			sum.Add(startEvent.Assets[0].Value, startEvent.Assets[0].Fee)
-			if startEvent.Assets[0].Name != coinName || sum.Cmp(amt) != 0 {
-				return fmt.Errorf("EventLog; Expected Name %v, Amount %v Got Len(assets) %v Name %v Value %v Fee %v. Hash %v",
-					coinName, amt.String(),
-					len(startEvent.Assets), startEvent.Assets[0].Name, startEvent.Assets[0].Value.String(), startEvent.Assets[0].Fee.String(),
-					hash)
+			for i := 0; i < len(coinNames); i++ {
+				sum := big.NewInt(0)
+				sum.Add(startEvent.Assets[i].Value, startEvent.Assets[i].Fee)
+				if startEvent.Assets[i].Name != coinNames[i] || sum.Cmp(amts[i]) != 0 {
+					return fmt.Errorf("EventLog; Expected Name %v, Amount %v Got Len(assets) %v Name %v Value %v Fee %v. Hash %v",
+						coinNames[i], amts[i].String(),
+						len(startEvent.Assets), startEvent.Assets[i].Name, startEvent.Assets[i].Value.String(), startEvent.Assets[i].Fee.String(),
+						hash)
+				}
 			}
 		}
 	}
@@ -200,7 +255,8 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, hash string, cbPerEvent 
 		}
 		if startCb, ok := cbPerEvent[chain.TransferStart]; ok {
 			if err := startCb(&evt{chainType: ts.src, msg: el}); err != nil {
-				ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", "TransferStart", err)
+				return err
+				//ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", "TransferStart", err)
 			}
 		}
 		break
@@ -255,12 +311,12 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, hash string, cbPerEvent 
 			return errors.New("Context Cancelled. Return from Callback watch")
 		case ev := <-ts.subChan:
 			if cb, ok := cbPerEvent[ev.msg.EventType]; ok {
-				if (ev.msg.EventType == chain.TransferReceived && ev.chainType == dstCl.GetChainType()) ||
-					(ev.msg.EventType == chain.TransferEnd && ev.chainType == srcCl.GetChainType()) {
+				numExpectedEvents--
+				if cb != nil {
 					if err := cb(ev); err != nil {
+						return err
 						ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", ev.msg.EventType, err)
 					}
-					numExpectedEvents--
 				}
 			}
 			if numExpectedEvents == 0 {

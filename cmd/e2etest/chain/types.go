@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 )
 
@@ -17,11 +16,8 @@ const (
 type ContractName string
 
 const (
-	BTSIcon          ContractName = "BTSIcon"
-	BTSCoreHmny      ContractName = "BTSCoreHmny"
-	BTSPeripheryHmny ContractName = "BTSPeripheryHmny"
-	BTSCoreBsc       ContractName = "BTSCoreBsc"
-	BTSPeripheryBsc  ContractName = "BTSPeripheryBsc"
+	BTS          ContractName = "BTS"
+	BTSPeriphery ContractName = "BTSPeriphery"
 )
 
 type EventLogType string
@@ -32,43 +28,38 @@ const (
 	TransferEnd      EventLogType = "TransferEnd"
 )
 
-func (e EventLogType) String() string {
-	return string(e)
-}
-
 type CoinBalance struct {
-	Total      *big.Int
-	Approved   *big.Int
-	Usable     *big.Int
-	Locked     *big.Int
-	Refundable *big.Int
+	UsableBalance     *big.Int
+	LockedBalance     *big.Int
+	RefundableBalance *big.Int
+	UserBalance       *big.Int
 }
 
 func (cb *CoinBalance) String() string {
-	return " Total: " + cb.Total.String() + " Approved: " + cb.Approved.String() + " Usable: " + cb.Usable.String() +
-		" Locked: " + cb.Locked.String() + " Refundable: " + cb.Refundable.String()
+	return "Usable " + cb.UsableBalance.String() +
+		" Locked " + cb.LockedBalance.String() + " Refundable " + cb.RefundableBalance.String() +
+		" UserBalance " + cb.UserBalance.String()
 }
 
 type SrcAPI interface {
-	Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error)
+	Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error)
+	TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error)
 	WaitForTxnResult(ctx context.Context, hash string) (txnr *TxnResult, err error)
 	WatchForTransferStart(requestID uint64, seq int64) error
 	WatchForTransferEnd(ID uint64, seq int64) error
-	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
+	Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
-	GetChainType() ChainType
+
 	NativeCoin() string
 	NativeTokens() []string
-	GetBTPAddressOfBTS() (string, error)
 	GetBTPAddress(addr string) string
 }
 
 type DstAPI interface {
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	WatchForTransferReceived(requestID uint64, seq int64) error
-	GetChainType() ChainType
-	GetBTPAddressOfBTS() (string, error)
 	GetBTPAddress(addr string) string
+	NativeTokens() []string
 }
 
 type TxnResult struct {
@@ -80,34 +71,34 @@ type TxnResult struct {
 type ChainAPI interface {
 	Subscribe(ctx context.Context) (sinkChan chan *EventLogInfo, errChan chan error, err error)
 	GetKeyPairs(num int) ([][2]string, error)
-	GetBTPAddress(addr string) string
+	GetKeyPairFromKeystore(keystore, secret string) (string, string, error)
 
-	Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error)
+	TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error)
+	Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error)
 	WaitForTxnResult(ctx context.Context, hash string) (txnr *TxnResult, err error)
 	WatchForTransferStart(ID uint64, seq int64) error
 	WatchForTransferReceived(ID uint64, seq int64) error
 	WatchForTransferEnd(ID uint64, seq int64) error
-	Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error)
+	Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
-	GetChainType() ChainType
+	Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
+
 	NativeCoin() string
 	NativeTokens() []string
-	GetBTPAddressOfBTS() (string, error)
+	GetBTPAddress(addr string) string
 }
 
-type ChainConfig struct {
-	Name                 ChainType               `json:"name"`
-	URL                  string                  `json:"url"`
-	ContractAddresses    map[ContractName]string `json:"contract_addresses"`
-	NativeTokenAddresses map[string]string       `json:"native_token_addresses"`
-	GodWallet            GodWallet               `json:"god_wallet"`
-	NetworkID            string                  `json:"network_id"`
-	NativeCoin           string                  `json:"nativeCoin"`
-}
-
-type GodWallet struct {
-	Path     string `json:"path"`
-	Password string `json:"password"`
+type Config struct {
+	Name                  ChainType               `json:"name"`
+	URL                   string                  `json:"url"`
+	ContractAddresses     map[ContractName]string `json:"contract_addresses"`
+	NativeCoin            string                  `json:"native_coin"`
+	NativeTokens          []string                `json:"native_tokens"`
+	WrappedCoins          []string                `json:"wrapped_coins"`
+	GodWalletKeystorePath string                  `json:"god_wallet_keystore_path"`
+	GodWalletSecretPath   string                  `json:"god_wallet_secret_path"`
+	NetworkID             string                  `json:"network_id"`
+	GasLimit              int64                   `json:"gas_limit"`
 }
 
 type EventLogInfo struct {
@@ -115,29 +106,6 @@ type EventLogInfo struct {
 	ContractAddress string
 	EventType       EventLogType
 	EventLog        interface{}
-}
-
-func (e *EventLogInfo) GetSeq() (seq int64, err error) {
-	if e.EventType == TransferStart {
-		st, ok := e.EventLog.(*TransferStartEvent)
-		if !ok {
-			err = fmt.Errorf("Expected *TransferStartEvent. Got %v", e.EventLog)
-		}
-		seq = st.Sn.Int64()
-	} else if e.EventType == TransferReceived {
-		st, ok := e.EventLog.(*TransferReceivedEvent)
-		if !ok {
-			err = fmt.Errorf("Expected *TransferReceivedEvent. Got %v", e.EventLog)
-		}
-		seq = st.Sn.Int64()
-	} else if e.EventType == TransferEnd {
-		st, ok := e.EventLog.(*TransferEndEvent)
-		if !ok {
-			err = fmt.Errorf("Expected *TransferEndEvent. Got %v", e.EventLog)
-		}
-		seq = st.Sn.Int64()
-	}
-	return
 }
 
 type TransferStartEvent struct {

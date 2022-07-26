@@ -14,7 +14,7 @@ import (
 
 func TestExecutor(t *testing.T) {
 	type Config struct {
-		Chains []*chain.ChainConfig `json:"chains"`
+		Chains []*chain.Config `json:"chains"`
 	}
 	loadConfig := func(file string) (*Config, error) {
 		f, err := os.Open(file)
@@ -33,7 +33,7 @@ func TestExecutor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfgPerMap := map[chain.ChainType]*chain.ChainConfig{}
+	cfgPerMap := map[chain.ChainType]*chain.Config{}
 	for _, ch := range cfg.Chains {
 		cfgPerMap[ch.Name] = ch
 	}
@@ -48,7 +48,7 @@ func TestExecutor(t *testing.T) {
 	ex.Subscribe(ctx)
 	time.Sleep(5 * time.Second)
 	go func() {
-		err = ex.Execute(ctx, chain.BSC, chain.ICON, "ETH", executor.TransferExceedingContractsBalance)
+		err = ex.Execute(ctx, chain.ICON, chain.BSC, []string{"ICX"}, executor.TransferToUnknownNetwork)
 		if err != nil {
 			log.Errorf("%+v", err)
 		}

@@ -31,8 +31,22 @@ deploy_solidity_bts() {
   BSH_FIXED_FEE=5000 \
   BMC_PERIPHERY_ADDRESS="$(cat $CONFIG_DIR/btp.bsc.bmc.periphery)" \
   BSH_SERVICE=$SVC_NAME \
-  truffle migrate --compile-all --network bsc 
+  truffle migrate --compile-all --network bsc --f 1 --to 1
   generate_metadata "BTS"
+}
+
+deploy_solidity_token() {
+  echo "deploying solidity token "
+  echo $1 
+  cd $CONTRACTS_DIR/solidity/bts
+  cp $ICONBRIDGE_BASE_DIR/bin/env ./.env
+  export BSH_COIN_NAME=$1
+  export BSH_COIN_SYMBOL=$2
+  export BSH_DECIMALS=18
+  export BSH_INITIAL_SUPPLY=100000
+  truffle migrate --network bsc --f 3 --to 3
+  jq -r '.networks[] | .address' build/contracts/ERC20TKN.json >$CONFIG_DIR/btp.bsc.$1
+  wait_for_file $CONFIG_DIR/btp.bsc.$1
 }
 
 configure_solidity_add_bts_service() {
@@ -78,80 +92,110 @@ add_icon_relay() {
 } 
 
 
-bsc_register_icx() {
-  echo "bts: Register ICX: "
+# bsc_register_icx() {
+#   echo "bts: Register ICX: "
+#   local btp_bts_fee_numerator=100
+#   local btp_bts_fixed_fee=5000
+#   echo "Registering ICX"
+#   cd $CONTRACTS_DIR/solidity/bts
+#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+#     --method register --name "ICX" --symbol "ICX" --decimals 18 --addr "0x0000000000000000000000000000000000000000" --feeNumerator ${btp_bts_fee_numerator} --fixedFee ${btp_bts_fixed_fee})
+#   echo "$tx" >$CONFIG_DIR/tx/register.icx.bsc
+# }
+
+# get_coinID_icx() {
+#   echo "getCoinID ICX"
+#   cd $CONTRACTS_DIR/solidity/bts
+#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+#     --method coinId --coinName "ICX")
+#   echo "$tx" >$CONFIG_DIR/tx/coinID.icx
+# }
+# bsc_register_ticx() {
+#   local btp_bts_fee_numerator=100
+#   local btp_bts_fixed_fee=5000
+#   echo "Registering TICX"
+#   cd $CONTRACTS_DIR/solidity/bts
+#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+#     --method register --name "TICX" --symbol "TICX" --decimals 18 --addr "0x0000000000000000000000000000000000000000" --feeNumerator ${btp_bts_fee_numerator} --fixedFee ${btp_bts_fixed_fee})
+#   echo "$tx" >$CONFIG_DIR/tx/register.ticx.bsc
+# }
+
+# get_coinID_ticx() {
+#   echo "getCoinID TICX"
+#   cd $CONTRACTS_DIR/solidity/bts
+#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+#     --method coinId --coinName "TICX")
+#   echo "$tx" >$CONFIG_DIR/tx/coinID.ticx
+# }
+
+bsc_register_wrapped_coin() {
   local btp_bts_fee_numerator=100
   local btp_bts_fixed_fee=5000
-  echo "Registering ICX"
+  echo "Registering " $1
   cd $CONTRACTS_DIR/solidity/bts
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-    --method register --name "ICX" --symbol "ICX" --decimals 18 --addr "0x0000000000000000000000000000000000000000" --feeNumerator ${btp_bts_fee_numerator} --fixedFee ${btp_bts_fixed_fee})
-  echo "$tx" >$CONFIG_DIR/tx/register.icx.bsc
+    --method register --name "$1" --symbol "$2" --decimals 18 --addr "0x0000000000000000000000000000000000000000" --feeNumerator ${btp_bts_fee_numerator} --fixedFee ${btp_bts_fixed_fee})
+  echo "$tx" >$CONFIG_DIR/tx/register.$1.bsc
 }
 
-get_coinID_icx() {
-  echo "getCoinID ICX"
-  cd $CONTRACTS_DIR/solidity/bts
-  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-    --method coinId --coinName "ICX")
-  echo "$tx" >$CONFIG_DIR/tx/coinID.icx
-}
-
-bsc_register_tbnb() {
-  echo "bts: Register TBNB: "
+bsc_register_native_token() {
+  echo "bts: Register " $1
   local btp_bts_fee_numerator=100
   local btp_bts_fixed_fee=5000
-  local addr=$(cat $CONFIG_DIR/btp.bsc.tbnb) 
+  local addr=$(cat $CONFIG_DIR/btp.bsc.$1) 
   cd $CONTRACTS_DIR/solidity/bts
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-    --method register --name "TBNB" --symbol "TBNB" --decimals 18 --addr $addr --feeNumerator $btp_bts_fee_numerator --fixedFee ${btp_bts_fixed_fee})
-  echo "$tx" >$CONFIG_DIR/tx/register.tbnb.bsc
+    --method register --name "$1" --symbol "$2" --decimals 18 --addr $addr --feeNumerator $btp_bts_fee_numerator --fixedFee ${btp_bts_fixed_fee})
+  echo "$tx" >$CONFIG_DIR/tx/register.$1.bsc
 }
 
-get_coinID_tbnb() {
-  echo "getCoinID TBNB"
+get_coinID() {
+  echo "getCoinID " $1
   cd $CONTRACTS_DIR/solidity/bts
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-    --method coinId --coinName "TBNB")
-  echo "$tx" >$CONFIG_DIR/tx/coinID.tbnb
+    --method coinId --coinName "$1")
+  echo "$tx" >$CONFIG_DIR/tx/coinID.$1
 }
 
-bsc_register_eth() {
-  echo "bts: Register ETH: "
-  local btp_bts_fee_numerator=100
-  local btp_bts_fixed_fee=5000
-  local addr=$(cat $CONFIG_DIR/btp.bsc.eth) 
-  cd $CONTRACTS_DIR/solidity/bts
-  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-    --method register --name "ETH" --symbol "ETH" --decimals 18 --addr $addr --feeNumerator $btp_bts_fee_numerator --fixedFee ${btp_bts_fixed_fee})
-  echo "$tx" >$CONFIG_DIR/tx/register.eth.bsc
-}
+# bsc_register_tbnb() {
+#   echo "bts: Register TBNB: "
+#   local btp_bts_fee_numerator=100
+#   local btp_bts_fixed_fee=5000
+#   local addr=$(cat $CONFIG_DIR/btp.bsc.tbnb) 
+#   cd $CONTRACTS_DIR/solidity/bts
+#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+#     --method register --name "TBNB" --symbol "TBNB" --decimals 18 --addr $addr --feeNumerator $btp_bts_fee_numerator --fixedFee ${btp_bts_fixed_fee})
+#   echo "$tx" >$CONFIG_DIR/tx/register.tbnb.bsc
+# }
 
-get_coinID_eth() {
-  echo "getCoinID ETH"
-  cd $CONTRACTS_DIR/solidity/bts
-  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-    --method coinId --coinName "ETH")
-  echo "$tx" >$CONFIG_DIR/tx/coinID.eth
-}
+# get_coinID_tbnb() {
+#   echo "getCoinID TBNB"
+#   cd $CONTRACTS_DIR/solidity/bts
+#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+#     --method coinId --coinName "TBNB")
+#   echo "$tx" >$CONFIG_DIR/tx/coinID.tbnb
+# }
 
-bsc_register_ticx() {
-  local btp_bts_fee_numerator=100
-  local btp_bts_fixed_fee=5000
-  echo "Registering TICX"
-  cd $CONTRACTS_DIR/solidity/bts
-  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-    --method register --name "TICX" --symbol "TICX" --decimals 18 --addr "0x0000000000000000000000000000000000000000" --feeNumerator ${btp_bts_fee_numerator} --fixedFee ${btp_bts_fixed_fee})
-  echo "$tx" >$CONFIG_DIR/tx/register.ticx.bsc
-}
+# bsc_register_eth() {
+#   echo "bts: Register ETH: "
+#   local btp_bts_fee_numerator=100
+#   local btp_bts_fixed_fee=5000
+#   local addr=$(cat $CONFIG_DIR/btp.bsc.eth) 
+#   cd $CONTRACTS_DIR/solidity/bts
+#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+#     --method register --name "ETH" --symbol "ETH" --decimals 18 --addr $addr --feeNumerator $btp_bts_fee_numerator --fixedFee ${btp_bts_fixed_fee})
+#   echo "$tx" >$CONFIG_DIR/tx/register.eth.bsc
+# }
 
-get_coinID_ticx() {
-  echo "getCoinID TICX"
-  cd $CONTRACTS_DIR/solidity/bts
-  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-    --method coinId --coinName "TICX")
-  echo "$tx" >$CONFIG_DIR/tx/coinID.ticx
-}
+# get_coinID_eth() {
+#   echo "getCoinID ETH"
+#   cd $CONTRACTS_DIR/solidity/bts
+#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+#     --method coinId --coinName "ETH")
+#   echo "$tx" >$CONFIG_DIR/tx/coinID.eth
+# }
+
+
 
 bsc_updateRxSeq() {
   cd $CONTRACTS_DIR/solidity/bmc
@@ -252,10 +296,10 @@ generate_metadata() {
     wait_for_file $CONFIG_DIR/btp.bsc.bts.core
     jq -r '.networks[] | .address' build/contracts/BTSPeriphery.json >$CONFIG_DIR/btp.bsc.bts.periphery
     wait_for_file $CONFIG_DIR/btp.bsc.bts.periphery
-    jq -r '.networks[] | .address' build/contracts/HRC20.json >$CONFIG_DIR/btp.bsc.tbnb
-    wait_for_file $CONFIG_DIR/btp.bsc.tbnb
-    jq -r '.networks[] | .address' build/contracts/ERC20TKN.json >$CONFIG_DIR/btp.bsc.eth
-    wait_for_file $CONFIG_DIR/btp.bsc.eth
+    # jq -r '.networks[] | .address' build/contracts/HRC20.json >$CONFIG_DIR/btp.bsc.tbnb
+    # wait_for_file $CONFIG_DIR/btp.bsc.tbnb
+    # jq -r '.networks[] | .address' build/contracts/ERC20TKN.json >$CONFIG_DIR/btp.bsc.eth
+    # wait_for_file $CONFIG_DIR/btp.bsc.eth
 
     echo "DONE."
     ;;

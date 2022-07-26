@@ -23,6 +23,7 @@ import foundation.icon.btp.restrictions.RestrictionsScoreInterface;
 import foundation.icon.score.util.ArrayUtil;
 import foundation.icon.score.util.Logger;
 import foundation.icon.score.util.StringUtil;
+import java.util.Map;
 import score.*;
 import score.annotation.EventLog;
 import score.annotation.External;
@@ -172,41 +173,40 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     @External(readonly = true)
-    public Address coinAddress(String _coinName) {
+    public Address coinId(String _coinName) {
         return this.coinAddresses.getOrDefault(_coinName, null);
     }
 
     @External(readonly = true)
-    public Balance balanceOf(Address _owner, String _coinName) {
-        if (_owner.equals(Context.getAddress())) {
-            Balance balance = new Balance();
-            balance.setUsable(Context.getBalance(_owner));
-            balance.setLocked(BigInteger.ZERO);
-            balance.setRefundable(feeBalances.getOrDefault(_coinName, BigInteger.ZERO));
-            return balance;
+    public Map<String, BigInteger> balanceOf(Address _owner, String _coinName) {
+        Balance balance = getBalance(_coinName, _owner);
+        Address _addr = coinAddresses.get(_coinName);
+        if (_addr == null) {
+            return balance.addUserBalance(BigInteger.ZERO);
+        }
+        Coin _coin = coinDb.get(_coinName);
+        if (_coinName.equals(name)) {
+            BigInteger icxBalance = Context.getBalance(_owner);
+            balance.setUsable(icxBalance);
+            return balance.addUserBalance(icxBalance);
+        } else if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
+            IRC2SupplierScoreInterface _irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());
+            BigInteger allowance = _irc2.allowance(_owner, Context.getAddress());
+            BigInteger tokenBalance = _irc2.balanceOf(_owner);
+            balance.setUsable(allowance.min(tokenBalance));
+            return balance.addUserBalance(tokenBalance);
         } else {
-            Balance balance = getBalance(_coinName, _owner);
-            Address _addr = coinAddresses.get(_coinName);
-            if (_addr == null) {
-                return balance;
-            }
-            Coin _coin = coinDb.get(_coinName);
-            if (_coinName == name) {
-                balance.setUsable(Context.getBalance(_owner));
-            } else if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
-                IRC2SupplierScoreInterface _irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());
-                balance.setUsable(_irc2.balanceOf(_owner));
-            }
-            return balance;
+            IRC2ScoreInterface _irc2 = new IRC2ScoreInterface(_coin.getAddress());
+            BigInteger tokenBalance = _irc2.balanceOf(_owner);
+            return balance.addUserBalance(tokenBalance);
         }
     }
 
     @External(readonly = true)
-    public Balance[] balanceOfBatch(Address _owner, String[] _coinNames) {
-        int len = _coinNames.length;
-        Balance[] balances = new Balance[len];
-        for (int i = 0; i < len; i++) {
-            balances[i] = balanceOf(_owner, _coinNames[i]);
+    public List<Map<String, BigInteger>> balanceOfBatch(Address _owner, String[] _coinNames) {
+        List<Map<String, BigInteger>> balances = new ArrayList<>();
+        for (String coinName : _coinNames) {
+            balances.add(balanceOf(_owner, coinName));
         }
         return balances;
     }
@@ -746,7 +746,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     private void transfer(Address to, String coinName, BigInteger amount) {
-        Address _coinAddr = coinAddress(coinName);
+        Address _coinAddr = coinId(coinName);
         if (_coinAddr == null) {
             throw BTSException.irc31Failure("Exception: CoinNotFound");
         }

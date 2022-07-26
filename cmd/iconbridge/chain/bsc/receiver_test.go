@@ -17,20 +17,20 @@ func newTestReceiver(t *testing.T) chain.Receiver {
 	return receiver
 }
 
-func newTestClient(t *testing.T) *client {
+func newTestClient(t *testing.T) *Client {
 	url := "http://localhost:8545"
-	cls, err := NewClient([]string{url}, "", log.New())
+	cls, _, err := newClients([]string{url}, "", log.New())
 	require.NoError(t, err)
-	return cls
+	return cls[0]
 }
 
 func TestMedianGasPrice(t *testing.T) {
 	url := "http://localhost:8545"
-	cls, err := NewClient([]string{url}, "", log.New())
+	cls, _, err := newClients([]string{url}, "", log.New())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if val, err := cls.GetMedianGasPriceForBlock(); err != nil {
+	if val, err := cls[0].GetMedianGasPriceForBlock(); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Log(val.String())
@@ -100,20 +100,20 @@ func TestReceiver_GetReceiptProofs(t *testing.T) {
 
 	r, _ := NewReceiver(src, dst, []string{"http://localhost:8545"}, nil, log.New())
 
-	/* blockNotification := &BlockNotification{Height: big.NewInt(191)}
-	receiptProofs, err := r.(*receiver).newReceiptProofs(blockNotification)
+	// blockNotification := &BlockNotification{Height: big.NewInt(191)}
+	// receiptProofs, err := r.(*receiver).newReceiptProofs(blockNotification)
 
-	//fmt.Println(receiptProofs[0].Proof)
+	// //fmt.Println(receiptProofs[0].Proof)
 
-	var bytes [][]byte
-	_, err = codec.RLP.UnmarshalFromBytes(receiptProofs[0].Proof, &bytes)
+	// var bytes [][]byte
+	// _, err = codec.RLP.UnmarshalFromBytes(receiptProofs[0].Proof, &bytes)
 
-	if err != nil {
-		return
-	} */
+	// if err != nil {
+	// 	return
+	// }
 
-	block, err := r.(*receiver).cl.GetBlockByHeight(big.NewInt(191))
-	fmt.Println(block.ReceiptHash())
+	header, err := r.(*receiver).cls[0].eth.HeaderByNumber(context.TODO(), big.NewInt(191))
+	fmt.Println(header.ReceiptHash)
 	//fmt.Println(block.Hash())
 	//fmt.Println(receiptProofs[0])
 	//fmt.Println(len(bytes))

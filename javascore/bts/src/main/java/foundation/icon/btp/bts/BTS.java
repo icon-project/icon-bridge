@@ -16,6 +16,8 @@
 
 package foundation.icon.btp.bts;
 
+import java.util.List;
+import java.util.Map;
 import score.Address;
 import score.annotation.External;
 import score.annotation.Payable;
@@ -51,7 +53,7 @@ public interface BTS {
      * @return SCORE address
      */
     @External(readonly = true)
-    Address coinAddress(String _coinName);
+    Address coinId(String _coinName);
 
     /**
      * Return a usable/locked balance of an account based on coinName.
@@ -69,7 +71,7 @@ public interface BTS {
      *  }
      */
     @External(readonly = true)
-    Balance balanceOf(Address _owner, String _coinName);
+    Map<String, BigInteger> balanceOf(Address _owner, String _coinName);
 
     /**
      * Return a list locked/usable balance of an account.
@@ -88,7 +90,7 @@ public interface BTS {
      *  ]
      */
     @External(readonly = true)
-    Balance[] balanceOfBatch(Address _owner, String[] _coinNames);
+    List<Map<String, BigInteger>> balanceOfBatch(Address _owner, String[] _coinNames);
 
     /**
      * Reclaim the coin's refundable balance by an owner.

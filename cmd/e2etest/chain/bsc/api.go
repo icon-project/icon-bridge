@@ -2,12 +2,17 @@ package bsc
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"os"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	ethCommon "github.com/ethereum/go-ethereum/common"
+	crypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
@@ -15,7 +20,7 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
+func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	if len(cfg.URL) == 0 {
 		return nil, errors.New("empty urls")
 	}
@@ -25,21 +30,17 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 		return nil, err
 	}
 	r := &api{
-		log:                l,
-		fd:                 NewFinder(l, cfg.ContractAddresses),
-		sinkChan:           make(chan *chain.EventLogInfo),
-		errChan:            make(chan error),
-		networkID:          cfg.NetworkID,
-		nativeCoin:         cfg.NativeCoin,
-		tokenNameToAddr:    cfg.NativeTokenAddresses,
-		contractNameToAddr: cfg.ContractAddresses,
+		log:      l,
+		fd:       NewFinder(l, cfg.ContractAddresses),
+		sinkChan: make(chan *chain.EventLogInfo),
+		errChan:  make(chan error),
 		ReceiverCore: &ReceiverCore{
 			Log:  l,
 			Opts: ReceiverOptions{},
 			Cls:  []*ethclient.Client{ethclient.NewClient(clrpc)},
 			BlockReq: ethereum.FilterQuery{
 				Addresses: []ethCommon.Address{
-					ethCommon.HexToAddress(cfg.ContractAddresses[chain.BTSPeripheryBsc]),
+					ethCommon.HexToAddress(cfg.ContractAddresses[chain.BTSPeriphery]),
 				},
 			},
 		},
@@ -48,25 +49,21 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "newParser ")
 	}
-	r.requester, err = newRequestAPI(cfg.URL, l, cfg.ContractAddresses, cfg.NetworkID, r.tokenNameToAddr)
+	r.requester, err = newRequestAPI(cfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "newRequestAPI %v", err)
 	}
-	return r, nil
+	return r, err
 }
 
 type api struct {
 	*ReceiverCore
-	log                log.Logger
-	par                *parser
-	requester          *requestAPI
-	networkID          string
-	fd                 *finder
-	sinkChan           chan *chain.EventLogInfo
-	errChan            chan error
-	nativeCoin         string
-	tokenNameToAddr    map[string]string
-	contractNameToAddr map[chain.ContractName]string
+	log       log.Logger
+	par       *parser
+	requester *requestAPI
+	fd        *finder
+	sinkChan  chan *chain.EventLogInfo
+	errChan   chan error
 }
 
 func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
@@ -120,10 +117,6 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 	return r.sinkChan, r.errChan, nil
 }
 
-func (r *api) GetChainType() chain.ChainType {
-	return chain.BSC
-}
-
 func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, error) {
 	if !strings.Contains(addr, "btp://") {
 		return nil, errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
@@ -133,13 +126,10 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-	if coinName == r.nativeCoin {
-		return r.requester.getNativeCoinBalance(coinName, address)
-	}
 	return r.requester.getCoinBalance(coinName, address)
 }
 
-func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
+func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
 	if !strings.Contains(recepientAddress, "btp:") {
 		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -150,26 +140,38 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.
 		recepientAddress = splts[len(splts)-1]
 	}
 	if within {
-		if coinName == r.nativeCoin {
-			txnHash, err = r.requester.transferNativeIntraChain(senderKey, recepientAddress, amount)
-		} else if _, ok := r.tokenNameToAddr[coinName]; ok {
-			txnHash, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount, coinName)
-		} else {
-			err = fmt.Errorf("IntraChain transfers are supported for coins ONE and TONE only")
-		}
+		txnHash, err = r.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
 	} else {
-		if coinName == r.nativeCoin {
-			txnHash, err = r.requester.transferNativeCrossChain(senderKey, recepientAddress, amount)
-		} else { // TBNB,ICX.TICX
-			txnHash, err = r.requester.transferTokensCrossChain(coinName, senderKey, recepientAddress, amount)
-		}
+		txnHash, err = r.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
 	}
-
 	return
 }
 
-func (r *api) Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error) {
+func (r *api) TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
+	if !strings.Contains(recepientAddress, "btp:") {
+		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
+	}
+	within := false
+	if strings.Contains(recepientAddress, ".bsc") {
+		within = true
+		splts := strings.Split(recepientAddress, "/")
+		recepientAddress = splts[len(splts)-1]
+	}
+	if within {
+		err = fmt.Errorf("Batch Transfers are supported for inter chain transfers only")
+	} else {
+		txnHash, err = r.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts)
+	}
+	return
+}
+
+func (r *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
 	txnHash, err = r.requester.approveCoin(coinName, ownerKey, amount)
+	return
+}
+
+func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
+	txnHash, err = a.requester.reclaim(coinName, ownerKey, amount)
 	return
 }
 
@@ -193,32 +195,16 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 }
 
 func (r *api) GetBTPAddress(addr string) string {
-	fullAddr := "btp://" + r.networkID + ".bsc/" + addr
+	fullAddr := "btp://" + r.requester.networkID + ".bsc/" + addr
 	return fullAddr
 }
 
 func (r *api) NativeCoin() string {
-	return r.nativeCoin
+	return r.requester.nativeCoin
 }
 
 func (r *api) NativeTokens() []string {
-	nativeTokens := []string{}
-	for nt := range r.tokenNameToAddr {
-		nativeTokens = append(nativeTokens, nt)
-	}
-	return nativeTokens
-}
-
-func (r *api) GetKeyPairs(num int) ([][2]string, error) {
-	var err error
-	res := make([][2]string, num)
-	for i := 0; i < num; i++ {
-		res[i], err = generateKeyPair()
-		if err != nil {
-			return nil, errors.Wrap(err, "generateKeyPair ")
-		}
-	}
-	return res, nil
+	return r.requester.nativeTokens
 }
 
 func (r *api) WatchForTransferStart(id uint64, seq int64) error {
@@ -233,12 +219,51 @@ func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
 }
 
-func (r *api) GetBTPAddressOfBTS() (btpaddr string, err error) {
-	addr, ok := r.contractNameToAddr[chain.BTSCoreBsc]
-	if !ok {
-		err = fmt.Errorf("Contract %v does not exist ", chain.BTSCoreBsc)
+func (r *api) GetKeyPairs(num int) ([][2]string, error) {
+	var err error
+	res := make([][2]string, num)
+	for i := 0; i < num; i++ {
+		res[i], err = generateKeyPair()
+		if err != nil {
+			return nil, errors.Wrap(err, "generateKeyPair ")
+		}
+	}
+	return res, nil
+}
+
+func (r *api) GetKeyPairFromKeystore(keystoreFile string, secretFile string) (privKey, pubKey string, err error) {
+	readFile := func(file string) (string, error) {
+		f, err := os.Open(file)
+		if err != nil {
+			return "", err
+		}
+		defer f.Close()
+
+		b, err := ioutil.ReadAll(f)
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(string(b)), nil
+	}
+
+	secret, err := readFile(secretFile)
+	if err != nil {
+		err = errors.Wrapf(err, "readPassFromFile(%v) %v", secretFile, err)
 		return
 	}
-	btpaddr = r.GetBTPAddress(addr)
+	wal, err := readFile(keystoreFile)
+	if err != nil {
+		err = errors.Wrapf(err, "readKeystoreFromFile(%v) %v", keystoreFile, err)
+		return
+	}
+
+	key, err := keystore.DecryptKey([]byte(wal), secret)
+	if err != nil {
+		err = errors.Wrapf(err, "keystore.Decrypt %v", err)
+		return
+	}
+	privBytes := crypto.FromECDSA(key.PrivateKey)
+	privKey = hex.EncodeToString(privBytes)
+	pubKey = crypto.PubkeyToAddress(key.PrivateKey.PublicKey).String()
 	return
 }

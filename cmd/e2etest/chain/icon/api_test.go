@@ -3,9 +3,11 @@ package icon_test
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,21 +19,36 @@ import (
 )
 
 const (
-	GodKey      = "c4a15fbef04e99892caaa11374b115795c182d290d5d8bd7821a9ef16f4a9bcf"
-	GodAddr     = "btp://0x613f17.icon/hxad8eec2e167c24020600ddf1acd4d03673d3f49b"
-	DemoSrcKey  = "f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5"
-	DemoSrcAddr = "btp://0x613f17.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
-	DemoDstAddr = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
-	BtsAddr     = "btp://0x613f17.icon/cx5c66ad109920b5902776e6c3eba5a296d28caff4"
+	NID         = "0x7.icon"
+	RPC_URI     = "https://berlin.net.solidwallet.io/api/v3/icon_dex"
+	GodKey      = "41528d2ae0a203914f39584c6b2ace17b61c1208492be5952177ed8b16b1b99f"
+	GodAddr     = "btp://0x7.icon/hx7449df3b7c6981f0e3dbae9488b024f20f62bbed"
+	DemoSrcKey  = "4670f9c2a3f8a478806c03fee796fe614f0ceb8ae063184f11a9c23653eaccfe"
+	DemoSrcAddr = "btp://0x7.icon/hx6d338536ac11a0a2db06fb21fe8903e617a6764d"
+
+	DemoDstAddr = "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
+	GodDstAddr  = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
+	BtsAddr     = "btp://0x7.icon/cx79ba68ea1bb4591ef2b835d8a05d4953986f2b4c"
 )
 
+// const (
+// 	RPC_URI     = "http://localhost:9080/api/v3/icon"
+// 	GodKey      = "c4a15fbef04e99892caaa11374b115795c182d290d5d8bd7821a9ef16f4a9bcf"
+// 	GodAddr     = "btp://0x613f17.icon/hxad8eec2e167c24020600ddf1acd4d03673d3f49b"
+// 	DemoSrcKey  = "f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5"
+// 	DemoSrcAddr = "btp://0x613f17.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
+// 	DemoDstAddr = "btp://0x61.bsc/0x0000000000000000000000000000000000000000"
+// 	GodDstAddr  = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
+// 	NID         = "0x613f17.icon"
+// )
+
 func TestTransferIntraChain(t *testing.T) {
-	godKeyPair, err := getKeyPairFromFile("../../icon.god.wallet.json", "01fe7d1fb8593bf5")
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	t.Log(godKeyPair)
+	// godKeyPair, err := getKeyPairFromFile("../../icon.god.wallet.json", "01fe7d1fb8593bf5")
+	// if err != nil {
+	// 	t.Fatal(err)
+	// 	return
+	// }
+	// t.Log(godKeyPair)
 
 	api, err := getNewApi()
 	if err != nil {
@@ -40,10 +57,10 @@ func TestTransferIntraChain(t *testing.T) {
 	}
 
 	amount := new(big.Int)
-	amount.SetString("10000000000000000", 10)
+	amount.SetString("100000000000000", 10)
 
 	for _, coinName := range []string{"ETH"} {
-		txnHash, err := api.Transfer(coinName, GodKey, DemoSrcAddr, *amount)
+		txnHash, err := api.Transfer(coinName, GodKey, DemoSrcAddr, amount)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -60,10 +77,27 @@ func TestTransferIntraChain(t *testing.T) {
 		if val, err := api.GetCoinBalance(coinName, DemoSrcAddr); err != nil {
 			t.Fatal(err)
 		} else {
-			t.Logf("Balance %v", val.String())
+			t.Logf("Balance %v", val)
 		}
 	}
 	return
+}
+
+func TestReclaim(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	hash, err := rpi.Reclaim("ETH", DemoSrcKey, big.NewInt(1333035204))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := rpi.WaitForTxnResult(context.TODO(), hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Hash %v Receipt %+v", hash, res.Raw)
+	showBalance(DemoSrcAddr)
 }
 
 func TestApprove(t *testing.T) {
@@ -74,8 +108,8 @@ func TestApprove(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	amt := new(big.Int)
-	amt.SetString("2018700000000000000", 10)
-	approveHash, err := rpi.Approve(coin, GodKey, *amt)
+	amt.SetString("1110000000000", 10)
+	approveHash, err := rpi.Approve(coin, DemoSrcKey, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -94,24 +128,25 @@ func TestTransferInterChain(t *testing.T) {
 		return
 	}
 	coin := "ETH"
-	if val, err := api.GetCoinBalance(coin, GodAddr); err != nil {
+	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
 		t.Fatal(err)
 	} else {
-		t.Logf("Initial Balance %v", val.String())
+		t.Logf("Initial Balance %v", val)
 	}
 
 	amount := new(big.Int)
-	amount.SetString("2038700000000000000", 10)
+	amount.SetString("110000000000", 10)
 
-	txnHash, err := api.Transfer(coin, GodKey, DemoDstAddr, *amount)
+	txnHash, err := api.Transfer(coin, DemoSrcKey, DemoDstAddr, amount)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("Transaction Hash  %v", txnHash)
-	if val, err := api.GetCoinBalance(coin, GodAddr); err != nil {
+
+	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
 		t.Fatal(err)
 	} else {
-		t.Logf("Final Balance %v", val.String())
+		t.Logf("Intermediate Demo Balance %v", val)
 	}
 
 	res, err := api.WaitForTxnResult(context.TODO(), txnHash)
@@ -120,18 +155,59 @@ func TestTransferInterChain(t *testing.T) {
 	}
 	t.Logf("Receipt %+v", res)
 	for _, lin := range res.ElInfo {
-		seq, _ := lin.GetSeq()
-		t.Logf("Log %+v and Seq %v", lin, seq)
+		// seq, _ := lin.GetSeq()
+		t.Logf("Log %+v and Seq", lin)
 	}
 	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
 		t.Fatal(err)
 	} else {
-		t.Logf("Final Balance %v", val.String())
+		t.Logf("Final Balance %v", val)
+	}
+}
+
+func TestBatchTransfer(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	coins := []string{"TICX", "ETH", "ICX"}
+	amount := big.NewInt(100000000000000)
+	largeAmt := new(big.Int)
+	largeAmt.SetString("26271926117961986739", 10)
+	amounts := []*big.Int{amount, largeAmt, amount}
+	for i, coin := range coins {
+
+		if coin == rpi.NativeCoin() {
+			continue
+		}
+		approveHash, err := rpi.Approve(coin, GodKey, amounts[i])
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+		res, err := rpi.WaitForTxnResult(context.TODO(), approveHash)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.StatusCode != 1 {
+			t.Fatalf("Approve StatusCode not 1 for %vth coin %v \n %v", i, coin, res.Raw)
+		}
+	}
+	hash, err := rpi.TransferBatch(coins, GodKey, GodDstAddr, amounts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("Hash ", hash)
+	res, err := rpi.WaitForTxnResult(context.TODO(), hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != 1 {
+		t.Fatalf("StatusCode not 1 for Batch Transfer \n %+v", res.Raw)
 	}
 }
 
 func TestGetCoinBalance(t *testing.T) {
-	if err := showBalance(BtsAddr); err != nil {
+	if err := showBalance(DemoSrcAddr); err != nil {
 		t.Fatalf(" %+v", err)
 	}
 }
@@ -143,11 +219,12 @@ func showBalance(addr string) error {
 	}
 
 	for _, coinName := range []string{"ICX", "TICX", "ETH", "BNB", "TBNB"} {
-		res, err := api.GetCoinBalance(coinName, addr)
+		fmt.Println(coinName)
+		_, err := api.GetCoinBalance(coinName, addr)
 		if err != nil {
 			return err
 		}
-		log.Infof("coin %v amount %v", coinName, res.String())
+		// log.Infof("coin %v amount %v", coinName, res.String())
 	}
 	return nil
 }
@@ -201,45 +278,37 @@ func TestReceiver(t *testing.T) {
 }
 
 func getNewApi() (chain.ChainAPI, error) {
-	srcEndpoint := "http://localhost:9080/api/v3/icon"
+	srcEndpoint := RPC_URI
 	addrToName := map[chain.ContractName]string{
-		chain.BTSIcon: "cx5c66ad109920b5902776e6c3eba5a296d28caff4",
-	}
-	coinMap := map[string]string{
-		"ETH":  "cxd99f97351744c0930b5086951ff0365ebfd3d003",
-		"TICX": "cxb82fff0e299b76952dacba39b80358312ef2ded3",
+		chain.BTS: "cxaf53c60578dc72b3e3a93d1800be1b33349289a0",
 	}
 	l := log.New()
 	log.SetGlobalLogger(l)
-	networkID := "0x613f17"
-	return icon.NewApi(l, &chain.ChainConfig{
-		Name:                 chain.ICON,
-		URL:                  srcEndpoint,
-		ContractAddresses:    addrToName,
-		NetworkID:            networkID,
-		NativeCoin:           "ICX",
-		NativeTokenAddresses: coinMap,
+	return icon.NewApi(l, &chain.Config{
+		Name:              chain.ICON,
+		URL:               srcEndpoint,
+		ContractAddresses: addrToName,
+		NetworkID:         NID,
+		NativeCoin:        "ICX",
+		NativeTokens:      []string{"ETH", "TICX"},
+		WrappedCoins:      []string{"BNB", "TBNB"},
+		GasLimit:          8000000,
 	})
 }
 
-/*
-func TestIconEventParse(t *testing.T) {
-	m := map[chain.ContractName]string{
-		chain.TokenBSHIcon: btp_icon_token_bsh,
+func TestConverToZeroAddress(t *testing.T) {
+	addr := DemoSrcAddr
+	splits := strings.Split(addr, "/")
+	if len(splits) != 4 {
+		return
 	}
-	parser, err := icon.NewParser(m)
-	if err != nil {
-		t.Fatal(err)
+	network := splits[2]
+	networkSplits := strings.Split(network, ".")
+	if len(networkSplits) != 2 {
+		return
 	}
-	log := &icon.TxnEventLog{
-		Addr:    icon.Address("cx5924a147ae30091ed9c6fe0c153ef77de4132902"),
-		Indexed: []string{"TransferStart(Address,str,int,bytes)", "hx4a707b2ecbb5f40a8d761976d99244f53575eeb6"},
-		Data:    []string{"btp://0x6357d2e0.hmny/0x8BE8641225CC0Afdb24499409863E8E3f6557C32", "0x25", "0xd6d583455448880dbd2fc137a30000872386f26fc10000"},
-	}
-	res, eventType, err := parser.Parse(log)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("EventType %v  Res %+v", eventType, res)
+	networkSplits[1] += "s"
+	splits[2] = strings.Join(networkSplits, ".")
+	joinStr := strings.Join(splits, "/")
+	fmt.Println(joinStr)
 }
-*/

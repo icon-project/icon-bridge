@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
-	"sync"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -21,56 +21,98 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	btscore "github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny/abi/btscore"
 	erc20tradeable "github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny/abi/erc20tradable"
-	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
-const (
-	DefaultGasLimit = 80000000
-)
+// const (
+// 	DefaultGasLimit = 80000000
+// )
 
 type requestAPI struct {
 	contractNameToAddress map[chain.ContractName]string
 	networkID             string
 	ethCl                 *ethclient.Client
-	log                   log.Logger
+	gasLimit              uint64
+	nativeCoin            string
+	nativeTokens          []string
 	btsc                  *btscore.Btscore
-	ercPerCoin            sync.Map
+	ercPerCoin            map[string]*erc20tradeable.Erc20tradable
 }
 
-func newRequestAPI(url string, l log.Logger, contractNameToAddress map[chain.ContractName]string, networkID string, tokenNameToAddr map[string]string) (*requestAPI, error) {
-
-	clrpc, err := rpc.Dial(url)
+func newRequestAPI(cfg *chain.Config) (*requestAPI, error) {
+	if !strings.Contains(cfg.NetworkID, ".hmny") {
+		return nil, fmt.Errorf("Expected cfg.NetwrkID=0xnid.hmny Got %v", cfg.NetworkID)
+	}
+	clrpc, err := rpc.Dial(cfg.URL)
 	if err != nil {
-		return nil, errors.Wrapf(err, "rpc.Dial(%v)", url)
+		return nil, errors.Wrapf(err, "rpc.Dial(%v)", cfg.URL)
 	}
 	cleth := ethclient.NewClient(clrpc)
 
-	caddr, ok := contractNameToAddress[chain.BTSCoreHmny]
+	caddr, ok := cfg.ContractAddresses[chain.BTS]
 	if !ok {
-		return nil, fmt.Errorf("contractNameToAddress doesn't include %v", chain.BTSCoreHmny)
+		return nil, fmt.Errorf("contractNameToAddress doesn't include %v", chain.BTS)
 	}
 	btscore, err := btscore.NewBtscore(common.HexToAddress(caddr), cleth)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewBtscore")
 	}
 
-	a := &requestAPI{
-		log:                   l,
-		contractNameToAddress: contractNameToAddress,
-		networkID:             networkID,
+	req := &requestAPI{
+		contractNameToAddress: cfg.ContractAddresses,
+		networkID:             strings.Split(cfg.NetworkID, ".")[0],
 		ethCl:                 cleth,
 		btsc:                  btscore,
-		ercPerCoin:            sync.Map{},
+		gasLimit:              uint64(cfg.GasLimit),
+		nativeCoin:            cfg.NativeCoin,
+		nativeTokens:          cfg.NativeTokens,
 	}
-	for name, coinAddress := range tokenNameToAddr {
-		ercp, err := erc20tradeable.NewErc20tradable(common.HexToAddress(coinAddress), cleth)
-		if err != nil {
-			return nil, errors.Wrap(err, "NewErc20tradable")
+	req.ercPerCoin, err = req.getCoinAddresses(append(cfg.NativeTokens, cfg.WrappedCoins...))
+	return req, err
+}
+
+func (r *requestAPI) getCoinAddresses(inputCoins []string) (ercMap map[string]*erc20tradeable.Erc20tradable, err error) {
+	coinNames, err := r.btsc.CoinNames(&bind.CallOpts{Pending: false, Context: nil})
+	if err != nil {
+		err = errors.Wrap(err, "btsc.CoinId ")
+		return
+	}
+	exists := func(arr []string, val string) bool {
+		for _, a := range arr {
+			if a == val {
+				return true
+			}
 		}
-		a.ercPerCoin.Store(name, ercp)
+		return false
 	}
-	return a, nil
+	// all registered coins have to be given in input config
+	for _, coinName := range coinNames {
+		if !exists(inputCoins, coinName) {
+			err = fmt.Errorf("Registered coin %v not provided in input config ", coinName)
+			return
+		}
+	}
+	// all coins given in input config have to have been registered
+	for _, inputCoin := range inputCoins {
+		if !exists(coinNames, inputCoin) {
+			err = fmt.Errorf("Input coin %v does not exist among registered coins ", inputCoin)
+			return
+		}
+	}
+	ercMap = map[string]*erc20tradeable.Erc20tradable{}
+	for _, coinName := range coinNames {
+		coinAddress, errs := r.btsc.CoinId(&bind.CallOpts{Pending: false, Context: nil}, coinName)
+		if err != nil {
+			err = errors.Wrap(errs, "btsc.CoinId ")
+			return
+		}
+		ercMap[coinName], err = erc20tradeable.NewErc20tradable(coinAddress, r.ethCl)
+		if err != nil {
+			err = errors.Wrap(errs, "NewErc20tradable")
+			return
+		}
+	}
+	return
 }
 
 func GetWalletFromPrivKey(privKey string) (wal *wallet.EvmWallet, pKey *ecdsa.PrivateKey, err error) {
@@ -121,7 +163,7 @@ func (r *requestAPI) getTransactionRequest(senderKey string) (*bind.TransactOpts
 	if err != nil {
 		return nil, errors.Wrap(err, "SuggestGasPrice ")
 	}
-	txo.GasLimit = uint64(DefaultGasLimit)
+	txo.GasLimit = r.gasLimit
 	return txo, nil
 }
 
@@ -145,7 +187,7 @@ func (r *requestAPI) waitForResults(ctx context.Context, txHash common.Hash) (tx
 			//r.log.Debugf("GetTransactionResult Attempt: %d", retryCounter)
 			txr, err = r.ethCl.TransactionReceipt(context.Background(), txHash)
 			if err != nil && err == ethereum.NotFound {
-				r.log.Trace(errors.Wrap(err, "waitForResults "))
+				//r.log.Trace(errors.Wrap(err, "waitForResults "))
 				err = nil
 				continue
 			}
@@ -155,7 +197,14 @@ func (r *requestAPI) waitForResults(ctx context.Context, txHash common.Hash) (tx
 	}
 }
 
-func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
+func (r *requestAPI) transferIntraChain(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
+	if coinName == r.nativeCoin {
+		return r.transferNativeIntraChain(senderKey, recepientAddress, amount)
+	}
+	return r.transferTokenIntraChain(senderKey, recepientAddress, amount, coinName)
+}
+
+func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
 	senderWallet, senderPrivKey, err := GetWalletFromPrivKey(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
@@ -177,7 +226,7 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 		return
 	}
 
-	tx := types.NewTransaction(nonce, common.HexToAddress(recepientAddress), &amount, uint64(DefaultGasLimit), gasPrice, []byte{})
+	tx := types.NewTransaction(nonce, common.HexToAddress(recepientAddress), amount, r.gasLimit, gasPrice, []byte{})
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), senderPrivKey)
 	if err != nil {
 		err = errors.Wrap(err, "SignTx ")
@@ -191,10 +240,10 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 	return
 }
 
-func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount big.Int, coinName string) (txnHash string, err error) {
-	erc, err := r.getERC(coinName)
-	if err != nil {
-		err = fmt.Errorf("GetERC %v", err)
+func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount *big.Int, coinName string) (txnHash string, err error) {
+	erc, ok := r.ercPerCoin[coinName]
+	if !ok {
+		err = fmt.Errorf("coin %v not registered", coinName)
 		return
 	}
 
@@ -204,7 +253,7 @@ func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string,
 		return
 	}
 	txo.Context = context.Background()
-	txn, err := erc.Transfer(txo, common.HexToAddress(recepientAddress), &amount)
+	txn, err := erc.Transfer(txo, common.HexToAddress(recepientAddress), amount)
 	if err != nil {
 		err = errors.Wrap(err, "hrc.Transfer ")
 		return
@@ -213,13 +262,20 @@ func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string,
 	return
 }
 
-func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress string, amount big.Int) (txnHash string, err error) {
+func (r *requestAPI) transferInterChain(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
+	if coinName == r.nativeCoin {
+		return r.transferNativeCrossChain(senderKey, recepientAddress, amount)
+	}
+	return r.transferTokensCrossChain(coinName, senderKey, recepientAddress, amount)
+}
+
+func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress string, amount *big.Int) (txnHash string, err error) {
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
-	txo.Value = &amount
+	txo.Value = amount
 	txo.Context = context.Background()
 	txn, err := r.btsc.TransferNativeCoin(txo, recepientAddress)
 	if err != nil {
@@ -230,15 +286,19 @@ func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress
 	return
 }
 
-func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
-
+func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
+	_, ok := r.ercPerCoin[coinName]
+	if !ok {
+		err = fmt.Errorf("coin %v not registered", coinName)
+		return
+	}
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
 	txo.Context = context.Background()
-	txn, err := r.btsc.Transfer(txo, coinName, &amount, recepientAddress)
+	txn, err := r.btsc.Transfer(txo, coinName, amount, recepientAddress)
 	if err != nil {
 		err = errors.Wrap(err, "btsc.Transfer ")
 		return
@@ -247,38 +307,42 @@ func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepi
 	return
 }
 
-func (r *requestAPI) getERC(coinName string) (erc *erc20tradeable.Erc20tradable, err error) {
-	erc = &erc20tradeable.Erc20tradable{}
-	res, ok := r.ercPerCoin.Load(coinName)
-	if !ok {
-		//r.log.Debugf("Registering Input coinName %v ", coinName)
-		coinAddress, errs := r.btsc.CoinId(&bind.CallOpts{Pending: false, Context: nil}, coinName)
-		if err != nil {
-			err = errors.Wrap(errs, "btsc.CoinId ")
-			return
-		}
-		if erc, err = erc20tradeable.NewErc20tradable(coinAddress, r.ethCl); err != nil {
-			err = errors.Wrap(err, "NewErc20tradable")
-			return
-		}
-		res = erc
-		r.ercPerCoin.Store(coinName, erc)
-	} else if ok && res == nil {
-		err = fmt.Errorf("ercPerCoin includes coin %v but value is nil", coinName)
+func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
+	if len(amounts) != len(coinNames) {
+		return "", fmt.Errorf("Amount and CoinNames len should be same; Got %v and %v", len(amounts), len(coinNames))
+	}
+	txo, err := r.getTransactionRequest(senderKey)
+	if err != nil {
+		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
-	erc, ok = res.(*erc20tradeable.Erc20tradable)
-	if !ok {
-		err = fmt.Errorf("Expected type *erc20.Erc20tradable; Got %T", res)
-		return
+	txo.Context = context.Background()
+	filterNames := []string{}
+	filterAmounts := []*big.Int{}
+	for i := 0; i < len(amounts); i++ {
+		if coinNames[i] == r.nativeCoin {
+			txo.Value = amounts[i]
+			continue
+		} else if _, ok := r.ercPerCoin[coinNames[i]]; !ok {
+			err = fmt.Errorf("coin %v not registered", coinNames[i])
+			return
+		}
+		filterAmounts = append(filterAmounts, amounts[i])
+		filterNames = append(filterNames, coinNames[i])
 	}
-	return erc, nil
+	txn, err := r.btsc.TransferBatch(txo, filterNames, filterAmounts, recepientAddress)
+	txnHash = txn.Hash().String()
+	return
 }
 
-func (r *requestAPI) approveCoin(coinName, senderKey string, amount big.Int) (approveTxnHash string, err error) {
-	erc, err := r.getERC(coinName)
-	if err != nil {
-		err = fmt.Errorf("GetERC %v", err)
+func (r *requestAPI) approveCoin(coinName, senderKey string, amount *big.Int) (approveTxnHash string, err error) {
+	if coinName == r.nativeCoin {
+		err = fmt.Errorf("Native Coin %v does not need to be approved", coinName)
+		return
+	}
+	erc, ok := r.ercPerCoin[coinName]
+	if !ok {
+		err = fmt.Errorf("coin %v not registered", coinName)
 		return
 	}
 	txo, err := r.getTransactionRequest(senderKey)
@@ -286,13 +350,13 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount big.Int) (ap
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
-	btscaddr, ok := r.contractNameToAddress[chain.BTSCoreHmny]
+	btscaddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTSCoreHmny)
+		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTS)
 		return
 	}
 	txo.Context = context.Background()
-	approveTxn, err := erc.Approve(txo, common.HexToAddress(btscaddr), &amount)
+	approveTxn, err := erc.Approve(txo, common.HexToAddress(btscaddr), amount)
 	if err != nil {
 		err = errors.Wrap(err, "erc.Approve ")
 		return
@@ -307,68 +371,23 @@ func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalan
 		err = errors.Wrap(err, "btsc.GetBalanceOf ")
 		return
 	}
-	erc, err := r.getERC(coinName)
-	if err != nil {
-		err = fmt.Errorf("GetERC %v", err)
-		return
-	}
-	btscaddr, ok := r.contractNameToAddress[chain.BTSCoreHmny]
-	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTSCoreHmny)
-		return
-	}
-	allowance, err := erc.Allowance(&bind.CallOpts{Pending: false, Context: context.TODO()}, common.HexToAddress(addr), common.HexToAddress(btscaddr))
-	if err != nil {
-		err = fmt.Errorf("Allowance; err: %v", err)
-	}
-
 	bal = &chain.CoinBalance{
-		Approved:   allowance,
-		Usable:     b.UsableBalance,
-		Locked:     b.LockedBalance,
-		Refundable: b.RefundableBalance,
+		UsableBalance:     b.UsableBalance,
+		LockedBalance:     b.LockedBalance,
+		RefundableBalance: b.RefundableBalance,
+		UserBalance:       b.UserBalance,
 	}
-	bal.Total = bal.Total.Add(bal.Locked, b.UsableBalance)
-	bal.Total = bal.Total.Add(bal.Total, bal.Refundable)
 	return bal, nil
 }
 
-/*
-func (r *requestAPI) getHmnyBalance(addr string) (*big.Int, error) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	return r.ethCl.BalanceAt(ctx, common.HexToAddress(addr), nil)
-}
-
-func (r *requestAPI) getWrappedCoinBalance(coinName string, addr string) (val *big.Int, err error) {
-	v, err := r.btsc.BalanceOf(&bind.CallOpts{Pending: false, Context: context.Background()}, common.HexToAddress(addr), coinName)
+func (r *requestAPI) reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
+	txo, err := r.getTransactionRequest(ownerKey)
 	if err != nil {
-		err = errors.Wrap(err, "btsc.GetBalanceOf ")
+		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
-	return v.UsableBalance, nil
-}
-func (r *requestAPI) getAllowance(coinName, ownerAddr string) (amont *big.Int, err error) {
-	erc := &erc20.Erc20tradable{}
-	res, ok := r.ercPerCoin.Load(coinName)
-	if !ok {
-		err = fmt.Errorf("ercPerCoin does not includes coin %v", coinName)
-		return
-	} else if ok && res == nil {
-		err = fmt.Errorf("ercPerCoin includes coin %v but value is nil", coinName)
-		return
-	}
-	if erc, ok = res.(*erc20.Erc20tradable); !ok {
-		err = fmt.Errorf("Expected type *erc20.Erc20tradable; Got %T", res)
-		return
-	}
-	btscaddr, ok := r.contractNameToAddress[chain.BTSCoreHmny]
-	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTSCoreHmny)
-		return
-	}
-	return erc.Allowance(&bind.CallOpts{Pending: false, Context: context.TODO()}, common.HexToAddress(ownerAddr), common.HexToAddress(btscaddr))
-}
 
-*/
+	txn, err := r.btsc.Reclaim(txo, coinName, amount)
+	txnHash = txn.Hash().String()
+	return
+}

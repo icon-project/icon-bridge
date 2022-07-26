@@ -33,7 +33,7 @@ func main() {
 		cancel()
 	}()
 
-	cfgPerMap := map[chain.ChainType]*chain.ChainConfig{}
+	cfgPerMap := map[chain.ChainType]*chain.Config{}
 	for _, ch := range cfg.Chains {
 		cfgPerMap[ch.Name] = ch
 	}
@@ -49,7 +49,7 @@ func main() {
 		for _, fts := range testCfg.FlowTest.Chains {
 			for _, coinName := range fts.CoinNames {
 				go func(coinName string) {
-					err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, coinName, executor.Transfer)
+					err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, []string{coinName}, executor.TransferWithoutApprove)
 					if err != nil {
 						log.Errorf("%+v", err)
 					}
@@ -142,7 +142,7 @@ func loadTestConfig(file string) (*TestConfig, error) {
 }
 
 type Config struct {
-	Chains []*chain.ChainConfig `json:"chains"`
+	Chains []*chain.Config `json:"chains"`
 }
 
 type TestConfig struct {
