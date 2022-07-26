@@ -44,3 +44,21 @@ If you want to contribute, start working through the icon-bridge repository, nav
 
 Please see the [ICON Foundation Development Guidelines](https://github.com/icon-project/community/blob/main/guidelines/technical-development/development-guidelines.md)
 for information regarding our development standards and practices.
+
+### ICON Bridge Core Development Process
+
+This section is intended for developers and project managers that are involved with core ICON Bridge and BTP integrations.
+
+We use Zenhub for project management.
+
+Issues that are not currently being worked on but determined to be part of this month's release should be in the "Release Backlog" column. Any other issue that is not being worked on that is not part of this month's release goes in the "Icebox" column.
+
+Issues currently being worked on should be in the "In Progress" column, assigned this week's sprint, and assigned a time estimate (# of days to complete the issue). It's ok if the time estimate is not accurate, as it is only an estimate.
+
+Issues currently being worked on should each have an associated branch. If an issue needs multiple branches, the issue is probably too large and should be broken down into multiple smaller issues. If the issue is describing a feature, the naming convention of the branch should be "feature/[description]-[issue #]". If the issue is describing a bug fix, the naming convention of the branch should be "fix/[description]-[issue #]".
+
+After the developer working on the branch determines the feature (or fix) branch satisfies the acceptance criteria of the associated issue and has sufficiently tested the added code, the developer should submit a pull request with at least 1 reviewer assigned for the feature branch to be merged into the main branch. When the branch is submitted for pull request, the associated issue should go into the "Review / QA" column in Zenhub.
+
+After the pull request has been merged, the feature branch should be deleted and the issue should be closed. When the Git issue is closed, the issue should go into the "Completed" column in Zenhub.
+
+> **Note:** The process of moving an issue from one column to another is currently entirely manual. There are clear trigger points of when an issue should move from one column to another, so we intend to automate this in the future.
