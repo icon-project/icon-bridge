@@ -1,0 +1,53 @@
+name: Solidity BTS 
+on:
+  push:
+    branches:
+      - 'main'
+      - 'develop'
+      - 'master'
+      - 'beta-cicd'
+    paths:
+      - 'solidity/bts'
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: node version selector
+        uses: actions/setup-node@v3
+        with:
+          node-version: 15.12.0
+
+      - name: yarn install and truffle global
+        working-directory: ./solidity/bts
+        run: |
+             yarn global add truffle@5.5.5
+             yarn install
+             cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
+             truffle develop &
+
+      - name: wait for truffle develop
+        uses: cygnetdigital/wait_for_response@v2.0.0
+        with:
+          url: 'http://localhost:9545/'
+          responseCode: '200,500,404'
+          timeout: 2000
+          interval: 500
+
+      - name: yarn
+        working-directory: ./solidity/bts
+        run: |
+             yarn
+
+      - name: yarn contract compile
+        working-directory: ./solidity/bts
+        run: |
+             yarn contract:compile
+
+      - name: yarn test
+        working-directory: ./solidity/bts
+        run: |
+             yarn test
