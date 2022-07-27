@@ -28,18 +28,18 @@ jobs:
              yarn install
              truffle develop &
 
-      # - name: wait for truffle develop
-      #   uses: cygnetdigital/wait_for_response@v2.0.0
-      #   with:
-      #     url: 'http://127.0.0.1:9545/'
-      #     responseCode: '200,500,404'
-      #     timeout: 20000
-      #     interval: 2000
+      - name: wait for truffle develop
+        uses: cygnetdigital/wait_for_response@v2.0.0
+        with:
+          url: 'http://127.0.0.1:9545/'
+          responseCode: '200,500,404'
+          timeout: 30000
+          interval: 2000
 
-      # - name: yarn
-      #   working-directory: ./solidity/bmc
-      #   run: |
-      #        yarn
+      - name: yarn
+        working-directory: ./solidity/bmc
+        run: |
+             yarn
 
       - name: yarn contract compile
         working-directory: ./solidity/bmc
@@ -49,7 +49,5 @@ jobs:
       - name: yarn test
         working-directory: ./solidity/bmc
         run: |
-             truffle develop &
-             sleep 10
              cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
              yarn test:integration

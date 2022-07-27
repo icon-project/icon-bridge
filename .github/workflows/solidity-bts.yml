@@ -29,13 +29,13 @@ jobs:
              cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
              truffle develop &
 
-      # - name: wait for truffle develop
-      #   uses: cygnetdigital/wait_for_response@v2.0.0
-      #   with:
-      #     url: 'http://127.0.0.1:9545/'
-      #     responseCode: '200,500,404'
-      #     timeout: 10000
-      #     interval: 2000
+      - name: wait for truffle develop
+        uses: cygnetdigital/wait_for_response@v2.0.0
+        with:
+          url: 'http://127.0.0.1:9545/'
+          responseCode: '200,500,404'
+          timeout: 30000
+          interval: 2000
 
       - name: yarn
         working-directory: ./solidity/bts
@@ -50,7 +50,5 @@ jobs:
       - name: yarn test
         working-directory: ./solidity/bts
         run: |
-             truffle develop &
-             sleep 20
              yarn test:unit
              yarn test:integration
