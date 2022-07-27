@@ -28,7 +28,7 @@ deploy_javascore_bsr() {
   goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bsr.jar \
     --content_type application/java | jq -r . >tx.icon.bsr
   extract_scoreAddress tx.icon.bsr btp.icon.bsr
-} 
+}
 
 deploy_javascore_bts() {
   echo "deploying javascore bts"

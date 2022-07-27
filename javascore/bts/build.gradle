@@ -8,8 +8,8 @@ dependencies {
     implementation("com.github.sink772:javaee-tokens:0.6.0")
     implementation project(':bsr')
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.7.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
 
     testImplementation("foundation.icon:javaee-unittest:$javaeeUnittestVersion")
     testImplementation fileTree(dir: '../lib', include: 'test-lib-0.1.0.jar')
@@ -17,7 +17,6 @@ dependencies {
     testImplementation("foundation.icon:javaee-score-client:$scoreClientVersion")
     testImplementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
     testImplementation("foundation.icon:icon-sdk:$iconsdkVersion")
-    testImplementation("com.github.javafaker:javafaker:1.0.2")
 }
 
 optimizedJar {
