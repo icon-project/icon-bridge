@@ -141,14 +141,8 @@ func (c *Client) MonitorBlockHeight(offset int64) rxgo.Observable {
 	return rxgo.FromChannel(channel)
 }
 
-func (c *Client) ReceiveBlocks(height uint64, callback func(rxgo.Observable) error) error {
-	return callback(c.MonitorBlock(int64(height)).TakeUntil(func(i interface{}) bool {
-		return c.isMonitorClosed
-	}))
-}
-
-func (c *Client) MonitorBlock(height int64) rxgo.Observable {
-	return c.MonitorBlockHeight(height).FlatMap(func(i rxgo.Item) rxgo.Observable {
+func (c *Client) MonitorBlocks(height uint64, callback func(rxgo.Observable) error) error {
+	return callback(c.MonitorBlockHeight(int64(height)).FlatMap(func(i rxgo.Item) rxgo.Observable {
 		if i.E != nil {
 			return rxgo.Just(errors.New(i.E.Error()))()
 		}
@@ -163,5 +157,11 @@ func (c *Client) MonitorBlock(height int64) rxgo.Observable {
 		_, ok := i.(types.Block)
 
 		return ok
-	}, rxgo.WithCPUPool())
+	}, rxgo.WithCPUPool()).TakeUntil(func(i interface{}) bool {
+		return c.isMonitorClosed
+	}))
+}
+
+func (c *Client) CloseMonitor() {
+	c.isMonitorClosed = true
 }
