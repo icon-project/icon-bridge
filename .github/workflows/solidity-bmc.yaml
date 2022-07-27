@@ -27,12 +27,11 @@ jobs:
              yarn global add truffle@5.5.5
              yarn install
              truffle develop &
-             curl http://127.0.0.1:9545
 
       - name: wait for truffle develop
         uses: cygnetdigital/wait_for_response@v2.0.0
         with:
-          url: 'http://127.0.0.1:9545'
+          url: 'http://127.0.0.1:9545/'
           responseCode: '200,500,404'
           timeout: 20000
           interval: 2000
