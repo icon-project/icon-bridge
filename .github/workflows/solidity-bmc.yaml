@@ -27,6 +27,7 @@ jobs:
              yarn global add truffle@5.5.5
              yarn install
              truffle develop &
+             curl http://127.0.0.1:9545
 
       - name: wait for truffle develop
         uses: cygnetdigital/wait_for_response@v2.0.0
