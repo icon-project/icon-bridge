@@ -10,9 +10,6 @@ import (
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
-	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/bsc"
-	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny"
-	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/icon"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/log"
 )
@@ -21,6 +18,12 @@ const (
 	FEE_NUMERATOR   = 100
 	FEE_DENOMINATOR = 10000
 	FIXED_PRICE     = 50000
+)
+
+type NewApiCaller func(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error)
+
+var (
+	APICallerFunc = map[chain.ChainType]NewApiCaller{}
 )
 
 type executor struct {
@@ -44,28 +47,18 @@ func New(l log.Logger, cfgPerChain map[chain.ChainType]*chain.Config) (ex *execu
 		stoppedChan:     make(chan struct{}),
 	}
 	for name, cfg := range cfgPerChain {
-
-		//Clients
-		if name == chain.HMNY {
-			ex.clientsPerChain[name], err = hmny.NewApi(l, cfg)
-			if err != nil {
-				err = errors.Wrap(err, "hmny.NewApi ")
-				return nil, err
-			}
-		} else if name == chain.ICON {
-			ex.clientsPerChain[name], err = icon.NewApi(l, cfg)
-			if err != nil {
-				err = errors.Wrap(err, "icon.NewApi ")
-				return nil, err
-			}
-		} else if name == chain.BSC {
-			ex.clientsPerChain[name], err = bsc.NewApi(l, cfg)
-			if err != nil {
-				err = errors.Wrap(err, "bsc.NewApi ")
-				return nil, err
-			}
-		} else {
-			return nil, errors.New("Unknown Chain Type supplied from config: " + string(name))
+		apiFunc, ok := APICallerFunc[name]
+		if !ok {
+			err = errors.Wrapf(err, "%v NewApi Func does not exist", name)
+			return nil, err
+		} else if apiFunc == nil {
+			err = errors.Wrapf(err, "%v NewApi Func is nil", name)
+			return nil, err
+		}
+		ex.clientsPerChain[name], err = apiFunc(l, cfg)
+		if err != nil {
+			err = errors.Wrap(err, "hmny.NewApi ")
+			return nil, err
 		}
 		if priv, pub, err := ex.clientsPerChain[name].GetKeyPairFromKeystore(cfg.GodWalletKeystorePath, cfg.GodWalletSecretPath); err != nil {
 			return nil, errors.Wrapf(err, "GetKeyPairFromKeystore %v", err)
