@@ -1,6 +1,5 @@
 package foundation.icon.btp.bsh;
 
-import score.Address;
 import score.Context;
 import score.annotation.External;
 

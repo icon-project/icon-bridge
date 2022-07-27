@@ -23,14 +23,10 @@ import foundation.icon.btp.test.SendMessageEventLog;
 import foundation.icon.jsonrpc.Address;
 import foundation.icon.jsonrpc.model.TransactionResult;
 import foundation.icon.score.client.RevertedException;
-import foundation.icon.score.test.ScoreIntegrationTest;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import score.UserRevertedException;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +34,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BTPTokenServiceTest implements BTSIntegrationTest {
 

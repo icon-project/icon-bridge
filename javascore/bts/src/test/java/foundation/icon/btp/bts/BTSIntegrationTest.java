@@ -22,22 +22,16 @@ import foundation.icon.btp.lib.OwnerManager;
 import foundation.icon.btp.lib.OwnerManagerScoreClient;
 import foundation.icon.btp.test.BTPIntegrationTest;
 import foundation.icon.btp.test.MockBMCIntegrationTest;
-import foundation.icon.btp.test.SendMessageEventLog;
-import foundation.icon.jsonrpc.Address;
+import foundation.icon.icx.Wallet;
 import foundation.icon.jsonrpc.model.TransactionResult;
 import foundation.icon.score.client.DefaultScoreClient;
 import foundation.icon.score.client.ScoreClient;
 import foundation.icon.score.test.ScoreIntegrationTest;
-import foundation.icon.icx.Wallet;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @TestMethodOrder(value = MethodOrderer.OrderAnnotation.class)
 public interface BTSIntegrationTest extends BTPIntegrationTest {
