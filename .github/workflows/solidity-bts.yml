@@ -51,6 +51,6 @@ jobs:
         working-directory: ./solidity/bts
         run: |
              truffle develop &
-             sleep 10
+             sleep 20
              yarn test:unit
              yarn test:integration
