@@ -24,7 +24,7 @@ jobs:
       - name: yarn install and truffle global
         working-directory: ./solidity/bmc
         run: |
-             yarn global add truffle@5.5.5
+             npm install -g truffle@5.5.5
              yarn install
              truffle develop &
 
@@ -36,10 +36,10 @@ jobs:
       #     timeout: 20000
       #     interval: 2000
 
-      - name: yarn
-        working-directory: ./solidity/bmc
-        run: |
-             yarn
+      # - name: yarn
+      #   working-directory: ./solidity/bmc
+      #   run: |
+      #        yarn
 
       - name: yarn contract compile
         working-directory: ./solidity/bmc
@@ -49,5 +49,6 @@ jobs:
       - name: yarn test
         working-directory: ./solidity/bmc
         run: |
+             truffle develop &
              cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
              yarn test:integration
