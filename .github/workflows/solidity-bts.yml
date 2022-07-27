@@ -34,8 +34,8 @@ jobs:
         with:
           url: 'http://localhost:9545/'
           responseCode: '200,500,404'
-          timeout: 2000
-          interval: 500
+          timeout: 10000
+          interval: 2000
 
       - name: yarn
         working-directory: ./solidity/bts

@@ -43,8 +43,8 @@ jobs:
         with:
           url: 'http://127.0.0.1:9545/'
           responseCode: '200,500,404'
-          timeout: 2000
-          interval: 500
+          timeout: 10000
+          interval: 2000
 
       - name: yarn test
         working-directory: ./solidity/bmc
