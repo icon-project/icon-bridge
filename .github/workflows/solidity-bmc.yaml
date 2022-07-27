@@ -27,6 +27,9 @@ jobs:
              npm install -g truffle@5.5.5
              yarn install
              truffle develop &
+             while ! curl --silent http://127.0.0.1:9545 -o /dev/null; do
+              sleep 1
+             done
 
       - name: wait for truffle develop
         uses: cygnetdigital/wait_for_response@v2.0.0
@@ -49,5 +52,7 @@ jobs:
       - name: yarn test
         working-directory: ./solidity/bmc
         run: |
+             # truffle develop &
+             # sleep 10
              cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
              yarn test:integration
