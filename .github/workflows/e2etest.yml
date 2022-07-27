@@ -46,4 +46,4 @@ jobs:
       working-directory: ./cmd/e2etest
       run: |
            export LD_LIBRARY_PATH=/usr/local/lib
-           go run main.go
+           go run -tags hmny main.go
