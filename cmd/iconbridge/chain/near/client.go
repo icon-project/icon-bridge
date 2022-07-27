@@ -138,7 +138,7 @@ func (c *Client) MonitorBlockHeight(offset int64) rxgo.Observable {
 		}
 	}(offset)
 
-	return rxgo.FromChannel(channel)
+	return rxgo.FromChannel(channel, rxgo.WithCPUPool())
 }
 
 func (c *Client) MonitorBlocks(height uint64, callback func(rxgo.Observable) error) error {
@@ -153,11 +153,11 @@ func (c *Client) MonitorBlocks(height uint64, callback func(rxgo.Observable) err
 		}
 
 		return rxgo.Just(block)()
-	}, rxgo.WithCPUPool()).Filter(func(i interface{}) bool {
+	}).Filter(func(i interface{}) bool {
 		_, ok := i.(types.Block)
 
 		return ok
-	}, rxgo.WithCPUPool()).TakeUntil(func(i interface{}) bool {
+	}).TakeUntil(func(i interface{}) bool {
 		return c.isMonitorClosed
 	}))
 }

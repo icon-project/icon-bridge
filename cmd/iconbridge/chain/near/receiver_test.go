@@ -11,7 +11,7 @@ import (
 )
 
 func TestNearReceiver(t *testing.T) {
-	if test, err := tests.GetTest("ReceiverSubscribe", t); err == nil {
+	if test, err := tests.GetTest("ReceiverReceiveBlocks", t); err == nil {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {

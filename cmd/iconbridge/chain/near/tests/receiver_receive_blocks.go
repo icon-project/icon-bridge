@@ -5,23 +5,23 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
 )
 
-type ReceiverSubscribe struct {
+type ReceiverReceiveBlocks struct {
 	description string
 	testData    []TestData
 }
 
-func (t ReceiverSubscribe) Description() string {
+func (t ReceiverReceiveBlocks) Description() string {
 	return t.description
 }
 
-func (t ReceiverSubscribe) TestDatas() []TestData {
+func (t ReceiverReceiveBlocks) TestDatas() []TestData {
 	return t.testData
 }
 
 func init() {
 	var testData = []TestData{
 		{
-			Description: "Receiver Subscribe Success",
+			Description: "Receiver Receive Blocks Success",
 			Input: struct {
 				Offset      uint64
 				Source      chain.BTPAddress
@@ -59,8 +59,8 @@ func init() {
 		},
 	}
 
-	RegisterTest("ReceiverSubscribe", ReceiverSubscribe{
-		description: "Test Receiver Subscribe",
+	RegisterTest("ReceiverReceiveBlocks", ReceiverReceiveBlocks{
+		description: "Test Receiver Receive Blocks",
 		testData:    testData,
 	})
 }
