@@ -55,7 +55,7 @@ Issues that are not currently being worked on but determined to be part of this 
 
 Issues currently being worked on should be in the "In Progress" column, assigned this week's sprint, and assigned a time estimate (# of days to complete the issue). It's ok if the time estimate is not accurate, as it is only an estimate.
 
-Issues currently being worked on should each have an associated branch. If an issue needs multiple branches, the issue is probably too large and should be broken down into multiple smaller issues. If the issue is describing a feature, the naming convention of the branch should be "feature/[description]-[issue #]". If the issue is describing a bug fix, the naming convention of the branch should be "fix/[description]-[issue #]".
+Issues currently being worked on should each have an associated branch. If an issue needs multiple branches, the issue is probably too large and should be broken down into multiple smaller issues. If the issue is describing a feature, the naming convention of the branch should be "feature/[issue #]-[description]". If the issue is describing a bug fix, the naming convention of the branch should be "fix/[issue #]-[description]".
 
 After the developer working on the branch determines the feature (or fix) branch satisfies the acceptance criteria of the associated issue and has sufficiently tested the added code, the developer should submit a pull request with at least 1 reviewer assigned for the feature branch to be merged into the main branch. When the branch is submitted for pull request, the associated issue should go into the "Review / QA" column in Zenhub.
 
