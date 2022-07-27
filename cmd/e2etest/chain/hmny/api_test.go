@@ -1,4 +1,7 @@
-package hmny_test
+//go:build hmny
+// +build hmny
+
+package hmny
 
 import (
 	"context"
@@ -11,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
-	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
@@ -39,7 +41,7 @@ func getNewApi() (chain.ChainAPI, error) {
 		chain.BTS:          "0x05AcF27495FAAf9A178e316B9Da2f330983b9B95",
 		chain.BTSPeriphery: "0xfad748a1063a40FF447B5D766331904d9bedDC26",
 	}
-	rx, err := hmny.NewApi(l, &chain.Config{
+	rx, err := NewApi(l, &chain.Config{
 		Name:              chain.HMNY,
 		URL:               "http://localhost:9500",
 		ContractAddresses: addrToName,

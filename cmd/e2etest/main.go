@@ -11,6 +11,10 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/e2etest/executor"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
+
+	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/bsc"
+	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny"
+	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/icon"
 )
 
 func main() {

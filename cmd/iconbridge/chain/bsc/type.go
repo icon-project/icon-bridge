@@ -139,10 +139,10 @@ type EventFilter struct {
 }
 
 type BlockNotification struct {
-	Hash   common.Hash
-	Height *big.Int
-	Header *types.Header
-	Logs   []types.Log
+	Hash     common.Hash
+	Height   *big.Int
+	Header   *types.Header
+	Receipts types.Receipts
 }
 
 type RelayMessage struct {

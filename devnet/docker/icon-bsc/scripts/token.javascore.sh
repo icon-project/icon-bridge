@@ -193,7 +193,7 @@ get_btp_icon_bnb() {
   echo "Get BTP Icon BNB Addr"
   cd $CONFIG_DIR
   goloop rpc sendtx call --to $(cat btp.icon.bts) \
-    --method "coinAddress" \
+    --method "coinId" \
     --param _coinName="BNB" | jq -r . >tx/bnb.coin.icon
   ensure_txresult tx/bnb.coin.icon
 }
@@ -250,7 +250,7 @@ get_btp_icon_tbnb() {
   echo "Get BTP Icon TBNB Addr"
   cd $CONFIG_DIR
   goloop rpc sendtx call --to $(cat btp.icon.bts) \
-    --method coinAddress \
+    --method coinId \
     --param _coinName=TBNB | jq -r . >tx/tbnb.coin.icon
   ensure_txresult tx/tbnb.coin.icon
 }
