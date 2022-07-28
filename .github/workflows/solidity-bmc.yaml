@@ -36,6 +36,6 @@ jobs:
         working-directory: ./solidity/bmc
         run: |
              truffle develop &
-             sleep 20
+             sleep 30
              cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
              yarn test:integration
