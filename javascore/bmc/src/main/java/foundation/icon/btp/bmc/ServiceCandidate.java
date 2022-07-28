@@ -16,7 +16,11 @@
 
 package foundation.icon.btp.bmc;
 
-import score.*;
+import score.Address;
+import score.ByteArrayObjectWriter;
+import score.Context;
+import score.ObjectReader;
+import score.ObjectWriter;
 
 public class ServiceCandidate {
     private String svc;

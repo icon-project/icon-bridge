@@ -16,14 +16,13 @@
 
 package foundation.icon.btp.bts;
 
-import java.util.HashMap;
-import java.util.Map;
 import score.ByteArrayObjectWriter;
 import score.Context;
 import score.ObjectReader;
 import score.ObjectWriter;
 
 import java.math.BigInteger;
+import java.util.Map;
 
 public class Balance {
     private BigInteger usable;

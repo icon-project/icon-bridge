@@ -3,9 +3,9 @@
     "version": "1.0.0",
     "license": "Apache-2.0",
     "dependencies": {
-        "@openzeppelin/contracts-upgradeable": "4.1.0",
-        "@openzeppelin/truffle-upgrades": "^1.7.0",
-        "@truffle/hdwallet-provider": "^1.4.0",
+        "@openzeppelin/contracts-upgradeable": "^4.7.1",
+        "@openzeppelin/truffle-upgrades": "^1.15.0",
+        "@truffle/hdwallet-provider": "^2.0.12",
         "dotenv": "^16.0.0"
     },
     "devDependencies": {

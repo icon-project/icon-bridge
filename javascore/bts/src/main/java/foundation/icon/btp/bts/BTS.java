@@ -16,13 +16,13 @@
 
 package foundation.icon.btp.bts;
 
-import java.util.List;
-import java.util.Map;
 import score.Address;
 import score.annotation.External;
 import score.annotation.Payable;
 
 import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
 
 public interface BTS {
 
