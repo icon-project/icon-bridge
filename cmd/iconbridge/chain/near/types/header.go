@@ -7,35 +7,35 @@ import (
 )
 
 type Header struct {
-	Height                int64       `json:"height"`
-	PreviousHeight        int64       `json:"prev_height"`
-	EpochId               CryptoHash  `json:"epoch_id"`
-	NextEpochId           CryptoHash  `json:"next_epoch_id"`
-	Hash                  CryptoHash  `json:"hash"`
-	PreviousBlockHash     CryptoHash  `json:"prev_hash"`
-	PreviousStateRoot     CryptoHash  `json:"prev_state_root"`
-	ChunkReceiptsRoot     CryptoHash  `json:"chunk_receipts_root"`
-	ChunkHeadersRoot      CryptoHash  `json:"chunk_headers_root"`
-	ChunkTransactionRoot  CryptoHash  `json:"chunk_tx_root"`
-	OutcomeRoot           CryptoHash  `json:"outcome_root"`
-	ChunksIncluded        uint8       `json:"chunks_included"`
-	ChallengesRoot        CryptoHash  `json:"challenges_root"`
-	Timestamp             Timestamp   `json:"timestamp_nanosec"`
-	RandomValue           CryptoHash  `json:"random_value"`
-	ValidatorProposals    []string    `json:"validator_proposals"`
-	ChunkMask             []bool      `json:"chunk_mask"`
-	GasPrice              BigInt      `json:"gas_price"`
-	BlockOrdinal          uint64      `json:"block_ordinal"`
-	TotalSupply           BigInt      `json:"total_supply"`
-	ChallengesResult      []string    `json:"challenges_result"`
-	LastFinalBlock        CryptoHash  `json:"last_final_block"`
-	LastDSFinalBlock      CryptoHash  `json:"last_ds_final_block"`
-	NextBlockProducerHash CryptoHash  `json:"next_bp_hash"`
-	BlockMerkleRoot       CryptoHash  `json:"block_merkle_root"`
-	EpochSyncDataHash     CryptoHash  `json:"epoch_sync_data_hash"`
-	Approvals             []Signature `json:"approvals"`
-	Signature             Signature   `json:"signature"`
-	LatestProtocolVersion uint32      `json:"latest_protocol_version"`
+	Height                int64           `json:"height"`
+	PreviousHeight        int64           `json:"prev_height"`
+	EpochId               CryptoHash      `json:"epoch_id"`
+	NextEpochId           CryptoHash      `json:"next_epoch_id"`
+	Hash                  CryptoHash      `json:"hash"`
+	PreviousBlockHash     CryptoHash      `json:"prev_hash"`
+	PreviousStateRoot     CryptoHash      `json:"prev_state_root"`
+	ChunkReceiptsRoot     CryptoHash      `json:"chunk_receipts_root"`
+	ChunkHeadersRoot      CryptoHash      `json:"chunk_headers_root"`
+	ChunkTransactionRoot  CryptoHash      `json:"chunk_tx_root"`
+	OutcomeRoot           CryptoHash      `json:"outcome_root"`
+	ChunksIncluded        uint8           `json:"chunks_included"`
+	ChallengesRoot        CryptoHash      `json:"challenges_root"`
+	Timestamp             Timestamp       `json:"timestamp_nanosec"`
+	RandomValue           CryptoHash      `json:"random_value"`
+	ValidatorProposals    []BlockProducer `json:"validator_proposals"`
+	ChunkMask             []bool          `json:"chunk_mask"`
+	GasPrice              BigInt          `json:"gas_price"`
+	BlockOrdinal          uint64          `json:"block_ordinal"`
+	TotalSupply           BigInt          `json:"total_supply"`
+	ChallengesResult      []string        `json:"challenges_result"`
+	LastFinalBlock        CryptoHash      `json:"last_final_block"`
+	LastDSFinalBlock      CryptoHash      `json:"last_ds_final_block"`
+	NextBlockProducerHash CryptoHash      `json:"next_bp_hash"`
+	BlockMerkleRoot       CryptoHash      `json:"block_merkle_root"`
+	EpochSyncDataHash     CryptoHash      `json:"epoch_sync_data_hash"`
+	Approvals             []Signature     `json:"approvals"`
+	Signature             Signature       `json:"signature"`
+	LatestProtocolVersion uint32          `json:"latest_protocol_version"`
 }
 
 type HeaderInnerLite struct {
@@ -80,7 +80,7 @@ type HeaderInnerRest struct {
 	ChunkTransactionRoot  []byte
 	ChallengesRoot        []byte
 	RandomValue           []byte
-	ValidatorProposals    []string
+	ValidatorProposals    []BlockProducer
 	ChunkMask             []bool
 	GasPrice              BigInt
 	TotalSupply           BigInt

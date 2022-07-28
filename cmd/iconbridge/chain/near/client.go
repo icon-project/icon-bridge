@@ -149,14 +149,11 @@ func (c *Client) MonitorBlocks(height uint64, callback func(rxgo.Observable) err
 
 		block, err := c.api.getBlockByHeight(i.V.(int64))
 		if err != nil {
-			return rxgo.Just(err)()
+			//TODO: Handle Error
+			return rxgo.Empty()
 		}
 
 		return rxgo.Just(block)()
-	}).Filter(func(i interface{}) bool {
-		_, ok := i.(types.Block)
-
-		return ok
 	}).TakeUntil(func(i interface{}) bool {
 		return c.isMonitorClosed
 	}))

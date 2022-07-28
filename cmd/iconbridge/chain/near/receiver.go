@@ -58,7 +58,6 @@ func newMockReceiver(source, destination chain.BTPAddress, client *Client, urls 
 }
 
 func (r *Receiver) receiveBlocks(height uint64, processBlock func(block *types.Block) error) error {
-	lastHeight := height - 1
 	return r.client().MonitorBlocks(height, func(observable rxgo.Observable) error {
 		result := observable.Observe()
 
@@ -68,14 +67,7 @@ func (r *Receiver) receiveBlocks(height uint64, processBlock func(block *types.B
 			}
 
 			block, _ := item.V.(types.Block)
-			if uint64(block.Height()) != lastHeight+1 {
-				r.logger.Errorf("expected v.Height == %d, got %d", lastHeight+1, block.Height())
-
-				return fmt.Errorf("block notification: expected=%d, got=%d", lastHeight+1, block.Height())
-			}
-
 			processBlock(&block)
-			lastHeight++
 		}
 		return nil
 	})
