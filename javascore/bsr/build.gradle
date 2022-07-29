@@ -13,13 +13,11 @@ apply plugin: 'java-library'
 
 dependencies {
     compileOnly("foundation.icon:javaee-api:$javaeeVersion")
-    implementation("foundation.icon:javaee-scorex:$scorexVersion")
     implementation fileTree(dir: '../lib', include: 'score-util.jar')
     implementation fileTree(dir: '../lib', include: 'lib-0.1.0.jar')
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.7.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.7.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$jupiterVersion")
     testImplementation("foundation.icon:javaee-unittest:$javaeeUnittestVersion")
 
     testImplementation fileTree(dir: '../lib', include: 'goloop-testsuite.jar')

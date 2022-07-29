@@ -1,116 +1,261 @@
-/*
- * Copyright 2021 ICON Foundation
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package bsc
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/binding"
-
 	"math/big"
+	"math/rand"
+	"sort"
+	"strings"
+	"time"
 
-	"github.com/icon-project/icon-bridge/common/errors"
+	"github.com/ethereum/go-ethereum/common"
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/trie"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/pkg/errors"
 )
 
-type receiver struct {
-	cl  *client
-	src chain.BTPAddress
-	dst chain.BTPAddress
-	log log.Logger
-	opt struct {
-	}
-}
+const (
+	BlockInterval              = 5 * time.Second
+	BlockHeightPollInterval    = 60 * time.Second
+	monitorBlockMaxConcurrency = 1000 // number of concurrent requests to synchronize older blocks from source chain
+)
 
-func NewReceiver(src, dst chain.BTPAddress, endpoints []string, opt map[string]interface{}, l log.Logger) (chain.Receiver, error) {
+func NewReceiver(
+	src, dst chain.BTPAddress, urls []string,
+	opts map[string]interface{}, l log.Logger) (chain.Receiver, error) {
 	r := &receiver{
+		log: l,
 		src: src,
 		dst: dst,
-		log: l,
 	}
-	if len(endpoints) == 0 {
-		return nil, fmt.Errorf("empty urls: %v", endpoints)
+	if len(urls) == 0 {
+		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
-	b, err := json.Marshal(opt)
+	err := r.opts.Unmarshal(opts)
 	if err != nil {
-		l.Panicf("fail to marshal opt:%#v err:%+v", opt, err)
+		return nil, err
 	}
-	if err = json.Unmarshal(b, &r.opt); err != nil {
-		l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
-	}
-	r.cl, err = NewClient(endpoints, src.ContractAddress(), l)
+	r.cls, r.bmcs, err = newClients(urls, src.ContractAddress(), r.log)
 	if err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
-func (r *receiver) newBTPMessage(v *BlockNotification) ([]*chain.Receipt, error) {
-	var receipts []*chain.Receipt
-	var events []*chain.Event
-	srcContractAddress := HexToAddress(r.src.ContractAddress())
+type ReceiverOptions struct {
+	SyncConcurrency uint64 `json:"syncConcurrency"`
+}
 
-	var index, BlockNumber uint64
-	events = events[:0]
-	for _, vLog := range v.Logs {
-		if bmcMsg, err := binding.UnpackEventLog(vLog.Data); err == nil {
-			events = append(events, &chain.Event{
-				Message:  bmcMsg.Msg,
-				Next:     chain.BTPAddress(bmcMsg.Next),
-				Sequence: bmcMsg.Seq.Uint64(),
-			})
-			index = uint64(vLog.Index)
-			BlockNumber = vLog.BlockNumber
+func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, opts)
+}
+
+type receiver struct {
+	log  log.Logger
+	src  chain.BTPAddress
+	dst  chain.BTPAddress
+	opts ReceiverOptions
+	cls  []*Client
+	bmcs []*BMC
+}
+
+func (r *receiver) client() *Client {
+	randInt := rand.Intn(len(r.cls))
+	return r.cls[randInt]
+}
+
+func (r *receiver) bmcClient() *BMC {
+	randInt := rand.Intn(len(r.cls))
+	return r.bmcs[randInt]
+}
+
+type BnOptions struct {
+	StartHeight uint64
+	Concurrency uint64
+}
+
+func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback func(v *BlockNotification) error) error {
+
+	if opts == nil {
+		return errors.New("receiveLoop: invalid options: <nil>")
+	}
+
+	if opts.Concurrency < 1 || opts.Concurrency > monitorBlockMaxConcurrency {
+		concurrency := opts.Concurrency
+		if concurrency < 1 {
+			opts.Concurrency = 1
+		} else {
+			opts.Concurrency = monitorBlockMaxConcurrency
+		}
+		r.log.Warnf("receiveLoop: opts.Concurrency (%d): value out of range [%d, %d]: setting to default %d",
+			concurrency, 1, monitorBlockMaxConcurrency, opts.Concurrency)
+	}
+
+	// block notification channel
+	// (buffered: to avoid deadlock)
+	// increase concurrency parameter for faster sync
+	bnch := make(chan *BlockNotification, opts.Concurrency)
+
+	heightTicker := time.NewTicker(BlockInterval)
+	defer heightTicker.Stop()
+
+	heightPoller := time.NewTicker(BlockHeightPollInterval)
+	defer heightPoller.Stop()
+
+	latestHeight := func() uint64 {
+		height, err := r.client().GetBlockNumber()
+		if err != nil {
+			r.log.WithFields(log.Fields{"error": err}).Error("receiveLoop: failed to GetBlockNumber")
+			return 0
+		}
+		return height
+	}
+
+	next, latest := opts.StartHeight, latestHeight()
+
+	// last unverified block notification
+	var lbn *BlockNotification
+
+	// start monitor loop
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+
+		case <-heightTicker.C:
+			latest++
+
+		case <-heightPoller.C:
+			if height := latestHeight(); height > latest {
+				latest = height
+				if next > latest {
+					r.log.Debugf("receiveLoop: skipping; latest=%d, next=%d", latest, next)
+				}
+			}
+
+		case bn := <-bnch:
+			// process all notifications
+			for ; bn != nil; next++ {
+				if lbn != nil {
+					if err := callback(lbn); err != nil {
+						return errors.Wrapf(err, "receiveLoop: callback: %v", err)
+					}
+				}
+				if lbn, bn = bn, nil; len(bnch) > 0 {
+					bn = <-bnch
+				}
+			}
+			// remove unprocessed notifications
+			for len(bnch) > 0 {
+				<-bnch
+			}
+		default:
+			if next >= latest {
+				time.Sleep(10 * time.Millisecond)
+				continue
+			}
+
+			type bnq struct {
+				h     uint64
+				v     *BlockNotification
+				err   error
+				retry int
+			}
+
+			qch := make(chan *bnq, cap(bnch))
+			for i := next; i < latest &&
+				len(qch) < cap(qch); i++ {
+				qch <- &bnq{i, nil, nil, 3} // fill bch with requests
+			}
+			bns := make([]*BlockNotification, 0, len(qch))
+			for q := range qch {
+				switch {
+				case q.err != nil:
+					if q.retry > 0 {
+						if !strings.HasSuffix(q.err.Error(), "requested block number greater than current block number") {
+							q.retry--
+							q.v, q.err = nil, nil
+							qch <- q
+							continue
+						}
+						if latest >= q.h {
+							latest = q.h - 1
+						}
+					}
+					r.log.Debugf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash(), q.err)
+					bns = append(bns, nil)
+					if len(bns) == cap(bns) {
+						close(qch)
+					}
+
+				case q.v != nil:
+					bns = append(bns, q.v)
+					if len(bns) == cap(bns) {
+						close(qch)
+					}
+				default:
+					go func(q *bnq) {
+						defer func() {
+							time.Sleep(500 * time.Millisecond)
+							qch <- q
+						}()
+						if q.v == nil {
+							q.v = &BlockNotification{}
+						}
+						q.v.Height = (&big.Int{}).SetUint64(q.h)
+						q.v.Header, q.err = r.client().GetHeaderByHeight(q.v.Height)
+						if q.err != nil {
+							q.err = errors.Wrapf(q.err, "GetHeaderByHeight: %v", q.err)
+							return
+						}
+						q.v.Hash = q.v.Header.Hash()
+						if q.v.Header.GasUsed > 0 {
+							q.v.Receipts, q.err = r.client().GetBlockReceipts(q.v.Hash)
+							if q.err == nil {
+								receiptsRoot := ethTypes.DeriveSha(q.v.Receipts, trie.NewStackTrie(nil))
+								if !bytes.Equal(receiptsRoot.Bytes(), q.v.Header.ReceiptHash.Bytes()) {
+									q.err = fmt.Errorf(
+										"invalid receipts: remote=%v, local=%v",
+										q.v.Header.ReceiptHash, receiptsRoot)
+								}
+							}
+							if q.err != nil {
+								q.err = errors.Wrapf(q.err, "GetBlockReceipts: %v", q.err)
+								return
+							}
+						}
+					}(q)
+				}
+			}
+			// filter nil
+			_bns_, bns := bns, bns[:0]
+			for _, v := range _bns_ {
+				if v != nil {
+					bns = append(bns, v)
+				}
+			}
+			// sort and forward notifications
+			if len(bns) > 0 {
+				sort.SliceStable(bns, func(i, j int) bool {
+					return bns[i].Height.Uint64() < bns[j].Height.Uint64()
+				})
+				for i, v := range bns {
+					if v.Height.Uint64() == next+uint64(i) {
+						bnch <- v
+					}
+				}
+			}
 		}
 	}
-	if len(events) > 0 {
-		rp := &chain.Receipt{}
-		rp.Index = uint64(index)
-		rp.Height = BlockNumber
-		rp.Events = append(rp.Events, events...)
-		receipts = append(receipts, rp)
-		r.log.Debugf("event found for height %v & address: %v", rp.Height, srcContractAddress)
-	}
-
-	return receipts, nil
-}
-
-func (r *receiver) receiveLoop(ctx context.Context, height int64, callback func(v *BlockNotification) error) error {
-	r.log.Debugf("ReceiveLoop connected")
-	br := &BlockRequest{
-		Height:             big.NewInt(height),
-		SrcContractAddress: HexToAddress(r.src.ContractAddress()),
-	}
-	r.cl.MonitorBlock(ctx, br,
-		func(v *BlockNotification) error {
-			if err := callback(v); err != nil {
-				return errors.Wrapf(err, "receiveLoop: callback: %v", err)
-			}
-			return nil
-		},
-	)
-	return nil
-}
-
-func (r *receiver) StopReceiveLoop() {
-	r.cl.CloseAllMonitor()
 }
 
 func (r *receiver) Subscribe(
@@ -124,7 +269,11 @@ func (r *receiver) Subscribe(
 	go func() {
 		defer close(_errCh)
 		lastHeight := opts.Height - 1
-		if err := r.receiveLoop(ctx, int64(opts.Height),
+		if err := r.receiveLoop(ctx,
+			&BnOptions{
+				StartHeight: opts.Height,
+				Concurrency: r.opts.SyncConcurrency,
+			},
 			func(v *BlockNotification) error {
 				r.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
 
@@ -135,15 +284,10 @@ func (r *receiver) Subscribe(
 						lastHeight+1, v.Height.Uint64())
 				}
 
-				receipts, err := r.newBTPMessage(v)
-				if err != nil {
-					return fmt.Errorf("Error creating BTP message from block notification: %v", err)
-				}
-
+				receipts := r.getRelayReceipts(v)
 				for _, receipt := range receipts {
 					events := receipt.Events[:0]
 					for _, event := range receipt.Events {
-						r.log.Infof("evt seq %v seq no %v", event.Sequence, opts.Seq)
 						switch {
 						case event.Sequence == opts.Seq:
 							events = append(events, event)
@@ -157,16 +301,47 @@ func (r *receiver) Subscribe(
 					}
 					receipt.Events = events
 				}
-
-				msgCh <- &chain.Message{Receipts: receipts}
+				if len(receipts) > 0 {
+					msgCh <- &chain.Message{Receipts: receipts}
+				}
 				lastHeight++
 				return nil
 			}); err != nil {
-			// TODO decide whether to ignore or handle err
 			r.log.Errorf("receiveLoop terminated: %v", err)
 			_errCh <- err
 		}
 	}()
 
 	return _errCh, nil
+}
+
+func (r *receiver) getRelayReceipts(v *BlockNotification) []*chain.Receipt {
+	sc := common.HexToAddress(r.src.ContractAddress())
+	var receipts []*chain.Receipt
+	var events []*chain.Event
+	for i, receipt := range v.Receipts {
+		events := events[:0]
+		for _, log := range receipt.Logs {
+			if !bytes.Equal(log.Address.Bytes(), sc.Bytes()) {
+				continue
+			}
+			msg, err := r.bmcClient().ParseMessage(ethTypes.Log{
+				Data: log.Data, Topics: log.Topics,
+			})
+			if err == nil {
+				events = append(events, &chain.Event{
+					Next:     chain.BTPAddress(msg.Next),
+					Sequence: msg.Seq.Uint64(),
+					Message:  msg.Msg,
+				})
+			}
+		}
+		if len(events) > 0 {
+			rp := &chain.Receipt{}
+			rp.Index, rp.Height = uint64(i), v.Height.Uint64()
+			rp.Events = append(rp.Events, events...)
+			receipts = append(receipts, rp)
+		}
+	}
+	return receipts
 }

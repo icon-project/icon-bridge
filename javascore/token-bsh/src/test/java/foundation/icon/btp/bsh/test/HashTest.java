@@ -5,7 +5,6 @@ import com.iconloop.testsvc.Score;
 import com.iconloop.testsvc.ServiceManager;
 import com.iconloop.testsvc.TestBase;
 import foundation.icon.btp.bsh.HashMock;
-import foundation.icon.btp.irc2.IRC2Basic;
 import foundation.icon.ee.util.Strings;
 import org.bouncycastle.util.encoders.Hex;
 import org.junit.jupiter.api.Assertions;
@@ -14,9 +13,6 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-
-import static java.math.BigInteger.TEN;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class HashTest extends TestBase {
 

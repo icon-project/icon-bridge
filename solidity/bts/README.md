@@ -7,6 +7,10 @@ v15.12.0
 Install tools
 ```
 $ npm install --global yarn truffle@5.3.0
+npm install @truffle/hdwallet-provider
+npm install dotenv
+npm install @openzeppelin/contracts
+npm install @openzeppelin/contracts-upgradeable
 ```
 Install dependencies
 ```
