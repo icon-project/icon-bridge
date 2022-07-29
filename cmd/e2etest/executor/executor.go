@@ -17,7 +17,7 @@ import (
 const (
 	FEE_NUMERATOR   = 100
 	FEE_DENOMINATOR = 10000
-	FIXED_PRICE     = 50000
+	FIXED_PRICE     = 5000
 )
 
 type NewApiCaller func(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error)
@@ -189,7 +189,7 @@ func (ex *executor) Subscribe(ctx context.Context) {
 	}()
 }
 
-func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, coinNames []string, scr Script) (err error) {
+func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chain.ChainType, coinNames []string, scr Script, env string) (err error) {
 	id, err := ex.getID()
 	if err != nil {
 		return errors.Wrap(err, "getID ")
@@ -236,6 +236,7 @@ func (ex *executor) Execute(ctx context.Context, srcChainName, dstChainName chai
 	ts := &testSuite{
 		id:                 id,
 		logger:             log,
+		env:                env,
 		subChan:            sinkChan,
 		btsAddressPerChain: btsAddressPerChain,
 		gasLimitPerChain:   gasLimitPerChain,

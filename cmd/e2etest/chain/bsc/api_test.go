@@ -2,7 +2,6 @@ package bsc
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -12,16 +11,18 @@ import (
 )
 
 const (
-	NID     = "0x61.bsc"
-	RPC_URI = "https://data-seed-prebsc-1-s1.binance.org:8545"
-	GodKey  = "a851faf7310664601b9396e2e3e45e36456f5052c537a8354229ec9059255d59"
-	GodAddr = "btp://0x61.bsc/0xcf5BC0BD5aEdf6cd216f7288c2Fd704a397F453d"
+	TokenGodKey  = "d4901a43dc4cee775fed483636a57ad7b807e77c62134d3cb2d1411d90b072dc"
+	TokenGodAddr = "btp://0x61.bsc/0x210730B1f5B9C4A02dF0808093aC5E72676cF70c"
+	NID          = "0x61.bsc"
+	RPC_URI      = "https://data-seed-prebsc-1-s1.binance.org:8545"
+	GodKey       = "541a205a7d3119e9b617b1023d9c874db572134d50b5f1ef2590bc5e5143dc2c"
+	GodAddr      = "btp://0x61.bsc/0xDf9e6205Ac201c8a11082842857C6f7673a8246e"
+	BtsAddr      = "btp://0x61.bsc/0x9F90806DBDaA783766483d2D24b431CFFB793eEb"
+	GodDstAddr   = "btp://0x2.icon/hxc86452374f94bd8db99f703bb1fc3fad2f7b2024"
 
-	DemoSrcKey  = "ce69f928c68b0b7bc198824b081cfbde60d6b1e0f1695d5aaa9d8564bb35dcb3"
-	DemoSrcAddr = "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
-	DemoDstAddr = "btp://0x7.icon/hx6d338536ac11a0a2db06fb21fe8903e617a6764d"
-	GodDstAddr  = "btp://0x613f17.icon/hxad8eec2e167c24020600ddf1acd4d03673d3f49b"
-	BtsAddr     = "btp://0x61.bsc/0x71a1520bBb7e6072Bbf3682A60c73D63b693690A"
+	DemoDstAddr = "btp://0x2.icon/hx6d338536ac11a0a2db06fb21fe8903e617a6764d"
+	DemoSrcKey  = "a851faf7310664601b9396e2e3e45e36456f5052c537a8354229ec9059255d59"
+	DemoSrcAddr = "btp://0x61.bsc/0xDf9e6205Ac201c8a11082842857C6f7673a8246e"
 )
 
 // const (
@@ -37,13 +38,13 @@ const (
 
 func TestApprove(t *testing.T) {
 
-	coin := "TBNB"
+	coin := "USDC"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	amt := new(big.Int)
-	amt.SetString("100000000000000", 10)
+	amt.SetString("995000", 10)
 	approveHash, err := rpi.Approve(coin, GodKey, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -61,10 +62,10 @@ func TestTransferIntraChain(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	for _, coin := range []string{"BNB"} {
+	for _, coin := range []string{"DUM"} {
 		amt := new(big.Int)
-		amt.SetString("1000000000000000000", 10)
-		hash, err := rpi.Transfer(coin, GodKey, DemoSrcAddr, amt)
+		amt.SetString("100000000000000", 10)
+		hash, err := rpi.Transfer(coin, GodKey, BtsAddr, amt)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -74,26 +75,30 @@ func TestTransferIntraChain(t *testing.T) {
 
 func TestTransferInterChain(t *testing.T) {
 
-	coin := "TBNB"
+	coin := "USDC"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	// for _, coin := range []string{coin} {
-	// 	res, err := rpi.GetCoinBalance(coin, GodAddr)
-	// 	if err != nil {
-	// 		t.Fatalf("%+v", err)
-	// 	}
-	// 	t.Logf("%v %v", coin, res)
-	// }
-	fmt.Println(DemoDstAddr)
+	srcKey := GodKey
+	srcAddr := GodAddr
+	dstAddr := GodDstAddr
+	for _, coin := range []string{coin} {
+		res, err := rpi.GetCoinBalance(coin, srcAddr)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+		t.Logf("%v %v", coin, res)
+	}
+
 	amt := new(big.Int)
-	amt.SetString("100000000000000", 10)
-	txnHash, err := rpi.Transfer(coin, GodKey, DemoDstAddr, amt)
+	amt.SetString("995000", 10)
+	txnHash, err := rpi.Transfer(coin, srcKey, dstAddr, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	t.Logf("Transaction Hash %v", txnHash)
+	time.Sleep(time.Second * 2)
 	res, err := rpi.WaitForTxnResult(context.TODO(), txnHash)
 	if err != nil {
 		t.Fatal(err)
@@ -103,13 +108,13 @@ func TestTransferInterChain(t *testing.T) {
 		//seq, _ := lin.GetSeq()
 		t.Logf("Log %+v ", lin)
 	}
-	// for _, coin := range []string{coin} {
-	// 	res, err := rpi.GetCoinBalance(coin, GodAddr)
-	// 	if err != nil {
-	// 		t.Fatalf("%+v", err)
-	// 	}
-	// 	t.Logf("%v %v", coin, res)
-	// }
+	for _, coin := range []string{coin} {
+		res, err := rpi.GetCoinBalance(coin, srcAddr)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+		t.Logf("%v %v", coin, res)
+	}
 }
 
 func TestBatchTransfer(t *testing.T) {
@@ -153,16 +158,13 @@ func TestBatchTransfer(t *testing.T) {
 	}
 }
 
-//1018700000000000000
-//2019601000000000000
-//99998980000000000000000
 func TestGetCoinBalance(t *testing.T) {
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 
-	for _, coin := range []string{"TBNB", "BNB", "ETH", "ICX", "TICX"} {
+	for _, coin := range []string{"BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH", "DUM", "ICX", "sICX", "bnUSD"} {
 		res, err := rpi.GetCoinBalance(coin, GodAddr)
 		if err != nil {
 			t.Fatalf("%+v", err)
@@ -188,7 +190,7 @@ func TestGetKeyPair(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	demoKeyPair, err := api.GetKeyPairs(1)
+	demoKeyPair, err := api.GetKeyPairs(3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,38 +199,24 @@ func TestGetKeyPair(t *testing.T) {
 
 func getNewApi() (chain.ChainAPI, error) {
 	ctrMap := map[chain.ContractName]string{
-		chain.BTS:          "0x16D8C2e328d10D345c81cD104b6d3Fc537bB33D5",
-		chain.BTSPeriphery: "0x147B8CFBaCeCb29A38ff2BC4F5Fef96d28275e3d",
-		// chain.TBNBBsc:         "0xBA34F3c6893b12fF4115ACf1b4712C6E2783aD83",
+		chain.BTS:          "0x9F90806DBDaA783766483d2D24b431CFFB793eEb",
+		chain.BTSPeriphery: "0x94D9842507AAbB4D7ce010206f662b44efA8496F",
 	}
-	// coinMap := map[string]string{
-	// 	"ETH":  "0x81C0094F73123EeBd250Ab4ee1e8aA6e82A7cA6F",
-	// 	"TBNB": "0xBA34F3c6893b12fF4115ACf1b4712C6E2783aD83",
-	// }
+
 	l := log.New()
 	log.SetGlobalLogger(l)
 	rx, err := NewApi(l, &chain.Config{
 		Name:              chain.BSC,
 		URL:               RPC_URI,
 		ContractAddresses: ctrMap,
-		NativeTokens:      []string{"ETH", "TBNB"},
-		WrappedCoins:      []string{"ICX", "TICX"},
+		NativeTokens:      []string{"BUSD", "USDT", "USDC", "BTCB", "ETH", "DUM"},
+		WrappedCoins:      []string{"ICX", "sICX", "bnUSD"},
 		NativeCoin:        "BNB",
 		NetworkID:         "0x61.bsc",
-		GasLimit:          2000000,
+		GasLimit:          5000000,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return rx, nil
-}
-
-func getNewClient() (*Client, error) {
-	l := log.New()
-	log.SetGlobalLogger(l)
-	cls, err := NewClients([]string{"http://localhost:8545"}, l)
-	if err != nil {
-		return nil, err
-	}
-	return cls[0], nil
 }

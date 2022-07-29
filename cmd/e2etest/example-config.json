@@ -1,33 +1,34 @@
 {
+    "env": "testnet",
     "chains":[
         {
             "name":"ICON",
-            "url":"http://127.0.0.1:9080/api/v3/icon",
+            "url":"https://berlin.net.solidwallet.io/api/v3/icon_dex",
             "contract_addresses": {
-                "BTS":  "cx79ba68ea1bb4591ef2b835d8a05d4953986f2b4c"
+                "BTS":  "cx7537936ca8db6efb05a8a0440e3eec3c024a411f"
             },
             "native_coin": "ICX",
             "native_tokens":["ETH", "TICX"],
             "wrapped_coins":["BNB", "TBNB"],
-            "god_wallet_keystore_path":"./icon.god.wallet.json",
-            "god_wallet_secret_path":"./icon.god.wallet.secret",
-            "network_id":"0x613f17.icon",
-            "gas_limit":2000000
+            "god_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/deploy/wallets/icon.god.wallet.json",
+            "god_wallet_secret_path":"/home/manish/go/src/work/icon-bridge/deploy/wallets/icon.god.wallet.secret",
+            "network_id":"0x7.icon",
+            "gas_limit":5000000
         }, 
         {
             "name":"BSC", 
-            "url":"http://127.0.0.1:8545",
+            "url":"https://data-seed-prebsc-1-s1.binance.org:8545",
             "contract_addresses": {
-                "BTS":      "0x71a1520bBb7e6072Bbf3682A60c73D63b693690A",
-                "BTSPeriphery": "0x3abC8DFF0C95B8982399daCf6ED5bD7b94a40068"
+                "BTS":      "0x6565498F129925E098f8b8E0979e09b6b302323c",
+                "BTSPeriphery": "0x23569E63c94e56C7b2AB88b2b32Eae61e9773d1a"
             },
             "native_coin": "BNB",
             "native_tokens":["ETH", "TBNB"],
             "wrapped_coins":["ICX", "TICX"],
-            "god_wallet_keystore_path":"./bsc.god.wallet.json",
-            "god_wallet_secret_path":"./bsc.god.wallet.secret",
+            "god_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/deploy/wallets/bsc.god.wallet.json",
+            "god_wallet_secret_path":"/home/manish/go/src/work/icon-bridge/deploy/wallets/bsc.god.wallet.secret",
             "network_id":"0x61.bsc",
-            "gas_limit":2000000
+            "gas_limit":5000000
         }
     ]
 } 

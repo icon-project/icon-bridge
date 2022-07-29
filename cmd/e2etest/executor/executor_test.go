@@ -10,10 +10,15 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/executor"
 	"github.com/icon-project/icon-bridge/common/log"
+
+	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/bsc"
+	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny"
+	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/icon"
 )
 
 func TestExecutor(t *testing.T) {
 	type Config struct {
+		Env    string          `json:"env"`
 		Chains []*chain.Config `json:"chains"`
 	}
 	loadConfig := func(file string) (*Config, error) {
@@ -47,12 +52,27 @@ func TestExecutor(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 240*time.Second)
 	ex.Subscribe(ctx)
 	time.Sleep(5 * time.Second)
-	go func() {
-		err = ex.Execute(ctx, chain.ICON, chain.BSC, []string{"ICX"}, executor.TransferToUnknownNetwork)
-		if err != nil {
-			log.Errorf("%+v", err)
+	for _, coin := range []string{"BNB"} {
+		for _, cb := range []executor.Script{
+			executor.TransferWithApprove,
+			// executor.TransferWithoutApprove,
+			// executor.TransferToZeroAddress,
+			// executor.TransferToUnknownNetwork,
+			// executor.TransferToUnparseableAddress,
+			// executor.TransferLessThanFee,
+			// executor.TransferEqualToFee,
+			// executor.TransferExceedingBTSBalance,
+		} {
+			go func(coin string) {
+				err = ex.Execute(ctx, chain.BSC, chain.ICON, []string{coin}, cb, cfg.Env)
+				if err != nil {
+					log.Errorf("%+v", err)
+				}
+			}(coin)
+			time.Sleep(time.Second * 5)
 		}
-	}()
+	}
+
 	<-ex.Done()
 	cancel()
 	time.Sleep(time.Second * 2)

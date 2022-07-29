@@ -11,6 +11,8 @@ import (
 	"github.com/icon-project/icon-bridge/common/errors"
 )
 
+const MINIMUM_BALANCE = 1
+
 var TransferToUnparseableAddress Script = Script{
 	Name:        "TransferToUnparseableAddress",
 	Description: "Transfer to unparseable address",
@@ -32,10 +34,10 @@ var TransferToUnparseableAddress Script = Script{
 		}
 		dstAddr += "1"
 		// how much you want receiving end to get
-		tmpAmt := big.NewInt(0)
+
 		amts := make([]*big.Int, len(coinNames))
 		for i := 0; i < len(coinNames); i++ {
-			amts[i] = ts.withFeeAdded(tmpAmt)
+			amts[i] = ts.withFeeAdded(big.NewInt(MINIMUM_BALANCE))
 			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
 				return errors.Wrapf(err, "Fund %v", err)
 			}
@@ -135,10 +137,9 @@ var TransferToZeroAddress Script = Script{
 		}
 		dstAddr := convertToZeroAddress(tmpAddr)
 		// how much you want receiving end to get
-		tmpAmt := big.NewInt(0)
 		amts := make([]*big.Int, len(coinNames))
 		for i := 0; i < len(coinNames); i++ {
-			amts[i] = ts.withFeeAdded(tmpAmt)
+			amts[i] = ts.withFeeAdded(big.NewInt(MINIMUM_BALANCE))
 			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
 				return errors.Wrapf(err, "Fund %v", err)
 			}
@@ -241,10 +242,9 @@ var TransferToUnknownNetwork Script = Script{
 			return err
 		}
 		// how much you want receiving end to get
-		tmpAmt := big.NewInt(0)
 		amts := make([]*big.Int, len(coinNames))
 		for i := 0; i < len(coinNames); i++ {
-			amts[i] = ts.withFeeAdded(tmpAmt)
+			amts[i] = ts.withFeeAdded(big.NewInt(MINIMUM_BALANCE))
 			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
 				return errors.Wrapf(err, "Fund %v", err)
 			}
@@ -333,9 +333,9 @@ var TransferExceedingBTSBalance Script = Script{
 		}
 
 		// prepare accounts
-		srcKey, srcAddr, err := ts.GetGodKeyPairs(srcChain)
+		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return errors.Wrapf(err, "GetGodKeyPairs %v", err)
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
 		}
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
@@ -343,7 +343,7 @@ var TransferExceedingBTSBalance Script = Script{
 		}
 
 		amt := ts.withFeeAdded(btsBalance.UserBalance)
-		amt.Add(amt, big.NewInt(100)) //exceed balance by 100g
+		amt.Add(amt, big.NewInt(MINIMUM_BALANCE)) //exceed balance by 100g
 		if err := ts.Fund(srcAddr, amt, coinName); err != nil {
 			return errors.Wrapf(err, "Fund %v", err)
 		}
@@ -374,10 +374,13 @@ var TransferExceedingBTSBalance Script = Script{
 			// 	ts.logger.Info("Got TransferReceived")
 			// 	return nil
 			// },
-			chain.TransferEnd: func(e *evt) error {
-				endEvt, ok := e.msg.EventLog.(chain.TransferEndEvent)
+			chain.TransferEnd: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
 				if !ok {
-					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", e.msg.EventLog)
+					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", ev.msg.EventLog)
 				}
 				if endEvt.Code.String() == "1" { //&& endEvt.Response == "TransferFailed" {
 					return nil
@@ -439,9 +442,9 @@ var TransferAllBTSBalance Script = Script{
 		}
 
 		// prepare accounts
-		srcKey, srcAddr, err := ts.GetGodKeyPairs(srcChain)
+		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return errors.Wrapf(err, "GetGodKeyPairs %v", err)
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
 		}
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
@@ -477,7 +480,7 @@ var TransferAllBTSBalance Script = Script{
 		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
 			chain.TransferReceived: nil,
 			chain.TransferEnd: func(e *evt) error {
-				endEvt, ok := e.msg.EventLog.(chain.TransferEndEvent)
+				endEvt, ok := e.msg.EventLog.(*chain.TransferEndEvent)
 				if !ok {
 					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", e.msg.EventLog)
 				}
@@ -526,12 +529,14 @@ var TransferWithoutApprove Script = Script{
 		}
 
 		// how much you want receiving end to get
-		receivingAmount := "100"
-		tmpAmt := new(big.Int)
-		tmpAmt.SetString(receivingAmount, 10)
+
 		amts := make([]*big.Int, len(coinNames))
 		for i := 0; i < len(coinNames); i++ {
-			amts[i] = ts.withFeeAdded(tmpAmt)
+			existingBalance, err := src.GetCoinBalance(coinNames[i], srcAddr)
+			if err != nil {
+				return errors.Wrapf(err, "GetCoinBalance %v", err)
+			}
+			amts[i] = ts.withFeeAdded(existingBalance.UsableBalance.Add(existingBalance.UsableBalance, big.NewInt(MINIMUM_BALANCE)))
 			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
 				return errors.Wrapf(err, "Fund %v", err)
 			}
@@ -541,7 +546,6 @@ var TransferWithoutApprove Script = Script{
 		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
 			return errors.Wrapf(err, "AddGasFee %v", err)
 		}
-
 		// Skipping approve
 		var hash string
 		if len(coinNames) == 1 {
@@ -549,21 +553,19 @@ var TransferWithoutApprove Script = Script{
 			if err != nil {
 				return errors.Wrapf(err, "Transfer Err: %v", err)
 			}
-			fmt.Println("Hash ", hash)
 		} else {
 			hash, err = src.TransferBatch(coinNames, srcKey, dstAddr, amts)
 			if err != nil {
 				return errors.Wrapf(err, "Transfer Err: %v", err)
 			}
 		}
-
 		if _, err = ts.ValidateTransactionResult(ctx, hash); err != nil {
 			if err.Error() == StatusCodeZero.Error() { // Failed as expected
 				return nil
 			}
 			return errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
 		} else {
-			err = errors.New("Expected event to fail but it did not")
+			err = errors.New("Expected event to fail but it did not ")
 		}
 		return err
 	},
@@ -576,6 +578,7 @@ var TransferWithApprove Script = Script{
 		if len(coinNames) == 0 {
 			return errors.New("Should specify at least one coinname, got zero")
 		}
+		fmt.Println(srcChain, dstChain, coinNames)
 		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
 			return errors.Wrapf(err, "GetChainPair %v", err)
@@ -589,18 +592,14 @@ var TransferWithApprove Script = Script{
 			return errors.Wrapf(err, "GetKeyPairs %v", err)
 		}
 
-		// how much you want receiving end to get
-		receivingAmount := "100" //0.001 token
-		tmpAmt := new(big.Int)
-		tmpAmt.SetString(receivingAmount, 10)
 		amts := make([]*big.Int, len(coinNames))
 		for i := 0; i < len(coinNames); i++ {
-			amts[i] = ts.withFeeAdded(tmpAmt)
+			amts[i] = ts.withFeeAdded(big.NewInt(MINIMUM_BALANCE))
 			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
 				return errors.Wrapf(err, "Fund %v", err)
 			}
+			ts.logger.Info("Transfer Src ", amts[i].String())
 		}
-
 		// how much is necessary as gas cost
 		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
 			return errors.Wrapf(err, "AddGasFee %v", err)
@@ -637,7 +636,20 @@ var TransferWithApprove Script = Script{
 		}
 		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
 			chain.TransferReceived: nil,
-			chain.TransferEnd:      nil,
+			chain.TransferEnd: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", ev.msg.EventLog)
+				}
+				if endEvt.Code.String() == "0" {
+					ts.logger.Info("Got Transfer End")
+					return nil
+				}
+				return fmt.Errorf("Unexpected code %v and response %v", endEvt.Code, endEvt.Response)
+			},
 		})
 		if err != nil {
 			return errors.Wrapf(err, "WaitForEvents %v", err)
@@ -684,10 +696,9 @@ var TransferLessThanFee Script = Script{
 		}
 
 		// how much you want receiving end to get
-		tmpAmt := big.NewInt(-1) // 2 less than fee charged
 		amts := make([]*big.Int, len(coinNames))
 		for i := 0; i < len(coinNames); i++ {
-			amts[i] = ts.withFeeAdded(tmpAmt)
+			amts[i] = ts.withFeeAdded(big.NewInt(-1))
 			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
 				return errors.Wrapf(err, "Fund %v", err)
 			}
@@ -758,10 +769,9 @@ var TransferEqualToFee Script = Script{
 		}
 
 		// how much you want receiving end to get
-		tmpAmt := big.NewInt(0)
 		amts := make([]*big.Int, len(coinNames))
 		for i := 0; i < len(coinNames); i++ {
-			amts[i] = ts.withFeeAdded(tmpAmt)
+			amts[i] = ts.withFeeAdded(big.NewInt(0))
 			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
 				return errors.Wrapf(err, "Fund %v", err)
 			}

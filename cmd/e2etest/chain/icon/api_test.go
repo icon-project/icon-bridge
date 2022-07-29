@@ -19,16 +19,18 @@ import (
 )
 
 const (
-	NID         = "0x7.icon"
-	RPC_URI     = "https://berlin.net.solidwallet.io/api/v3/icon_dex"
-	GodKey      = "41528d2ae0a203914f39584c6b2ace17b61c1208492be5952177ed8b16b1b99f"
-	GodAddr     = "btp://0x7.icon/hx7449df3b7c6981f0e3dbae9488b024f20f62bbed"
-	DemoSrcKey  = "4670f9c2a3f8a478806c03fee796fe614f0ceb8ae063184f11a9c23653eaccfe"
-	DemoSrcAddr = "btp://0x7.icon/hx6d338536ac11a0a2db06fb21fe8903e617a6764d"
+	TokenGodKey  = "1613b2f469bc7e33673846ee538aae4e7377f853deab7e5e97bf60503cc8ac42"
+	TokenGodAddr = "btp://0x2.icon/hx6bbea9df10c329c0c6b428788070ca6b4d589b80"
+	NID          = "0x2.icon"
+	RPC_URI      = "https://lisbon.net.solidwallet.io/api/v3/icon_dex"
+	GodKey       = "596294cb42cddb975b9730113097c2cf370a5819d7a58baaaa4a3d0e9af065fa"
+	GodAddr      = "btp://0x2.icon/hxc86452374f94bd8db99f703bb1fc3fad2f7b2024"
+	GodDstAddr   = "btp://0x61.bsc/0xDf9e6205Ac201c8a11082842857C6f7673a8246e"
+	BtsAddr      = "btp://0x2.icon/cx69774ba6f0d2718bef41065227345529a11b57f1"
 
-	DemoDstAddr = "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
-	GodDstAddr  = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
-	BtsAddr     = "btp://0x7.icon/cx79ba68ea1bb4591ef2b835d8a05d4953986f2b4c"
+	DemoDstAddr = "btp://0x61.bsc/0xcf5BC0BD5aEdf6cd216f7288c2Fd704a397F453d"
+	DemoSrcKey  = "41528d2ae0a203914f39584c6b2ace17b61c1208492be5952177ed8b16b1b99f"
+	DemoSrcAddr = "btp://0x2.icon/hx6bbea9df10c329c0c6b428788070ca6b4d589b80"
 )
 
 // const (
@@ -38,17 +40,18 @@ const (
 // 	DemoSrcKey  = "f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5"
 // 	DemoSrcAddr = "btp://0x613f17.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
 // 	DemoDstAddr = "btp://0x61.bsc/0x0000000000000000000000000000000000000000"
-// 	GodDstAddr  = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
+// 	GodDstAddr  = "btp://0x61.bsc/0x20E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
 // 	NID         = "0x613f17.icon"
 // )
 
 func TestTransferIntraChain(t *testing.T) {
-	// godKeyPair, err := getKeyPairFromFile("../../icon.god.wallet.json", "01fe7d1fb8593bf5")
+	// godKeyPair, err := getKeyPairFromFile("//home/manish/go/src/work/icon-bridge/lisbon/wallets/icon.bmr.wallet.json", "1234")
 	// if err != nil {
 	// 	t.Fatal(err)
 	// 	return
 	// }
 	// t.Log(godKeyPair)
+	// return
 
 	api, err := getNewApi()
 	if err != nil {
@@ -58,12 +61,14 @@ func TestTransferIntraChain(t *testing.T) {
 
 	amount := new(big.Int)
 	amount.SetString("100000000000000", 10)
-
-	for _, coinName := range []string{"ETH"} {
-		txnHash, err := api.Transfer(coinName, GodKey, DemoSrcAddr, amount)
+	srckey := GodKey
+	dstaddr := BtsAddr
+	for _, coinName := range []string{"DUM"} {
+		txnHash, err := api.Transfer(coinName, srckey, dstaddr, amount)
 		if err != nil {
 			t.Fatal(err)
 		}
+		time.Sleep(time.Second * 3)
 		t.Logf("Transaction Hash %v", txnHash)
 		res, err := api.WaitForTxnResult(context.TODO(), txnHash)
 		if err != nil {
@@ -73,8 +78,7 @@ func TestTransferIntraChain(t *testing.T) {
 		for _, lin := range res.ElInfo {
 			t.Logf("Log %+v ", lin)
 		}
-
-		if val, err := api.GetCoinBalance(coinName, DemoSrcAddr); err != nil {
+		if val, err := api.GetCoinBalance(coinName, dstaddr); err != nil {
 			t.Fatal(err)
 		} else {
 			t.Logf("Balance %v", val)
@@ -101,24 +105,27 @@ func TestReclaim(t *testing.T) {
 }
 
 func TestApprove(t *testing.T) {
-	showBalance(DemoSrcAddr)
-	coin := "ETH"
+	ownerKey := GodKey
+	ownerAddr := GodAddr
+	showBalance(ownerAddr)
+	coin := "sICX"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	amt := new(big.Int)
-	amt.SetString("1110000000000", 10)
-	approveHash, err := rpi.Approve(coin, DemoSrcKey, amt)
+	amt.SetString("100000000000000", 10)
+	approveHash, err := rpi.Approve(coin, ownerKey, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
+	time.Sleep(time.Second * 2)
 	res, err := rpi.WaitForTxnResult(context.TODO(), approveHash)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("Hash %v Receipt %+v", approveHash, res.Raw)
-	showBalance(DemoSrcAddr)
+	showBalance(ownerAddr)
 }
 
 func TestTransferInterChain(t *testing.T) {
@@ -127,28 +134,31 @@ func TestTransferInterChain(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
-	coin := "ETH"
-	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
+	coin := "sICX"
+	srcKey := GodKey
+	srcAddr := GodAddr
+	dstAddr := GodDstAddr
+	if val, err := api.GetCoinBalance(coin, srcAddr); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Logf("Initial Balance %v", val)
 	}
 
 	amount := new(big.Int)
-	amount.SetString("110000000000", 10)
+	amount.SetString("100000000000000", 10)
 
-	txnHash, err := api.Transfer(coin, DemoSrcKey, DemoDstAddr, amount)
+	txnHash, err := api.Transfer(coin, srcKey, dstAddr, amount)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("Transaction Hash  %v", txnHash)
 
-	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
+	if val, err := api.GetCoinBalance(coin, srcAddr); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Logf("Intermediate Demo Balance %v", val)
 	}
-
+	time.Sleep(time.Second * 3)
 	res, err := api.WaitForTxnResult(context.TODO(), txnHash)
 	if err != nil {
 		t.Fatal(err)
@@ -158,7 +168,7 @@ func TestTransferInterChain(t *testing.T) {
 		// seq, _ := lin.GetSeq()
 		t.Logf("Log %+v and Seq", lin)
 	}
-	if val, err := api.GetCoinBalance(coin, DemoSrcAddr); err != nil {
+	if val, err := api.GetCoinBalance(coin, srcAddr); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Logf("Final Balance %v", val)
@@ -207,7 +217,7 @@ func TestBatchTransfer(t *testing.T) {
 }
 
 func TestGetCoinBalance(t *testing.T) {
-	if err := showBalance(DemoSrcAddr); err != nil {
+	if err := showBalance(GodAddr); err != nil {
 		t.Fatalf(" %+v", err)
 	}
 }
@@ -218,13 +228,12 @@ func showBalance(addr string) error {
 		return err
 	}
 
-	for _, coinName := range []string{"ICX", "TICX", "ETH", "BNB", "TBNB"} {
-		fmt.Println(coinName)
-		_, err := api.GetCoinBalance(coinName, addr)
+	for _, coinName := range []string{"ICX", "sICX", "bnUSD", "DUM", "BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH"} {
+		res, err := api.GetCoinBalance(coinName, addr)
 		if err != nil {
 			return err
 		}
-		// log.Infof("coin %v amount %v", coinName, res.String())
+		log.Infof("coin %v amount %v", coinName, res.String())
 	}
 	return nil
 }
@@ -280,7 +289,7 @@ func TestReceiver(t *testing.T) {
 func getNewApi() (chain.ChainAPI, error) {
 	srcEndpoint := RPC_URI
 	addrToName := map[chain.ContractName]string{
-		chain.BTS: "cxaf53c60578dc72b3e3a93d1800be1b33349289a0",
+		chain.BTS: "cx69774ba6f0d2718bef41065227345529a11b57f1",
 	}
 	l := log.New()
 	log.SetGlobalLogger(l)
@@ -290,8 +299,8 @@ func getNewApi() (chain.ChainAPI, error) {
 		ContractAddresses: addrToName,
 		NetworkID:         NID,
 		NativeCoin:        "ICX",
-		NativeTokens:      []string{"ETH", "TICX"},
-		WrappedCoins:      []string{"BNB", "TBNB"},
+		NativeTokens:      []string{"sICX", "bnUSD", "DUM"},
+		WrappedCoins:      []string{"BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH"},
 		GasLimit:          8000000,
 	})
 }
@@ -311,4 +320,16 @@ func TestConverToZeroAddress(t *testing.T) {
 	splits[2] = strings.Join(networkSplits, ".")
 	joinStr := strings.Join(splits, "/")
 	fmt.Println(joinStr)
+}
+
+func TestGetKeyPair(t *testing.T) {
+	api, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	demoKeyPair, err := api.GetKeyPairs(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%+v ", demoKeyPair)
 }
