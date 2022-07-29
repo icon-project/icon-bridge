@@ -1,3 +1,12 @@
+---
+name: Bug
+about: Describes a bug
+title: ''
+labels: test
+assignees: ''
+
+---
+
 ## Overview
 A clear and concise description of what the bug is.
 

@@ -77,19 +77,23 @@ generate_addresses_json() {
     .javascore.bmc = $bmc |
     .javascore.bts = $bts |
     .javascore.IRC2 = $irc2 |
+    .javascore.ETH = $ethirc2 |
     .solidity.BMCPeriphery = $bmc_periphery |
     .solidity.BMCManagement = $bmc_management |
     .solidity.BTSCore = $bts_core | 
     .solidity.BTSPeriphery = $bts_periphery |
+    .solidity.ETH = $etherc20 |
     .solidity.ERC20 = $erc20' \
     --arg bmc "$(cat $CONFIG_DIR/btp.icon.bmc)" \
     --arg bts "$(cat $CONFIG_DIR/btp.icon.bts)" \
     --arg irc2 "$(cat $CONFIG_DIR/btp.icon.ticx)" \
+    --arg ethirc2 "$(cat $CONFIG_DIR/btp.icon.eth)" \
     --arg bmc_periphery "$(cat $CONFIG_DIR/btp.bsc.bmc.periphery)" \
     --arg bmc_management "$(cat $CONFIG_DIR/btp.bsc.bmc.management)" \
     --arg bts_periphery "$(cat $CONFIG_DIR/btp.bsc.bts.periphery)" \
     --arg bts_core "$(cat $CONFIG_DIR/btp.bsc.bts.core)" \
-    --arg erc20 "$(cat $CONFIG_DIR/btp.bsc.tbnb)" 
+    --arg erc20 "$(cat $CONFIG_DIR/btp.bsc.TBNB)"  \
+    --arg etherc20 "$(cat $CONFIG_DIR/btp.bsc.ETH)" 
 }
 
 create_abi() {

@@ -15,7 +15,7 @@ RUN truffle version
 #install yarn
 RUN yarn --version
 
-#install eth-cli 
+#install eth-cli
 RUN yarn global add eth-cli
 
 # install iconbridge cli

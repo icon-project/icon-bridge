@@ -18,9 +18,7 @@ package foundation.icon.btp.bts;
 
 import foundation.icon.jsonrpc.Address;
 import foundation.icon.score.test.ScoreIntegrationTest;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.function.Executable;
 
 import java.math.BigInteger;
 
