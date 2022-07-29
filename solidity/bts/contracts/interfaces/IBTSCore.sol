@@ -122,7 +122,8 @@ interface IBTSCore {
         returns (
             uint256 _usableBalance,
             uint256 _lockedBalance,
-            uint256 _refundableBalance
+            uint256 _refundableBalance,
+            uint256 _userBalance
         );
 
     /**
@@ -139,7 +140,8 @@ interface IBTSCore {
         returns (
             uint256[] memory _usableBalances,
             uint256[] memory _lockedBalances,
-            uint256[] memory _refundableBalances
+            uint256[] memory _refundableBalances,
+            uint256[] memory _userBalances
         );
 
     /**

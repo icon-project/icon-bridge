@@ -1,0 +1,89 @@
+name: 'Build icon bridge'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+
+jobs:
+
+  build_bsc:
+    name: Build icon-bridge bsc
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.5.0
+          cache: 'yarn'
+          cache-dependency-path: |
+            solidity/bmc/yarn.lock
+            solidity/bts/yarn.lock
+
+      - name: Install yarn packages
+        run: yarn install
+
+      - name: Build solidity bmc
+        working-directory: ./solidity/bmc
+        run: yarn
+
+      - name: Build solidity bts
+        working-directory: ./solidity/bts
+        run: yarn
+
+  build_icon:
+    name: Build icon-bridge icon
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build javascore bmc
+        working-directory: ./javascore
+        run: gradle bmc:build
+
+      - name: Run javascore bmc tests
+        working-directory: ./javascore
+        run: gradle bmc:test
+
+      - name: Build javascore bmc optimized jar
+        working-directory: ./javascore
+        run: gradle bmc:optimizedJar
+
+      - name: Build javascore bts
+        working-directory: ./javascore
+        run: gradle bts:build
+
+      - name: Run javascore bts tests
+        working-directory: ./javascore
+        run: gradle bts:test
+
+      - name: Build javascore bts optimized jar
+        working-directory: ./javascore
+        run: gradle bts:optimizedJar
+
+  build_bmr:
+    name: Build icon-bridge bmr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '^1.18.3'
+          cache: true
+
+      - run: go version
+
+      - name: Build BMR
+        working-directory: ./cmd/iconbridge
+        run: go build

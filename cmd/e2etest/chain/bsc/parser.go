@@ -29,9 +29,9 @@ func NewParser(url string, nameToAddr map[chain.ContractName]string) (*parser, e
 		return nil, errors.Wrapf(err, "rpc.Dial(%v) ", url)
 	}
 	p := &parser{backend: ethclient.NewClient(clrpc), addressToContractName: make(map[string]chain.ContractName)}
-	btsperiAddr, ok := nameToAddr[chain.BTSPeripheryBsc]
+	btsperiAddr, ok := nameToAddr[chain.BTSPeriphery]
 	if !ok {
-		return nil, fmt.Errorf("nameToAddr doesn't include %v ", chain.BTSPeripheryBsc)
+		return nil, fmt.Errorf("nameToAddr doesn't include %v ", chain.BTSPeriphery)
 	}
 
 	p.genBtsObj, err = btsp.NewBtsperiphery(common.HexToAddress(btsperiAddr), p.backend)

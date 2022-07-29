@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -39,9 +40,10 @@ const (
 	txOverheadScale      = 0.01      // base64 encoding overhead 0.36, rlp and other fields 0.01
 	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale)
 	defaultSendTxTimeout = 15 * time.Second
-	defaultReadTimeout   = 15 * time.Second
 	defaultGasPrice      = 30000000000
 	maxGasPriceBoost     = 10.0
+	defaultReadTimeout   = 50 * time.Second //
+	DefaultGasLimit      = 8000000
 )
 
 /*
@@ -82,7 +84,13 @@ type sender struct {
 	src  chain.BTPAddress
 	dst  chain.BTPAddress
 	opts senderOptions
-	cl   *client
+	cls  []*Client
+	bmcs []*BMC
+}
+
+func (s *sender) jointClient() (*Client, *BMC) {
+	randInt := rand.Intn(len(s.cls))
+	return s.cls[randInt], s.bmcs[randInt]
 }
 
 func NewSender(
@@ -112,7 +120,7 @@ func NewSender(
 	if s.opts.BoostGasPrice > maxGasPriceBoost {
 		s.opts.BoostGasPrice = maxGasPriceBoost
 	}
-	s.cl, err = NewClient(urls, dst.ContractAddress(), s.log)
+	s.cls, s.bmcs, err = newClients(urls, dst.ContractAddress(), s.log)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +133,8 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	status, err := s.cl.bmcCl().GetStatus(&bind.CallOpts{Context: ctx}, s.src.String())
+	_, bmcCl := s.jointClient()
+	status, err := bmcCl.GetStatus(&bind.CallOpts{Context: ctx}, s.src.String())
 	if err != nil {
 		s.log.Error("", "err", err)
 		return nil, err
@@ -189,7 +198,8 @@ func (s *sender) Segment(
 	if err != nil {
 		return nil, nil, err
 	}
-	gasPrice, err := s.cl.GetMedianGasPriceForBlock()
+	cl, _ := s.jointClient()
+	gasPrice, err := cl.GetMedianGasPriceForBlock()
 	if err != nil || gasPrice.Int64() == 0 {
 		s.log.Infof("GetMedianGasPriceForBlock Msg: %v. Using default value for gas price", err)
 		gasPrice = big.NewInt(defaultGasPrice)
@@ -207,7 +217,7 @@ func (s *sender) Segment(
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, gasPrice *big.Int) (*relayTx, error) {
-	client := s.cl
+	client, bmcClient := s.jointClient()
 	txOpts, err := client.newTransactOpts(s.w)
 	if err != nil {
 		return nil, err
@@ -222,6 +232,7 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, ga
 		Message: message, // base64.URLEncoding.EncodeToString(rlpCrm),
 		opts:    txOpts,
 		cl:      client,
+		bmcCl:   bmcClient,
 	}, nil
 }
 
@@ -231,7 +242,8 @@ type relayTx struct {
 
 	opts      *bind.TransactOpts
 	pendingTx *ethtypes.Transaction
-	cl        *client
+	cl        *Client
+	bmcCl     *BMC
 }
 
 func (tx *relayTx) ID() interface{} {
@@ -249,7 +261,13 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	defer cancel()
 	txOpts := *tx.opts
 	txOpts.Context = _ctx
-	tx.pendingTx, err = tx.cl.bmcCl().HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
+	nonce, err := tx.cl.eth.NonceAt(ctx, txOpts.From, nil)
+	if err != nil {
+		return err
+	}
+	txOpts.Nonce = (&big.Int{}).SetUint64(nonce)
+
+	tx.pendingTx, err = tx.bmcCl.HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
 	if err != nil {
 		tx.cl.log.WithFields(log.Fields{
 			"error": err}).Debug("handleRelayMessage: send tx")
@@ -272,13 +290,16 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) 
 
 	for i, isPending := 0, true; i < 5 && (isPending || err == ethereum.NotFound); i++ {
 		time.Sleep(time.Second)
-		_, isPending, err = tx.cl.GetTransaction(tx.pendingTx.Hash())
+		_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
+		defer cancel()
+		_, isPending, err = tx.cl.eth.TransactionByHash(_ctx, tx.pendingTx.Hash())
 	}
 	if err != nil {
 		return 0, err
 	}
-
-	txr, err := tx.cl.GetTransactionReceipt(tx.pendingTx.Hash())
+	_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
+	defer cancel()
+	txr, err := tx.cl.eth.TransactionReceipt(_ctx, tx.pendingTx.Hash())
 	if err != nil {
 		return 0, err
 	}
@@ -294,7 +315,9 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) 
 			Data:       tx.pendingTx.Data(),
 		}
 
-		data, err := tx.cl.CallContract(callMsg, txr.BlockNumber)
+		_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
+		defer cancel()
+		data, err := tx.cl.eth.CallContract(_ctx, callMsg, txr.BlockNumber)
 		if err != nil {
 			return 0, err
 		}

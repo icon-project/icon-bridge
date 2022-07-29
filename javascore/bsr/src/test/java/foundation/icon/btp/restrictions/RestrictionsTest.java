@@ -1,16 +1,23 @@
 package foundation.icon.btp.restrictions;
 
-import foundation.icon.btp.irc2.IRC2Basic;
 import com.iconloop.testsvc.Account;
 import com.iconloop.testsvc.Score;
 import com.iconloop.testsvc.ServiceManager;
 import com.iconloop.testsvc.TestBase;
-import org.junit.jupiter.api.*;
+import foundation.icon.btp.irc2.IRC2Basic;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import java.math.BigInteger;
 
 import static java.math.BigInteger.TEN;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RestrictionsTest extends TestBase {

@@ -1,3 +1,6 @@
+//go:build hmny
+// +build hmny
+
 package hmny
 
 import (
@@ -34,9 +37,9 @@ type runnableCache struct {
 }
 
 func (f *finder) watchFor(eventType chain.EventLogType, id uint64, seq int64) error {
-	contractAddress, ok := f.nameToAddrMap[chain.BTSPeripheryHmny]
+	contractAddress, ok := f.nameToAddrMap[chain.BTSPeriphery]
 	if !ok {
-		return fmt.Errorf("watchFor; Contract %v not found on map", chain.BTSPeripheryHmny)
+		return fmt.Errorf("watchFor; Contract %v not found on map", chain.BTSPeriphery)
 	}
 	if eventType == chain.TransferStart {
 		args := args{id: id, eventType: chain.TransferStart, seq: seq, contractAddress: contractAddress}

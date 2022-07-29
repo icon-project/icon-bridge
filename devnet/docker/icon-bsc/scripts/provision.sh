@@ -13,7 +13,7 @@ provision() {
 
   if [ ! -f $ICONBRIDGE_CONFIG_DIR/provision ]; then
     echo "start provisioning..."
-    sleep 30
+    sleep 45
     echo "$GOLOOP_RPC_NID.icon" >net.btp.icon #0x240fa7.icon
     mkdir -p $ICONBRIDGE_CONFIG_DIR/tx
 
@@ -25,10 +25,12 @@ provision() {
     deploy_javascore_bsr
     deploy_javascore_bts
     deploy_javascore_irc2
+    deploy_javascore_eth
+    #deploy bsc
     deploy_solidity_bmc
     deploy_solidity_bts
-    #deploy bsc
-
+    deploy_solidity_token "TBNB" "TBNB"
+    deploy_solidity_token "ETH" "ETH"
 
     generate_addresses_json >$ICONBRIDGE_CONFIG_DIR/addresses.json
     cp $ICONBRIDGE_CONFIG_DIR/addresses.json $SCRIPTS_DIR/
@@ -55,6 +57,7 @@ provision() {
     configure_javascore_register_bnb
     get_btp_icon_bnb
     configure_javascore_register_ticx
+    configure_javascore_register_eth
     configure_javascore_register_tbnb
     get_btp_icon_tbnb
 
@@ -63,20 +66,21 @@ provision() {
     add_icon_link
     set_link_height
     add_icon_relay
-    bsc_register_icx
-    get_coinID_icx
-    bsc_register_tbnb
-    get_coinID_tbnb
-    bsc_register_ticx
-    get_coinID_ticx
+    bsc_register_wrapped_coin "ICX" "ICX"
+    get_coinID "ICX"
+    bsc_register_wrapped_coin "TICX" "TICX"
+    get_coinID "TICX"
+
+    bsc_register_native_token "TBNB" "TBNB"
+    get_coinID "TBNB"
+    bsc_register_native_token "ETH" "ETH"
+    get_coinID "ETH"
 
     # token_bsc_fundBSH
     # token_icon_fundBSH
 
     generate_relay_config >$ICONBRIDGE_CONFIG_DIR/bmr.config.json
     wait_for_file $ICONBRIDGE_CONFIG_DIR/bmr.config.json
-
-
 
     touch $ICONBRIDGE_CONFIG_DIR/provision
     echo "provision is now complete"
