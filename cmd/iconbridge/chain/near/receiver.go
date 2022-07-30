@@ -57,7 +57,7 @@ func newMockReceiver(source, destination chain.BTPAddress, client *Client, urls 
 	return receiver, nil
 }
 
-func (r *Receiver) receiveBlocks(height uint64, processBlock func(block *types.Block) error) error {
+func (r *Receiver) receiveBlocks(height uint64, processBlock func(block *types.Block)) error {
 	return r.client().MonitorBlocks(height, func(observable rxgo.Observable) error {
 		result := observable.Observe()
 
@@ -76,11 +76,43 @@ func (r *Receiver) receiveBlocks(height uint64, processBlock func(block *types.B
 func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, opts chain.SubscribeOptions) (errCh <-chan error, err error) {
 	opts.Seq++
 	_errCh := make(chan error)
+
 	go func() {
 		defer close(_errCh)
-		if err := r.receiveBlocks(opts.Height, func(block *types.Block) error {
 
-			return nil
+		if err := r.receiveBlocks(opts.Height, func(block *types.Block) {
+			receipts, err := r.client().GetReceipts(block, r.source.ContractAddress())
+			if err != nil {
+				_errCh <- err
+			}
+
+			for _, receipt := range receipts {
+				events := receipt.Events[:0]
+				for _, event := range receipt.Events {
+					switch {
+
+					case event.Sequence == opts.Seq:
+						events = append(events, event)
+						opts.Seq++
+
+					case event.Sequence > opts.Seq:
+						r.logger.WithFields(log.Fields{
+							"seq": log.Fields{"got": event.Sequence, "expected": opts.Seq},
+						}).Error("invalid event seq")
+
+						_errCh <- fmt.Errorf("invalid event seq")
+					}
+
+					receipt.Events = events
+				}
+			}
+
+			if len(receipts) > 0 {
+				msgCh <- &chain.Message{
+					From:     r.source,
+					Receipts: receipts,
+				}
+			}
 		}); err != nil {
 			_errCh <- err
 		}
