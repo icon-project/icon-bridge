@@ -57,8 +57,8 @@ func (b *Block) Height() int64 {
 	return b.Header.Height
 }
 
-func (b *Block) Hash() []byte {
-	return b.Header.Hash
+func (b *Block) Hash() *CryptoHash {
+	return &b.Header.Hash
 }
 
 func (b *Block) ComputeInnerHash(innerLite HeaderInnerLite, innerRest HeaderInnerRest) ([]byte, error) {

@@ -28,8 +28,10 @@ This project currently depends on building local maven snapshot for the ICON Jav
 2. run 
     ``` ./gradlew publishToMavenLocal -x:signMavenJavaPublication ```
 
-##### Build bmv and bsh
-``` ./gradlew bmv:build ```
+##### Build bmc, bsr and bts
+``` ./gradlew bmc:build ```
+``` ./gradlew bsr:build ```
+``` ./gradlew bts:build ```
 
 ## Run Integration Tests with deployment using integration test cases
 Follow local gochain setup guide:
@@ -69,18 +71,28 @@ BMC:
 
 ``` gradle bmc:deployToLocal -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain ```
 
-Deploying BMC.zip (replace with proper parameters):
+Deploying BMC.jar (replace with proper parameters):
 
-``` goloop rpc --uri http://btp.net.solidwallet.io/api/v3 sendtx deploy bmc.zip \
+``` goloop rpc --uri http://btp.net.solidwallet.io/api/v3 sendtx deploy bmc-0.1.0.jar \
     --key_store keystore --key_password Admin@123 \
     --nid 0x42 --step_limit 13610920001 \
     --content_type application/zip \
     --param _net="0x07.icon" ```
-BMV:
+BTS:
 
-``` gradle bmv:deployToLocal -DBMC_ADDRESS=<BMC_SCORE_ADDRESS> -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain ```
+``` gradle bts:deployToLocal -DBMC_ADDRESS=<BMC_SCORE_ADDRESS> -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain ```
 
+``` goloop rpc --uri http://btp.net.solidwallet.io/api/v3 sendtx deploy ./bts/build/libs/bts-0.1.0.jar \
+    --key_store ./keys/keystore.json --key_password gochain \
+    --nid 0x42 --step_limit 13610920001 \
+    --content_type application/zip \
+    --param _bmc=cx14579031817b2973f50b78bc1507e9c2d446e0f7 \
+    --param _net="0x07.icon" 
+    ```
+
+
+
+//@Deprecated (this module was moved in to the bts)
 BSH:
-
-``` gradle bsh :deployToLocal -DBMC_ADDRESS=<BMC_SCORE_ADDRESS> -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain ```
+``` gradle token-bsh:deployToLocal -DBMC_ADDRESS=<BMC_SCORE_ADDRESS> -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain ```
 

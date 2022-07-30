@@ -17,23 +17,15 @@
  */
 pragma solidity >=0.5.0 <=0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract ERC20TKN is ERC20, Ownable {
-    // modify token name
-    string public constant NAME = "ETH";
-    // modify token symbol
-    string public constant SYMBOL = "ETH";
-    // modify token decimals
-    uint8 public constant DECIMALS = 18;
-    // modify initial token supply
-    uint256 public constant INITIAL_SUPPLY = 100000 * (10**uint256(DECIMALS)); // 100000 tokens
+contract ERC20TKN is Initializable, ContextUpgradeable, ERC20Upgradeable {
 
-    /**
-     * @dev Constructor that gives msg.sender all of existing tokens.
-     */
-    constructor() ERC20(NAME, SYMBOL) {
-        super._mint(msg.sender, INITIAL_SUPPLY);
+    function initialize(string memory name, string memory symbol, uint _decimals, uint _initialSupply) initializer public {
+        __Context_init_unchained();
+       __ERC20_init(name, symbol);
+        _mint(msg.sender, _initialSupply* (10**uint256(_decimals)));
     }
 }

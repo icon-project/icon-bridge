@@ -33,7 +33,7 @@ type TypesAsset struct {
 }
 
 // BtscoreABI is the input ABI used to generate the binding from.
-const BtscoreABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"remover\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"formerOwner\",\"type\":\"address\"}],\"name\":\"RemoveOwnership\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"promoter\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"SetOwnership\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_nativeCoinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_feeNumerator\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_fixedFee\",\"type\":\"uint256\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"addOwner\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"removeOwner\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"isOwner\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getOwners\",\"outputs\":[{\"internalType\":\"address[]\",\"name\":\"\",\"type\":\"address[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_btsPeriphery\",\"type\":\"address\"}],\"name\":\"updateBTSPeriphery\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_feeNumerator\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_fixedFee\",\"type\":\"uint256\"}],\"name\":\"setFeeRatio\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_symbol\",\"type\":\"string\"},{\"internalType\":\"uint8\",\"name\":\"_decimals\",\"type\":\"uint8\"},{\"internalType\":\"uint256\",\"name\":\"_feeNumerator\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_fixedFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"register\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"coinNames\",\"outputs\":[{\"internalType\":\"string[]\",\"name\":\"_names\",\"type\":\"string[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"}],\"name\":\"coinId\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"}],\"name\":\"isValidCoin\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_valid\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"_usableBalance\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_lockedBalance\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_refundableBalance\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"},{\"internalType\":\"string[]\",\"name\":\"_coinNames\",\"type\":\"string[]\"}],\"name\":\"balanceOfBatch\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"_usableBalances\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"_lockedBalances\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"_refundableBalances\",\"type\":\"uint256[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getAccumulatedFees\",\"outputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"internalType\":\"structTypes.Asset[]\",\"name\":\"_accumulatedFees\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"}],\"name\":\"transferNativeCoin\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"}],\"name\":\"transfer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string[]\",\"name\":\"_coinNames\",\"type\":\"string[]\"},{\"internalType\":\"uint256[]\",\"name\":\"_values\",\"type\":\"uint256[]\"},{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"}],\"name\":\"transferBatch\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"reclaim\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"refund\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"mint\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_requester\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_fee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_rspCode\",\"type\":\"uint256\"}],\"name\":\"handleResponseService\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_fa\",\"type\":\"string\"}],\"name\":\"transferFees\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
+const BtscoreABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"remover\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"formerOwner\",\"type\":\"address\"}],\"name\":\"RemoveOwnership\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"promoter\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"SetOwnership\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_nativeCoinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_feeNumerator\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_fixedFee\",\"type\":\"uint256\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"addOwner\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"removeOwner\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"isOwner\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getOwners\",\"outputs\":[{\"internalType\":\"address[]\",\"name\":\"\",\"type\":\"address[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_btsPeriphery\",\"type\":\"address\"}],\"name\":\"updateBTSPeriphery\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_feeNumerator\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_fixedFee\",\"type\":\"uint256\"}],\"name\":\"setFeeRatio\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_symbol\",\"type\":\"string\"},{\"internalType\":\"uint8\",\"name\":\"_decimals\",\"type\":\"uint8\"},{\"internalType\":\"uint256\",\"name\":\"_feeNumerator\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_fixedFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"register\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"coinNames\",\"outputs\":[{\"internalType\":\"string[]\",\"name\":\"_names\",\"type\":\"string[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"}],\"name\":\"coinId\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"}],\"name\":\"isValidCoin\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_valid\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"_usableBalance\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_lockedBalance\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_refundableBalance\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_userBalance\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"},{\"internalType\":\"string[]\",\"name\":\"_coinNames\",\"type\":\"string[]\"}],\"name\":\"balanceOfBatch\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"_usableBalances\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"_lockedBalances\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"_refundableBalances\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"_userBalances\",\"type\":\"uint256[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getAccumulatedFees\",\"outputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"internalType\":\"structTypes.Asset[]\",\"name\":\"_accumulatedFees\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"}],\"name\":\"transferNativeCoin\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"}],\"name\":\"transfer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string[]\",\"name\":\"_coinNames\",\"type\":\"string[]\"},{\"internalType\":\"uint256[]\",\"name\":\"_values\",\"type\":\"uint256[]\"},{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"}],\"name\":\"transferBatch\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"reclaim\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"refund\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"mint\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_requester\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_coinName\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_fee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_rspCode\",\"type\":\"uint256\"}],\"name\":\"handleResponseService\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_fa\",\"type\":\"string\"}],\"name\":\"transferFees\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
 
 // Btscore is an auto generated Go binding around an Ethereum contract.
 type Btscore struct {
@@ -179,11 +179,12 @@ func (_Btscore *BtscoreTransactorRaw) Transact(opts *bind.TransactOpts, method s
 
 // BalanceOf is a free data retrieval call binding the contract method 0xb9b092c8.
 //
-// Solidity: function balanceOf(address _owner, string _coinName) view returns(uint256 _usableBalance, uint256 _lockedBalance, uint256 _refundableBalance)
+// Solidity: function balanceOf(address _owner, string _coinName) view returns(uint256 _usableBalance, uint256 _lockedBalance, uint256 _refundableBalance, uint256 _userBalance)
 func (_Btscore *BtscoreCaller) BalanceOf(opts *bind.CallOpts, _owner common.Address, _coinName string) (struct {
 	UsableBalance     *big.Int
 	LockedBalance     *big.Int
 	RefundableBalance *big.Int
+	UserBalance       *big.Int
 }, error) {
 	var out []interface{}
 	err := _Btscore.contract.Call(opts, &out, "balanceOf", _owner, _coinName)
@@ -192,6 +193,7 @@ func (_Btscore *BtscoreCaller) BalanceOf(opts *bind.CallOpts, _owner common.Addr
 		UsableBalance     *big.Int
 		LockedBalance     *big.Int
 		RefundableBalance *big.Int
+		UserBalance       *big.Int
 	})
 	if err != nil {
 		return *outstruct, err
@@ -200,6 +202,7 @@ func (_Btscore *BtscoreCaller) BalanceOf(opts *bind.CallOpts, _owner common.Addr
 	outstruct.UsableBalance = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 	outstruct.LockedBalance = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
 	outstruct.RefundableBalance = *abi.ConvertType(out[2], new(*big.Int)).(**big.Int)
+	outstruct.UserBalance = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
 
 	return *outstruct, err
 
@@ -207,33 +210,36 @@ func (_Btscore *BtscoreCaller) BalanceOf(opts *bind.CallOpts, _owner common.Addr
 
 // BalanceOf is a free data retrieval call binding the contract method 0xb9b092c8.
 //
-// Solidity: function balanceOf(address _owner, string _coinName) view returns(uint256 _usableBalance, uint256 _lockedBalance, uint256 _refundableBalance)
+// Solidity: function balanceOf(address _owner, string _coinName) view returns(uint256 _usableBalance, uint256 _lockedBalance, uint256 _refundableBalance, uint256 _userBalance)
 func (_Btscore *BtscoreSession) BalanceOf(_owner common.Address, _coinName string) (struct {
 	UsableBalance     *big.Int
 	LockedBalance     *big.Int
 	RefundableBalance *big.Int
+	UserBalance       *big.Int
 }, error) {
 	return _Btscore.Contract.BalanceOf(&_Btscore.CallOpts, _owner, _coinName)
 }
 
 // BalanceOf is a free data retrieval call binding the contract method 0xb9b092c8.
 //
-// Solidity: function balanceOf(address _owner, string _coinName) view returns(uint256 _usableBalance, uint256 _lockedBalance, uint256 _refundableBalance)
+// Solidity: function balanceOf(address _owner, string _coinName) view returns(uint256 _usableBalance, uint256 _lockedBalance, uint256 _refundableBalance, uint256 _userBalance)
 func (_Btscore *BtscoreCallerSession) BalanceOf(_owner common.Address, _coinName string) (struct {
 	UsableBalance     *big.Int
 	LockedBalance     *big.Int
 	RefundableBalance *big.Int
+	UserBalance       *big.Int
 }, error) {
 	return _Btscore.Contract.BalanceOf(&_Btscore.CallOpts, _owner, _coinName)
 }
 
 // BalanceOfBatch is a free data retrieval call binding the contract method 0x17d55ad6.
 //
-// Solidity: function balanceOfBatch(address _owner, string[] _coinNames) view returns(uint256[] _usableBalances, uint256[] _lockedBalances, uint256[] _refundableBalances)
+// Solidity: function balanceOfBatch(address _owner, string[] _coinNames) view returns(uint256[] _usableBalances, uint256[] _lockedBalances, uint256[] _refundableBalances, uint256[] _userBalances)
 func (_Btscore *BtscoreCaller) BalanceOfBatch(opts *bind.CallOpts, _owner common.Address, _coinNames []string) (struct {
 	UsableBalances     []*big.Int
 	LockedBalances     []*big.Int
 	RefundableBalances []*big.Int
+	UserBalances       []*big.Int
 }, error) {
 	var out []interface{}
 	err := _Btscore.contract.Call(opts, &out, "balanceOfBatch", _owner, _coinNames)
@@ -242,6 +248,7 @@ func (_Btscore *BtscoreCaller) BalanceOfBatch(opts *bind.CallOpts, _owner common
 		UsableBalances     []*big.Int
 		LockedBalances     []*big.Int
 		RefundableBalances []*big.Int
+		UserBalances       []*big.Int
 	})
 	if err != nil {
 		return *outstruct, err
@@ -250,6 +257,7 @@ func (_Btscore *BtscoreCaller) BalanceOfBatch(opts *bind.CallOpts, _owner common
 	outstruct.UsableBalances = *abi.ConvertType(out[0], new([]*big.Int)).(*[]*big.Int)
 	outstruct.LockedBalances = *abi.ConvertType(out[1], new([]*big.Int)).(*[]*big.Int)
 	outstruct.RefundableBalances = *abi.ConvertType(out[2], new([]*big.Int)).(*[]*big.Int)
+	outstruct.UserBalances = *abi.ConvertType(out[3], new([]*big.Int)).(*[]*big.Int)
 
 	return *outstruct, err
 
@@ -257,22 +265,24 @@ func (_Btscore *BtscoreCaller) BalanceOfBatch(opts *bind.CallOpts, _owner common
 
 // BalanceOfBatch is a free data retrieval call binding the contract method 0x17d55ad6.
 //
-// Solidity: function balanceOfBatch(address _owner, string[] _coinNames) view returns(uint256[] _usableBalances, uint256[] _lockedBalances, uint256[] _refundableBalances)
+// Solidity: function balanceOfBatch(address _owner, string[] _coinNames) view returns(uint256[] _usableBalances, uint256[] _lockedBalances, uint256[] _refundableBalances, uint256[] _userBalances)
 func (_Btscore *BtscoreSession) BalanceOfBatch(_owner common.Address, _coinNames []string) (struct {
 	UsableBalances     []*big.Int
 	LockedBalances     []*big.Int
 	RefundableBalances []*big.Int
+	UserBalances       []*big.Int
 }, error) {
 	return _Btscore.Contract.BalanceOfBatch(&_Btscore.CallOpts, _owner, _coinNames)
 }
 
 // BalanceOfBatch is a free data retrieval call binding the contract method 0x17d55ad6.
 //
-// Solidity: function balanceOfBatch(address _owner, string[] _coinNames) view returns(uint256[] _usableBalances, uint256[] _lockedBalances, uint256[] _refundableBalances)
+// Solidity: function balanceOfBatch(address _owner, string[] _coinNames) view returns(uint256[] _usableBalances, uint256[] _lockedBalances, uint256[] _refundableBalances, uint256[] _userBalances)
 func (_Btscore *BtscoreCallerSession) BalanceOfBatch(_owner common.Address, _coinNames []string) (struct {
 	UsableBalances     []*big.Int
 	LockedBalances     []*big.Int
 	RefundableBalances []*big.Int
+	UserBalances       []*big.Int
 }, error) {
 	return _Btscore.Contract.BalanceOfBatch(&_Btscore.CallOpts, _owner, _coinNames)
 }

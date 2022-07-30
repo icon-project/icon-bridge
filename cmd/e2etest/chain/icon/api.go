@@ -2,29 +2,30 @@ package icon
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"os"
 	"strings"
 
+	gocommon "github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"
 	"github.com/icon-project/icon-bridge/common"
+
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
 
 const (
 	EventSignature             = "Message(str,int,bytes)"
-	MonitorBlockMaxConcurrency = 50
-)
-const (
-	NativeCoinName = "ICX"
-	NativeToken    = "TICX"
+	MonitorBlockMaxConcurrency = 1
 )
 
 type api struct {
 	*icon.ReceiverCore
-	networkID string
 	sinkChan  chan *chain.EventLogInfo
 	errChan   chan error
 	par       *parser
@@ -32,16 +33,18 @@ type api struct {
 	requester *requestAPI
 }
 
-func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
+func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	var err error
 	if len(cfg.URL) == 0 {
-		return nil, errors.New("List of Urls is empty ")
+		return nil, errors.New("Expected URL for chain ICON. Got ")
+	} else if cfg.Name != chain.ICON {
+		return nil, fmt.Errorf("Expected cfg.Name=ICON Got %v", cfg.Name)
 	}
 	client := icon.NewClient(cfg.URL, l)
 
-	btsIconAddr, ok := cfg.ConftractAddresses[chain.BTSIcon]
+	btsIconAddr, ok := cfg.ContractAddresses[chain.BTS]
 	if !ok {
-		return nil, errors.New("cfg.ConftractAddresses does not include chain.BTSIcon")
+		return nil, errors.New("cfg.ConftractAddresses does not include chain.BTS")
 	}
 
 	evtReq := icon.BlockRequest{
@@ -70,56 +73,60 @@ func NewApi(l log.Logger, cfg *chain.ChainConfig) (chain.ChainAPI, error) {
 			BlockReq: evtReq,
 			Opts:     icon.ReceiverOptions{},
 		},
-		sinkChan:  make(chan *chain.EventLogInfo),
-		errChan:   make(chan error),
-		fd:        NewFinder(l, cfg.ConftractAddresses),
-		networkID: cfg.NetworkID,
+		sinkChan: make(chan *chain.EventLogInfo),
+		errChan:  make(chan error),
+		fd:       NewFinder(l, cfg.ContractAddresses),
 	}
-	recvr.par, err = NewParser(cfg.ConftractAddresses)
+	recvr.par, err = NewParser(cfg.ContractAddresses)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewParser ")
 	}
-	recvr.requester, err = newRequestAPI(client, cfg.ConftractAddresses, cfg.NetworkID)
-	return recvr, nil
+	recvr.requester, err = newRequestAPI(client, cfg)
+	if err != nil {
+		return nil, errors.Wrapf(err, "newRequestAPI %v", err)
+	}
+	return recvr, err
 }
 
-func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
-	blk, err := r.Cl.GetLastBlock()
+func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
+	blk, err := a.Cl.GetLastBlock()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "GetLastBlock ")
 	}
 	height := uint64(blk.Height)
-	r.Log.Infof("Subscribe Start Height %v", height)
+	a.Log.Infof("Subscribe Start Height %v", height)
 	// _errCh := make(chan error)
 	go func() {
 		// defer close(_errCh)
-		err := r.ReceiveLoop(ctx, height, 0, func(txnLogs []*icon.TxResult) error {
+		err := a.ReceiveLoop(ctx, height, 0, func(txnLogs []*icon.TxResult) error {
 			for _, txnLog := range txnLogs {
 				for _, el := range txnLog.EventLogs {
-					res, evtType, err := r.par.Parse(&el)
+					res, evtType, err := a.par.Parse(&el)
 					if err != nil {
-						r.Log.Trace(errors.Wrap(err, "Parse "))
+						a.Log.Trace(errors.Wrap(err, "Parse "))
 						err = nil
 						continue
 					}
 					nel := &chain.EventLogInfo{ContractAddress: common.NewAddress(el.Addr).String(), EventType: evtType, EventLog: res}
-					if r.fd.Match(nel) { //el.IDs is updated by match if matched
-						//r.Log.Infof("Matched %+v", el)
-						r.sinkChan <- nel
+					//a.Log.Infof("IFirst %+v", nel)
+					//a.Log.Infof("ISecond %+v", nel.EventLog)
+					if a.fd.Match(nel) { //el.IDs is updated by match if matched
+						//a.Log.Infof("Matched %+v", el)
+						a.sinkChan <- nel
 					}
 				}
 			}
 			return nil
 		})
 		if err != nil {
-			r.Log.Errorf("receiveLoop terminated: %v", err)
-			r.errChan <- err
+			a.Log.Errorf("receiveLoop terminated: %v", err)
+			a.errChan <- err
 		}
 	}()
-	return r.sinkChan, r.errChan, nil
+	return a.sinkChan, a.errChan, nil
 }
 
-func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.Int) (txnHash string, err error) {
+func (a *api) Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
 	if !strings.Contains(recepientAddress, "btp:") {
 		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -130,24 +137,32 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount big.
 		recepientAddress = splts[len(splts)-1]
 	}
 	if within {
-		if coinName == NativeCoinName {
-			txnHash, _, err = r.requester.transferNativeIntraChain(senderKey, recepientAddress, amount)
-		} else if coinName == NativeToken {
-			txnHash, _, err = r.requester.transferTokenIntraChain(senderKey, recepientAddress, amount)
-		} else {
-			err = fmt.Errorf("IntraChain transfers are supported for coins ICX and TICX only")
-		}
+		txnHash, err = a.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
 	} else {
-		if coinName == NativeCoinName {
-			txnHash, _, err = r.requester.transferNativeCrossChain(senderKey, recepientAddress, amount)
-		} else { // ONE, TONE, TICX
-			txnHash, _, err = r.requester.transferWrappedCrossChain(coinName, senderKey, recepientAddress, amount)
-		}
+		txnHash, err = a.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
 	}
 	return
 }
 
-func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, error) {
+func (a *api) TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
+	if !strings.Contains(recepientAddress, "btp:") {
+		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
+	}
+	within := false
+	if strings.Contains(recepientAddress, ".icon") {
+		within = true
+		splts := strings.Split(recepientAddress, "/")
+		recepientAddress = splts[len(splts)-1]
+	}
+	if within {
+		err = fmt.Errorf("Batch Transfers are supported for inter chain transfers only")
+	} else {
+		txnHash, err = a.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts)
+	}
+	return
+}
+
+func (a *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, error) {
 	if !strings.Contains(addr, "btp://") {
 		return nil, errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -156,20 +171,20 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-	return r.requester.getCoinBalance(coinName, address)
+	return a.requester.getCoinBalance(coinName, address)
 }
 
-func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
-	_, txRes, err := r.Cl.WaitForResults(ctx, &icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
+func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
+	_, txRes, err := a.Cl.WaitForResults(ctx, &icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
 	if err != nil {
 		return nil, errors.Wrapf(err, "waitForResults(%v)", hash)
 	}
 
 	plogs := []*chain.EventLogInfo{}
 	for _, v := range txRes.EventLogs {
-		decodedLog, eventType, err := r.par.ParseTxn(&TxnEventLog{Addr: icon.Address(v.Addr), Indexed: v.Indexed, Data: v.Data})
+		decodedLog, eventType, err := a.par.ParseTxn(&TxnEventLog{Addr: icon.Address(v.Addr), Indexed: v.Indexed, Data: v.Data})
 		if err != nil {
-			r.Log.Trace(errors.Wrap(err, "waitForResults.Parse "))
+			a.Log.Trace(errors.Wrapf(err, "waitForResults.Parse %v", err))
 			err = nil
 			continue
 			//return nil, nil, err
@@ -183,35 +198,46 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 	return &chain.TxnResult{StatusCode: int(statusCode), ElInfo: plogs, Raw: txRes}, nil
 }
 
-func (r *api) Approve(coinName string, ownerKey string, amount big.Int) (txnHash string, err error) {
-	if coinName == NativeToken {
-		txnHash, _, err = r.requester.approveToken(coinName, ownerKey, amount)
-	} else if coinName == NativeCoinName {
-		r.Log.Infof("No Handler for Approve Call on NativeCoin: %v, because not needed")
-	} else {
-		txnHash, _, err = r.requester.approveCrossNativeCoin(coinName, ownerKey, amount)
-	}
+func (a *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
+	txnHash, err = a.requester.approve(coinName, ownerKey, amount)
 	return
 }
 
-func (r *api) GetChainType() chain.ChainType {
-	return chain.ICON
+func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
+	txnHash, err = a.requester.reclaim(coinName, ownerKey, amount)
+	return
 }
 
-func (r *api) GetBTPAddress(addr string) string {
-	fullAddr := "btp://" + r.networkID + ".icon/" + addr
+func (a *api) GetBTPAddress(addr string) string {
+	fullAddr := "btp://" + a.requester.networkID + ".icon/" + addr
 	return fullAddr
 }
 
-func (r *api) NativeCoinName() string {
-	return NativeCoinName
+func (a *api) NativeCoin() string {
+	return a.requester.nativeCoin
 }
 
-func (r *api) NativeTokenName() string {
-	return NativeToken
+func (a *api) NativeTokens() []string {
+	nativeTokens := []string{}
+	for name := range a.requester.nativeTokensAddr {
+		nativeTokens = append(nativeTokens, name)
+	}
+	return nativeTokens
 }
 
-func (r *api) GetKeyPairs(num int) ([][2]string, error) {
+func (a *api) WatchForTransferStart(id uint64, seq int64) error {
+	return a.fd.watchFor(chain.TransferStart, id, seq)
+}
+
+func (a *api) WatchForTransferReceived(id uint64, seq int64) error {
+	return a.fd.watchFor(chain.TransferReceived, id, seq)
+}
+
+func (a *api) WatchForTransferEnd(id uint64, seq int64) error {
+	return a.fd.watchFor(chain.TransferEnd, id, seq)
+}
+
+func (a *api) GetKeyPairs(num int) ([][2]string, error) {
 	var err error
 	res := make([][2]string, num)
 	for i := 0; i < num; i++ {
@@ -223,14 +249,37 @@ func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	return res, nil
 }
 
-func (r *api) WatchForTransferStart(id uint64, seq int64) error {
-	return r.fd.watchFor(chain.TransferStart, id, seq)
-}
+func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv string, pub string, err error) {
+	readFile := func(file string) (string, error) {
+		f, err := os.Open(file)
+		if err != nil {
+			return "", err
+		}
+		defer f.Close()
 
-func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
-	return r.fd.watchFor(chain.TransferReceived, id, seq)
-}
+		b, err := ioutil.ReadAll(f)
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(string(b)), nil
+	}
 
-func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
-	return r.fd.watchFor(chain.TransferEnd, id, seq)
+	secret, err := readFile(secretFile)
+	if err != nil {
+		err = errors.Wrapf(err, "readPassFromFile(%v) %v", secretFile, err)
+		return
+	}
+	wal, err := readFile(keystoreFile)
+	if err != nil {
+		err = errors.Wrapf(err, "readKeystoreFromFile(%v) %v", keystoreFile, err)
+		return
+	}
+
+	privKey, err := wallet.DecryptKeyStore([]byte(wal), []byte(secret))
+	if err != nil {
+		err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
+	}
+	priv = hex.EncodeToString(privKey.Bytes())
+	pub = gocommon.NewAccountAddressFromPublicKey(privKey.PublicKey()).String()
+	return
 }

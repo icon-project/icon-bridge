@@ -4,28 +4,30 @@
             "name":"ICON",
             "url":"http://127.0.0.1:9080/api/v3/icon",
             "contract_addresses": {
-                "BTSIcon":  "cxf9a4556e7049bf81bf4fb3ffb4f5c23691d3aef6",
-                "TICXIcon": "cxc39fce2d84ad7a49c07f967f08341900023f1566"
+                "BTS":  "cx79ba68ea1bb4591ef2b835d8a05d4953986f2b4c"
             },
-            "god_wallet":{
-                "path":"./icon.god.wallet.json",
-                "password":"d7b864bc6b02cc30"
-            },
-            "network_id":"0xdf6463"
-        },
+            "native_coin": "ICX",
+            "native_tokens":["ETH", "TICX"],
+            "wrapped_coins":["BNB", "TBNB"],
+            "god_wallet_keystore_path":"./icon.god.wallet.json",
+            "god_wallet_secret_path":"./icon.god.wallet.secret",
+            "network_id":"0x613f17.icon",
+            "gas_limit":2000000
+        }, 
         {
-            "name":"BSC",
+            "name":"BSC", 
             "url":"http://127.0.0.1:8545",
             "contract_addresses": {
-                "BTSCoreBsc":      "0x71a1520bBb7e6072Bbf3682A60c73D63b693690A",
-                "BTSPeripheryBsc": "0x3abC8DFF0C95B8982399daCf6ED5bD7b94a40068",
-                "TBNBBsc":         "0xBA34F3c6893b12fF4115ACf1b4712C6E2783aD83"
+                "BTS":      "0x71a1520bBb7e6072Bbf3682A60c73D63b693690A",
+                "BTSPeriphery": "0x3abC8DFF0C95B8982399daCf6ED5bD7b94a40068"
             },
-            "god_wallet":{
-                "path":"./bsc.god.wallet.json",
-                "password":"Perlia0"
-            },
-            "network_id":"0x61"
+            "native_coin": "BNB",
+            "native_tokens":["ETH", "TBNB"],
+            "wrapped_coins":["ICX", "TICX"],
+            "god_wallet_keystore_path":"./bsc.god.wallet.json",
+            "god_wallet_secret_path":"./bsc.god.wallet.secret",
+            "network_id":"0x61.bsc",
+            "gas_limit":2000000
         }
     ]
 } 

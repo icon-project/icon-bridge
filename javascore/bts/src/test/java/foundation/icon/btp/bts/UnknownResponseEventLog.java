@@ -20,12 +20,8 @@ import foundation.icon.jsonrpc.Address;
 import foundation.icon.jsonrpc.IconJsonModule;
 import foundation.icon.jsonrpc.model.TransactionResult;
 import foundation.icon.score.test.ScoreIntegrationTest;
-import foundation.icon.score.util.StringUtil;
-import score.Context;
-import score.ObjectReader;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 

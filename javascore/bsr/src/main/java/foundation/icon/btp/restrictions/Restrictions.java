@@ -2,7 +2,11 @@ package foundation.icon.btp.restrictions;
 
 import foundation.icon.btp.lib.OwnerManager;
 import foundation.icon.btp.lib.OwnerManagerImpl;
-import score.*;
+import score.Address;
+import score.ArrayDB;
+import score.Context;
+import score.DictDB;
+import score.VarDB;
 import score.annotation.External;
 
 import java.math.BigInteger;

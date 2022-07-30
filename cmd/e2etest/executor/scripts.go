@@ -2,238 +2,826 @@ package executor
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strings"
-	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/common/errors"
 )
 
-var Transfer Script = Script{
-	Name:        "Transfer",
-	Description: "Transfer Fixed Amount of coin with approve and monitor eventlogs TransferReceived and TransferEnd",
-	Callback: func(ctx context.Context, args *args) error {
-		amt := new(big.Int)
-		amt.SetString("1000000000000000000", 10)
-		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
+var TransferToUnparseableAddress Script = Script{
+	Name:        "TransferToUnparseableAddress",
+	Description: "Transfer to unparseable address",
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return errors.Wrapf(err, "GetChainPair %v", err)
 		}
-		initDstBalance, err := args.dst.GetCoinBalance(args.coinName, args.dstAddr)
+		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
 		}
-		if initSrcBalance.Usable.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
+		_, dstAddr, err := ts.GetKeyPairs(dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
 		}
-		if args.coinName != args.src.NativeCoinName() {
-			if approveHash, err := args.src.Approve(args.coinName, args.srcKey, *amt); err != nil {
-				return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+		dstAddr += "1"
+		// how much you want receiving end to get
+		tmpAmt := big.NewInt(0)
+		amts := make([]*big.Int, len(coinNames))
+		for i := 0; i < len(coinNames); i++ {
+			amts[i] = ts.withFeeAdded(tmpAmt)
+			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
+				return errors.Wrapf(err, "Fund %v", err)
 			}
-		}
-		hash, err := args.src.Transfer(args.coinName, args.srcKey, args.dstAddr, *amt)
-		if err != nil {
-			return errors.Wrapf(err, "Transfer Err: %v", err)
-		}
-		res, err := args.src.WaitForTxnResult(context.TODO(), hash)
-		if err != nil {
-			return errors.Wrapf(err, "WaitForTxnResult Coin %v Hash %v", args.coinName, hash)
-		} else if res == nil {
-			return fmt.Errorf("WaitForTxnResult; Transaction Result is nil. Hash %v", hash)
-		} else if res != nil && res.StatusCode != 1 {
-			return errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
-		} else if res != nil && len(res.ElInfo) == 0 {
-			return fmt.Errorf("WaitForTxnResult; Got zero parsed event logs. Hash %v", hash)
 		}
 
-		evtFound := false
-		gotEventTypes := []chain.EventLogType{}
-		startEvent := &chain.TransferStartEvent{}
-		tmpOk := false
-		for _, el := range res.ElInfo {
-			gotEventTypes = append(gotEventTypes, el.EventType)
-			if el.EventType != chain.TransferStart {
-				continue
-			}
-			evtFound = true
-			startEvent, tmpOk = el.EventLog.(*chain.TransferStartEvent)
-			if !tmpOk {
-				return fmt.Errorf("EventLog; Execpted *chain.TransferStartEvent. Got %T Hash %v", el.EventLog, hash)
-			}
-			srcAddrSplts := strings.Split(args.srcAddr, "/")
-			if srcAddrSplts[len(srcAddrSplts)-1] != startEvent.From {
-				return fmt.Errorf("EventLog; Expected Source Address %v Got %v Hash %v", srcAddrSplts[len(srcAddrSplts)-1], startEvent.From, hash)
-			} else if args.dstAddr != startEvent.To {
-				return fmt.Errorf("EventLog; Expected Destination Address %v Got %v Hash %v", args.dstAddr, startEvent.To, hash)
-			} else if len(startEvent.Assets) == 0 {
-				return fmt.Errorf("EventLog; Got zero Asset Details")
-			} else if len(startEvent.Assets) > 0 {
-				sum := big.NewInt(0)
-				sum.Add(startEvent.Assets[0].Value, startEvent.Assets[0].Fee)
-				if startEvent.Assets[0].Name != args.coinName || sum.Cmp(amt) != 0 {
-					return fmt.Errorf("EventLog; Expected Name %v, Amount %v Got Len(assets) %v Name %v Value %v Fee %v. Hash %v",
-						args.coinName, amt.String(),
-						len(startEvent.Assets), startEvent.Assets[0].Name, startEvent.Assets[0].Value.String(), startEvent.Assets[0].Fee.String(),
-						hash)
+		// how much is necessary as gas cost
+		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
+			return errors.Wrapf(err, "AddGasFee %v", err)
+		}
+
+		// Approve
+		for i, coinName := range coinNames {
+			if coinName != src.NativeCoin() {
+				if approveHash, err := src.Approve(coinName, srcKey, amts[i]); err != nil {
+					return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				} else {
+					if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
+						return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					}
 				}
 			}
 		}
-		if !evtFound {
-			return fmt.Errorf("Transfer Start Event Not Found. Got %v Hash %v", gotEventTypes, hash)
+
+		var hash string
+		if len(coinNames) == 1 {
+			hash, err = src.Transfer(coinNames[0], srcKey, dstAddr, amts[0])
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		} else {
+			hash, err = src.TransferBatch(coinNames, srcKey, dstAddr, amts)
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
 		}
 
-		// WaitFor Events
-		numExpectedEvents := 2
-		args.src.WatchForTransferEnd(args.watchRequestID, startEvent.Sn.Int64())
-		args.dst.WatchForTransferReceived(args.watchRequestID, startEvent.Sn.Int64())
-		newCtx := context.Background()
-		timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*60)
-		for {
-			defer timedContextCancel()
-			select {
-			case <-timedContext.Done():
-				return errors.New("Context Timeout Exiting task")
-			case <-ctx.Done():
-				args.log.Warn("Context Cancelled. Return from Callback watch")
+		if err = ts.ValidateTransactionResultAndEvents(ctx, hash, coinNames, srcAddr, dstAddr, amts); err != nil {
+			if err.Error() == StatusCodeZero.Error() {
 				return nil
-			case el := <-args.sinkChan:
-				if el.msg.EventType == chain.TransferReceived && el.chainType == args.dst.GetChainType() {
-					//args.log.Infof("%+v", el.msg.EventLog)
-					numExpectedEvents--
-				} else if el.msg.EventType == chain.TransferEnd && el.chainType == args.src.GetChainType() {
-					//args.log.Infof("%+v", el.msg.EventLog)
-					numExpectedEvents--
+			}
+			return errors.Wrapf(err, "ValidateTransactionResultAndEvents Unexpected error %v", err)
+		}
+		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
+			chain.TransferEnd: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
 				}
-				if numExpectedEvents == 0 {
-					finalSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
-					if err != nil {
-						return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferEndEvent Got %T", ev.msg.EventLog)
+				}
+				if endEvt.Code.String() != "1" {
+					return fmt.Errorf("Expected error code (1) Got %v", endEvt.Code.String())
+				}
+				return nil
+			},
+		})
+		if err != nil {
+			return errors.Wrapf(err, "WaitForEvents %v", err)
+		}
+		return err
+	},
+}
+
+var TransferToZeroAddress Script = Script{
+	Name:        "TransferToZeroAddress",
+	Description: "Transfer to zero address",
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+		src, _, err := ts.GetChainPair(srcChain, dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetChainPair %v", err)
+		}
+		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+		_, tmpAddr, err := ts.GetKeyPairs(dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+		convertToZeroAddress := func(inputStr string) string {
+			splits := strings.Split(inputStr, "/")
+			lenSplits := len(splits)
+			if len(splits[lenSplits-1]) > 2 {
+				prefix := splits[lenSplits-1][0:2]
+				postFix := splits[lenSplits-1][2:]
+				byteArr := make([]byte, len(postFix)/2)
+				for i := 0; i < len(postFix)/2; i++ {
+					byteArr[i] = 0
+				}
+				splits[lenSplits-1] = prefix + hex.EncodeToString(byteArr)
+			}
+			return strings.Join(splits, "/")
+		}
+		dstAddr := convertToZeroAddress(tmpAddr)
+		// how much you want receiving end to get
+		tmpAmt := big.NewInt(0)
+		amts := make([]*big.Int, len(coinNames))
+		for i := 0; i < len(coinNames); i++ {
+			amts[i] = ts.withFeeAdded(tmpAmt)
+			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
+				return errors.Wrapf(err, "Fund %v", err)
+			}
+		}
+
+		// how much is necessary as gas cost
+		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
+			return errors.Wrapf(err, "AddGasFee %v", err)
+		}
+
+		// Approve
+		for i, coinName := range coinNames {
+			if coinName != src.NativeCoin() {
+				if approveHash, err := src.Approve(coinName, srcKey, amts[i]); err != nil {
+					return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				} else {
+					if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
+						return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
 					}
-					finalDstBalance, err := args.dst.GetCoinBalance(args.coinName, args.dstAddr)
-					if err != nil {
-						return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				}
+			}
+		}
+
+		var hash string
+		if len(coinNames) == 1 {
+			hash, err = src.Transfer(coinNames[0], srcKey, dstAddr, amts[0])
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		} else {
+			hash, err = src.TransferBatch(coinNames, srcKey, dstAddr, amts)
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		}
+
+		if err = ts.ValidateTransactionResultAndEvents(ctx, hash, coinNames, srcAddr, dstAddr, amts); err != nil {
+			if err.Error() == StatusCodeZero.Error() {
+				return nil
+			}
+			return errors.Wrapf(err, "ValidateTransactionResultAndEvents Unexpected error %v", err)
+		}
+		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
+			chain.TransferEnd: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferEndEvent Got %T", ev.msg.EventLog)
+				}
+				if endEvt.Code.String() != "1" {
+					return fmt.Errorf("Expected error code (1) Got %v", endEvt.Code.String())
+				}
+				return nil
+			},
+		})
+		if err != nil {
+			return errors.Wrapf(err, "WaitForEvents %v", err)
+		}
+		return err
+	},
+}
+
+var TransferToUnknownNetwork Script = Script{
+	Name:        "TransferToUnknownNetwork",
+	Description: "Transfer to unknown bmc network",
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+		src, _, err := ts.GetChainPair(srcChain, dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetChainPair %v", err)
+		}
+		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+		_, tmpAddr, err := ts.GetKeyPairs(dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+		changeBMCNetwork := func(inputStr string) (string, error) {
+			splits := strings.Split(inputStr, "/")
+			if len(splits) != 4 {
+				return "", errors.New("Unexpected length")
+			}
+			network := splits[2]
+			networkSplits := strings.Split(network, ".")
+			if len(networkSplits) != 2 {
+				return "", errors.New("Unexpected length")
+			}
+			networkSplits[1] += "s"
+			splits[2] = strings.Join(networkSplits, ".")
+			return strings.Join(splits, "/"), nil
+		}
+		dstAddr, err := changeBMCNetwork(tmpAddr)
+		if err != nil {
+			return err
+		}
+		// how much you want receiving end to get
+		tmpAmt := big.NewInt(0)
+		amts := make([]*big.Int, len(coinNames))
+		for i := 0; i < len(coinNames); i++ {
+			amts[i] = ts.withFeeAdded(tmpAmt)
+			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
+				return errors.Wrapf(err, "Fund %v", err)
+			}
+		}
+
+		// how much is necessary as gas cost
+		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
+			return errors.Wrapf(err, "AddGasFee %v", err)
+		}
+
+		// Approve
+		for i, coinName := range coinNames {
+			if coinName != src.NativeCoin() {
+				if approveHash, err := src.Approve(coinName, srcKey, amts[i]); err != nil {
+					return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				} else {
+					if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
+						return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
 					}
-					//args.log.Infof("Src Balance Init %v Final %v ", initSrcBalance.String(), finalSrcBalance.String())
-					//args.log.Infof("Dst Balance Init %v Final %v ", initDstBalance.String(), finalDstBalance.String())
-					if finalDstBalance.Usable.Cmp(startEvent.Assets[0].Value) != 0 {
-						return fmt.Errorf("Balance Compare after Transfer; Dst; Got Unequal Destination Balance %v EventAssets Value %v", finalDstBalance.String(), startEvent.Assets[0].Value.String())
+				}
+			}
+		}
+
+		var hash string
+		if len(coinNames) == 1 {
+			hash, err = src.Transfer(coinNames[0], srcKey, dstAddr, amts[0])
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		} else {
+			hash, err = src.TransferBatch(coinNames, srcKey, dstAddr, amts)
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		}
+		if err = ts.ValidateTransactionResultAndEvents(ctx, hash, coinNames, srcAddr, dstAddr, amts); err != nil {
+			if err.Error() == StatusCodeZero.Error() {
+				return nil
+			}
+			return errors.Wrapf(err, "ValidateTransactionResultAndEvents Unexpected error %v", err)
+		}
+		if err != nil {
+			return errors.Wrapf(err, "WaitForEvents %v", err)
+		}
+		return err
+	},
+}
+
+var TransferExceedingBTSBalance Script = Script{
+	Name:        "TransferExceedingContractsBalance",
+	Description: "Transfer Native Tokens, which are of fixed supply, in different amounts. The Token should be native for both chains",
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+		coinName := coinNames[0]
+		src, dst, err := ts.GetChainPair(srcChain, dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetChainPair %v", err)
+		}
+		// coinName should be a token common on both chains
+		tokenExists := false
+		for _, stkn := range src.NativeTokens() {
+			if stkn == coinName {
+				for _, dtkn := range dst.NativeTokens() {
+					if dtkn == coinName {
+						tokenExists = true
+						break
 					}
-					if finalDstBalance.Usable.Cmp(initDstBalance.Usable) != 1 {
-						return fmt.Errorf("Balance Compare after Transfer; Dst; final Balance should have been greater than initial balance; Got Final %v Initial %v", finalDstBalance.String(), initDstBalance.String())
-					}
-					if finalSrcBalance.Usable.Cmp(initSrcBalance.Usable) != -1 {
-						return fmt.Errorf("Balance Compare after Transfer; Src; final Balance should have been less than initial balance; Got Final %v Initial %v", finalSrcBalance.String(), initSrcBalance.String())
-					}
+				}
+				break
+			}
+		}
+		if !tokenExists {
+			ts.logger.Errorf("Token %v does not exist on both chains %v and %v", coinName, srcChain, dstChain)
+			return nil
+		}
+
+		btsAddr, ok := ts.btsAddressPerChain[dstChain]
+		if !ok {
+			return errors.Wrapf(err, "dst.GetBTPAddressOfBTS %v", err)
+		}
+		btsBalance, err := dst.GetCoinBalance(coinName, btsAddr)
+		if err != nil {
+			return errors.Wrapf(err, "dst.getCoinBalance %v", err)
+		}
+
+		// prepare accounts
+		srcKey, srcAddr, err := ts.GetGodKeyPairs(srcChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetGodKeyPairs %v", err)
+		}
+		_, dstAddr, err := ts.GetKeyPairs(dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+
+		amt := ts.withFeeAdded(btsBalance.UserBalance)
+		amt.Add(amt, big.NewInt(100)) //exceed balance by 100g
+		if err := ts.Fund(srcAddr, amt, coinName); err != nil {
+			return errors.Wrapf(err, "Fund %v", err)
+		}
+
+		// how much is necessary as gas cost
+		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
+			return errors.Wrapf(err, "AddGasFee %v", err)
+		}
+
+		// approve
+		if approveHash, err := src.Approve(coinName, srcKey, amt); err != nil {
+			return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+		} else {
+			if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
+				return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+			}
+		}
+		// Transfer
+		hash, err := src.Transfer(coinName, srcKey, dstAddr, amt)
+		if err != nil {
+			return errors.Wrapf(err, "Transfer %v", err)
+		}
+		if err := ts.ValidateTransactionResultAndEvents(ctx, hash, []string{coinName}, srcAddr, dstAddr, []*big.Int{amt}); err != nil {
+			return errors.Wrapf(err, "ValidateTransactionResultEvents %v", err)
+		}
+		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
+			// chain.TransferReceived: func(e *evt) error {
+			// 	ts.logger.Info("Got TransferReceived")
+			// 	return nil
+			// },
+			chain.TransferEnd: func(e *evt) error {
+				endEvt, ok := e.msg.EventLog.(chain.TransferEndEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", e.msg.EventLog)
+				}
+				if endEvt.Code.String() == "1" { //&& endEvt.Response == "TransferFailed" {
 					return nil
 				}
-			}
+				return fmt.Errorf("Unexpected code %v and response %v", endEvt.Code, endEvt.Response)
+			},
+		})
+		if err != nil {
+			return errors.Wrapf(err, "WaitForEvents %v", err)
 		}
-		// tests on gas price not included; fee = (intialSrc - finalSrc) > 0
+		// finalBtsBalance, err := dst.GetCoinBalance(coinName, btsAddr)
+		// if err != nil {
+		// 	return errors.Wrapf(err, "dst.getCoinBalance %v", err)
+		// }
+		// if finalBtsBalance.UserBalance.Cmp(btsBalance.UserBalance) != 0 {
+		// 	return fmt.Errorf("BTS Balance should have been same since txn does not succeed. Init %v  Final %v", btsBalance.UserBalance.String(), finalBtsBalance.UserBalance.String())
+		// }
 		return nil
 	},
 }
 
-var StressTransfer Script = Script{
-	Name:        "StressTransfer",
-	Description: "Transfer Fixed Amount of coin with approve and monitor eventlogs TransferReceived and TransferEnd",
-	Callback: func(ctx context.Context, args *args) error {
-		amt := new(big.Int)
-		amt.SetString("1000000000000000000", 10)
-		initSrcBalance, err := args.src.GetCoinBalance(args.coinName, args.srcAddr)
+var TransferAllBTSBalance Script = Script{
+	Name:        "TransferAllBTSBalance",
+	Description: "Transfer Native Tokens, which are of fixed supply, in different amounts. The Token should be native for both chains",
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+		coinName := coinNames[0]
+		src, dst, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return errors.Wrapf(err, "GetChainPair %v", err)
 		}
-		if initSrcBalance.Usable.Cmp(amt) == -1 {
-			return fmt.Errorf("Initial Balance %v is less than 1000000000000000000. Expected greater.", initSrcBalance.String())
-		}
-		if args.coinName != args.src.NativeCoinName() {
-			if approveHash, err := args.src.Approve(args.coinName, args.srcKey, *amt); err != nil {
-				return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+		// coinName should be a token common on both chains
+		tokenExists := false
+		for _, stkn := range src.NativeTokens() {
+			if stkn == coinName {
+				for _, dtkn := range dst.NativeTokens() {
+					if dtkn == coinName {
+						tokenExists = true
+						break
+					}
+				}
+				break
 			}
 		}
-		hash, err := args.src.Transfer(args.coinName, args.srcKey, args.dstAddr, *amt)
-		if err != nil {
-			return errors.Wrapf(err, "Transfer Err: %v", err)
-		}
-		res, err := args.src.WaitForTxnResult(context.TODO(), hash)
-		if err != nil {
-			return errors.Wrapf(err, "WaitForTxnResult Coin %v Hash %v", args.coinName, hash)
-		} else if res == nil {
-			return fmt.Errorf("WaitForTxnResult; Transaction Result is nil. Hash %v", hash)
-		} else if res != nil && res.StatusCode != 1 {
-			return errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
-		} else if res != nil && len(res.ElInfo) == 0 {
-			return fmt.Errorf("WaitForTxnResult; Got zero parsed event logs. Hash %v", hash)
+		if !tokenExists {
+			ts.logger.Errorf("Token %v does not exist on both chains %v and %v", coinName, srcChain, dstChain)
+			return nil
 		}
 
-		evtFound := false
-		gotEventTypes := []chain.EventLogType{}
-		tmpOk := false
-		startEvent := &chain.TransferStartEvent{}
-		for _, el := range res.ElInfo {
-			gotEventTypes = append(gotEventTypes, el.EventType)
-			if el.EventType != chain.TransferStart {
-				continue
-			}
-			evtFound = true
-			startEvent, tmpOk = el.EventLog.(*chain.TransferStartEvent)
-			if !tmpOk {
-				return fmt.Errorf("EventLog; Execpted *chain.TransferStartEvent. Got %T Hash %v", el.EventLog, hash)
-			}
-			srcAddrSplts := strings.Split(args.srcAddr, "/")
-			if srcAddrSplts[len(srcAddrSplts)-1] != startEvent.From {
-				return fmt.Errorf("EventLog; Expected Source Address %v Got %v Hash %v", srcAddrSplts[len(srcAddrSplts)-1], startEvent.From, hash)
-			} else if args.dstAddr != startEvent.To {
-				return fmt.Errorf("EventLog; Expected Destination Address %v Got %v Hash %v", args.dstAddr, startEvent.To, hash)
-			} else if len(startEvent.Assets) == 0 {
-				return fmt.Errorf("EventLog; Got zero Asset Details")
-			} else if len(startEvent.Assets) > 0 {
-				sum := big.NewInt(0)
-				sum.Add(startEvent.Assets[0].Value, startEvent.Assets[0].Fee)
-				if startEvent.Assets[0].Name != args.coinName || sum.Cmp(amt) != 0 {
-					return fmt.Errorf("EventLog; Expected Name %v, Amount %v Got Len(assets) %v Name %v Value %v Fee %v. Hash %v",
-						args.coinName, amt.String(),
-						len(startEvent.Assets), startEvent.Assets[0].Name, startEvent.Assets[0].Value.String(), startEvent.Assets[0].Fee.String(),
-						hash)
-				}
-			}
+		btsAddr, ok := ts.btsAddressPerChain[dstChain]
+		if !ok {
+			return errors.Wrapf(err, "dst.GetBTPAddressOfBTS %v", err)
 		}
-		if !evtFound {
-			return fmt.Errorf("Transfer Start Event Not Found. Got %v Hash %v", gotEventTypes, hash)
+		btsBalance, err := dst.GetCoinBalance(coinName, btsAddr)
+		if err != nil {
+			return errors.Wrapf(err, "dst.getCoinBalance %v", err)
 		}
 
-		// WaitFor Events
-		numExpectedEvents := 2
-		args.src.WatchForTransferEnd(args.watchRequestID, startEvent.Sn.Int64())
-		args.dst.WatchForTransferReceived(args.watchRequestID, startEvent.Sn.Int64())
-		newCtx := context.Background()
-		timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*60)
-		for {
-			defer timedContextCancel()
-			select {
-			case <-timedContext.Done():
-				return errors.New("Context Timeout Exiting task")
-			case <-ctx.Done():
-				args.log.Warn("Context Cancelled. Return from Callback watch")
-				return nil
-			case el := <-args.sinkChan:
-				if el.msg.EventType == chain.TransferReceived && el.chainType == args.dst.GetChainType() {
-					//args.log.Infof("%+v", el.msg.EventLog)
-					numExpectedEvents--
-				} else if el.msg.EventType == chain.TransferEnd && el.chainType == args.src.GetChainType() {
-					//args.log.Infof("%+v", el.msg.EventLog)
-					numExpectedEvents--
+		// prepare accounts
+		srcKey, srcAddr, err := ts.GetGodKeyPairs(srcChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetGodKeyPairs %v", err)
+		}
+		_, dstAddr, err := ts.GetKeyPairs(dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+
+		amt := ts.withFeeAdded(btsBalance.UserBalance)
+		if err := ts.Fund(srcAddr, amt, coinName); err != nil {
+			return errors.Wrapf(err, "Fund %v", err)
+		}
+
+		// how much is necessary as gas cost
+		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
+			return errors.Wrapf(err, "AddGasFee %v", err)
+		}
+
+		// approve
+		if approveHash, err := src.Approve(coinName, srcKey, amt); err != nil {
+			return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+		} else {
+			if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
+				return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+			}
+		}
+		// Transfer
+		hash, err := src.Transfer(coinName, srcKey, dstAddr, amt)
+		if err != nil {
+			return errors.Wrapf(err, "Transfer %v", err)
+		}
+		if err := ts.ValidateTransactionResultAndEvents(ctx, hash, []string{coinName}, srcAddr, dstAddr, []*big.Int{amt}); err != nil {
+			return errors.Wrapf(err, "ValidateTransactionResultEvents %v", err)
+		}
+		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
+			chain.TransferReceived: nil,
+			chain.TransferEnd: func(e *evt) error {
+				endEvt, ok := e.msg.EventLog.(chain.TransferEndEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", e.msg.EventLog)
 				}
-				if numExpectedEvents == 0 {
-					// args.log.Infof("Src Balance Init %v Final %v ", initSrcBalance.String(), finalSrcBalance.String())
-					// args.log.Infof("Dst Balance Init %v Final %v ", initDstBalance.String(), finalDstBalance.String())
+				if endEvt.Code.String() == "0" {
 					return nil
 				}
+				return fmt.Errorf("Unexpected code %v and response %v", endEvt.Code, endEvt.Response)
+			},
+		})
+		if err != nil {
+			return errors.Wrapf(err, "WaitForEvents %v", err)
+		}
+		// finalBtsBalance, err := dst.GetCoinBalance(coinName, btsAddr)
+		// if err != nil {
+		// 	return errors.Wrapf(err, "dst.getCoinBalance %v", err)
+		// }
+		// if finalBtsBalance.UserBalance.Cmp(btsBalance.UserBalance) != 0 {
+		// 	return fmt.Errorf("BTS Balance should have been same since txn does not succeed. Init %v  Final %v", btsBalance.UserBalance.String(), finalBtsBalance.UserBalance.String())
+		// }
+		return nil
+	},
+}
+
+var TransferWithoutApprove Script = Script{
+	Name:        "TransferWithoutApprove",
+	Description: "Transfer without approving tokens",
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+		src, _, err := ts.GetChainPair(srcChain, dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetChainPair %v", err)
+		}
+		if len(coinNames) == 1 && coinNames[0] == src.NativeCoin() {
+			ts.logger.Info("Test valid where there is at least one token") // to not approve
+			return nil
+		}
+		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+		_, dstAddr, err := ts.GetKeyPairs(dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+
+		// how much you want receiving end to get
+		receivingAmount := "100"
+		tmpAmt := new(big.Int)
+		tmpAmt.SetString(receivingAmount, 10)
+		amts := make([]*big.Int, len(coinNames))
+		for i := 0; i < len(coinNames); i++ {
+			amts[i] = ts.withFeeAdded(tmpAmt)
+			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
+				return errors.Wrapf(err, "Fund %v", err)
 			}
 		}
-		// tests on gas price not included; fee = (intialSrc - finalSrc) > 0
+
+		// how much is necessary as gas cost
+		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
+			return errors.Wrapf(err, "AddGasFee %v", err)
+		}
+
+		// Skipping approve
+		var hash string
+		if len(coinNames) == 1 {
+			hash, err = src.Transfer(coinNames[0], srcKey, dstAddr, amts[0])
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+			fmt.Println("Hash ", hash)
+		} else {
+			hash, err = src.TransferBatch(coinNames, srcKey, dstAddr, amts)
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		}
+
+		if _, err = ts.ValidateTransactionResult(ctx, hash); err != nil {
+			if err.Error() == StatusCodeZero.Error() { // Failed as expected
+				return nil
+			}
+			return errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+		} else {
+			err = errors.New("Expected event to fail but it did not")
+		}
+		return err
+	},
+}
+
+var TransferWithApprove Script = Script{
+	Name:        "TransferWithApprove",
+	Description: "Transfer Fixed Amount of coin with approve and monitor eventlogs TransferReceived and TransferEnd",
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+		src, _, err := ts.GetChainPair(srcChain, dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetChainPair %v", err)
+		}
+		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+		_, dstAddr, err := ts.GetKeyPairs(dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+
+		// how much you want receiving end to get
+		receivingAmount := "100" //0.001 token
+		tmpAmt := new(big.Int)
+		tmpAmt.SetString(receivingAmount, 10)
+		amts := make([]*big.Int, len(coinNames))
+		for i := 0; i < len(coinNames); i++ {
+			amts[i] = ts.withFeeAdded(tmpAmt)
+			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
+				return errors.Wrapf(err, "Fund %v", err)
+			}
+		}
+
+		// how much is necessary as gas cost
+		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
+			return errors.Wrapf(err, "AddGasFee %v", err)
+		}
+
+		// Approve
+		for i, coinName := range coinNames {
+			if coinName != src.NativeCoin() {
+				if approveHash, err := src.Approve(coinName, srcKey, amts[i]); err != nil {
+					return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				} else {
+					if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
+						return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					}
+				}
+			}
+		}
+
+		var hash string
+		if len(coinNames) == 1 {
+			hash, err = src.Transfer(coinNames[0], srcKey, dstAddr, amts[0])
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		} else {
+			hash, err = src.TransferBatch(coinNames, srcKey, dstAddr, amts)
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		}
+
+		if err := ts.ValidateTransactionResultAndEvents(ctx, hash, coinNames, srcAddr, dstAddr, amts); err != nil {
+			return errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+		}
+		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
+			chain.TransferReceived: nil,
+			chain.TransferEnd:      nil,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "WaitForEvents %v", err)
+		}
+
+		// finalSrcBalance, err := src.GetCoinBalance(coinNames[0], srcAddr)
+		// if err != nil {
+		// 	return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+		// }
+		// finalDstBalance, err := dst.GetCoinBalance(coinNames[0], dstAddr)
+		// if err != nil {
+		// 	return errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+		// }
+		// ts.logger.Infof("Src Balance Init %v Final %v ", initSrcBalance.String(), finalSrcBalance.String())
+		// ts.logger.Infof("Dst Balance Init %v Final %v ", initDstBalance.String(), finalDstBalance.String())
+		// if finalDstBalance.Usable.Cmp(initDstBalance.Usable) != 1 {
+		// 	return fmt.Errorf("Balance Compare after Transfer; Dst; final Balance should have been greater than initial balance; Got Final %v Initial %v", finalDstBalance.String(), initDstBalance.String())
+		// }
+		// if finalSrcBalance.Usable.Cmp(initSrcBalance.Usable) != -1 {
+		// 	return fmt.Errorf("Balance Compare after Transfer; Src; final Balance should have been less than initial balance; Got Final %v Initial %v", finalSrcBalance.String(), initSrcBalance.String())
+		// }
 		return nil
+	},
+}
+
+var TransferLessThanFee Script = Script{
+	Name:        "TransferLessThanFee",
+	Description: "Transfer less than fee charged by BTS",
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+		src, _, err := ts.GetChainPair(srcChain, dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetChainPair %v", err)
+		}
+		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+		_, dstAddr, err := ts.GetKeyPairs(dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+
+		// how much you want receiving end to get
+		tmpAmt := big.NewInt(-1) // 2 less than fee charged
+		amts := make([]*big.Int, len(coinNames))
+		for i := 0; i < len(coinNames); i++ {
+			amts[i] = ts.withFeeAdded(tmpAmt)
+			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
+				return errors.Wrapf(err, "Fund %v", err)
+			}
+		}
+
+		// how much is necessary as gas cost
+		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
+			return errors.Wrapf(err, "AddGasFee %v", err)
+		}
+
+		// Skipping approve
+		// Approve
+		for i, coinName := range coinNames {
+			if coinName != src.NativeCoin() {
+				if approveHash, err := src.Approve(coinName, srcKey, amts[i]); err != nil {
+					return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				} else {
+					if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
+						return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					}
+				}
+			}
+		}
+
+		var hash string
+		if len(coinNames) == 1 {
+			hash, err = src.Transfer(coinNames[0], srcKey, dstAddr, amts[0])
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		} else {
+			hash, err = src.TransferBatch(coinNames, srcKey, dstAddr, amts)
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		}
+
+		if _, err = ts.ValidateTransactionResult(ctx, hash); err != nil {
+			if err.Error() == StatusCodeZero.Error() { // Failed as expected
+				return nil
+			}
+			return errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+		} else {
+			err = errors.New("Expected event to fail but it did not")
+		}
+		return err
+	},
+}
+
+var TransferEqualToFee Script = Script{
+	Name:        "TransferEqualToFee",
+	Description: "Transfer equal to fee charged by BTS",
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error {
+		if len(coinNames) == 0 {
+			return errors.New("Should specify at least one coinname, got zero")
+		}
+		src, _, err := ts.GetChainPair(srcChain, dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetChainPair %v", err)
+		}
+		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+		_, dstAddr, err := ts.GetKeyPairs(dstChain)
+		if err != nil {
+			return errors.Wrapf(err, "GetKeyPairs %v", err)
+		}
+
+		// how much you want receiving end to get
+		tmpAmt := big.NewInt(0)
+		amts := make([]*big.Int, len(coinNames))
+		for i := 0; i < len(coinNames); i++ {
+			amts[i] = ts.withFeeAdded(tmpAmt)
+			if err := ts.Fund(srcAddr, amts[i], coinNames[i]); err != nil {
+				return errors.Wrapf(err, "Fund %v", err)
+			}
+		}
+
+		// how much is necessary as gas cost
+		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
+			return errors.Wrapf(err, "AddGasFee %v", err)
+		}
+
+		// Approve
+		for i, coinName := range coinNames {
+			if coinName != src.NativeCoin() {
+				if approveHash, err := src.Approve(coinName, srcKey, amts[i]); err != nil {
+					return errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				} else {
+					if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
+						return errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					}
+				}
+			}
+		}
+
+		var hash string
+		if len(coinNames) == 1 {
+			hash, err = src.Transfer(coinNames[0], srcKey, dstAddr, amts[0])
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		} else {
+			hash, err = src.TransferBatch(coinNames, srcKey, dstAddr, amts)
+			if err != nil {
+				return errors.Wrapf(err, "Transfer Err: %v", err)
+			}
+		}
+
+		if err = ts.ValidateTransactionResultAndEvents(ctx, hash, coinNames, srcAddr, dstAddr, amts); err != nil {
+			if err.Error() == StatusCodeZero.Error() {
+				return nil
+			}
+			return errors.Wrapf(err, "ValidateTransactionResultAndEvents Unexpected error %v", err)
+		}
+		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
+			chain.TransferEnd: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferEndEvent Got %T", ev.msg.EventLog)
+				}
+				if endEvt.Code.String() != "1" {
+					return fmt.Errorf("Expected error code (1) Got %v", endEvt.Code.String())
+				}
+				return nil
+			},
+		})
+		if err != nil {
+			return errors.Wrapf(err, "WaitForEvents %v", err)
+		}
+		return err
 	},
 }

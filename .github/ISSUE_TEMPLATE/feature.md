@@ -1,3 +1,12 @@
+---
+name: Feature
+about: Describes a planned feature
+title: ''
+labels: enhancement
+assignees: ''
+
+---
+
 ## Overview
 A clear and concise description of what the feature is.
 

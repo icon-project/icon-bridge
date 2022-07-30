@@ -34,9 +34,9 @@ type runnableCache struct {
 }
 
 func (f *finder) watchFor(eventType chain.EventLogType, id uint64, seq int64) error {
-	contractAddress, ok := f.nameToAddrMap[chain.BTSIcon]
+	contractAddress, ok := f.nameToAddrMap[chain.BTS]
 	if !ok {
-		return fmt.Errorf("watchFor; Contract %v not found on map", chain.BTSIcon)
+		return fmt.Errorf("watchFor; Contract %v not found on map", chain.BTS)
 	}
 
 	if eventType == chain.TransferStart {

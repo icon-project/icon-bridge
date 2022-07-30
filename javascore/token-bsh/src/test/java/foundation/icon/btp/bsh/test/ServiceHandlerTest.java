@@ -28,7 +28,11 @@ import foundation.icon.btp.bsh.types.Balance;
 import foundation.icon.btp.bsh.types.TransferAsset;
 import foundation.icon.btp.irc2.IRC2Basic;
 import foundation.icon.btp.restrictions.Restrictions;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import score.ByteArrayObjectWriter;
 import score.Context;
 import scorex.util.ArrayList;
@@ -40,7 +44,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static java.math.BigInteger.TEN;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ServiceHandlerTest extends TestBase {

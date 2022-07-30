@@ -22,6 +22,7 @@ import score.ObjectReader;
 import score.ObjectWriter;
 
 import java.math.BigInteger;
+import java.util.Map;
 
 public class Balance {
     private BigInteger usable;
@@ -60,6 +61,18 @@ public class Balance {
         sb.append(", refundable=").append(refundable);
         sb.append('}');
         return sb.toString();
+    }
+
+    public Map<String, BigInteger> addUserBalance(BigInteger userBalance) {
+        if (userBalance == null) {
+            userBalance = BigInteger.ZERO;
+        }
+        return Map.of(
+                "usable", usable,
+                "locked", locked,
+                "refundable", refundable,
+                "userBalance", userBalance
+        );
     }
 
     public static void writeObject(ObjectWriter writer, Balance obj) {
