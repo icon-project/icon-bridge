@@ -65,7 +65,7 @@ jobs:
       - name: Test solidity bmc contracts
         working-directory: ./solidity/bts
         run: |
-          cp ../../devnet/docker/icon-bts/local/keys/env ./.env
+          cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
           yarn test:integration
 
   build_icon:
