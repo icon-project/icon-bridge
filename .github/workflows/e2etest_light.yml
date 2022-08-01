@@ -1,10 +1,9 @@
-name: E2E Test
+name: E2E light tests
 on:
   push:
     branches:
       - main
       - master
-      - beta-cicd
   pull_request:
     branches:
       - main
