@@ -83,7 +83,6 @@ jobs:
             cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
             truffle develop &
             sleep 40
-            yarn test:unit
             yarn test:integration
 
         - name: BTS solidity test
