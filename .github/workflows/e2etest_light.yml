@@ -50,7 +50,7 @@ jobs:
            go run -tags hmny main.go
 
   solidity_e2e:
-      name: Solidity integration tests
+      name: Solidity e2e tests
       runs-on: ubuntu-latest
       steps:
         - name: Checkout code
@@ -65,18 +65,19 @@ jobs:
               solidity/bmc/yarn.lock
               solidity/bts/yarn.lock
 
-        - name: yarn install and truffle global
+        - name: Install truffle
           working-directory: ./solidity/bmc
-          run: |
-            npm install -g truffle@5.5.5
-            yarn install
+          run: npm install -g truffle@5.5.5
 
-        - name: yarn contracts compile
+        - name: Install yarn
           working-directory: ./solidity/bmc
-          run: |
-            yarn contract:compile
+          run: yarn install
 
-        - name: yarn test
+        - name: Compile solidity contracts
+          working-directory: ./solidity/bmc
+          run: yarn contract:compile
+
+        - name: BMC solidity test
           working-directory: ./solidity/bmc
           run: |
             cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
@@ -85,7 +86,7 @@ jobs:
             yarn test:unit
             yarn test:integration
 
-        - name: yarn test
+        - name: BTS solidity test
           working-directory: ./solidity/bts
           run: |
             cp ../../devnet/docker/icon-bsc/local/keys/env ./.env

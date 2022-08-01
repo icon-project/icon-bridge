@@ -7292,10 +7292,10 @@ snake-case@^2.1.0:
   dependencies:
     no-case "^2.2.0"
 
-solc@0.8.0:
-  version "0.8.0"
-  resolved "https://registry.yarnpkg.com/solc/-/solc-0.8.0.tgz#99828ebf4f61d298875936e8649ebe4a09f029f7"
-  integrity sha512-ypgvqYZhb/i5BM6cw9/5QkSlDJm/rLynsbWGP3kz6HeB6oNxPK6UMiB7jMr+tNVbQbBM/8l47vrI3XaDCHShjQ==
+solc@0.8.2:
+  version "0.8.2"
+  resolved "https://registry.yarnpkg.com/solc/-/solc-0.8.2.tgz#6033d75c6166fd0feb7fe08eddc198aaf52025da"
+  integrity sha512-fMfcAPaePLfsOY82jqONt0RMh5M8m+pK6QtnMGMUFUm8uEDlUmoqnyLxGVFelosJaVfXhygAB+mTlb+HxiV7DQ==
   dependencies:
     command-exists "^1.2.8"
     commander "3.0.2"
