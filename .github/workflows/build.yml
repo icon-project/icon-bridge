@@ -31,9 +31,11 @@ jobs:
         run: yarn install
 
       - name: Install truffle global
-        run: |
-          npm install -g truffle@5.5.5
-          truffle develop
+        run: npm install -g truffle@5.5.5
+
+      - name: Run truffle develop
+        run: truffle develop &
+          sleep 40
 
       - name: Truffles version
         run: truffle version
