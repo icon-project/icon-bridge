@@ -19,7 +19,7 @@ jobs:
       - name: node version selector
         uses: actions/setup-node@v3
         with:
-          node-version: 15.12.0
+          node-version: 18.5.0
 
       - name: yarn install and truffle global
         working-directory: ./solidity/bmc
