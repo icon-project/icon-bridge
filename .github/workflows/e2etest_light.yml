@@ -1,9 +1,15 @@
-name: E2ETest
+name: E2E Test
 on:
   push:
-    branches: [ beta-cicd ]
+    branches:
+      - main
+      - master
+      - beta-cicd
   pull_request:
-    branches: [ beta-cicd ]
+    branches:
+      - main
+      - master
+      - beta-cicd
 jobs:
   bmr_e2e:
     name: BMR e2e tests
