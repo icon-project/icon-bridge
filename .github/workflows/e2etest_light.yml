@@ -1,0 +1,95 @@
+name: E2ETest
+on:
+  push:
+    branches: [ beta-cicd ]
+  pull_request:
+    branches: [ beta-cicd ]
+jobs:
+  bmr_e2e:
+    name: BMR e2e tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: Checkout bls repo
+      uses: actions/checkout@v3
+      with:
+        repository: harmony-one/bls.git
+        path: bls
+        ref: master
+
+    - name: Checkout mcl repo
+      uses: actions/checkout@v3
+      with:
+        repository: harmony-one/mcl.git
+        path: mcl
+        ref: master
+
+    - name: Make bls
+      run: |
+           sudo apt install -y g++ gcc libssl-dev libgmp-dev libc6-dev libgmp3-dev
+           cd bls
+           sudo make -j8 BLS_SWAP_G=1
+           sudo make install
+           sudo make BLS_ETH=1 /usr/local/lib/libbls384_256.so
+
+    - name: Make mcl
+      run: |
+           cd mcl
+           sudo make install
+
+    - name: Run test
+      working-directory: ./cmd/e2etest
+      run: |
+           export LD_LIBRARY_PATH=/usr/local/lib
+           go run -tags hmny main.go
+
+  solidity_e2e:
+      name: Solidity integration tests
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v3
+
+        - name: Setup node
+          uses: actions/setup-node@v3
+          with:
+            node-version: 15.12.0
+            cache: 'yarn'
+            cache-dependency-path: |
+              solidity/bmc/yarn.lock
+              solidity/bts/yarn.lock
+
+        - name: yarn install and truffle global
+          working-directory: ./solidity/bmc
+          run: |
+            npm install -g truffle@5.5.5
+            yarn install
+
+        - name: yarn contracts compile
+          working-directory: ./solidity/bmc
+          run: |
+            yarn contract:compile
+
+        - name: yarn test
+          working-directory: ./solidity/bmc
+          run: |
+            cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
+            truffle develop &
+            sleep 40
+            yarn test:unit
+            yarn test:integration
+
+        - name: yarn test
+          working-directory: ./solidity/bts
+          run: |
+            cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
+            truffle develop &
+            sleep 40
+            yarn test:unit
+            yarn test:integration

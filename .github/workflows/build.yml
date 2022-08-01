@@ -30,16 +30,6 @@ jobs:
       - name: Install yarn packages
         run: yarn install
 
-      - name: Install truffle global
-        run: npm install -g truffle@5.5.5
-
-      - name: Run truffle develop
-        run: truffle develop &
-          sleep 40
-
-      - name: Truffles version
-        run: truffle version
-
       - name: Build solidity bmc
         working-directory: ./solidity/bmc
         run: yarn
@@ -55,18 +45,6 @@ jobs:
       - name: Compile solidity bmc contracts
         working-directory: ./solidity/bmc
         run: yarn contract:compile
-
-      - name: Test solidity bmc contracts
-        working-directory: ./solidity/bmc
-        run: |
-          cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
-          yarn test:integration
-
-      - name: Test solidity bmc contracts
-        working-directory: ./solidity/bts
-        run: |
-          cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
-          yarn test:integration
 
   build_icon:
     name: Build icon-bridge icon
