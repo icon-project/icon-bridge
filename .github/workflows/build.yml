@@ -27,20 +27,22 @@ jobs:
             solidity/bmc/yarn.lock
             solidity/bts/yarn.lock
 
+      - name: Install yarn packages
+        run: yarn install
+
       - name: Install truffle global
-        working-directory: ./solidity/bmc
         run: |
           npm install -g truffle@5.5.5
           truffle develop
 
-      - name: Install yarn packages
-        run: yarn install
+      - name: Truffles version
+        run: truffle version
 
       - name: Build solidity bmc
         working-directory: ./solidity/bmc
         run: yarn
 
-      - name: Compile solidity bmc contract
+      - name: Compile solidity bmc contracts
         working-directory: ./solidity/bmc
         run: yarn contract:compile
 
@@ -48,7 +50,7 @@ jobs:
         working-directory: ./solidity/bts
         run: yarn
 
-      - name: Compile solidity bmc contract
+      - name: Compile solidity bmc contracts
         working-directory: ./solidity/bmc
         run: yarn contract:compile
 
