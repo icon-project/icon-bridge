@@ -27,6 +27,13 @@ jobs:
             solidity/bmc/yarn.lock
             solidity/bts/yarn.lock
 
+      - name: yarn install and truffle global
+        working-directory: ./solidity/bmc
+        run: |
+          npm install -g truffle@5.5.5
+          yarn install
+          truffle develop
+
       - name: Install yarn packages
         run: yarn install
 
@@ -34,9 +41,29 @@ jobs:
         working-directory: ./solidity/bmc
         run: yarn
 
+      - name: Compile solidity bmc contract
+        working-directory: ./solidity/bmc
+        run: yarn contract:compile
+
       - name: Build solidity bts
         working-directory: ./solidity/bts
         run: yarn
+
+      - name: Compile solidity bmc contract
+        working-directory: ./solidity/bmc
+        run: yarn contract:compile
+
+      - name: Test solidity bmc contracts
+        working-directory: ./solidity/bmc
+        run: |
+          cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
+          yarn test:integration
+
+      - name: Test solidity bmc contracts
+        working-directory: ./solidity/bts
+        run: |
+          cp ../../devnet/docker/icon-bts/local/keys/env ./.env
+          yarn test:integration
 
   build_icon:
     name: Build icon-bridge icon
