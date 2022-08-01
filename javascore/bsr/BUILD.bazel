@@ -1,0 +1,9 @@
+package(default_visibility = ["//visibility:public"])
+
+genrule(
+    name = "javascore",
+    outs = ["javascore.out"],
+    cmd = "gradle -q -b $$PWD/external/javascore/bsr/build.gradle optimizedJar; cp $$PWD/external/javascore/bsr/build/libs/restrictions-0.1.0-optimized.jar $@",
+    executable = True,
+    local = True,
+)

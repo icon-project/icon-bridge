@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "mpt",
     srcs = ["mpt.go"],
-    importpath = "github.com/icon-project/iconbridge/common/mpt",
+    importpath = "github.com/icon-project/icon-bridge/common/mpt",
     visibility = ["//visibility:public"],
     deps = [
         "//common/codec",

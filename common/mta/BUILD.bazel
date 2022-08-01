@@ -6,7 +6,7 @@ go_library(
         "accumulator.go",
         "extaccumulator.go",
     ],
-    importpath = "github.com/icon-project/iconbridge/common/mta",
+    importpath = "github.com/icon-project/icon-bridge/common/mta",
     visibility = ["//visibility:public"],
     deps = [
         "//common",

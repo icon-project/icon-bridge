@@ -6,7 +6,7 @@ go_library(
         "bytes.go",
         "string.go",
     ],
-    importpath = "github.com/icon-project/iconbridge/common/intconv",
+    importpath = "github.com/icon-project/icon-bridge/common/intconv",
     visibility = ["//visibility:public"],
     deps = ["@com_github_pkg_errors//:errors"],
 )

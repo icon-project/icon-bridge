@@ -8,7 +8,7 @@ go_library(
         "msgpack.go",
         "rlp.go",
     ],
-    importpath = "github.com/icon-project/iconbridge/common/codec",
+    importpath = "github.com/icon-project/icon-bridge/common/codec",
     visibility = ["//visibility:public"],
     deps = [
         "//common/errors",

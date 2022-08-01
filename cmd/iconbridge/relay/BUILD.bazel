@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "relay",
+    srcs = [
+        "config.go",
+        "multi_relay.go",
+        "relay.go",
+    ],
+    importpath = "github.com/icon-project/icon-bridge/cmd/iconbridge/relay",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//cmd/iconbridge/chain",
+        "//common/errors",
+        "//common/log",
+        "//common/wallet",
+    ],
+)

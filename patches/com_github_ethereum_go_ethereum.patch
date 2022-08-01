@@ -1,3 +1,15 @@
+diff --git a/crypto/BUILD.bazel b/crypto/BUILD.bazel
+index fce97cb6c..d72e2cf74 100644
+--- a/crypto/BUILD.bazel
++++ b/crypto/BUILD.bazel
+@@ -10,6 +10,7 @@ go_library(
+     importpath = "github.com/ethereum/go-ethereum/crypto",
+     visibility = ["//visibility:public"],
+     deps = [
++        "@com_github_btcsuite_btcd//btcec:go_default_library",
+         "//common",
+         "//common/math",
+         "//rlp",
 diff --git a/crypto/secp256k1/BUILD.bazel b/crypto/secp256k1/BUILD.bazel
 index a132aa30d..c7eef1c3e 100644
 --- a/crypto/secp256k1/BUILD.bazel

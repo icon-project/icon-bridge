@@ -6,18 +6,14 @@ create_keystore(
     name = "bmc",
 )
 
-create_keystore(
-    name = "bmv",
-)
-
 get_score_address(
     name = "get_score_address_bmc",
     contract = "bmc",
 )
 
 get_score_address(
-    name = "get_score_address_near_bmv",
-    contract = "near_bmv",
+    name = "get_score_address_bsr",
+    contract = "bsr",
 )
 
 get_score_address(
@@ -26,8 +22,8 @@ get_score_address(
 )
 
 get_score_address(
-    name = "get_score_address_nativecoin",
-    contract = "nativecoin",
+    name = "get_score_address_bts",
+    contract = "bts",
 )
 
 configure_bmr(
@@ -51,26 +47,10 @@ genrule(
 )
 
 genrule(
-    name = "deploy_near_bmv",
-    srcs = ["@icon//:goloop_config_dir"],
-    outs = ["deploy_near_bmv.out"],
-    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx deploy \"$(location @javascore//bmv/near/verifier:javascore)\" --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --content_type application/java --step_limit 13610920001 --param _bmc=\"$$(cat $(location @icon//cli:get_score_address_bmc))\" --param _validators=\"\" --param _offset=10 --param _proofDecoder=\"cx0000000000000000000000000000000000000000\" --param _net=\"0x1.near\" | echo $$(tr -d '\"') > $@",
-    executable = True,
-    local = True,
-    tools = [
-        "@com_github_icon_project_goloop//cmd/goloop",
-        "@icon//:network_id",
-        "@icon//:node_url",
-        "@icon//cli:get_score_address_bmc",
-        "@javascore//bmv/near/verifier:javascore",
-    ],
-)
-
-genrule(
-    name = "deploy_nativecoin",
-    srcs = ["@icon//:goloop_config_dir"],
-    outs = ["deploy_nativecoin.out"],
-    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url))  sendtx deploy $(location @javascore//nativecoin:javascore_native) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --content_type application/java --step_limit 13610920001 --param _bmc=$$(cat $(location @icon//cli:get_score_address_bmc)) --param _irc31=$$(cat $(location @icon//cli:get_score_address_irc)) --param _name=ICX  | echo $$(tr -d '\"') > $@",
+    name = "deploy_bts",
+    srcs = ["@icon//:goloop_config_dir", "@javascore//bts:javascore"],
+    outs = ["deploy_bts.out"],
+    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url))  sendtx deploy $(location @javascore//bts:javascore) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --content_type application/java --step_limit 13610920001 --param _bmc=$$(cat $(location @icon//cli:get_score_address_bmc)) --param  _serializedIrc2=$$(cat $(location @icon//cli:get_serialized_irc2)) --param _name=ICX  | echo $$(tr -d '\"') > $@",
     executable = True,
     local = True,
     tools = [
@@ -78,25 +58,36 @@ genrule(
         "@icon//:network_id",
         "@icon//:node_url",
         "@icon//cli:deploy_bmc",
-        "@icon//cli:deploy_irc",
-        "@icon//cli:get_score_address_bmc",
-        "@icon//cli:get_score_address_irc",
-        "@javascore//nativecoin:javascore_native",
+        "@icon//cli:get_serialized_irc2",
+        "@icon//cli:get_score_address_bmc"
     ],
 )
 
 genrule(
-    name = "deploy_irc",
-    srcs = ["@icon//:goloop_config_dir"],
-    outs = ["deploy_irc.out"],
-    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx deploy $(location @javascore//nativecoin:javascore_irc) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --content_type application/java --step_limit 13610920001 | echo $$(tr -d '\"') > $@",
+    name = "deploy_bsr",
+    srcs = ["@icon//:goloop_config_dir", "@javascore//bsr:javascore"],
+    outs = ["deploy_bsr.out"],
+    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx deploy $(location @javascore//bsr:javascore) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --content_type application/java --step_limit 13610920001 | echo $$(tr -d '\"') > $@",
     executable = True,
     local = True,
     tools = [
         "@com_github_icon_project_goloop//cmd/goloop",
         "@icon//:network_id",
         "@icon//:node_url",
-        "@javascore//nativecoin:javascore_irc",
+    ],
+)
+
+genrule(
+    name = "deploy_irc",
+    srcs = ["@icon//:goloop_config_dir", "@javascore//lib:irc2-token-0.9.1-optimized.jar"],
+    outs = ["deploy_irc.out"],
+    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx deploy $(location @javascore//lib:irc2-token-0.9.1-optimized.jar) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --content_type application/java --step_limit 13610920001 --param _name=\"TICX\" --param _symbol=\"TICX\" --param _decimals=\"0x12\" --param _initialSupply=\"0x186a0\" | echo $$(tr -d '\"') > $@",
+    executable = True,
+    local = True,
+    tools = [
+        "@com_github_icon_project_goloop//cmd/goloop",
+        "@icon//:network_id",
+        "@icon//:node_url",
     ],
 )
 
@@ -145,7 +136,6 @@ genrule(
     srcs = [
         "@icon//cli:set_near_link_rotate_term",
         "@icon//cli:set_near_link_delay_limit",
-        "@icon//cli:add_service_icon",
     ],
     outs = ["set_near_link.out"],
     cmd = "echo 'set_link_completed' >$@",
@@ -168,10 +158,10 @@ genrule(
 )
 
 genrule(
-    name = "add_service_icon",
-    srcs = ["@icon//cli:deploy_nativecoin"],
-    outs = ["add_service_icon.out"],
-    cmd = """$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx  call --to $$(cat $(location @icon//cli:get_score_address_bmc)) --method addService --param _addr=$$(cat $(location @icon//cli:get_score_address_nativecoin)) --param _svc=nativecoin --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . >$@ """,
+    name = "add_bts_icon",
+    srcs = ["@icon//cli:deploy_bts"],
+    outs = ["add_bts_icon.out"],
+    cmd = """$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx  call --to $$(cat $(location @icon//cli:get_score_address_bmc)) --method addService --param _addr=$$(cat $(location @icon//cli:get_score_address_bts)) --param _svc=bts --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . >$@ """,
     executable = True,
     local = True,
     tools = [
@@ -180,7 +170,7 @@ genrule(
         "@icon//:network_id",
         "@icon//:node_url",
         "@icon//cli:get_score_address_bmc",
-        "@icon//cli:get_score_address_nativecoin",
+        "@icon//cli:get_score_address_bts",
     ],
 )
 
@@ -217,6 +207,27 @@ genrule(
         "@icon//:node_url",
         "@icon//cli:get_score_address_bmc",
     ],
+)
+
+genrule(
+    name = "add_bsr",
+    srcs= [
+        ":deploy_bsr",
+    ],
+    outs = ["add_bsr.out"],
+    cmd = """
+    $(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx  call --to $$(cat $(location @icon//cli:get_score_address_bts)) --method addRestrictor  --param _addr=$$(cat $(location @icon//cli:get_score_address_bsr))  --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . >$@
+    """,
+    executable = True,
+    local = True,
+    tools = [
+        "@com_github_icon_project_goloop//cmd/goloop",
+        "@icon//:goloop_config_dir",
+        "@icon//:network_id",
+        "@icon//:node_url",
+        "@icon//cli:get_score_address_bsr",
+        "@icon//cli:get_score_address_bts",
+    ]
 )
 
 genrule(

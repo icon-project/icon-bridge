@@ -25,29 +25,28 @@ def get_score_address(name, contract):
     )
 
 def configure_link(name):
-    native.genrule(
-        name = "add_%s_verifier" % name,
-        srcs = [
-            "@%s//:btp_address" % name,
-            "@%s//:network_address" % name,
-            "@icon//:goloop_config_dir",
-            "@icon//cli:get_score_address_bmc",
-            "@icon//cli:get_score_address_%s_bmv" % name,
-        ],
-        outs = ["add_%s_verifier.out" % name],
-        cmd = """$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url))  sendtx  call --to $$(cat $(location @icon//cli:get_score_address_bmc)) --method addVerifier --param _net=\"$$(cat $(location @%s//:network_address))\" --param _addr=\"$$(cat $(location @icon//cli:get_score_address_%s_bmv))\" --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . > $@ """ % (name, name),
-        tools = [
-            "@com_github_icon_project_goloop//cmd/goloop",
-            "@icon//:network_id",
-            "@icon//:node_url",
-        ],
-    )
+    # native.genrule(
+    #     name = "add_%s_verifier" % name,
+    #     srcs = [
+    #         "@%s//:btp_address" % name,
+    #         "@%s//:network_address" % name,
+    #         "@icon//:goloop_config_dir",
+    #         "@icon//cli:get_score_address_bmc",
+    #         "@icon//cli:get_score_address_%s_bmv" % name,
+    #     ],
+    #     outs = ["add_%s_verifier.out" % name],
+    #     cmd = """$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url))  sendtx  call --to $$(cat $(location @icon//cli:get_score_address_bmc)) --method addVerifier --param _net=\"$$(cat $(location @%s//:network_address))\" --param _addr=\"$$(cat $(location @icon//cli:get_score_address_%s_bmv))\" --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . > $@ """ % (name, name),
+    #     tools = [
+    #         "@com_github_icon_project_goloop//cmd/goloop",
+    #         "@icon//:network_id",
+    #         "@icon//:node_url",
+    #     ],
+    # )
     native.genrule(
         name = "add_%s_link" % name,
         srcs = [
             "@%s//:btp_address" % name,
             "@icon//:goloop_config_dir",
-            "@icon//cli:add_%s_verifier" % name,
         ],
         outs = ["add_%s_link.out" % name],
         cmd = """$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx  call --to $$(cat $(location @icon//cli:get_score_address_bmc))  --method addLink --param _link=$$(cat $(location @%s//:btp_address)) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . >$@ """ % name,

@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "chain",
+    srcs = [
+        "btp_address.go",
+        "error.go",
+        "types.go",
+    ],
+    importpath = "github.com/icon-project/icon-bridge/cmd/iconbridge/chain",
+    visibility = ["//visibility:public"],
+)

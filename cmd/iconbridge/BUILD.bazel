@@ -14,14 +14,14 @@ go_library(
     importpath = "github.com/icon-project/iconbridge/cmd/iconbridge",
     visibility = ["//visibility:private"],
     deps = [
-        "//cmd/iconbridge/chain",
-        "//common/cli",
-        "//common/crypto",
-        "//common/errors",
+        "//cmd/iconbridge/chain/bsc",
+        "//cmd/iconbridge/chain/hmny",
+        "//cmd/iconbridge/chain/icon",
+        "//cmd/iconbridge/chain/near",
+        "//cmd/iconbridge/relay",
+        "//cmd/iconbridge/stat",
+        "//common/config",
         "//common/log",
-        "//common/wallet",
-        "@com_github_getsentry_sentry_go//:go_default_library",
-        "@com_github_spf13_cobra//:cobra",
     ],
 )
 

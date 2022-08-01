@@ -1,0 +1,17 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "stat",
+    srcs = [
+        "config.go",
+        "stat.go",
+        "sys_extract.go",
+        "sys_filter.go",
+    ],
+    importpath = "github.com/icon-project/icon-bridge/cmd/iconbridge/stat",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//common/log",
+        "@com_github_pkg_errors//:go_default_library",
+    ],
+)
