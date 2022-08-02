@@ -85,7 +85,6 @@ jobs:
         - name: BMC solidity test
           working-directory: ./solidity/bmc
           run: |
-#            cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
             truffle develop &
             sleep 40
             yarn test:integration
@@ -93,7 +92,6 @@ jobs:
         - name: BTS solidity test
           working-directory: ./solidity/bts
           run: |
-#            cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
             truffle develop &
             sleep 40
             yarn test:unit
