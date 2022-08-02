@@ -10,7 +10,6 @@ impl BtpMessageCenter {
 
     pub fn add_link(&mut self, link: BTPAddress) {
         self.assert_have_permission();
-        self.assert_verifier_exists(&link.network_address().unwrap());
         self.assert_link_does_not_exists(&link);
 
         self.propogate_internal(BmcServiceMessage::new(BmcServiceType::Link {
@@ -82,22 +81,7 @@ impl BtpMessageCenter {
         self.assert_link_exists(&link);
         self.assert_valid_set_link_param(max_aggregation, delay_limit);
 
-        bmv_contract::get_status(
-            self.bmv
-                .get(&link.network_address().unwrap())
-                .expect(&format!("{}", BmcError::VerifierNotExist)),
-            estimate::NO_DEPOSIT,
-            estimate::BMV_GET_STATUS,
-        )
-        .then(bmc_contract::set_link_bmv_callback(
-            link,
-            block_interval,
-            max_aggregation,
-            delay_limit,
-            env::current_account_id(),
-            estimate::NO_DEPOSIT,
-            estimate::BMC_SET_LINK_BMV_CALLBACK,
-        ));
+        // TODO: Fix Set Link
     }
 
     #[private]
@@ -138,7 +122,7 @@ impl BtpMessageCenter {
     pub fn get_status(&self, link: BTPAddress) -> LinkStatus {
         self.assert_link_exists(&link);
         let verifier = self.bmv.get(&link.network_address().unwrap()).unwrap();
-        self.links.get(&link).unwrap().status(&verifier)
+        self.links.get(&link).unwrap().status()
     }
 }
 

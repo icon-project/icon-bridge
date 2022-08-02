@@ -219,11 +219,10 @@ impl Link {
     }
 
     //TODO: Confirm if relay status is linked with link
-    pub fn status(&self, verifier: &AccountId) -> LinkStatus {
+    pub fn status(&self) -> LinkStatus {
         LinkStatus {
             rx_seq: self.rx_seq,
             tx_seq: self.tx_seq,
-            verifier: verifier.to_owned(),
             relays: self.relays.bmr_status(),
             relay_index: self.relay_index,
             rotate_height: self.rotate_height,
@@ -244,7 +243,6 @@ impl Link {
 pub struct LinkStatus {
     rx_seq: u128,
     tx_seq: u128,
-    verifier: AccountId,
     relays: Vec<BmrStatus>,
     relay_index: u64,
     rotate_height: u64,
