@@ -135,11 +135,10 @@ def configure_bmr(name):
         name = "transfer_amount_%s_address" % name,
         srcs = [
             "@near//cli:get_wallet_%s_keystore" % name,
-            "@near//cli:generate_%s_keystore" % name,
             "@near//:near_config_dir",
         ],
-        outs = ["%s_keystore.json" % name],
-        cmd = "$(execpath @near//cli:near_binary) send $$(cat $(location @near//cli:get_master_account)) $$(cat $(location @near//cli:get_wallet_%s_keystore)) 50 --masterAccount $$(cat $(location @near//cli:get_master_account)) --nodeUrl $$(cat $(locations @near//:node_url)) --keyPath $$(cat $(location @near//:near_config_dir))/master_key.json; echo \"$$(cat $(location @near//cli:generate_%s_keystore))\"| jq -r . > $@" % (name, name),
+        outs = ["transfer_amount_%s_address.out" % name],
+        cmd = "$(execpath @near//cli:near_binary) send $$(cat $(location @near//cli:get_master_account)) $$(cat $(location @near//cli:get_wallet_%s_keystore)) 50 --masterAccount $$(cat $(location @near//cli:get_master_account)) --nodeUrl $$(cat $(locations @near//:node_url)) --keyPath $$(cat $(location @near//:near_config_dir))/master_key.json > $@" % (name),
         executable = True,
         local = True,
         tools = [
@@ -147,4 +146,16 @@ def configure_bmr(name):
             "@near//cli:near_binary",
             "@near//cli:get_master_account"
         ],
+    )
+
+    native.genrule(
+        name = "get_%s_bmr_keystore" % name,
+        outs = ["%s_keystore.json" % name],
+        srcs = [
+            "@near//cli:transfer_amount_%s_address" % name,
+            "@near//cli:generate_%s_keystore" % name,
+        ],
+        cmd = "echo \"$$(cat $(location @near//cli:generate_%s_keystore))\"| jq -r . > $@" % name,
+        executable = True,
+        local = True,
     )
