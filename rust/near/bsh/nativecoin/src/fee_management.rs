@@ -34,12 +34,12 @@ impl NativeCoinService {
     pub fn set_fee_ratio(&mut self, fee_numerator: U128, fixed_fee: U128) {
         self.assert_have_permission();
         self.assert_valid_fee_ratio(fee_numerator.into());
-        self.fee_numerator.clone_from(&fee_numerator.into());
+        //TODO: Fix
     }
 
     pub fn calculate_coin_transfer_fee(&self, amount: U128) -> u128 {
-        let fee = (u128::from(amount) * self.fee_numerator) / FEE_DENOMINATOR;
-        fee
+        //TODO: Fix
+        0
     }
 }
 
