@@ -30,7 +30,7 @@ const (
 
 	DemoDstAddr = "btp://0x61.bsc/0xcf5BC0BD5aEdf6cd216f7288c2Fd704a397F453d"
 	DemoSrcKey  = "41528d2ae0a203914f39584c6b2ace17b61c1208492be5952177ed8b16b1b99f"
-	DemoSrcAddr = "btp://0x2.icon/hx6bbea9df10c329c0c6b428788070ca6b4d589b80"
+	DemoSrcAddr = "btp://0x2.icon/hx6d338536ac11a0a2db06fb21fe8903e617a6764d"
 )
 
 // const (
@@ -45,25 +45,16 @@ const (
 // )
 
 func TestTransferIntraChain(t *testing.T) {
-	// godKeyPair, err := getKeyPairFromFile("//home/manish/go/src/work/icon-bridge/lisbon/wallets/icon.bmr.wallet.json", "1234")
-	// if err != nil {
-	// 	t.Fatal(err)
-	// 	return
-	// }
-	// t.Log(godKeyPair)
-	// return
-
 	api, err := getNewApi()
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
-
 	amount := new(big.Int)
-	amount.SetString("100000000000000", 10)
-	srckey := GodKey
-	dstaddr := BtsAddr
-	for _, coinName := range []string{"DUM"} {
+	amount.SetString("10000000000000", 10)
+	srckey := TokenGodKey
+	dstaddr := GodAddr
+	for _, coinName := range []string{"sICX"} {
 		txnHash, err := api.Transfer(coinName, srckey, dstaddr, amount)
 		if err != nil {
 			t.Fatal(err)
@@ -84,6 +75,7 @@ func TestTransferIntraChain(t *testing.T) {
 			t.Logf("Balance %v", val)
 		}
 	}
+
 	return
 }
 
@@ -217,9 +209,10 @@ func TestBatchTransfer(t *testing.T) {
 }
 
 func TestGetCoinBalance(t *testing.T) {
-	if err := showBalance(GodAddr); err != nil {
+	if err := showBalance(TokenGodAddr); err != nil {
 		t.Fatalf(" %+v", err)
 	}
+
 }
 
 func showBalance(addr string) error {
@@ -227,8 +220,7 @@ func showBalance(addr string) error {
 	if err != nil {
 		return err
 	}
-
-	for _, coinName := range []string{"ICX", "sICX", "bnUSD", "DUM", "BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH"} {
+	for _, coinName := range []string{"ICX", "sICX", "bnUSD", "BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH"} {
 		res, err := api.GetCoinBalance(coinName, addr)
 		if err != nil {
 			return err

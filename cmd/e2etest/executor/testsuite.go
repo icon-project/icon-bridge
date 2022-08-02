@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ type testSuite struct {
 	id                 uint64
 	clsPerChain        map[chain.ChainType]chain.ChainAPI
 	godKeysPerChain    map[chain.ChainType]keypair
+	demoKeysPerChain   map[chain.ChainType][]keypair
 	logger             log.Logger
 	subChan            <-chan *evt
 	btsAddressPerChain map[chain.ChainType]string
@@ -63,20 +65,20 @@ func (ts *testSuite) SuggestGasPrice() *big.Int {
 	return pricePerUnitGas.Mul(pricePerUnitGas, big.NewInt(ts.gasLimitPerChain[ts.src])) // gasLimit depends on what kind of transactions we're doing
 }
 
-// func (ts *testSuite) returnSurplus(srcKey string, srcAddr string) (err error) {
-// 	cl, ok := ts.clsPerChain[ts.src]
-// 	if !ok {
-// 		err = fmt.Errorf("Chain %v not found", ts.src)
-// 		return
-// 	}
-// 	bal, err := cl.GetCoinBalance(cl.NativeCoin(), srcAddr)
-// 	if err != nil {
-// 		err = errors.Wrapf(err, "GetCoinBalance %v", err)
-// 	}
-
-// 	bal.UsableBalance
-// 	return nil
-// }
+func (ts *testSuite) GetDemoKeyPairs(chainName chain.ChainType) (key, addr string, err error) {
+	cl, ok := ts.clsPerChain[chainName]
+	if !ok {
+		err = fmt.Errorf("Chain %v not found", chainName)
+		return
+	}
+	demoKeys, ok := ts.demoKeysPerChain[chainName]
+	if !ok {
+		err = fmt.Errorf("Chain %v not found", chainName)
+		return
+	}
+	idx := rand.Intn(len(demoKeys))
+	return demoKeys[idx].PrivKey, cl.GetBTPAddress(demoKeys[idx].PubKey), nil
+}
 
 func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, err error) {
 	if ts.env == "testnet" {
@@ -242,6 +244,9 @@ func (ts *testSuite) ValidateTransactionResultAndEvents(ctx context.Context, has
 
 func (ts *testSuite) WaitForEvents(ctx context.Context, hash string, cbPerEvent map[chain.EventLogType]func(event *evt) error) (err error) {
 	res, err := ts.ValidateTransactionResult(ctx, hash)
+	if err != nil {
+		return
+	}
 	startEvent := &chain.TransferStartEvent{}
 	tmpOk := false
 	for _, el := range res.ElInfo {
@@ -294,10 +299,9 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, hash string, cbPerEvent 
 			ts.report += fmt.Sprintf("Event %v not available. Skipping it.", ev)
 		}
 	}
-
 	// Listen to result from watchEvents
 	newCtx := context.Background()
-	timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*60)
+	timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*120)
 
 	for {
 		defer timedContextCancel()

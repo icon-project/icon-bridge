@@ -37,11 +37,7 @@ func main() {
 		cancel()
 	}()
 
-	cfgPerMap := map[chain.ChainType]*chain.Config{}
-	for _, ch := range cfg.Chains {
-		cfgPerMap[ch.Name] = ch
-	}
-	ex, err := executor.New(l, cfgPerMap)
+	ex, err := executor.New(l, cfg)
 	if err != nil {
 		log.Error(errors.Wrap(err, "executor.New "))
 		return
@@ -52,32 +48,25 @@ func main() {
 		log.Info("Starting Flow Test ....")
 		for _, fts := range testCfg.FlowTest.Chains {
 			for _, coin := range fts.CoinNames {
-				for _, cb := range []executor.Script{
-					executor.TransferWithApprove,
-					// executor.TransferWithoutApprove,
-					// executor.TransferToZeroAddress,
-					// executor.TransferToUnknownNetwork,
-					// executor.TransferToUnparseableAddress,
-					// executor.TransferLessThanFee,
-					// executor.TransferEqualToFee,
-					// executor.TransferExceedingBTSBalance,
-				} {
-					go func(coin string) {
-						err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, []string{coin}, cb, cfg.Env)
-						if err != nil {
-							log.Errorf("%+v", err)
-						}
-					}(coin)
-					time.Sleep(time.Second * 5)
+				err = ex.RunFlowTest(ctx, fts.SrcChain, fts.DstChain, []string{coin})
+				if err != nil {
+					log.Errorf("%+v", err)
 				}
 			}
 		}
-		<-ex.Done()
+	}
+	if !testCfg.StressTest.Disable {
+		log.Info("Starting Stress Test ....")
+		for _, fts := range testCfg.FlowTest.Chains {
+			err = ex.RunStressTest(ctx, fts.SrcChain, fts.DstChain, fts.CoinNames)
+			if err != nil {
+				log.Errorf("%+v", err)
+			}
+		}
 	}
 	cancel()
 	time.Sleep(time.Second * 2)
 	log.Warn("Exit...")
-
 }
 
 func getRandomChains(cns []chain.ChainType) (chain.ChainType, chain.ChainType) {
@@ -95,12 +84,12 @@ func getRandomChains(cns []chain.ChainType) (chain.ChainType, chain.ChainType) {
 	return cns[0], cns[count-1]
 }
 
-func loadConfig(file string) (*Config, error) {
+func loadConfig(file string) (*executor.Config, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, errors.Wrapf(err, "os.Open file %v", file)
 	}
-	cfg := &Config{}
+	cfg := &executor.Config{}
 	err = json.NewDecoder(f).Decode(cfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "json.Decode file %v", file)
@@ -121,11 +110,6 @@ func loadTestConfig(file string) (*TestConfig, error) {
 	return cfg, nil
 }
 
-type Config struct {
-	Env    string          `json:"env"`
-	Chains []*chain.Config `json:"chains"`
-}
-
 type TestConfig struct {
 	FlowTest   *FlowTestConfig   `json:"flowTest"`
 	StressTest *StressTestConfig `json:"stressTest"`
@@ -143,7 +127,5 @@ type FlowChainConfig struct {
 }
 
 type StressTestConfig struct {
-	Disable    bool                     `json:"disable"`
-	AddressMap map[chain.ChainType]uint `json:"addresses"`
-	JobsCount  uint                     `json:"jobs"`
+	Disable bool `json:"disable"`
 }

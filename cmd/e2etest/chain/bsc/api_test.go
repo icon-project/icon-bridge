@@ -37,23 +37,24 @@ const (
 // )
 
 func TestApprove(t *testing.T) {
-
-	coin := "USDC"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	amt := new(big.Int)
-	amt.SetString("995000", 10)
-	approveHash, err := rpi.Approve(coin, GodKey, amt)
-	if err != nil {
-		t.Fatalf("%+v", err)
+	amt.SetString("100000000000000", 10)
+	for _, coin := range []string{"BUSD", "USDT", "USDC", "BTCB", "ETH"} {
+		// coin := "USDC"
+		approveHash, err := rpi.Approve(coin, TokenGodKey, amt)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+		res, err := rpi.WaitForTxnResult(context.TODO(), approveHash)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("Hash %v Receipt %+v", approveHash, res.Raw)
 	}
-	res, err := rpi.WaitForTxnResult(context.TODO(), approveHash)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Hash %v Receipt %+v", approveHash, res.Raw)
 }
 
 func TestTransferIntraChain(t *testing.T) {
@@ -62,27 +63,40 @@ func TestTransferIntraChain(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	for _, coin := range []string{"DUM"} {
-		amt := new(big.Int)
-		amt.SetString("100000000000000", 10)
-		hash, err := rpi.Transfer(coin, GodKey, BtsAddr, amt)
+	senderKey := "6f870d575254821f712c640beabb4041d81c3295ec31b843c4a30caa15658ff7"
+	dstAddr := TokenGodAddr
+	amt := new(big.Int)
+	amt.SetString("5000000000000000000", 10)
+	for _, coin := range []string{"BNB"} {
+		hash, err := rpi.Transfer(coin, senderKey, dstAddr, amt)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
 		t.Logf("Hash %v", hash)
+		time.Sleep(time.Second * 3)
+		res, err := rpi.WaitForTxnResult(context.TODO(), hash)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("Receipt %+v", res)
+		for _, lin := range res.ElInfo {
+			//seq, _ := lin.GetSeq()
+			t.Logf("Log %+v ", lin)
+		}
 	}
+
 }
 
 func TestTransferInterChain(t *testing.T) {
-
-	coin := "USDC"
+	//"BUSD", "USDT", "USDC", "BTCB", "ETH"
+	coin := "ETH"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	srcKey := GodKey
 	srcAddr := GodAddr
-	dstAddr := GodDstAddr
+	dstAddr := DemoDstAddr
 	for _, coin := range []string{coin} {
 		res, err := rpi.GetCoinBalance(coin, srcAddr)
 		if err != nil {
@@ -92,7 +106,7 @@ func TestTransferInterChain(t *testing.T) {
 	}
 
 	amt := new(big.Int)
-	amt.SetString("995000", 10)
+	amt.SetString("1000000000000000000000", 10)
 	txnHash, err := rpi.Transfer(coin, srcKey, dstAddr, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -190,7 +204,7 @@ func TestGetKeyPair(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	demoKeyPair, err := api.GetKeyPairs(3)
+	demoKeyPair, err := api.GetKeyPairs(10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +227,7 @@ func getNewApi() (chain.ChainAPI, error) {
 		WrappedCoins:      []string{"ICX", "sICX", "bnUSD"},
 		NativeCoin:        "BNB",
 		NetworkID:         "0x61.bsc",
-		GasLimit:          5000000,
+		GasLimit:          8000000,
 	})
 	if err != nil {
 		return nil, err

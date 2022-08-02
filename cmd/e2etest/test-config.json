@@ -1,18 +1,13 @@
 {
     "flowTest":{
-        "disable":false,
+        "disable":true,
         "chains": [{
-            "srcChain":"BSC",
-            "dstChain":"ICON",
-            "coins":["TBNB"]
+            "srcChain":"ICON",
+            "dstChain":"BSC",
+            "coins":["BUSD"]
         }]
     },
     "stressTest": {
-        "disable":true,
-        "addresses":{
-            "ICON":2,
-            "BSC":2
-        },
-        "jobs":5
+        "disable":true
     }
 }
