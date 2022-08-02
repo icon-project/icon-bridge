@@ -3,6 +3,7 @@ package bsc
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -138,7 +139,7 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
 	return receipts, nil
 }
 
-func (c *Client) GetMedianGasPriceForBlock() (gasPrice *big.Int, err error) {
+func (c *Client) GetMedianGasPriceForBlock() (gasPrice *big.Int, gasHeight *big.Int, err error) {
 	gasPrice = big.NewInt(0)
 	header, err := c.eth.HeaderByNumber(context.TODO(), nil)
 	if err != nil {
@@ -151,19 +152,18 @@ func (c *Client) GetMedianGasPriceForBlock() (gasPrice *big.Int, err error) {
 		err = errors.Wrapf(err, "GetTransactionCount(height:%v, headerHash: %v) Err: %v", height, header.Hash(), err)
 		return
 	} else if err == nil && txnCount == 0 {
-		return nil, fmt.Errorf("TransactionCount is zero for height(%v, headerHash %v)", height, header.Hash())
+		return nil, nil, fmt.Errorf("TransactionCount is zero for height(%v, headerHash %v)", height, header.Hash())
 	}
-
-	txnF, err := c.eth.TransactionInBlock(context.TODO(), header.Hash(), 0)
+	// txnF, err := c.eth.TransactionInBlock(context.TODO(), header.Hash(), 0)
+	// if err != nil {
+	// 	return nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, 0, err)
+	// }
+	txnS, err := c.eth.TransactionInBlock(context.TODO(), header.Hash(), uint(math.Floor(float64(txnCount)/2)))
 	if err != nil {
-		return nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, 0, err)
+		return nil, nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, txnCount-1, err)
 	}
-	txnS, err := c.eth.TransactionInBlock(context.TODO(), header.Hash(), txnCount-1)
-	if err != nil {
-		return nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, txnCount-1, err)
-	}
-	gasPrice = gasPrice.Add(txnF.GasPrice(), txnS.GasPrice())
-	gasPrice.Div(gasPrice, big.NewInt(2))
+	gasPrice = txnS.GasPrice()
+	gasHeight = header.Number
 	return
 }
 

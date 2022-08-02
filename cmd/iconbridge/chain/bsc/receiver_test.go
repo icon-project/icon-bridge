@@ -25,12 +25,12 @@ func newTestClient(t *testing.T) *Client {
 }
 
 func TestMedianGasPrice(t *testing.T) {
-	url := "http://localhost:8545"
+	url := "https://data-seed-prebsc-1-s1.binance.org:8545"
 	cls, _, err := newClients([]string{url}, "", log.New())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if val, err := cls[0].GetMedianGasPriceForBlock(); err != nil {
+	if val, _, err := cls[0].GetMedianGasPriceForBlock(); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Log(val.String())
