@@ -35,14 +35,14 @@ import (
 )
 
 const (
-	txMaxDataSize        = 64 * 1024 // 64 KB
-	txOverheadScale      = 0.01      // base64 encoding overhead 0.36, rlp and other fields 0.01
+	txMaxDataSize        = 8 * 1024 // 8 KB
+	txOverheadScale      = 0.01     // base64 encoding overhead 0.36, rlp and other fields 0.01
 	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale)
 	defaultSendTxTimeout = 15 * time.Second
 	defaultGasPrice      = 15000000000
 	maxGasPriceBoost     = 10.0
 	defaultReadTimeout   = 50 * time.Second //
-	DefaultGasLimit      = 8000000
+	DefaultGasLimit      = 25000000
 )
 
 /*
