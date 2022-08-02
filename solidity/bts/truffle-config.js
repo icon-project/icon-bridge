@@ -7,7 +7,7 @@ module.exports = {
   networks: {
     development: {
       provider: () => new HDWalletProvider({
-        privateKeys: JSON.parse(process.env.PRIVATE_KEY),
+        // privateKeys: JSON.parse(process.env.PRIVATE_KEY),
         providerOrUrl: "http://localhost:9545",
       }),
       network_id: '*'
