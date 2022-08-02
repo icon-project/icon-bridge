@@ -37,11 +37,7 @@ func main() {
 		cancel()
 	}()
 
-	cfgPerMap := map[chain.ChainType]*chain.Config{}
-	for _, ch := range cfg.Chains {
-		cfgPerMap[ch.Name] = ch
-	}
-	ex, err := executor.New(l, cfgPerMap)
+	ex, err := executor.New(l, cfg)
 	if err != nil {
 		log.Error(errors.Wrap(err, "executor.New "))
 		return
@@ -51,57 +47,26 @@ func main() {
 	if !testCfg.FlowTest.Disable {
 		log.Info("Starting Flow Test ....")
 		for _, fts := range testCfg.FlowTest.Chains {
-			for _, coinName := range fts.CoinNames {
-				go func(coinName string) {
-					err = ex.Execute(ctx, fts.SrcChain, fts.DstChain, []string{coinName}, executor.TransferWithoutApprove)
-					if err != nil {
-						log.Errorf("%+v", err)
-					}
-				}(coinName)
-				time.Sleep(time.Second * 5)
+			for _, coin := range fts.CoinNames {
+				err = ex.RunFlowTest(ctx, fts.SrcChain, fts.DstChain, []string{coin})
+				if err != nil {
+					log.Errorf("%+v", err)
+				}
 			}
 		}
-		<-ex.Done()
 	}
-	/*
-		if !testCfg.StressTest.Disable {
-			log.Info("Starting Stress Test ....")
-			if len(testCfg.StressTest.AddressMap) <= 1 {
-				log.Error("Require at least two chains for inter chain tests")
-			}
-			log.Info("Fund addresses ....")
-			if addrsPerChain, err := ex.GetFundedAddresses(testCfg.StressTest.AddressMap); err != nil {
-				log.Errorf("%v", err)
-				return
-			} else {
-				cns := []chain.ChainType{}
-				for cn := range addrsPerChain {
-					cns = append(cns, cn)
-				}
-				// TODO
-				allCoins := []string{"ICX", "TICX", "BNB", "TBNB"}
-				log.Error("Run Jobs")
-				for j := 0; j < int(testCfg.StressTest.JobsCount); j++ {
-					rand.Seed(time.Now().UnixNano())
-					go func() {
-						srcChainType, dstChainType := getRandomChains(cns)
-						coin := allCoins[rand.Intn(len(allCoins))]
-						srcAddr := addrsPerChain[srcChainType][rand.Intn(len(addrsPerChain[srcChainType]))]
-						dstAddr := addrsPerChain[dstChainType][rand.Intn(len(addrsPerChain[dstChainType]))]
-						if err := ex.ExecuteOnAddr(ctx, srcChainType, dstChainType, coin, srcAddr, dstAddr, executor.Transfer); err != nil {
-							log.Errorf("%v", err)
-						}
-					}()
-					time.Sleep(time.Second * 5)
-				}
-				<-ex.Done()
+	if !testCfg.StressTest.Disable {
+		log.Info("Starting Stress Test ....")
+		for _, fts := range testCfg.FlowTest.Chains {
+			err = ex.RunStressTest(ctx, fts.SrcChain, fts.DstChain, fts.CoinNames)
+			if err != nil {
+				log.Errorf("%+v", err)
 			}
 		}
-	*/
+	}
 	cancel()
 	time.Sleep(time.Second * 2)
 	log.Warn("Exit...")
-
 }
 
 func getRandomChains(cns []chain.ChainType) (chain.ChainType, chain.ChainType) {
@@ -119,12 +84,12 @@ func getRandomChains(cns []chain.ChainType) (chain.ChainType, chain.ChainType) {
 	return cns[0], cns[count-1]
 }
 
-func loadConfig(file string) (*Config, error) {
+func loadConfig(file string) (*executor.Config, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, errors.Wrapf(err, "os.Open file %v", file)
 	}
-	cfg := &Config{}
+	cfg := &executor.Config{}
 	err = json.NewDecoder(f).Decode(cfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "json.Decode file %v", file)
@@ -145,10 +110,6 @@ func loadTestConfig(file string) (*TestConfig, error) {
 	return cfg, nil
 }
 
-type Config struct {
-	Chains []*chain.Config `json:"chains"`
-}
-
 type TestConfig struct {
 	FlowTest   *FlowTestConfig   `json:"flowTest"`
 	StressTest *StressTestConfig `json:"stressTest"`
@@ -166,7 +127,5 @@ type FlowChainConfig struct {
 }
 
 type StressTestConfig struct {
-	Disable    bool                     `json:"disable"`
-	AddressMap map[chain.ChainType]uint `json:"addresses"`
-	JobsCount  uint                     `json:"jobs"`
+	Disable bool `json:"disable"`
 }
