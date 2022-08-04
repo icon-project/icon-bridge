@@ -7,46 +7,46 @@ import (
 )
 
 type Header struct {
-	Height                int64       `json:"height"`
-	PreviousHeight        int64       `json:"prev_height"`
-	EpochId               CryptoHash  `json:"epoch_id"`
-	NextEpochId           CryptoHash  `json:"next_epoch_id"`
-	Hash                  CryptoHash  `json:"hash"`
-	PreviousBlockHash     CryptoHash  `json:"prev_hash"`
-	PreviousStateRoot     CryptoHash  `json:"prev_state_root"`
-	ChunkReceiptsRoot     CryptoHash  `json:"chunk_receipts_root"`
-	ChunkHeadersRoot      CryptoHash  `json:"chunk_headers_root"`
-	ChunkTransactionRoot  CryptoHash  `json:"chunk_tx_root"`
-	OutcomeRoot           CryptoHash  `json:"outcome_root"`
-	ChunksIncluded        uint8       `json:"chunks_included"`
-	ChallengesRoot        CryptoHash  `json:"challenges_root"`
-	Timestamp             Timestamp   `json:"timestamp_nanosec"`
-	RandomValue           CryptoHash  `json:"random_value"`
-	ValidatorProposals    []string    `json:"validator_proposals"`
-	ChunkMask             []bool      `json:"chunk_mask"`
-	GasPrice              BigInt      `json:"gas_price"`
-	BlockOrdinal          uint64      `json:"block_ordinal"`
-	TotalSupply           BigInt      `json:"total_supply"`
-	ChallengesResult      []string    `json:"challenges_result"`
-	LastFinalBlock        CryptoHash  `json:"last_final_block"`
-	LastDSFinalBlock      CryptoHash  `json:"last_ds_final_block"`
-	NextBlockProducerHash CryptoHash  `json:"next_bp_hash"`
-	BlockMerkleRoot       CryptoHash  `json:"block_merkle_root"`
-	EpochSyncDataHash     CryptoHash  `json:"epoch_sync_data_hash"`
-	Approvals             []Signature `json:"approvals"`
-	Signature             Signature   `json:"signature"`
-	LatestProtocolVersion uint32      `json:"latest_protocol_version"`
+	Height                int64           `json:"height"`
+	PreviousHeight        int64           `json:"prev_height"`
+	EpochId               CryptoHash      `json:"epoch_id"`
+	NextEpochId           CryptoHash      `json:"next_epoch_id"`
+	Hash                  CryptoHash      `json:"hash"`
+	PreviousBlockHash     CryptoHash      `json:"prev_hash"`
+	PreviousStateRoot     CryptoHash      `json:"prev_state_root"`
+	ChunkReceiptsRoot     CryptoHash      `json:"chunk_receipts_root"`
+	ChunkHeadersRoot      CryptoHash      `json:"chunk_headers_root"`
+	ChunkTransactionRoot  CryptoHash      `json:"chunk_tx_root"`
+	OutcomeRoot           CryptoHash      `json:"outcome_root"`
+	ChunksIncluded        uint8           `json:"chunks_included"`
+	ChallengesRoot        []byte          `json:"challenges_root"`
+	Timestamp             Timestamp       `json:"timestamp_nanosec"`
+	RandomValue           CryptoHash      `json:"random_value"`
+	ValidatorProposals    []BlockProducer `json:"validator_proposals"`
+	ChunkMask             []bool          `json:"chunk_mask"`
+	GasPrice              BigInt          `json:"gas_price"`
+	BlockOrdinal          uint64          `json:"block_ordinal"`
+	TotalSupply           BigInt          `json:"total_supply"`
+	ChallengesResult      []string        `json:"challenges_result"`
+	LastFinalBlock        CryptoHash      `json:"last_final_block"`
+	LastDSFinalBlock      CryptoHash      `json:"last_ds_final_block"`
+	NextBlockProducerHash CryptoHash      `json:"next_bp_hash"`
+	BlockMerkleRoot       CryptoHash      `json:"block_merkle_root"`
+	EpochSyncDataHash     CryptoHash      `json:"epoch_sync_data_hash"`
+	Approvals             []Signature     `json:"approvals"`
+	Signature             Signature       `json:"signature"`
+	LatestProtocolVersion uint32          `json:"latest_protocol_version"`
 }
 
 type HeaderInnerLite struct {
 	Height                uint64
-	EpochId               []byte
-	NextEpochId           []byte
-	PreviousStateRoot     []byte
-	OutcomeRoot           []byte
+	EpochId               [32]byte
+	NextEpochId           [32]byte
+	PreviousStateRoot     [32]byte
+	OutcomeRoot           [32]byte
 	Timestamp             uint64
-	NextBlockProducerHash []byte
-	BlockMerkleRoot       []byte
+	NextBlockProducerHash [32]byte
+	BlockMerkleRoot       [32]byte
 }
 
 func (h HeaderInnerLite) BorshSerialize() ([]byte, error) {
@@ -63,33 +63,33 @@ func (h HeaderInnerLite) BorshSerialize() ([]byte, error) {
 	}
 
 	serialized.Write(height)
-	serialized.Write(h.EpochId)
-	serialized.Write(h.NextEpochId)
-	serialized.Write(h.PreviousStateRoot)
-	serialized.Write(h.OutcomeRoot)
+	serialized.Write(h.EpochId[:])
+	serialized.Write(h.NextEpochId[:])
+	serialized.Write(h.PreviousStateRoot[:])
+	serialized.Write(h.OutcomeRoot[:])
 	serialized.Write(timestamp)
-	serialized.Write(h.NextBlockProducerHash)
-	serialized.Write(h.BlockMerkleRoot)
+	serialized.Write(h.NextBlockProducerHash[:])
+	serialized.Write(h.BlockMerkleRoot[:])
 
 	return serialized.Bytes(), nil
 }
 
 type HeaderInnerRest struct {
-	ChunkReceiptsRoot     []byte
-	ChunkHeadersRoot      []byte
-	ChunkTransactionRoot  []byte
+	ChunkReceiptsRoot     [32]byte
+	ChunkHeadersRoot      [32]byte
+	ChunkTransactionRoot  [32]byte
 	ChallengesRoot        []byte
-	RandomValue           []byte
-	ValidatorProposals    []string
+	RandomValue           [32]byte
+	ValidatorProposals    []BlockProducer
 	ChunkMask             []bool
 	GasPrice              BigInt
 	TotalSupply           BigInt
 	ChallengesResult      []string
-	LastFinalBlock        []byte
-	LastDSFinalBlock      []byte
+	LastFinalBlock        [32]byte
+	LastDSFinalBlock      [32]byte
 	BlockOrdinal          uint64
 	PreviousHeight        uint64
-	EpochSyncDataHash     []byte
+	EpochSyncDataHash     [32]byte
 	Approvals             []Signature
 	LatestProtocolVersion uint32
 }
@@ -107,22 +107,12 @@ func (h HeaderInnerRest) BorshSerialize() ([]byte, error) {
 		return nil, fmt.Errorf("failed to serialize HeaderInnerRest: ChunkMask")
 	}
 
-	gasPriceBigInt, err := h.GasPrice.Int()
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert GasPrice to BigInt")
-	}
-
-	gasPrice, err := borsh.Serialize(gasPriceBigInt)
+	gasPrice, err := borsh.Serialize(h.GasPrice)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize HeaderInnerRest: GasPrice")
 	}
 
-	totalSupplyBigInt, err := h.TotalSupply.Int()
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert TotalSupply to BigInt")
-	}
-
-	totalSupply, err := borsh.Serialize(totalSupplyBigInt)
+	totalSupply, err := borsh.Serialize(h.TotalSupply)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize HeaderInnerRest: TotalSupply")
 	}
@@ -143,8 +133,8 @@ func (h HeaderInnerRest) BorshSerialize() ([]byte, error) {
 	}
 
 	var epochSyncDataHash []byte
-	if h.EpochSyncDataHash != nil {
-		epochSyncDataHash = append([]byte{1}, h.EpochSyncDataHash...)
+	if &h.EpochSyncDataHash != nil {
+		epochSyncDataHash = append([]byte{1}, h.EpochSyncDataHash[:]...)
 	} else {
 		epochSyncDataHash = []byte{0}
 	}
@@ -168,18 +158,18 @@ func (h HeaderInnerRest) BorshSerialize() ([]byte, error) {
 		return nil, fmt.Errorf("failed to serialize HeaderInnerRest: LatestProtocolVersion")
 	}
 
-	serialized.Write(h.ChunkReceiptsRoot)
-	serialized.Write(h.ChunkHeadersRoot)
-	serialized.Write(h.ChunkTransactionRoot)
-	serialized.Write(h.ChallengesRoot)
-	serialized.Write(h.RandomValue)
+	serialized.Write(h.ChunkReceiptsRoot[:])
+	serialized.Write(h.ChunkHeadersRoot[:])
+	serialized.Write(h.ChunkTransactionRoot[:])
+	serialized.Write(h.ChallengesRoot[:])
+	serialized.Write(h.RandomValue[:])
 	serialized.Write(validatorProposals)
 	serialized.Write(chunkMask)
 	serialized.Write(gasPrice)
 	serialized.Write(totalSupply)
 	serialized.Write(challengesResult)
-	serialized.Write(h.LastFinalBlock)
-	serialized.Write(h.LastDSFinalBlock)
+	serialized.Write(h.LastFinalBlock[:])
+	serialized.Write(h.LastDSFinalBlock[:])
 	serialized.Write(blockOrdinal)
 	serialized.Write(previousHeight)
 	serialized.Write(epochSyncDataHash)

@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/errors"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
@@ -26,7 +25,7 @@ const (
 	defaultGetTxTimeout  = 15 * time.Second
 )
 
-var balance = *big.NewInt(0)
+var balance = types.BigInt(*big.NewInt(0))
 
 type Sender struct {
 	clients     []*Client
@@ -145,12 +144,12 @@ func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message [
 			Message string `json:"message"`
 		}{
 			Source:  prev,
-			Message: base64.URLEncoding.EncodeToString(message), // TODO: Verify
+			Message: base64.URLEncoding.EncodeToString(message),
 		}
 		data, err := json.Marshal(relayMessage)
 		if err != nil {
 			return nil, err
-		}
+		} 
 
 		actions := []types.Action{
 			{
@@ -159,7 +158,7 @@ func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message [
 					MethodName: functionCallMethod,
 					Args:       data,
 					Gas:        gas,
-					Deposit:    balance,
+					Deposit:    big.Int(balance),
 				},
 			},
 		}
@@ -192,7 +191,7 @@ type RelayTransaction struct {
 }
 
 func (relayTx *RelayTransaction) ID() interface{} {
-	if relayTx.Transaction.Txid != nil {
+	if relayTx.Transaction.Txid != [32]byte{} {
 		return relayTx.Transaction.Txid
 	}
 	return nil
@@ -200,9 +199,10 @@ func (relayTx *RelayTransaction) ID() interface{} {
 
 func (relayTx *RelayTransaction) Receipt(ctx context.Context) (blockHeight uint64, err error) {
 	var txStatus types.TransactionResult
-	if relayTx.Transaction.Txid == nil {
+	if relayTx.Transaction.Txid == [32]byte{} {
 		return 0, fmt.Errorf("no pending tx")
 	}
+
 	for i, isPending := 0, true; i < 5 && (isPending || err == errors.ErrUnknownTransaction); i++ {
 		time.Sleep(time.Second)
 		_, cancel := context.WithTimeout(ctx, defaultGetTxTimeout)
@@ -214,7 +214,7 @@ func (relayTx *RelayTransaction) Receipt(ctx context.Context) (blockHeight uint6
 		}
 	}
 
-	if txStatus.TransactionOutcome.BlockHash != nil {
+	if txStatus.TransactionOutcome.BlockHash != [32]byte{} {
 		block, err := relayTx.client.api.getBlockByHash(txStatus.TransactionOutcome.BlockHash.Base58Encode())
 		if err != nil {
 			return 0, err
@@ -239,13 +239,13 @@ func (relayTx *RelayTransaction) Send(ctx context.Context) (err error) {
 		return err
 	}
 
-	relayTx.Transaction.Nonce = int(nonce)
+	relayTx.Transaction.Nonce = int(nonce) + 1
 	blockHash, err := relayTx.client.api.getLatestBlockHash()
 	if err != nil {
 		return err
 	}
 
-	relayTx.Transaction.BlockHash = base58.Decode(blockHash)
+	relayTx.Transaction.BlockHash = types.NewCryptoHash(blockHash)
 
 	payload, err := relayTx.Transaction.Payload(relayTx.wallet)
 	if err != nil {
@@ -257,7 +257,7 @@ func (relayTx *RelayTransaction) Send(ctx context.Context) (err error) {
 		return err
 	}
 
-	relayTx.Transaction.Txid = txId
+	relayTx.Transaction.Txid = *txId
 	relayTx.client.logger.WithFields(log.Fields{"tx": txId.Base58Encode()}).Debug("handleRelayMessage: tx sent")
 
 	return nil
