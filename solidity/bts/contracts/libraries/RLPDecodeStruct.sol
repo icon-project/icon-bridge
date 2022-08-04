@@ -124,6 +124,53 @@ library RLPDecodeStruct {
             );
     }
 
+    function decodeBlackListMsg(bytes memory _rlp)
+        internal
+        pure
+        returns(Types.BlacklistMessage memory) 
+    {
+
+        RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
+
+        RLPDecode.RLPItem[] memory subList = ls[0].toList();
+        string[] memory _addrs = new string[](subList.length);
+        for (uint256 i = 0; i < subList.length; i++) {
+            _addrs[i] = string(subList[i].toBytes());
+        }
+        return
+            Types.BlacklistMessage(
+                _addrs,
+                string(ls[1].toBytes())
+            );
+    }
+
+    function decodeTokenLimitMsg(bytes memory _rlp)
+        internal
+        pure
+        returns(Types.TokenLimitMessage memory)
+    {
+        RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
+
+        RLPDecode.RLPItem[] memory subList1 = ls[0].toList();
+        string[] memory _names = new string[](subList1.length);
+        for (uint256 i = 0; i < subList1.length; i++) {
+            _names[i] = string(subList1[i].toBytes());
+        }
+
+        RLPDecode.RLPItem[] memory subList2 = ls[1].toList();
+        uint256[] memory _limits = new uint256[](subList2.length);
+        for (uint256 i = 0; i < subList2.length; i++) {
+            _limits[i] = uint256(subList2[i].toUint());
+        }
+
+        return 
+            Types.TokenLimitMessage(
+                _names,
+                _limits,
+                string(ls[2].toBytes())
+            );        
+    }
+
     function decodeResponse(bytes memory _rlp)
         internal
         pure
