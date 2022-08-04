@@ -33,12 +33,12 @@ deploy_javascore_bsr() {
 deploy_javascore_bts() {
   echo "deploying javascore bts"
   cd $CONFIG_DIR
-  local irc2Tradeable_score=$(xxd -p $CONTRACTS_DIR/javascore/irc2Tradeable.jar | tr -d '\n')
   goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bts.jar \
     --content_type application/java \
     --param _name="ICX" \
     --param _bmc=$(cat btp.icon.bmc) \
-    --param _serializedIrc2="$irc2Tradeable_score" | jq -r . > tx.icon.bts
+    --param _serializedIrc2=$(xxd -p $CONTRACTS_DIR/javascore/irc2Tradeable.jar | tr -d '\n') | jq -r . > tx.icon.bts
+  sleep 2
   extract_scoreAddress tx.icon.bts btp.icon.bts
 }
 
