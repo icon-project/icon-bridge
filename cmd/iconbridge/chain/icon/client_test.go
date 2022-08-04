@@ -8,16 +8,18 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/stretchr/testify/require"
 )
 
-func TestMonitorBlockMissingNotification(t *testing.T) {
+func TestContextCancel(t *testing.T) {
 	urls := []string{
 		"https://ctz.solidwallet.io/api/v3/icon_dex",
 		"http://138.197.69.76:9000/api/v3/icon_dex",
 	}
 	l := log.New()
 	ctx := context.Background()
-
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
 	height, seq := 0x306d1ac, 0
 
 	dstAddr := "btp://0x63564c40.hmny/0xa69712a3813d0505bbD55AeD3fd8471Bc2f722DD"
@@ -56,11 +58,12 @@ func TestMonitorBlockMissingNotification(t *testing.T) {
 					l.WithFields(log.Fields{"error": err, "local": conn.LocalAddr().String()}).Warn("disconnected")
 					_ = conn.Close()
 				})
-			if err != nil {
-				panic(err)
+			if err.Error() == "context deadline exceeded" {
+				return
 			}
+			require.NoError(t, err)
 
 		}(i, url)
 	}
-	time.Sleep(time.Hour)
+	time.Sleep(time.Second * 15)
 }
