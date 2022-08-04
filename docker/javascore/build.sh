@@ -16,7 +16,7 @@ build_image() {
     docker cp javascore-dist:/dist/bmc.jar ${DIST_DIR}
     docker cp javascore-dist:/dist/irc2.jar ${DIST_DIR}
     docker cp javascore-dist:/dist/irc2Tradeable.jar ${DIST_DIR}
-    docker cp javascore-dist:/dist/bsr.jar ${DIST_DIR}
+    #docker cp javascore-dist:/dist/bsr.jar ${DIST_DIR}
     docker cp javascore-dist:/dist/bts.jar ${DIST_DIR}
 
     docker rm -f javascore-dist

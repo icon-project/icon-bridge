@@ -83,6 +83,9 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
     uint256 private serialNo; //  a counter of sequence number of service message
     uint256 private numOfPendingRequests;
 
+    mapping(address => bool) public blacklist;
+    mapping(string => uint) public tokenLimit;
+
     modifier onlyBMC() {
         require(msg.sender == address(bmc), "Unauthorized");
         _;
@@ -91,6 +94,7 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
     function initialize(address _bmc, address _btsCore) public initializer {
         bmc = IBMCPeriphery(_bmc);
         btsCore = IBTSCore(_btsCore);
+        tokenLimit[btsCore.getNativeCoinName()] = type(uint256).max;
     }
 
     /**
@@ -99,6 +103,54 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
     */
     function hasPendingRequest() external view override returns (bool) {
         return numOfPendingRequests != 0;
+    }
+
+    /**
+        @notice Add users to blacklist
+        @param _address Address to blacklist
+    */
+    function addToBlacklist(string[] memory _address) external {
+        require(msg.sender == address(this), "Unauthorized");
+        for (uint i = 0; i < _address.length; i++) {
+            try this.checkParseAddress(_address[i]) {
+                blacklist[_address[i].parseAddress()] = true;
+            } catch {
+                revert("InvalidAddress");
+            }
+        }
+    }
+
+    /**
+        @notice Remove users from blacklist
+        @param _address Address to blacklist
+    */
+    function removeFromBlacklist(string[] memory _address) external {
+        require(msg.sender == address(this), "Unauthorized");
+        for (uint i = 0; i < _address.length; i++) {
+            try this.checkParseAddress(_address[i]) {
+                require( blacklist[_address[i].parseAddress()], "UserNotBlacklisted");
+                blacklist[_address[i].parseAddress()] = false;
+            } catch {
+                revert("InvalidAddress");
+            }
+        }
+    }
+
+    /**
+        @notice Set token limit
+        @param _coinNames    Array of names of the coin
+        @param _tokenLimits  Token limit for coins
+    */
+    function setTokenLimit(
+        string[] memory _coinNames,
+        uint256[] memory _tokenLimits
+    ) external override {
+        require(msg.sender == address(this) || msg.sender == address(btsCore), "Unauthorized");
+        require(_coinNames.length == _tokenLimits.length,"InvalidParams");
+        for(uint i = 0; i < _coinNames.length; i++) {
+            require(btsCore.isValidCoin(_coinNames[i]), "NotRegistered");
+            tokenLimit[_coinNames[i]] = _tokenLimits[i];
+        }
     }
 
     function sendServiceMessage(
@@ -209,6 +261,82 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
                 errMsg,
                 RC_ERR
             );
+        } else if (_sm.serviceType == Types.ServiceType.ADD_TO_BLACKLIST) {
+            Types.BlacklistMessage memory _bm = _sm.data.decodeBlackListMsg();
+            string[] memory addresses = _bm.addrs;
+
+            try this.addToBlacklist(addresses) {
+                // send message to bmc
+                sendResponseMessage(
+                    Types.ServiceType.ADD_TO_BLACKLIST,
+                    _from,
+                    _sn,
+                    "AddedToBlacklist",
+                    RC_OK
+                );
+                return;
+            } catch {
+                errMsg = "ErrorAddToBlackList";
+            }
+
+            sendResponseMessage(
+                Types.ServiceType.ADD_TO_BLACKLIST,
+                _from,
+                _sn,
+                errMsg,
+                RC_ERR
+            );
+
+        } else if (_sm.serviceType == Types.ServiceType.REMOVE_FROM_BLACKLIST) {
+            Types.BlacklistMessage memory _bm = _sm.data.decodeBlackListMsg();
+            string[] memory addresses = _bm.addrs;
+            try this.removeFromBlacklist(addresses) {
+                // send message to bmc
+                sendResponseMessage(
+                    Types.ServiceType.REMOVE_FROM_BLACKLIST,
+                    _from,
+                    _sn,
+                    "RemovedFromBlacklist",
+                    RC_OK
+                );
+                return;
+            } catch {
+                errMsg = "ErrorRemoveFromBlackList";
+            }
+
+            sendResponseMessage(
+                Types.ServiceType.REMOVE_FROM_BLACKLIST,
+                _from,
+                _sn,
+                errMsg,
+                RC_ERR
+            );
+
+        } else if (_sm.serviceType == Types.ServiceType.CHANGE_TOKEN_LIMIT) {
+            Types.TokenLimitMessage memory _tl = _sm.data.decodeTokenLimitMsg();
+            string[] memory coinNames = _tl.coinName;
+            uint256[] memory tokenLimits = _tl.tokenLimit;
+
+            try this.setTokenLimit(coinNames, tokenLimits) {
+                sendResponseMessage(
+                    Types.ServiceType.CHANGE_TOKEN_LIMIT,
+                    _from,
+                    _sn,
+                    "ChangeTokenLimit",
+                    RC_OK
+                );
+                return;
+            } catch {
+                errMsg = "ErrorChangeTokenLimit";
+                sendResponseMessage(
+                    Types.ServiceType.CHANGE_TOKEN_LIMIT,
+                    _from,
+                    _sn,
+                    errMsg,
+                    RC_ERR
+                );
+            }
+
         } else if (
             _sm.serviceType == Types.ServiceType.REPONSE_HANDLE_SERVICE
         ) {
@@ -302,6 +430,11 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
                 btsCore.isValidCoin(_assets[i].coinName) == true,
                 "UnregisteredCoin"
             );
+            checkTransferRestrictions(
+                    _assets[i].coinName,
+                    _to.parseAddress(),
+                    _assets[i].value)
+            ;
             //  @dev There might be many errors generating by BTSCore contract
             //  which includes also low-level error
             //  Thus, must use try_catch at this point so that it can return an expected response
@@ -363,5 +496,14 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
     //  can be parsed to address type. Hence, it would not have any restrictions
     function checkParseAddress(string calldata _to) external pure {
         _to.parseAddress();
+    }
+
+    function checkTransferRestrictions(
+        string memory _coinName,
+        address _user,
+        uint256 _value
+    ) public view override {
+        require(!blacklist[_user],"Blacklisted");
+        require(tokenLimit[_coinName] >= _value,"LimitExceed");
     }
 }

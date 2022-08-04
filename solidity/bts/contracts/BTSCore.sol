@@ -83,6 +83,9 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         );
     }
 
+    function getNativeCoinName() external override view returns (string memory) {
+        return nativeCoinName;
+    }
     /**
        @notice Adding another Onwer.
        @dev Caller must be an Onwer of BTP network
@@ -217,6 +220,11 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
                 NON_NATIVE_TOKEN_TYPE
             );
         }
+        string[] memory tokenArr = new string[](1);
+        tokenArr[0] = _name;
+        uint[] memory valArr = new uint[](1);
+        valArr[0] = type(uint256).max;
+        btsPeriphery.setTokenLimit(tokenArr, valArr);
     }
 
     /**
@@ -368,6 +376,12 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
        @param _to  An address that a user expects to receive an amount of tokens.
     */
     function transferNativeCoin(string calldata _to) external payable override {
+
+        btsPeriphery.checkTransferRestrictions(
+            nativeCoinName,
+            msg.sender,
+            msg.value
+        );
         //  Aggregation Fee will be charged on BSH Contract
         //  A new charging fee has been proposed. `fixedFee` is introduced
         //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
@@ -408,6 +422,13 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         require(!_coinName.compareTo(nativeCoinName), "InvalidWrappedCoin");
         address _erc20Address = coins[_coinName];
         require(_erc20Address != address(0), "UnregisterCoin");
+
+        btsPeriphery.checkTransferRestrictions(
+            _coinName,
+            msg.sender,
+            _value
+        );
+
         //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
         //  Thus, it's likely that _chargeAmt is always greater than 0
         //  require(_chargeAmt > 0) can be omitted
@@ -495,35 +516,45 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         uint256[] memory _amounts = new uint256[](size);
         uint256[] memory _chargeAmts = new uint256[](size);
         Coin memory _coin;
+        string memory coinName;
+        uint value;
 
         for (uint256 i = 0; i < _coinNames.length; i++) {
             address _erc20Addresses = coins[_coinNames[i]];
             //  Does not need to check if _coinNames[i] == native_coin
             //  If _coinNames[i] is a native_coin, coins[_coinNames[i]] = 0
             require(_erc20Addresses != address(0), "UnregisterCoin");
+            coinName = _coinNames[i];
+            value = _values[i];
+
+            btsPeriphery.checkTransferRestrictions(
+                coinName,
+                msg.sender,
+                value
+            );
 
             IERC20Tradable(_erc20Addresses).transferFrom(
                 msg.sender,
                 address(this),
-                _values[i]
+                value
             );
 
-            _coin = coinDetails[_coinNames[i]];
+            _coin = coinDetails[coinName];
             //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
             //  Thus, it's likely that _chargeAmt is always greater than 0
             //  require(_chargeAmt > 0) can be omitted
-            _coins[i] = _coinNames[i];
-            _chargeAmts[i] = _values[i]
+            _coins[i] = coinName;
+            _chargeAmts[i] = value
                 .mul(_coin.feeNumerator)
                 .div(FEE_DENOMINATOR)
                 .add(_coin.fixedFee);
-            _amounts[i] = _values[i].sub(_chargeAmts[i]);
+            _amounts[i] = value.sub(_chargeAmts[i]);
 
             //  Lock this requested _value as a record of a pending transferring transaction
             //  @dev Note that: _value is a requested amount to transfer from a Requester including charged fee
             //  The true amount to receive at a destination receiver is calculated by
             //  _amounts[i] = _values[i].sub(_chargeAmts[i]);
-            lockBalance(msg.sender, _coinNames[i], _values[i]);
+            lockBalance(msg.sender, coinName, value);
         }
 
         if (msg.value != 0) {

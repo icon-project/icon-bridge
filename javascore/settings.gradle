@@ -3,7 +3,5 @@ rootProject.name = 'javascore-btp'
 include (
         'lib',
         'bmc',
-        'bts',
-        'bsr',
-        'token-bsh'
+        'bts'
 )

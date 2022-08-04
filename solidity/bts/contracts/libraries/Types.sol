@@ -91,6 +91,9 @@ library Types {
         REQUEST_COIN_TRANSFER,
         REQUEST_COIN_REGISTER,
         REPONSE_HANDLE_SERVICE,
+        ADD_TO_BLACKLIST,
+        REMOVE_FROM_BLACKLIST,
+        CHANGE_TOKEN_LIMIT,
         UNKNOWN_TYPE
     }
 
@@ -106,6 +109,17 @@ library Types {
         string from;
         string to;
         Asset[] assets;
+    }
+
+    struct BlacklistMessage {
+        string[] addrs;
+        string net;
+    }
+
+    struct TokenLimitMessage {
+        string[] coinName;
+        uint256[] tokenLimit;
+        string net;
     }
 
     struct Asset {
