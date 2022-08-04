@@ -293,6 +293,12 @@ public class BTSTest extends AbstractBTPTokenService {
         score.invoke(irc2,"tokenFallback", nonOwner.getAddress(), BigInteger.valueOf(10), "0".getBytes());
         score.invoke(nonOwner, "transfer", TEST_TOKEN, BigInteger.valueOf(10), btpaddr);
 
+        contextMock.when(() -> Context.call(
+                eq(BigInteger.class),
+                eq(irc2.getAddress()),
+                eq("balanceOf"),
+                eq(nonOwner.getAddress())
+        )).thenReturn(BigInteger.valueOf(100));
         Map<String, BigInteger> balance = (Map<String , BigInteger>) score.call("balanceOf", nonOwner.getAddress(), TEST_TOKEN);
         // currently, still in locked state
         // will be updated once response comes from relayer via bmc
@@ -359,6 +365,13 @@ public class BTSTest extends AbstractBTPTokenService {
 
         score.invoke(nonOwner, "transferBatch", coinNames, values, destination);
         verify(scoreSpy).TransferStart(eq(nonOwner.getAddress()), eq(destination), eq(BigInteger.ONE), any());
+
+        contextMock.when(() -> Context.call(
+                eq(BigInteger.class),
+                any(),
+                eq("balanceOf"),
+                eq(nonOwner.getAddress())
+        )).thenReturn(BigInteger.valueOf(100));
 
         Map<String, BigInteger> bal = (Map<String, BigInteger>) score.call("balanceOf", nonOwner.getAddress(), coinNames[0]);
         assertEquals(bal.get("usable"), BigInteger.valueOf(8));
@@ -487,6 +500,11 @@ public class BTSTest extends AbstractBTPTokenService {
         contextMock.when(() -> Context.call(eq(BigInteger.class),eq(wrappedIRC2.getAddress()), eq("allowance"),
                 eq(nonOwner.getAddress()), eq(score.getAddress()))).thenReturn(BigInteger.valueOf(1000));
 
+        contextMock.when(() -> Context.call(eq(BigInteger.class), eq(token1.getAddress()),
+                eq("balanceOf"), eq(nonOwner.getAddress()))).thenReturn(BigInteger.valueOf(100));
+        contextMock.when(() -> Context.call(eq(BigInteger.class), eq(token2.getAddress()),
+                eq("balanceOf"),eq(nonOwner.getAddress()))).thenReturn(BigInteger.valueOf(100));
+
         List<Map<String, BigInteger>> balances = (List<Map<String, BigInteger>>) score.call(
                 "balanceOfBatch", nonOwner.getAddress(), new String[]{"Token1","Token2", PARA, ICON});
 
@@ -570,159 +588,164 @@ public class BTSTest extends AbstractBTPTokenService {
         score.invoke(bmcMock, "handleBTPMessage",
                 "fromString","bmc",BigInteger.ONE, message.toBytes());
     }
+
+    @Test
+    @Order(16)
+    @DisplayName("change limit, check restrictions, check fees")
+    public void changeLimit() {
+        String TOKEN1 = "Token1";
+        BigInteger TWO_HUNDRED_ICX = BigInteger.valueOf(200).multiply(ICX);
+        BigInteger FIFTY_ICX = BigInteger.valueOf(50).multiply(ICX);
+        Address user1 = sm.createAccount(20).getAddress();
+
+        Account token1 = Account.newScoreAccount(50);
+
+        Executable call;
+
+        score.invoke(owner, "register",
+                TOKEN1, TOKEN1, 18, BigInteger.valueOf(10),
+                ICX, token1.getAddress());
+
+        assertEquals(null, score.call("getTokenLimit", TOKEN1));
+
+        tokenLimitBTPMessage();
+        score.invoke(owner, "setTokenLimit", new String[]{TOKEN1}, new BigInteger[]{BigInteger.valueOf(200)});
+
+        assertEquals(BigInteger.valueOf(200), score.call("getTokenLimit", TOKEN1));
 //
-//    @Test
-//    @Order(16)
-//    @DisplayName("change limit, check restrictions, check fees")
-//    public void changeLimit() {
-//        String TOKEN1 = "Token1";
-//        BigInteger TWO_HUNDRED_ICX = BigInteger.valueOf(200).multiply(ICX);
-//        BigInteger FIFTY_ICX = BigInteger.valueOf(50).multiply(ICX);
-//        Address user1 = sm.createAccount(20).getAddress();
-//
-//        Account token1 = Account.newScoreAccount(50);
-//
-//        Executable call;
-//
-//        score.invoke(owner, "register",
-//                TOKEN1, TOKEN1, 18, BigInteger.valueOf(10),
-//                ICX, token1.getAddress());
-//
-//        assertEquals(BigInteger.ZERO, score.call("getTokenLimit", TOKEN1));
-//
-//        tokenLimitBTPMessage();
-//        score.invoke(owner, "changeLimit", TOKEN1, BigInteger.valueOf(200));
-//
-//        assertEquals(BigInteger.valueOf(200), score.call("getTokenLimit", TOKEN1));
-//
-//        call = () -> score.invoke(owner, "changeLimit", TOKEN1,
-//                TWO_HUNDRED_ICX.negate());
-//        expectErrorMessage(call, "Invalid value");
-//        call = () -> score.invoke(owner, "changeLimit", "TokenBSH",
-//                TWO_HUNDRED_ICX);
-//        expectErrorMessage(call, "Not registered");
-//
-//        score.invoke(owner, "changeLimit", TOKEN1, TWO_HUNDRED_ICX);
-//
-//        assertEquals(TWO_HUNDRED_ICX, score.call("getTokenLimit", TOKEN1));
-//
-//        // send from Harmony to ICON
-//        // reciever adddress is blacklisted in icon
-//
-//        Verification sendMessage = () -> Context.call(eq(bmcMock.getAddress()),
-//                eq("sendMessage"), any(), any(), any(), any());
-//
-//        Verification returnLinks = () -> Context.call(eq(String[].class),
-//                eq(bmcMock.getAddress()), eq("getLinks"), any());
-//
-//        // these 3 BTP addresses are currently supported by ICON Bridge
-//        BTPAddress btpAddress1 = new BTPAddress("icon","cx0E636c8cF214a9d702C5E4a6D8c020be217766D3");
-//        BTPAddress btpAddress2 = new BTPAddress("network","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
-//        BTPAddress btpAddress3 = new BTPAddress("harmony","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
-//        String[] links = new String[] {btpAddress1.toString(), btpAddress2.toString(), btpAddress3.toString()};
-//
-//        contextMock.when(sendMessage).thenReturn(null);
-//        contextMock.when(returnLinks).thenReturn(links);
-//
-//        // blacklist user1 in icon
-//        score.invoke(owner, "addBlacklistAddress", "icon", user1.toString());
-//
-//        // handleRequest of coinTransfer coming from harmony
-//        // fee for this transfer will be handled in harmony side
-//
-//        // value within limit
-//        Asset asset1 = new Asset(TOKEN1, FIFTY_ICX);
-//
-//        // TransferRequest Message
-//        TransferRequest request = new TransferRequest();
-//        request.setFrom(ETH_ADDR);
-//
-//        // user1 is blacklisted
-//        request.setTo(user1.toString());
-//        request.setAssets(new Asset[]{asset1});
-//
-//        BTSMessage message = new BTSMessage();
-//        message.setServiceType(BTSMessage.REQUEST_COIN_TRANSFER);
-//        message.setData(request.toBytes());
-//
-//        byte[] _msg = message.toBytes();
-//
-//        contextMock.when(() -> Context.call(eq(token1.getAddress()), eq("transfer"),
-//                eq(user1), eq(FIFTY_ICX), any())).thenReturn(null);
-//
-//        score.invoke(owner, "addRestriction");
-//
-//        call = () -> score.invoke(bmcMock, "handleBTPMessage",
-//                "fromString", "svc", BigInteger.ONE, _msg);
-//        expectErrorMessage(call, "_to user is Blacklisted");
-//
-//        score.invoke(owner, "removeBlacklistAddress", "icon", user1.toString());
-//        score.invoke(bmcMock, "handleBTPMessage",
-//                "fromString", "svc", BigInteger.ONE, _msg);
-//
-//        // another transfer, but over the limit
-//        // user not blacklisted
-//
-//        Asset asset2 = new Asset(TOKEN1, FIFTY_ICX.add(TWO_HUNDRED_ICX));
-//        // TransferRequest Message
-//        TransferRequest request2 = new TransferRequest();
-//        request2.setFrom(ETH_ADDR);
-//        request2.setTo(user1.toString());
-//        request2.setAssets(new Asset[]{asset2});
-//
-//        BTSMessage message2 = new BTSMessage();
-//        message2.setServiceType(BTSMessage.REQUEST_COIN_TRANSFER);
-//        message2.setData(request2.toBytes());
-//
-//        byte[] _msg2 = message2.toBytes();
-//        contextMock.when(() -> Context.call(eq(token1.getAddress()), eq("transfer"),
-//                eq(user1), eq(FIFTY_ICX.add(TWO_HUNDRED_ICX)), any())).thenReturn(null);
-//
-//        call = () -> score.invoke(bmcMock, "handleBTPMessage",
-//                "fromString", "svc", BigInteger.TWO, _msg2);
-//        expectErrorMessage(call, "Transfer amount exceeds the transaction limit");
-//
-//        // limit not set
-//        // any amount should be able to be transferred off chain
-//        String TOKEN2 = "Token 2";
-//        BigInteger MILLION = BigInteger.valueOf(10_000_000L).multiply(ICX);
-//        score.invoke(owner, "register",
-//                TOKEN2, TOKEN2, 18, BigInteger.valueOf(10),
-//                ICX, token1.getAddress());
-//
-//        assertEquals(BigInteger.ZERO, score.call("getTokenLimit", TOKEN2));
-//
-//        Asset asset3 = new Asset(TOKEN2, MILLION);
-//
-//
-//        // TransferRequest Message
-//        TransferRequest request3 = new TransferRequest();
-//        request3.setFrom(ETH_ADDR);
-//
-//        // user1 is blacklisted
-//        request3.setTo(user1.toString());
-//        request3.setAssets(new Asset[]{asset3});
-//
-//        BTSMessage message3 = new BTSMessage();
-//        message3.setServiceType(BTSMessage.REQUEST_COIN_TRANSFER);
-//        message3.setData(request3.toBytes());
-//
-//        byte[] _msg3 = message3.toBytes();
-//
-//        contextMock.when(() -> Context.call(eq(token1.getAddress()), eq("transfer"),
-//                eq(user1), eq(MILLION), any())).thenReturn(null);
-//
-//        // change token limit
-//        score.invoke(owner, "changeLimit", TOKEN2, TWO_HUNDRED_ICX);
-//        call = () -> score.invoke(bmcMock, "handleBTPMessage",
-//                "fromString", "svc", BigInteger.valueOf(3), _msg3);
-//        expectErrorMessage(call, "Transfer amount exceeds the transaction limit");
-//
-//        // disable restrictions
-//        score.invoke(owner, "disableRestrictions");
-//        score.invoke(bmcMock, "handleBTPMessage",
-//                "fromString", "svc", BigInteger.valueOf(3), _msg3);
-//    }
+        call = () -> score.invoke(owner, "setTokenLimit", new String[]{TOKEN1},
+                new BigInteger[]{TWO_HUNDRED_ICX.negate()});
+        expectErrorMessage(call, "Invalid value");
+        call = () -> score.invoke(owner, "setTokenLimit", new String[]{"TokenBSH"},
+                new BigInteger[]{TWO_HUNDRED_ICX});
+        expectErrorMessage(call, "Not registered");
+
+        score.invoke(owner, "setTokenLimit",  new String[]{TOKEN1}, new BigInteger[]{TWO_HUNDRED_ICX});
+
+        assertEquals(TWO_HUNDRED_ICX, score.call("getTokenLimit", TOKEN1));
+
+//         send from Harmony to ICON
+//         reciever adddress is blacklisted in icon
+
+        Verification sendMessage = () -> Context.call(eq(bmcMock.getAddress()),
+                eq("sendMessage"), any(), any(), any(), any());
+
+        Verification returnLinks = () -> Context.call(eq(String[].class),
+                eq(bmcMock.getAddress()), eq("getLinks"), any());
+
+        // these 3 BTP addresses are currently supported by ICON Bridge
+        BTPAddress btpAddress1 = new BTPAddress("icon","cx0E636c8cF214a9d702C5E4a6D8c020be217766D3");
+        BTPAddress btpAddress2 = new BTPAddress("network","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
+        BTPAddress btpAddress3 = new BTPAddress("harmony","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
+        String[] links = new String[] {btpAddress1.toString(), btpAddress2.toString(), btpAddress3.toString()};
+
+        contextMock.when(sendMessage).thenReturn(null);
+        contextMock.when(returnLinks).thenReturn(links);
+
+        // blacklist user1 in icon
+        printSn();
+        blackListUser("icon", new String[]{user1.toString()}, BigInteger.valueOf(3));
+
+        // handleRequest of coinTransfer coming from harmony
+        // fee for this transfer will be handled in harmony side
+
+        // value within limit
+        Asset asset1 = new Asset(TOKEN1, FIFTY_ICX);
+
+        // TransferRequest Message
+        TransferRequest request = new TransferRequest();
+        request.setFrom(ETH_ADDR);
+
+        // user1 is blacklisted
+        request.setTo(user1.toString());
+        request.setAssets(new Asset[]{asset1});
+
+        BTSMessage message = new BTSMessage();
+        message.setServiceType(BTSMessage.REQUEST_COIN_TRANSFER);
+        message.setData(request.toBytes());
+
+        byte[] _msg = message.toBytes();
+
+        contextMock.when(() -> Context.call(eq(token1.getAddress()), eq("transfer"),
+                eq(user1), eq(FIFTY_ICX), any())).thenReturn(null);
+
+        score.invoke(owner, "addRestriction");
+
+        call = () -> score.invoke(bmcMock, "handleBTPMessage",
+                "fromString", "svc", BigInteger.ONE, _msg);
+        expectErrorMessage(call, "_to user is Blacklisted");
+
+        removeBlackListedUser("icon", new String[]{user1.toString()}, BigInteger.valueOf(4) );
+
+        System.out.println("FUCK YOU");
+        // check this
+        score.invoke(bmcMock, "handleBTPMessage",
+                "fromString", "svc", BigInteger.valueOf(5), _msg);
+
+        // another transfer, but over the limit
+        // user not blacklisted
+
+        Asset asset2 = new Asset(TOKEN1, FIFTY_ICX.add(TWO_HUNDRED_ICX));
+        // TransferRequest Message
+        TransferRequest request2 = new TransferRequest();
+        request2.setFrom(ETH_ADDR);
+        request2.setTo(user1.toString());
+        request2.setAssets(new Asset[]{asset2});
+
+        BTSMessage message2 = new BTSMessage();
+        message2.setServiceType(BTSMessage.REQUEST_COIN_TRANSFER);
+        message2.setData(request2.toBytes());
+
+        byte[] _msg2 = message2.toBytes();
+        contextMock.when(() -> Context.call(eq(token1.getAddress()), eq("transfer"),
+                eq(user1), eq(FIFTY_ICX.add(TWO_HUNDRED_ICX)), any())).thenReturn(null);
+
+        call = () -> score.invoke(bmcMock, "handleBTPMessage",
+                "fromString", "svc", BigInteger.valueOf(6), _msg2);
+        expectErrorMessage(call, "Transfer amount exceeds the transaction limit");
+
+        // limit not set
+        // any amount should be able to be transferred off chain
+        String TOKEN2 = "Token 2";
+        BigInteger MILLION = BigInteger.valueOf(10_000_000L).multiply(ICX);
+        score.invoke(owner, "register",
+                TOKEN2, TOKEN2, 18, BigInteger.valueOf(10),
+                ICX, token1.getAddress());
+
+        assertEquals(null, score.call("getTokenLimit", TOKEN2));
+
+        Asset asset3 = new Asset(TOKEN2, MILLION);
+
+
+        // TransferRequest Message
+        TransferRequest request3 = new TransferRequest();
+        request3.setFrom(ETH_ADDR);
+
+        // user1 is blacklisted
+        request3.setTo(user1.toString());
+        request3.setAssets(new Asset[]{asset3});
+
+        BTSMessage message3 = new BTSMessage();
+        message3.setServiceType(BTSMessage.REQUEST_COIN_TRANSFER);
+        message3.setData(request3.toBytes());
+
+        byte[] _msg3 = message3.toBytes();
+
+        contextMock.when(() -> Context.call(eq(token1.getAddress()), eq("transfer"),
+                eq(user1), eq(MILLION), any())).thenReturn(null);
+
+
+        // change token limit
+        score.invoke(owner, "setTokenLimit",  new String[]{TOKEN2}, new BigInteger[]{TWO_HUNDRED_ICX});
+        call = () -> score.invoke(bmcMock, "handleBTPMessage",
+                "fromString", "svc", BigInteger.valueOf(6), _msg3);
+        expectErrorMessage(call, "Transfer amount exceeds the transaction limit");
+
+        // disable restrictions
+        score.invoke(owner, "disableRestrictions");
+        score.invoke(bmcMock, "handleBTPMessage",
+                "fromString", "svc", BigInteger.valueOf(7), _msg3);
+    }
 
     @Test
     @Order(17)
@@ -787,18 +810,18 @@ public class BTSTest extends AbstractBTPTokenService {
 
         call = () -> score.invoke(owner, "setFeeRatio",
                 PARA, BigInteger.valueOf(10).negate(), ICX.negate());
-        expectErrorMessage(call, "The feeNumerator should be less "
+        expectErrorMessageIn(call, "The feeNumerator should be less "
                 + "than FEE_DENOMINATOR and feeNumerator should be greater than 1");
 
         // Scenario 11: Fee_numerator is set higher than fee_denominator
         call = () -> score.invoke(owner, "setFeeRatio",
                 PARA, ICX, ICX.negate());
-        expectErrorMessage(call, "The feeNumerator should be less "
+        expectErrorMessageIn(call, "The feeNumerator should be less "
                 + "than FEE_DENOMINATOR and feeNumerator should be greater than 1");
 
         call = () -> score.invoke(owner, "setFeeRatio",
                 PARA, BigInteger.valueOf(10), ICX.negate());
-        expectErrorMessage(call, "Fixed fee cannot be less than zero");
+        expectErrorMessageIn(call, "Fixed fee cannot be less than zero");
 
         call = () -> score.invoke(owner, "setFeeRatio",
                 "LAMB", BigInteger.valueOf(100), ICX);

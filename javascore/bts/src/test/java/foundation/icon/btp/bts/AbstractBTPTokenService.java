@@ -37,7 +37,7 @@ public class AbstractBTPTokenService extends TestBase {
     public String ETH_ADDR = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
 
     BTPAddress btpAddress1 = new BTPAddress("network","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
-    BTPAddress btpAddress2 = new BTPAddress("network2","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
+    BTPAddress btpAddress2 = new BTPAddress("icon","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
     BTPAddress btpAddress3 = new BTPAddress("harmony","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
     String[] links = new String[] {btpAddress1.toString(), btpAddress2.toString(), btpAddress3.toString()};
 
@@ -133,8 +133,9 @@ public class AbstractBTPTokenService extends TestBase {
     protected void tokenLimitBTPMessage() {
         getLinksMock();
         for (String link: links) {
+            BTPAddress addr = BTPAddress.valueOf(link);
             contextMock.when(() -> Context.call(eq(bmcMock.getAddress()),
-                    eq("sendMessage"), eq(link), any(),
+                    eq("sendMessage"), eq(addr.net()), any(),
                     any(), any())).thenReturn(null);
         }
     }
@@ -161,20 +162,17 @@ public class AbstractBTPTokenService extends TestBase {
     }
 
     public void register(String name, Address addr) {
-//        tokenLimitBTPMessage();
         score.invoke(owner, "register",
                 name, name, 18, BigInteger.valueOf(10), BigInteger.ONE, addr);
     }
 
     public void register() {
-//        tokenLimitBTPMessage();
         score.invoke(owner, "register",
                 TEST_TOKEN, "TTK", 18, BigInteger.ONE, BigInteger.ONE, irc2.getAddress());
     }
 
     public void registerWrapped() {
 
-//        tokenLimitBTPMessage();
         Verification deployWrappedToken = () -> Context.deploy(any(), eq(PARA),
                 eq(PARA),eq(18));
         contextMock.when(deployWrappedToken).thenReturn(wrappedIRC2.getAddress());
