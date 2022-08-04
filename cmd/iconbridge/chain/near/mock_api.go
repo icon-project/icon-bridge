@@ -131,14 +131,14 @@ func (api *Mockapi) getBlockByHash(blockHash string) (types.Block, error) {
 
 func (api *Mockapi) broadcastTransactionAsync(string) (types.CryptoHash, error) {
 	if api.TransactionHash.Error != nil {
-		return nil, api.TransactionHash.Error
+		return types.CryptoHash{}, api.TransactionHash.Error
 	}
 
 	if transactionHash, Ok := (api.TransactionHash.Reponse).(string); Ok {
 		return types.NewCryptoHash(transactionHash), nil
 	}
 
-	return nil, fmt.Errorf("failed to cast TransactionHash to string")
+	return types.CryptoHash{}, fmt.Errorf("failed to cast TransactionHash to string")
 }
 
 func (api *Mockapi) broadcastTransaction(string) (string, error) {

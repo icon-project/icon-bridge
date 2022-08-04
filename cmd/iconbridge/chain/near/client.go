@@ -85,13 +85,13 @@ func (c *Client) GetNonce(publicKey types.PublicKey, accountId string) (int64, e
 	return nonce, nil
 }
 
-func (c *Client) SendTransaction(payload string) (types.CryptoHash, error) {
+func (c *Client) SendTransaction(payload string) (*types.CryptoHash, error) {
 	txId, err := c.api.broadcastTransactionAsync(payload)
 
 	if err != nil {
 		return  nil, err
 	}
 
-	return txId, nil
+	return &txId, nil
 
 }
