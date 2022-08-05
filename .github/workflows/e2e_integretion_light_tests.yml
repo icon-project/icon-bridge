@@ -1,4 +1,4 @@
-name: E2E light tests
+name: E2E / integration light tests
 on:
   push:
     branches:
@@ -54,7 +54,7 @@ jobs:
            export LD_LIBRARY_PATH=/usr/local/lib
            go run -tags hmny main.go
 
-  solidity_e2e:
+  solidity_integration:
       name: Solidity e2e tests
       runs-on: ubuntu-latest
       steps:
