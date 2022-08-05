@@ -15,6 +15,7 @@ def bridge(name, SRC, DST):
             ":set_link_%s" % DST,
             ":set_link_%s" % SRC,
             ":deploy_%s_bmr" % DST,
+            "@%s//cli:add_%s_bmr" % (DST, SRC),
         ],
         cmd = "echo 'done' > $@",
         local = True,
