@@ -74,27 +74,33 @@ jobs:
           working-directory: ./solidity/bmc
           run: npm install -g truffle@5.5.5
 
-        - name: Install yarn
+        - name: Install yarn (BMC)
           working-directory: ./solidity/bmc
           run: yarn install
 
-        - name: Compile solidity contracts
+        - name: Compile BMC Solidity contracts
           working-directory: ./solidity/bmc
           run: yarn contract:compile
 
         - name: BMC solidity test
           working-directory: ./solidity/bmc
           run: |
-            cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
             truffle develop &
-            sleep 40
+            sleep 10
             yarn test:integration
+
+        - name: Install yarn (BTS)
+          working-directory: ./solidity/bts
+          run: yarn install
+
+        - name: Compile BTS Solidity contracts
+          working-directory: ./solidity/bts
+          run: yarn contract:compile
 
         - name: BTS solidity test
           working-directory: ./solidity/bts
           run: |
-            cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
             truffle develop &
-            sleep 40
+            sleep 10
             yarn test:unit
             yarn test:integration
