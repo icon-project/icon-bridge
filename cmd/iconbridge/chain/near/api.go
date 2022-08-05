@@ -62,9 +62,9 @@ func (api *api) broadcastTransaction(base64EncodedData string) (string, error) {
 		return "", err
 	}
 	// Return Transaction ID
-	transactionId := transactionStatus.Transaction.Txid
+	// transactionId := transactionStatus.Transaction.Txid
 
-	return transactionId.Base58Encode(), nil
+	return "", nil
 }
 
 //Sends a transaction and immediately returns transaction hash.
@@ -72,7 +72,7 @@ func (api *api) broadcastTransactionAsync(base64EncodedData string) (types.Crypt
 	var transactionStatus string
 
 	if _, err := api.Do("broadcast_tx_async", []interface{}{base64EncodedData}, &transactionStatus); err != nil {
-		return nil, err
+		return types.CryptoHash{}, err
 	}
 
 	return types.NewCryptoHash(transactionStatus), nil

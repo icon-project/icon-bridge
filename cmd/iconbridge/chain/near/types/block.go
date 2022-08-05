@@ -6,7 +6,7 @@ import (
 )
 
 type SerializableHeader struct {
-	PreviousBlockHash []byte
+	PreviousBlockHash [32]byte
 	InnerLite         HeaderInnerLite
 	InnerRest         HeaderInnerRest
 	Signature         Signature
