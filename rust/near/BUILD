@@ -169,3 +169,13 @@ genrule(
     executable = True,
     local = True,
 )
+
+genrule(
+    name = "bmr_options",
+    outs = ["bmr_options.json"],
+    cmd = """
+        jq <<<{} '' > $@
+    """,
+    executable = True,
+    local = True,
+)

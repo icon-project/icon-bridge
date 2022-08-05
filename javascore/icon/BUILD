@@ -27,9 +27,18 @@ genrule(
             "@icon//cli:configs/localnet/genesis.json",
             "@icon//cli:configs/localnet/server.json",
         ],
-        "@icon//:lisbon": ["@icon//cli:configs/lisbon/keystore.json", "@icon//cli:configs/lisbon/keysecret"],
-        "@icon//:berlin": ["@icon//cli:configs/berlin/keystore.json", "@icon//cli:configs/berlin/keysecret"],
-        "@icon//:mainnet": ["@icon//cli:configs/mainnet/keystore.json", "@icon//cli:configs/mainnet/keysecret"],
+        "@icon//:lisbon": [
+            "@icon//cli:configs/lisbon/keystore.json",
+            "@icon//cli:configs/lisbon/keysecret",
+        ],
+        "@icon//:berlin": [
+            "@icon//cli:configs/berlin/keystore.json",
+            "@icon//cli:configs/berlin/keysecret",
+        ],
+        "@icon//:mainnet": [
+            "@icon//cli:configs/mainnet/keystore.json",
+            "@icon//cli:configs/mainnet/keysecret",
+        ],
     }),
     outs = ["goloop_config_dir.out"],
     cmd = "mkdir -p \"$$(cat $(location @btp//:tmp_dir))/goloop_config_dir\"; cp -R $(SRCS) \"$$(cat $(location @btp//:tmp_dir))/goloop_config_dir\"; echo $$(cat $(location @btp//:tmp_dir))/goloop_config_dir > $@",
@@ -159,8 +168,8 @@ genrule(
     executable = True,
     local = True,
     tools = [
-        "@icon//:node_url",
         "@com_github_icon_project_goloop//cmd/goloop",
+        "@icon//:node_url",
     ],
 )
 
@@ -244,6 +253,20 @@ genrule(
         ":localnet": ICON_NETWORK_ID_LOCALNET,
         ":docker_localnet": "$$(cat $(location @icon//:wait_for_channel_up))",
     }) + " > $@",
+    executable = True,
+    local = True,
+)
+
+genrule(
+    name = "bmr_options",
+    srcs = [
+        ":latest_block_height",
+        "@icon//cli:get_icon_validator_hash",
+    ],
+    outs = ["bmr_options.json"],
+    cmd = """
+        jq <<<{} '.verifier.offset=$$offset | .verifier.validatorsHash=$$hash' --argjson offset $$(cat $(location  @icon//:latest_block_height)) --arg hash $$(cat $(locations @icon//cli:get_icon_validator_hash))> $@
+    """,
     executable = True,
     local = True,
 )

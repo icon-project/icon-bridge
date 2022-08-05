@@ -26,7 +26,7 @@ def bridge(name, SRC, DST):
         " .src.address = $$src_address |",
         " .src.endpoint = [$$src_endpoint] |",
         " .src.offset = $$offset |",
-        " .src.options = {} |",
+        " .src.options = $$src_options |",
         " .dst.address = $$dst_address |",
         " .dst.endpoint = [$$dst_endpoint] |",
         " .dst.options = {} |",
@@ -49,6 +49,7 @@ def bridge(name, SRC, DST):
             "@btp//cmd/iconbridge:iconbridge",
             "@%s//:bmr_config_dir" % (DST),
             "@%s//cli:get_%s_bmr_keystore" % (DST, DST),
+            "@%s//:bmr_options" % SRC
         ],
         cmd = "".join([
             "echo $$(cat $(location @%s//cli:get_%s_bmr_keystore)) > $$(cat $(location @%s//:bmr_config_dir))/keystore.json" % (DST, DST, DST),
@@ -66,6 +67,7 @@ def bridge(name, SRC, DST):
             """ --arg dst_endpoint  $$(cat $(location @%s//:endpoint_docker)) """ % DST,
             """ --arg keypassword $$(cat $(location @%s//cli:keysecret)) """ % DST,
             """ --argjson keystore \"$$(cat $$(cat $(location @%s//:bmr_config_dir))/keystore.json)\" """ % DST,
+            """ --argjson src_options \"$$(cat $(location @%s//:bmr_options))\" """ % SRC,
             """)" > $@; cp $@ $$(cat $(location @%s//:bmr_config_dir))""" % DST,
         ]),
     )

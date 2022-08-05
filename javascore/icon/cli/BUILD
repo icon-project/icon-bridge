@@ -175,10 +175,10 @@ genrule(
 )
 
 genrule(
-    name = "get_icon_validators",
+    name = "get_icon_validator_hash",
     srcs = ["@btp//cmd/iconvalidators"],
-    outs = ["get_icon_validators.out"],
-    cmd = """ GOLOOP_RPC_URI=\"$$(cat $(location @icon//:node_url))\" $(execpath @btp//cmd/iconvalidators:iconvalidators) build $$(cat $(location @icon//:latest_block_height)) | echo $$(tr -d '\"') >$@""",
+    outs = ["get_icon_validator_hash.out"],
+    cmd = """ URI=\"$$(cat $(location @icon//:node_url))\" HEIGHT=\"0x$$(printf '%x' $$(cat $(location @icon//:latest_block_height)))\" $(execpath @btp//cmd/iconvalidators:iconvalidators) | jq -r '.hash' |  echo $$(tr -d '\"') > $@""",
     executable = True,
     local = True,
     tools = [
