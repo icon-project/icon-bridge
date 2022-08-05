@@ -26,17 +26,13 @@ jobs:
         with:
           args: zip -qq -r bts_solidity_contracts.zip solidity/bts/contracts
 
-      - name: Upload BMC Artifact
+      - name: Upload Artifacts BMC / BTS
         uses: actions/upload-artifact@v3
         with:
           name: icon_artifacts
-          path: bmc_solidity_contracts.zip
-
-      - name: Upload BTS Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: icon_artifacts
-          path: bts_solidity_contracts.zip
+          path: |
+          bmc_solidity_contracts.zip
+          bts_solidity_contracts.zip
 
   build_icon:
     runs-on: ubuntu-latest
@@ -56,7 +52,7 @@ jobs:
         working-directory: ./javascore
         run: gradle bsr:optimizedJar
 
-      - name: Upload Artifact BMC / BTS / BSR
+      - name: Upload Artifacts BMC / BTS / BSR
         uses: actions/upload-artifact@v3
         with:
           name: icon_artifacts
