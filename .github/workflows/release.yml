@@ -1,0 +1,120 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+
+  solidity-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Tar files
+        run: tar -cvf solidity_contracts.tar ./public
+
+      - name: Zip BMC contracts
+        uses: montudor/action-zip@v1
+        with:
+          args: zip -qq -r bmc_solidity_contracts.zip solidity/bmc/contracts
+
+      - name: Zip BTS contracts
+        uses: montudor/action-zip@v1
+        with:
+          args: zip -qq -r bts_solidity_contracts.zip solidity/bts/contracts
+
+      - name: Upload BMC Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: icon_artifacts
+          path: bmc_solidity_contracts.zip
+
+      - name: Upload BTS Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: icon_artifacts
+          path: bts_solidity_contracts.zip
+
+  build_icon:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build javascore bmc optimized jar
+        working-directory: ./javascore
+        run: gradle bmc:optimizedJar
+
+      - name: Build javascore bts optimized jar
+        working-directory: ./javascore
+        run: gradle bts:optimizedJar
+
+      - name: Build javascore bsr optimized jar
+        working-directory: ./javascore
+        run: gradle bsr:optimizedJar
+
+      - name: Upload Artifact BMC / BTS / BSR
+        uses: actions/upload-artifact@v3
+        with:
+          name: icon_artifacts
+          path: |
+          ./javascore/bmc/build/libs/bmc-optimized.jar
+          ./javascore/bts/build/libs/bts-optimized.jar
+          ./javascore/bsr/build/libs/bsr-optimized.jar
+
+  build_bmr:
+    name: Build icon-bridge bmr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '^1.18.3'
+          cache: true
+
+      - name: Build BMR
+        working-directory: ./cmd/iconbridge
+        run: go build
+
+# TODO rename the file: mv oldfile.txt newfile.txt
+      - name: Upload Artifact BSR
+        uses: actions/upload-artifact@v3
+        with:
+          name: icon_artifacts
+          path: ./cmd/iconbridge/iconbridge
+
+  releas:
+    runs-on: ubuntu-latest
+    needs: [solidity-contracts, build_icon, build_bmr]
+    steps:
+      - name: Initialize variables
+        id: vars
+        run: |
+          echo «::set-output name=date::$(date +'%Y-%m-%d')»
+          echo «::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)»
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: icon_artifacts
+
+      - name: List of files
+        run: ls
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: ${{ secrets.RELEASE_TOKEN }}
+          prerelease: true
+          files: |
+            bts_solidity_contracts.zip
+            bmc-optimized.jar
+            bts-optimized.jar
+            bsr-optimized.jar
+            iconbridge
+

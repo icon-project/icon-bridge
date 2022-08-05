@@ -19,14 +19,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: '0'
-      #          token: ${{ secrets.RELEASE_TOKEN }}
-
-      #      - name: Bump version and push tag
-      #        id: tag_version
-      #        uses: mathieudutour/github-tag-action@v6.0
-      #        with:
-      #          github_token: ${{ secrets.GITHUB_TOKEN }}
-      #          default_bump: ${{ github.event.inputs.version }}
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Bump version and push tag
         uses: anothrNick/github-tag-action@1.36.0
@@ -35,3 +28,11 @@ jobs:
           WITH_V: true
           DEFAULT_BUMP: ${{ github.event.inputs.version }}
 
+      #  Similar action, it can be an alternative for the anothrNick/github-tag-action
+      #
+      #      - name: Bump version and push tag
+      #        id: tag_version
+      #        uses: mathieudutour/github-tag-action@v6.0
+      #        with:
+      #          github_token: ${{ secrets.GITHUB_TOKEN }}
+      #          default_bump: ${{ github.event.inputs.version }}
