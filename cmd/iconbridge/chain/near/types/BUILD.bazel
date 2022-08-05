@@ -23,5 +23,6 @@ go_library(
         "//common/wallet",
         "@com_github_btcsuite_btcutil//base58:go_default_library",
         "@com_github_near_borsh_go//:go_default_library",
+        "@com_github_shopspring_decimal//:go_default_library",
     ],
 )

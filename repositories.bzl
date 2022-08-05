@@ -1806,12 +1806,6 @@ def go_repositories():
         version = "v2.20.5+incompatible",
     )
     go_repository(
-        name = "com_github_shopspring_decimal",
-        importpath = "github.com/shopspring/decimal",
-        sum = "h1:KK3gWIXskZ2O1U/JNTisNcvH+jveJxZYrjbTsrbbnh8=",
-        version = "v1.3.0",
-    )
-    go_repository(
         name = "com_github_shurcool_sanitized_anchor_name",
         importpath = "github.com/shurcooL/sanitized_anchor_name",
         sum = "h1:PdmoCO6wvbs+7yrJyMORt4/BmY5IYyJwS/kOiWx8mHo=",
@@ -2441,4 +2435,10 @@ def go_repositories():
         importpath = "github.com/golang-jwt/jwt",
         sum = "h1:IfV12K8xAKAnZqdXVzCZ+TOjboZ2keLg81eXfW3O+oY=",
         version = "v3.2.2+incompatible",
+    )
+    go_repository(
+        name = "com_github_shopspring_decimal",
+        importpath = "github.com/shopspring/decimal",
+        sum = "h1:2Usl1nmF/WZucqkFZhnfFYxxxu8LG21F6nPQBE5gKV8=",
+        version = "v1.3.1",
     )
