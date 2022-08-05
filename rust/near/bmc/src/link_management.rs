@@ -121,7 +121,6 @@ impl BtpMessageCenter {
 
     pub fn get_status(&self, link: BTPAddress) -> LinkStatus {
         self.assert_link_exists(&link);
-        let verifier = self.bmv.get(&link.network_address().unwrap()).unwrap();
         self.links.get(&link).unwrap().status()
     }
 }
