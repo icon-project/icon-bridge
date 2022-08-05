@@ -12,32 +12,29 @@ deploy_solidity_bmc() {
   cd $CONTRACTS_DIR/solidity/bmc
   cp $ICONBRIDGE_BASE_DIR/bin/env ./.env
   rm -rf contracts/test build .openzeppelin
+  truffle compile --all
   BMC_BTP_NET=$BSC_BMC_NET \
     truffle migrate --network bsc --compile-all
   eth_blocknumber > $CONFIG_DIR/btp.bsc.block.height
   generate_metadata "BMC"
 } 
 
-
-
 deploy_solidity_bts() {
   echo "deploying solidity bts"
   cd $CONTRACTS_DIR/solidity/bts
   cp $ICONBRIDGE_BASE_DIR/bin/env ./.env
   rm -rf contracts/test build .openzeppelin
-
+  truffle compile --all
   BSH_COIN_NAME="BNB" \
   BSH_COIN_FEE=100 \
   BSH_FIXED_FEE=5000 \
   BMC_PERIPHERY_ADDRESS="$(cat $CONFIG_DIR/btp.bsc.bmc.periphery)" \
-  BSH_SERVICE=$SVC_NAME \
   truffle migrate --compile-all --network bsc --f 1 --to 1
   generate_metadata "BTS"
 }
 
 deploy_solidity_token() {
-  echo "deploying solidity token "
-  echo $1 
+  echo "deploying solidity token " $1
   cd $CONTRACTS_DIR/solidity/bts
   cp $ICONBRIDGE_BASE_DIR/bin/env ./.env
   export BSH_COIN_NAME=$1
@@ -50,14 +47,31 @@ deploy_solidity_token() {
 }
 
 configure_solidity_add_bts_service() {
-  echo "adding ${SVC_NAME} service into BMC"
+  echo "adding bts service into BMC"
   cd $CONTRACTS_DIR/solidity/bmc
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
     --method addService --name $SVC_NAME --addr $(cat $CONFIG_DIR/btp.bsc.bts.periphery))
   echo "$tx" >$CONFIG_DIR/tx/addService.bsc
 }
  
+configure_solidity_add_bmc_owner() {
+  echo "adding bmc owner"
+  BSC_BMC_USER=$(cat $CONFIG_DIR/keystore/bsc.bmc.wallet.json | jq -r .address)
+  cd $CONTRACTS_DIR/solidity/bmc
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
+    --method addOwner --addr "0x${BSC_BMC_USER}")
+  echo "$tx" >$CONFIG_DIR/tx/addBmcUser.bsc
+}
  
+ configure_solidity_add_bts_owner() {
+  echo "adding bts owner"
+  BSC_BTS_USER=$(cat $CONFIG_DIR/keystore/bsc.bts.wallet.json | jq -r .address)
+  cd $CONTRACTS_DIR/solidity/bts
+  tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
+    --method addOwner --addr "0x${BSC_BTS_USER}")
+  echo "$tx" >$CONFIG_DIR/tx/addBtsUser.bsc
+}
+
 configure_solidity_set_fee_ratio() {
   echo "SetFee Ratio"
   cd $CONTRACTS_DIR/solidity/bts
@@ -84,7 +98,7 @@ set_link_height() {
 
 add_icon_relay() {
   echo "adding icon link"
-  BSC_RELAY_USER=$(cat $BSC_KEY_STORE | jq -r .address)
+  BSC_RELAY_USER=$(cat $CONFIG_DIR/keystore/bsc.bmr.wallet.json | jq -r .address)
   cd $CONTRACTS_DIR/solidity/bmc
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
     --method addRelay --link $(cat $CONFIG_DIR/btp.icon.btp.address) --addr "0x${BSC_RELAY_USER}")
@@ -92,46 +106,10 @@ add_icon_relay() {
 } 
 
 
-# bsc_register_icx() {
-#   echo "bts: Register ICX: "
-#   local btp_bts_fee_numerator=100
-#   local btp_bts_fixed_fee=5000
-#   echo "Registering ICX"
-#   cd $CONTRACTS_DIR/solidity/bts
-#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-#     --method register --name "ICX" --symbol "ICX" --decimals 18 --addr "0x0000000000000000000000000000000000000000" --feeNumerator ${btp_bts_fee_numerator} --fixedFee ${btp_bts_fixed_fee})
-#   echo "$tx" >$CONFIG_DIR/tx/register.icx.bsc
-# }
-
-# get_coinID_icx() {
-#   echo "getCoinID ICX"
-#   cd $CONTRACTS_DIR/solidity/bts
-#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-#     --method coinId --coinName "ICX")
-#   echo "$tx" >$CONFIG_DIR/tx/coinID.icx
-# }
-# bsc_register_ticx() {
-#   local btp_bts_fee_numerator=100
-#   local btp_bts_fixed_fee=5000
-#   echo "Registering TICX"
-#   cd $CONTRACTS_DIR/solidity/bts
-#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-#     --method register --name "TICX" --symbol "TICX" --decimals 18 --addr "0x0000000000000000000000000000000000000000" --feeNumerator ${btp_bts_fee_numerator} --fixedFee ${btp_bts_fixed_fee})
-#   echo "$tx" >$CONFIG_DIR/tx/register.ticx.bsc
-# }
-
-# get_coinID_ticx() {
-#   echo "getCoinID TICX"
-#   cd $CONTRACTS_DIR/solidity/bts
-#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-#     --method coinId --coinName "TICX")
-#   echo "$tx" >$CONFIG_DIR/tx/coinID.ticx
-# }
-
 bsc_register_wrapped_coin() {
+  echo "bts: Register " $1
   local btp_bts_fee_numerator=100
   local btp_bts_fixed_fee=5000
-  echo "Registering " $1
   cd $CONTRACTS_DIR/solidity/bts
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
     --method register --name "$1" --symbol "$2" --decimals 18 --addr "0x0000000000000000000000000000000000000000" --feeNumerator ${btp_bts_fee_numerator} --fixedFee ${btp_bts_fixed_fee})
@@ -156,45 +134,6 @@ get_coinID() {
     --method coinId --coinName "$1")
   echo "$tx" >$CONFIG_DIR/tx/coinID.$1
 }
-
-# bsc_register_tbnb() {
-#   echo "bts: Register TBNB: "
-#   local btp_bts_fee_numerator=100
-#   local btp_bts_fixed_fee=5000
-#   local addr=$(cat $CONFIG_DIR/btp.bsc.tbnb) 
-#   cd $CONTRACTS_DIR/solidity/bts
-#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-#     --method register --name "TBNB" --symbol "TBNB" --decimals 18 --addr $addr --feeNumerator $btp_bts_fee_numerator --fixedFee ${btp_bts_fixed_fee})
-#   echo "$tx" >$CONFIG_DIR/tx/register.tbnb.bsc
-# }
-
-# get_coinID_tbnb() {
-#   echo "getCoinID TBNB"
-#   cd $CONTRACTS_DIR/solidity/bts
-#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-#     --method coinId --coinName "TBNB")
-#   echo "$tx" >$CONFIG_DIR/tx/coinID.tbnb
-# }
-
-# bsc_register_eth() {
-#   echo "bts: Register ETH: "
-#   local btp_bts_fee_numerator=100
-#   local btp_bts_fixed_fee=5000
-#   local addr=$(cat $CONFIG_DIR/btp.bsc.eth) 
-#   cd $CONTRACTS_DIR/solidity/bts
-#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-#     --method register --name "ETH" --symbol "ETH" --decimals 18 --addr $addr --feeNumerator $btp_bts_fee_numerator --fixedFee ${btp_bts_fixed_fee})
-#   echo "$tx" >$CONFIG_DIR/tx/register.eth.bsc
-# }
-
-# get_coinID_eth() {
-#   echo "getCoinID ETH"
-#   cd $CONTRACTS_DIR/solidity/bts
-#   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-#     --method coinId --coinName "ETH")
-#   echo "$tx" >$CONFIG_DIR/tx/coinID.eth
-# }
-
 
 
 bsc_updateRxSeq() {

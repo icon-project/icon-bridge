@@ -31,6 +31,12 @@ module.exports = async function (callback) {
         //console.log(await bmcManagement.getRelays(argv.link))
         console.log(tx)
         break;
+      case "addOwner":
+        console.log("Add bmc owner ", argv.addr)
+        tx = await bmcManagement.addOwner(argv.addr)
+        //console.log(await bmcManagement.getRelays(argv.link))
+        console.log(tx)
+        break;
       case "addService":
         console.log("Add Service ", argv.name)
         tx = await bmcManagement.addService(argv.name, argv.addr)

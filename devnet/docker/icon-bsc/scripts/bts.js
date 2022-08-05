@@ -17,6 +17,12 @@ module.exports = async function (callback) {
             tx = await btsCore.coinId(argv.coinName);
             console.log(tx);
             break;
+        case "addOwner":
+            console.log("Add bts owner ", argv.addr)
+            tx = await btsCore.addOwner(argv.addr)
+            //console.log(await bmcManagement.getRelays(argv.link))
+            console.log(tx)
+            break;
         default:
             console.error("Bad input for method, ", argv)
       }
