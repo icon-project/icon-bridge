@@ -19,7 +19,7 @@ interface IBTSCore {
        @param _owner    Address of a new Onwer.
     */
     function addOwner(address _owner) external;
-
+    function getNativeCoinName() external view returns (string memory);
     /**
        @notice Removing an existing Owner.
        @dev Caller must be an Owner of BTP network

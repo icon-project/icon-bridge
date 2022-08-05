@@ -239,7 +239,13 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 		return err
 	}
 	txOpts.Nonce = (&big.Int{}).SetUint64(nonce)
-
+	defer func() {
+		if tx.pendingTx != nil {
+			txBytes, _ := tx.pendingTx.MarshalJSON()
+			tx.cl.log.WithFields(log.Fields{
+				"tx": string(txBytes)}).Debug("handleRelayMessage: tx sent")
+		}
+	}()
 	tx.pendingTx, err = tx.bmcCl.HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
 	if err != nil {
 		tx.cl.log.WithFields(log.Fields{
@@ -254,9 +260,6 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	// 	"txh": tx.pendingTx.Hash(),
 	// 	"msg": btpcommon.HexBytes(tx.Message)}).Debug("handleRelayMessage: tx sent")
 
-	txBytes, _ := tx.pendingTx.MarshalJSON()
-	tx.cl.log.WithFields(log.Fields{
-		"tx": string(txBytes)}).Debug("handleRelayMessage: tx sent")
 	return nil
 }
 

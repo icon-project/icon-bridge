@@ -1,123 +1,99 @@
 package bsc
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
 	"testing"
 
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/stretchr/testify/require"
 )
 
-func newTestReceiver(t *testing.T) chain.Receiver {
-	url := "http://localhost:8545"
-	receiver, _ := NewReceiver("", "", []string{url}, nil, log.New())
+const (
+	ICON_BMC          = "btp://0x7.icon/cx8a6606d526b96a16e6764aee5d9abecf926689df"
+	BSC_BMC_PERIPHERY = "btp://0x61.bsc/0xB4fC4b3b4e3157448B7D279f06BC8e340d63e2a9"
+	BlockHeight       = 21447824
+)
+
+func newTestReceiver(t *testing.T, src, dst chain.BTPAddress) chain.Receiver {
+	url := "https://data-seed-prebsc-1-s1.binance.org:8545"
+	receiver, _ := NewReceiver(src, dst, []string{url}, nil, log.New())
 	return receiver
 }
 
-func newTestClient(t *testing.T) *Client {
-	url := "http://localhost:8545"
-	cls, _, err := newClients([]string{url}, "", log.New())
+func newTestClient(t *testing.T, bmcAddr string) *Client {
+	url := "https://data-seed-prebsc-1-s1.binance.org:8545"
+	cls, _, err := newClients([]string{url}, bmcAddr, log.New())
 	require.NoError(t, err)
 	return cls[0]
 }
 
 func TestMedianGasPrice(t *testing.T) {
-	url := "http://localhost:8545"
-	cls, _, err := newClients([]string{url}, "", log.New())
+	url := "https://data-seed-prebsc-1-s1.binance.org:8545"
+	cls, _, err := newClients([]string{url}, BSC_BMC_PERIPHERY, log.New())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if val, err := cls[0].GetMedianGasPriceForBlock(); err != nil {
-		t.Fatal(err)
-	} else {
-		t.Log(val.String())
-	}
+	_, _, err = cls[0].GetMedianGasPriceForBlock()
+	require.NoError(t, err)
 }
 
 func TestSubscribeMessage(t *testing.T) {
 	var src, dst chain.BTPAddress
-	err := src.Set("btp://0x97.icon/0xAaFc8EeaEE8d9C8bD3262CCE3D73E56DeE3FB776")
-	err = dst.Set("btp://0xf8aac3.icon/cxea19a7d6e9a926767d1d05eea467299fe461c0eb")
+	err := src.Set(BSC_BMC_PERIPHERY)
+	err = dst.Set(ICON_BMC)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	recv := newTestReceiver(t).(*receiver)
-	recv.src = src
-	recv.dst = dst
-	height := uint64(614)
+	recv := newTestReceiver(t, src, dst).(*receiver)
 
 	ctx, cancel := context.Background(), func() {}
 	if deadline, ok := t.Deadline(); ok {
 		ctx, cancel = context.WithDeadline(context.Background(), deadline)
 	}
 	defer cancel()
-
 	srcMsgCh := make(chan *chain.Message)
 	srcErrCh, err := recv.Subscribe(ctx,
 		srcMsgCh,
 		chain.SubscribeOptions{
-			Seq:    12,
-			Height: height,
+			Seq:    75,
+			Height: uint64(BlockHeight),
 		})
 	require.NoError(t, err, "failed to subscribe")
 
-	startHeight := height
 	for {
+		defer cancel()
 		select {
 		case err := <-srcErrCh:
 			t.Logf("subscription closed: %v", err)
 			t.FailNow()
 		case msg := <-srcMsgCh:
-			t.Logf("received block: %d", height)
-
-			// validate receipts height matches block height
-			if len(msg.Receipts) > 0 {
-				require.Equal(t,
-					msg.Receipts[0].Height, height,
-					"receipts height should match block height")
-			}
-
-			// terminate the test after 10 blocks
-			height++
-			if height > startHeight+10 {
-				break
+			if len(msg.Receipts) > 0 && msg.Receipts[0].Height == 21447824 {
+				// received event exit
+				return
 			}
 		}
 	}
 }
 
 func TestReceiver_GetReceiptProofs(t *testing.T) {
-	var src, dst chain.BTPAddress
-	err := src.Set("btp://0x97.icon/0xAaFc8EeaEE8d9C8bD3262CCE3D73E56DeE3FB776")
-	err = dst.Set("btp://0xf8aac3.icon/cxea19a7d6e9a926767d1d05eea467299fe461c0eb")
-	if err != nil {
-		fmt.Println(err)
+	cl := newTestClient(t, BSC_BMC_PERIPHERY)
+	header, err := cl.GetHeaderByHeight(big.NewInt(BlockHeight))
+	require.NoError(t, err)
+	hash := header.Hash()
+	receipts, err := cl.GetBlockReceipts(hash)
+	require.NoError(t, err)
+	receiptsRoot := ethTypes.DeriveSha(receipts, trie.NewStackTrie(nil))
+	if !bytes.Equal(receiptsRoot.Bytes(), header.ReceiptHash.Bytes()) {
+		err = fmt.Errorf(
+			"invalid receipts: remote=%v, local=%v",
+			header.ReceiptHash, receiptsRoot)
+		require.NoError(t, err)
 	}
-
-	r, _ := NewReceiver(src, dst, []string{"http://localhost:8545"}, nil, log.New())
-
-	// blockNotification := &BlockNotification{Height: big.NewInt(191)}
-	// receiptProofs, err := r.(*receiver).newReceiptProofs(blockNotification)
-
-	// //fmt.Println(receiptProofs[0].Proof)
-
-	// var bytes [][]byte
-	// _, err = codec.RLP.UnmarshalFromBytes(receiptProofs[0].Proof, &bytes)
-
-	// if err != nil {
-	// 	return
-	// }
-
-	header, err := r.(*receiver).cls[0].eth.HeaderByNumber(context.TODO(), big.NewInt(191))
-	fmt.Println(header.ReceiptHash)
-	//fmt.Println(block.Hash())
-	//fmt.Println(receiptProofs[0])
-	//fmt.Println(len(bytes))
-	//for _, proof := range bytes {
-	//	fmt.Println(hexutil.Encode(proof))
-	//}
 }

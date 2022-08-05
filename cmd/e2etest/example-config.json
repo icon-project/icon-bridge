@@ -1,33 +1,36 @@
 {
+    "env": "testnet",
     "chains":[
         {
             "name":"ICON",
-            "url":"http://127.0.0.1:9080/api/v3/icon",
+            "url":"https://lisbon.net.solidwallet.io/api/v3/icon_dex",
             "contract_addresses": {
-                "BTS":  "cx79ba68ea1bb4591ef2b835d8a05d4953986f2b4c"
+                "BTS":  "cx69774ba6f0d2718bef41065227345529a11b57f1"
             },
             "native_coin": "ICX",
-            "native_tokens":["ETH", "TICX"],
-            "wrapped_coins":["BNB", "TBNB"],
-            "god_wallet_keystore_path":"./icon.god.wallet.json",
-            "god_wallet_secret_path":"./icon.god.wallet.secret",
-            "network_id":"0x613f17.icon",
-            "gas_limit":2000000
+            "native_tokens":["sICX", "bnUSD", "DUM"],
+            "wrapped_coins":["BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH"],
+            "god_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/lisbon/wallets/icon.bmr.wallet.json",
+            "god_wallet_secret_path":"/home/manish/go/src/work/icon-bridge/lisbon/wallets/icon.bmr.wallet.secret",
+            "demo_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/wallets/icon",
+            "network_id":"0x2.icon",
+            "gas_limit":5000000
         }, 
         {
             "name":"BSC", 
-            "url":"http://127.0.0.1:8545",
+            "url":"https://data-seed-prebsc-1-s1.binance.org:8545",
             "contract_addresses": {
-                "BTS":      "0x71a1520bBb7e6072Bbf3682A60c73D63b693690A",
-                "BTSPeriphery": "0x3abC8DFF0C95B8982399daCf6ED5bD7b94a40068"
+                "BTS":      "0x9F90806DBDaA783766483d2D24b431CFFB793eEb",
+                "BTSPeriphery": "0x94D9842507AAbB4D7ce010206f662b44efA8496F"
             },
             "native_coin": "BNB",
-            "native_tokens":["ETH", "TBNB"],
-            "wrapped_coins":["ICX", "TICX"],
-            "god_wallet_keystore_path":"./bsc.god.wallet.json",
-            "god_wallet_secret_path":"./bsc.god.wallet.secret",
+            "native_tokens":["BUSD", "USDT", "USDC", "BTCB", "ETH", "DUM"],
+            "wrapped_coins":["ICX", "sICX", "bnUSD"],
+            "god_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/lisbon/wallets/bsc.bmr.wallet.json",
+            "god_wallet_secret_path":"/home/manish/go/src/work/icon-bridge/lisbon/wallets/bsc.bmr.wallet.secret",
+            "demo_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/wallets/bsc",
             "network_id":"0x61.bsc",
-            "gas_limit":2000000
+            "gas_limit":5000000
         }
     ]
 } 

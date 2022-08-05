@@ -14,7 +14,7 @@ deploy_javascore_bmc() {
   goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bmc.jar \
     --content_type application/java \
     --param _net=$(cat net.btp.icon) | jq -r . >tx.icon.bmc
-  sleep 2
+  sleep 3
   extract_scoreAddress tx.icon.bmc btp.icon.bmc
   echo "btp://$(cat net.btp.icon)/$(cat btp.icon.bmc)" >btp.icon.btp.address
   btp_icon_block_height=$(goloop_lastblock | jq -r .height)
@@ -22,53 +22,37 @@ deploy_javascore_bmc() {
   echo $(URI=$ICON_ENDPOINT HEIGHT=$(decimal2Hex $(($btp_icon_block_height - 1))) $ICONBRIDGE_BIN_DIR/iconvalidators | jq -r .hash) > btp.icon.validators.hash
 }
 
-deploy_javascore_bsr() {
-  echo "deploying javascore bsr"
-  cd $CONFIG_DIR
-  goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bsr.jar \
-    --content_type application/java | jq -r . >tx.icon.bsr
-  extract_scoreAddress tx.icon.bsr btp.icon.bsr
-}
-
 deploy_javascore_bts() {
   echo "deploying javascore bts"
   cd $CONFIG_DIR
-  local irc2Tradeable_score=$(xxd -p $CONTRACTS_DIR/javascore/irc2Tradeable.jar | tr -d '\n')
   goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bts.jar \
     --content_type application/java \
     --param _name="ICX" \
     --param _bmc=$(cat btp.icon.bmc) \
-    --param _serializedIrc2="$irc2Tradeable_score" | jq -r . > tx.icon.bts
+    --param _decimals="0x12" \
+    --param _serializedIrc2=$(xxd -p $CONTRACTS_DIR/javascore/irc2Tradeable.jar | tr -d '\n') | jq -r . > tx.icon.bts
+  sleep 3
   extract_scoreAddress tx.icon.bts btp.icon.bts
 }
 
 deploy_javascore_irc2() {
-  echo "deploying javascore IRC2Token TICX"
+  echo "deploying javascore IRC2Token " $1
   cd $CONFIG_DIR
   goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/irc2.jar \
     --content_type application/java \
-    --param _name="TICX" \
-    --param _symbol="TICX" \
+    --param _name=$1 \
+    --param _symbol=$2 \
     --param _initialSupply="0x186a0" \
-    --param _decimals="0x12" | jq -r . >tx.icon.ticx
-  extract_scoreAddress tx.icon.ticx btp.icon.ticx
+    --param _decimals="0x12" | jq -r . >tx.icon.$1
+  sleep 10
+  extract_scoreAddress tx.icon.$1 btp.icon.$1
 }
 
-deploy_javascore_eth() {
-  echo "deploying javascore IRC2Token ETH"
-  cd $CONFIG_DIR
-  goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/irc2.jar \
-    --content_type application/java \
-    --param _name="ETH" \
-    --param _symbol="ETH" \
-    --param _initialSupply="0x186a0" \
-    --param _decimals="0x12" | jq -r . >tx.icon.eth
-  extract_scoreAddress tx.icon.eth btp.icon.eth
-}
-
+ 
 configure_javascore_add_bmc_owner() {
   echo "bmc Add Owner"
-  local btp_icon_bmc_owner=$(cat $GOLOOP_RPC_KEY_STORE | jq -r .address)
+  echo $CONFIG_DIR/keystore/icon.bmc.wallet.json
+  local btp_icon_bmc_owner=$(cat $CONFIG_DIR/keystore/icon.bmc.wallet.json | jq -r .address)
   cd $CONFIG_DIR
   local is_owner=$(goloop rpc call \
     --to $(cat btp.icon.bmc) \
@@ -77,24 +61,26 @@ configure_javascore_add_bmc_owner() {
   if [ "$is_owner" == "0x0" ]; then
     goloop rpc sendtx call --to $(cat btp.icon.bmc) \
     --method addOwner \
-    --param _addr=$btp_icon_bmc_owner > tx/addbmcowner.icon
-     ensure_txresult tx/addbmcowner.icon
+    --param _addr=$btp_icon_bmc_owner | jq -r . > tx/addbmcowner.icon
+    sleep 2
+    ensure_txresult tx/addbmcowner.icon
   fi
 }
 
 configure_javascore_bmc_setFeeAggregator() {
   echo "bmc setFeeAggregator"
   cd $CONFIG_DIR
-  ensure_key_store fa.ks.json fa.secret
-  FA=$(cat fa.ks.json | jq -r .address)
+  FA=$(cat $CONFIG_DIR/keystore/icon.fa.wallet.json | jq -r .address)
   goloop rpc sendtx call --to $(cat btp.icon.bmc) \
     --method setFeeAggregator \
     --param _addr=${FA} | jq -r . >tx/setFeeAggregator.icon
+  sleep 2
   ensure_txresult tx/setFeeAggregator.icon
 
   goloop rpc sendtx call --to $(cat btp.icon.bmc) \
     --method setFeeGatheringTerm \
     --param _value=1000 | jq -r . >tx/setFeeGatheringTerm.icon
+  sleep 2
   ensure_txresult tx/setFeeGatheringTerm.icon
 }
 
@@ -105,13 +91,14 @@ configure_javascore_add_bts() {
     --method addService \
     --value 0 \
     --param _addr=$(cat btp.icon.bts) \
-    --param _svc=$SVC_NAME | jq -r . >tx/addService.icon
+    --param _svc="bts" | jq -r . >tx/addService.icon
+  sleep 2
   ensure_txresult tx/addService.icon
 }
 
 configure_javascore_add_bts_owner() {
   echo "Add bts Owner"
-  local btp_icon_bts_owner=$(cat $GOLOOP_RPC_KEY_STORE | jq -r .address)
+  local btp_icon_bts_owner=$(cat $CONFIG_DIR/keystore/icon.bts.wallet.json | jq -r .address)
   cd $CONFIG_DIR
   local is_owner=$(goloop rpc call \
     --to $(cat btp.icon.bts) \
@@ -121,17 +108,9 @@ configure_javascore_add_bts_owner() {
     goloop rpc sendtx call --to $(cat btp.icon.bts) \
     --method addOwner \
     --param _addr=$btp_icon_bts_owner  | jq -r . >tx/addBtsOwner.icon
+    sleep 2
     ensure_txresult tx/addBtsOwner.icon
   fi
-}
-
-configure_javascore_set_bsr() {
-  echo "bts set bsr"
-  cd $CONFIG_DIR
-  goloop rpc sendtx call --to $(cat btp.icon.bts) \
-    --method addRestrictor \
-    --param _address=$(cat btp.icon.bsr) | jq -r . >tx/addRestrictor.icon
-  ensure_txresult tx/addRestrictor.icon
 }
 
 
@@ -145,6 +124,7 @@ configure_javascore_bts_setICXFee() {
     --param _name="ICX" \
     --param _feeNumerator=$(decimal2Hex $btp_bts_fee_numerator) \
     --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/setICXFee.icon
+  sleep 2
   ensure_txresult tx/setICXFee.icon
 }
 
@@ -154,105 +134,72 @@ configure_javascore_addLink() {
   goloop rpc sendtx call --to $(cat btp.icon.bmc) \
     --method addLink \
     --param _link=$(cat btp.bsc.btp.address) | jq -r . >tx/addLink.icon
+  sleep 2
   ensure_txresult tx/addLink.icon
 
   goloop rpc sendtx call --to $(cat btp.icon.bmc) \
     --method setLinkRxHeight \
     --param _link=$(cat btp.bsc.btp.address) \
     --param _height=$(cat btp.bsc.block.height)| jq -r . >tx/setLinkRxHeight.icon
+  sleep 2
   ensure_txresult tx/setLinkRxHeight.icon
 }
 
 configure_bmc_javascore_addRelay() {
   echo "Adding bsc Relay"
-  local btp_icon_bmr_owner=$(cat $GOLOOP_RPC_KEY_STORE | jq -r .address)
+  local btp_icon_bmr_owner=$(cat $CONFIG_DIR/keystore/icon.bmr.wallet.json | jq -r .address)
   cd $CONFIG_DIR
   goloop rpc sendtx call --to $(cat btp.icon.bmc) \
     --method addRelay \
     --param _link=$(cat btp.bsc.btp.address) \
     --param _addr=${btp_icon_bmr_owner} | jq -r . >tx/addRelay.icon
+  sleep 2
   ensure_txresult tx/addRelay.icon
 }
 
-configure_javascore_register_bnb() {
-  echo "Register BNB"
+
+configure_javascore_register_native_token() {
+  echo "Register Native Token " $1
   cd $CONFIG_DIR
   local btp_bts_fee_numerator=100
   local btp_bts_fixed_fee=5000
   goloop rpc sendtx call --to $(cat btp.icon.bts) \
     --method register \
-    --param _name="BNB" \
-    --param _symbol="BNB" \
-    --param _decimals="0x12" \
-    --param _feeNumerator=$(decimal2Hex $btp_bts_fee_numerator) \
-    --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/register.coin.bnb
-  ensure_txresult tx/register.coin.bnb
-}
-
-get_btp_icon_bnb() {
-  echo "Get BTP Icon BNB Addr"
-  cd $CONFIG_DIR
-  goloop rpc sendtx call --to $(cat btp.icon.bts) \
-    --method "coinId" \
-    --param _coinName="BNB" | jq -r . >tx/bnb.coin.icon
-  ensure_txresult tx/bnb.coin.icon
-}
-
-configure_javascore_register_ticx() {
-  echo "Register TICX"
-  cd $CONFIG_DIR
-  local btp_bts_fee_numerator=100
-  local btp_bts_fixed_fee=5000
-  goloop rpc sendtx call --to $(cat btp.icon.bts) \
-    --method register \
-    --param _name=TICX \
-    --param _symbol=TICX \
+    --param _name=$1 \
+    --param _symbol=$2 \
     --param _decimals=0x12 \
-    --param _addr=$(cat btp.icon.ticx) \
+    --param _addr=$(cat btp.icon.$1) \
     --param _feeNumerator=$(decimal2Hex $btp_bts_fee_numerator) \
-    --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/register.coin.ticx
-  ensure_txresult tx/register.coin.ticx
+    --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/register.coin.$1
+  sleep 10
+  ensure_txresult tx/register.coin.$1
 }
 
-configure_javascore_register_eth() {
-  echo "Register ETH"
+
+configure_javascore_register_wrapped_coin() {
+  echo "Register Wrapped Coin " $1
   cd $CONFIG_DIR
   local btp_bts_fee_numerator=100
   local btp_bts_fixed_fee=5000
   goloop rpc sendtx call --to $(cat btp.icon.bts) \
     --method register \
-    --param _name=ETH \
-    --param _symbol=ETH \
-    --param _decimals=0x12 \
-    --param _addr=$(cat btp.icon.eth) \
-    --param _feeNumerator=$(decimal2Hex $btp_bts_fee_numerator) \
-    --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/register.coin.eth
-  ensure_txresult tx/register.coin.eth
-}
-
-
-configure_javascore_register_tbnb() {
-  echo "Register TBNB"
-  cd $CONFIG_DIR
-  local btp_bts_fee_numerator=100
-  local btp_bts_fixed_fee=5000
-  goloop rpc sendtx call --to $(cat btp.icon.bts) \
-    --method register \
-    --param _name=TBNB \
-    --param _symbol=TBNB \
+    --param _name=$1 \
+    --param _symbol=$2 \
     --param _decimals=0x12 \
     --param _feeNumerator=$(decimal2Hex $btp_bts_fee_numerator) \
-    --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/register.coin.tbnb
-  ensure_txresult tx/register.coin.tbnb
+    --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/register.coin.$1
+  sleep 10
+  ensure_txresult tx/register.coin.$1
 }
 
-get_btp_icon_tbnb() {
-  echo "Get BTP Icon TBNB Addr"
+get_btp_icon_coinId() {
+  echo "Get BTP Icon Addr " $1
   cd $CONFIG_DIR
   goloop rpc sendtx call --to $(cat btp.icon.bts) \
     --method coinId \
-    --param _coinName=TBNB | jq -r . >tx/tbnb.coin.icon
-  ensure_txresult tx/tbnb.coin.icon
+    --param _coinName=$1 | jq -r . >tx/icon.coinId.$1
+  sleep 10
+  ensure_txresult tx/icon.coinId.$1
 }
 
 bsh_javascore_balance() {

@@ -22,7 +22,7 @@ provision() {
 
     #deploy icon
     deploy_javascore_bmc
-    deploy_javascore_bsr
+    #deploy_javascore_bsr
     deploy_javascore_bts
     deploy_javascore_irc2
     deploy_javascore_eth
@@ -43,7 +43,7 @@ provision() {
     configure_javascore_bmc_setFeeAggregator
     configure_javascore_add_bts
     configure_javascore_add_bts_owner
-    configure_javascore_set_bsr
+    #configure_javascore_set_bsr
     configure_javascore_bts_setICXFee
     #configure bsc    
     echo "CONFIGURE BSC"

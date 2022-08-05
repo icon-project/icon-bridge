@@ -1,6 +1,6 @@
 package foundation.icon.btp.bts.irc2;
 
-import foundation.icon.btp.irc2.IRC2;
+import com.iconloop.score.token.irc2.IRC2;
 import score.Address;
 import score.Context;
 import score.annotation.Optional;

@@ -104,6 +104,11 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
     }
 
     @External(readonly = true)
+    public String name() {
+        return "BTP Message Center";
+    }
+
+    @External(readonly = true)
     public String getBtpAddress() {
         return btpAddr.toString();
     }
