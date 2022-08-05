@@ -504,6 +504,6 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         uint256 _value
     ) public view override {
         require(!blacklist[_user],"Blacklisted");
-        require(tokenLimit[_coinName] >= _value,"LimitExceed");
+        require(tokenLimit[_coinName] > _value ,"LimitExceed");
     }
 }
