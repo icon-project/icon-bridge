@@ -7,7 +7,7 @@ on:
 
 jobs:
 
-  solidity-contracts:
+  solidity_contracts:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -91,7 +91,7 @@ jobs:
 
   releas:
     runs-on: ubuntu-latest
-    needs: [solidity-contracts, build_icon, build_bmr]
+    needs: [solidity_contracts, build_icon, build_bmr]
     steps:
       - name: Initialize variables
         id: vars
