@@ -1,5 +1,4 @@
 const BTSCore = artifacts.require("BTSCore");
-const address = require('./addresses.json');
 module.exports = async function (callback) {
     try {
       var argv = require('minimist')(process.argv.slice(2), { string: ['addr'] });
