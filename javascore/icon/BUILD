@@ -265,7 +265,7 @@ genrule(
     ],
     outs = ["bmr_options.json"],
     cmd = """
-        jq <<<{} '.verifier.offset=$$offset | .verifier.validatorsHash=$$hash' --argjson offset $$(cat $(location  @icon//:latest_block_height)) --arg hash $$(cat $(locations @icon//cli:get_icon_validator_hash))> $@
+        jq <<<{} '.verifier.blockHeight=$$offset | .verifier.validatorsHash=$$hash' --argjson offset $$(cat $(location  @icon//:latest_block_height)) --arg hash $$(cat $(locations @icon//cli:get_icon_validator_hash))> $@
     """,
     executable = True,
     local = True,
