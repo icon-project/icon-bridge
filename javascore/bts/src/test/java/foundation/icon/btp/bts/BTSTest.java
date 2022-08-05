@@ -55,8 +55,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
 
         String[] addr2 = new String[] {"   all too well       "};
-        call = () -> score.invoke(owner, "addBlacklistAddress", "network", addr2);
-        expectErrorMessage(call, "User already blacklisted");
+        score.invoke(owner, "addBlacklistAddress", "network", addr2);
 
         List<String> actual = (List<String>) score.call("getBlackListedUsers", "network", 0, 10);
         List<String> expected = List.of("all too well");
@@ -105,8 +104,7 @@ public class BTSTest extends AbstractBTPTokenService {
         expectErrorMessage(call, "require owner access");
 
         // try to remove non blacklisted
-        call = () -> score.invoke(owner, "removeBlacklistAddress", "harmony",new String[]{"hell"});
-        expectErrorMessage(call, "User not in blacklist");
+        score.invoke(owner, "removeBlacklistAddress", "harmony",new String[]{"hell"});
 
         // remove legit user
         score.invoke(owner, "removeBlacklistAddress", "network", addr1);

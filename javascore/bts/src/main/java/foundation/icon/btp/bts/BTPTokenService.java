@@ -214,14 +214,29 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         requireOwnerAccess();
 
         // check for valid link
-        require(isValidLink(_net), "Invalid link");
+        require(isValidLink(_net) || _net.equals(net), "Invalid link");
+
+        List<String> blacklist = new ArrayList<>();
 
         for (String addr: _addresses) {
-            require(!isUserBlackListed(addr, _net), "User already blacklisted");
+            if (! isUserBlackListed(addr, _net)) {
+                blacklist.add(addr);
+                blacklistDB.addToBlacklist(_net, addr);
+            }
+        }
+
+        if (blacklist.size() == 0 || net.equals(_net))  {
+            return;
+        }
+
+        int size = blacklist.size();
+        String[] addresses = new String[size];
+        for (int i = 0; i < size; i++) {
+            addresses[i] = blacklist.get(i);
         }
 
         BigInteger sn = increaseSn();
-        BlacklistTransaction request = new BlacklistTransaction(_addresses, _net);
+        BlacklistTransaction request = new BlacklistTransaction(addresses, _net);
 
         blacklistTxn.set(sn, request);
 
@@ -233,14 +248,29 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         requireOwnerAccess();
 
         // check for valid link
-        require(isValidLink(_net), "Invalid link");
+        require(isValidLink(_net) || _net.equals(net), "Invalid link");
+
+        List<String> blacklist = new ArrayList<>();
 
         for (String addr: _addresses) {
-            require(isUserBlackListed(addr, _net), "User not in blacklist");
+            if ( isUserBlackListed(addr, _net)) {
+                blacklist.add(addr);
+                blacklistDB.removeFromBlacklist(_net, addr);
+            }
+        }
+
+        if (net.equals(_net) || blacklist.size() == 0) {
+            return;
+        }
+
+        int size = blacklist.size();
+        String[] addresses = new String[size];
+        for (int i = 0; i < size; i++) {
+            addresses[i] = blacklist.get(i);
         }
 
         BigInteger sn = increaseSn();
-        BlacklistTransaction request = new BlacklistTransaction(_addresses, _net);
+        BlacklistTransaction request = new BlacklistTransaction(addresses, _net);
 
         blacklistTxn.set(sn, request);
 
@@ -779,17 +809,15 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
          if (txn != null) {
              BigInteger code = response.getCode();
              if (BlacklistResponse.RC_OK.equals(code)) {
+                 blacklistTxn.set(sn, null);
+                 AddedToBlacklist(sn, response.getMessage() != null ? response.getMessage().getBytes() : null);
+             } else {
                  String[] addresses = txn.getAddress();
                  String net = txn.getNet();
-                 for(String addr : addresses) {
-                     addToBlacklistInternal(net, addr);
+                 for(String addr: addresses) {
+                     removeFromBlacklistInternal(net, addr);
                  }
-             } else {
-                 throw BTSException.unknown("Invalid add to blacklist transaction");
              }
-             blacklistTxn.set(sn, null);
-             AddedToBlacklist(sn, response.getMessage() != null ? response.getMessage().getBytes() : null);
-
          }
         logger.println("handleAddToBlacklist", "end");
     }
@@ -800,17 +828,15 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         if (txn != null) {
             BigInteger code = response.getCode();
             if (BlacklistResponse.RC_OK.equals(code)) {
+                blacklistTxn.set(sn, null);
+                RemovedFromBlacklist(sn, response.getMessage() != null ? response.getMessage().getBytes() : null);
+            } else {
                 String[] addresses = txn.getAddress();
                 String net = txn.getNet();
                 for(String addr : addresses) {
-                    removeFromBlacklistInternal(net, addr);
+                    addToBlacklistInternal(net, addr);
                 }
-            } else {
-                throw BTSException.unknown("Invalid remove from blacklist transaction");
             }
-            blacklistTxn.set(sn, null);
-            RemovedFromBlacklist(sn, response.getMessage() != null ? response.getMessage().getBytes() : null);
-
         }
         logger.println("handleRemoveFromBlacklist", "end");
     }
@@ -836,16 +862,10 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     private void addToBlacklistInternal(String net, String addr) {
-        if (blacklistDB.contains(net, addr)) {
-            throw BTSException.unknown("User already blacklisted");
-        }
         blacklistDB.addToBlacklist(net, addr);
     }
 
     private void removeFromBlacklistInternal(String net, String addr) {
-        if (! blacklistDB.contains(net, addr)) {
-            throw BTSException.unknown("User not in blacklist");
-        }
         blacklistDB.removeFromBlacklist(net, addr);
     }
 
@@ -1068,7 +1088,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             throw BTSException.restricted("_to user is Blacklisted");
         }
         BigInteger tokenLimit = getTokenLimit(_token);
-        if (tokenLimit.compareTo(_value) < 0) {
+        if (_value.compareTo(tokenLimit) > 0) {
             throw BTSException.restricted("Transfer amount exceeds the transaction limit");
         }
     }
