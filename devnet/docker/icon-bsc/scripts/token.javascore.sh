@@ -91,7 +91,7 @@ configure_javascore_add_bts() {
     --method addService \
     --value 0 \
     --param _addr=$(cat btp.icon.bts) \
-    --param _svc=$SVC_NAME | jq -r . >tx/addService.icon
+    --param _svc="bts" | jq -r . >tx/addService.icon
   sleep 2
   ensure_txresult tx/addService.icon
 }

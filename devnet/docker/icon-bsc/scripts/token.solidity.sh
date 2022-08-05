@@ -50,7 +50,7 @@ configure_solidity_add_bts_service() {
   echo "adding bts service into BMC"
   cd $CONTRACTS_DIR/solidity/bmc
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
-    --method addService --name $SVC_NAME --addr $(cat $CONFIG_DIR/btp.bsc.bts.periphery))
+    --method addService --name "bts" --addr $(cat $CONFIG_DIR/btp.bsc.bts.periphery))
   echo "$tx" >$CONFIG_DIR/tx/addService.bsc
 }
  
