@@ -6,12 +6,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/btcsuite/btcutil/base58"
+	"github.com/near/borsh-go"
 	"math/big"
 	"strconv"
 	"strings"
-
-	"github.com/btcsuite/btcutil/base58"
-	"github.com/near/borsh-go"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -21,28 +21,36 @@ const (
 
 type AccountId string
 
-type CryptoHash []byte
+type CryptoHash [32]byte
 
 func (c *CryptoHash) UnmarshalJSON(p []byte) error {
 	var cryptoHash string
+	var data [32]byte
+
 	err := json.Unmarshal(p, &cryptoHash)
 	if err != nil {
 		return err
 	}
 	if cryptoHash == "" {
-		*c = nil
+		c = nil
 		return nil
 	}
-	*c = CryptoHash(base58.Decode(cryptoHash))
+
+	copy(data[:], base58.Decode(cryptoHash))
+	*c = CryptoHash(data)
+
 	return nil
 }
 
 func NewCryptoHash(hash string) CryptoHash {
-	return CryptoHash(base58.Decode(hash))
+	var data [32]byte
+	copy(data[:], base58.Decode(hash))
+
+	return CryptoHash(data)
 }
 
 func (c *CryptoHash) Base58Encode() string {
-	return base58.Encode(*c)
+	return base58.Encode(c[:])
 }
 
 type Timestamp uint64
@@ -67,11 +75,13 @@ func (t *Timestamp) UnmarshalJSON(p []byte) error {
 
 type PublicKey struct {
 	KeyType uint8
-	Data    []byte
+	Data    [32]byte
 }
 
 func (pk *PublicKey) UnmarshalJSON(p []byte) error {
 	var publicKey string
+	var data [32]byte
+
 	err := json.Unmarshal(p, &publicKey)
 	if err != nil {
 		return err
@@ -83,14 +93,17 @@ func (pk *PublicKey) UnmarshalJSON(p []byte) error {
 	}
 
 	if strings.Contains(publicKey, "ed25519:") {
+		copy(data[:], base58.Decode(publicKey[len("ed25519:"):]))
 		pk = &PublicKey{
 			KeyType: ED25519,
-			Data:    base58.Decode(publicKey[len("ed25519:"):]),
+			Data:    data,
 		}
 	} else if strings.Contains(publicKey, "secp256k1:") {
+		copy(data[:], base58.Decode(publicKey[len("secp256k1:"):]))
+
 		pk = &PublicKey{
 			KeyType: SECP256K1,
-			Data:    base58.Decode(publicKey[len("secp256k1:"):]),
+			Data:    data,
 		}
 	} else {
 		pk = nil
@@ -107,15 +120,18 @@ func (pk *PublicKey) Base58Encode() string {
 }
 
 func NewPublicKeyFromED25519(pk ed25519.PublicKey) PublicKey {
+	var data [32]byte
+	copy(data[:], pk)
+
 	return PublicKey{
 		KeyType: ED25519,
-		Data: pk,
+		Data:    data,
 	}
 }
 
 type Signature struct {
 	KeyType uint8
-	Data    []byte
+	Data    [64]byte
 }
 
 func (s Signature) Base58Encode() string {
@@ -127,11 +143,13 @@ func (s Signature) Base58Encode() string {
 }
 
 func (s *Signature) Bytes() []byte {
-	return append([]byte{s.KeyType}, s.Data...)
+	return append([]byte{s.KeyType}, s.Data[:]...)
 }
 
 func (s *Signature) UnmarshalJSON(p []byte) error {
 	var signature string
+	var data [64]byte
+
 	err := json.Unmarshal(p, &signature)
 	if err != nil {
 		return err
@@ -143,14 +161,18 @@ func (s *Signature) UnmarshalJSON(p []byte) error {
 	}
 
 	if strings.Contains(signature, "ed25519:") {
+		copy(data[:], base58.Decode(signature[len("ed25519:"):]))
+
 		s = &Signature{
 			KeyType: ED25519,
-			Data:    base58.Decode(signature[len("ed25519:"):]),
+			Data:    data,
 		}
 	} else if strings.Contains(signature, "secp256k1:") {
+		copy(data[:], base58.Decode(signature[len("secp256k1:"):]))
+
 		s = &Signature{
 			KeyType: SECP256K1,
-			Data:    base58.Decode(signature[len("secp256k1:"):]),
+			Data:    data,
 		}
 	} else {
 		s = nil
@@ -158,15 +180,27 @@ func (s *Signature) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
-type BigInt string
+type BigInt big.Int
 
-func (b *BigInt) Int() (big.Int, error) {
-	n := new(big.Int)
-	n, ok := n.SetString(string(*b), 10)
-	if !ok {
-		return big.Int{}, fmt.Errorf("not a valid bigint: %s", string(*b))
+func (b *BigInt) UnmarshalJSON(p []byte) error {
+	var bigInt string
+	err := json.Unmarshal(p, &bigInt)
+	if err != nil {
+		return err
 	}
-	return *n, nil
+
+	if bigInt == "" {
+		return nil
+	}
+
+	dec, err := decimal.NewFromString(bigInt)
+	if err != nil {
+		return err
+	}
+
+	*b = BigInt(*dec.BigInt())
+
+	return nil
 }
 
 func CombineHash(hash1 []byte, hash2 []byte) []byte {
@@ -259,6 +293,18 @@ type Action struct {
 	DeleteAccount  DeleteAccount
 }
 
+type ActionView struct {
+	Enum           borsh.Enum `borsh_enum:"true"` // treat struct as complex enum when serializing/deserializing
+	CreateAccount  borsh.Enum
+	DeployContract DeployContract
+	FunctionCall   FunctionCallView
+	Transfer       Transfer
+	Stake          Stake
+	AddKey         AddKey
+	DeleteKey      DeleteKey
+	DeleteAccount  DeleteAccount
+}
+
 type DeployContract struct {
 	Code []byte
 }
@@ -268,6 +314,13 @@ type FunctionCall struct {
 	Args       []byte
 	Gas        uint64
 	Deposit    big.Int
+}
+
+type FunctionCallView struct {
+	MethodName string
+	Args       []byte
+	Gas        uint64
+	Deposit    BigInt
 }
 
 type Transfer struct {

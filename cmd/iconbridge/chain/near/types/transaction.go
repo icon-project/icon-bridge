@@ -4,26 +4,25 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-
 	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/near/borsh-go"
 )
 
 type TransactionResult struct {
 	Status             ExecutionStatus              `json:"status"`
-	Transaction        TransactionView                  `json:"transaction"`
+	Transaction        TransactionView              `json:"transaction"`
 	TransactionOutcome ExecutionOutcomeWithIdView   `json:"transaction_outcome"`
 	ReceiptsOutcome    []ExecutionOutcomeWithIdView `json:"receipts_outcome"`
 }
 
 type TransactionView struct {
-	SignerId   AccountId `json:"signer_id"`
-	PublicKey  PublicKey `json:"public_key"`
-	Nonce      int       `json:"nonce"`
-	ReceiverId AccountId `json:"receiver_id"`
-	Actions    []Action   `json:"actions"` // TODO: ActionView
-	Signature  Signature  `json:"signature"`
-	Txid       CryptoHash `json:"hash"`
+	SignerId   AccountId    `json:"signer_id"`
+	PublicKey  PublicKey    `json:"public_key"`
+	Nonce      int          `json:"nonce"`
+	ReceiverId AccountId    `json:"receiver_id"`
+	Actions    []ActionView `json:"actions"` // TODO: ActionView
+	Signature  Signature    `json:"signature"`
+	Txid       CryptoHash   `json:"hash"`
 }
 
 type Transaction struct {
@@ -46,30 +45,27 @@ func (t *Transaction) Payload(wallet *wallet.NearWallet) (string, error) {
 		Transaction struct {
 			SignerId   AccountId
 			PublicKey  PublicKey
-			Nonce      int
+			Nonce      uint64
 			ReceiverId AccountId
-			BlockHash  CryptoHash
+			BlockHash  [32]byte
 			Actions    []Action
-			Signature  Signature
 		}
 		Signature Signature
 	}{
 		Transaction: struct {
 			SignerId   AccountId
 			PublicKey  PublicKey
-			Nonce      int
+			Nonce      uint64
 			ReceiverId AccountId
-			BlockHash  CryptoHash
+			BlockHash  [32]byte
 			Actions    []Action
-			Signature  Signature
 		}{
 			SignerId:   t.SignerId,
 			PublicKey:  t.PublicKey,
-			Nonce:      t.Nonce,
+			Nonce:      uint64(t.Nonce),
 			ReceiverId: t.ReceiverId,
 			BlockHash:  t.BlockHash,
 			Actions:    t.Actions,
-			Signature:  t.Signature,
 		},
 		Signature: t.Signature,
 	})
@@ -84,14 +80,14 @@ func (t *Transaction) sign(wallet *wallet.NearWallet) error {
 	serializedTransaction, err := borsh.Serialize(struct {
 		SignerId   AccountId
 		PublicKey  PublicKey
-		Nonce      int
+		Nonce      uint64
 		ReceiverId AccountId
 		BlockHash  CryptoHash
 		Actions    []Action
 	}{
 		SignerId:   t.SignerId,
 		PublicKey:  t.PublicKey,
-		Nonce:      t.Nonce,
+		Nonce:      uint64(t.Nonce),
 		ReceiverId: t.ReceiverId,
 		BlockHash:  t.BlockHash,
 		Actions:    t.Actions,
@@ -112,7 +108,9 @@ func (t *Transaction) sign(wallet *wallet.NearWallet) error {
 
 	t.Signature = Signature{
 		KeyType: ED25519,
-		Data:    signature,
 	}
+
+	copy(t.Signature.Data[:], signature)
+
 	return nil
 }

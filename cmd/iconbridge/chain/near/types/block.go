@@ -6,7 +6,7 @@ import (
 )
 
 type SerializableHeader struct {
-	PreviousBlockHash []byte
+	PreviousBlockHash [32]byte
 	InnerLite         HeaderInnerLite
 	InnerRest         HeaderInnerRest
 	Signature         Signature
@@ -57,8 +57,8 @@ func (b *Block) Height() int64 {
 	return b.Header.Height
 }
 
-func (b *Block) Hash() *CryptoHash {
-	return &b.Header.Hash
+func (b *Block) Hash() [32]byte {
+	return b.Header.Hash
 }
 
 func (b *Block) ComputeInnerHash(innerLite HeaderInnerLite, innerRest HeaderInnerRest) ([]byte, error) {
