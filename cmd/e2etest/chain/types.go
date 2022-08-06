@@ -35,6 +35,27 @@ type CoinBalance struct {
 	UserBalance       *big.Int
 }
 
+type ContractCallMethodName string
+
+const (
+	CheckTransferRestrictions ContractCallMethodName = "CheckTransferRestrictions" // net, coinName, addr, amount => isRestricted
+	IsUserBlackListed         ContractCallMethodName = "IsUserBlackListed"         // net, addr => isBlackListed
+	GetTokenLimit             ContractCallMethodName = "GetTokenLimit"             // coin => limitAmount
+	IsOwner                   ContractCallMethodName = "IsOwner"
+	GetTokenLimitStatus       ContractCallMethodName = "GetTokenLimitStatus"
+	GetBlackListedUsers       ContractCallMethodName = "GetBlackListedUsers"
+)
+
+type ContractTransactMethodName string
+
+const (
+	SetTokenLimit          ContractTransactMethodName = "SetTokenLimit"
+	AddBlackListAddress    ContractTransactMethodName = "AddBlackListAddress"
+	RemoveBlackListAddress ContractTransactMethodName = "RemoveBlackListAddress"
+	AddRestriction         ContractTransactMethodName = "AddRestriction"
+	DisableRestrictions    ContractTransactMethodName = "DisableRestrictions"
+)
+
 func (cb *CoinBalance) String() string {
 	return "Usable " + cb.UsableBalance.String() +
 		" Locked " + cb.LockedBalance.String() + " Refundable " + cb.RefundableBalance.String() +
@@ -54,6 +75,10 @@ type SrcAPI interface {
 	NativeCoin() string
 	NativeTokens() []string
 	GetBTPAddress(addr string) string
+	GetNetwork() string
+
+	CallBTS(method ContractCallMethodName, args []interface{}) (response interface{}, err error)
+	TransactWithBTS(ownerKey string, method ContractTransactMethodName, args []interface{}) (txnHash string, err error)
 }
 
 type DstAPI interface {
@@ -61,6 +86,7 @@ type DstAPI interface {
 	WatchForTransferReceived(requestID uint64, seq int64) error
 	GetBTPAddress(addr string) string
 	NativeTokens() []string
+	GetNetwork() string
 }
 
 type TxnResult struct {
@@ -87,6 +113,10 @@ type ChainAPI interface {
 	NativeCoin() string
 	NativeTokens() []string
 	GetBTPAddress(addr string) string
+	GetNetwork() string
+
+	CallBTS(method ContractCallMethodName, args []interface{}) (response interface{}, err error)
+	TransactWithBTS(ownerKey string, method ContractTransactMethodName, args []interface{}) (txnHash string, err error)
 }
 
 type Config struct {
