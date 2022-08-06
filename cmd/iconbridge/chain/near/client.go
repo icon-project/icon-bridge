@@ -1,11 +1,15 @@
 package near
 
 import (
+	"errors"
+	"fmt"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/reactivex/rxgo/v2"
 	"net/http"
+	"time"
 )
 
 type Client struct {
@@ -89,9 +93,72 @@ func (c *Client) SendTransaction(payload string) (*types.CryptoHash, error) {
 	txId, err := c.api.broadcastTransactionAsync(payload)
 
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 
 	return &txId, nil
 
+}
+
+func (c *Client) MonitorBlockHeight(offset int64) rxgo.Observable {
+	channel := make(chan rxgo.Item)
+	go func(offset int64) {
+		defer close(channel)
+
+		lastestBlockHeight, err := c.api.getLatestBlockHeight()
+		if err != nil {
+			// TODO: Handle Error
+			channel <- rxgo.Error(err)
+			return
+		}
+
+		if lastestBlockHeight < 1 {
+			channel <- rxgo.Error(errors.New("invalid block height"))
+			return
+		}
+
+		for {
+			rangeHeight := lastestBlockHeight - offset
+			if rangeHeight < 5 {
+				lastestBlockHeight, err = c.api.getLatestBlockHeight()
+				if err != nil {
+					// TODO: Handle Error
+					fmt.Println(err)
+				}
+
+				rangeHeight = lastestBlockHeight - offset
+				if rangeHeight < 3 {
+					time.Sleep(time.Second * 2)
+					continue
+				}
+			}
+
+			channel <- rxgo.Of(offset)
+			offset += 1
+		}
+	}(offset)
+
+	return rxgo.FromChannel(channel, rxgo.WithCPUPool())
+}
+
+func (c *Client) MonitorBlocks(height uint64, callback func(rxgo.Observable) error) error {
+	return callback(c.MonitorBlockHeight(int64(height)).FlatMap(func(i rxgo.Item) rxgo.Observable {
+		if i.E != nil {
+			return rxgo.Just(errors.New(i.E.Error()))()
+		}
+
+		block, err := c.api.getBlockByHeight(i.V.(int64))
+		if err != nil {
+			//TODO: Handle Error
+			return rxgo.Empty()
+		}
+
+		return rxgo.Just(block)()
+	}).TakeUntil(func(i interface{}) bool {
+		return c.isMonitorClosed
+	}))
+}
+
+func (c *Client) CloseMonitor() {
+	c.isMonitorClosed = true
 }
