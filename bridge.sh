@@ -17,4 +17,5 @@ bazel run "@${SOURCE}//:${SOURCE}_node_image"
 bazel run "@${DESTINATION}//:${DESTINATION}_node_image"
 bazel run @btp//cmd/iconbridge:iconbridge_image --incompatible_enable_cc_toolchain_resolution --extra_toolchains @zig_sdk//:linux_amd64_gnu.2.19_toolchain
 
-bazel run "@btp//bridge:${SOURCE}_and_${DESTINATION}" --verbose_failures --define network=testnet
+bazel run "@btp//bridge:${SOURCE}_to_${DESTINATION}" --define near_network=testnet --define icon_network=lisbon
+bazel run "@btp//bridge:${DESTINATION}_to_${SOURCE}" --define near_network=testnet --define icon_network=lisbon
