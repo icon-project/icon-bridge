@@ -2,6 +2,7 @@ package bsc
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -11,30 +12,17 @@ import (
 )
 
 const (
-	TokenGodKey  = "d4901a43dc4cee775fed483636a57ad7b807e77c62134d3cb2d1411d90b072dc"
-	TokenGodAddr = "btp://0x61.bsc/0x210730B1f5B9C4A02dF0808093aC5E72676cF70c"
-	NID          = "0x61.bsc"
-	RPC_URI      = "https://data-seed-prebsc-1-s1.binance.org:8545"
-	GodKey       = "541a205a7d3119e9b617b1023d9c874db572134d50b5f1ef2590bc5e5143dc2c"
-	GodAddr      = "btp://0x61.bsc/0xDf9e6205Ac201c8a11082842857C6f7673a8246e"
-	BtsAddr      = "btp://0x61.bsc/0x9F90806DBDaA783766483d2D24b431CFFB793eEb"
-	GodDstAddr   = "btp://0x2.icon/hxc86452374f94bd8db99f703bb1fc3fad2f7b2024"
-
-	DemoDstAddr = "btp://0x2.icon/hx6d338536ac11a0a2db06fb21fe8903e617a6764d"
-	DemoSrcKey  = "a851faf7310664601b9396e2e3e45e36456f5052c537a8354229ec9059255d59"
-	DemoSrcAddr = "btp://0x61.bsc/0xDf9e6205Ac201c8a11082842857C6f7673a8246e"
+	RPC_URI      = "http://localhost:8545"
+	TokenGodKey  = "1deb607f38b0bd1390df3b312a1edc11a00a34f248b5d53f4157de054f3c71ae"
+	TokenGodAddr = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
+	GodKey       = "1deb607f38b0bd1390df3b312a1edc11a00a34f248b5d53f4157de054f3c71ae"
+	GodAddr      = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
+	DemoSrcKey   = "ce69f928c68b0b7bc198824b081cfbde60d6b1e0f1695d5aaa9d8564bb35dcb3"
+	DemoSrcAddr  = "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
+	DemoDstAddr  = "btp://0x5b9a77.icon/hx0000000000000000000000000000000000000000"
+	GodDstAddr   = "btp://0x5b9a77.icon/hxad8eec2e167c24020600ddf1acd4d03673d3f49b"
+	BtsAddr      = "btp://0x61.bsc/0x71a1520bBb7e6072Bbf3682A60c73D63b693690A"
 )
-
-// const (
-// 	RPC_URI     = "http://localhost:8545"
-// 	GodKey      = "1deb607f38b0bd1390df3b312a1edc11a00a34f248b5d53f4157de054f3c71ae"
-// 	GodAddr     = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
-// 	DemoSrcKey  = "ce69f928c68b0b7bc198824b081cfbde60d6b1e0f1695d5aaa9d8564bb35dcb3"
-// 	DemoSrcAddr = "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
-// 	DemoDstAddr = "btp://0x613f17.icon/hx0000000000000000000000000000000000000000"
-// 	GodDstAddr  = "btp://0x613f17.icon/hxad8eec2e167c24020600ddf1acd4d03673d3f49b"
-// 	BtsAddr     = "btp://0x61.bsc/0x71a1520bBb7e6072Bbf3682A60c73D63b693690A"
-// )
 
 func TestApprove(t *testing.T) {
 	rpi, err := getNewApi()
@@ -42,7 +30,7 @@ func TestApprove(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	amt := new(big.Int)
-	amt.SetString("100000000000000", 10)
+	amt.SetString("100000000000000000", 10)
 	for _, coin := range []string{"BUSD", "USDT", "USDC", "BTCB", "ETH"} {
 		// coin := "USDC"
 		approveHash, err := rpi.Approve(coin, TokenGodKey, amt)
@@ -63,8 +51,8 @@ func TestTransferIntraChain(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	senderKey := "6f870d575254821f712c640beabb4041d81c3295ec31b843c4a30caa15658ff7"
-	dstAddr := TokenGodAddr
+	senderKey := TokenGodKey
+	dstAddr := "btp://0x61.bsc/0x8Bde22A645051B8772E4d6d9125Bb0B77EE2Ca0d"
 	amt := new(big.Int)
 	amt.SetString("5000000000000000000", 10)
 	for _, coin := range []string{"BNB"} {
@@ -89,14 +77,14 @@ func TestTransferIntraChain(t *testing.T) {
 
 func TestTransferInterChain(t *testing.T) {
 	//"BUSD", "USDT", "USDC", "BTCB", "ETH"
-	coin := "ETH"
+	coin := "BNB"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	srcKey := GodKey
-	srcAddr := GodAddr
-	dstAddr := DemoDstAddr
+	srcKey := TokenGodKey
+	srcAddr := TokenGodAddr
+	dstAddr := DemoSrcAddr
 	for _, coin := range []string{coin} {
 		res, err := rpi.GetCoinBalance(coin, srcAddr)
 		if err != nil {
@@ -106,7 +94,7 @@ func TestTransferInterChain(t *testing.T) {
 	}
 
 	amt := new(big.Int)
-	amt.SetString("1000000000000000000000", 10)
+	amt.SetString("100000000000000000", 10)
 	txnHash, err := rpi.Transfer(coin, srcKey, dstAddr, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -136,17 +124,17 @@ func TestBatchTransfer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	coins := []string{"TBNB", "ETH", "BNB"}
-	amount := big.NewInt(100000000000000)
-	largeAmt := new(big.Int)
-	largeAmt.SetString("26271926117961986739", 10)
-	amounts := []*big.Int{amount, largeAmt, amount}
-	for i, coin := range coins {
+	coins := []string{"BUSD", "USDT", "USDC", "BTCB", "ETH"}
 
+	largeAmt := new(big.Int)
+	largeAmt.SetString("1000000000000000000000", 10)
+	amounts := []*big.Int{largeAmt, largeAmt, largeAmt, largeAmt, largeAmt}
+	for i, coin := range coins {
+		fmt.Println("coin", coin)
 		if coin == rpi.NativeCoin() {
 			continue
 		}
-		approveHash, err := rpi.Approve(coin, GodKey, amounts[i])
+		approveHash, err := rpi.Approve(coin, TokenGodKey, amounts[i])
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -158,7 +146,7 @@ func TestBatchTransfer(t *testing.T) {
 			t.Fatalf("Approve StatusCode not 1 for %vth coin %v \n %v", i, coin, res.Raw)
 		}
 	}
-	hash, err := rpi.TransferBatch(coins, GodKey, GodDstAddr, amounts)
+	hash, err := rpi.TransferBatch(coins, TokenGodKey, GodDstAddr, amounts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +167,7 @@ func TestGetCoinBalance(t *testing.T) {
 	}
 
 	for _, coin := range []string{"BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH", "DUM", "ICX", "sICX", "bnUSD"} {
-		res, err := rpi.GetCoinBalance(coin, GodAddr)
+		res, err := rpi.GetCoinBalance(coin, DemoSrcAddr)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -213,8 +201,8 @@ func TestGetKeyPair(t *testing.T) {
 
 func getNewApi() (chain.ChainAPI, error) {
 	ctrMap := map[chain.ContractName]string{
-		chain.BTS:          "0x9F90806DBDaA783766483d2D24b431CFFB793eEb",
-		chain.BTSPeriphery: "0x94D9842507AAbB4D7ce010206f662b44efA8496F",
+		chain.BTS:          "0x71a1520bBb7e6072Bbf3682A60c73D63b693690A",
+		chain.BTSPeriphery: "0x3abC8DFF0C95B8982399daCf6ED5bD7b94a40068",
 	}
 
 	l := log.New()
@@ -233,4 +221,64 @@ func getNewApi() (chain.ChainAPI, error) {
 		return nil, err
 	}
 	return rx, nil
+}
+
+func TestIsOwner(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	res, err := rpi.CallBTS(chain.IsOwner, []interface{}{"0x8Bde22A645051B8772E4d6d9125Bb0B77EE2Ca0d"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("Res ", res)
+}
+
+func TestGetTokenLimit(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	for _, coin := range []string{"BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH", "DUM", "ICX", "sICX", "bnUSD"} {
+		res, err := rpi.CallBTS(chain.GetTokenLimit, []interface{}{coin})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("Res coin ", res)
+	}
+}
+
+func TestIsUserBlackListed(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	res, err := rpi.CallBTS(chain.IsUserBlackListed, []interface{}{
+		"0x61.bsc",
+		"0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("Res ", res)
+}
+
+func TestCheckTransferRestrictions(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	amount := new(big.Int)
+	amount.SetString("1000000000000000000000", 10)
+	res, err := rpi.CallBTS(chain.CheckTransferRestrictions, []interface{}{
+		"0x61.bsc",
+		"sICX",
+		DemoSrcAddr,
+		amount,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("Res ", res)
 }

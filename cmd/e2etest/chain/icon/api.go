@@ -285,3 +285,7 @@ func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv stri
 	pub = gocommon.NewAccountAddressFromPublicKey(privKey.PublicKey()).String()
 	return
 }
+
+func (a *api) GetNetwork() string {
+	return a.requester.networkID + ".icon"
+}

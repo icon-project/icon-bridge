@@ -33,7 +33,7 @@ func getConfig() (*executor.Config, error) {
 		return cfg, nil
 	}
 	var err error
-	cfg, err := loadConfig("/home/manish/go/src/work/icon-bridge/cmd/e2etest/example-config.json")
+	cfg, err := loadConfig("../example-config.json")
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +137,8 @@ func TestKeystore(t *testing.T) {
 
 func getKeystores() (map[chain.ChainType][]string, error) {
 	pathPerChain := map[chain.ChainType]string{
-		chain.ICON: "/home/manish/go/src/work/icon-bridge/cmd/e2etest/wallets/icon",
-		chain.BSC:  "/home/manish/go/src/work/icon-bridge/cmd/e2etest/wallets/bsc",
+		chain.ICON: ".,/wallets/icon",
+		chain.BSC:  ".,/wallets/bsc",
 	}
 	keystores := map[chain.ChainType][]string{
 		chain.ICON: {},

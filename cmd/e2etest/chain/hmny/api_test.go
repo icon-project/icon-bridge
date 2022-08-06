@@ -28,9 +28,6 @@ const (
 )
 
 func getNewApi() (chain.ChainAPI, error) {
-	//ICONDemo [f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5 btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee]
-	//HmnyDemo [564971a566ce839535681eef81ccd44005944b98f7409cb5c0f5684ae862a530 btp://0x6357d2e0.hmny/0x8fc668275b4fa032342ea3039653d841f069a83b]
-
 	// coinMap := map[string]string{
 	// 	"TONE": "0xB20CCD2a42e5486054AE3439f2bDa95DC75d9B75",
 	// }

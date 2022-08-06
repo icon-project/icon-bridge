@@ -268,3 +268,7 @@ func (r *api) GetKeyPairFromKeystore(keystoreFile string, secretFile string) (pr
 	pubKey = crypto.PubkeyToAddress(key.PrivateKey.PublicKey).String()
 	return
 }
+
+func (a *api) GetNetwork() string {
+	return a.requester.networkID + ".bsc"
+}

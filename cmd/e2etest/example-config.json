@@ -10,9 +10,9 @@
             "native_coin": "ICX",
             "native_tokens":["sICX", "bnUSD", "DUM"],
             "wrapped_coins":["BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH"],
-            "god_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/lisbon/wallets/icon.bmr.wallet.json",
-            "god_wallet_secret_path":"/home/manish/go/src/work/icon-bridge/lisbon/wallets/icon.bmr.wallet.secret",
-            "demo_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/wallets/icon",
+            "god_wallet_keystore_path":"../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
+            "god_wallet_secret_path":"../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
+            "demo_wallet_keystore_path":"./cmd/e2etest/wallets/icon",
             "network_id":"0x2.icon",
             "gas_limit":5000000
         }, 
@@ -26,9 +26,9 @@
             "native_coin": "BNB",
             "native_tokens":["BUSD", "USDT", "USDC", "BTCB", "ETH", "DUM"],
             "wrapped_coins":["ICX", "sICX", "bnUSD"],
-            "god_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/lisbon/wallets/bsc.bmr.wallet.json",
-            "god_wallet_secret_path":"/home/manish/go/src/work/icon-bridge/lisbon/wallets/bsc.bmr.wallet.secret",
-            "demo_wallet_keystore_path":"/home/manish/go/src/work/icon-bridge/cmd/e2etest/wallets/bsc",
+            "god_wallet_keystore_path":"../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
+            "god_wallet_secret_path":"../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
+            "demo_wallet_keystore_path":"./cmd/e2etest/wallets/bsc",
             "network_id":"0x61.bsc",
             "gas_limit":5000000
         }

@@ -18,12 +18,11 @@ export ICON_ENDPOINT='http://localhost:9080/api/v3/default'
 export ICON_KEY_STORE=$ICONBRIDGE_CONFIG_DIR/keystore/icon.god.wallet.json
 export ICON_SECRET=$ICONBRIDGE_CONFIG_DIR/keystore/icon.god.wallet.secret
 export ICON_NATIVE_COIN=('ICX')
-export ICON_NATIVE_TOKEN=('TICX' 'ETH')
-export ICON_WRAPPED_COIN=('TBNB' 'BNB')
+export ICON_NATIVE_TOKEN=('sICX' 'bnUSD' 'DUM')
+export ICON_WRAPPED_COIN=('BNB' 'BUSD' 'USDT' 'USDC' 'BTCB' 'ETH')
 
 export GOLOOP_RPC_STEP_LIMIT=5000000000
 export GOLOOP_RPC_NID='0x5b9a77'
-#'0x2'
 GOLOOPCHAIN=${GOLOOPCHAIN:-'goloop'}
 export GOLOOP_RPC_URI=$ICON_ENDPOINT
 export GOLOOP_RPC_KEY_STORE=$ICON_KEY_STORE
@@ -40,8 +39,8 @@ export BSC_NID=${BSC_NID:-'97'}
 export BSC_BMC_NET=${BSC_BMC_NET:-'0x61.bsc'}
 
 export BSC_NATIVE_COIN=('BNB')
-export BSC_NATIVE_TOKEN=('TBNB' 'ETH')
-export BSC_WRAPPED_COIN=('ICX' 'TICX')
+export BSC_NATIVE_TOKEN=('BUSD' 'USDT' 'USDC' 'BTCB' 'ETH' 'DUM')
+export BSC_WRAPPED_COIN=('ICX' 'sICX' 'bnUSD')
 
 
 
