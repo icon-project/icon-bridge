@@ -81,6 +81,7 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		defer close(_errCh)
 
 		if err := r.receiveBlocks(opts.Height, func(block *types.Block) {
+			r.logger.WithFields(log.Fields{"height": block.Height()}).Debug("block notification")
 			receipts, err := r.client().GetReceipts(block, r.source.ContractAddress())
 			if err != nil {
 				_errCh <- err
