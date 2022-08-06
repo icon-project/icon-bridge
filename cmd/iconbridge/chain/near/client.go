@@ -1,16 +1,23 @@
 package near
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/near/borsh-go"
 	"github.com/reactivex/rxgo/v2"
-	"net/http"
-	"time"
 )
+
+const BmcContractMessageStateKey = "bWVzc2FnZQ=="
 
 type Client struct {
 	api Api
@@ -149,7 +156,7 @@ func (c *Client) MonitorBlocks(height uint64, callback func(rxgo.Observable) err
 
 		block, err := c.api.getBlockByHeight(i.V.(int64))
 		if err != nil {
-			//TODO: Handle Error
+			c.logger.Error(err)
 			return rxgo.Empty()
 		}
 
@@ -161,4 +168,58 @@ func (c *Client) MonitorBlocks(height uint64, callback func(rxgo.Observable) err
 
 func (c *Client) CloseMonitor() {
 	c.isMonitorClosed = true
+}
+
+func (c *Client) GetReceipts(block *types.Block, accountId string) ([]*chain.Receipt, error) {
+	receipts := make([]*chain.Receipt, 0)
+
+	response, err := c.api.getContractStateChange(block.Height(), accountId, BmcContractMessageStateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, change := range response.Changes {
+		var event struct {
+			Next     chain.BTPAddress
+			Sequence string
+			Message  []byte
+		}
+
+		var eventsData string
+
+		eventDataBytes, err := base64.URLEncoding.Strict().DecodeString(change.Data.ValueBase64)
+		if err != nil {
+			return nil, err
+		}
+
+		err = borsh.Deserialize(&eventsData, eventDataBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		err = json.Unmarshal([]byte(eventsData), &event)
+		if err != nil {
+			return nil, err
+		}
+
+		sequence, err := strconv.ParseInt(event.Sequence, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		receipts = append(receipts, &chain.Receipt{
+			Index:  uint64(i),
+			Events: []*chain.Event{
+				{
+					Next: event.Next,
+					Sequence: uint64(sequence),
+					Message: event.Message,
+				},
+			},
+			Height: uint64(block.Height()),
+		})
+
+	}
+
+	return receipts, nil
 }
