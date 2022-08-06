@@ -14,7 +14,7 @@ deploy_javascore_bmc() {
   goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bmc.jar \
     --content_type application/java \
     --param _net=$(cat net.btp.icon) | jq -r . >tx.icon.bmc
-  sleep 3
+  sleep 5
   extract_scoreAddress tx.icon.bmc btp.icon.bmc
   echo "btp://$(cat net.btp.icon)/$(cat btp.icon.bmc)" >btp.icon.btp.address
   btp_icon_block_height=$(goloop_lastblock | jq -r .height)
@@ -31,7 +31,7 @@ deploy_javascore_bts() {
     --param _bmc=$(cat btp.icon.bmc) \
     --param _decimals="0x12" \
     --param _serializedIrc2=$(xxd -p $CONTRACTS_DIR/javascore/irc2Tradeable.jar | tr -d '\n') | jq -r . > tx.icon.bts
-  sleep 3
+  sleep 5
   extract_scoreAddress tx.icon.bts btp.icon.bts
 }
 
@@ -44,7 +44,7 @@ deploy_javascore_irc2() {
     --param _symbol=$2 \
     --param _initialSupply="0x186a0" \
     --param _decimals="0x12" | jq -r . >tx.icon.$1
-  sleep 10
+  sleep 5
   extract_scoreAddress tx.icon.$1 btp.icon.$1
 }
 
@@ -62,7 +62,7 @@ configure_javascore_add_bmc_owner() {
     goloop rpc sendtx call --to $(cat btp.icon.bmc) \
     --method addOwner \
     --param _addr=$btp_icon_bmc_owner | jq -r . > tx/addbmcowner.icon
-    sleep 2
+    sleep 3
     ensure_txresult tx/addbmcowner.icon
   fi
 }
@@ -74,13 +74,13 @@ configure_javascore_bmc_setFeeAggregator() {
   goloop rpc sendtx call --to $(cat btp.icon.bmc) \
     --method setFeeAggregator \
     --param _addr=${FA} | jq -r . >tx/setFeeAggregator.icon
-  sleep 2
+  sleep 3
   ensure_txresult tx/setFeeAggregator.icon
 
   goloop rpc sendtx call --to $(cat btp.icon.bmc) \
     --method setFeeGatheringTerm \
     --param _value=1000 | jq -r . >tx/setFeeGatheringTerm.icon
-  sleep 2
+  sleep 3
   ensure_txresult tx/setFeeGatheringTerm.icon
 }
 
@@ -92,7 +92,7 @@ configure_javascore_add_bts() {
     --value 0 \
     --param _addr=$(cat btp.icon.bts) \
     --param _svc="bts" | jq -r . >tx/addService.icon
-  sleep 2
+  sleep 3
   ensure_txresult tx/addService.icon
 }
 
@@ -108,7 +108,7 @@ configure_javascore_add_bts_owner() {
     goloop rpc sendtx call --to $(cat btp.icon.bts) \
     --method addOwner \
     --param _addr=$btp_icon_bts_owner  | jq -r . >tx/addBtsOwner.icon
-    sleep 2
+    sleep 3
     ensure_txresult tx/addBtsOwner.icon
   fi
 }
@@ -124,7 +124,7 @@ configure_javascore_bts_setICXFee() {
     --param _name="ICX" \
     --param _feeNumerator=$(decimal2Hex $btp_bts_fee_numerator) \
     --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/setICXFee.icon
-  sleep 2
+  sleep 3
   ensure_txresult tx/setICXFee.icon
 }
 
@@ -134,14 +134,14 @@ configure_javascore_addLink() {
   goloop rpc sendtx call --to $(cat btp.icon.bmc) \
     --method addLink \
     --param _link=$(cat btp.bsc.btp.address) | jq -r . >tx/addLink.icon
-  sleep 2
+  sleep 3
   ensure_txresult tx/addLink.icon
 
   goloop rpc sendtx call --to $(cat btp.icon.bmc) \
     --method setLinkRxHeight \
     --param _link=$(cat btp.bsc.btp.address) \
     --param _height=$(cat btp.bsc.block.height)| jq -r . >tx/setLinkRxHeight.icon
-  sleep 2
+  sleep 3
   ensure_txresult tx/setLinkRxHeight.icon
 }
 
@@ -153,7 +153,7 @@ configure_bmc_javascore_addRelay() {
     --method addRelay \
     --param _link=$(cat btp.bsc.btp.address) \
     --param _addr=${btp_icon_bmr_owner} | jq -r . >tx/addRelay.icon
-  sleep 2
+  sleep 3
   ensure_txresult tx/addRelay.icon
 }
 
@@ -171,7 +171,7 @@ configure_javascore_register_native_token() {
     --param _addr=$(cat btp.icon.$1) \
     --param _feeNumerator=$(decimal2Hex $btp_bts_fee_numerator) \
     --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/register.coin.$1
-  sleep 10
+  sleep 5
   ensure_txresult tx/register.coin.$1
 }
 
@@ -188,7 +188,7 @@ configure_javascore_register_wrapped_coin() {
     --param _decimals=0x12 \
     --param _feeNumerator=$(decimal2Hex $btp_bts_fee_numerator) \
     --param _fixedFee=$(decimal2Hex $btp_bts_fixed_fee) | jq -r . >tx/register.coin.$1
-  sleep 10
+  sleep 5
   ensure_txresult tx/register.coin.$1
 }
 
@@ -198,7 +198,7 @@ get_btp_icon_coinId() {
   goloop rpc sendtx call --to $(cat btp.icon.bts) \
     --method coinId \
     --param _coinName=$1 | jq -r . >tx/icon.coinId.$1
-  sleep 10
+  sleep 5
   ensure_txresult tx/icon.coinId.$1
 }
 
