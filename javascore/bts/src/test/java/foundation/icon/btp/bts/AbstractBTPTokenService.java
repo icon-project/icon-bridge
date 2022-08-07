@@ -35,6 +35,7 @@ public class AbstractBTPTokenService extends TestBase {
     public String ICON = "ICON";
     public String PARA = "PARA";
     public String ETH_ADDR = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+    public static final BigInteger UINT_CAP = pow(BigInteger.TWO,256).subtract(BigInteger.ONE);
 
     BTPAddress btpAddress1 = new BTPAddress("network","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
     BTPAddress btpAddress2 = new BTPAddress("icon","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
@@ -75,6 +76,14 @@ public class AbstractBTPTokenService extends TestBase {
         contextMock.when(sendMessage).thenReturn(null);
         getLinksMock();
 
+    }
+
+    public static BigInteger pow(BigInteger num, int exponent) {
+        BigInteger result = BigInteger.ONE;
+        for (int i = 0; i < exponent; i++) {
+            result = result.multiply(num);
+        }
+        return result;
     }
 
     public void getLinksMock() {
