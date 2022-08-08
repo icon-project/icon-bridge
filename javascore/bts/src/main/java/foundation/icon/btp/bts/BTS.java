@@ -60,10 +60,10 @@ public interface BTS {
     void removeBlacklistAddress(String _net, String[] _addresses);
 
     @External(readonly = true)
-    boolean isUserBlackListed(String _address, String _net);
+    boolean isUserBlackListed(String _net, String _address);
 
     @External(readonly = true)
-    List<String> getBlackListedUsers(String _net, int start, int end);
+    List<String> getBlackListedUsers(String _net, int _start, int _end);
 
     @External(readonly = true)
     int blackListedUsersCount(String _net);

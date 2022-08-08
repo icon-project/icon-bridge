@@ -2,47 +2,29 @@ package icon_test
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"math/big"
-	"os"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/icon"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
 const (
-	TokenGodKey  = "1613b2f469bc7e33673846ee538aae4e7377f853deab7e5e97bf60503cc8ac42"
-	TokenGodAddr = "btp://0x2.icon/hx6bbea9df10c329c0c6b428788070ca6b4d589b80"
-	NID          = "0x2.icon"
-	RPC_URI      = "https://lisbon.net.solidwallet.io/api/v3/icon_dex"
-	GodKey       = "596294cb42cddb975b9730113097c2cf370a5819d7a58baaaa4a3d0e9af065fa"
-	GodAddr      = "btp://0x2.icon/hxc86452374f94bd8db99f703bb1fc3fad2f7b2024"
-	GodDstAddr   = "btp://0x61.bsc/0xDf9e6205Ac201c8a11082842857C6f7673a8246e"
-	BtsAddr      = "btp://0x2.icon/cx69774ba6f0d2718bef41065227345529a11b57f1"
-
-	DemoDstAddr = "btp://0x61.bsc/0xcf5BC0BD5aEdf6cd216f7288c2Fd704a397F453d"
-	DemoSrcKey  = "41528d2ae0a203914f39584c6b2ace17b61c1208492be5952177ed8b16b1b99f"
-	DemoSrcAddr = "btp://0x2.icon/hx6d338536ac11a0a2db06fb21fe8903e617a6764d"
+	RPC_URI      = "http://localhost:9080/api/v3/default"
+	TokenGodKey  = "7f719d7748d1208210aa06449aa33517d30cb2911fa1b5dc5e2080da678b5311"
+	TokenGodAddr = "btp://0x5b9a77.icon/hxff0ea998b84ab9955157ab27915a9dc1805edd35"
+	GodKey       = "7f719d7748d1208210aa06449aa33517d30cb2911fa1b5dc5e2080da678b5311"
+	GodAddr      = "btp://0x5b9a77.icon/hxff0ea998b84ab9955157ab27915a9dc1805edd35"
+	DemoSrcKey   = "f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5"
+	DemoSrcAddr  = "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
+	DemoDstAddr  = "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
+	GodDstAddr   = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
+	NID          = "0x5b9a77.icon"
+	BtsOwner     = "btp://0x5b9a77.icon/hx1a2aeb3a100f2179846307095b82aa8ace43ca9d"
 )
-
-// const (
-// 	RPC_URI     = "http://localhost:9080/api/v3/icon"
-// 	GodKey      = "c4a15fbef04e99892caaa11374b115795c182d290d5d8bd7821a9ef16f4a9bcf"
-// 	GodAddr     = "btp://0x613f17.icon/hxad8eec2e167c24020600ddf1acd4d03673d3f49b"
-// 	DemoSrcKey  = "f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5"
-// 	DemoSrcAddr = "btp://0x613f17.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
-// 	DemoDstAddr = "btp://0x61.bsc/0x0000000000000000000000000000000000000000"
-// 	GodDstAddr  = "btp://0x61.bsc/0x20E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
-// 	NID         = "0x613f17.icon"
-// )
 
 func TestTransferIntraChain(t *testing.T) {
 	api, err := getNewApi()
@@ -51,10 +33,10 @@ func TestTransferIntraChain(t *testing.T) {
 		return
 	}
 	amount := new(big.Int)
-	amount.SetString("10000000000000", 10)
+	amount.SetString("10000000000000000000", 10)
 	srckey := TokenGodKey
-	dstaddr := GodAddr
-	for _, coinName := range []string{"sICX"} {
+	dstaddr := DemoSrcAddr
+	for _, coinName := range []string{"ICX", "bnUSD"} {
 		txnHash, err := api.Transfer(coinName, srckey, dstaddr, amount)
 		if err != nil {
 			t.Fatal(err)
@@ -97,8 +79,8 @@ func TestReclaim(t *testing.T) {
 }
 
 func TestApprove(t *testing.T) {
-	ownerKey := GodKey
-	ownerAddr := GodAddr
+	ownerKey := TokenGodKey
+	ownerAddr := TokenGodAddr
 	showBalance(ownerAddr)
 	coin := "sICX"
 	rpi, err := getNewApi()
@@ -127,9 +109,9 @@ func TestTransferInterChain(t *testing.T) {
 		return
 	}
 	coin := "sICX"
-	srcKey := GodKey
-	srcAddr := GodAddr
-	dstAddr := GodDstAddr
+	srcKey := TokenGodKey
+	srcAddr := TokenGodAddr
+	dstAddr := "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81201"
 	if val, err := api.GetCoinBalance(coin, srcAddr); err != nil {
 		t.Fatal(err)
 	} else {
@@ -137,7 +119,7 @@ func TestTransferInterChain(t *testing.T) {
 	}
 
 	amount := new(big.Int)
-	amount.SetString("100000000000000", 10)
+	amount.SetString("110000000000001", 10)
 
 	txnHash, err := api.Transfer(coin, srcKey, dstAddr, amount)
 	if err != nil {
@@ -172,17 +154,17 @@ func TestBatchTransfer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	coins := []string{"TICX", "ETH", "ICX"}
-	amount := big.NewInt(100000000000000)
-	largeAmt := new(big.Int)
-	largeAmt.SetString("26271926117961986739", 10)
-	amounts := []*big.Int{amount, largeAmt, amount}
+	coins := []string{"sICX", "bnUSD", "ICX"}
+
+	amount := new(big.Int)
+	amount.SetString("1000000000000000000000", 10)
+	amounts := []*big.Int{amount, amount, amount}
 	for i, coin := range coins {
 
 		if coin == rpi.NativeCoin() {
 			continue
 		}
-		approveHash, err := rpi.Approve(coin, GodKey, amounts[i])
+		approveHash, err := rpi.Approve(coin, TokenGodKey, amounts[i])
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -194,7 +176,7 @@ func TestBatchTransfer(t *testing.T) {
 			t.Fatalf("Approve StatusCode not 1 for %vth coin %v \n %v", i, coin, res.Raw)
 		}
 	}
-	hash, err := rpi.TransferBatch(coins, GodKey, GodDstAddr, amounts)
+	hash, err := rpi.TransferBatch(coins, TokenGodKey, GodDstAddr, amounts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,28 +212,6 @@ func showBalance(addr string) error {
 	return nil
 }
 
-func getKeyPairFromFile(walFile string, password string) (pair [2]string, err error) {
-	keyReader, err := os.Open(walFile)
-	if err != nil {
-		return
-	}
-	defer keyReader.Close()
-
-	keyStore, err := ioutil.ReadAll(keyReader)
-	if err != nil {
-		return
-	}
-	key, err := keystore.DecryptKey(keyStore, password)
-	if err != nil {
-		return
-	}
-	privBytes := ethcrypto.FromECDSA(key.PrivateKey)
-	privString := hex.EncodeToString(privBytes)
-	addr := ethcrypto.PubkeyToAddress(key.PrivateKey.PublicKey)
-	pair = [2]string{privString, addr.String()}
-	return
-}
-
 func TestReceiver(t *testing.T) {
 	recv, err := getNewApi()
 	if err != nil {
@@ -281,7 +241,7 @@ func TestReceiver(t *testing.T) {
 func getNewApi() (chain.ChainAPI, error) {
 	srcEndpoint := RPC_URI
 	addrToName := map[chain.ContractName]string{
-		chain.BTS: "cx69774ba6f0d2718bef41065227345529a11b57f1",
+		chain.BTS: "cxcc01466ab63a245eeb5c2e0d01258e4dfd53979e",
 	}
 	l := log.New()
 	log.SetGlobalLogger(l)
@@ -297,23 +257,6 @@ func getNewApi() (chain.ChainAPI, error) {
 	})
 }
 
-func TestConverToZeroAddress(t *testing.T) {
-	addr := DemoSrcAddr
-	splits := strings.Split(addr, "/")
-	if len(splits) != 4 {
-		return
-	}
-	network := splits[2]
-	networkSplits := strings.Split(network, ".")
-	if len(networkSplits) != 2 {
-		return
-	}
-	networkSplits[1] += "s"
-	splits[2] = strings.Join(networkSplits, ".")
-	joinStr := strings.Join(splits, "/")
-	fmt.Println(joinStr)
-}
-
 func TestGetKeyPair(t *testing.T) {
 	api, err := getNewApi()
 	if err != nil {
@@ -324,4 +267,170 @@ func TestGetKeyPair(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("%+v ", demoKeyPair)
+}
+
+func TestGetKeyFromFile(t *testing.T) {
+	api, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	priv, pub, err := api.GetKeyPairFromKeystore("../../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json", "../../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret")
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	fmt.Println(priv, "   ", pub)
+}
+
+func TestIsOwner(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	res, err := rpi.CallBTS(chain.IsOwner, []interface{}{BtsOwner})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("Res ", res)
+}
+
+func TestSetTokenLimit(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	btsOwnerKey, _, err := rpi.GetKeyPairFromKeystore("../../../../devnet/docker/icon-bsc/_ixh/keystore/icon.bts.wallet.json", "../../../../devnet/docker/icon-bsc/_ixh/keystore/icon.bts.wallet.secret")
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	coin := "sICX"
+	amount := new(big.Int)
+	amount.SetString("100000000000000", 10)
+	hash, err := rpi.TransactWithBTS(btsOwnerKey, chain.SetTokenLimit, []interface{}{[]string{coin}, []*big.Int{amount}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("Hash ", hash)
+	res, err := rpi.WaitForTxnResult(context.TODO(), hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("Res StatusCode %v Raw %+v", res.StatusCode, res.Raw)
+}
+
+func TestGetTokenLimit(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	for _, coin := range []string{"bnUSD", "sICX", "ICX"} {
+		res, err := rpi.CallBTS(chain.GetTokenLimit, []interface{}{coin})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("Res coin ", res)
+	}
+}
+
+func TestGetTokenLimitStatus(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	for _, coin := range []string{"bnUSD", "sICX", "ICX"} {
+		res, err := rpi.CallBTS(chain.GetTokenLimitStatus, []interface{}{"0x61.bsc", coin})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("Res coin ", res)
+	}
+}
+func TestCheckTransferRestrictions(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	amount := new(big.Int)
+	amount.SetString("2000000000000000000000", 10)
+	res, err := rpi.CallBTS(chain.CheckTransferRestrictions, []interface{}{
+		"0x61.bsc",
+		"sICX",
+		DemoDstAddr,
+		amount,
+	})
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	fmt.Println("Res ", res)
+}
+
+func TestChangeRestrictions(t *testing.T) {
+	funcn := chain.AddRestriction
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	btsOwnerKey, _, err := rpi.GetKeyPairFromKeystore("../../../../devnet/docker/icon-bsc/_ixh/keystore/icon.bts.wallet.json", "../../../../devnet/docker/icon-bsc/_ixh/keystore/icon.bts.wallet.secret")
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	hash, err := rpi.TransactWithBTS(btsOwnerKey, funcn, []interface{}{})
+	t.Log("Hash ", hash)
+	res, err := rpi.WaitForTxnResult(context.TODO(), hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("Res StatusCode %v Raw %+v", res.StatusCode, res.Raw)
+}
+
+func TestChangeBlackList(t *testing.T) {
+	funcn := chain.AddBlackListAddress
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	btsOwnerKey, _, err := rpi.GetKeyPairFromKeystore("../../../../devnet/docker/icon-bsc/_ixh/keystore/icon.bts.wallet.json", "../../../../devnet/docker/icon-bsc/_ixh/keystore/icon.bts.wallet.secret")
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	hash, err := rpi.TransactWithBTS(btsOwnerKey, funcn, []interface{}{
+		"0x61.bsc",
+		[]string{"0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202", "0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"},
+	})
+	t.Log("Hash ", hash)
+	res, err := rpi.WaitForTxnResult(context.TODO(), hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("Res StatusCode %v Raw %+v", res.StatusCode, res.Raw)
+}
+
+func TestIsUserBlackListed(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	res, err := rpi.CallBTS(chain.IsUserBlackListed, []interface{}{
+		"0x61.bsc",
+		GodDstAddr,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("Res ", res)
+}
+
+func TestGetBlackListedUsers(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	res, err := rpi.CallBTS(chain.GetBlackListedUsers, []interface{}{
+		"0x61.bsc",
+		"0x0",
+		"0x5",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("Res ", res)
 }

@@ -97,7 +97,7 @@ set_link_height() {
 }
 
 add_icon_relay() {
-  echo "adding icon link"
+  echo "adding icon relay"
   BSC_RELAY_USER=$(cat $CONFIG_DIR/keystore/bsc.bmr.wallet.json | jq -r .address)
   cd $CONTRACTS_DIR/solidity/bmc
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
@@ -107,7 +107,7 @@ add_icon_relay() {
 
 
 bsc_register_wrapped_coin() {
-  echo "bts: Register " $1
+  echo "bts: Register Wrapped Coin " $1
   local btp_bts_fee_numerator=100
   local btp_bts_fixed_fee=5000
   cd $CONTRACTS_DIR/solidity/bts
@@ -117,7 +117,7 @@ bsc_register_wrapped_coin() {
 }
 
 bsc_register_native_token() {
-  echo "bts: Register " $1
+  echo "bts: Register NativeCoin " $1
   local btp_bts_fee_numerator=100
   local btp_bts_fixed_fee=5000
   local addr=$(cat $CONFIG_DIR/btp.bsc.$1) 

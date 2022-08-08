@@ -70,8 +70,9 @@ public class BTSTest extends AbstractBTPTokenService {
         actual = (List<String>) score.call("getBlackListedUsers", "network", 0, 10);
         assertEquals(expected, actual);
 
-        assertEquals(true, score.call("isUserBlackListed", " you belong with me ", "network"));
-        assertEquals(false, score.call("isUserBlackListed", " yu belong with me ", "network"));
+
+        assertEquals(true, score.call("isUserBlackListed", "network", " you belong with me "));
+        assertEquals(false, score.call("isUserBlackListed", "network"," yu belong with me "));
 
         assertEquals(2, score.call("blackListedUsersCount", "network"));
 
@@ -118,7 +119,7 @@ public class BTSTest extends AbstractBTPTokenService {
         assertEquals(expected, actual);
 
         assertEquals(1, score.call("blackListedUsersCount", "network"));
-        assertEquals(false, score.call("isUserBlackListed", " all too well ", "network"));
+        assertEquals(false, score.call("isUserBlackListed",  "network", " all too well "));
 
 
         assertEquals(BigInteger.valueOf(3), score.call(("getSn")));
@@ -164,7 +165,7 @@ public class BTSTest extends AbstractBTPTokenService {
         List<String> expected = List.of(TEST_TOKEN);
         assertEquals(expected, score.call("coinNames"));
 
-        assertEquals(null, score.call("getTokenLimit", TEST_TOKEN));
+        assertEquals(UINT_CAP, score.call("getTokenLimit", TEST_TOKEN));
 
         assertEquals(1, score.call("getRegisteredTokensCount"));
     }
@@ -233,7 +234,6 @@ public class BTSTest extends AbstractBTPTokenService {
         String addr = generateBTPAddress("network", user.getAddress().toString());
         String[] finalAdddr = new String[]{user.getAddress().toString()};
         blackListUser("network", finalAdddr, BigInteger.TWO);
-        System.out.println(score.call("getBlackListedUsers", "network", 0, 10));
 
 //        score.invoke(owner, "addBlacklistAddress", "network", user.getAddress().toString());
 
@@ -604,7 +604,7 @@ public class BTSTest extends AbstractBTPTokenService {
                 TOKEN1, TOKEN1, 18, BigInteger.valueOf(10),
                 ICX, token1.getAddress());
 
-        assertEquals(null, score.call("getTokenLimit", TOKEN1));
+        assertEquals(UINT_CAP, score.call("getTokenLimit", TOKEN1));
 
         tokenLimitBTPMessage();
         score.invoke(owner, "setTokenLimit", new String[]{TOKEN1}, new BigInteger[]{BigInteger.valueOf(200)});
@@ -641,7 +641,6 @@ public class BTSTest extends AbstractBTPTokenService {
         contextMock.when(returnLinks).thenReturn(links);
 
         // blacklist user1 in icon
-        printSn();
         blackListUser("icon", new String[]{user1.toString()}, BigInteger.valueOf(3));
 
         // handleRequest of coinTransfer coming from harmony
@@ -675,7 +674,6 @@ public class BTSTest extends AbstractBTPTokenService {
 
         removeBlackListedUser("icon", new String[]{user1.toString()}, BigInteger.valueOf(4) );
 
-        System.out.println("FUCK YOU");
         // check this
         score.invoke(bmcMock, "handleBTPMessage",
                 "fromString", "svc", BigInteger.valueOf(5), _msg);
@@ -710,7 +708,7 @@ public class BTSTest extends AbstractBTPTokenService {
                 TOKEN2, TOKEN2, 18, BigInteger.valueOf(10),
                 ICX, token1.getAddress());
 
-        assertEquals(null, score.call("getTokenLimit", TOKEN2));
+        assertEquals(UINT_CAP, score.call("getTokenLimit", TOKEN2));
 
         Asset asset3 = new Asset(TOKEN2, MILLION);
 

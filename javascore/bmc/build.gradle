@@ -20,6 +20,7 @@ optimizedJar {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     } { exclude "score/*" }
     enableDebug = debugJar
+    archiveFileName = 'bmc.jar'
 }
 
 deployJar {

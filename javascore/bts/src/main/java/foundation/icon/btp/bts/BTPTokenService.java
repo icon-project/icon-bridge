@@ -16,10 +16,14 @@
 
 package foundation.icon.btp.bts;
 
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
+
 import foundation.icon.btp.bts.irc2.IRC2ScoreInterface;
 import foundation.icon.btp.bts.irc2.IRC2SupplierScoreInterface;
-import foundation.icon.btp.lib.BMCScoreInterface;
 import foundation.icon.btp.bts.utils.EnumerableSet;
+import foundation.icon.btp.lib.BMCScoreInterface;
 import foundation.icon.btp.lib.BSH;
 import foundation.icon.btp.lib.BTPAddress;
 import foundation.icon.btp.lib.OwnerManager;
@@ -41,10 +45,6 @@ import score.annotation.Optional;
 import score.annotation.Payable;
 import scorex.util.ArrayList;
 
-import java.math.BigInteger;
-import java.util.List;
-import java.util.Map;
-
 public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     private static final Logger logger = Logger.getLogger(BTPTokenService.class);
 
@@ -57,6 +57,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     public static final int NON_NATIVE_TOKEN_TYPE = 2;
 
     public static final Address ZERO_SCORE_ADDRESS = Address.fromString("cx0000000000000000000000000000000000000000");
+    public static final BigInteger UINT_CAP = new BigInteger("115792089237316195423570985008687907853269984665640564039457584007913129639935"); //BigInteger.TWO.pow(256).subtract(BigInteger.ONE);
 
     private final Address bmc;
     private final String net;
@@ -176,10 +177,15 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         require(_coinNames.length == _tokenLimits.length, "Invalid arguments");
         int size = _coinNames.length;
         for (int i = 0; i < size; i++) {
-            require(isRegistered(_coinNames[i]), "Not registered");
+            String coinName = _coinNames[i];
+            BigInteger coinLimit = _tokenLimits[i];
+
+            require(isRegistered(coinName), "Not registered");
+            require(UINT_CAP.compareTo(coinLimit) >= 0, "Cannot set more than uint(256)-1" );
             require((_tokenLimits[i].compareTo(BigInteger.ZERO) >= 0),
                     "Invalid value");
-            tokenLimit.set(_coinNames[i], _tokenLimits[i]);
+            tokenLimit.set(coinName, coinLimit);
+            tokenLimitStatus.at(this.net).set(coinName, true);
         }
 
         BigInteger sn = increaseSn();
@@ -201,7 +207,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     @External(readonly = true)
     public BigInteger getTokenLimit(String _name) {
-        return tokenLimit.get(_name);
+        return tokenLimit.getOrDefault(_name, UINT_CAP);
     }
 
     @External(readonly = true)
@@ -219,7 +225,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         List<String> blacklist = new ArrayList<>();
 
         for (String addr: _addresses) {
-            if (! isUserBlackListed(addr, _net)) {
+            if (! isUserBlackListed(_net, addr)) {
                 blacklist.add(addr);
                 blacklistDB.addToBlacklist(_net, addr);
             }
@@ -253,7 +259,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         List<String> blacklist = new ArrayList<>();
 
         for (String addr: _addresses) {
-            if ( isUserBlackListed(addr, _net)) {
+            if ( isUserBlackListed(_net, addr)) {
                 blacklist.add(addr);
                 blacklistDB.removeFromBlacklist(_net, addr);
             }
@@ -278,16 +284,16 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     @External(readonly = true)
-    public boolean isUserBlackListed(String _address, String _net) {
+    public boolean isUserBlackListed(String _net, String _address) {
         return blacklistDB.contains(_net, _address);
     }
 
     @External(readonly = true)
-    public List<String> getBlackListedUsers(String _net, int start, int end) {
-        if ((end - start) > 100) {
+    public List<String> getBlackListedUsers(String _net, int _start, int _end) {
+        if ((_end - _start) > 100) {
             throw BTSException.unknown("Can only fetch 100 users at a time");
         }
-        return blacklistDB.range(_net, start, end);
+        return blacklistDB.range(_net, _start, _end);
     }
 
     @External(readonly = true)
@@ -357,6 +363,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     // To receive IRC2 token from existing Contract
     @External
     public void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
+        require(UINT_CAP.compareTo(_value) >= 0, "Cannot set more than uint(256)-1" );
         String _coinName = coinAddressName.get(Context.getCaller());
         if (_coinName != null && _from != Context.getAddress()) {
             Context.require(coinAddresses.get(_coinName) != null, "CoinNotExists");
@@ -394,6 +401,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void transferNativeCoin(String _to) {
         BigInteger value = Context.getValue();
+        require(UINT_CAP.compareTo(value) >= 0, "Cannot set more than uint(256)-1" );
         BTPAddress to = BTPAddress.valueOf(_to);
         require(value != null && value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
         checkTransferRestrictions(to.net(), name, Context.getCaller().toString(), BTPAddress.valueOf(_to).account(), value);
@@ -403,6 +411,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void transfer(String _coinName, BigInteger _value, String _to) {
         require(_value != null && _value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
+        require(UINT_CAP.compareTo(_value) >= 0, "Cannot set more than uint(256)-1" );
         require(isRegistered(_coinName), "Not supported Token");
 
         Address owner = Context.getCaller();
@@ -427,6 +436,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             String coinName = _coinNames[i];
             BigInteger value = _values[i];
             require(!name.equals(coinName) && this.coinNames.contains(coinName), "Not supported Token");
+            require(UINT_CAP.compareTo(value) >= 0, "Cannot set more than uint(256)-1" );
             coinNameList.add(coinName);
             values.add(_values[i]);
             checkTransferRestrictions(to.net(), coinName, owner.toString(), to.account() ,value);
@@ -1081,10 +1091,10 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     private void validateRestriction(String _net, String _token, String _from, String _to, BigInteger _value) {
-        if (isUserBlackListed(_from, _net)) {
+        if (isUserBlackListed(_net, _from)) {
             throw BTSException.restricted("_from user is Blacklisted");
         }
-        if (isUserBlackListed(_to, _net)) {
+        if (isUserBlackListed(_net, _to)) {
             throw BTSException.restricted("_to user is Blacklisted");
         }
         BigInteger tokenLimit = getTokenLimit(_token);
