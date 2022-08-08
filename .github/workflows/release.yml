@@ -53,13 +53,23 @@ jobs:
         working-directory: ./javascore/bts/build/libs
         run: ls
 
+      - name: Zip BMC optimized jar
+        uses: montudor/action-zip@v1
+        with:
+          args: zip -qq -r bmc-javascore-optimized.zip javascore/bmc/build/libs/bmc-optimized.jar
+
+      - name: Zip BTS optimized jar
+        uses: montudor/action-zip@v1
+        with:
+          args: zip -qq -r bts-javascore-optimized.zip javascore/bts/build/libs/bts-optimized.jar
+
       - name: Upload Artifacts BMC / BTS
         uses: actions/upload-artifact@v3
         with:
           name: icon_artifacts
           path: |
-            ./javascore/bmc/build/libs/bmc-optimized.jar
-            ./javascore/bts/build/libs/bts-optimized.jar
+            bmc-javascore-optimized.zip
+            bts-javascore-optimized.zip
 
   build_bmr:
     name: Build icon-bridge bmr
