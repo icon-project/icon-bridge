@@ -122,8 +122,8 @@ jobs:
           repo_token: ${{ secrets.RELEASE_TOKEN }}
           prerelease: true
           files: |
-            bmc-optimized.jar
-            bts-optimized.jar
+            bmc-javascore-optimized.zip
+            bts-javascore-optimized.zip
             bmc_solidity_contracts.zip
             bts_solidity_contracts.zip
             bmr_go_iconbridge.zip
