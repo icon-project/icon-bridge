@@ -26,7 +26,10 @@ public class BTSMessage {
     public static int REQUEST_COIN_TRANSFER = 0;
     public static int REQUEST_COIN_REGISTER = 1;
     public static int REPONSE_HANDLE_SERVICE = 2;
-    public static int UNKNOWN_TYPE = 3;
+    public static int ADD_TO_BLACKLIST= 3;
+    public static int REMOVE_FROM_BLACKLIST= 4;
+    public static int CHANGE_TOKEN_LIMIT = 5;
+    public static int UNKNOWN_TYPE = 6;
 
     private int serviceType;
     private byte[] data;

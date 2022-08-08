@@ -31,6 +31,11 @@ interface IBTSPeriphery is IBSH {
         uint256[] memory _fees
     ) external;
 
+    /** */
+    function setTokenLimit(
+        string[] memory _coinNames,
+        uint256[] memory _tokenLimits
+    ) external;
     /**
      @notice BSH handle BTP Message from BMC contract
      @dev Caller must be BMC contract only
@@ -71,4 +76,17 @@ interface IBTSPeriphery is IBSH {
     function handleFeeGathering(string calldata _fa, string calldata _svc)
         external
         override;
+
+    /**
+        @notice Check if transfer is restricted
+        @param _coinName    Name of the coin
+        @param _user        Address to transfer from
+        @param _value       Amount to transfer
+    */
+    function checkTransferRestrictions(
+        string memory _coinName,
+        address _user,
+        uint256 _value
+    ) external;
+
 }

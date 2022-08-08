@@ -1,5 +1,4 @@
 const BTSCore = artifacts.require("BTSCore");
-const address = require('./addresses.json');
 module.exports = async function (callback) {
     try {
       var argv = require('minimist')(process.argv.slice(2), { string: ['addr'] });
@@ -16,6 +15,12 @@ module.exports = async function (callback) {
         case "coinId":
             tx = await btsCore.coinId(argv.coinName);
             console.log(tx);
+            break;
+        case "addOwner":
+            console.log("Add bts owner ", argv.addr)
+            tx = await btsCore.addOwner(argv.addr)
+            //console.log(await bmcManagement.getRelays(argv.link))
+            console.log(tx)
             break;
         default:
             console.error("Bad input for method, ", argv)

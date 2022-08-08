@@ -12,6 +12,9 @@ clean:
 	docker-compose down -v --remove-orphans
 	rm -rf local/artifacts
 
+buildsc:
+	make -C ../../../ dist-javascore dist-sol
+
 build:
 	make -C ../../../ dist-javascore dist-sol iconbridge-image
 	mkdir -p ./data/bsc/node1

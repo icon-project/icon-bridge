@@ -5,7 +5,7 @@ dependencies {
     implementation("foundation.icon:javaee-scorex:$scorexVersion")
     implementation fileTree(dir: '../lib', include: 'score-util.jar')
     implementation fileTree(dir: '../lib', include: 'lib-0.1.0.jar')
-    implementation project(':bsr')
+    implementation("com.github.sink772:javaee-tokens:0.6.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$jupiterVersion")
@@ -16,6 +16,14 @@ dependencies {
     testImplementation("foundation.icon:javaee-score-client:$scoreClientVersion")
     testImplementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
     testImplementation("foundation.icon:icon-sdk:$iconsdkVersion")
+    testImplementation("com.github.javafaker:javafaker:1.0.2")
+    testImplementation('org.mockito:mockito-core:4.3.1')
+    testImplementation group: 'org.mockito', name: 'mockito-inline', version: '4.3.0'
+    testImplementation 'org.bouncycastle:bcprov-jdk15on:1.60'
+}
+
+test {
+    useJUnitPlatform()
 }
 
 optimizedJar {
