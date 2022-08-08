@@ -13,9 +13,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Tar files
-        run: tar -cvf solidity_contracts.tar ./public
-
       - name: Zip BMC contracts
         uses: montudor/action-zip@v1
         with:
@@ -48,18 +45,13 @@ jobs:
         working-directory: ./javascore
         run: gradle bts:optimizedJar
 
-      - name: Build javascore bsr optimized jar
-        working-directory: ./javascore
-        run: gradle bsr:optimizedJar
-
-      - name: Upload Artifacts BMC / BTS / BSR
+      - name: Upload Artifacts BMC / BTS
         uses: actions/upload-artifact@v3
         with:
           name: icon_artifacts
           path: |
             ./javascore/bmc/build/libs/bmc-optimized.jar
             ./javascore/bts/build/libs/bts-optimized.jar
-            ./javascore/bsr/build/libs/bsr-optimized.jar
 
   build_bmr:
     name: Build icon-bridge bmr
