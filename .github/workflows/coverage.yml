@@ -1,0 +1,52 @@
+name: Tests Codecov
+on:
+  workflow_dispatch: #[push, pull_request]
+env:
+  CI: true
+jobs:
+  solidity-coverage:
+    name: Coverage testing on node
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+      - name: Set Node.js version
+        uses: actions/setup-node@v1
+        with:
+          node-version: 18.5.0
+      - name: solidity bmc
+        working-directory: ./solidity/bmc
+        run: |
+              npm install
+              npm install -g nyc codecov coveralls
+              mkdir .nyc_output
+              nyc report --reporter=text-lcov > coverage.lcov
+      - name: solidity bts
+        working-directory: ./solidity/bts
+        run: |
+              npm install
+              mkdir .nyc_output
+              nyc report --reporter=text-lcov > coverage.lcov
+      - name: Upload
+        uses: codecov/codecov-action@v3
+
+  javascore-coverage:
+    name: Coverage testing for java
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Javascore bmc
+        working-directory: ./javascore
+        run: |
+             gradle bmc:build
+             gradle bmc:codeCoverageReport
+
+      - name: Javascore bts
+        working-directory: ./javascore
+        run: |
+             gradle bts:build
+             gradle bts:codeCoverageReport
+      - name: Upload
+        uses: codecov/codecov-action@v3

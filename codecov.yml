@@ -1,0 +1,11 @@
+## Further configs on: https://docs.codecov.com/docs/codecov-yaml
+github_checks:
+  annotations: true
+coverage:
+  range: 90..100
+  round: down
+  precision: 2
+comment:
+  layout: "reach, diff, flags, files"
+  require_base: no        # [yes :: must have a base report to post]
+  require_head: no       # [yes :: must have a head report to post]
