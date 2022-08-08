@@ -100,16 +100,18 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 		// defer close(_errCh)
 		err := a.ReceiveLoop(ctx, height, 0, func(txnLogs []*icon.TxResult) error {
 			for _, txnLog := range txnLogs {
+				a.Log.Info("height ", txnLog.BlockHeight)
 				for _, el := range txnLog.EventLogs {
 					res, evtType, err := a.par.Parse(&el)
 					if err != nil {
-						a.Log.Trace(errors.Wrap(err, "Parse "))
+						a.Log.Debug(errors.Wrap(err, "Parse "))
 						err = nil
 						continue
 					}
 					nel := &chain.EventLogInfo{ContractAddress: common.NewAddress(el.Addr).String(), EventType: evtType, EventLog: res}
-					//a.Log.Infof("IFirst %+v", nel)
-					//a.Log.Infof("ISecond %+v", nel.EventLog)
+
+					a.Log.Infof("IFirst %+v", nel)
+					a.Log.Infof("ISecond %+v", nel.EventLog)
 					if a.fd.Match(nel) { //el.IDs is updated by match if matched
 						//a.Log.Infof("Matched %+v", el)
 						a.sinkChan <- nel
@@ -282,4 +284,8 @@ func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv stri
 	priv = hex.EncodeToString(privKey.Bytes())
 	pub = gocommon.NewAccountAddressFromPublicKey(privKey.PublicKey()).String()
 	return
+}
+
+func (a *api) GetNetwork() string {
+	return a.requester.networkID + ".icon"
 }

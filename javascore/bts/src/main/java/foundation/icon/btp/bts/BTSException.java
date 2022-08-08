@@ -53,13 +53,21 @@ public class BTSException extends BTPException.BSH {
         return new BTSException(Code.IRC31Reverted, message);
     }
 
+    public static BTSException restricted() {
+        return new BTSException(Code.Restricted);
+    }
+    public static BTSException restricted(String message) {
+        return new BTSException(Code.Restricted, message);
+    }
+
 
     //BTPException.BSH => 40 ~ 54
     public enum Code implements BTPException.Coded{
         Unknown(0),
         Unauthorized(1),
         IRC31Failure(2),
-        IRC31Reverted(3);
+        IRC31Reverted(3),
+        Restricted(4);
 
         final int code;
         Code(int code){ this.code = code; }

@@ -90,6 +90,7 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 						lastHeight+1, v.Height.Uint64())
 				}
 				if len(v.Logs) > 0 {
+					r.log.Info("Height %v", v.Height)
 					for _, txnLog := range v.Logs {
 						res, evtType, err := r.par.Parse(&txnLog)
 						if err != nil {
@@ -98,8 +99,8 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 							continue
 						}
 						nel := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
-						//r.Log.Infof("BFirst  %+v", nel)
-						//r.Log.Infof("BSecond  %+v", nel.EventLog)
+						r.Log.Infof("BFirst  %+v", nel)
+						r.Log.Infof("BSecond  %+v", nel.EventLog)
 						if r.fd.Match(nel) {
 							//r.log.Infof("Matched %+v", el)
 							r.sinkChan <- nel
@@ -266,4 +267,8 @@ func (r *api) GetKeyPairFromKeystore(keystoreFile string, secretFile string) (pr
 	privKey = hex.EncodeToString(privBytes)
 	pubKey = crypto.PubkeyToAddress(key.PrivateKey.PublicKey).String()
 	return
+}
+
+func (a *api) GetNetwork() string {
+	return a.requester.networkID + ".bsc"
 }
