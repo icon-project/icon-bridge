@@ -45,6 +45,14 @@ jobs:
         working-directory: ./javascore
         run: gradle bts:optimizedJar
 
+      - name: List of bmc files
+        working-directory: ./javascore/bmc/build/libs
+        run: ls
+
+      - name: List of bts files
+        working-directory: ./javascore/bts/build/libs
+        run: ls
+
       - name: Upload Artifacts BMC / BTS
         uses: actions/upload-artifact@v3
         with:
@@ -70,12 +78,16 @@ jobs:
         working-directory: ./cmd/iconbridge
         run: go build
 
-# TODO rename the file: mv oldfile.txt newfile.txt
+      - name: Zip BTS contracts
+        uses: montudor/action-zip@v1
+        with:
+          args: zip -qq -r bmr_go_iconbridge.zip cmd/iconbridge/iconbridge
+
       - name: Upload Artifact BSR
         uses: actions/upload-artifact@v3
         with:
           name: icon_artifacts
-          path: ./cmd/iconbridge/iconbridge
+          path: ./bmr_go_iconbridge.zip
 
   releas:
     runs-on: ubuntu-latest
@@ -100,9 +112,9 @@ jobs:
           repo_token: ${{ secrets.RELEASE_TOKEN }}
           prerelease: true
           files: |
-            bts_solidity_contracts.zip
             bmc-optimized.jar
             bts-optimized.jar
-            bsr-optimized.jar
-            iconbridge
+            bmc_solidity_contracts.zip
+            bts_solidity_contracts.zip
+            bmr_go_iconbridge.zip
 
