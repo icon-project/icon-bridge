@@ -13,11 +13,11 @@ import (
 
 const (
 	RPC_URI      = "http://localhost:8545"
-	TokenGodKey  = "1deb607f38b0bd1390df3b312a1edc11a00a34f248b5d53f4157de054f3c71ae"
+	TokenGodKey  = ""
 	TokenGodAddr = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
-	GodKey       = "1deb607f38b0bd1390df3b312a1edc11a00a34f248b5d53f4157de054f3c71ae"
+	GodKey       = ""
 	GodAddr      = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
-	DemoSrcKey   = "ce69f928c68b0b7bc198824b081cfbde60d6b1e0f1695d5aaa9d8564bb35dcb3"
+	DemoSrcKey   = ""
 	DemoSrcAddr  = "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
 	DemoDstAddr  = "btp://0x5b9a77.icon/hx0000000000000000000000000000000000000000"
 	GodDstAddr   = "btp://0x5b9a77.icon/hxad8eec2e167c24020600ddf1acd4d03673d3f49b"
