@@ -15,7 +15,7 @@
         "prettier": "^2.2.1",
         "prettier-plugin-solidity": "^1.0.0-beta.7",
         "rlp": "^2.2.6",
-        "solc": "0.8.0",
+        "solc": "0.8.2",
         "solhint": "^3.3.4",
         "solhint-plugin-prettier": "^0.0.5",
         "truffle-assertions": "^0.9.2",
