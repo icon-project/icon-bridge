@@ -1,0 +1,29 @@
+name: Bump release tag version
+on:
+  push:
+    branch:
+      - "deployment-setup"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Deployment Environment (dev / stage)'
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+          token: ${{ secrets.RELEASE_TOKEN }}
+      - name: Asset fetch
+        uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          repo: 'dsaltares/godot-wild-jam-18'
+          version: 'tags/v0.1.18'
+          file: 'plague-linux.zip'
+          token: ${{ secrets.GITHUB_TOKEN }}
