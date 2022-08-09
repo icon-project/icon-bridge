@@ -16,20 +16,20 @@ jobs:
       - name: Zip BMC contracts
         uses: montudor/action-zip@v1
         with:
-          args: zip -qq -r bmc_solidity_contracts.zip solidity/bmc/contracts
+          args: zip -qq -r bmc-solidity-contracts.zip solidity/bmc/contracts
 
       - name: Zip BTS contracts
         uses: montudor/action-zip@v1
         with:
-          args: zip -qq -r bts_solidity_contracts.zip solidity/bts/contracts
+          args: zip -qq -r bts-solidity-contracts.zip solidity/bts/contracts
 
       - name: Upload Artifacts BMC / BTS
         uses: actions/upload-artifact@v3
         with:
-          name: icon_artifacts
+          name: icon-artifacts
           path: |
-            bmc_solidity_contracts.zip
-            bts_solidity_contracts.zip
+            bmc-solidity-contracts.zip
+            bts-solidity-contracts.zip
 
   build_icon:
     runs-on: ubuntu-latest
@@ -66,7 +66,7 @@ jobs:
       - name: Upload Artifacts BMC / BTS
         uses: actions/upload-artifact@v3
         with:
-          name: icon_artifacts
+          name: icon-artifacts
           path: |
             bmc-javascore-optimized.zip
             bts-javascore-optimized.zip
@@ -91,13 +91,13 @@ jobs:
       - name: Zip BTS contracts
         uses: montudor/action-zip@v1
         with:
-          args: zip -qq -r bmr_go_iconbridge.zip cmd/iconbridge/iconbridge
+          args: zip -qq -r bmr-go-iconbridge.zip cmd/iconbridge/iconbridge
 
       - name: Upload Artifact BSR
         uses: actions/upload-artifact@v3
         with:
-          name: icon_artifacts
-          path: ./bmr_go_iconbridge.zip
+          name: icon-artifacts
+          path: ./bmr-go-iconbridge.zip
 
   releas:
     runs-on: ubuntu-latest
@@ -112,7 +112,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v2
         with:
-          name: icon_artifacts
+          name: icon-artifacts
 
       - name: List of files
         run: ls
@@ -120,11 +120,11 @@ jobs:
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: ${{ secrets.RELEASE_TOKEN }}
-          prerelease: true
+          draft: true
           files: |
             bmc-javascore-optimized.zip
             bts-javascore-optimized.zip
-            bmc_solidity_contracts.zip
-            bts_solidity_contracts.zip
-            bmr_go_iconbridge.zip
+            bmc-solidity-contracts.zip
+            bts-solidity-contracts.zip
+            bmr-go-iconbridge.zip
 
