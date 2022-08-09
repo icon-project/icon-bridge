@@ -25,5 +25,5 @@ jobs:
         with:
           repo: 'dsaltares/godot-wild-jam-18'
           version: 'tags/v0.0.14'
-          file: 'bmc-javascore-optimized.zip'
+          file: 'v0.0.14.zip'
           token: ${{ secrets.GITHUB_TOKEN }}
