@@ -172,7 +172,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 		retry  int64
 	}
 
-	r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Debug("syncVerifier: start")
+	r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Info("syncVerifier: start")
 
 	for vr.Next() < height {
 		rqch := make(chan *req, SyncVerifierMaxConcurrency)
@@ -190,7 +190,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 					continue
 				}
 				r.log.WithFields(log.Fields{
-					"height": q.height, "error": q.err.Error()}).Debug("syncVerifier: req error")
+					"height": q.height, "error": q.err.Error()}).Error("syncVerifier: req error")
 				sres = append(sres, nil)
 				if len(sres) == cap(sres) {
 					close(rqch)
@@ -255,7 +255,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 		}
 	}
 
-	r.log.WithFields(log.Fields{"height": vr.Next()}).Debug("syncVerifier: complete")
+	r.log.WithFields(log.Fields{"height": vr.Next()}).Info("syncVerifier: complete")
 	return nil
 }
 
@@ -334,7 +334,6 @@ loop:
 					func(c *websocket.Conn, err error) {})
 				if err != nil {
 					if websocket.IsUnexpectedCloseError(err) {
-						time.Sleep(time.Second * 5)
 						reconnect() // unexpected error
 						r.log.WithFields(log.Fields{"error": err}).Error("reconnect: monitor block error")
 					} else if !errors.Is(err, context.Canceled) {
@@ -358,9 +357,9 @@ loop:
 					ok, err := vr.Verify(br.Header, br.Votes)
 					if !ok || err != nil {
 						if err != nil {
-							r.log.WithFields(log.Fields{"height": br.Height, "error": err}).Debug("receiveLoop: verification error")
+							r.log.WithFields(log.Fields{"height": br.Height, "error": err}).Error("receiveLoop: verification error")
 						} else if !ok {
-							r.log.WithFields(log.Fields{"height": br.Height, "hash": br.Hash}).Debug("receiveLoop: invalid header")
+							r.log.WithFields(log.Fields{"height": br.Height, "hash": br.Hash}).Error("receiveLoop: invalid header")
 						}
 						reconnect() // reconnect websocket
 						r.log.WithFields(log.Fields{"height": br.Height, "hash": br.Hash}).Error("reconnect: verification failed")
@@ -428,7 +427,7 @@ loop:
 							qch <- q
 							continue
 						}
-						r.log.WithFields(log.Fields{"height": q.height, "error": q.err}).Debug("receiveLoop: req error")
+						r.log.WithFields(log.Fields{"height": q.height, "error": q.err}).Error("receiveLoop: req error")
 						brs = append(brs, nil)
 						if len(brs) == cap(brs) {
 							close(qch)
@@ -580,7 +579,7 @@ loop:
 												"height":              q.height,
 												"receipt_index":       index,
 												"got_num_events":      len(receipt.Events),
-												"expected_num_events": len(p.Events)}).Info("failed to verify all events for the receipt")
+												"expected_num_events": len(p.Events)}).Error("failed to verify all events for the receipt")
 											q.err = errors.New("failed to verify all events for the receipt")
 											return
 										}

@@ -46,29 +46,29 @@ const (
 )
 
 /*
- type sender struct {
-	 c   *Client
-	 src module.BtpAddress
-	 dst module.BtpAddress
-	 w   Wallet
-	 l   log.Logger
-	 opt struct {
-	 }
+  type sender struct {
+	  c   *Client
+	  src module.BtpAddress
+	  dst module.BtpAddress
+	  w   Wallet
+	  l   log.Logger
+	  opt struct {
+	  }
 
-	 bmc *binding.BMC
+	  bmc *binding.BMC
 
-	 evtLogRawFilter struct {
-		 addr      []byte
-		 signature []byte
-		 next      []byte
-		 seq       []byte
-	 }
-	 evtReq             *BlockRequest
-	 isFoundOffsetBySeq bool
-	 cb                 module.ReceiveCallback
+	  evtLogRawFilter struct {
+		  addr      []byte
+		  signature []byte
+		  next      []byte
+		  seq       []byte
+	  }
+	  evtReq             *BlockRequest
+	  isFoundOffsetBySeq bool
+	  cb                 module.ReceiveCallback
 
-	 mutex sync.Mutex
- }
+	  mutex sync.Mutex
+  }
 */
 
 type senderOptions struct {
@@ -108,10 +108,10 @@ func NewSender(
 
 	b, err := json.Marshal(opts)
 	if err != nil {
-		l.Panicf("fail to marshal opt:%#v err:%+v", opts, err)
+		return nil, fmt.Errorf("fail to marshal opt:%#v err:%+v", opts, err)
 	}
 	if err = json.Unmarshal(b, &s.opts); err != nil {
-		l.Panicf("fail to unmarshal opt:%#v err:%+v", opts, err)
+		return nil, fmt.Errorf("fail to unmarshal opt:%#v err:%+v", opts, err)
 	}
 	if s.opts.BoostGasPrice < 1.0 {
 		s.opts.BoostGasPrice = 1.0
@@ -135,7 +135,7 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	_, bmcCl := s.jointClient()
 	status, err := bmcCl.GetStatus(&bind.CallOpts{Context: ctx}, s.src.String())
 	if err != nil {
-		s.log.Error("", "err", err)
+		s.log.Error("GetStatus", "err", err)
 		return nil, err
 	}
 	ls := &chain.BMCLinkStatus{}
@@ -347,133 +347,133 @@ func revertReason(data []byte) string {
 }
 
 /*
- func (s *sender) newTransactionParam(prev string, rm *RelayMessage) (*TransactionParam, error) {
-	 b, err := codec.RLP.MarshalToBytes(rm)
-	 if err != nil {
-		 return nil, err
-	 }
-	 rmp := BMCRelayMethodParams{
-		 Prev: prev,
-		 //Messages: base64.URLEncoding.EncodeToString(b[:]),
-		 Messages: string(b[:]),
-	 }
-	 s.l.Debugf("HandleRelayMessage msg: %s", base64.URLEncoding.EncodeToString(b))
-	 p := &TransactionParam{
-		 Params: rmp,
-	 }
-	 return p, nil
- }
+  func (s *sender) newTransactionParam(prev string, rm *RelayMessage) (*TransactionParam, error) {
+	  b, err := codec.RLP.MarshalToBytes(rm)
+	  if err != nil {
+		  return nil, err
+	  }
+	  rmp := BMCRelayMethodParams{
+		  Prev: prev,
+		  //Messages: base64.URLEncoding.EncodeToString(b[:]),
+		  Messages: string(b[:]),
+	  }
+	  s.l.Debugf("HandleRelayMessage msg: %s", base64.URLEncoding.EncodeToString(b))
+	  p := &TransactionParam{
+		  Params: rmp,
+	  }
+	  return p, nil
+  }
 
- func (s *sender) Relay(segment *module.Segment) (module.GetResultParam, error) {
-	 s.mutex.Lock()
-	 defer s.mutex.Unlock()
-	 p, ok := segment.TransactionParam.(*TransactionParam)
-	 if !ok {
-		 return nil, fmt.Errorf("casting failure")
-	 }
-	 t, err := s.c.newTransactOpts(s.w)
-	 if err != nil {
-		 return nil, err
-	 }
-	 rmp := p.Params.(BMCRelayMethodParams)
-	 var tx *types.Transaction
-	 tx, err = s.bmc.HandleRelayMessage(t, rmp.Prev, rmp.Messages)
-	 if err != nil {
-		 s.l.Errorf("handleRelayMessage: ", err.Error())
-		 return nil, err
-	 }
-	 thp := &TransactionHashParam{}
-	 thp.Hash = tx.Hash()
-	 s.l.Debugf("HandleRelayMessage tx hash:%s, prev %s, msg: %s", thp.Hash, rmp.Prev, base64.URLEncoding.EncodeToString([]byte(rmp.Messages)))
-	 return thp, nil
- }
+  func (s *sender) Relay(segment *module.Segment) (module.GetResultParam, error) {
+	  s.mutex.Lock()
+	  defer s.mutex.Unlock()
+	  p, ok := segment.TransactionParam.(*TransactionParam)
+	  if !ok {
+		  return nil, fmt.Errorf("casting failure")
+	  }
+	  t, err := s.c.newTransactOpts(s.w)
+	  if err != nil {
+		  return nil, err
+	  }
+	  rmp := p.Params.(BMCRelayMethodParams)
+	  var tx *types.Transaction
+	  tx, err = s.bmc.HandleRelayMessage(t, rmp.Prev, rmp.Messages)
+	  if err != nil {
+		  s.l.Errorf("handleRelayMessage: ", err.Error())
+		  return nil, err
+	  }
+	  thp := &TransactionHashParam{}
+	  thp.Hash = tx.Hash()
+	  s.l.Debugf("HandleRelayMessage tx hash:%s, prev %s, msg: %s", thp.Hash, rmp.Prev, base64.URLEncoding.EncodeToString([]byte(rmp.Messages)))
+	  return thp, nil
+  }
 
- func (s *sender) GetResult(p module.GetResultParam) (module.TransactionResult, error) {
-	 if txh, ok := p.(*TransactionHashParam); ok {
-		 for {
-			 _, pending, err := s.c.GetTransaction(txh.Hash)
-			 if err != nil {
-				 return nil, err
-			 }
-			 if pending {
-				 <-time.After(DefaultGetRelayResultInterval)
-				 continue
-			 }
-			 tx, err := s.c.GetTransactionReceipt(txh.Hash)
-			 if err != nil {
-				 return nil, err
-			 }
-			 return tx, nil //mapErrorWithTransactionResult(&types.Receipt{}, err) // TODO: map transaction.js result error
-		 }
-	 } else {
-		 return nil, fmt.Errorf("fail to casting TransactionHashParam %T", p)
-	 }
- }
+  func (s *sender) GetResult(p module.GetResultParam) (module.TransactionResult, error) {
+	  if txh, ok := p.(*TransactionHashParam); ok {
+		  for {
+			  _, pending, err := s.c.GetTransaction(txh.Hash)
+			  if err != nil {
+				  return nil, err
+			  }
+			  if pending {
+				  <-time.After(DefaultGetRelayResultInterval)
+				  continue
+			  }
+			  tx, err := s.c.GetTransactionReceipt(txh.Hash)
+			  if err != nil {
+				  return nil, err
+			  }
+			  return tx, nil //mapErrorWithTransactionResult(&types.Receipt{}, err) // TODO: map transaction.js result error
+		  }
+	  } else {
+		  return nil, fmt.Errorf("fail to casting TransactionHashParam %T", p)
+	  }
+  }
 
- func (s *sender) GetStatus() (*module.BMCLinkStatus, error) {
-	 var status binding.TypesLinkStats
-	 status, err := s.bmc.GetStatus(nil, s.src.String())
+  func (s *sender) GetStatus() (*module.BMCLinkStatus, error) {
+	  var status binding.TypesLinkStats
+	  status, err := s.bmc.GetStatus(nil, s.src.String())
 
-	 if err != nil {
-		 s.l.Errorf("Error retrieving relay status from BMC")
-		 return nil, err
-	 }
+	  if err != nil {
+		  s.l.Errorf("Error retrieving relay status from BMC")
+		  return nil, err
+	  }
 
-	 ls := &module.BMCLinkStatus{}
-	 ls.TxSeq = status.TxSeq.Int64()
-	 ls.RxSeq = status.RxSeq.Int64()
-	 ls.BMRIndex = int(status.RelayIdx.Int64())
-	 ls.RotateHeight = status.RotateHeight.Int64()
-	 ls.RotateTerm = int(status.RotateTerm.Int64())
-	 ls.DelayLimit = int(status.DelayLimit.Int64())
-	 ls.MaxAggregation = int(status.MaxAggregation.Int64())
-	 ls.CurrentHeight = status.CurrentHeight.Int64()
-	 ls.RxHeight = status.RxHeight.Int64()
-	 ls.RxHeightSrc = status.RxHeightSrc.Int64()
-	 return ls, nil
- }
+	  ls := &module.BMCLinkStatus{}
+	  ls.TxSeq = status.TxSeq.Int64()
+	  ls.RxSeq = status.RxSeq.Int64()
+	  ls.BMRIndex = int(status.RelayIdx.Int64())
+	  ls.RotateHeight = status.RotateHeight.Int64()
+	  ls.RotateTerm = int(status.RotateTerm.Int64())
+	  ls.DelayLimit = int(status.DelayLimit.Int64())
+	  ls.MaxAggregation = int(status.MaxAggregation.Int64())
+	  ls.CurrentHeight = status.CurrentHeight.Int64()
+	  ls.RxHeight = status.RxHeight.Int64()
+	  ls.RxHeightSrc = status.RxHeightSrc.Int64()
+	  return ls, nil
+  }
 
- func (s *sender) isOverLimit(size int) bool {
-	 return txSizeLimit < float64(size)
- }
+  func (s *sender) isOverLimit(size int) bool {
+	  return txSizeLimit < float64(size)
+  }
 
- func (s *sender) MonitorLoop(height int64, cb module.MonitorCallback, scb func()) error {
-	 s.l.Debugf("MonitorLoop (sender) connected")
-	 br := &BlockRequest{
-		 Height: big.NewInt(height),
-	 }
-	 return s.c.MonitorBlock(br,
-		 func(v *BlockNotification) error {
-			 return cb(v.Height.Int64())
-		 })
- }
+  func (s *sender) MonitorLoop(height int64, cb module.MonitorCallback, scb func()) error {
+	  s.l.Debugf("MonitorLoop (sender) connected")
+	  br := &BlockRequest{
+		  Height: big.NewInt(height),
+	  }
+	  return s.c.MonitorBlock(br,
+		  func(v *BlockNotification) error {
+			  return cb(v.Height.Int64())
+		  })
+  }
 
- func (s *sender) StopMonitorLoop() {
-	 s.c.CloseAllMonitor()
- }
- func (s *sender) FinalizeLatency() int {
-	 //on-the-next
-	 return 1
- }
+  func (s *sender) StopMonitorLoop() {
+	  s.c.CloseAllMonitor()
+  }
+  func (s *sender) FinalizeLatency() int {
+	  //on-the-next
+	  return 1
+  }
 
- func NewSender(src, dst module.BtpAddress, w Wallet, endpoints []string, opt map[string]interface{}, l log.Logger) module.Sender {
-	 s := &sender{
-		 src: src,
-		 dst: dst,
-		 w:   w,
-		 l:   l,
-	 }
-	 b, err := json.Marshal(opt)
-	 if err != nil {
-		 l.Panicf("fail to marshal opt:%#v err:%+v", opt, err)
-	 }
-	 if err = json.Unmarshal(b, &s.opt); err != nil {
-		 l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
-	 }
-	 s.c = NewClient(endpoints, l)
+  func NewSender(src, dst module.BtpAddress, w Wallet, endpoints []string, opt map[string]interface{}, l log.Logger) module.Sender {
+	  s := &sender{
+		  src: src,
+		  dst: dst,
+		  w:   w,
+		  l:   l,
+	  }
+	  b, err := json.Marshal(opt)
+	  if err != nil {
+		  l.Panicf("fail to marshal opt:%#v err:%+v", opt, err)
+	  }
+	  if err = json.Unmarshal(b, &s.opt); err != nil {
+		  l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
+	  }
+	  s.c = NewClient(endpoints, l)
 
-	 s.bmc, _ = binding.NewBMC(HexToAddress(s.dst.ContractAddress()), s.c.ethcl)
+	  s.bmc, _ = binding.NewBMC(HexToAddress(s.dst.ContractAddress()), s.c.ethcl)
 
-	 return s
- }
+	  return s
+  }
 */
