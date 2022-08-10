@@ -151,7 +151,7 @@ func (sh *SlackHook) forward() {
 							req = e.Data
 						}
 						// Add the message passed to logging
-						srv := ""
+						srv := "Service"
 						if vi, ok := req[FieldKeyService]; ok {
 							if vs, ok := vi.(string); ok {
 								srv = vs
