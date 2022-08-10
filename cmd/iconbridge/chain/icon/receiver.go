@@ -190,7 +190,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 					continue
 				}
 				r.log.WithFields(log.Fields{
-					"height": q.height, "error": q.err.Error()}).Error("syncVerifier: req error")
+					"height": q.height, "error": q.err.Error()}).Debug("syncVerifier: req error")
 				sres = append(sres, nil)
 				if len(sres) == cap(sres) {
 					close(rqch)
@@ -427,7 +427,7 @@ loop:
 							qch <- q
 							continue
 						}
-						r.log.WithFields(log.Fields{"height": q.height, "error": q.err}).Error("receiveLoop: req error")
+						r.log.WithFields(log.Fields{"height": q.height, "error": q.err}).Debug("receiveLoop: req error")
 						brs = append(brs, nil)
 						if len(brs) == cap(brs) {
 							close(qch)

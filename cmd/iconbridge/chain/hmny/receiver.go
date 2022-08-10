@@ -294,7 +294,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 							latest = q.h - 1
 						}
 					}
-					r.log.Errorf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash(), q.err)
+					r.log.Debugf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash(), q.err)
 					bns = append(bns, nil)
 					if len(bns) == cap(bns) {
 						close(qch)
