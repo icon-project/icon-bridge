@@ -151,10 +151,17 @@ func (sh *SlackHook) forward() {
 							req = e.Data
 						}
 						// Add the message passed to logging
-						header = "[" + e.Level.String() + "][" + e.Time.UTC().Format("2006-01-02 15:04:05.000") + " UTC]\n"
+						srv := ""
+						if vi, ok := req[FieldKeyService]; ok {
+							if vs, ok := vi.(string); ok {
+								srv = vs
+							}
+						}
+						header = "[" + srv + "]" + "[" + e.Level.String() + "][ICON-BRIDGE][" + e.Time.UTC().Format("2006-01-02T15:04:05.000Z") + "]\n"
 						req["Message"] = e.Message
 						req["Level"] = e.Level
-						req["Time"] = e.Time.UTC().Format("2006-01-02 15:04:05.000") + " UTC" // UTC Event log
+						req["Time"] = e.Time.UTC().Format("2006-01-02T15:04:05.000Z") // UTC Event log
+
 						if reqBytes, err := json.Marshal(req); err == nil && reqBytes != nil {
 							if e.Level == logrus.WarnLevel || e.Level == logrus.ErrorLevel || e.Level == logrus.FatalLevel || e.Level == logrus.PanicLevel {
 								reqStr += header + bold + mono + string(reqBytes) + mono + bold
@@ -177,7 +184,8 @@ func (sh *SlackHook) forward() {
 					}
 					if len(reqStr) > 0 { // send concatenated string if hasn't been sent
 						if err = send(reqStr); err != nil { // forwarding this message is delayed as the reqStr can get sent only the next time readFromStack returns entries
-							reqStr = bold + mono + "forwardFunc; Message of length " + strconv.FormatInt(int64(len(reqStr)), 10) + " dropped because of error " + err.Error() + mono + bold + "\n"
+							header = "[Common][error][ICON-BRIDGE][" + time.Now().UTC().Format("2006-01-02T15:04:05.000Z") + "]\n"
+							reqStr = header + bold + mono + "forwardFunc; Message of length " + strconv.FormatInt(int64(len(reqStr)), 10) + " dropped because of error " + err.Error() + mono + bold + "\n"
 						} else {
 							reqStr = ""
 						}

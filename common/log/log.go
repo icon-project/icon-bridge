@@ -69,17 +69,19 @@ func ParseLevel(s string) (Level, error) {
 }
 
 const (
-	FieldKeyWallet = "wallet"
-	FieldKeyChain  = "chain"
-	FieldKeyModule = "module"
-	FieldKeyPrefix = "prefix"
+	FieldKeyWallet  = "wallet"
+	FieldKeyChain   = "chain"
+	FieldKeyModule  = "module"
+	FieldKeyService = "service"
+	FieldKeyPrefix  = "prefix"
 )
 
 var systemFields = map[string]bool{
-	FieldKeyWallet: true,
-	FieldKeyChain:  true,
-	FieldKeyModule: true,
-	FieldKeyPrefix: true,
+	FieldKeyService: true,
+	FieldKeyWallet:  true,
+	FieldKeyChain:   true,
+	FieldKeyModule:  true,
+	FieldKeyPrefix:  true,
 }
 
 var Trace, Print, Debug, Info, Warn, Error, Panic, Fatal func(args ...interface{})

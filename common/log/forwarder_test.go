@@ -42,7 +42,7 @@ func TestSlackHook(t *testing.T) {
 	SetGlobalLogger(l)
 	globalLogger.addHook(sh)
 	for i := 0; i < 2; i++ {
-		WithFields(Fields{"Status": "Check " + fmt.Sprint(i)}).Error("Hello Again!!")
+		l.WithFields(Fields{FieldKeyService: "Test", "Status": "Check " + fmt.Sprint(i)}).Error("Hello Again!!")
 	}
 	fmt.Println("Done")
 	<-time.After(time.Second * 10)
