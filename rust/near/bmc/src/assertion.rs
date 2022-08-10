@@ -116,20 +116,6 @@ impl BtpMessageCenter {
         );
     }
 
-    pub fn assert_verifier_exists(&self, network: &str) {
-        require!(
-            self.bmv.contains(network),
-            format!("{}", BmcError::VerifierNotExist)
-        );
-    }
-
-    pub fn assert_verifier_does_not_exists(&self, network: &str) {
-        require!(
-            !self.bmv.contains(network),
-            format!("{}", BmcError::VerifierExist)
-        );
-    }
-
     pub fn assert_valid_set_link_param(&self, max_aggregation: u64, delay_limit: u64) {
         require!(
             max_aggregation >= 1 && delay_limit >= 1,
