@@ -39,6 +39,12 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 			return nil, err
 		}
 		chainName := rc.Dst.Address.BlockChain()
+		srvName := "BMR-"
+		if strings.ToUpper(chainName) == "ICON" {
+			srvName += strings.ToUpper(rc.Src.Address.BlockChain())
+		} else {
+			srvName += strings.ToUpper(chainName)
+		}
 		l := l.WithFields(log.Fields{
 			log.FieldKeyModule:  rc.Name,
 			log.FieldKeyWallet:  w.Address(),
