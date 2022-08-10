@@ -42,10 +42,10 @@ func TestSlackHook(t *testing.T) {
 	SetGlobalLogger(l)
 	globalLogger.addHook(sh)
 	for i := 0; i < 2; i++ {
-		WithFields(Fields{"Status": "Check " + fmt.Sprint(i)}).Info("Hello!!")
+		WithFields(Fields{"Status": "Check " + fmt.Sprint(i)}).Error("Hello Again!!")
 	}
 	fmt.Println("Done")
-	<-time.After(time.Hour)
+	<-time.After(time.Second * 10)
 }
 
 //bind to /fluentd/etc/fluent.conf
