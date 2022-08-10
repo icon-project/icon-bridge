@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -37,13 +38,19 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 		if err != nil {
 			return nil, err
 		}
-
+		chainName := rc.Dst.Address.BlockChain()
+		srvName := "BMR-"
+		if strings.ToUpper(chainName) == "ICON" {
+			srvName += strings.ToUpper(rc.Src.Address.BlockChain())
+		} else {
+			srvName += strings.ToUpper(chainName)
+		}
 		l := l.WithFields(log.Fields{
-			log.FieldKeyModule: rc.Name,
-			log.FieldKeyWallet: w.Address(),
+			log.FieldKeyModule:  rc.Name,
+			log.FieldKeyWallet:  w.Address(),
+			log.FieldKeyService: srvName,
 		})
 
-		chainName := rc.Dst.Address.BlockChain()
 		if sender, ok := Senders[chainName]; ok {
 			if dst, err = sender(
 				rc.Src.Address,

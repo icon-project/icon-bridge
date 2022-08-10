@@ -35,10 +35,10 @@ ExampleConfig:
 CHECK ensureConfig() for detail
 */
 var (
-	DefaultHeartBeatLoggingInterval     uint = 5 * 60 // 5 minutes
-	DefaultSystemMetricsLoggingInterval uint = 5 * 60 // 5 minutes
-	MinimumHeartBeatLoggingInterval     uint = 10     // 10 seconds
-	MinimumSystemMetricsLoggingInterval uint = 10     // 10 seconds
+	DefaultHeartBeatLoggingInterval     uint = 15 * 60 // 15 minutes
+	DefaultSystemMetricsLoggingInterval uint = 30 * 60 // 30 minutes
+	MinimumHeartBeatLoggingInterval     uint = 10      // 10 seconds
+	MinimumSystemMetricsLoggingInterval uint = 10      // 10 seconds
 )
 
 var defaultConfig = StatConfig{
