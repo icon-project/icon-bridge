@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	GodKey      = "1f84c95ac16e6a50f08d44c7bde7aff8742212fda6e4321fde48bf83bef266dc"
+	GodKey      = ""
 	GodAddr     = "btp://0x6357d2e0.hmny/0xA5241513DA9F4463F1d4874b548dFBAC29D91f34"
-	DemoSrcKey  = "564971a566ce839535681eef81ccd44005944b98f7409cb5c0f5684ae862a530"
+	DemoSrcKey  = ""
 	DemoSrcAddr = "btp://0x6357d2e0.hmny/0x8fc668275b4fa032342ea3039653d841f069a83b"
 	DemoDstAddr = "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee1"
 	GodDstAddr  = "btp://0x5b9a77.icon/hxff0ea998b84ab9955157ab27915a9dc1805edd35"
@@ -162,9 +162,6 @@ func TestTransferIntraChain(t *testing.T) {
 	}
 	return
 }
-
-//ICONDemo [f4e8307da2b4fb7ff89bd984cd0613cfcfacac53abe3a1fd5b7378222bafa5b5 btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee]
-//HmnyDemo [564971a566ce839535681eef81ccd44005944b98f7409cb5c0f5684ae862a530 btp://0x6357d2e0.hmny/0x8Fc668275b4fA032342eA3039653D841f069a83b]
 
 func TestTransferInterChain(t *testing.T) {
 	api, err := getNewApi()
