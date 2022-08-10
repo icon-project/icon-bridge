@@ -16,6 +16,7 @@ const (
 	relayTxSendWaitInterval              = time.Second / 2
 	relayTxReceiptWaitInterval           = time.Second
 	relayInsufficientBalanceWaitInterval = 30 * time.Second
+	retryWarnThreshold                   = 15
 )
 
 type Relay interface {
@@ -152,7 +153,7 @@ func (r *relay) Start(ctx context.Context) error {
 
 			link, err = r.dst.Status(ctx)
 			if err != nil {
-				r.log.WithFields(log.Fields{"error": err}).Error("dst.Status: failed")
+				r.log.WithFields(log.Fields{"error": err}).Debug("dst.Status: failed")
 				if errors.Is(err, context.Canceled) {
 					r.log.WithFields(log.Fields{"error": err}).Error("dst.Status: failed, Context Cancelled")
 					return err
@@ -191,7 +192,11 @@ func (r *relay) Start(ctx context.Context) error {
 					time.Sleep(relayInsufficientBalanceWaitInterval)
 				default:
 					time.Sleep(relayTxSendWaitInterval) // wait before sending tx
-					r.log.WithFields(log.Fields{"error": err}).Infof("tx.Send: retry=%d", i)
+					if i > retryWarnThreshold {
+						r.log.WithFields(log.Fields{"error": err}).Warnf("tx.Send: retry=%d", i)
+					} else {
+						r.log.WithFields(log.Fields{"error": err}).Debugf("tx.Send: retry=%d", i)
+					}
 				}
 			}
 
@@ -216,7 +221,11 @@ func (r *relay) Start(ctx context.Context) error {
 
 				default:
 					time.Sleep(relayTxReceiptWaitInterval) // wait before asking for receipt
-					r.log.WithFields(log.Fields{"error": err, "retry": retryCount + 1}).Info("tx.Receipt: retry")
+					if retryCount > retryWarnThreshold {
+						r.log.WithFields(log.Fields{"error": err, "retry": retryCount + 1}).Warn("tx.Receipt: retry")
+					} else {
+						r.log.WithFields(log.Fields{"error": err, "retry": retryCount + 1}).Debug("tx.Receipt: retry")
+					}
 				}
 				retryCount++
 			}
