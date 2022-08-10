@@ -48,7 +48,7 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 		l := l.WithFields(log.Fields{
 			log.FieldKeyModule:  rc.Name,
 			log.FieldKeyWallet:  w.Address(),
-			log.FieldKeyService: "BMR-" + srvName,
+			log.FieldKeyService: srvName,
 		})
 
 		if sender, ok := Senders[chainName]; ok {
