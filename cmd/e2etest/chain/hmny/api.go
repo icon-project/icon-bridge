@@ -264,3 +264,14 @@ func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	}
 	return res, nil
 }
+func (a *api) GetNetwork() string {
+	return a.requester.networkID + ".hmny"
+}
+
+func (a *api) CallBTS(method chain.ContractCallMethodName, args []interface{}) (response interface{}, err error) {
+	return nil, fmt.Errorf("method %v not supported", method)
+}
+
+func (a *api) TransactWithBTS(ownerKey string, method chain.ContractTransactMethodName, args []interface{}) (txnHash string, err error) {
+	return "", fmt.Errorf("method %v not supported", method)
+}

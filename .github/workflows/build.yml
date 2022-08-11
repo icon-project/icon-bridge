@@ -34,9 +34,17 @@ jobs:
         working-directory: ./solidity/bmc
         run: yarn
 
+      - name: Compile solidity bmc contracts
+        working-directory: ./solidity/bmc
+        run: yarn contract:compile
+
       - name: Build solidity bts
         working-directory: ./solidity/bts
         run: yarn
+
+      - name: Compile solidity bmc contracts
+        working-directory: ./solidity/bmc
+        run: yarn contract:compile
 
   build_icon:
     name: Build icon-bridge icon

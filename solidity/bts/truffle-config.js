@@ -6,11 +6,9 @@ console.log('BSC_RPC_URI: ' + process.env.BSC_RPC_URI);
 module.exports = {
   networks: {
     development: {
-      provider: () => new HDWalletProvider({
-        privateKeys: JSON.parse(process.env.PRIVATE_KEY),
-        providerOrUrl: "http://localhost:9545",
-      }),
-      network_id: '*'
+      host: "127.0.0.1",
+      port: 9545,
+      network_id: "*" // Match any network id
     },
     bsc: {
       provider: () => new HDWalletProvider({

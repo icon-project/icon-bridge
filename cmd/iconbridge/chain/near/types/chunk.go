@@ -12,5 +12,5 @@ type Chunk struct {
 	ShardId              uint       `json:"shard_id"`
 	OutgoingReceiptsRoot CryptoHash `json:"outgoing_receipts_root"`
 	TxRoot               CryptoHash `json:"tx_root"`
-	Signature            CryptoHash `json:"signature"`
+	Signature            Signature  `json:"signature"`
 }

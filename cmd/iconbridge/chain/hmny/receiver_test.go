@@ -16,19 +16,27 @@ import (
 
 var (
 	emptyReceiptsRoot = common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	nid               = "0x63564c40"
+	net               = "0x63564c40.hmny"
+	rpc_uri           = "https://api.harmony.one"
+	block_height      = 28070290
+	hmny_bmc          = "btp://0x63564c40.hmny/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8"
+	icon_bmc          = "btp://0x1.icon/cx06f42ea934731b4867fca00d37c25aa30bc3e3d7"
 )
 
 func newTestReceiver(t *testing.T) chain.Receiver {
-	url := "https://rpc.s0.b.hmny.io"
-	receiver, _ := NewReceiver("", "", []string{url}, nil, log.New())
+	url := rpc_uri
+	receiver, err := NewReceiver(chain.BTPAddress(hmny_bmc), chain.BTPAddress(icon_bmc), []string{url}, nil, log.New())
+	require.NoError(t, err)
 	return receiver
 }
 
 func TestSubscribeMessage(t *testing.T) {
-	cl, _ := newTestClient(t)
+	cl, _ := newTestClient(t, rpc_uri)
+
 	recv := newTestReceiver(t).(*receiver)
 
-	height := uint64(1000000)
+	height := uint64(block_height)
 	next, err := cl.GetHmyV2HeaderByHeight((&big.Int{}).SetUint64(height + 1))
 	require.NoError(t, err, "failed to fetch next header")
 
@@ -43,8 +51,7 @@ func TestSubscribeMessage(t *testing.T) {
 		CommitBitmap:    next.LastCommitBitmap,
 		CommitSignature: next.LastCommitSignature,
 	}
-
-	height += 100
+	recv.opts.SyncConcurrency = 10
 
 	srcMsgCh := make(chan *chain.Message)
 	srcErrCh, err := recv.Subscribe(ctx,
@@ -55,26 +62,17 @@ func TestSubscribeMessage(t *testing.T) {
 		})
 	require.NoError(t, err, "failed to subscribe message")
 
-	startHeight := height
 	for {
 		select {
 		case err := <-srcErrCh:
 			t.Logf("subscription closed: %v", err)
 			t.FailNow()
 		case msg := <-srcMsgCh:
-			t.Logf("received block: %d", height)
 
 			// validate receipts height matches block height
-			if len(msg.Receipts) > 0 {
-				require.Equal(t,
-					msg.Receipts[0].Height, height,
-					"receipts height should match block height")
-			}
-
-			// terminate the test after 10 blocks
-			height++
-			if height > startHeight+10 {
-				break
+			if len(msg.Receipts) > 0 && msg.Receipts[0].Height == 28070299 {
+				//found expected block
+				return
 			}
 		}
 	}

@@ -2,7 +2,6 @@ package icon
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -11,20 +10,19 @@ import (
 	"github.com/icon-project/icon-bridge/common"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReceiver(t *testing.T) {
 	srcAddress := "btp://0x1.icon/cx997849d3920d338ed81800833fbb270c785e743d"
 	dstAddress := "btp://0x63564c40.hmny/0xa69712a3813d0505bbD55AeD3fd8471Bc2f722DD"
 	srcEndpoint := []string{"https://ctz.solidwallet.io/api/v3/icon_dex"}
-	// var height uint64 = 0x307f245 // seq 0x0a
-	// var height uint64 = 0x307f24f
-	var height uint64 = 0x308024f
-	// var seq uint64 = 611
+	var height uint64 = 0x307f54a
 	var seq uint64 = 628
 	opts := map[string]interface{}{
 		"verifier": map[string]interface{}{
-			"blockHeight":    0x307f24f,
+			"blockHeight":    0x307f540,
 			"validatorsHash": "0xa6760c547c3f76b7071658ef383d69ec01e11ea71d695600788695b50659e409",
 		},
 	}
@@ -45,8 +43,9 @@ func TestReceiver(t *testing.T) {
 			case err := <-errCh:
 				panic(err)
 			case msg := <-msgCh:
-				if len(msg.Receipts) > 0 {
-					l.Info(msg.From, len(msg.Receipts), msg.Receipts[0].Height)
+				if len(msg.Receipts) > 0 && msg.Receipts[0].Height == 50853195 {
+					// found event
+					return
 				}
 			}
 		}
@@ -55,50 +54,41 @@ func TestReceiver(t *testing.T) {
 
 func TestNextValidatorHashFetch(t *testing.T) {
 
-	//var conUrl string = "https://ctz.solidwallet.io/api/v3/icon_dex" //devnet
-	var conUrl string = "http://127.0.0.1:9080/api/v3/default" // mainnet
-	height := 9999
-
+	var conUrl string = "https://ctz.solidwallet.io/api/v3/icon_dex" //devnet
+	height := 50852431
 	con := jsonrpc.NewJsonRpcClient(&http.Client{Transport: &http.Transport{MaxIdleConnsPerHost: 1000}}, conUrl)
-
 	getBlockHeaderByHeight := func(height int64, con *jsonrpc.Client) (*BlockHeader, error) {
 		var header BlockHeader
 		var result []byte
 		_, err := con.Do("icx_getBlockHeaderByHeight", &BlockHeightParam{
 			Height: NewHexInt(int64(height)),
 		}, &result)
-		if err != nil {
-			return nil, err
-		}
+		require.NoError(t, err)
+
 		_, err = vlcodec.RLP.UnmarshalFromBytes(result, &header)
-		if err != nil {
-			return nil, err
-		}
+		require.NoError(t, err)
 		return &header, nil
 	}
 
 	getDatabyHash := func(req interface{}, resp interface{}, con *jsonrpc.Client) (interface{}, error) {
 		_, err := con.Do("icx_getDataByHash", req, resp)
-		if err != nil {
-			return nil, err
-		}
+		require.NoError(t, err)
 		return resp, nil
 	}
 
 	header, err := getBlockHeaderByHeight(int64(height), con)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var validatorDataBytes []byte
 	_, err = getDatabyHash(&DataHashParam{Hash: NewHexBytes(header.NextValidatorsHash)}, &validatorDataBytes, con)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	var validators [][]byte
 	_, err = vlcodec.BC.UnmarshalFromBytes(validatorDataBytes, &validators)
-	if err != nil {
-		log.Fatal(err)
+	require.NoError(t, err)
+
+	if common.HexBytes(header.NextValidatorsHash).String() != "0xa6760c547c3f76b7071658ef383d69ec01e11ea71d695600788695b50659e409" {
+		err := errors.New("Invalid Validator Hash")
+		require.NoError(t, err)
 	}
-	fmt.Println(common.HexBytes(header.NextValidatorsHash), NewHexInt(int64(height)))
 }

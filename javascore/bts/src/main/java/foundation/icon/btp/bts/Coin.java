@@ -15,7 +15,8 @@ public class Coin {
     private int coinType;
     private Address address;
 
-    public Coin(Address address, String name, String symbol, int decimals, BigInteger feeNumerator, BigInteger fixedFee, int coinType) {
+    public Coin(Address address, String name, String symbol, int decimals, BigInteger feeNumerator,
+            BigInteger fixedFee, int coinType) {
         this.address = address;
         this.name = name;
         this.symbol = symbol;
@@ -40,7 +41,8 @@ public class Coin {
 
     public static Coin readObject(ObjectReader r) {
         r.beginList();
-        Coin result = new Coin(r.readAddress(), r.readString(), r.readString(), r.readInt(), r.readBigInteger(), r.readBigInteger(), r.readInt());
+        Coin result = new Coin(r.readAddress(), r.readString(), r.readString(),
+                r.readInt(), r.readBigInteger(), r.readBigInteger(), r.readInt());
         r.end();
         return result;
     }

@@ -26,6 +26,9 @@ import java.util.Map;
 
 public interface BTS {
 
+    @External
+    String name();
+
     /**
      * Registers a wrapped token smart contract and id number of a supporting coin.
      * Caller must be the owner
@@ -36,7 +39,40 @@ public interface BTS {
      * @param _name A coin name.
      */
     @External
-    void register(String _name, String _symbol, int _decimals, BigInteger _feeNumerator, BigInteger _fixedFee, Address address);
+    void register(String _name, String _symbol, int _decimals, BigInteger _feeNumerator, BigInteger _fixedFee,
+            Address address);
+
+    /**
+     * Change max allowable transfer limit
+     * @param _coinNames List of name of the coins
+     * @param _tokenLimits Maximum allowable limit for all tokens
+     */
+    @External
+    void setTokenLimit(String[] _coinNames, BigInteger[] _tokenLimits);
+
+    @External(readonly = true)
+    BigInteger getTokenLimit(String _name);
+
+    @External
+    void addBlacklistAddress(String _net, String[] _addresses);
+
+    @External
+    void removeBlacklistAddress(String _net, String[] _addresses);
+
+    @External(readonly = true)
+    boolean isUserBlackListed(String _net, String _address);
+
+    @External(readonly = true)
+    List<String> getBlackListedUsers(String _net, int _start, int _end);
+
+    @External(readonly = true)
+    int blackListedUsersCount(String _net);
+
+    @External(readonly = true)
+    int getRegisteredTokensCount();
+
+    @External(readonly = true)
+    boolean tokenLimitStatus(String _net, String _coinName);
 
     /**
      * Return all supported coins names in other networks by the BSH contract
@@ -44,7 +80,7 @@ public interface BTS {
      * @return An array of strings.
      */
     @External(readonly = true)
-    String[] coinNames();
+    List<String> coinNames();
 
 
     /**
@@ -91,6 +127,12 @@ public interface BTS {
      */
     @External(readonly = true)
     List<Map<String, BigInteger>> balanceOfBatch(Address _owner, String[] _coinNames);
+
+    @External(readonly = true)
+    BigInteger getAccumulatedFees(String coinName);
+
+    @External
+    void tokenFallback(Address _from, BigInteger _value, byte[] _data);
 
     /**
      * Reclaim the coin's refundable balance by an owner.
@@ -143,6 +185,9 @@ public interface BTS {
     @External
     void transferBatch(String[] _coinNames, BigInteger[] _values, String _to);
 
+    @External(readonly = true)
+    TransferTransaction getTransaction(BigInteger _sn);
+
     /**
      *  Sets a new transfer fee ratio.
      *
@@ -162,6 +207,12 @@ public interface BTS {
      *
      */
     @External(readonly = true)
-    BigInteger feeRatio();
+    Map<String, BigInteger> feeRatio(String _name);
+
+    @External
+    void addRestriction();
+
+    @External
+    void disableRestrictions();
 
 }

@@ -13,10 +13,11 @@ type evt struct {
 	chainType chain.ChainType
 }
 
-type callBackFunc func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) error
+type callBackFunc func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error)
 
 type Script struct {
 	Name        string
+	Type        string
 	Description string
 	Callback    callBackFunc
 }
@@ -32,7 +33,18 @@ type fee struct {
 	denominator *big.Int
 }
 
+type txnRecord struct {
+	msg        string
+	startEvent *chain.TransferStartEvent
+	endEvent   *chain.TransferEndEvent
+}
+
 var (
 	ZeroEvents     = errors.New("Got zero event logs, expected at least one")
 	StatusCodeZero = errors.New("Got status code zero(failed)")
 )
+
+type Config struct {
+	Env    string          `json:"env"`
+	Chains []*chain.Config `json:"chains"`
+}
