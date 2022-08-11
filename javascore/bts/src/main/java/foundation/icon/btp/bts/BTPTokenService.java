@@ -597,10 +597,39 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void handleBTPError(String _src, String _svc, BigInteger _sn, long _code, String _msg) {
         require(Context.getCaller().equals(bmc), "Only BMC");
-        TransferResponse response = new TransferResponse();
-        response.setCode(TransferResponse.RC_ERR);
-        response.setMessage("BTPError [code:" + _code + ",msg:" + _msg);
-        handleResponse(_sn, response);
+
+        TransferTransaction tTxn = transactions.get(_sn);
+        if (tTxn != null) {
+            TransferResponse response = new TransferResponse();
+            response.setCode(TransferResponse.RC_ERR);
+            response.setMessage("BTPError [code:" + _code + ",msg:" + _msg);
+            handleResponse(_sn, response);
+            return;
+        }
+
+        TokenLimitTransaction tlTxn = tokenLimitTxn.get(_sn);
+        if (tlTxn != null) {
+            String[] coinNames = tlTxn.getCoinName();
+            int size = coinNames.length;
+            for (int i = 0; i < size; i++) {
+                tokenLimitStatus.at(_src).set(coinNames[i], false);
+            }
+            return;
+        }
+
+        BlacklistTransaction bTxn = blacklistTxn.get(_sn);
+        if (bTxn != null) {
+            Integer service = bTxn.getServiceType();
+            if (service == BlacklistTransaction.ADD_TO_BLACKLIST) {
+                handleAddToBlacklistFailResponse(bTxn);
+            } else if (service == BlacklistTransaction.REMOVE_FROM_BLACKLIST) {
+                handleRemoveFromBlacklistFailResponse(bTxn);
+            }
+            else {
+                throw BTSException.unknown("BLACKLIST HANDLE ERROR");
+            }
+            return;
+        }
     }
 
     @External
