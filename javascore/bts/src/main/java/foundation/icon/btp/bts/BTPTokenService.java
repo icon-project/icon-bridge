@@ -242,11 +242,12 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         }
 
         BigInteger sn = increaseSn();
-        BlacklistTransaction request = new BlacklistTransaction(addresses, _net);
+        BlacklistTransaction request = new BlacklistTransaction(
+                BlacklistTransaction.ADD_TO_BLACKLIST, addresses, _net);
 
         blacklistTxn.set(sn, request);
 
-        sendMessage(_net, BTSMessage.ADD_TO_BLACKLIST, sn, request.toBytes());
+        sendMessage(_net, BTSMessage.BLACKLIST_MESSAGE, sn, request.toBytes());
     }
 
     @External
@@ -276,11 +277,12 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         }
 
         BigInteger sn = increaseSn();
-        BlacklistTransaction request = new BlacklistTransaction(addresses, _net);
+        BlacklistTransaction request = new BlacklistTransaction(
+                BlacklistTransaction.REMOVE_FROM_BLACKLIST,addresses, _net);
 
         blacklistTxn.set(sn, request);
 
-        sendMessage(_net, BTSMessage.REMOVE_FROM_BLACKLIST, sn, request.toBytes());
+        sendMessage(_net, BTSMessage.BLACKLIST_MESSAGE, sn, request.toBytes());
     }
 
     @External(readonly = true)
@@ -573,12 +575,9 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         } else if (serviceType == BTSMessage.REPONSE_HANDLE_SERVICE) {
             TransferResponse response = TransferResponse.fromBytes(message.getData());
             handleResponse(_sn, response);
-        } else if (serviceType == BTSMessage.ADD_TO_BLACKLIST) {
+        } else if (serviceType == BTSMessage.BLACKLIST_MESSAGE) {
             BlacklistResponse response = BlacklistResponse.fromBytes(message.getData());
-            handleAddToBlacklist(_sn, response);
-        } else if (serviceType == BTSMessage.REMOVE_FROM_BLACKLIST) {
-            BlacklistResponse response = BlacklistResponse.fromBytes(message.getData());
-            handleRemoveFromBlacklist(_sn, response);
+            handleBlacklist(_sn, response);
         } else if (serviceType == BTSMessage.CHANGE_TOKEN_LIMIT) {
             TokenLimitResponse response = TokenLimitResponse.fromBytes(message.getData());
             handleChangeTokenLimit(_from, _sn, response);
@@ -813,42 +812,49 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         logger.println("handleResponse", "end");
     }
 
-    private void handleAddToBlacklist(BigInteger sn, BlacklistResponse response) {
-        logger.println("handleAddToBlacklist", "begin", "sn:", sn);
-        BlacklistTransaction txn = blacklistTxn.get(sn);
-         if (txn != null) {
-             BigInteger code = response.getCode();
-             if (BlacklistResponse.RC_OK.equals(code)) {
-                 blacklistTxn.set(sn, null);
-                 AddedToBlacklist(sn, response.getMessage() != null ? response.getMessage().getBytes() : null);
-             } else {
-                 String[] addresses = txn.getAddress();
-                 String net = txn.getNet();
-                 for(String addr: addresses) {
-                     removeFromBlacklistInternal(net, addr);
-                 }
-             }
-         }
-        logger.println("handleAddToBlacklist", "end");
-    }
-
-    private void handleRemoveFromBlacklist(BigInteger sn, BlacklistResponse response) {
-        logger.println("handleRemoveFromBlacklist", "begin", "sn:", sn);
+    private void handleBlacklist(BigInteger sn, BlacklistResponse response) {
         BlacklistTransaction txn = blacklistTxn.get(sn);
         if (txn != null) {
+            Integer serviceType = txn.getServiceType();
             BigInteger code = response.getCode();
-            if (BlacklistResponse.RC_OK.equals(code)) {
-                blacklistTxn.set(sn, null);
-                RemovedFromBlacklist(sn, response.getMessage() != null ? response.getMessage().getBytes() : null);
-            } else {
-                String[] addresses = txn.getAddress();
-                String net = txn.getNet();
-                for(String addr : addresses) {
-                    addToBlacklistInternal(net, addr);
+            if (serviceType == BlacklistTransaction.ADD_TO_BLACKLIST) {
+                logger.println("handleAddToBlacklist", "begin", "sn:", sn);
+                if (BlacklistResponse.RC_OK.equals(code)) {
+                    blacklistTxn.set(sn, null);
+                    AddedToBlacklist(sn, response.getMessage() != null ? response.getMessage().getBytes() : null);
+                } else {
+                    handleAddToBlacklistFailResponse(txn);
                 }
+                logger.println("handleAddToBlacklist", "end");
+            } else if (serviceType == BlacklistTransaction.REMOVE_FROM_BLACKLIST) {
+                logger.println("handleRemoveFromBlacklist", "begin", "sn:", sn);
+                if (BlacklistResponse.RC_OK.equals(code)) {
+                    blacklistTxn.set(sn, null);
+                    RemovedFromBlacklist(sn, response.getMessage() != null ? response.getMessage().getBytes() : null);
+                } else {
+                    handleRemoveFromBlacklistFailResponse(txn);
+                }
+                logger.println("handleRemoveFromBlacklist", "end");
+            } else {
+                Context.revert("Invalid Blacklist Txn");
             }
         }
-        logger.println("handleRemoveFromBlacklist", "end");
+    }
+
+    private void handleAddToBlacklistFailResponse(BlacklistTransaction txn) {
+        String[] addresses = txn.getAddress();
+        String net = txn.getNet();
+        for(String addr: addresses) {
+            removeFromBlacklistInternal(net, addr);
+        }
+    }
+
+    private void handleRemoveFromBlacklistFailResponse(BlacklistTransaction txn) {
+        String[] addresses = txn.getAddress();
+        String net = txn.getNet();
+        for(String addr : addresses) {
+            addToBlacklistInternal(net, addr);
+        }
     }
 
     private void handleChangeTokenLimit(String from, BigInteger sn, TokenLimitResponse response) {

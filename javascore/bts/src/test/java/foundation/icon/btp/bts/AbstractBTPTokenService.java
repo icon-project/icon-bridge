@@ -126,7 +126,7 @@ public class AbstractBTPTokenService extends TestBase {
         response.setCode(BlacklistResponse.RC_OK);
         BTSMessage message = new BTSMessage();
         message.setData(response.toBytes());
-        message.setServiceType(BTSMessage.ADD_TO_BLACKLIST);
+        message.setServiceType(BTSMessage.BLACKLIST_MESSAGE);
         return message.toBytes();
     }
 
@@ -135,7 +135,7 @@ public class AbstractBTPTokenService extends TestBase {
         response.setCode(BlacklistResponse.RC_OK);
         BTSMessage message = new BTSMessage();
         message.setData(response.toBytes());
-        message.setServiceType(BTSMessage.REMOVE_FROM_BLACKLIST);
+        message.setServiceType(BTSMessage.BLACKLIST_MESSAGE);
         return message.toBytes();
     }
 
