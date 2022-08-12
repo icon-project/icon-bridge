@@ -128,8 +128,9 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         require(msg.sender == address(this), "Unauthorized");
         for (uint i = 0; i < _address.length; i++) {
             try this.checkParseAddress(_address[i]) {
-                require( blacklist[_address[i].parseAddress()], "UserNotBlacklisted");
-                blacklist[_address[i].parseAddress()] = false;
+                address addr = _address[i].parseAddress();
+                require(blacklist[addr], "UserNotBlacklisted");
+                delete blacklist[addr];
             } catch {
                 revert("InvalidAddress");
             }
