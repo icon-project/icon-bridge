@@ -141,7 +141,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
         assertEquals(1, score.call("getRegisteredTokensCount"));
 
-        List<String> registered = List.of(PARA);
+        List<String> registered = List.of(ICON, PARA);
         assertEquals(registered, score.call("coinNames"));
     }
 
@@ -162,7 +162,7 @@ public class BTSTest extends AbstractBTPTokenService {
                 TEST_TOKEN, "TTK", 18, ICX.divide(BigInteger.TEN), ICX, irc2.getAddress());
         expectErrorMessage(call, "already existed");
 
-        List<String> expected = List.of(TEST_TOKEN);
+        List<String> expected = List.of(ICON, TEST_TOKEN);
         assertEquals(expected, score.call("coinNames"));
 
         assertEquals(UINT_CAP, score.call("getTokenLimit", TEST_TOKEN));
