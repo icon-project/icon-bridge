@@ -323,17 +323,36 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         return this.coinAddresses.getOrDefault(_coinName, null);
     }
 
+    /**
+     * Usable => Amount transferred/approved to BTS by owner
+     * Tradeable Usable =>  minimumOf(availableBalance, approvedBalance)
+     *
+     * Locked:
+     * IRC Locked: usable <- usable-value,  locked_amount<- locked_amount + value
+     * Tradeable IRC Locked: same
+     *
+     * Refundable:
+     * IRC refund:
+     *     locked <- locked-value
+     *     if failure:
+     *         refundable = refundable + value
+     *         if canRefund():
+     *             refundable = refundable - value
+     *
+     * Userbalance:
+     * IRC          :  account_balance
+     * TradeableIRC :  account_balance
+     */
     @External(readonly = true)
     public Map<String, BigInteger> balanceOf(Address _owner, String _coinName) {
         Balance balance = getBalance(_coinName, _owner);
         Address _addr = coinAddresses.get(_coinName);
-        if (_addr == null) {
+        if (_addr == null && !_coinName.equals(name)) {
             return balance.addUserBalance(BigInteger.ZERO);
         }
         Coin _coin = coinDb.get(_coinName);
         if (_coinName.equals(name)) {
             BigInteger icxBalance = Context.getBalance(_owner);
-            balance.setUsable(icxBalance);
             return balance.addUserBalance(icxBalance);
         } else if (_coin.getCoinType() == WRAPPED_COIN_TYPE) {
             IRC2SupplierScoreInterface _irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());
