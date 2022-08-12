@@ -1095,10 +1095,10 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             IRC2ScoreInterface _irc2 = new IRC2ScoreInterface(_coinAddr);
             _irc2.transfer(to, amount, null);
         } catch (UserRevertedException e) {
-            logger.println("mint", "code:", e.getCode(), "msg:", e.getMessage());
+            logger.println("transfer", "code:", e.getCode(), "msg:", e.getMessage());
             throw BTSException.irc31Reverted("code:" + e.getCode() + "msg:" + e.getMessage());
         } catch (IllegalArgumentException | RevertedException e) {
-            logger.println("mint", "Exception:", e.toString());
+            logger.println("transfer", "Exception:", e.toString());
             throw BTSException.irc31Failure("Exception:" + e);
         }
     }
