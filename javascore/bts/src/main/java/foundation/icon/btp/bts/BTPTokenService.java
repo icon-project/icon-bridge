@@ -100,6 +100,11 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         // set sn to zero
         sn.set(BigInteger.ZERO);
+        require(_feeNumerator.compareTo(BigInteger.ZERO) >= 0 &&
+                        _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
+                "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
+        require(_fixedFee.compareTo(BigInteger.ZERO) >= 0, "Fixed fee cannot be less than zero");
+
 
         coinDb.set(_name, new Coin(ZERO_SCORE_ADDRESS, _name, _name, _decimals,
                 _feeNumerator, _fixedFee, NATIVE_COIN_TYPE));
@@ -121,7 +126,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void setFeeRatio(String _name, BigInteger _feeNumerator, BigInteger _fixedFee) {
         requireOwnerAccess();
-        Context.require(_feeNumerator.compareTo(BigInteger.ONE) >= 0 &&
+        Context.require(_feeNumerator.compareTo(BigInteger.ZERO) >= 0 &&
                 _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
                 "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
         Context.require(_fixedFee.compareTo(BigInteger.ZERO) >= 0, "Fixed fee cannot be less than zero");
@@ -182,8 +187,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         for (int i = 0; i < size; i++) {
             String coinName = _coinNames[i];
             BigInteger coinLimit = _tokenLimits[i];
-
-            require(UINT_CAP.compareTo(coinLimit) >= 0, "Cannot set more than uint(256)-1" );
+            checkUintLimit(coinLimit);
             require((_tokenLimits[i].compareTo(BigInteger.ZERO) >= 0),
                     "Invalid value");
             tokenLimit.set(coinName, coinLimit);
@@ -400,7 +404,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     // To receive IRC2 token from existing Contract
     @External
     public void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
-        require(UINT_CAP.compareTo(_value) >= 0, "Cannot set more than uint(256)-1" );
+        checkUintLimit(_value);
         String _coinName = coinAddressName.get(Context.getCaller());
         if (_coinName != null && _from != Context.getAddress()) {
             Context.require(coinAddresses.get(_coinName) != null, "CoinNotExists");
@@ -415,10 +419,12 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void reclaim(String _coinName, BigInteger _value) {
         require(_value.compareTo(BigInteger.ZERO) > 0, "_value must be positive");
+        checkUintLimit(_value);
 
         Address owner = Context.getCaller();
         Balance balance = getBalance(_coinName, owner);
         require(balance.getRefundable().add(balance.getUsable()).compareTo(_value) > -1, "invalid value");
+        require(isRegistered(_coinName), "Not registered");
         balance.setRefundable(balance.getRefundable().add(balance.getUsable()));
         balance.setUsable(BigInteger.ZERO);
         balance.setRefundable(balance.getRefundable().subtract(_value));
@@ -435,7 +441,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void transferNativeCoin(String _to) {
         BigInteger value = Context.getValue();
-        require(UINT_CAP.compareTo(value) >= 0, "Cannot set more than uint(256)-1" );
+        checkUintLimit(value);
         BTPAddress to = BTPAddress.valueOf(_to);
         require(value != null && value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
         checkTransferRestrictions(to.net(), name, Context.getCaller().toString(), BTPAddress.valueOf(_to).account(), value);
@@ -445,7 +451,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void transfer(String _coinName, BigInteger _value, String _to) {
         require(_value != null && _value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
-        require(UINT_CAP.compareTo(_value) >= 0, "Cannot set more than uint(256)-1" );
+        checkUintLimit(_value);
         require(isRegistered(_coinName), "Not supported Token");
 
         Address owner = Context.getCaller();
@@ -459,10 +465,10 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void transferBatch(String[] _coinNames, BigInteger[] _values, String _to) {
         require(_coinNames.length == _values.length, "Invalid arguments");
-
         List<String> coinNameList = new ArrayList<>();
         List<BigInteger> values = new ArrayList<>();
         int len = _coinNames.length;
+        require(len > 0, "Zero length arguments");
         Address owner = Context.getCaller();
         BTPAddress to = BTPAddress.valueOf(_to);
         
@@ -470,7 +476,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             String coinName = _coinNames[i];
             BigInteger value = _values[i];
             require(!name.equals(coinName) && this.coinNames.contains(coinName), "Not supported Token");
-            require(UINT_CAP.compareTo(value) >= 0, "Cannot set more than uint(256)-1" );
+            checkUintLimit(value);
             coinNameList.add(coinName);
             values.add(_values[i]);
             checkTransferRestrictions(to.net(), coinName, owner.toString(), to.account() ,value);
@@ -597,6 +603,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void handleBTPMessage(String _from, String _svc, BigInteger _sn, byte[] _msg) {
         require(Context.getCaller().equals(bmc), "Only BMC");
+        require(_svc.equals(SERVICE), "InvalidSvc");
 
         BTSMessage message = BTSMessage.fromBytes(_msg);
         int serviceType = message.getServiceType();
@@ -1249,6 +1256,10 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             }
         }
         return false;
+    }
+
+    private void checkUintLimit(BigInteger value) {
+        require(UINT_CAP.compareTo(value) >= 0, "Value cannot exceed uint(256)-1");
     }
 
 }
