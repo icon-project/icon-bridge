@@ -230,7 +230,11 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         List<String> blacklist = new ArrayList<>();
 
         for (String addr: _addresses) {
-            if (! isUserBlackListed(_net, addr)) {
+            addr = lowercase(addr);
+            if (! isUserBlackListed(_net, addr) && addr.length() > 0) {
+                if (_net.equals(net) && !isValidIconAddress(addr)) {
+                    continue;
+                }
                 blacklist.add(addr);
                 blacklistDB.addToBlacklist(_net, addr);
             }
@@ -1206,6 +1210,15 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     private List<String> getCoinNamesAsList() {
         return coinNames.range(0, coinNames.length());
+    }
+
+    private boolean isValidIconAddress(String str) {
+        try {
+            Address a = Address.fromString(str);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     static void require(boolean condition, String message) {
