@@ -56,6 +56,7 @@ deploysc() {
             echo -n $addr > $CONFIG_DIR/bsc.addr.${BSC_NATIVE_TOKEN_SYM[$i]}
           else 
             echo "BSC Token ${BSC_NATIVE_TOKEN_SYM[$i]} does not exist on address file"
+            return 1
           fi
         done
       else 
@@ -99,6 +100,7 @@ deploysc() {
             echo -n $addr > $CONFIG_DIR/icon.addr.${ICON_NATIVE_TOKEN_SYM[$i]}
           else 
             echo "ICON Token ${ICON_NATIVE_TOKEN_SYM[$i]} does not exist on address file"
+            return 1
           fi
         done
       else 

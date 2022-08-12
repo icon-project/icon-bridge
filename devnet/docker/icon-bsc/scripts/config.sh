@@ -19,7 +19,7 @@ export ICON_KEY_STORE=$ICONBRIDGE_CONFIG_DIR/keystore/icon.god.wallet.json
 export ICON_SECRET=$ICONBRIDGE_CONFIG_DIR/keystore/icon.god.wallet.secret
 export ICON_NATIVE_COIN=('ICX')
 export ICON_NATIVE_TOKEN_SYM=('sICX' 'bnUSD')
-export ICON_NATIVE_TOKEN_NAME=('Staked ICX' 'Balanced Dollars')
+export ICON_NATIVE_TOKEN_NAME=('Staked ICX' 'Balanced Dollar')
 export ICON_WRAPPED_COIN_SYM=('BNB' 'BUSD' 'USDT' 'USDC' 'BTCB' 'ETH')
 export ICON_WRAPPED_COIN_NAME=('Binance Coin' 'BUSD Token' 'Tether USD' 'USD Coin' 'BTCB Token' 'Ethereum Token')
 

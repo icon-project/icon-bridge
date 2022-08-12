@@ -12,6 +12,7 @@ deploy_solidity_bmc() {
     rm -rf contracts/test build .openzeppelin
     truffle compile --all
     echo "deploying solidity bmc"
+    eth_blocknumber > $CONFIG_DIR/bsc.chain.height
     set +e
     for i in $(seq 1 20); do
       BMC_BTP_NET=$BSC_BMC_NET \
@@ -22,7 +23,6 @@ deploy_solidity_bmc() {
       echo "Retry: "$i
     done
     set -e
-    eth_blocknumber > $CONFIG_DIR/bsc.chain.height
     generate_metadata "BMC"
     echo -n "bmc" > $CONFIG_DIR/bsc.deploy.bmc
   fi

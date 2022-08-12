@@ -9,19 +9,18 @@ goloop_lastblock() {
 
 deploy_javascore_bmc() {
   cd $CONFIG_DIR
+
   if [ ! -f icon.addr.bmcbtp ]; then
     echo "deploying javascore BMC"
+    icon_block_height=$(goloop_lastblock | jq -r .height)
+    echo $icon_block_height > icon.chain.height
+    echo $(URI=$ICON_ENDPOINT HEIGHT=$(decimal2Hex $(($icon_block_height - 1))) $ICONBRIDGE_BIN_DIR/iconvalidators | jq -r .hash) > icon.chain.validators
     goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bmc.jar \
       --content_type application/java \
       --param _net=$(cat net.btp.icon) | jq -r . >tx/tx.icon.bmc
     sleep 5
     extract_scoreAddress tx/tx.icon.bmc icon.addr.bmc
     echo "btp://$(cat net.btp.icon)/$(cat icon.addr.bmc)" >icon.addr.bmcbtp
-  fi
-  if [ ! -f icon.chain.height ]; then
-    icon_block_height=$(goloop_lastblock | jq -r .height)
-    echo $icon_block_height > icon.chain.height
-    echo $(URI=$ICON_ENDPOINT HEIGHT=$(decimal2Hex $(($icon_block_height - 1))) $ICONBRIDGE_BIN_DIR/iconvalidators | jq -r .hash) > icon.chain.validators
   fi
 }
 
