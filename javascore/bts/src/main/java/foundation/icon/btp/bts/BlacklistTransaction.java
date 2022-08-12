@@ -24,8 +24,20 @@ import score.ObjectWriter;
 import scorex.util.ArrayList;
 
 public class BlacklistTransaction {
+    public static int ADD_TO_BLACKLIST = 0;
+    public static int REMOVE_FROM_BLACKLIST = 1;
+
+    private Integer serviceType;
     private String[] address;
     private String net;
+
+    public void setServiceType(Integer serviceType) {
+        this.serviceType = serviceType;
+    }
+
+    public Integer getServiceType() {
+        return this.serviceType;
+    }
 
     public String[] getAddress() {
         return address;
@@ -45,7 +57,8 @@ public class BlacklistTransaction {
 
     public BlacklistTransaction() {}
 
-    public BlacklistTransaction(String[] address, String net) {
+    public BlacklistTransaction(Integer serviceType, String[] address, String net) {
+        this.serviceType = serviceType;
         this.address = address;
         this.net = net;
     }
@@ -53,6 +66,7 @@ public class BlacklistTransaction {
     public static BlacklistTransaction readObject(ObjectReader reader) {
         BlacklistTransaction obj = new BlacklistTransaction();
         reader.beginList();
+        obj.setServiceType(reader.readNullable(Integer.class));
         if (reader.beginNullableList()) {
             String[] addreses = null;
             List<String> addressList = new ArrayList<>();
@@ -77,7 +91,7 @@ public class BlacklistTransaction {
 
     public void writeObject(ObjectWriter writer) {
         writer.beginList(2);
-
+        writer.writeNullable(this.getServiceType());
         String[] addresses = this.getAddress();
         if (addresses != null) {
             writer.beginNullableList(addresses.length);

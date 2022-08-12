@@ -261,51 +261,44 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
                 errMsg,
                 RC_ERR
             );
-        } else if (_sm.serviceType == Types.ServiceType.ADD_TO_BLACKLIST) {
+        } else if (_sm.serviceType == Types.ServiceType.BLACKLIST_MESSAGE) {
             Types.BlacklistMessage memory _bm = _sm.data.decodeBlackListMsg();
             string[] memory addresses = _bm.addrs;
 
-            try this.addToBlacklist(addresses) {
-                // send message to bmc
-                sendResponseMessage(
-                    Types.ServiceType.ADD_TO_BLACKLIST,
-                    _from,
-                    _sn,
-                    "AddedToBlacklist",
-                    RC_OK
-                );
-                return;
-            } catch {
-                errMsg = "ErrorAddToBlackList";
+            if (_bm.serviceType == Types.BlacklistService.ADD_TO_BLACKLIST ) {
+                try this.addToBlacklist(addresses) {
+                    // send message to bmc
+                    sendResponseMessage(
+                        Types.ServiceType.BLACKLIST_MESSAGE,
+                        _from,
+                        _sn,
+                        "AddedToBlacklist",
+                        RC_OK
+                    );
+                    return;
+                } catch {
+                    errMsg = "ErrorAddToBlackList";
+                }
+            } else if (_bm.serviceType == Types.BlacklistService.REMOVE_FROM_BLACKLIST) {
+                try this.removeFromBlacklist(addresses) {
+                    // send message to bmc
+                    sendResponseMessage(
+                        Types.ServiceType.BLACKLIST_MESSAGE,
+                        _from,
+                        _sn,
+                        "RemovedFromBlacklist",
+                        RC_OK
+                    );
+                    return;
+                } catch {
+                    errMsg = "ErrorRemoveFromBlackList";
+                }
+            } else {
+                errMsg = "BlacklistErr";
             }
 
             sendResponseMessage(
-                Types.ServiceType.ADD_TO_BLACKLIST,
-                _from,
-                _sn,
-                errMsg,
-                RC_ERR
-            );
-
-        } else if (_sm.serviceType == Types.ServiceType.REMOVE_FROM_BLACKLIST) {
-            Types.BlacklistMessage memory _bm = _sm.data.decodeBlackListMsg();
-            string[] memory addresses = _bm.addrs;
-            try this.removeFromBlacklist(addresses) {
-                // send message to bmc
-                sendResponseMessage(
-                    Types.ServiceType.REMOVE_FROM_BLACKLIST,
-                    _from,
-                    _sn,
-                    "RemovedFromBlacklist",
-                    RC_OK
-                );
-                return;
-            } catch {
-                errMsg = "ErrorRemoveFromBlackList";
-            }
-
-            sendResponseMessage(
-                Types.ServiceType.REMOVE_FROM_BLACKLIST,
+                Types.ServiceType.BLACKLIST_MESSAGE,
                 _from,
                 _sn,
                 errMsg,

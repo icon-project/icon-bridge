@@ -132,15 +132,16 @@ library RLPDecodeStruct {
 
         RLPDecode.RLPItem[] memory ls = _rlp.toRlpItem().toList();
 
-        RLPDecode.RLPItem[] memory subList = ls[0].toList();
+        RLPDecode.RLPItem[] memory subList = ls[1].toList();
         string[] memory _addrs = new string[](subList.length);
         for (uint256 i = 0; i < subList.length; i++) {
             _addrs[i] = string(subList[i].toBytes());
         }
         return
             Types.BlacklistMessage(
+                Types.BlacklistService(ls[0].toUint()),
                 _addrs,
-                string(ls[1].toBytes())
+                string(ls[2].toBytes())
             );
     }
 
