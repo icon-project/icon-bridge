@@ -419,11 +419,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         Address owner = Context.getCaller();
         Balance balance = getBalance(_coinName, owner);
         require(balance.getRefundable().add(balance.getUsable()).compareTo(_value) > -1, "invalid value");
-        Coin _coin = coinDb.get(_coinName);
-        if (_coin.getCoinType() == NON_NATIVE_TOKEN_TYPE) {
-            balance.setRefundable(balance.getRefundable().add(balance.getUsable()));
-            balance.setUsable(BigInteger.ZERO);
-        }
+        balance.setRefundable(balance.getRefundable().add(balance.getUsable()));
+        balance.setUsable(BigInteger.ZERO);
         balance.setRefundable(balance.getRefundable().subtract(_value));
         setBalance(_coinName, owner, balance);
 
@@ -736,11 +733,12 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         setBalance(coinName, owner, balance);
     }
 
-    private void refund(String coinName, Address owner, BigInteger value) {
-        logger.println("refund", "coinName:", coinName, "owner:", owner, "value:", value);
+    private void refund(String coinName, Address owner, BigInteger locked, BigInteger fee) {
+        logger.println("refund", "coinName:", coinName, "owner:", owner, "locked:", locked, "fee: ", fee);
         // unlock and add refundable
         Balance balance = getBalance(coinName, owner);
-        balance.setLocked(balance.getLocked().subtract(value));
+        BigInteger value = locked.subtract(fee);
+        balance.setLocked(balance.getLocked().subtract(locked));
         try {
             if (name.equals(coinName)) {
                 Context.transfer(owner, value);
@@ -860,9 +858,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
                     BigInteger amount = asset.getAmount();
                     BigInteger fee = asset.getFee();
                     BigInteger locked = amount.add(fee);
-                    boolean isNativeCoin = name.equals(coinName);
-                    if (isNativeCoin || coinNames.contains(coinName)) {
-                        refund(coinName, owner, locked);
+                    if (isRegistered(coinName)) {
+                        refund(coinName, owner, locked, fee);
                     } else {
                         // This should not happen
                         throw BTSException.unknown("invalid transaction, invalid coinName");
