@@ -220,6 +220,11 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     @External(readonly = true)
+    public TokenLimitTransaction getTokenLimitTxn(BigInteger _sn) {
+        return tokenLimitTxn.get(_sn);
+    }
+
+    @External(readonly = true)
     public BigInteger getSn() {
         return sn.get();
     }
