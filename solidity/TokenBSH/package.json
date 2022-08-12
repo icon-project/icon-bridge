@@ -6,6 +6,9 @@
         "@truffle/hdwallet-provider": "^2.0.12",
         "dotenv": "^16.0.0"
     },
+    "resolutions": {
+        "minimist": "^1.2.6"
+    },
     "devDependencies": {
         "chai": "^4.3.4",
         "coveralls": "^3.1.1",
