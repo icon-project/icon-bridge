@@ -175,6 +175,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
     ) external override onlyOwner {
         require(_feeNumerator <= FEE_DENOMINATOR, "InvalidSetting");
         require(_name.compareTo(nativeCoinName) || coins[_name] != address(0), "TokenNotExists");
+        require(_fixedFee >= 0 && _feeNumerator >= 0, "LessThan0");
         coinDetails[_name].feeNumerator = _feeNumerator;
         coinDetails[_name].fixedFee = _fixedFee;
     }
@@ -198,6 +199,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         require(!_name.compareTo(nativeCoinName), "ExistNativeCoin");
         require(coins[_name] == address(0), "ExistCoin");
         require(_feeNumerator <= FEE_DENOMINATOR, "InvalidFeeSetting");
+        require(_fixedFee >= 0 && _feeNumerator >= 0, "LessThan0");
         if (_addr == address(0)) {
             address deployedERC20 = address(
                 new ERC20Tradable(_name, _symbol, _decimals)
@@ -479,6 +481,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         //  @dev `_value` is a requested amount to transfer, from a Requester, including charged fee
         //  The true amount to receive at a destination receiver is calculated by
         //  _amounts[0] = _value.sub(_chargeAmt);
+        require(_value > _chargeAmt, "ValueGreaterThan0");
         lockBalance(_from, _coinName, _value);
         string[] memory _coins = new string[](1);
         _coins[0] = _coinName;
@@ -525,6 +528,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
             require(_erc20Addresses != address(0), "UnregisterCoin");
             coinName = _coinNames[i];
             value = _values[i];
+            require(value > 0,"ZeroOrLess");
 
             btsPeriphery.checkTransferRestrictions(
                 coinName,
