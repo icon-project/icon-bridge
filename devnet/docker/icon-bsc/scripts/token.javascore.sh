@@ -41,17 +41,17 @@ deploy_javascore_bts() {
 }
 
 deploy_javascore_token() {
-  echo "deploying javascore IRC2Token " $1
+  echo "deploying javascore IRC2Token " $2
   cd $CONFIG_DIR
-  if [ ! -f icon.addr.$1 ]; then
+  if [ ! -f icon.addr.$2 ]; then
     goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/irc2.jar \
       --content_type application/java \
       --param _name=$1 \
       --param _symbol=$2 \
       --param _initialSupply="0x186a0" \
-      --param _decimals="0x12" | jq -r . >tx/tx.icon.$1
+      --param _decimals="0x12" | jq -r . >tx/tx.icon.$2
     sleep 5
-    extract_scoreAddress tx/tx.icon.$1 icon.addr.$1
+    extract_scoreAddress tx/tx.icon.$2 icon.addr.$2
   fi
 }
 
@@ -186,57 +186,57 @@ configure_bmc_javascore_addRelay() {
 
 
 configure_javascore_register_native_token() {
-  echo "Register Native Token " $1
+  echo "Register Native Token " $2
   cd $CONFIG_DIR
   local bts_fee_numerator=100
   local bts_fixed_fee=5000
-  if [ ! -f icon.register.coin$1 ]; then
+  if [ ! -f icon.register.coin$2 ]; then
     goloop rpc sendtx call --to $(cat icon.addr.bts) \
       --method register \
       --param _name=$1 \
       --param _symbol=$2 \
       --param _decimals=0x12 \
-      --param _addr=$(cat icon.addr.$1) \
+      --param _addr=$(cat icon.addr.$2) \
       --param _feeNumerator=$(decimal2Hex $bts_fee_numerator) \
-      --param _fixedFee=$(decimal2Hex $bts_fixed_fee) | jq -r . >tx/register.coin.$1
+      --param _fixedFee=$(decimal2Hex $bts_fixed_fee) | jq -r . >tx/register.coin.$2
     sleep 5
-    ensure_txresult tx/register.coin.$1
-    echo "registered "$1 > icon.register.coin$1
+    ensure_txresult tx/register.coin.$2
+    echo "registered "$2 > icon.register.coin$2
   fi
 }
 
 
 configure_javascore_register_wrapped_coin() {
-  echo "Register Wrapped Coin " $1
+  echo "Register Wrapped Coin " $2
   cd $CONFIG_DIR
   local bts_fee_numerator=100
   local bts_fixed_fee=5000
-  if [ ! -f icon.register.coin$1 ]; then
+  if [ ! -f icon.register.coin$2 ]; then
     goloop rpc sendtx call --to $(cat icon.addr.bts) \
       --method register \
       --param _name=$1 \
       --param _symbol=$2 \
       --param _decimals=0x12 \
       --param _feeNumerator=$(decimal2Hex $bts_fee_numerator) \
-      --param _fixedFee=$(decimal2Hex $bts_fixed_fee) | jq -r . >tx/register.coin.$1
+      --param _fixedFee=$(decimal2Hex $bts_fixed_fee) | jq -r . >tx/register.coin.$2
     sleep 5
-    ensure_txresult tx/register.coin.$1
-    echo $1 > icon.register.coin$1
+    ensure_txresult tx/register.coin.$2
+    echo $2 > icon.register.coin$2
   fi
 }
 
 get_btp_icon_coinId() {
-  echo "Get BTP Icon Addr " $1
+  echo "Get BTP Icon Addr " $2
   cd $CONFIG_DIR
   goloop rpc call --to $(cat icon.addr.bts) \
     --method coinId \
-    --param _coinName=$1 | jq -r . >tx/icon.coinId.$1
-  if [ "$(cat $CONFIG_DIR/tx/icon.coinId.$1)" == "null" ];
+    --param _coinName=$1 | jq -r . >tx/icon.coinId.$2
+  if [ "$(cat $CONFIG_DIR/tx/icon.coinId.$2)" == "null" ];
   then
-    echo "Error Gettting  CoinAddress icon."$1
+    echo "Error Gettting  CoinAddress icon."$2
     return 1
   else 
-    cat $CONFIG_DIR/tx/icon.coinId.$1 >$CONFIG_DIR/icon.addr.coin$1
+    cat $CONFIG_DIR/tx/icon.coinId.$2 >$CONFIG_DIR/icon.addr.coin$2
   fi
   sleep 5
 }

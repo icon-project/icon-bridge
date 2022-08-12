@@ -75,11 +75,11 @@ extractAddresses() {
 generate_addresses_json() {
 echo "{"
 echo "    \"javascore\": {"
-for v in "${ICON_NATIVE_TOKEN[@]}"
+for v in "${ICON_NATIVE_TOKEN_SYM[@]}"
 do
     echo "        " \"$v\" : \"$(cat $CONFIG_DIR/icon.addr.coin$v)\",
 done
-for v in "${ICON_WRAPPED_COIN[@]}"
+for v in "${ICON_WRAPPED_COIN_SYM[@]}"
 do
     echo "        " \"$v\" : \"$(cat $CONFIG_DIR/icon.addr.coin$v)\",
 done
@@ -87,11 +87,11 @@ echo "        " \"bmc\": \"$(cat $CONFIG_DIR/icon.addr.bmc)\",
 echo "        " \"bts\": \"$(cat $CONFIG_DIR/icon.addr.bts)\"
 echo "    },"
 echo "    \"solidity\": {"
-for v in "${BSC_NATIVE_TOKEN[@]}"
+for v in "${BSC_NATIVE_TOKEN_SYM[@]}"
 do
     echo "        " \"$v\" : \"$(cat $CONFIG_DIR/bsc.addr.coin$v)\",
 done
-for v in "${BSC_WRAPPED_COIN[@]}"
+for v in "${BSC_WRAPPED_COIN_SYM[@]}"
 do
     echo "        " \"$v\" : \"$(cat $CONFIG_DIR/bsc.addr.coin$v)\",
 done

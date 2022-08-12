@@ -45,25 +45,40 @@ deploysc() {
       sleep 2
       deploy_solidity_bmc
       deploy_solidity_bts
-      for v in "${BSC_NATIVE_TOKEN[@]}"
-      do
-          deploy_solidity_token $v $v
-      done
+
+      if [ $INIT_ADDRESS_PATH != '' ] && [ -f $INIT_ADDRESS_PATH ];
+      then
+        for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
+        do
+          addr=$(cat $INIT_ADDRESS_PATH | jq -r .solidity.${BSC_NATIVE_TOKEN_SYM[$i]})
+          if [ "$addr" != "null" ]; 
+          then
+            echo -n $addr > $CONFIG_DIR/bsc.addr.${BSC_NATIVE_TOKEN_SYM[$i]}
+          else 
+            echo "BSC Token ${BSC_NATIVE_TOKEN_SYM[$i]} does not exist on address file"
+          fi
+        done
+      else 
+        for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
+        do
+            deploy_solidity_token ${BSC_NATIVE_TOKEN_NAME[$i]} ${BSC_NATIVE_TOKEN_SYM[$i]}
+        done              
+      fi
       echo "CONFIGURE BSC"
       configure_solidity_add_bmc_owner
       configure_solidity_add_bts_service
       configure_solidity_set_fee_ratio
       configure_solidity_add_bts_owner
       echo "Register BSC Tokens"
-      for v in "${BSC_NATIVE_TOKEN[@]}"
+      for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
       do
-          bsc_register_native_token $v $v
-          get_coinID $v
+          bsc_register_native_token ${BSC_NATIVE_TOKEN_NAME[$i]} ${BSC_NATIVE_TOKEN_SYM[$i]}
+          get_coinID ${BSC_NATIVE_TOKEN_NAME[$i]} ${BSC_NATIVE_TOKEN_SYM[$i]}
       done
-      for v in "${BSC_WRAPPED_COIN[@]}"
+      for i in "${!BSC_WRAPPED_COIN_SYM[@]}"
       do
-          bsc_register_wrapped_coin $v $v
-          get_coinID $v
+          bsc_register_wrapped_coin ${BSC_WRAPPED_COIN_NAME[$i]} ${BSC_WRAPPED_COIN_SYM[$i]}
+          get_coinID ${BSC_WRAPPED_COIN_NAME[$i]} ${BSC_WRAPPED_COIN_SYM[$i]}
       done
       echo "deployedSol" > $CONFIG_DIR/bsc.deploy.all 
     fi
@@ -73,10 +88,25 @@ deploysc() {
       sleep 2
       deploy_javascore_bmc
       deploy_javascore_bts
-      for v in "${ICON_NATIVE_TOKEN[@]}"
-      do
-          deploy_javascore_token $v $v
-      done
+
+      if [ $INIT_ADDRESS_PATH != '' ] && [ -f $INIT_ADDRESS_PATH ];
+      then
+        for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
+        do
+          addr=$(cat $INIT_ADDRESS_PATH | jq -r .javascore.${ICON_NATIVE_TOKEN_SYM[$i]})
+          if [ "$addr" != "null" ]; 
+          then
+            echo -n $addr > $CONFIG_DIR/icon.addr.${ICON_NATIVE_TOKEN_SYM[$i]}
+          else 
+            echo "ICON Token ${ICON_NATIVE_TOKEN_SYM[$i]} does not exist on address file"
+          fi
+        done
+      else 
+        for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
+        do
+            deploy_javascore_token ${ICON_NATIVE_TOKEN_NAME[$i]} ${ICON_NATIVE_TOKEN_SYM[$i]}
+        done           
+      fi
       echo "CONFIGURE ICON"
       configure_javascore_add_bmc_owner
       configure_javascore_bmc_setFeeAggregator
@@ -84,15 +114,15 @@ deploysc() {
       configure_javascore_add_bts_owner
       configure_javascore_bts_setICXFee
       echo "Register ICON Tokens"
-      for v in "${ICON_NATIVE_TOKEN[@]}"
+      for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
       do
-          configure_javascore_register_native_token $v $v
-          get_btp_icon_coinId $v
+          configure_javascore_register_native_token ${ICON_NATIVE_TOKEN_NAME[$i]} ${ICON_NATIVE_TOKEN_SYM[$i]}
+          get_btp_icon_coinId ${ICON_NATIVE_TOKEN_NAME[$i]} ${ICON_NATIVE_TOKEN_SYM[$i]}
       done
-      for v in "${ICON_WRAPPED_COIN[@]}"
+      for i in "${!ICON_WRAPPED_COIN_SYM[@]}"
       do
-          configure_javascore_register_wrapped_coin $v $v
-          get_btp_icon_coinId $v
+          configure_javascore_register_wrapped_coin ${ICON_WRAPPED_COIN_NAME[$i]} ${ICON_WRAPPED_COIN_SYM[$i]}
+          get_btp_icon_coinId ${ICON_WRAPPED_COIN_NAME[$i]} ${ICON_WRAPPED_COIN_SYM[$i]}
       done
       echo "deployedJavascore" > $CONFIG_DIR/icon.deploy.all 
     fi

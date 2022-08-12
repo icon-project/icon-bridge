@@ -53,9 +53,9 @@ deploy_solidity_bts() {
 } 
 
 deploy_solidity_token() {
-  echo "deploying solidity token " $1
+  echo "deploying solidity token " $2
   cd $CONTRACTS_DIR/solidity/bts
-  if [ ! -f $CONFIG_DIR/bsc.deploy.coin$1 ]; then
+  if [ ! -f $CONFIG_DIR/bsc.deploy.coin$2 ]; then
     set +e
     for i in $(seq 1 20); do
       BSH_COIN_NAME=$1 \
@@ -69,9 +69,9 @@ deploy_solidity_token() {
       echo "Retry: "$i
     done
     set -e
-    jq -r '.networks[] | .address' build/contracts/ERC20TKN.json >$CONFIG_DIR/bsc.addr.$1
-    wait_for_file $CONFIG_DIR/bsc.addr.$1
-    echo -n $1 > $CONFIG_DIR/bsc.deploy.coin$1
+    jq -r '.networks[] | .address' build/contracts/ERC20TKN.json >$CONFIG_DIR/bsc.addr.$2
+    wait_for_file $CONFIG_DIR/bsc.addr.$2
+    echo -n $2 > $CONFIG_DIR/bsc.deploy.coin$2
   fi
 }
 
@@ -206,22 +206,22 @@ add_icon_relay() {
 
 
 bsc_register_wrapped_coin() {
-  echo "bts: Register Wrapped Coin " $1
+  echo "bts: Register Wrapped Coin " $2
   local bts_fee_numerator=100
   local bts_fixed_fee=5000
   cd $CONTRACTS_DIR/solidity/bts
-  if [ ! -f $CONFIG_DIR/bsc.register.coin$1 ]; then
+  if [ ! -f $CONFIG_DIR/bsc.register.coin$2 ]; then
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
       --method register --name "$1" --symbol "$2" --decimals 18 --addr "0x0000000000000000000000000000000000000000" \
       --feeNumerator ${bts_fee_numerator} --fixedFee ${bts_fixed_fee})
-    echo "$tx" >$CONFIG_DIR/tx/register.$1.bsc
+    echo "$tx" >$CONFIG_DIR/tx/register.$2.bsc
     status=$(echo "$tx" | grep "status: true" | wc -l)
     if [ "$status" != "1" ]; 
     then
-      echo "Error registering wrapped coin " $1
+      echo "Error registering wrapped coin " $2
       return 1
     else
-      echo "registered "$1 > $CONFIG_DIR/bsc.register.coin$1
+      echo "registered "$2 > $CONFIG_DIR/bsc.register.coin$2
     fi 
   fi
 }
@@ -229,26 +229,26 @@ bsc_register_wrapped_coin() {
 bsc_register_native_token() {
   local bts_fee_numerator=100
   local bts_fixed_fee=5000
-  local addr=$(cat $CONFIG_DIR/bsc.addr.$1) 
+  local addr=$(cat $CONFIG_DIR/bsc.addr.$2) 
   cd $CONTRACTS_DIR/solidity/bts
-  if [ ! -f $CONFIG_DIR/bsc.register.coin$1 ]; then
-    echo "bts: Register NativeCoin " $1
+  if [ ! -f $CONFIG_DIR/bsc.register.coin$2 ]; then
+    echo "bts: Register NativeCoin " $2
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
       --method register --name "$1" --symbol "$2" --decimals 18 --addr $addr --feeNumerator $bts_fee_numerator --fixedFee ${bts_fixed_fee})
-    echo "$tx" >$CONFIG_DIR/tx/register.$1.bsc
+    echo "$tx" >$CONFIG_DIR/tx/register.$2.bsc
     status=$(echo "$tx" | grep "status: true" | wc -l)
     if [ "$status" != "1" ]; 
     then
-      echo "Error registering native token " $1
+      echo "Error registering native token " $2
       return 1
     else
-      echo "registered "$1 > $CONFIG_DIR/bsc.register.coin$1
+      echo "registered "$2 > $CONFIG_DIR/bsc.register.coin$2
     fi 
   fi
 }
 
 get_coinID() {
-  echo "getCoinID " $1
+  echo "getCoinID " $2
   cd $CONTRACTS_DIR/solidity/bts
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
     --method coinId --coinName "$1")
@@ -256,10 +256,10 @@ get_coinID() {
   exists=$(echo $coinId | wc -l)
   if [ "$exists" != "1" ]; 
   then
-    echo "Error getting coinID " $1
+    echo "Error getting coinID " $2
     return 1
   else 
-    echo "$coinId" >$CONFIG_DIR/bsc.addr.coin$1
+    echo "$coinId" >$CONFIG_DIR/bsc.addr.coin$2
   fi 
 }
 

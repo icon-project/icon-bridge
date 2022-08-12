@@ -18,8 +18,11 @@ export ICON_ENDPOINT='http://localhost:9080/api/v3/default'
 export ICON_KEY_STORE=$ICONBRIDGE_CONFIG_DIR/keystore/icon.god.wallet.json
 export ICON_SECRET=$ICONBRIDGE_CONFIG_DIR/keystore/icon.god.wallet.secret
 export ICON_NATIVE_COIN=('ICX')
-export ICON_NATIVE_TOKEN=('sICX' 'bnUSD' 'DUM')
-export ICON_WRAPPED_COIN=('BNB' 'BUSD' 'USDT' 'USDC' 'BTCB' 'ETH')
+export ICON_NATIVE_TOKEN_SYM=('sICX' 'bnUSD')
+export ICON_NATIVE_TOKEN_NAME=('Staked ICX' 'Balanced Dollars')
+export ICON_WRAPPED_COIN_SYM=('BNB' 'BUSD' 'USDT' 'USDC' 'BTCB' 'ETH')
+export ICON_WRAPPED_COIN_NAME=('Binance Coin' 'BUSD Token' 'Tether USD' 'USD Coin' 'BTCB Token' 'Ethereum Token')
+
 
 export GOLOOP_RPC_STEP_LIMIT=5000000000
 export GOLOOP_RPC_NID='0x5b9a77'
@@ -39,8 +42,11 @@ export BSC_NID=${BSC_NID:-'97'}
 export BSC_BMC_NET=${BSC_BMC_NET:-'0x61.bsc'}
 
 export BSC_NATIVE_COIN=('BNB')
-export BSC_NATIVE_TOKEN=('BUSD' 'USDT' 'USDC' 'BTCB' 'ETH' 'DUM')
-export BSC_WRAPPED_COIN=('ICX' 'sICX' 'bnUSD')
+export BSC_NATIVE_TOKEN_SYM=('BUSD' 'USDT' 'USDC' 'BTCB' 'ETH')
+export BSC_NATIVE_TOKEN_NAME=('BUSD Token' 'Tether USD' 'USD Coin' 'BTCB Token' 'Ethereum Token')
+export BSC_WRAPPED_COIN_SYM=('ICX' 'sICX' 'bnUSD')
+export BSC_WRAPPED_COIN_NAME=('ICON Coin' 'Staked ICX' 'Balanced Dollars')
 
-
+###################################################################################
+export INIT_ADDRESS_PATH=$ICONBRIDGE_CONFIG_DIR/init_address.json
 
