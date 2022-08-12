@@ -190,18 +190,21 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         BigInteger sn = increaseSn();
         String[] links = getLinks();
-        for (String link: links) {
+        String[] networks = new String[links.length];
+        for (int i = 0; i < links.length; i++) {
+            String link = links[i];
             BTPAddress linkAddr = BTPAddress.valueOf(link);
             String net = linkAddr.net();
+            networks[i] = net;
             for (String name: _coinNames) {
                 tokenLimitStatus.at(net).set(name, false);
             }
-            TokenLimitTransaction request = new TokenLimitTransaction(_coinNames, _tokenLimits, net);
+            TokenLimitRequest request = new TokenLimitRequest(_coinNames, _tokenLimits, net);
             sendMessage(net, BTSMessage.CHANGE_TOKEN_LIMIT, sn, request.toBytes());
         }
 
         // to save to tokenLimitTxn Db
-        TokenLimitTransaction request = new TokenLimitTransaction(_coinNames, _tokenLimits);
+        TokenLimitTransaction request = new TokenLimitTransaction(_coinNames, _tokenLimits, networks);
         tokenLimitTxn.set(sn, request);
     }
 
@@ -630,8 +633,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         if (tlTxn != null) {
             String[] coinNames = tlTxn.getCoinName();
             int size = coinNames.length;
-            for (int i = 0; i < size; i++) {
-                tokenLimitStatus.at(_src).set(coinNames[i], false);
+            for (String coinName : coinNames) {
+                tokenLimitStatus.at(_src).set(coinName, false);
             }
             return;
         }
@@ -905,16 +908,22 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         }
     }
 
-    private void handleChangeTokenLimit(String from, BigInteger sn, TokenLimitResponse response) {
+    private void handleChangeTokenLimit(String net, BigInteger sn, TokenLimitResponse response) {
         logger.println("handleChangeTokenLimit", "begin", "sn:", sn);
         TokenLimitTransaction txn = tokenLimitTxn.get(sn);
         if (txn != null) {
             BigInteger code = response.getCode();
             if (BlacklistResponse.RC_OK.equals(code)) {
+                String[] newNetworks = removeFromArray(txn.getNet(), net);
+                txn.setNet(newNetworks);
                 String[] coinNames = txn.getCoinName();
-                int size = coinNames.length;
-                for (int i = 0; i < size; i++) {
-                    tokenLimitStatus.at(from).set(coinNames[i], true);
+                for (String coinName : coinNames) {
+                    tokenLimitStatus.at(net).set(coinName, true);
+                }
+                if (newNetworks.length == 0) {
+                    tokenLimitTxn.set(sn, null);
+                } else {
+                    tokenLimitTxn.set(sn, txn);
                 }
             } else {
                 throw BTSException.unknown("Invalid change limit transaction");
@@ -923,6 +932,31 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         }
         logger.println("handleChangeTokenLimit", "end");
+    }
+
+    private String[] removeFromArray(String[] arr, String element) {
+        boolean inArray = isInArray(arr, element);
+        if ( inArray ) {
+            int size = arr.length;
+            String[] newArr = new String[size - 1];
+            for (int i = 0, k = 0; i < size; i++) {
+                if (!arr[i].equals(element)) {
+                    newArr[k] = arr[i];
+                    k++;
+                }
+            }
+            return newArr;
+        }
+        return arr;
+    }
+
+    private boolean isInArray(String[] arr, String element) {
+        for (String s : arr) {
+            if (element.equals(s)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void addToBlacklistInternal(String net, String addr) {
