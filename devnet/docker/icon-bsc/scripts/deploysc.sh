@@ -46,8 +46,12 @@ deploysc() {
       deploy_solidity_bmc
       deploy_solidity_bts
 
-      if [ $INIT_ADDRESS_PATH != '' ] && [ -f $INIT_ADDRESS_PATH ];
+      if [ $INIT_ADDRESS_PATH != '' ];
       then
+        if [ ! -f $INIT_ADDRESS_PATH ]; then
+          echo "No file found on "$INIT_ADDRESS_PATH"
+          return 1
+        fi
         for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
         do
           addr=$(cat $INIT_ADDRESS_PATH | jq -r .solidity.${BSC_NATIVE_TOKEN_SYM[$i]})
@@ -90,8 +94,12 @@ deploysc() {
       deploy_javascore_bmc
       deploy_javascore_bts
 
-      if [ $INIT_ADDRESS_PATH != '' ] && [ -f $INIT_ADDRESS_PATH ];
+      if [ $INIT_ADDRESS_PATH != '' ];
       then
+        if [ ! -f $INIT_ADDRESS_PATH ]; then
+          echo "No file found on "$INIT_ADDRESS_PATH"
+          return 1
+        fi
         for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
         do
           addr=$(cat $INIT_ADDRESS_PATH | jq -r .javascore.${ICON_NATIVE_TOKEN_SYM[$i]})

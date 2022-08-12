@@ -22,7 +22,7 @@ export ICON_NATIVE_TOKEN_SYM=('sICX' 'bnUSD')
 export ICON_NATIVE_TOKEN_NAME=('Staked ICX' 'Balanced Dollar')
 export ICON_WRAPPED_COIN_SYM=('BNB' 'BUSD' 'USDT' 'USDC' 'BTCB' 'ETH')
 export ICON_WRAPPED_COIN_NAME=('Binance Coin' 'BUSD Token' 'Tether USD' 'USD Coin' 'BTCB Token' 'Ethereum Token')
-
+export FEE_GATHERING_INTERVAL=1000
 
 export GOLOOP_RPC_STEP_LIMIT=5000000000
 export GOLOOP_RPC_NID='0x5b9a77'

@@ -85,7 +85,7 @@ configure_javascore_bmc_setFeeAggregator() {
 
   goloop rpc sendtx call --to $(cat icon.addr.bmc) \
     --method setFeeGatheringTerm \
-    --param _value=1000 | jq -r . >tx/setFeeGatheringTerm.icon
+    --param _value=$FEE_GATHERING_INTERVAL | jq -r . >tx/setFeeGatheringTerm.icon
   sleep 3
   ensure_txresult tx/setFeeGatheringTerm.icon
 }
