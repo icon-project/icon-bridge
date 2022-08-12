@@ -552,10 +552,11 @@ public class BTSTest extends AbstractBTPTokenService {
         assertEquals(balances.get(3).get("locked"), BigInteger.ZERO);
 
         // fee for wrapped and native-coin set to zero
-        assertEquals(BigInteger.ONE,score.call("getAccumulatedFees", coinNames[0]));
-        assertEquals(BigInteger.valueOf(11),score.call("getAccumulatedFees", coinNames[1]));
-        assertEquals(BigInteger.ZERO,score.call("getAccumulatedFees", coinNames[2]));
-        assertEquals(BigInteger.ZERO,score.call("getAccumulatedFees", ICON));
+        Map<String, BigInteger> fees = (Map<String, BigInteger>) score.call("getAccumulatedFees");
+        assertEquals(BigInteger.ONE,fees.get(coinNames[0]));
+        assertEquals(BigInteger.valueOf(11),fees.get(coinNames[1]));
+        assertEquals(BigInteger.ZERO,fees.get(coinNames[2]));
+        assertEquals(BigInteger.ZERO,fees.get(ICON));
     }
 
     @Test
