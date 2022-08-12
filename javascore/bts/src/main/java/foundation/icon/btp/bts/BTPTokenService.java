@@ -176,13 +176,13 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void setTokenLimit(String[] _coinNames, BigInteger[] _tokenLimits) {
         requireOwnerAccess();
-        require(_coinNames.length == _tokenLimits.length, "Invalid arguments");
         int size = _coinNames.length;
+        require(size == _tokenLimits.length, "Invalid arguments");
+        require(size > 0, "Array can't be empty.");
         for (int i = 0; i < size; i++) {
             String coinName = _coinNames[i];
             BigInteger coinLimit = _tokenLimits[i];
 
-            require(isRegistered(coinName), "Not registered");
             require(UINT_CAP.compareTo(coinLimit) >= 0, "Cannot set more than uint(256)-1" );
             require((_tokenLimits[i].compareTo(BigInteger.ZERO) >= 0),
                     "Invalid value");

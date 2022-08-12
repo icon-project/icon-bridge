@@ -148,7 +148,6 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         require(msg.sender == address(this) || msg.sender == address(btsCore), "Unauthorized");
         require(_coinNames.length == _tokenLimits.length,"InvalidParams");
         for(uint i = 0; i < _coinNames.length; i++) {
-            require(btsCore.isValidCoin(_coinNames[i]), "NotRegistered");
             tokenLimit[_coinNames[i]] = _tokenLimits[i];
         }
     }
