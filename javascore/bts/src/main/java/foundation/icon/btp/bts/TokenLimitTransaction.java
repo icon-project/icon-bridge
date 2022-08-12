@@ -27,19 +27,14 @@ import scorex.util.ArrayList;
 public class TokenLimitTransaction {
     private String[] coinName;
     private BigInteger[] tokenLimit;
-    private String net;
+    private String[] net;
 
     public TokenLimitTransaction(){}
 
-    public TokenLimitTransaction(String[] coinName, BigInteger[] tokenLimit, String net) {
+    public TokenLimitTransaction(String[] coinName, BigInteger[] tokenLimit, String[] net) {
         this.coinName = coinName;
         this.tokenLimit = tokenLimit;
         this.net = net;
-    }
-    public TokenLimitTransaction(String[] coinName, BigInteger[] tokenLimit) {
-        this.coinName = coinName;
-        this.tokenLimit = tokenLimit;
-        this.net = "ALL";
     }
 
     public String[] getCoinName() {
@@ -50,7 +45,7 @@ public class TokenLimitTransaction {
         return tokenLimit;
     }
 
-    public String getNet() {
+    public String[] getNet() {
         return net;
     }
 
@@ -62,7 +57,7 @@ public class TokenLimitTransaction {
         this.tokenLimit = tokenLimit;
     }
 
-    public void setNet(String net) {
+    public void setNet(String[] net) {
         this.net = net;
     }
 
@@ -97,7 +92,19 @@ public class TokenLimitTransaction {
             reader.end();
         }
 
-        obj.setNet(reader.readNullable(String.class));
+        if (reader.beginNullableList()) {
+            String[] networks;
+            List<String> networkList = new ArrayList<>();
+            while (reader.hasNext()) {
+                networkList.add(reader.readNullable(String.class));
+            }
+            networks = new String[networkList.size()];
+            for (int i = 0; i < networks.length; i++) {
+                networks[i] = networkList.get(i);
+            }
+            obj.setNet(networks);
+            reader.end();
+        }
         reader.end();
         return obj;
     }
@@ -129,7 +136,17 @@ public class TokenLimitTransaction {
         } else {
             writer.writeNull();
         }
-        writer.writeNullable(this.getNet());
+
+        String[] networks = this.getNet();
+        if (networks != null) {
+            writer.beginNullableList(networks.length);
+            for(String n : networks) {
+                writer.writeNullable(n);
+            }
+            writer.end();
+        } else {
+            writer.writeNull();
+        }
 
         writer.end();
     }
