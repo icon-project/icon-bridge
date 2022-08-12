@@ -39,76 +39,77 @@ deploysc() {
     source token.javascore.sh
     source token.solidity.sh
 
-    echo "Deploy Javascore"
-    sleep 2
-    #deploy icon
-    deploy_javascore_bmc
-    deploy_javascore_bts
-    for v in "${ICON_NATIVE_TOKEN[@]}"
-    do
-        deploy_javascore_irc2 $v $v
-    done
 
+    if [ ! -f $CONFIG_DIR/bsc.deploy.all ]; then
+      echo "Deploy solidity"
+      sleep 2
+      deploy_solidity_bmc
+      deploy_solidity_bts
+      for v in "${BSC_NATIVE_TOKEN[@]}"
+      do
+          deploy_solidity_token $v $v
+      done
+      echo "CONFIGURE BSC"
+      configure_solidity_add_bmc_owner
+      configure_solidity_add_bts_service
+      configure_solidity_set_fee_ratio
+      configure_solidity_add_bts_owner
+      echo "Register BSC Tokens"
+      for v in "${BSC_NATIVE_TOKEN[@]}"
+      do
+          bsc_register_native_token $v $v
+          get_coinID $v
+      done
+      for v in "${BSC_WRAPPED_COIN[@]}"
+      do
+          bsc_register_wrapped_coin $v $v
+          get_coinID $v
+      done
+      echo "deployedSol" > $CONFIG_DIR/bsc.deploy.all 
+    fi
 
-    #deploy bsc
-    deploy_solidity_bmc
-    deploy_solidity_bts
-    for v in "${BSC_NATIVE_TOKEN[@]}"
-    do
-        deploy_solidity_token $v $v
-    done
+    if [ ! -f $CONFIG_DIR/icon.deploy.all ]; then
+      echo "Deploy Javascore"
+      sleep 2
+      deploy_javascore_bmc
+      deploy_javascore_bts
+      for v in "${ICON_NATIVE_TOKEN[@]}"
+      do
+          deploy_javascore_token $v $v
+      done
+      echo "CONFIGURE ICON"
+      configure_javascore_add_bmc_owner
+      configure_javascore_bmc_setFeeAggregator
+      configure_javascore_add_bts
+      configure_javascore_add_bts_owner
+      configure_javascore_bts_setICXFee
+      echo "Register ICON Tokens"
+      for v in "${ICON_NATIVE_TOKEN[@]}"
+      do
+          configure_javascore_register_native_token $v $v
+          get_btp_icon_coinId $v
+      done
+      for v in "${ICON_WRAPPED_COIN[@]}"
+      do
+          configure_javascore_register_wrapped_coin $v $v
+          get_btp_icon_coinId $v
+      done
+      echo "deployedJavascore" > $CONFIG_DIR/icon.deploy.all 
+    fi
 
-    generate_addresses_json >$CONFIG_DIR/addresses.json
+    if [ ! -f $CONFIG_DIR/link.all ]; then
+      echo "LINK ICON"
+      configure_javascore_addLink
+      configure_javascore_setLinkHeight
+      configure_bmc_javascore_addRelay
+      echo "LINK BSC"
+      add_icon_link
+      set_link_height
+      add_icon_relay
+      echo "linked" > $CONFIG_DIR/link.all
+    fi
 
-    #configure icon
-    echo "CONFIGURE ICON"
-    configure_javascore_add_bmc_owner
-    configure_javascore_bmc_setFeeAggregator
-    configure_javascore_add_bts
-    configure_javascore_add_bts_owner
-    configure_javascore_bts_setICXFee
-    #configure bsc    
-    echo "CONFIGURE BSC"
-    configure_solidity_add_bmc_owner
-    configure_solidity_add_bts_service
-    configure_solidity_set_fee_ratio
-    configure_solidity_add_bts_owner
-
-    
-    #Link icon
-    echo "LINK ICON"
-    configure_javascore_addLink
-    configure_bmc_javascore_addRelay
-    echo "Register ICON Tokens"
-    for v in "${ICON_NATIVE_TOKEN[@]}"
-    do
-        configure_javascore_register_native_token $v $v
-        get_btp_icon_coinId $v
-    done
-    for v in "${ICON_WRAPPED_COIN[@]}"
-    do
-        configure_javascore_register_wrapped_coin $v $v
-        get_btp_icon_coinId $v
-    done
-
-
-    #Link bsc
-    echo "LINK BSC"
-    add_icon_link
-    set_link_height
-    add_icon_relay
-    echo "Register BSC Tokens"
-    for v in "${BSC_NATIVE_TOKEN[@]}"
-    do
-        bsc_register_native_token $v $v
-        get_coinID $v
-    done
-    for v in "${BSC_WRAPPED_COIN[@]}"
-    do
-        bsc_register_wrapped_coin $v $v
-        get_coinID $v
-    done
-
+    generate_addresses_json >$CONFIG_DIR/addresses.json  
     generate_relay_config >$CONFIG_DIR/bmr.config.json
     wait_for_file $CONFIG_DIR/bmr.config.json
     echo "Done deploying"
@@ -153,13 +154,13 @@ generate_relay_config() {
             .dst.key_store = $dst_key_store |
             .dst.key_store.coinType = $dst_key_store_cointype |
             .dst.key_password = $dst_key_password ' \
-        --arg src_address "$(cat $CONFIG_DIR/btp.bsc.btp.address)" \
+        --arg src_address "$(cat $CONFIG_DIR/bsc.addr.bmcbtp)" \
         --arg src_endpoint "$BSC_ENDPOINT" \
-        --argjson src_offset "$(cat $CONFIG_DIR/btp.bsc.block.height)" \
+        --argjson src_offset "$(cat $CONFIG_DIR/bsc.chain.height)" \
         --argjson src_options "$(
-          jq -n {}
+          jq -n {"syncConcurrency":100}
         )" \
-        --arg dst_address "$(cat $CONFIG_DIR/btp.icon.btp.address)" \
+        --arg dst_address "$(cat $CONFIG_DIR/icon.addr.bmcbtp)" \
         --arg dst_endpoint "$ICON_ENDPOINT" \
         --argfile dst_key_store "$CONFIG_DIR/keystore/icon.bmr.wallet.json" \
         --arg dst_key_store_cointype "icx" \
@@ -174,6 +175,7 @@ generate_relay_config() {
             .src.offset = $src_offset |
             .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
             .src.options.verifier.validatorsHash = $src_options_verifier_validatorsHash |
+            .src.options.syncConcurrency = 100 |
             .dst.address = $dst_address |
             .dst.endpoint = [ $dst_endpoint ] |
             .dst.options = $dst_options |
@@ -181,18 +183,18 @@ generate_relay_config() {
             .dst.key_store = $dst_key_store |
             .dst.key_store.coinType = $dst_key_store_cointype |
             .dst.key_password = $dst_key_password ' \
-        --arg src_address "$(cat $CONFIG_DIR/btp.icon.btp.address)" \
+        --arg src_address "$(cat $CONFIG_DIR/icon.addr.bmcbtp)" \
         --arg src_endpoint "$ICON_ENDPOINT" \
-        --argjson src_offset "$(cat $CONFIG_DIR/btp.icon.block.height)" \
-        --argjson src_options_verifier_blockHeight "$(cat $CONFIG_DIR/btp.icon.block.height)" \
-        --arg src_options_verifier_validatorsHash "$(cat $CONFIG_DIR/btp.icon.validators.hash)" \
-        --arg dst_address "$(cat $CONFIG_DIR/btp.bsc.btp.address)" \
+        --argjson src_offset "$(cat $CONFIG_DIR/icon.chain.height)" \
+        --argjson src_options_verifier_blockHeight "$(cat $CONFIG_DIR/icon.chain.height)" \
+        --arg src_options_verifier_validatorsHash "$(cat $CONFIG_DIR/icon.chain.validators)" \
+        --arg dst_address "$(cat $CONFIG_DIR/bsc.addr.bmcbtp)" \
         --arg dst_endpoint "$BSC_ENDPOINT" \
         --argfile dst_key_store "$CONFIG_DIR/keystore/bsc.bmr.wallet.json" \
         --arg dst_key_store_cointype "evm" \
         --arg dst_key_password "$(cat $CONFIG_DIR/keystore/bsc.bmr.wallet.secret)" \
         --argjson dst_tx_data_size_limit 8192 \
-        --argjson dst_options '{"gas_limit":8000000}'
+        --argjson dst_options '{"gas_limit":8000000, "tx_data_size_limit":8192, "boost_gas_price":1.0}'
     )"
 }
 
