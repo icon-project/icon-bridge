@@ -62,7 +62,7 @@ public class AbstractBTPTokenService extends TestBase {
                 eq("getBtpAddress"), any())).thenReturn(btpAddress.toString());
 
         score = sm.deploy(owner, BTPTokenService.class,
-                bmcMock.getAddress(), ICON, 18, bytes);
+                bmcMock.getAddress(), ICON, 18, BigInteger.ZERO, BigInteger.ZERO, bytes);
 
         BTPTokenService instance = (BTPTokenService) score.getInstance();
         scoreSpy = spy(instance);
