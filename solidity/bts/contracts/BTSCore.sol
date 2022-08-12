@@ -569,7 +569,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
                 .div(FEE_DENOMINATOR)
                 .add(coinDetails[nativeCoinName].fixedFee);
             _amounts[size - 1] = msg.value.sub(_chargeAmts[size - 1]);
-            lockBalance(msg.sender, coinsName[0], msg.value);
+            lockBalance(msg.sender, nativeCoinName, msg.value);
         }
 
         //  @dev `_amounts` is true amounts to receive at a destination after deducting charged fees
