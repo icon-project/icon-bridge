@@ -44,6 +44,7 @@ import score.annotation.External;
 import score.annotation.Optional;
 import score.annotation.Payable;
 import scorex.util.ArrayList;
+import scorex.util.HashMap;
 
 public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     private static final Logger logger = Logger.getLogger(BTPTokenService.class);
@@ -383,8 +384,12 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     @External(readonly = true)
-    public BigInteger getAccumulatedFees(String coinName) {
-        return feeBalances.getOrDefault(coinName, BigInteger.ZERO);
+    public Map<String, BigInteger> getAccumulatedFees() {
+        Map<String, BigInteger> fees = new HashMap<>();
+        for (String coinName: coinNames()) {
+            fees.put(coinName, feeBalances.getOrDefault(coinName, BigInteger.ZERO));
+        }
+        return fees;
     }
 
     // To receive IRC2 token from existing Contract
