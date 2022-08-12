@@ -333,7 +333,6 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         Coin _coin = coinDb.get(_coinName);
         if (_coinName.equals(name)) {
             BigInteger icxBalance = Context.getBalance(_owner);
-            balance.setUsable(icxBalance);
             return balance.addUserBalance(icxBalance);
         } else if (_coin.getCoinType() == WRAPPED_COIN_TYPE) {
             IRC2SupplierScoreInterface _irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());

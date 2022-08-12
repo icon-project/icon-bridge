@@ -289,12 +289,11 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         )
     {
         if (_coinName.compareTo(nativeCoinName)) {
-            uint balance = address(_owner).balance;
             return (
-                balance,
+                0,
                 balances[_owner][_coinName].lockedBalance,
                 balances[_owner][_coinName].refundableBalance,
-                balance
+                address(_owner).balance
             );
         }
         address _erc20Address = coins[_coinName];
