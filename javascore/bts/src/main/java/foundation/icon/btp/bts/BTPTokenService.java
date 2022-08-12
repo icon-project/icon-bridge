@@ -54,7 +54,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     public static final BigInteger FEE_DENOMINATOR = BigInteger.valueOf(10000);
 
     public static final int NATIVE_COIN_TYPE = 0;
-    public static final int WRAPPED_COIN_TYPE = 1;
+    public static final int NATIVE_WRAPPED_COIN_TYPE = 1;
     public static final int NON_NATIVE_TOKEN_TYPE = 2;
 
     public static final Address ZERO_SCORE_ADDRESS = Address.fromString("cx0000000000000000000000000000000000000000");
@@ -169,7 +169,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             coinAddresses.set(_name, irc2Address);
             coinAddressName.set(irc2Address, _name);
             coinDb.set(_name, new Coin(irc2Address, _name, _symbol, _decimals, _feeNumerator, _fixedFee,
-                    WRAPPED_COIN_TYPE));
+                    NATIVE_WRAPPED_COIN_TYPE));
         } else {
             coinAddresses.set(_name, _addr);
             coinDb.set(_name,
@@ -370,7 +370,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         if (_coinName.equals(name)) {
             BigInteger icxBalance = Context.getBalance(_owner);
             return balance.addUserBalance(icxBalance);
-        } else if (_coin.getCoinType() == WRAPPED_COIN_TYPE) {
+        } else if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
             IRC2SupplierScoreInterface _irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());
             BigInteger allowance = _irc2.allowance(_owner, Context.getAddress());
             BigInteger tokenBalance = _irc2.balanceOf(_owner);
@@ -1017,7 +1017,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         logger.println("transferFrom", from, to, coinName, amount);
         try {
             Coin _coin = coinDb.get(coinName);
-            if (_coin.getCoinType() == WRAPPED_COIN_TYPE) {
+            if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
                 Address coinAddress = this.getCoinAddress(coinName);
                 IRC2SupplierScoreInterface irc2 = new IRC2SupplierScoreInterface(coinAddress);
                 irc2.transferFrom(from, to, amount, null);
@@ -1051,7 +1051,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         int len = coinNames.size();
         for (int i = 0; i < len; i++) {
             Coin _coin = coinDb.get(coinNames.get(i));
-            if (_coin.getCoinType() == WRAPPED_COIN_TYPE) {
+            if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
                 this.approve(from, coinNames.get(i), amounts.get(i));
                 this.transferFrom(from, to, coinNames.get(i), amounts.get(i));
             } else if (_coin.getCoinType() == NON_NATIVE_TOKEN_TYPE) {
@@ -1071,7 +1071,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         logger.println("mint", to, coinName, amount);
         try {
             Coin _coin = coinDb.get(coinName);
-            if (_coin.getCoinType() == WRAPPED_COIN_TYPE) {
+            if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
                 IRC2SupplierScoreInterface irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());
                 irc2.mint(to, amount);
             } else {
@@ -1114,7 +1114,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         logger.println("burn", coinName, amount);
         try {
             Coin _coin = coinDb.get(coinName);
-            if (_coin.getCoinType() == WRAPPED_COIN_TYPE) {
+            if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
                 IRC2SupplierScoreInterface irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());
                 irc2.burn(amount);
             }
