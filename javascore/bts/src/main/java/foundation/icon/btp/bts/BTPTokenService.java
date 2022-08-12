@@ -333,6 +333,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     @External(readonly = true)
     public List<String> coinNames() {
+        // for consistency
         List<String> names = new ArrayList<>();
         names.add(name);
         names.addAll(getCoinNamesAsList());
@@ -462,6 +463,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         Address owner = Context.getCaller();
         BTPAddress to = BTPAddress.valueOf(_to);
         checkTransferRestrictions(to.net(), _coinName, owner.toString(), BTPAddress.valueOf(_to).account(), _value);
+        // only for wrapped coins
         transferFrom(owner, Context.getAddress(), _coinName, _value);
         sendRequest(owner, to, List.of(_coinName), List.of(_value));
     }
@@ -580,31 +582,35 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         return writer.toByteArray();
     }
 
-    private void sendMessage(String to, int serviceType, BigInteger sn, byte[] data) {
+    private void sendMessage(String net, int serviceType, BigInteger sn, byte[] data) {
         logger.println("sendMessage", "begin");
         BTSMessage message = new BTSMessage();
         message.setServiceType(serviceType);
         message.setData(data);
 
         BMCScoreInterface bmc = new BMCScoreInterface(this.bmc);
-        bmc.sendMessage(to, SERVICE, sn, message.toBytes());
+        bmc.sendMessage(net, SERVICE, sn, message.toBytes());
         logger.println("sendMessage", "end");
     }
 
-    private void responseSuccess(String to, BigInteger sn) {
+    private void responseSuccess(String net, BigInteger sn) {
         TransferResponse response = new TransferResponse();
         response.setCode(TransferResponse.RC_OK);
         response.setMessage(TransferResponse.OK_MSG);
-        sendMessage(to, BTSMessage.REPONSE_HANDLE_SERVICE, sn, response.toBytes());
+        sendMessage(net, BTSMessage.REPONSE_HANDLE_SERVICE, sn, response.toBytes());
     }
 
-    private void responseError(String to, BigInteger sn, String message) {
+    private void responseError(String net, BigInteger sn, String message) {
         TransferResponse response = new TransferResponse();
         response.setCode(TransferResponse.RC_ERR);
         response.setMessage(message);
-        sendMessage(to, BTSMessage.REPONSE_HANDLE_SERVICE, sn, response.toBytes());
+        sendMessage(net, BTSMessage.REPONSE_HANDLE_SERVICE, sn, response.toBytes());
     }
 
+    /**
+     *
+     * @param _from net
+     */
     @External
     public void handleBTPMessage(String _from, String _svc, BigInteger _sn, byte[] _msg) {
         require(Context.getCaller().equals(bmc), "Only BMC");
@@ -638,6 +644,10 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         }
     }
 
+    /**
+     *
+     * @param _src net
+     */
     @External
     public void handleBTPError(String _src, String _svc, BigInteger _sn, long _code, String _msg) {
         require(Context.getCaller().equals(bmc), "Only BMC");
@@ -684,7 +694,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         List<String> coinNames = new ArrayList<>();
         List<BigInteger> feeAmounts = new ArrayList<>();
-        for (String coinName : coinNames()) {
+        for (String coinName : getCoinNamesAsList()) {
             BigInteger feeAmount = clearFee(coinName);
             if (feeAmount.compareTo(BigInteger.ZERO) > 0) {
                 coinNames.add(coinName);
@@ -783,7 +793,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         Address to;
         try {
             to = Address.fromString(request.getTo());
-        } catch (IllegalArgumentException | NullPointerException e) {
+        } catch (Exception e) {
             throw BTSException.unknown(e.getMessage());
         }
 
@@ -909,7 +919,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
                 }
                 logger.println("handleRemoveFromBlacklist", "end");
             } else {
-                Context.revert("Invalid Blacklist Txn");
+                throw BTSException.unknown("Invalid Blacklist Txn");
             }
         }
     }
@@ -1223,7 +1233,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     private boolean isValidIconAddress(String str) {
         try {
-            Address a = Address.fromString(str);
+            Address.fromString(str);
             return true;
         } catch (Exception e) {
             return false;
