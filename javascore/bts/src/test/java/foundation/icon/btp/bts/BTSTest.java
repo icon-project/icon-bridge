@@ -615,9 +615,12 @@ public class BTSTest extends AbstractBTPTokenService {
         call = () -> score.invoke(owner, "setTokenLimit", new String[]{TOKEN1},
                 new BigInteger[]{TWO_HUNDRED_ICX.negate()});
         expectErrorMessage(call, "Invalid value");
-        call = () -> score.invoke(owner, "setTokenLimit", new String[]{"TokenBSH"},
+        // can set for tokens not registered as well
+        score.invoke(owner, "setTokenLimit", new String[]{"TokenBSH"},
                 new BigInteger[]{TWO_HUNDRED_ICX});
-        expectErrorMessage(call, "Not registered");
+        assertEquals(TWO_HUNDRED_ICX, score.call("getTokenLimit","TokenBSH"));
+
+//        expectErrorMessage(call, "Not registered");
 
         score.invoke(owner, "setTokenLimit",  new String[]{TOKEN1}, new BigInteger[]{TWO_HUNDRED_ICX});
 
