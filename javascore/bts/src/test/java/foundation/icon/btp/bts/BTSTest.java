@@ -77,6 +77,14 @@ public class BTSTest extends AbstractBTPTokenService {
         assertEquals(2, score.call("blackListedUsersCount", "network"));
 
         assertEquals( BigInteger.valueOf(2), score.call("getSn"));
+
+        score.invoke(owner, "addBlacklistAddress", "icon",new String[]{" invalid icon address "});
+        assertEquals(0, score.call("blackListedUsersCount", "icon"));
+
+        score.invoke(owner, "addBlacklistAddress", "icon",
+                new String[]{" cx42bd7394a8272fdb8683a41b92921247c34c522a  "});
+        assertEquals(1, score.call("blackListedUsersCount", "icon"));
+        assertEquals(true, score.call("isUserBlackListed", "icon", " cx42bd7394a8272fdb8683a41b92921247c34c522a "));
     }
 
     @Order(3)
