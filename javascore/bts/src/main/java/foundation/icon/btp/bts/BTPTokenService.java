@@ -88,7 +88,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     VarDB<Boolean> restriction = Context.newVarDB("restriction", Boolean.class);
     private final BlacklistDB blacklistDB;
 
-    public BTPTokenService(Address _bmc, String _name, int _decimals, byte[] _serializedIrc2) {
+    public BTPTokenService(Address _bmc, String _name, int _decimals,
+            BigInteger _feeNumerator, BigInteger _fixedFee, byte[] _serializedIrc2) {
         bmc = _bmc;
         BMCScoreInterface bmcInterface = new BMCScoreInterface(bmc);
         BTPAddress btpAddress = BTPAddress.valueOf(bmcInterface.getBtpAddress());
@@ -101,7 +102,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         sn.set(BigInteger.ZERO);
 
         coinDb.set(_name, new Coin(ZERO_SCORE_ADDRESS, _name, _name, _decimals,
-                BigInteger.ZERO, BigInteger.ZERO, NATIVE_COIN_TYPE));
+                _feeNumerator, _fixedFee, NATIVE_COIN_TYPE));
     }
 
     @External(readonly = true)
