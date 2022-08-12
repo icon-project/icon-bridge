@@ -78,23 +78,29 @@ func (cl *Client) GetHeaderByHeight(height *big.Int) (*types.Header, error) {
 }
 
 func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
-	txnCount, err := cl.eth.TransactionCount(context.TODO(), hash)
+	b, err := cl.GetBlockByHash(hash)
 	if err != nil {
 		return nil, err
-	} else if txnCount == 0 {
+	}
+	txhs := make([]common.Hash, len(b.Transactions()))
+	for i, txn := range b.Transactions() {
+		txhs[i] = txn.Hash()
+	}
+	if b.GasUsed() == 0 || len(txhs) == 0 {
 		return nil, nil
 	}
+	// fetch all txn receipts concurrently
 	type rcq struct {
-		txIdx int
+		txh   common.Hash
 		v     *types.Receipt
 		err   error
 		retry int
 	}
-	qch := make(chan *rcq, txnCount)
-	for i := 0; i < int(txnCount); i++ {
-		qch <- &rcq{i, nil, nil, 3}
+	qch := make(chan *rcq, len(txhs))
+	for _, txh := range txhs {
+		qch <- &rcq{txh, nil, nil, RPCCallRetry}
 	}
-	rmap := make(map[int]*types.Receipt)
+	rmap := make(map[common.Hash]*types.Receipt)
 	for q := range qch {
 		switch {
 		case q.err != nil:
@@ -105,7 +111,7 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
 			q.err = nil
 			qch <- q
 		case q.v != nil:
-			rmap[q.txIdx] = q.v
+			rmap[q.txh] = q.v
 			if len(rmap) == cap(qch) {
 				close(qch)
 			}
@@ -117,22 +123,16 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
 				if q.v == nil {
 					q.v = &types.Receipt{}
 				}
-				txn, err := cl.eth.TransactionInBlock(ctx, hash, uint(q.txIdx))
-				if err != nil {
-					q.err = errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, Index: %v) Err: %v", hash, q.txIdx, err)
-				} else {
-					q.v, err = cl.eth.TransactionReceipt(ctx, txn.Hash())
-					if q.err != nil {
-						q.err = errors.Wrapf(q.err, "getTranasctionReceipt %v", q.err)
-					}
+				q.v, err = cl.eth.TransactionReceipt(ctx, q.txh)
+				if q.err != nil {
+					q.err = errors.Wrapf(q.err, "getTranasctionReceipt: %v", q.err)
 				}
-
 			}(q)
 		}
 	}
-	receipts := make(types.Receipts, 0, txnCount)
-	for i := 0; i < int(txnCount); i++ {
-		if r, ok := rmap[i]; ok {
+	receipts := make(types.Receipts, 0, len(txhs))
+	for _, txh := range txhs {
+		if r, ok := rmap[txh]; ok {
 			receipts = append(receipts, r)
 		}
 	}

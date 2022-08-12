@@ -274,7 +274,7 @@ func (cl *Client) getHmyTxnReceiptsByBlockHash(hash common.Hash) (types.Receipts
 	}
 	qch := make(chan *rcq, len(txhs))
 	for _, txh := range txhs {
-		qch <- &rcq{txh, nil, nil, 3}
+		qch <- &rcq{txh, nil, nil, RPCCallRetry}
 	}
 	rmap := make(map[common.Hash]*types.Receipt)
 	for q := range qch {

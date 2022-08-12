@@ -39,7 +39,7 @@ const (
 	txOverheadScale      = 0.01     // base64 encoding overhead 0.36, rlp and other fields 0.01
 	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale)
 	defaultSendTxTimeout = 15 * time.Second
-	defaultGasPrice      = 15000000000
+	defaultGasPrice      = 18000000000
 	maxGasPriceBoost     = 10.0
 	defaultReadTimeout   = 50 * time.Second //
 	DefaultGasLimit      = 25000000
@@ -78,13 +78,14 @@ type senderOptions struct {
 }
 
 type sender struct {
-	log  log.Logger
-	w    *wallet.EvmWallet
-	src  chain.BTPAddress
-	dst  chain.BTPAddress
-	opts senderOptions
-	cls  []*Client
-	bmcs []*BMC
+	log          log.Logger
+	w            *wallet.EvmWallet
+	src          chain.BTPAddress
+	dst          chain.BTPAddress
+	opts         senderOptions
+	cls          []*Client
+	bmcs         []*BMC
+	prevGasPrice *big.Int
 }
 
 func (s *sender) jointClient() (*Client, *BMC) {
@@ -97,10 +98,11 @@ func NewSender(
 	urls []string, w wallet.Wallet,
 	opts map[string]interface{}, l log.Logger) (chain.Sender, error) {
 	s := &sender{
-		log: l,
-		w:   w.(*wallet.EvmWallet),
-		src: src,
-		dst: dst,
+		log:          l,
+		w:            w.(*wallet.EvmWallet),
+		src:          src,
+		dst:          dst,
+		prevGasPrice: big.NewInt(defaultGasPrice),
 	}
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
@@ -201,8 +203,9 @@ func (s *sender) Segment(
 	gasPrice, gasHeight, err := cl.GetMedianGasPriceForBlock()
 	if err != nil || gasPrice.Int64() == 0 {
 		s.log.Infof("GetMedianGasPriceForBlock(%v) Msg: %v. Using default value for gas price \n", gasHeight.String(), err)
-		gasPrice = big.NewInt(defaultGasPrice)
+		gasPrice = s.prevGasPrice
 	} else {
+		s.prevGasPrice = gasPrice
 		s.log.Infof("GetMedianGasPriceForBlock(%v) price: %v \n", gasHeight.String(), gasPrice.String())
 	}
 	boostedGasPrice, _ := (&big.Float{}).Mul(

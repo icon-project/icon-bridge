@@ -37,8 +37,9 @@ const (
 	EventIndexSignature = 0
 	EventIndexNext      = 1
 	EventIndexSequence  = 2
+	RPCCallRetry        = 5
 )
-const MAX_RETRY = 3
+
 const RECONNECT_ON_UNEXPECTED_HEIGHT = "Unexpected Block Height. Should Reconnect"
 const (
 	SyncVerifierMaxConcurrency = 300 // 150
@@ -411,7 +412,7 @@ loop:
 						hash:    bn.Hash,
 						indexes: bn.Indexes,
 						events:  bn.Events,
-						retry:   3,
+						retry:   RPCCallRetry,
 					} // fill qch with requests
 					if bn = nil; len(bnch) > 0 && len(qch) < cap(qch) {
 						bn = <-bnch

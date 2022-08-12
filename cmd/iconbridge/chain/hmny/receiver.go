@@ -28,6 +28,7 @@ const (
 	BlockHeightPollInterval    = 60 * time.Second
 	defaultReadTimeout         = 15 * time.Second
 	monitorBlockMaxConcurrency = 1000 // number of concurrent requests to synchronize older blocks from source chain
+	RPCCallRetry               = 3
 )
 
 func NewReceiver(
@@ -277,7 +278,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			qch := make(chan *bnq, cap(bnch))
 			for i := next; i < latest &&
 				len(qch) < cap(qch); i++ {
-				qch <- &bnq{i, nil, nil, 3} // fill bch with requests
+				qch <- &bnq{i, nil, nil, RPCCallRetry} // fill bch with requests
 			}
 			bns := make([]*BlockNotification, 0, len(qch))
 			for q := range qch {
