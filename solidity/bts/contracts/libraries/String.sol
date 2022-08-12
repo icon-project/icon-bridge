@@ -203,14 +203,19 @@ library String {
     }
 
     function toString(uint256 _i) internal pure returns (string memory) {
-        if (_i == 0) return "0";
+        if (_i == 0) {
+            return "0";
+        }
+        uint256 j = _i;
         uint256 len;
-        for (uint256 j = _i; j != 0; j /= 10) {
+        while (j != 0) {
             len++;
+            j /= 10;
         }
         bytes memory bstr = new bytes(len);
-        for (uint256 k = len; k > 0; k--) {
-            bstr[k - 1] = bytes1(uint8(48 + (_i % 10)));
+        uint256 k = len - 1;
+        while (_i != 0) {
+            bstr[k--] = bytes1(uint8(48 + (_i % 10)));
             _i /= 10;
         }
         return string(bstr);
