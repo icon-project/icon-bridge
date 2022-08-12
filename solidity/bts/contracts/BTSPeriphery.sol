@@ -381,8 +381,8 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         require(bytes(requests[_sn].from).length != 0, "InvalidSN");
         string memory _emitMsg = string("errCode: ")
             .concat(", errMsg: ")
+            .concat(_code.toString())
             .concat(_msg);
-        // .concat(_code.toString())
         handleResponseService(_sn, RC_ERR, _emitMsg);
     }
 
