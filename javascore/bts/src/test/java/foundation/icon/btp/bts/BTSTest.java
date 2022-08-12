@@ -141,7 +141,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
         assertEquals(1, score.call("getRegisteredTokensCount"));
 
-        List<String> registered = List.of(PARA);
+        List<String> registered = List.of(ICON, PARA);
         assertEquals(registered, score.call("coinNames"));
     }
 
@@ -162,7 +162,7 @@ public class BTSTest extends AbstractBTPTokenService {
                 TEST_TOKEN, "TTK", 18, ICX.divide(BigInteger.TEN), ICX, irc2.getAddress());
         expectErrorMessage(call, "already existed");
 
-        List<String> expected = List.of(TEST_TOKEN);
+        List<String> expected = List.of(ICON, TEST_TOKEN);
         assertEquals(expected, score.call("coinNames"));
 
         assertEquals(UINT_CAP, score.call("getTokenLimit", TEST_TOKEN));
@@ -552,10 +552,11 @@ public class BTSTest extends AbstractBTPTokenService {
         assertEquals(balances.get(3).get("locked"), BigInteger.ZERO);
 
         // fee for wrapped and native-coin set to zero
-        assertEquals(BigInteger.ONE,score.call("getAccumulatedFees", coinNames[0]));
-        assertEquals(BigInteger.valueOf(11),score.call("getAccumulatedFees", coinNames[1]));
-        assertEquals(BigInteger.ZERO,score.call("getAccumulatedFees", coinNames[2]));
-        assertEquals(BigInteger.ZERO,score.call("getAccumulatedFees", ICON));
+        Map<String, BigInteger> fees = (Map<String, BigInteger>) score.call("getAccumulatedFees");
+        assertEquals(BigInteger.ONE,fees.get(coinNames[0]));
+        assertEquals(BigInteger.valueOf(11),fees.get(coinNames[1]));
+        assertEquals(BigInteger.ZERO,fees.get(coinNames[2]));
+        assertEquals(BigInteger.ZERO,fees.get(ICON));
     }
 
     @Test
