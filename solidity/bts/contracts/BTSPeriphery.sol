@@ -91,6 +91,11 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         _;
     }
 
+    modifier onlyBTSCore() {
+        require(msg.sender == address(btsCore), "Unauthorized");
+        _;
+    }
+
     function initialize(address _bmc, address _btsCore) public initializer {
         bmc = IBMCPeriphery(_bmc);
         btsCore = IBTSCore(_btsCore);
@@ -159,7 +164,7 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         string[] memory _coinNames,
         uint256[] memory _values,
         uint256[] memory _fees
-    ) external override {
+    ) external override onlyBTSCore {
         //  Send Service Message to BMC
         //  If '_to' address is an invalid BTP Address format
         //  VM throws an error and revert(). Thus, it does not need
@@ -294,7 +299,7 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
                     errMsg = "ErrorRemoveFromBlackList";
                 }
             } else {
-                errMsg = "BlacklistErr";
+                errMsg = "BlacklistServiceTypeErr";
             }
 
             sendResponseMessage(
