@@ -318,7 +318,10 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     @External(readonly = true)
     public List<String> coinNames() {
-        return getCoinNamesAsList();
+        List<String> names = new ArrayList<>();
+        names.add(name);
+        names.addAll(getCoinNamesAsList());
+        return names;
     }
 
     @External(readonly = true)
