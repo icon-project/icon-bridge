@@ -46,10 +46,10 @@ deploysc() {
       deploy_solidity_bmc
       deploy_solidity_bts
 
-      if [ $INIT_ADDRESS_PATH != '' ];
+      if [ -n "${INIT_ADDRESS_PATH}" ];
       then
         if [ ! -f $INIT_ADDRESS_PATH ]; then
-          echo "No file found on "$INIT_ADDRESS_PATH"
+          echo "No file found on "$INIT_ADDRESS_PATH
           return 1
         fi
         for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
@@ -59,14 +59,14 @@ deploysc() {
           then
             echo -n $addr > $CONFIG_DIR/bsc.addr.${BSC_NATIVE_TOKEN_SYM[$i]}
           else 
-            echo "BSC Token ${BSC_NATIVE_TOKEN_SYM[$i]} does not exist on address file"
+            echo "BSC Token does not exist on address file" ${BSC_NATIVE_TOKEN_SYM[$i]}
             return 1
           fi
         done
       else 
         for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
         do
-            deploy_solidity_token ${BSC_NATIVE_TOKEN_NAME[$i]} ${BSC_NATIVE_TOKEN_SYM[$i]}
+            deploy_solidity_token "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}"
         done              
       fi
       echo "CONFIGURE BSC"
@@ -77,13 +77,13 @@ deploysc() {
       echo "Register BSC Tokens"
       for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
       do
-          bsc_register_native_token ${BSC_NATIVE_TOKEN_NAME[$i]} ${BSC_NATIVE_TOKEN_SYM[$i]}
-          get_coinID ${BSC_NATIVE_TOKEN_NAME[$i]} ${BSC_NATIVE_TOKEN_SYM[$i]}
+          bsc_register_native_token "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}"
+          get_coinID "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}"
       done
       for i in "${!BSC_WRAPPED_COIN_SYM[@]}"
       do
-          bsc_register_wrapped_coin ${BSC_WRAPPED_COIN_NAME[$i]} ${BSC_WRAPPED_COIN_SYM[$i]}
-          get_coinID ${BSC_WRAPPED_COIN_NAME[$i]} ${BSC_WRAPPED_COIN_SYM[$i]}
+          bsc_register_wrapped_coin "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}"
+          get_coinID "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}"
       done
       echo "deployedSol" > $CONFIG_DIR/bsc.deploy.all 
     fi
@@ -94,10 +94,10 @@ deploysc() {
       deploy_javascore_bmc
       deploy_javascore_bts
 
-      if [ $INIT_ADDRESS_PATH != '' ];
+      if [ -n "${INIT_ADDRESS_PATH}" ];
       then
         if [ ! -f $INIT_ADDRESS_PATH ]; then
-          echo "No file found on "$INIT_ADDRESS_PATH"
+          echo "No file found on "$INIT_ADDRESS_PATH
           return 1
         fi
         for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
@@ -114,7 +114,7 @@ deploysc() {
       else 
         for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
         do
-            deploy_javascore_token ${ICON_NATIVE_TOKEN_NAME[$i]} ${ICON_NATIVE_TOKEN_SYM[$i]}
+            deploy_javascore_token "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}"
         done           
       fi
       echo "CONFIGURE ICON"
@@ -126,13 +126,13 @@ deploysc() {
       echo "Register ICON Tokens"
       for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
       do
-          configure_javascore_register_native_token ${ICON_NATIVE_TOKEN_NAME[$i]} ${ICON_NATIVE_TOKEN_SYM[$i]}
-          get_btp_icon_coinId ${ICON_NATIVE_TOKEN_NAME[$i]} ${ICON_NATIVE_TOKEN_SYM[$i]}
+          configure_javascore_register_native_token "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}"
+          get_btp_icon_coinId "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}"
       done
       for i in "${!ICON_WRAPPED_COIN_SYM[@]}"
       do
-          configure_javascore_register_wrapped_coin ${ICON_WRAPPED_COIN_NAME[$i]} ${ICON_WRAPPED_COIN_SYM[$i]}
-          get_btp_icon_coinId ${ICON_WRAPPED_COIN_NAME[$i]} ${ICON_WRAPPED_COIN_SYM[$i]}
+          configure_javascore_register_wrapped_coin "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}"
+          get_btp_icon_coinId "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}"
       done
       echo "deployedJavascore" > $CONFIG_DIR/icon.deploy.all 
     fi
@@ -186,7 +186,9 @@ generate_relay_config() {
             .name = "b2i" |
             .src.address = $src_address |
             .src.endpoint = [ $src_endpoint ] |
-            .src.options = $src_options |
+            .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
+            .src.options.verifier.parentHash = $src_options_verifier_parentHash |
+            .src.options.syncConcurrency = 100 |
             .src.offset = $src_offset |
             .dst.address = $dst_address |
             .dst.endpoint = [ $dst_endpoint ] |
@@ -197,9 +199,8 @@ generate_relay_config() {
         --arg src_address "$(cat $CONFIG_DIR/bsc.addr.bmcbtp)" \
         --arg src_endpoint "$BSC_ENDPOINT" \
         --argjson src_offset "$(cat $CONFIG_DIR/bsc.chain.height)" \
-        --argjson src_options "$(
-          jq -n {"syncConcurrency":100}
-        )" \
+        --argjson src_options_verifier_blockHeight "$(cat $CONFIG_DIR/bsc.chain.height)" \
+        --arg src_options_verifier_parentHash "$(cat $CONFIG_DIR/bsc.chain.parentHash)" \
         --arg dst_address "$(cat $CONFIG_DIR/icon.addr.bmcbtp)" \
         --arg dst_endpoint "$ICON_ENDPOINT" \
         --argfile dst_key_store "$CONFIG_DIR/keystore/icon.bmr.wallet.json" \
@@ -234,7 +235,7 @@ generate_relay_config() {
         --arg dst_key_store_cointype "evm" \
         --arg dst_key_password "$(cat $CONFIG_DIR/keystore/bsc.bmr.wallet.secret)" \
         --argjson dst_tx_data_size_limit 8192 \
-        --argjson dst_options '{"gas_limit":8000000, "tx_data_size_limit":8192, "boost_gas_price":1.0}'
+        --argjson dst_options '{"gas_limit":24000000, "tx_data_size_limit":8192, "boost_gas_price":1.0}'
     )"
 }
 

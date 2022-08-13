@@ -45,7 +45,7 @@ export BSC_NATIVE_COIN=('BNB')
 export BSC_NATIVE_TOKEN_SYM=('BUSD' 'USDT' 'USDC' 'BTCB' 'ETH')
 export BSC_NATIVE_TOKEN_NAME=('BUSD Token' 'Tether USD' 'USD Coin' 'BTCB Token' 'Ethereum Token')
 export BSC_WRAPPED_COIN_SYM=('ICX' 'sICX' 'bnUSD')
-export BSC_WRAPPED_COIN_NAME=('ICON Coin' 'Staked ICX' 'Balanced Dollars')
+export BSC_WRAPPED_COIN_NAME=('ICON Coin' 'Staked ICX' 'Balanced Dollar')
 
 ###################################################################################
 export INIT_ADDRESS_PATH=$ICONBRIDGE_CONFIG_DIR/init_address.json

@@ -3,7 +3,11 @@ source utils.sh
 
 eth_blocknumber() {
   curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' \
-    --data-raw '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[], "id": 1}' | jq -r .result | xargs printf "%d\n"
+    --data-raw '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[], "id": 1}' | jq -r .result
+}
+eth_parentHash() {
+  curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' \
+    --data-raw "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBlockByNumber\",\"params\":[\"$1\", false], \"id\": 1}" | jq -r .result.parentHash
 }
 
 deploy_solidity_bmc() {
@@ -12,7 +16,9 @@ deploy_solidity_bmc() {
     rm -rf contracts/test build .openzeppelin
     truffle compile --all
     echo "deploying solidity bmc"
-    eth_blocknumber > $CONFIG_DIR/bsc.chain.height
+    local blockHeight=$(eth_blocknumber)
+    echo $blockHeight | xargs printf "%d" > $CONFIG_DIR/bsc.chain.height
+    eth_parentHash $blockHeight > $CONFIG_DIR/bsc.chain.parentHash
     set +e
     for i in $(seq 1 20); do
       BMC_BTP_NET=$BSC_BMC_NET \
@@ -36,7 +42,7 @@ deploy_solidity_bts() {
     truffle compile --all
     set +e
     for i in $(seq 1 20); do
-      BSH_COIN_NAME="BNB" \
+      BSH_COIN_NAME="${BSC_NATIVE_COIN_NAME}" \
       BSH_COIN_FEE=100 \
       BSH_FIXED_FEE=5000 \
       BMC_PERIPHERY_ADDRESS="$(cat $CONFIG_DIR/bsc.addr.bmcperiphery)" \
@@ -58,7 +64,7 @@ deploy_solidity_token() {
   if [ ! -f $CONFIG_DIR/bsc.deploy.coin$2 ]; then
     set +e
     for i in $(seq 1 20); do
-      BSH_COIN_NAME=$1 \
+      BSH_COIN_NAME="$1" \
       BSH_COIN_SYMBOL=$2 \
       BSH_DECIMALS=18 \
       BSH_INITIAL_SUPPLY=100000 \
@@ -136,7 +142,7 @@ configure_solidity_set_fee_ratio() {
   cd $CONTRACTS_DIR/solidity/bts
   if [ ! -f $CONFIG_DIR/bsc.configure.setfee ]; then
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-      --method setFeeRatio --name BNB --feeNumerator 100 --fixedFee 5000)
+      --method setFeeRatio --name "${BSC_NATIVE_COIN_NAME}" --feeNumerator 100 --fixedFee 5000)
     echo "$tx" >$CONFIG_DIR/tx/setFee.bsc
     status=$(echo "$tx" | grep "status: true" | wc -l)
     if [ "$status" != "1" ]; 

@@ -28,11 +28,15 @@ deploy_javascore_bts() {
   echo "deploying javascore bts"
   cd $CONFIG_DIR
   if [ ! -f icon.addr.bts ]; then
+    local bts_fee_numerator=100
+    local bts_fixed_fee=5000
     goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bts.jar \
       --content_type application/java \
-      --param _name="ICX" \
+      --param _name="${ICON_NATIVE_COIN_NAME}" \
       --param _bmc=$(cat icon.addr.bmc) \
       --param _decimals="0x12" \
+      --param _feeNumerator=$(decimal2Hex $bts_fee_numerator) \
+      --param _fixedFee=$(decimal2Hex $bts_fixed_fee) \
       --param _serializedIrc2=$(xxd -p $CONTRACTS_DIR/javascore/irc2Tradeable.jar | tr -d '\n') | jq -r . > tx/tx.icon.bts
     sleep 5
     extract_scoreAddress tx/tx.icon.bts icon.addr.bts
@@ -45,7 +49,7 @@ deploy_javascore_token() {
   if [ ! -f icon.addr.$2 ]; then
     goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/irc2.jar \
       --content_type application/java \
-      --param _name=$1 \
+      --param _name="$1" \
       --param _symbol=$2 \
       --param _initialSupply="0x186a0" \
       --param _decimals="0x12" | jq -r . >tx/tx.icon.$2
@@ -104,7 +108,6 @@ configure_javascore_add_bts() {
       --param _svc="bts" | jq -r . >tx/addService.icon
     sleep 3
     ensure_txresult tx/addService.icon
-    echo $?
   fi
   sleep 5
 }
@@ -126,15 +129,14 @@ configure_javascore_add_bts_owner() {
   fi
 }
 
-
 configure_javascore_bts_setICXFee() {
-  echo "bts set ICX fee"
+  echo "bts set fee" $ICON_NATIVE_COIN_SYM
   local bts_fee_numerator=100
   local bts_fixed_fee=5000
   cd $CONFIG_DIR
   goloop rpc sendtx call --to $(cat icon.addr.bts) \
     --method setFeeRatio \
-    --param _name="ICX" \
+    --param _name="${ICON_NATIVE_COIN_NAME}" \
     --param _feeNumerator=$(decimal2Hex $bts_fee_numerator) \
     --param _fixedFee=$(decimal2Hex $bts_fixed_fee) | jq -r . >tx/setICXFee.icon
   sleep 3
@@ -192,7 +194,7 @@ configure_javascore_register_native_token() {
   if [ ! -f icon.register.coin$2 ]; then
     goloop rpc sendtx call --to $(cat icon.addr.bts) \
       --method register \
-      --param _name=$1 \
+      --param _name="$1" \
       --param _symbol=$2 \
       --param _decimals=0x12 \
       --param _addr=$(cat icon.addr.$2) \
@@ -213,7 +215,7 @@ configure_javascore_register_wrapped_coin() {
   if [ ! -f icon.register.coin$2 ]; then
     goloop rpc sendtx call --to $(cat icon.addr.bts) \
       --method register \
-      --param _name=$1 \
+      --param _name="$1" \
       --param _symbol=$2 \
       --param _decimals=0x12 \
       --param _feeNumerator=$(decimal2Hex $bts_fee_numerator) \
@@ -229,7 +231,7 @@ get_btp_icon_coinId() {
   cd $CONFIG_DIR
   goloop rpc call --to $(cat icon.addr.bts) \
     --method coinId \
-    --param _coinName=$1 | jq -r . >tx/icon.coinId.$2
+    --param _coinName="$1" | jq -r . >tx/icon.coinId.$2
   if [ "$(cat $CONFIG_DIR/tx/icon.coinId.$2)" == "null" ];
   then
     echo "Error Gettting  CoinAddress icon."$2
