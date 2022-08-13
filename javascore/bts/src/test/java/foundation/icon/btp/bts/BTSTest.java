@@ -51,7 +51,7 @@ public class BTSTest extends AbstractBTPTokenService {
         byte[] _msg = blacklistSuccessfulResponse();
 
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", BigInteger.ONE, _msg);
+                "fromString", SERVICE, BigInteger.ONE, _msg);
 
 
         String[] addr2 = new String[] {"   all too well       "};
@@ -64,7 +64,7 @@ public class BTSTest extends AbstractBTPTokenService {
         String[] addr3 = new String[] {"  you belong with me  "};
         score.invoke(owner, "addBlacklistAddress", "network", addr3);
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", BigInteger.TWO, _msg);
+                "fromString", SERVICE, BigInteger.TWO, _msg);
 
         expected = List.of("all too well", "you belong with me");
         actual = (List<String>) score.call("getBlackListedUsers", "network", 0, 10);
@@ -101,9 +101,9 @@ public class BTSTest extends AbstractBTPTokenService {
         byte[] _msg = blacklistSuccessfulResponse();
 
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", BigInteger.ONE, _msg);
+                "fromString", SERVICE, BigInteger.ONE, _msg);
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", BigInteger.TWO, _msg);
+                "fromString", SERVICE, BigInteger.TWO, _msg);
 
         Executable  call = () -> score.invoke(owner, "removeBlacklistAddress", "icx",new String[]{" hell "});
         expectErrorMessage(call, "Invalid link");
@@ -121,7 +121,7 @@ public class BTSTest extends AbstractBTPTokenService {
         _msg = blacklistRemoveSuccessfulResponse();
 
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", BigInteger.valueOf(3), _msg);
+                "fromString", SERVICE, BigInteger.valueOf(3), _msg);
         List<String> expected = List.of("you belong with me");
         List<String> actual = (List<String>) score.call("getBlackListedUsers", "network", 0, 1);
         assertEquals(expected, actual);
@@ -409,7 +409,7 @@ public class BTSTest extends AbstractBTPTokenService {
     public void handleBTPMessage1() {
         // solidity -> relayer -> bmc -> bts -> transfer/mint on icon side
         Executable call = () -> score.invoke(owner, "handleBTPMessage",
-                "from","svc",BigInteger.ONE, "ehehehe".getBytes());
+                "from",SERVICE,BigInteger.ONE, "ehehehe".getBytes());
         expectErrorMessage(call, "Only BMC");
 
         // irc2, wrapped and native-coin
@@ -437,7 +437,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
         // wrapped token not registered yet
         call = () -> score.invoke(bmcMock, "handleBTPMessage",
-                "from","svc",BigInteger.valueOf(3), _msg);
+                "from",SERVICE,BigInteger.valueOf(3), _msg);
         expectErrorMessage(call, "Invalid Token");
 
         // register wrapped token
@@ -461,7 +461,7 @@ public class BTSTest extends AbstractBTPTokenService {
         contextMock.when(sendMessage).thenReturn(null);
 
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", BigInteger.ONE, _msg);
+                "fromString", SERVICE, BigInteger.ONE, _msg);
         verify(scoreSpy).TransferReceived(eq("fromString"), eq(nonOwner.getAddress()), eq(BigInteger.ONE), any());
     }
 
@@ -542,7 +542,7 @@ public class BTSTest extends AbstractBTPTokenService {
                 eq(BigInteger.valueOf(10)))).thenReturn(null);
 
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString","bmc",BigInteger.ONE, _msg);
+                "fromString", SERVICE, BigInteger.ONE, _msg);
         verify(scoreSpy).TransferEnd(eq(nonOwner.getAddress()), eq(BigInteger.ONE), eq(TransferResponse.RC_OK), any());
         assertEquals(null, score.call("getTransaction", BigInteger.ONE));
 
@@ -576,7 +576,7 @@ public class BTSTest extends AbstractBTPTokenService {
         message.setData("a for apple".getBytes());
 
         score.invoke(bmcMock, "handleBTPMessage",
-                "from","bmc",BigInteger.ONE, message.toBytes());
+                "from",SERVICE,BigInteger.ONE, message.toBytes());
         verify(scoreSpy).UnknownResponse(any(), eq(BigInteger.ONE));
     }
 
@@ -593,7 +593,7 @@ public class BTSTest extends AbstractBTPTokenService {
         contextMock.when(sendMessage).thenReturn(null);
 
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString","bmc",BigInteger.ONE, message.toBytes());
+                "fromString",SERVICE,BigInteger.ONE, message.toBytes());
     }
 
     @Test
@@ -681,14 +681,14 @@ public class BTSTest extends AbstractBTPTokenService {
         score.invoke(owner, "addRestriction");
 
         call = () -> score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", BigInteger.ONE, _msg);
+                "fromString", SERVICE, BigInteger.ONE, _msg);
         expectErrorMessage(call, "_to user is Blacklisted");
 
         removeBlackListedUser("icon", new String[]{user1.toString()}, BigInteger.valueOf(4) );
 
         // check this
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", BigInteger.valueOf(5), _msg);
+                "fromString", SERVICE, BigInteger.valueOf(5), _msg);
 
         // another transfer, but over the limit
         // user not blacklisted
@@ -709,7 +709,7 @@ public class BTSTest extends AbstractBTPTokenService {
                 eq(user1), eq(FIFTY_ICX.add(TWO_HUNDRED_ICX)), any())).thenReturn(null);
 
         call = () -> score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", BigInteger.valueOf(6), _msg2);
+                "fromString", SERVICE, BigInteger.valueOf(6), _msg2);
         expectErrorMessage(call, "Transfer amount exceeds the transaction limit");
 
         // limit not set
@@ -746,13 +746,13 @@ public class BTSTest extends AbstractBTPTokenService {
         // change token limit
         score.invoke(owner, "setTokenLimit",  new String[]{TOKEN2}, new BigInteger[]{TWO_HUNDRED_ICX});
         call = () -> score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", BigInteger.valueOf(6), _msg3);
+                "fromString", SERVICE, BigInteger.valueOf(6), _msg3);
         expectErrorMessage(call, "Transfer amount exceeds the transaction limit");
 
         // disable restrictions
         score.invoke(owner, "disableRestrictions");
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", BigInteger.valueOf(7), _msg3);
+                "fromString", SERVICE, BigInteger.valueOf(7), _msg3);
     }
 
     @Test
