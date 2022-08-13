@@ -56,7 +56,7 @@ func main() {
 	scollector, err := stat.NewService(
 		cfg.StatConfig,
 		l.WithFields(log.Fields{
-			log.FieldKeyChain: "StatCollector",
+			log.FieldKeyService: "BMR-BSC",
 		}))
 	if err != nil {
 		log.Error("failed to create StatCollector for MultiRelay: %v", err)
