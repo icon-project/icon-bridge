@@ -65,10 +65,20 @@ func (cl *Client) GetBlockNumber() (uint64, error) {
 	return bn, nil
 }
 
-func (cl *Client) GetBlockByHash(hash common.Hash) (*types.Block, error) {
+type Block struct {
+	Transactions []string `json:"transactions"`
+	GasUsed      string   `json:"gasUsed"`
+}
+
+func (cl *Client) GetBlockByHash(hash common.Hash) (*Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
-	return cl.eth.BlockByHash(ctx, hash)
+	var hb Block
+	err := cl.rpc.CallContext(ctx, &hb, "eth_getBlockByHash", hash, false)
+	if err != nil {
+		return nil, err
+	}
+	return &hb, nil
 }
 
 func (cl *Client) GetHeaderByHeight(height *big.Int) (*types.Header, error) {
@@ -78,20 +88,17 @@ func (cl *Client) GetHeaderByHeight(height *big.Int) (*types.Header, error) {
 }
 
 func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
-	b, err := cl.GetBlockByHash(hash)
+	hb, err := cl.GetBlockByHash(hash)
 	if err != nil {
 		return nil, err
 	}
-	txhs := make([]common.Hash, len(b.Transactions()))
-	for i, txn := range b.Transactions() {
-		txhs[i] = txn.Hash()
-	}
-	if b.GasUsed() == 0 || len(txhs) == 0 {
+	if hb.GasUsed == "0x0" || len(hb.Transactions) == 0 {
 		return nil, nil
 	}
+	txhs := hb.Transactions
 	// fetch all txn receipts concurrently
 	type rcq struct {
-		txh   common.Hash
+		txh   string
 		v     *types.Receipt
 		err   error
 		retry int
@@ -100,7 +107,7 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
 	for _, txh := range txhs {
 		qch <- &rcq{txh, nil, nil, RPCCallRetry}
 	}
-	rmap := make(map[common.Hash]*types.Receipt)
+	rmap := make(map[string]*types.Receipt)
 	for q := range qch {
 		switch {
 		case q.err != nil:
@@ -123,7 +130,7 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
 				if q.v == nil {
 					q.v = &types.Receipt{}
 				}
-				q.v, err = cl.eth.TransactionReceipt(ctx, q.txh)
+				q.v, err = cl.eth.TransactionReceipt(ctx, common.HexToHash(q.txh))
 				if q.err != nil {
 					q.err = errors.Wrapf(q.err, "getTranasctionReceipt: %v", q.err)
 				}

@@ -23,8 +23,8 @@ const (
 	BlockInterval              = 5 * time.Second
 	BlockHeightPollInterval    = 60 * time.Second
 	monitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
-	RPCCallRetry               = 5
 )
+const RPCCallRetry = 5
 
 func NewReceiver(
 	src, dst chain.BTPAddress, urls []string,
