@@ -511,6 +511,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         string calldata _to
     ) external payable override {
         require(_coinNames.length == _values.length, "InvalidRequest");
+        require(_coinNames.length > 0, "Zero length arguments");
         uint256 size = msg.value != 0
             ? _coinNames.length.add(1)
             : _coinNames.length;
