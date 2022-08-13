@@ -60,7 +60,7 @@ ensure_txresult() {
     echo $RESULT
   done
   eval "${OLD_SET_OPTS}"
-
+  set -e
   if [ "$RET" != "0" ]; then
     echo $RESULT
     return $RET
