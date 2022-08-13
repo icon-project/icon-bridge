@@ -17,7 +17,8 @@ export ICON_ENDPOINT='http://localhost:9080/api/v3/default'
 #'https://lisbon.net.solidwallet.io/api/v3/icon_dex'
 export ICON_KEY_STORE=$ICONBRIDGE_CONFIG_DIR/keystore/icon.god.wallet.json
 export ICON_SECRET=$ICONBRIDGE_CONFIG_DIR/keystore/icon.god.wallet.secret
-export ICON_NATIVE_COIN=('ICX')
+export ICON_NATIVE_COIN_SYM=('ICX')
+export ICON_NATIVE_COIN_NAME=('ICON Coin')
 export ICON_NATIVE_TOKEN_SYM=('sICX' 'bnUSD')
 export ICON_NATIVE_TOKEN_NAME=('Staked ICX' 'Balanced Dollar')
 export ICON_WRAPPED_COIN_SYM=('BNB' 'BUSD' 'USDT' 'USDC' 'BTCB' 'ETH')
@@ -41,12 +42,13 @@ export BSC_SECRET=$ICONBRIDGE_CONFIG_DIR/keystore/bsc.god.wallet.secret
 export BSC_NID=${BSC_NID:-'97'}
 export BSC_BMC_NET=${BSC_BMC_NET:-'0x61.bsc'}
 
-export BSC_NATIVE_COIN=('BNB')
+export BSC_NATIVE_COIN_SYM=('BNB')
+export BSC_NATIVE_COIN_NAME=('Binance Coin')
 export BSC_NATIVE_TOKEN_SYM=('BUSD' 'USDT' 'USDC' 'BTCB' 'ETH')
 export BSC_NATIVE_TOKEN_NAME=('BUSD Token' 'Tether USD' 'USD Coin' 'BTCB Token' 'Ethereum Token')
 export BSC_WRAPPED_COIN_SYM=('ICX' 'sICX' 'bnUSD')
 export BSC_WRAPPED_COIN_NAME=('ICON Coin' 'Staked ICX' 'Balanced Dollar')
 
 ###################################################################################
-export INIT_ADDRESS_PATH=$ICONBRIDGE_CONFIG_DIR/init_address.json
+export INIT_ADDRESS_PATH=""
 

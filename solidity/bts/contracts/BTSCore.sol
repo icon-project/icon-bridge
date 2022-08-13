@@ -151,10 +151,12 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         onlyOwner
     {
         require(_btsPeriphery != address(0), "InvalidSetting");
-        require(
-            btsPeriphery.hasPendingRequest() == false,
-            "HasPendingRequest"
-        );
+        if (address(btsPeriphery) != address(0)) {
+            require(
+                btsPeriphery.hasPendingRequest() == false,
+                "HasPendingRequest"
+            );
+        }
         btsPeriphery = IBTSPeriphery(_btsPeriphery);
     }
 
