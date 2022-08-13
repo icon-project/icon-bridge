@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -22,8 +23,9 @@ import (
 const (
 	BlockInterval              = 5 * time.Second
 	BlockHeightPollInterval    = 60 * time.Second
-	monitorBlockMaxConcurrency = 1000 // number of concurrent requests to synchronize older blocks from source chain
+	monitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
 )
+const RPCCallRetry = 5
 
 func NewReceiver(
 	src, dst chain.BTPAddress, urls []string,
@@ -48,7 +50,8 @@ func NewReceiver(
 }
 
 type ReceiverOptions struct {
-	SyncConcurrency uint64 `json:"syncConcurrency"`
+	SyncConcurrency uint64           `json:"syncConcurrency"`
+	Verifier        *VerifierOptions `json:"verifier"`
 }
 
 func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
@@ -83,7 +86,122 @@ type BnOptions struct {
 	Concurrency uint64
 }
 
-func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback func(v *BlockNotification) error) error {
+func (r *receiver) newVerifer(opts *VerifierOptions) (*Verifier, error) {
+	vr := Verifier{
+		next:       big.NewInt(int64(opts.BlockHeight)),
+		parentHash: common.HexToHash(opts.BlockHash.String()),
+	}
+	header, err := r.client().GetHeaderByHeight(big.NewInt(int64(opts.BlockHeight)))
+	if err != nil {
+		err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
+		return nil, err
+	}
+	if !bytes.Equal(header.ParentHash.Bytes(), vr.parentHash.Bytes()) {
+		return nil, errors.New("Unexpected Hash")
+	}
+	return &vr, nil
+}
+
+func (r *receiver) syncVerifier(vr *Verifier, height int64, concurrency int) error {
+	if height == vr.Next().Int64() {
+		return nil
+	}
+	if vr.Next().Int64() > height {
+		return fmt.Errorf(
+			"invalid target height: verifier height (%s) > target height (%d)",
+			vr.Next().String(), height)
+	}
+
+	type res struct {
+		Height int64
+		Header *types.Header
+	}
+
+	type req struct {
+		height int64
+		err    error
+		res    *res
+		retry  int64
+	}
+
+	r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Debug("syncVerifier: start")
+
+	for vr.Next().Int64() < height {
+		rqch := make(chan *req, concurrency)
+		for i := vr.Next().Int64(); len(rqch) < cap(rqch); i++ {
+			rqch <- &req{height: i, retry: 5}
+		}
+		sres := make([]*res, 0, len(rqch))
+		for q := range rqch {
+			switch {
+			case q.err != nil:
+				if q.retry > 0 {
+					q.retry--
+					q.res, q.err = nil, nil
+					rqch <- q
+					continue
+				}
+				r.log.WithFields(log.Fields{
+					"height": q.height, "error": q.err.Error()}).Debug("syncVerifier: req error")
+				sres = append(sres, nil)
+				if len(sres) == cap(sres) {
+					close(rqch)
+				}
+			case q.res != nil:
+				sres = append(sres, q.res)
+				if len(sres) == cap(sres) {
+					close(rqch)
+				}
+			default:
+				go func(q *req) {
+					defer func() {
+						time.Sleep(500 * time.Millisecond)
+						rqch <- q
+					}()
+					if q.res == nil {
+						q.res = &res{}
+					}
+					q.res.Height = q.height
+					q.res.Header, q.err = r.client().GetHeaderByHeight(big.NewInt(q.height))
+					if q.err != nil {
+						q.err = errors.Wrapf(q.err, "syncVerifier: getBlockHeader: %v", q.err)
+						return
+					}
+				}(q)
+			}
+		}
+		// filter nil
+		_sres, sres := sres, sres[:0]
+		for _, v := range _sres {
+			if v != nil {
+				sres = append(sres, v)
+			}
+		}
+		// sort and forward notifications
+		if len(sres) > 0 {
+			sort.SliceStable(sres, func(i, j int) bool {
+				return sres[i].Height < sres[j].Height
+			})
+			for _, r := range sres {
+				if vr.Next().Int64() >= height {
+					break
+				}
+				if vr.Next().Int64() == r.Height {
+					err := vr.Verify(r.Header)
+					if err != nil {
+						return errors.Wrapf(err, "syncVerifier: Update: %v", err)
+					}
+				}
+			}
+			r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Debug("syncVerifier: syncing")
+		}
+	}
+
+	r.log.WithFields(log.Fields{"height": vr.Next().String()}).Debug("syncVerifier: complete")
+	return nil
+}
+
+func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback func(v *BlockNotification) error) (err error) {
 
 	if opts == nil {
 		return errors.New("receiveLoop: invalid options: <nil>")
@@ -98,6 +216,18 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		}
 		r.log.Warnf("receiveLoop: opts.Concurrency (%d): value out of range [%d, %d]: setting to default %d",
 			concurrency, 1, monitorBlockMaxConcurrency, opts.Concurrency)
+	}
+
+	var vr *Verifier
+	if r.opts.Verifier != nil {
+		vr, err = r.newVerifer(r.opts.Verifier)
+		if err != nil {
+			return err
+		}
+		err = r.syncVerifier(vr, int64(opts.StartHeight), int(opts.Concurrency))
+		if err != nil {
+			return errors.Wrapf(err, "receiveLoop: syncVerifier: %v", err)
+		}
 	}
 
 	// block notification channel
@@ -146,6 +276,12 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			// process all notifications
 			for ; bn != nil; next++ {
 				if lbn != nil {
+					if vr != nil {
+						if err := vr.Verify(lbn.Header); err != nil {
+							r.log.WithFields(log.Fields{"height": bn.Height, "hash": bn.Hash}).Error("reconnect: verification failed")
+							return errors.Wrapf(err, "verification failed %_v", err)
+						}
+					}
 					if err := callback(lbn); err != nil {
 						return errors.Wrapf(err, "receiveLoop: callback: %v", err)
 					}
@@ -174,7 +310,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			qch := make(chan *bnq, cap(bnch))
 			for i := next; i < latest &&
 				len(qch) < cap(qch); i++ {
-				qch <- &bnq{i, nil, nil, 3} // fill bch with requests
+				qch <- &bnq{i, nil, nil, RPCCallRetry} // fill bch with requests
 			}
 			bns := make([]*BlockNotification, 0, len(qch))
 			for q := range qch {
