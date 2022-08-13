@@ -450,7 +450,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         checkUintLimit(value);
         BTPAddress to = BTPAddress.valueOf(_to);
         require(value != null && value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
-        checkTransferRestrictions(to.net(), name, Context.getCaller().toString(), BTPAddress.valueOf(_to).account(), value);
+        checkRestrictions(name, Context.getCaller().toString(), to, value);
         sendRequest(Context.getCaller(), to, List.of(name), List.of(value));
     }
 
@@ -462,7 +462,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         Address owner = Context.getCaller();
         BTPAddress to = BTPAddress.valueOf(_to);
-        checkTransferRestrictions(to.net(), _coinName, owner.toString(), BTPAddress.valueOf(_to).account(), _value);
+        checkRestrictions(_coinName, Context.getCaller().toString(), to, _value);
         // only for wrapped coins
         transferFrom(owner, Context.getAddress(), _coinName, _value);
         sendRequest(owner, to, List.of(_coinName), List.of(_value));
@@ -486,7 +486,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             checkUintLimit(value);
             coinNameList.add(coinName);
             values.add(_values[i]);
-            checkTransferRestrictions(to.net(), coinName, owner.toString(), to.account() ,value);
+            checkRestrictions(coinName, owner.toString(), to, value);
         }
 
         transferFromBatch(owner, Context.getAddress(), _coinNames, _values);
@@ -1202,6 +1202,16 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     public void disableRestrictions() {
         requireOwnerAccess();
         restriction.set(false);
+    }
+
+    @External(readonly = true)
+    public boolean isRestrictionEnabled() {
+        return restriction.get();
+    }
+
+    private void checkRestrictions(String coinName, String from, BTPAddress to, BigInteger value) {
+        checkTransferRestrictions(to.net(), coinName, from, to.account(), value);
+        checkTransferRestrictions(net, coinName, from, to.account(), value);
     }
 
     private void checkTransferRestrictions(String _net, String _tokenName, String _from, String _to, BigInteger _value) {
