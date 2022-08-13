@@ -25,6 +25,7 @@ const (
 	BlockHeightPollInterval    = 60 * time.Second
 	monitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
 )
+const RPCCallRetry = 5
 
 func NewReceiver(
 	src, dst chain.BTPAddress, urls []string,
@@ -95,8 +96,8 @@ func (r *receiver) newVerifer(opts *VerifierOptions) (*Verifier, error) {
 		err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
 		return nil, err
 	}
-	if err := vr.Verify(header); err != nil {
-		return nil, errors.Wrapf(err, "Verification Failed %v", err)
+	if !bytes.Equal(header.ParentHash.Bytes(), vr.parentHash.Bytes()) {
+		return nil, errors.New("Unexpected Hash")
 	}
 	return &vr, nil
 }
@@ -182,6 +183,9 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64, concurrency int) err
 				return sres[i].Height < sres[j].Height
 			})
 			for _, r := range sres {
+				if vr.Next().Int64() >= height {
+					break
+				}
 				if vr.Next().Int64() == r.Height {
 					err := vr.Verify(r.Header)
 					if err != nil {
@@ -275,7 +279,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 					if vr != nil {
 						if err := vr.Verify(lbn.Header); err != nil {
 							r.log.WithFields(log.Fields{"height": bn.Height, "hash": bn.Hash}).Error("reconnect: verification failed")
-							return errors.New("verification failed")
+							return errors.Wrapf(err, "verification failed %_v", err)
 						}
 					}
 					if err := callback(lbn); err != nil {
@@ -306,7 +310,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			qch := make(chan *bnq, cap(bnch))
 			for i := next; i < latest &&
 				len(qch) < cap(qch); i++ {
-				qch <- &bnq{i, nil, nil, 3} // fill bch with requests
+				qch <- &bnq{i, nil, nil, RPCCallRetry} // fill bch with requests
 			}
 			bns := make([]*BlockNotification, 0, len(qch))
 			for q := range qch {
