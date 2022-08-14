@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	BlockInterval              = 5 * time.Second
+	BlockInterval              = 3 * time.Second
 	BlockHeightPollInterval    = 60 * time.Second
 	monitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
 )
