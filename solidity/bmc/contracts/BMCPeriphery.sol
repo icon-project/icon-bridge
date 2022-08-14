@@ -119,16 +119,14 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
             }
             rxHeight = rps[i].height;
             for (uint256 j = 0; j < rps[i].events.length; j++) {
-                rxSeq++;
+                require(ev.nextBmc.compareTo(bmcBtpAddress), "Invalid Next BMC");
                 ev = rps[i].events[j];
+                rxSeq++;
                 if (ev.seq < rxSeq) {
                     rxSeq--;
                     continue;  // ignore lower sequence number
                 } else if (ev.seq > rxSeq) {
                     revert(BMCRevertInvalidSeqNumber);
-                }
-                if (!ev.nextBmc.compareTo(bmcBtpAddress)) {
-                    continue;
                 }
                 try this.tryDecodeBTPMessage(ev.message) returns (
                     Types.BMCMessage memory _decoded

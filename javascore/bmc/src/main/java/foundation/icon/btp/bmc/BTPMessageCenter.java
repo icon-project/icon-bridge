@@ -366,6 +366,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
             }
             rxHeight = rp.getHeight().longValue();
             for (EventDataBTPMessage ev : rp.getEvents()) {
+                Context.require(ev.getNext_bmc().equals(this.btpAddr.toString()), "Invalid Next BMC");
                 rxSeq = rxSeq.add(BigInteger.ONE);
                 if (ev.getSeq().compareTo(rxSeq) < 0) {
                     rxSeq = rxSeq.subtract(BigInteger.ONE);
