@@ -155,7 +155,7 @@ func (r *receiver) newVerifer(opts *VerifierOptions) (*Verifier, error) {
 	return &vr, nil
 }
 
-func (r *receiver) syncVerifier(vr *Verifier, height int64, concurrency uint64) error {
+func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 	if height == vr.Next() {
 		return nil
 	}
@@ -182,7 +182,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64, concurrency uint64) 
 	r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Info("syncVerifier: start")
 
 	for vr.Next() < height {
-		rqch := make(chan *req, concurrency)
+		rqch := make(chan *req, r.opts.SyncConcurrency)
 		for i := vr.Next(); len(rqch) < cap(rqch); i++ {
 			rqch <- &req{height: i}
 		}
@@ -357,7 +357,7 @@ loop:
 
 			// sync verifier
 			if vr != nil {
-				if err := r.syncVerifier(vr, next, r.opts.SyncConcurrency); err != nil {
+				if err := r.syncVerifier(vr, next); err != nil {
 					return errors.Wrapf(err, "sync verifier: %v", err)
 				}
 			}
