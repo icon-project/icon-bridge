@@ -47,7 +47,7 @@ contract BMCManagement is IBMCManagement, Initializable {
 
     uint256 private constant BLOCK_INTERVAL_MSEC = 1000;
 
-    modifier hasPermission() {
+    modifier onlyOwner() {
         require(_owners[msg.sender] == true, "Unauthorized");
         _;
     }
@@ -62,7 +62,7 @@ contract BMCManagement is IBMCManagement, Initializable {
         numOfOwner++;
     }
 
-    function setBMCPeriphery(address _addr) external override hasPermission {
+    function setBMCPeriphery(address _addr) external override onlyOwner {
         require(_addr != address(0), "InvalidAddress");
         require(_addr != bmcPeriphery, "AlreadyExistsBMCPeriphery");
         bmcPeriphery = _addr;
@@ -80,7 +80,7 @@ contract BMCManagement is IBMCManagement, Initializable {
        @dev Caller must be an Onwer of BTP network
        @param _owner    Address of a new Onwer.
    */
-    function addOwner(address _owner) external override hasPermission {
+    function addOwner(address _owner) external override onlyOwner {
         _owners[_owner] = true;
         numOfOwner++;
     }
@@ -91,7 +91,7 @@ contract BMCManagement is IBMCManagement, Initializable {
        @dev If only one Owner left, unable to remove the last Owner
        @param _owner    Address of an Owner to be removed.
      */
-    function removeOwner(address _owner) external override hasPermission {
+    function removeOwner(address _owner) external override onlyOwner {
         require(numOfOwner > 1, "LastOwner");
         require(_owners[_owner] == true, "NotExistsPermission");
         delete _owners[_owner];
@@ -116,7 +116,7 @@ contract BMCManagement is IBMCManagement, Initializable {
     function addService(string memory _svc, address _addr)
         external
         override
-        hasPermission
+        onlyOwner
     {
         require(_addr != address(0), "InvalidAddress");
         require(bshServices[_svc] == address(0), "AlreadyExistsBSH");
@@ -129,7 +129,7 @@ contract BMCManagement is IBMCManagement, Initializable {
        @dev Caller must be an operator of BTP network.
        @param _svc     Name of the service
    */
-    function removeService(string memory _svc) external override hasPermission {
+    function removeService(string memory _svc) external override onlyOwner {
         require(bshServices[_svc] != address(0), "NotExistsBSH");
         delete bshServices[_svc];
         listBSHNames.remove(_svc);
@@ -162,7 +162,7 @@ contract BMCManagement is IBMCManagement, Initializable {
        @dev Caller must be an operator of BTP network.
        @param _link    BTP Address of connected BMC
    */
-    function addLink(string calldata _link) external override hasPermission {
+    function addLink(string calldata _link) external override onlyOwner {
         (string memory _net, ) = _link.splitBTPAddress();
         require(
             links[_link].isConnected == false,
@@ -201,7 +201,7 @@ contract BMCManagement is IBMCManagement, Initializable {
        @dev Caller must be an operator of BTP network.
        @param _link    BTP Address of connected BMC
    */
-    function removeLink(string calldata _link) external override hasPermission {
+    function removeLink(string calldata _link) external override onlyOwner {
         require(links[_link].isConnected == true, "NotExistsLink");
         delete links[_link];
         (string memory _net, ) = _link.splitBTPAddress();
@@ -221,7 +221,7 @@ contract BMCManagement is IBMCManagement, Initializable {
     function setLinkRxHeight(string calldata _link, uint256 _height)
         external
         override
-        hasPermission
+        onlyOwner
     {
         require(links[_link].isConnected == true, "NotExistsLink");
         require(_height > 0, "InvalidRxHeight");
@@ -233,7 +233,7 @@ contract BMCManagement is IBMCManagement, Initializable {
         uint256 _blockInterval,
         uint256 _maxAggregation,
         uint256 _delayLimit
-    ) external override hasPermission {
+    ) external override onlyOwner {
         require(links[_link].isConnected == true, "NotExistsLink");
         require(
             _maxAggregation >= 1 && _delayLimit >= 1,
@@ -459,7 +459,7 @@ contract BMCManagement is IBMCManagement, Initializable {
     function addRoute(string memory _dst, string memory _link)
         external
         override
-        hasPermission
+        onlyOwner
     {
         require(bytes(routes[_dst]).length == 0, "AlreadyExistRoute");
         //  Verify _dst and _link format address
@@ -478,7 +478,7 @@ contract BMCManagement is IBMCManagement, Initializable {
        @dev Caller must be an operator of BTP network.
        @param _dst     BTP Address of the destination BMC
     */
-    function removeRoute(string memory _dst) external override hasPermission {
+    function removeRoute(string memory _dst) external override onlyOwner {
         //  @dev No need to check if _dst is a valid BTP format address
         //  since it was checked when adding route at the beginning
         //  If _dst does not match, revert()
@@ -513,7 +513,7 @@ contract BMCManagement is IBMCManagement, Initializable {
     function addRelay(string memory _link, address[] memory _addr)
         external
         override
-        hasPermission
+        onlyOwner
     {
         require(links[_link].isConnected == true, "NotExistsLink");
         links[_link].relays = _addr;
@@ -530,7 +530,7 @@ contract BMCManagement is IBMCManagement, Initializable {
     function removeRelay(string memory _link, address _addr)
         external
         override
-        hasPermission
+        onlyOwner
     {
         require(
             links[_link].isConnected == true && links[_link].relays.length != 0,
