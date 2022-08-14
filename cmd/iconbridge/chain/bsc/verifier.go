@@ -11,6 +11,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	big1 = big.NewInt(1)
+)
+
 type VerifierOptions struct {
 	BlockHeight uint64          `json:"blockHeight"`
 	BlockHash   common.HexBytes `json:"parentHash"`
@@ -27,9 +31,7 @@ type Verifier struct {
 func (vr *Verifier) Next() *big.Int {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
-	h := new(big.Int)
-	h.SetString(vr.next.String(), 10)
-	return h
+	return (&big.Int{}).Set(vr.next)
 }
 
 func (vr *Verifier) Verify(h *types.Header) error {
@@ -42,7 +44,7 @@ func (vr *Verifier) Verify(h *types.Header) error {
 		return errors.New("Unexpected Hash")
 	}
 	vr.parentHash = h.Hash()
-	vr.next.Add(vr.next, big.NewInt(1)) // next height should have vr.parentHash as parentHash
+	vr.next.Add(vr.next, big1) // next height should have vr.parentHash as parentHash
 	return nil
 }
 
