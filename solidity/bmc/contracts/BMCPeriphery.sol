@@ -119,8 +119,8 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
             }
             rxHeight = rps[i].height;
             for (uint256 j = 0; j < rps[i].events.length; j++) {
-                require(ev.nextBmc.compareTo(bmcBtpAddress), "Invalid Next BMC");
                 ev = rps[i].events[j];
+                require(ev.nextBmc.compareTo(bmcBtpAddress), "Invalid Next BMC");
                 rxSeq++;
                 if (ev.seq < rxSeq) {
                     rxSeq--;
