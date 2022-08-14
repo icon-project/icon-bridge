@@ -216,7 +216,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		r.log.Warnf("receiveLoop: opts.Concurrency (%d): value out of range [%d, %d]: setting to default %d",
 			concurrency, 1, monitorBlockMaxConcurrency, opts.Concurrency)
 	}
-
+	r.log.Infof("receiveLoop: concurrency: %d", opts.Concurrency)
 	var vr *Verifier
 	if r.opts.Verifier != nil {
 		vr, err = r.newVerifer(r.opts.Verifier)

@@ -42,12 +42,12 @@ const (
 
 const RECONNECT_ON_UNEXPECTED_HEIGHT = "Unexpected Block Height. Should Reconnect"
 const (
-	SyncVerifierMaxConcurrency = 300 // 150
 	MonitorBlockMaxConcurrency = 300
 )
 
 type ReceiverOptions struct {
-	Verifier *VerifierOptions `json:"verifier"`
+	SyncConcurrency uint64           `json:"syncConcurrency"`
+	Verifier        *VerifierOptions `json:"verifier"`
 }
 
 func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
@@ -149,7 +149,7 @@ func (r *receiver) newVerifer(opts *VerifierOptions) (*Verifier, error) {
 	return &vr, nil
 }
 
-func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
+func (r *receiver) syncVerifier(vr *Verifier, height int64, concurrency uint64) error {
 	if height == vr.Next() {
 		return nil
 	}
@@ -176,7 +176,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 	r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Info("syncVerifier: start")
 
 	for vr.Next() < height {
-		rqch := make(chan *req, SyncVerifierMaxConcurrency)
+		rqch := make(chan *req, concurrency)
 		for i := vr.Next(); len(rqch) < cap(rqch); i++ {
 			rqch <- &req{height: i}
 		}
@@ -262,6 +262,14 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 
 func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64, callback func(rs []*chain.Receipt) error) (err error) {
 
+	concurrency := r.opts.SyncConcurrency
+	if concurrency < 1 {
+		concurrency = 1
+	} else if concurrency > MonitorBlockMaxConcurrency {
+		concurrency = MonitorBlockMaxConcurrency
+	}
+	r.log.Infof("receiveLoop: concurrency: %d", concurrency)
+
 	blockReq, logFilter := r.blockReq, r.logFilter // copy
 
 	blockReq.Height, logFilter.seq = NewHexInt(int64(startHeight)), startSeq
@@ -283,10 +291,10 @@ func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64
 		Receipts       []*chain.Receipt
 	}
 
-	ech := make(chan error)                                           // error channel
-	rech := make(chan struct{}, 1)                                    // reconnect channel
-	bnch := make(chan *BlockNotification, MonitorBlockMaxConcurrency) // block notification channel
-	brch := make(chan *res, cap(bnch))                                // block result channel
+	ech := make(chan error)                            // error channel
+	rech := make(chan struct{}, 1)                     // reconnect channel
+	bnch := make(chan *BlockNotification, concurrency) // block notification channel
+	brch := make(chan *res, cap(bnch))                 // block result channel
 
 	reconnect := func() {
 		select {
@@ -351,7 +359,7 @@ loop:
 
 			// sync verifier
 			if vr != nil {
-				if err := r.syncVerifier(vr, next); err != nil {
+				if err := r.syncVerifier(vr, next, concurrency); err != nil {
 					return errors.Wrapf(err, "sync verifier: %v", err)
 				}
 			}
