@@ -32,7 +32,6 @@ contract('ParseAddress Library Unit Test', (accounts) => {
             const account = "0x70e789d2f5d469ea30e0525dbfdd5515d6ead30d";
             const res = await cpa.convertAddressToString(account.toLowerCase());
 
-            assert.equal(res, account);
             assert.isTrue(web3.utils.checkAddressChecksum(res));
         });
     });
