@@ -22,7 +22,7 @@ import (
 const (
 	BlockInterval              = 3 * time.Second
 	BlockHeightPollInterval    = 60 * time.Second
-	monitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
+	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
 )
 const RPCCallRetry = 5
 
@@ -41,6 +41,12 @@ func NewReceiver(
 	if err != nil {
 		return nil, err
 	}
+	if r.opts.SyncConcurrency < 1 {
+		r.opts.SyncConcurrency = 1
+	} else if r.opts.SyncConcurrency > MonitorBlockMaxConcurrency {
+		r.opts.SyncConcurrency = MonitorBlockMaxConcurrency
+	}
+
 	r.cls, r.bmcs, err = newClients(urls, src.ContractAddress(), r.log)
 	if err != nil {
 		return nil, err
@@ -206,24 +212,13 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		return errors.New("receiveLoop: invalid options: <nil>")
 	}
 
-	if opts.Concurrency < 1 || opts.Concurrency > monitorBlockMaxConcurrency {
-		concurrency := opts.Concurrency
-		if concurrency < 1 {
-			opts.Concurrency = 1
-		} else {
-			opts.Concurrency = monitorBlockMaxConcurrency
-		}
-		r.log.Warnf("receiveLoop: opts.Concurrency (%d): value out of range [%d, %d]: setting to default %d",
-			concurrency, 1, monitorBlockMaxConcurrency, opts.Concurrency)
-	}
-	r.log.Infof("receiveLoop: concurrency: %d", opts.Concurrency)
 	var vr *Verifier
 	if r.opts.Verifier != nil {
 		vr, err = r.newVerifer(r.opts.Verifier)
 		if err != nil {
 			return err
 		}
-		err = r.syncVerifier(vr, int64(opts.StartHeight), int(opts.Concurrency))
+		err = r.syncVerifier(vr, int64(opts.StartHeight), int(r.opts.SyncConcurrency))
 		if err != nil {
 			return errors.Wrapf(err, "receiveLoop: syncVerifier: %v", err)
 		}
@@ -232,7 +227,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 	// block notification channel
 	// (buffered: to avoid deadlock)
 	// increase concurrency parameter for faster sync
-	bnch := make(chan *BlockNotification, opts.Concurrency)
+	bnch := make(chan *BlockNotification, r.opts.SyncConcurrency)
 
 	heightTicker := time.NewTicker(BlockInterval)
 	defer heightTicker.Stop()

@@ -101,6 +101,12 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]inter
 		return nil, errors.Wrapf(err, "ef.Addr.Value: %v", err)
 	}
 
+	if recvOpts.SyncConcurrency < 1 {
+		recvOpts.SyncConcurrency = 1
+	} else if recvOpts.SyncConcurrency > MonitorBlockMaxConcurrency {
+		recvOpts.SyncConcurrency = MonitorBlockMaxConcurrency
+	}
+
 	recvr := &receiver{
 		log:      l,
 		src:      src,
@@ -262,14 +268,6 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64, concurrency uint64) 
 
 func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64, callback func(rs []*chain.Receipt) error) (err error) {
 
-	concurrency := r.opts.SyncConcurrency
-	if concurrency < 1 {
-		concurrency = 1
-	} else if concurrency > MonitorBlockMaxConcurrency {
-		concurrency = MonitorBlockMaxConcurrency
-	}
-	r.log.Infof("receiveLoop: concurrency: %d", concurrency)
-
 	blockReq, logFilter := r.blockReq, r.logFilter // copy
 
 	blockReq.Height, logFilter.seq = NewHexInt(int64(startHeight)), startSeq
@@ -291,10 +289,10 @@ func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64
 		Receipts       []*chain.Receipt
 	}
 
-	ech := make(chan error)                            // error channel
-	rech := make(chan struct{}, 1)                     // reconnect channel
-	bnch := make(chan *BlockNotification, concurrency) // block notification channel
-	brch := make(chan *res, cap(bnch))                 // block result channel
+	ech := make(chan error)                                       // error channel
+	rech := make(chan struct{}, 1)                                // reconnect channel
+	bnch := make(chan *BlockNotification, r.opts.SyncConcurrency) // block notification channel
+	brch := make(chan *res, cap(bnch))                            // block result channel
 
 	reconnect := func() {
 		select {
@@ -359,7 +357,7 @@ loop:
 
 			// sync verifier
 			if vr != nil {
-				if err := r.syncVerifier(vr, next, concurrency); err != nil {
+				if err := r.syncVerifier(vr, next, r.opts.SyncConcurrency); err != nil {
 					return errors.Wrapf(err, "sync verifier: %v", err)
 				}
 			}
