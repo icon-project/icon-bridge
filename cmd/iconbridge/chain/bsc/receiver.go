@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"math/rand"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -267,9 +266,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		case <-heightPoller.C:
 			if height := latestHeight(); height > latest {
 				latest = height
-				if next > latest {
-					r.log.Debugf("receiveLoop: skipping; latest=%d, next=%d", latest, next)
-				}
+				r.log.Debugf("receiveLoop: poll height; latest=%d, next=%d", latest, next)
 			}
 
 		case bn := <-bnch:
@@ -278,8 +275,9 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				if lbn != nil {
 					if vr != nil {
 						if err := vr.Verify(lbn.Header); err != nil {
-							r.log.WithFields(log.Fields{"height": bn.Height, "hash": bn.Hash}).Error("reconnect: verification failed")
-							return errors.Wrapf(err, "verification failed %_v", err)
+							r.log.WithFields(log.Fields{"height": bn.Height, "hash": bn.Hash}).Error("verification failed")
+							break
+							// return errors.Wrapf(err, "verification failed %v", err)
 						}
 					}
 					if err := callback(lbn); err != nil {
@@ -294,8 +292,9 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			for len(bnch) > 0 {
 				<-bnch
 			}
+
 		default:
-			if next >= latest {
+			if next > latest {
 				time.Sleep(10 * time.Millisecond)
 				continue
 			}
@@ -317,15 +316,10 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				switch {
 				case q.err != nil:
 					if q.retry > 0 {
-						if !strings.HasSuffix(q.err.Error(), "requested block number greater than current block number") {
-							q.retry--
-							q.v, q.err = nil, nil
-							qch <- q
-							continue
-						}
-						if latest >= q.h {
-							latest = q.h - 1
-						}
+						q.retry--
+						q.v, q.err = nil, nil
+						qch <- q
+						continue
 					}
 					r.log.Debugf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash(), q.err)
 					bns = append(bns, nil)
