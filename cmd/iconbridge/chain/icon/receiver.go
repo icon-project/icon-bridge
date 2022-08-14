@@ -334,12 +334,18 @@ loop:
 					func(conn *websocket.Conn) {},
 					func(c *websocket.Conn, err error) {})
 				if err != nil {
-					if websocket.IsUnexpectedCloseError(err) {
-						reconnect() // unexpected error
-						r.log.WithFields(log.Fields{"error": err}).Error("reconnect: monitor block error")
-					} else if !errors.Is(err, context.Canceled) {
-						ech <- err
+					if errors.Is(err, context.Canceled) {
+						return
 					}
+					time.Sleep(time.Second * 5)
+					reconnect()
+					r.log.WithFields(log.Fields{"error": err}).Error("reconnect: monitor block error")
+					// if websocket.IsUnexpectedCloseError(err) {
+					// 	reconnect() // unexpected error
+					// 	r.log.WithFields(log.Fields{"error": err}).Error("reconnect: monitor block error")
+					// } else if !errors.Is(err, context.Canceled) {
+					// 	ech <- err
+					// }
 				}
 			}(ctxMonitorBlock, cancelMonitorBlock)
 
