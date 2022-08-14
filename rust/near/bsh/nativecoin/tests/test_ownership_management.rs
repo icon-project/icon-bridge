@@ -39,7 +39,6 @@ fn add_owner_new_owner() {
         bmc(),
         "0x1.near".into(),
         <Coin>::new(NATIVE_COIN.to_owned()),
-        1000.into()
     );
 
     contract.add_owner(carol());
@@ -61,7 +60,6 @@ fn add_owner_existing_owner() {
         bmc(),
         "0x1.near".into(),
         <Coin>::new(NATIVE_COIN.to_owned()),
-        1000.into()
     );
 
     contract.add_owner(alice());
@@ -77,7 +75,6 @@ fn add_owner_permission() {
         bmc(),
         "0x1.near".into(),
         <Coin>::new(NATIVE_COIN.to_owned()),
-        1000.into()
     );
     testing_env!(context(chuck()));
     contract.add_owner(carol());
@@ -92,7 +89,6 @@ fn remove_owner_existing_owner() {
         bmc(),
         "0x1.near".into(),
         <Coin>::new(NATIVE_COIN.to_owned()),
-        1000.into()
     );
 
     contract.add_owner(carol());
@@ -116,7 +112,6 @@ fn remove_owner_permission() {
         bmc(),
         "0x1.near".into(),
         <Coin>::new(NATIVE_COIN.to_owned()),
-        1000.into()
     );
 
     contract.add_owner(carol());
@@ -135,7 +130,6 @@ fn remove_owner_last_owner() {
         bmc(),
         "0x1.near".into(),
         <Coin>::new(NATIVE_COIN.to_owned()),
-        1000.into()
     );
 
     contract.remove_owner(alice());
@@ -151,7 +145,6 @@ fn remove_owner_non_existing_owner() {
         bmc(),
         "0x1.near".into(),
         <Coin>::new(NATIVE_COIN.to_owned()),
-        1000.into()
     );
 
     contract.remove_owner(carol());

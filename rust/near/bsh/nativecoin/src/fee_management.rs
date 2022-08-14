@@ -31,15 +31,20 @@ impl NativeCoinService {
         self.transfer_fees(&fee_aggregator);
     }
 
-    pub fn set_fee_ratio(&mut self, fee_numerator: U128, fixed_fee: U128) {
+    pub fn set_fee_ratio(&mut self, coin_id: &CoinId, fee_numerator: U128, fixed_fee: U128) {
         self.assert_have_permission();
-        self.assert_valid_fee_ratio(fee_numerator.into());
-        //TODO: Fix
+        self.assert_valid_fee_ratio(fee_numerator.into(), fixed_fee.into());
+
+        let mut coin = self.coins.get(&coin_id).unwrap();
+        coin.metadata_mut().fee_numerator_mut().add(fee_numerator.into()).unwrap();
+        coin.metadata_mut().fixed_fee_mut().add(fixed_fee.into()).unwrap();
+
+        self.coins.set(coin_id, &coin)
     }
 
-    pub fn calculate_coin_transfer_fee(&self, amount: U128) -> u128 {
-        //TODO: Fix
-        0
+    pub fn calculate_coin_transfer_fee(&self, amount: U128, coin: &Asset<WrappedNativeCoin>) -> Result<u128, String> {
+        let mut fee = (u128::from(amount) * coin.metadata().fee_numerator()) / FEE_DENOMINATOR;
+        fee.add(coin.metadata().fixed_fee()).map(|fee| *fee)
     }
 }
 

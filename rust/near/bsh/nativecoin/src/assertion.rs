@@ -46,10 +46,15 @@ impl NativeCoinService {
         );
     }
 
-    pub fn assert_valid_fee_ratio(&self, fee_numerator: u128) {
+    pub fn assert_valid_fee_ratio(&self, fee_numerator: u128, fixed_fee: u128) {
         require!(
             fee_numerator <= FEE_DENOMINATOR,
             format!("{}", BshError::InvalidSetting),
+        );
+
+        require!(
+            fee_numerator >= 0 && fixed_fee >= 0,
+            format!("{}", BshError::LessThanZero),
         );
     }
 

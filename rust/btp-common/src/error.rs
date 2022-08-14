@@ -180,6 +180,7 @@ pub mod errors {
         SameSenderReceiver,
         AccountNotExist,
         TokenNotRegistered,
+        LessThanZero,
     }
 
     impl Exception for BshError {
@@ -270,8 +271,13 @@ pub mod errors {
                 }
                 BshError::Unknown => {
                     write!(f, "{}", "Unknown")
+                },
+                BshError::LessThanZero => {
+                    write!(f, "{}", "LessThanZero")
+                },
+                BshError::Failure => {
+                    write!(f, "{}", "Failure")
                 }
-                _ => todo!(),
             }
         }
     }

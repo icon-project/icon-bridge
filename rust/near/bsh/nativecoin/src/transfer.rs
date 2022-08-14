@@ -45,7 +45,7 @@ impl NativeCoinService {
         mut amount: u128,
     ) -> Result<TransferableAsset, String> {
         let coin = self.coins.get(&coin_id).unwrap();
-        let fees = self.calculate_coin_transfer_fee(amount.into());
+        let fees = self.calculate_coin_transfer_fee(amount.into(), &coin)?;
 
         self.assert_have_sufficient_deposit(&sender_id, &coin_id, amount, Some(fees));
 
@@ -73,7 +73,7 @@ impl NativeCoinService {
         amount: u128,
     ) {
         self.assert_sender_is_not_receiver(sender_id, receiver_id);
-        self.assert_have_sufficient_deposit(sender_id, coin_id, amount, None);
+        self.assert_have_sufficient_deposit(sender_id, coin_id, amount, None); //TODO: Convert to ensure
 
         let mut sender_balance = self.balances.get(sender_id, coin_id).unwrap();
         sender_balance.deposit_mut().sub(amount).unwrap();
