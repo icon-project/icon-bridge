@@ -197,7 +197,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64, concurrency int) err
 		}
 	}
 
-	r.log.WithFields(log.Fields{"height": vr.Next().String()}).Debug("syncVerifier: complete")
+	r.log.WithFields(log.Fields{"height": vr.Next().String()}).Info("syncVerifier: complete")
 	return nil
 }
 
