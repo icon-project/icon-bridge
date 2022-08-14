@@ -77,17 +77,15 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
     }
 
     function requireRegisteredRelay(string calldata _prev) internal view {
-        address relay = address(0);
         address[] memory relays = IBMCManagement(bmcManagement).getLinkRelays(
             _prev
         );
         for (uint256 i = 0; i < relays.length; i++) {
             if (msg.sender == relays[i]) {
-                relay = msg.sender;
-                break;
+                return;
             }
         }
-        require(relay == msg.sender, BMCRevertUnauthorized);
+        revert(BMCRevertUnauthorized);
     }
 
     /**
