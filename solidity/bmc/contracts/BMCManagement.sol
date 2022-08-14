@@ -81,6 +81,7 @@ contract BMCManagement is IBMCManagement, Initializable {
        @param _owner    Address of a new Onwer.
    */
     function addOwner(address _owner) external override onlyOwner {
+        require(!_owners[_owner], "Already Exists");
         _owners[_owner] = true;
         numOfOwner++;
     }
