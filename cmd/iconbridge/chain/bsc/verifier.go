@@ -2,13 +2,13 @@ package bsc
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"sync"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/icon-project/icon-bridge/common"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -38,10 +38,10 @@ func (vr *Verifier) Verify(h *types.Header) error {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
 	if vr.next.Cmp(h.Number) != 0 {
-		return errors.New("Unexpected height")
+		return fmt.Errorf("Unexpected height: Got %v Expected %v", h.Number.String(), vr.next.String())
 	}
 	if !bytes.Equal(h.ParentHash.Bytes(), vr.parentHash.Bytes()) {
-		return errors.New("Unexpected Hash")
+		return fmt.Errorf("Unexpected Hash(%v): Got %v Expected %v", h.Number.String(), h.ParentHash.Hex(), vr.parentHash.Hex())
 	}
 	vr.parentHash = h.Hash()
 	vr.next.Add(vr.next, big1) // next height should have vr.parentHash as parentHash

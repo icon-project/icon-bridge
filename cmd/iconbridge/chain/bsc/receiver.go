@@ -102,7 +102,7 @@ func (r *receiver) newVerifer(opts *VerifierOptions) (*Verifier, error) {
 		return nil, err
 	}
 	if !bytes.Equal(header.ParentHash.Bytes(), vr.parentHash.Bytes()) {
-		return nil, errors.New("Unexpected Hash")
+		return nil, fmt.Errorf("Unexpected Hash(%v): Got %v Expected %v", opts.BlockHeight, header.ParentHash.Hex(), vr.parentHash.Hex())
 	}
 	return &vr, nil
 }
