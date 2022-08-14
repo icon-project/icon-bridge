@@ -83,9 +83,14 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         );
     }
 
+    /**
+        @notice Get name of nativecoin
+        @dev caller can be any
+    */
     function getNativeCoinName() external override view returns (string memory) {
         return nativeCoinName;
     }
+
     /**
        @notice Adding another Onwer.
        @dev Caller must be an Onwer of BTP network
@@ -270,6 +275,22 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
     {
         return (coins[_coinName] != address(0) ||
             _coinName.compareTo(nativeCoinName));
+    }
+
+    /**
+        @notice Get fee numerator and fixed fee
+        @dev caller can be any
+        @param _coinName Coin name
+    */
+    function getFeeRatio(string calldata _coinName)
+        external
+        override
+        view
+        returns (uint _feeNumerator, uint _fixedFee)
+    {
+        Coin memory coin = coinDetails[_coinName];
+        _feeNumerator = coin.feeNumerator;
+        _fixedFee = coin.fixedFee;
     }
 
     /**
