@@ -23,6 +23,7 @@ interface IBTSCore {
     /**
         @notice Get name of nativecoin
         @dev caller can be any
+        @return Name of nativecoin
     */
     function getNativeCoinName() external view returns (string memory);
 
@@ -119,8 +120,10 @@ interface IBTSCore {
         @notice Get fee numerator and fixed fee
         @dev caller can be any
         @param _coinName Coin name
+        @return _feeNumerator Fee numerator for given coin
+        @return _fixedFee Fixed fee for given coin
     */
-    function getFeeRatio(string calldata _coinName)
+    function feeRatio(string calldata _coinName)
         external
         view
         returns (uint _feeNumerator, uint _fixedFee);
