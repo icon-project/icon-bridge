@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"math/rand"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -23,7 +22,7 @@ import (
 const (
 	BlockInterval              = 3 * time.Second
 	BlockHeightPollInterval    = 60 * time.Second
-	monitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
+	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
 )
 const RPCCallRetry = 5
 
@@ -42,6 +41,12 @@ func NewReceiver(
 	if err != nil {
 		return nil, err
 	}
+	if r.opts.SyncConcurrency < 1 {
+		r.opts.SyncConcurrency = 1
+	} else if r.opts.SyncConcurrency > MonitorBlockMaxConcurrency {
+		r.opts.SyncConcurrency = MonitorBlockMaxConcurrency
+	}
+
 	r.cls, r.bmcs, err = newClients(urls, src.ContractAddress(), r.log)
 	if err != nil {
 		return nil, err
@@ -102,7 +107,7 @@ func (r *receiver) newVerifer(opts *VerifierOptions) (*Verifier, error) {
 	return &vr, nil
 }
 
-func (r *receiver) syncVerifier(vr *Verifier, height int64, concurrency int) error {
+func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 	if height == vr.Next().Int64() {
 		return nil
 	}
@@ -127,7 +132,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64, concurrency int) err
 	r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Debug("syncVerifier: start")
 
 	for vr.Next().Int64() < height {
-		rqch := make(chan *req, concurrency)
+		rqch := make(chan *req, r.opts.SyncConcurrency)
 		for i := vr.Next().Int64(); len(rqch) < cap(rqch); i++ {
 			rqch <- &req{height: i, retry: 5}
 		}
@@ -207,24 +212,13 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		return errors.New("receiveLoop: invalid options: <nil>")
 	}
 
-	if opts.Concurrency < 1 || opts.Concurrency > monitorBlockMaxConcurrency {
-		concurrency := opts.Concurrency
-		if concurrency < 1 {
-			opts.Concurrency = 1
-		} else {
-			opts.Concurrency = monitorBlockMaxConcurrency
-		}
-		r.log.Warnf("receiveLoop: opts.Concurrency (%d): value out of range [%d, %d]: setting to default %d",
-			concurrency, 1, monitorBlockMaxConcurrency, opts.Concurrency)
-	}
-
 	var vr *Verifier
 	if r.opts.Verifier != nil {
 		vr, err = r.newVerifer(r.opts.Verifier)
 		if err != nil {
 			return err
 		}
-		err = r.syncVerifier(vr, int64(opts.StartHeight), int(opts.Concurrency))
+		err = r.syncVerifier(vr, int64(opts.StartHeight))
 		if err != nil {
 			return errors.Wrapf(err, "receiveLoop: syncVerifier: %v", err)
 		}
@@ -233,7 +227,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 	// block notification channel
 	// (buffered: to avoid deadlock)
 	// increase concurrency parameter for faster sync
-	bnch := make(chan *BlockNotification, opts.Concurrency)
+	bnch := make(chan *BlockNotification, r.opts.SyncConcurrency)
 
 	heightTicker := time.NewTicker(BlockInterval)
 	defer heightTicker.Stop()
@@ -267,9 +261,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		case <-heightPoller.C:
 			if height := latestHeight(); height > latest {
 				latest = height
-				if next > latest {
-					r.log.Debugf("receiveLoop: skipping; latest=%d, next=%d", latest, next)
-				}
+				r.log.Debugf("receiveLoop: poll height; latest=%d, next=%d", latest, next)
 			}
 
 		case bn := <-bnch:
@@ -278,8 +270,9 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				if lbn != nil {
 					if vr != nil {
 						if err := vr.Verify(lbn.Header); err != nil {
-							r.log.WithFields(log.Fields{"height": bn.Height, "hash": bn.Hash}).Error("reconnect: verification failed")
-							return errors.Wrapf(err, "verification failed %_v", err)
+							r.log.WithFields(log.Fields{"height": bn.Height, "hash": bn.Hash}).Error("verification failed")
+							break
+							// return errors.Wrapf(err, "verification failed %v", err)
 						}
 					}
 					if err := callback(lbn); err != nil {
@@ -294,8 +287,9 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			for len(bnch) > 0 {
 				<-bnch
 			}
+
 		default:
-			if next >= latest {
+			if next > latest {
 				time.Sleep(10 * time.Millisecond)
 				continue
 			}
@@ -317,15 +311,10 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				switch {
 				case q.err != nil:
 					if q.retry > 0 {
-						if !strings.HasSuffix(q.err.Error(), "requested block number greater than current block number") {
-							q.retry--
-							q.v, q.err = nil, nil
-							qch <- q
-							continue
-						}
-						if latest >= q.h {
-							latest = q.h - 1
-						}
+						q.retry--
+						q.v, q.err = nil, nil
+						qch <- q
+						continue
 					}
 					r.log.Debugf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash(), q.err)
 					bns = append(bns, nil)

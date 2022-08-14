@@ -42,12 +42,12 @@ const (
 
 const RECONNECT_ON_UNEXPECTED_HEIGHT = "Unexpected Block Height. Should Reconnect"
 const (
-	SyncVerifierMaxConcurrency = 300 // 150
 	MonitorBlockMaxConcurrency = 300
 )
 
 type ReceiverOptions struct {
-	Verifier *VerifierOptions `json:"verifier"`
+	SyncConcurrency uint64           `json:"syncConcurrency"`
+	Verifier        *VerifierOptions `json:"verifier"`
 }
 
 func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
@@ -99,6 +99,12 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]inter
 	efAddr, err := ef.Addr.Value()
 	if err != nil {
 		return nil, errors.Wrapf(err, "ef.Addr.Value: %v", err)
+	}
+
+	if recvOpts.SyncConcurrency < 1 {
+		recvOpts.SyncConcurrency = 1
+	} else if recvOpts.SyncConcurrency > MonitorBlockMaxConcurrency {
+		recvOpts.SyncConcurrency = MonitorBlockMaxConcurrency
 	}
 
 	recvr := &receiver{
@@ -176,7 +182,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 	r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Info("syncVerifier: start")
 
 	for vr.Next() < height {
-		rqch := make(chan *req, SyncVerifierMaxConcurrency)
+		rqch := make(chan *req, r.opts.SyncConcurrency)
 		for i := vr.Next(); len(rqch) < cap(rqch); i++ {
 			rqch <- &req{height: i}
 		}
@@ -283,10 +289,10 @@ func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64
 		Receipts       []*chain.Receipt
 	}
 
-	ech := make(chan error)                                           // error channel
-	rech := make(chan struct{}, 1)                                    // reconnect channel
-	bnch := make(chan *BlockNotification, MonitorBlockMaxConcurrency) // block notification channel
-	brch := make(chan *res, cap(bnch))                                // block result channel
+	ech := make(chan error)                                       // error channel
+	rech := make(chan struct{}, 1)                                // reconnect channel
+	bnch := make(chan *BlockNotification, r.opts.SyncConcurrency) // block notification channel
+	brch := make(chan *res, cap(bnch))                            // block result channel
 
 	reconnect := func() {
 		select {
