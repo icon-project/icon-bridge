@@ -344,9 +344,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
 
         Link link = getLink(prev);
 
-        Relay relay = link.getRelays().get(Context.getOrigin());
+        Address relayAddr = Context.getCaller();
+        Relay relay = link.getRelays().get(relayAddr);
         if (relay == null) {
-            throw BMCException.unauthorized("relay not registered: " + Context.getOrigin());
+            throw BMCException.unauthorized("relay not registered: " + relayAddr);
         }
 
         byte[] rlprm = null;
@@ -398,7 +399,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         link = getLink(prev); // read the updated link state
 
         Relays relays = link.getRelays();
-        relay = relays.get(Context.getOrigin());
+        relay = relays.get(relayAddr);
         relay.setMsgCount(relay.getMsgCount().add(rxSeq.subtract(link.getRxSeq())));
         relays.put(relay.getAddress(), relay);
 
@@ -726,13 +727,14 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         BTPAddress prev = BTPAddress.valueOf(_prev);
         Link link = getLink(prev);
         Relays relays = link.getRelays();
-        if (!relays.containsKey(Context.getOrigin())) {
+        Address relayAddr = Context.getCaller();
+        if (!relays.containsKey(relayAddr)) {
             throw BMCException.unauthorized("not registered relay");
         }
         final int INDEX_LAST = 0;
         final int INDEX_NEXT = 1;
         final int INDEX_OFFSET = 2;
-        ArrayDB<String> fragments = this.fragments.at(_prev).at(Context.getOrigin());
+        ArrayDB<String> fragments = this.fragments.at(_prev).at(relayAddr);
         if (_idx < 0) {
             int last = _idx * -1;
             if (fragments.size() == 0) {
@@ -864,7 +866,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         ServiceCandidate sc = new ServiceCandidate();
         sc.setSvc(_svc);
         sc.setAddress(_addr);
-        sc.setOwner(Context.getOrigin());
+        sc.setOwner(Context.getCaller());
         serviceCandidates.add(sc);
     }
 
