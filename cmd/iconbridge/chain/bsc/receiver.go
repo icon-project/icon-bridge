@@ -289,7 +289,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			}
 
 		default:
-			if next > latest {
+			if next >= latest {
 				time.Sleep(10 * time.Millisecond)
 				continue
 			}
@@ -305,6 +305,10 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			for i := next; i < latest &&
 				len(qch) < cap(qch); i++ {
 				qch <- &bnq{i, nil, nil, RPCCallRetry} // fill bch with requests
+			}
+			if len(qch) == 0 {
+				r.log.Error("Fatal: Zero length of query channel. Avoiding deadlock")
+				continue
 			}
 			bns := make([]*BlockNotification, 0, len(qch))
 			for q := range qch {
