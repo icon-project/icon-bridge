@@ -12,7 +12,7 @@ deploy_javascore_bmc() {
 
   if [ ! -f icon.addr.bmcbtp ]; then
     echo "deploying javascore BMC"
-    icon_block_height=$(goloop_lastblock | jq -r .height)
+    local icon_block_height=$(goloop_lastblock | jq -r .height)
     echo $icon_block_height > icon.chain.height
     echo $(URI=$ICON_ENDPOINT HEIGHT=$(decimal2Hex $(($icon_block_height - 1))) $ICONBRIDGE_BIN_DIR/iconvalidators | jq -r .hash) > icon.chain.validators
     goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bmc.jar \
@@ -80,7 +80,7 @@ configure_javascore_add_bmc_owner() {
 configure_javascore_bmc_setFeeAggregator() {
   echo "bmc setFeeAggregator"
   cd $CONFIG_DIR
-  FA=$(cat $CONFIG_DIR/keystore/icon.fa.wallet.json | jq -r .address)
+  local FA=$(cat $CONFIG_DIR/keystore/icon.fa.wallet.json | jq -r .address)
   goloop rpc sendtx call --to $(cat icon.addr.bmc) \
     --method setFeeAggregator \
     --param _addr=${FA} | jq -r . >tx/setFeeAggregator.icon
