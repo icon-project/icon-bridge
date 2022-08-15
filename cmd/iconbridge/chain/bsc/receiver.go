@@ -249,12 +249,10 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		}
 		return height
 	}
-
 	next, latest := opts.StartHeight, latestHeight()
 
 	// last unverified block notification
 	var lbn *BlockNotification
-
 	// start monitor loop
 	for {
 		select {
@@ -269,22 +267,30 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				latest = height
 				r.log.WithFields(log.Fields{"latest": latest, "next": next}).Debug("poll height")
 			}
-
 		case bn := <-bnch:
 			// process all notifications
 			for ; bn != nil; next++ {
 				if lbn != nil {
-					if vr != nil {
-						if err := vr.Verify(lbn.Header, bn.Header); err != nil {
-							r.log.WithFields(log.Fields{"height": lbn.Height, "hash": lbn.Hash}).Error("verification failed ", err)
-							lbn = nil
-							next -= 1
-							r.log.WithFields(log.Fields{"height": next}).Info("Refetch ")
+					if bn.Height.Cmp(lbn.Height) == 0 {
+						if !bytes.Equal(bn.Header.ParentHash.Bytes(), lbn.Header.ParentHash.Bytes()) {
+							r.log.WithFields(log.Fields{"lbnHash": lbn.Header.ParentHash, "bnHash": bn.Hash}).Error("verification failed on retry ")
 							break
 						}
-					}
-					if err := callback(lbn); err != nil {
-						return errors.Wrapf(err, "receiveLoop: callback: %v", err)
+					} else {
+						if vr != nil {
+							if err := vr.Verify(lbn.Header, bn.Header); err != nil {
+								r.log.WithFields(log.Fields{
+									"height":     lbn.Height,
+									"lbnHash":    lbn.Hash,
+									"nextHeight": next,
+									"bnHash":     bn.Hash}).Error("verification failed ", err)
+								next--
+								break
+							}
+						}
+						if err := callback(lbn); err != nil {
+							return errors.Wrapf(err, "receiveLoop: callback: %v", err)
+						}
 					}
 				}
 				if lbn, bn = bn, nil; len(bnch) > 0 {
@@ -296,7 +302,6 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				t := <-bnch
 				r.log.WithFields(log.Fields{"lenBnch": len(bnch), "height": t.Height}).Info("remove unprocessed block noitification")
 			}
-
 		default:
 			if next >= latest {
 				time.Sleep(10 * time.Millisecond)
