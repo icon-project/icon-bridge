@@ -53,7 +53,6 @@ fn deposit_native_coin() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     testing_env!(context(chuck(), 100));
 
@@ -84,7 +83,6 @@ fn withdraw_native_coin() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     let coin_id = contract.coin_id(nativecoin.name().to_owned());
     testing_env!(context(chuck(), 1000));
@@ -134,7 +132,6 @@ fn withdraw_native_coin_higher_amount() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     let coin_id = contract.coin_id(nativecoin.name().to_owned());
     testing_env!(context(chuck(), 100));
@@ -169,7 +166,6 @@ fn external_transfer() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     testing_env!(context(chuck(), 1000));
     let coin_id = contract.coin_id(nativecoin.name().to_owned());
@@ -192,7 +188,7 @@ fn external_transfer() {
         Request::new(
             chuck().to_string(),
             destination.account_id().to_string(),
-            vec![TransferableAsset::new(nativecoin.name().to_owned(), 900, 99)]
+            vec![TransferableAsset::new(nativecoin.name().to_owned(), 899, 100)]
         )
     )
 }
@@ -212,7 +208,6 @@ fn handle_success_response_native_coin_external_transfer() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     testing_env!(context(chuck(), 1000));
     let coin_id = contract.coin_id(nativecoin.name().to_owned());
@@ -265,7 +260,7 @@ fn handle_success_response_native_coin_external_transfer() {
         vec![AccumulatedAssetFees {
             name: nativecoin.name().to_string(),
             network: nativecoin.network().to_string(),
-            accumulated_fees: 99
+            accumulated_fees: 100
         }]
     );
 }
@@ -292,7 +287,6 @@ fn handle_success_response_icx_coin_external_transfer() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
 
     let icx_coin = Coin::new(ICON_COIN.to_owned());
@@ -388,7 +382,7 @@ fn handle_success_response_icx_coin_external_transfer() {
             AccumulatedAssetFees {
                 name: icx_coin.name().to_string(),
                 network: icx_coin.network().to_string(),
-                accumulated_fees: 80
+                accumulated_fees: 81
             }
         ]
     );
@@ -411,7 +405,6 @@ fn handle_failure_response_native_coin_external_transfer() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     testing_env!(context(chuck(), 1000));
     let coin_id = contract.coin_id(nativecoin.name().to_owned());
@@ -449,12 +442,12 @@ fn handle_failure_response_native_coin_external_transfer() {
     contract.handle_btp_message(btp_message.try_into().unwrap());
 
     let result = contract.balance_of(alice(), contract.coin_id(nativecoin.name().to_owned()));
-    assert_eq!(result, U128::from(99));
+    assert_eq!(result, U128::from(100));
 
     let result = contract.account_balance(chuck(), contract.coin_id(nativecoin.name().to_owned()));
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(1).unwrap();
-    expected.refundable_mut().add(900).unwrap();
+    expected.refundable_mut().add(899).unwrap();
 
     assert_eq!(result, Some(expected));
 
@@ -465,7 +458,7 @@ fn handle_failure_response_native_coin_external_transfer() {
         vec![AccumulatedAssetFees {
             name: nativecoin.name().to_string(),
             network: nativecoin.network().to_string(),
-            accumulated_fees: 99
+            accumulated_fees: 100
         }]
     );
 }
@@ -493,7 +486,6 @@ fn handle_failure_response_icx_coin_external_transfer() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
 
     let icx_coin = Coin::new(ICON_COIN.to_owned());
@@ -562,12 +554,12 @@ fn handle_failure_response_icx_coin_external_transfer() {
     contract.handle_btp_message(btp_message.try_into().unwrap());
 
     let result = contract.balance_of(alice(), contract.coin_id(icx_coin.name().to_owned()));
-    assert_eq!(result, U128::from(80));
+    assert_eq!(result, U128::from(81));
 
     let result = contract.account_balance(chuck(), contract.coin_id(icx_coin.name().to_owned()));
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(100).unwrap();
-    expected.refundable_mut().add(720).unwrap();
+    expected.refundable_mut().add(719).unwrap();
 
     assert_eq!(result, Some(expected));
     let accumulted_fees = contract.accumulated_fees();
@@ -583,7 +575,7 @@ fn handle_failure_response_icx_coin_external_transfer() {
             AccumulatedAssetFees {
                 name: icx_coin.name().to_string(),
                 network: icx_coin.network().to_string(),
-                accumulated_fees: 80
+                accumulated_fees: 81
             }
         ]
     );
@@ -610,7 +602,6 @@ fn reclaim_icx_coin() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
 
     let icx_coin = Coin::new(ICON_COIN.to_owned());
@@ -671,7 +662,7 @@ fn reclaim_icx_coin() {
     let result = contract.account_balance(chuck(), coin_id.clone());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(800).unwrap();
-    expected.refundable_mut().add(20).unwrap();
+    expected.refundable_mut().add(19).unwrap();
     
     assert_eq!(result, Some(expected));
 }
@@ -691,7 +682,6 @@ fn external_transfer_higher_amount() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     testing_env!(context(chuck(), 1000));
     let coin_id = contract.coin_id(nativecoin.name().to_owned());
@@ -716,7 +706,6 @@ fn external_transfer_unregistered_coin() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     testing_env!(context(chuck(), 1000));
 
@@ -748,7 +737,6 @@ fn external_transfer_nil_balance() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
 
     contract.register(icx_coin.clone());
@@ -776,7 +764,6 @@ fn external_transfer_batch() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     testing_env!(context(chuck(), 1000));
     let coin_id = contract.coin_id(nativecoin.name().to_owned());
@@ -809,7 +796,6 @@ fn external_transfer_batch_higher_amount() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     testing_env!(context(chuck(), 1000));
     let coin_id = contract.coin_id(nativecoin.name().to_owned());
@@ -834,7 +820,6 @@ fn external_transfer_batch_unregistered_coin() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     testing_env!(context(chuck(), 1000));
     let coin_id = contract.coin_id(nativecoin.name().to_owned());
@@ -870,7 +855,6 @@ fn external_transfer_batch_nil_balance() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
 
     contract.register(icx_coin.clone());

@@ -7,7 +7,7 @@ use libraries::{
     types::messages::BtpMessage, types::messages::SerializedMessage,
     types::messages::TokenServiceMessage, types::messages::TokenServiceType, types::Balances,
     types::Math, types::Network, types::Owners,
-    types::Requests, types::StorageBalances, types::Asset, types::AssetFees, types::Assets,
+    types::Requests, types::StorageBalances, types::Asset, types::AssetFees, types::Assets, types::AssetMetadata
 };
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LazyOption;

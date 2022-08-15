@@ -59,7 +59,6 @@ fn handle_fee_gathering() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     testing_env!(context(chuck(), 1000));
     let coin_id = contract.coin_id(nativecoin.name().to_owned());
@@ -111,7 +110,7 @@ fn handle_fee_gathering() {
         AccumulatedAssetFees{
             name: nativecoin.name().to_string(),
             network: nativecoin.network().to_string(),
-            accumulated_fees: 99
+            accumulated_fees: 100
         }
     ]);
 
@@ -129,5 +128,5 @@ fn handle_fee_gathering() {
     ]);
 
     let result = contract.balance_of(alice(), contract.coin_id(nativecoin.name().to_owned()));
-    assert_eq!(result, U128::from(900));
+    assert_eq!(result, U128::from(899));
 }

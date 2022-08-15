@@ -65,7 +65,6 @@ fn handle_transfer_mint_registered_icx() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into(),
     );
 
     let destination =

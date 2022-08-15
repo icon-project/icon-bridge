@@ -50,7 +50,6 @@ fn register_token() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
@@ -89,7 +88,6 @@ fn register_existing_token() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
@@ -114,7 +112,6 @@ fn register_token_permission() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     testing_env!(context(chuck(), 0));
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
@@ -132,7 +129,6 @@ fn get_registered_coin_id() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     let coin_id = contract.coin_id("NEAR".to_string());
     let expected = env::sha256(nativecoin.name().as_bytes());
@@ -150,7 +146,6 @@ fn get_non_exist_coin_id() {
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
-        1000.into()
     );
     let coin_id = contract.coin_id("ICON".to_string());
 }
