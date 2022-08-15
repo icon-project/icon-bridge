@@ -66,7 +66,7 @@ type senderOptions struct {
 	GasLimit         uint64  `json:"gas_limit"`
 	BoostGasPrice    float64 `json:"boost_gas_price"`
 	TxDataSizeLimit  uint64  `json:"tx_data_size_limit"`
-	BalanceThreshold uint64  `json:"balance_threshold"`
+	BalanceThreshold big.Int `json:"balance_threshold"`
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
@@ -183,7 +183,7 @@ func (s *sender) Segment(
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
 	cl, _ := s.jointClient()
 	bal, err := cl.GetBalance(ctx, s.w.Address())
-	return bal, (&big.Int{}).SetUint64(s.opts.BalanceThreshold), err
+	return bal, &s.opts.BalanceThreshold, err
 
 }
 
