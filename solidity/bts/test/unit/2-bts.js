@@ -54,12 +54,32 @@ contract("BTSCore Unit Tests", (accounts) => {
         );
     });
 
-    it.skip("Scenario 5: Should allow contract owner to update a new URI", async () => {
-        // new URL in no longer available
+    it("Scenario 5: Should not allow any clients (even a contract owner) to call a handleResponseService()", async () => {
+        //  This function should be called only by BTSPeriphery contract
+        let RC_OK = 0;
+        let _coin = "ICON";
+        let _value = 10000;
+        let _fee = 1;
+        let _rspCode = RC_OK;
+        await truffleAssert.reverts(
+            bts_core.handleResponseService.call(
+                accounts[0],
+                _coin,
+                _value,
+                _fee,
+                _rspCode
+            ),
+            "Unauthorized"
+        );
     });
 
-    it.skip("Scenario 6: Should revert when arbitrary client update a new URI", async () => {
-        // new URL in no longer available
+    it("Scenario 6: Should not allow any clients (even a contract owner) to call a transferFees()", async () => {
+        //  This function should be called only by BTSPeriphery contract
+        let _fa = "btp://1234.iconee/0x1234567812345678";
+        await truffleAssert.reverts(
+            bts_core.transferFees.call(_fa),
+            "Unauthorized"
+        );
     });
 
     it("Scenario 7: Should allow contract owner to update fee ratio", async () => {
@@ -258,12 +278,24 @@ contract("BTSCore Unit Tests", (accounts) => {
         await bts_core.updateBTSPeriphery(accounts[3], {from: accounts[0]});
     });
 
-    it.skip("Scenario 22: Should allow new owner to update the new URI", async () => {
-        // new URI no longer available
+    it("Scenario 22: Should not allow any clients (even a contract owner) to call a refund()", async () => {
+        //  This function should be called only by itself (BTSCore contract)
+        let _coin = "ICON";
+        let _value = 10000;
+        await truffleAssert.reverts(
+            bts_core.refund.call(accounts[0], _coin, _value),
+            "Unauthorized"
+        );
     });
 
-    it.skip("Scenario 23: Should also allow old owner to update the new URI - After adding new Owner", async () => {
-        // new URI no longer available
+    it("Scenario 23: Should not allow any clients (even a contract owner) to call a mint()", async () => {
+        //  This function should be called only by BTSPeriphery contract
+        let _coin = "ICON";
+        let _value = 10000;
+        await truffleAssert.reverts(
+            bts_core.mint.call(accounts[0], _coin, _value),
+            "Unauthorized"
+        );
     });
 
     it("Scenario 24: Should allow new owner to update new fee ratio", async () => {
@@ -392,8 +424,19 @@ contract("BTSCore Unit Tests", (accounts) => {
         );
     });
 
-    it.skip("Scenario 33: Should revert when removed Owner tries to update the new URI", async () => {
-        // new URI no longer available
+    it("Scenario 33: Should succeed when a client, which owns a refundable, tries to reclaim", async () => {
+        let _coin = "TRON";
+        let _value = 10000;
+        let _id = await bts_core.coinId(_coin);
+        await bts_core.mintMock(bts_core.address, _id, _value);
+        await bts_core.setRefundableBalance(accounts[5], _coin, _value);
+        let balanceBefore = await bts_core.balanceOf(accounts[5], _coin);
+        await bts_core.reclaim(_coin, _value, { from: accounts[5] });
+        let balanceAfter = await bts_core.balanceOf(accounts[5], _coin);
+        assert(
+            web3.utils.BN(balanceAfter._userBalance).toNumber() ===
+            web3.utils.BN(balanceBefore._userBalance).toNumber() + _value
+        );
     });
 
     it("Scenario 34: Should revert when removed Owner tries to update new fee ratio", async () => {
@@ -498,68 +541,7 @@ contract("BTSCore Unit Tests", (accounts) => {
         );
     });
 
-    it("Scenario 40: Should succeed when a client, which owns a refundable, tries to reclaim", async () => {
-        let _coin = "TRON";
-        let _value = 10000;
-        let _id = await bts_core.coinId(_coin);
-        await bts_core.mintMock(bts_core.address, _id, _value);
-        await bts_core.setRefundableBalance(accounts[5], _coin, _value);
-        let balanceBefore = await bts_core.balanceOf(accounts[5], _coin);
-        await bts_core.reclaim(_coin, _value, { from: accounts[5] });
-        let balanceAfter = await bts_core.balanceOf(accounts[5], _coin);
-        assert(
-            web3.utils.BN(balanceAfter._userBalance).toNumber() ===
-                web3.utils.BN(balanceBefore._userBalance).toNumber() + _value
-        );
-    });
 
-    it("Scenario 41: Should not allow any clients (even a contract owner) to call a refund()", async () => {
-        //  This function should be called only by itself (BTSCore contract)
-        let _coin = "ICON";
-        let _value = 10000;
-        await truffleAssert.reverts(
-            bts_core.refund.call(accounts[0], _coin, _value),
-            "Unauthorized"
-        );
-    });
-
-    it("Scenario 42: Should not allow any clients (even a contract owner) to call a mint()", async () => {
-        //  This function should be called only by BTSPeriphery contract
-        let _coin = "ICON";
-        let _value = 10000;
-        await truffleAssert.reverts(
-            bts_core.mint.call(accounts[0], _coin, _value),
-            "Unauthorized"
-        );
-    });
-
-    it("Scenario 43: Should not allow any clients (even a contract owner) to call a handleResponseService()", async () => {
-        //  This function should be called only by BTSPeriphery contract
-        let RC_OK = 0;
-        let _coin = "ICON";
-        let _value = 10000;
-        let _fee = 1;
-        let _rspCode = RC_OK;
-        await truffleAssert.reverts(
-            bts_core.handleResponseService.call(
-                accounts[0],
-                _coin,
-                _value,
-                _fee,
-                _rspCode
-            ),
-            "Unauthorized"
-        );
-    });
-
-    it("Scenario 44: Should not allow any clients (even a contract owner) to call a transferFees()", async () => {
-        //  This function should be called only by BTSPeriphery contract
-        let _fa = "btp://1234.iconee/0x1234567812345678";
-        await truffleAssert.reverts(
-            bts_core.transferFees.call(_fa),
-            "Unauthorized"
-        );
-    });
 });
 
 //  BTSPeriphery is being used for communications among BTSCore and BMCPeriphery contract
