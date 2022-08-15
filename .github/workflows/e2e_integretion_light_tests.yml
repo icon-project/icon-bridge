@@ -95,6 +95,10 @@ jobs:
           working-directory: ./solidity/bts
           run: yarn contract:compile
 
+        - name: Check contract size
+          working-directory: ./solidity/bts
+          run: yarn contract:size
+
         - name: BTS solidity test
           working-directory: ./solidity/bts
           run: |
