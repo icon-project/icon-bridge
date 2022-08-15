@@ -28,7 +28,7 @@ const RPCCallRetry = 5
 
 func NewReceiver(
 	src, dst chain.BTPAddress, urls []string,
-	opts map[string]interface{}, l log.Logger) (chain.Receiver, error) {
+	rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error) {
 	r := &receiver{
 		log: l,
 		src: src,
@@ -37,7 +37,7 @@ func NewReceiver(
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
-	err := r.opts.Unmarshal(opts)
+	err := json.Unmarshal(rawOpts, &r.opts)
 	if err != nil {
 		return nil, err
 	}

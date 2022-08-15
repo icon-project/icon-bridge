@@ -34,7 +34,7 @@ const (
 func NewSender(
 	src, dst chain.BTPAddress,
 	urls []string, w wallet.Wallet,
-	opts map[string]interface{}, l log.Logger) (chain.Sender, error) {
+	rawOpts json.RawMessage, l log.Logger) (chain.Sender, error) {
 	s := &sender{
 		log: l,
 		w:   w.(*wallet.EvmWallet),
@@ -44,7 +44,7 @@ func NewSender(
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
-	err := s.opts.Unmarshal(opts)
+	err := json.Unmarshal(rawOpts, &s.opts)
 	if err != nil {
 		return nil, err
 	}
