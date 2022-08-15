@@ -225,7 +225,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		case <-heightPoller.C:
 			if height := latestHeight(); height > 0 {
 				latest = height
-				r.log.Infof("receiveLoop: poll height; latest=%d, next=%d", latest, next)
+				r.log.WithFields(log.Fields{"latest": latest, "next": next}).Debug("poll height")
 			}
 
 		case bn := <-bnch:

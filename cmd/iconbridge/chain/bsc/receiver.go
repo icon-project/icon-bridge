@@ -129,7 +129,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 		retry  int64
 	}
 
-	r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Debug("syncVerifier: start")
+	r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Info("syncVerifier: start")
 
 	var prevHeader *types.Header
 	cursor := vr.Next().Int64()
@@ -267,7 +267,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		case <-heightPoller.C:
 			if height := latestHeight(); height > 0 {
 				latest = height
-				r.log.Infof("receiveLoop: poll height; latest=%d, next=%d", latest, next)
+				r.log.WithFields(log.Fields{"latest": latest, "next": next}).Debug("poll height")
 			}
 
 		case bn := <-bnch:
@@ -294,7 +294,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			// remove unprocessed notifications
 			for len(bnch) > 0 {
 				t := <-bnch
-				r.log.Info("Remove Unprocessed Notifications ", len(bnch), "  ", t.Height)
+				r.log.WithFields(log.Fields{"lenBnch": len(bnch), "height": t.Height}).Info("remove unprocessed block noitification")
 			}
 
 		default:
