@@ -49,7 +49,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
     });
 
 
-    it("Scenario 5: Should revert when arbitrary client updates BTSPeriphery contract", async () => {
+    it("Scenario 4: Should revert when arbitrary client updates BTSPeriphery contract", async () => {
         await truffleAssert.reverts(
             bts_coreV2.updateBTSPeriphery.call(accounts[2], {
                 from: accounts[1],
@@ -58,12 +58,12 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it.skip("Scenario 6: Should allow contract owner to update a new URI", async () => {
+    it.skip("Scenario 5: Should allow contract owner to update a new URI", async () => {
         let new_uri = "https://1234.iconee/";
         await bts_coreV2.updateUri(new_uri);
     });
 
-    it.skip("Scenario 7: Should revert when arbitrary client update a new URI", async () => {
+    it.skip("Scenario 6: Should revert when arbitrary client update a new URI", async () => {
         let new_uri = "https://1234.iconee/";
         await truffleAssert.reverts(
             bts_coreV2.updateUri.call(new_uri, {from: accounts[1]}),
@@ -71,7 +71,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 8: Should allow contract owner to update fee ratio", async () => {
+    it("Scenario 7: Should allow contract owner to update fee ratio", async () => {
         let new_fee = 20;
         let _feeNumerator = 100;
         let _name = "ICON";
@@ -84,7 +84,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 9: Should revert when arbitrary client updates fee ratio", async () => {
+    it("Scenario 8: Should revert when arbitrary client updates fee ratio", async () => {
         let old_fee = 20;
         let new_fee = 50;
         let _feeNumerator = 100;
@@ -101,7 +101,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 10: Should revert when Fee Numerator is higher than Fee Denominator", async () => {
+    it("Scenario 9: Should revert when Fee Numerator is higher than Fee Denominator", async () => {
         let old_feeNumerator = 100;
         let new_feeNumerator = 15000;
         let new_fee = 15000;
@@ -118,7 +118,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 11: Should allow contract owner to update fixed fee", async () => {
+    it("Scenario 10: Should allow contract owner to update fixed fee", async () => {
         let new_fixed_fee = 1000000;
         let _feeNumerator = 100;
         let _name = "ICON";
@@ -131,7 +131,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 12: Should revert when arbitrary client updates fixed fee", async () => {
+    it("Scenario 11: Should revert when arbitrary client updates fixed fee", async () => {
         let old_fixed_fee = 1000000;
         let new_fixed_fee = 2000000;
 
@@ -151,7 +151,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 13: Should allow to set fee ratio greater than 0", async () => {
+    it("Scenario 12: Should allow to set fee ratio greater than 0", async () => {
         let new_fixed_fee = 10;
         let _feeNumerator = 100;
         let _name = "ICON";
@@ -165,7 +165,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 14: Should receive an id of a given coin name when querying a valid supporting coin", async () => {
+    it("Scenario 13: Should receive an id of a given coin name when querying a valid supporting coin", async () => {
         let _name1 = "wBTC";
         let _name2 = "Ethereum";
         await bts_coreV2.register(_name1, "", 18, 100, 0, "0x0000000000000000000000000000000000000000");
@@ -182,7 +182,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 15: Should receive an id = 0 when querying an invalid supporting coin", async () => {
+    it("Scenario 14: Should receive an id = 0 when querying an invalid supporting coin", async () => {
         let _query = "EOS";
         let result = await bts_coreV2.coinId(_query);
         assert(
@@ -193,7 +193,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 16: Should revert when a non-Owner tries to add a new Owner", async () => {
+    it("Scenario 15: Should revert when a non-Owner tries to add a new Owner", async () => {
         let oldList = await bts_coreV2.getOwners();
         await truffleAssert.reverts(
             bts_coreV2.addOwner.call(accounts[1], {from: accounts[2]}),
@@ -208,7 +208,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 17: Should allow a current Owner to add a new Owner", async () => {
+    it("Scenario 16: Should allow a current Owner to add a new Owner", async () => {
         let oldList = await bts_coreV2.getOwners();
         await bts_coreV2.addOwner(accounts[1]);
         let newList = await bts_coreV2.getOwners();
@@ -221,7 +221,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 18: Should allow old owner to register a new coin - After adding new Owner", async () => {
+    it("Scenario 17: Should allow old owner to register a new coin - After adding new Owner", async () => {
         let _name3 = "TRON";
         await bts_coreV2.register(_name3, "", 18, 100, 0, "0x0000000000000000000000000000000000000000");
         output = await bts_coreV2.coinNames();
@@ -234,7 +234,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 19: Should allow new owner to register a new coin", async () => {
+    it("Scenario 18: Should allow new owner to register a new coin", async () => {
         let _name3 = "BINANCE";
         await bts_coreV2.register(_name3, "", 18, 100, 0, "0x0000000000000000000000000000000000000000", {from: accounts[1]});
         output = await bts_coreV2.coinNames();
@@ -248,7 +248,7 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    it("Scenario 4: Should allow contract owner to update BTSPeriphery contract", async () => {
+    it("Scenario 19: Should allow contract owner to update BTSPeriphery contract", async () => {
         await bts_coreV2.updateBTSPeriphery(accounts[2]);
     });
 
