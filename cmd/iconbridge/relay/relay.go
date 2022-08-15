@@ -12,6 +12,7 @@ import (
 
 const (
 	relayTickerInterval                  = 5 * time.Second
+	relayBalanceCheckInterval            = 60 * time.Second
 	relayTriggerReceiptsCount            = 20
 	relayTxSendWaitInterval              = time.Second / 2
 	relayTxReceiptWaitInterval           = time.Second
@@ -114,6 +115,9 @@ func (r *relay) Start(ctx context.Context) error {
 
 	txBlockHeight := link.CurrentHeight
 
+	relayBalanceCheckTicker := time.NewTicker(relayBalanceCheckInterval)
+	defer relayBalanceCheckTicker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -121,6 +125,21 @@ func (r *relay) Start(ctx context.Context) error {
 
 		case <-relayTicker.C:
 			relaySignal()
+
+		case <-relayBalanceCheckTicker.C:
+			go func() {
+				ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				defer cancel()
+				bal, thres, err := r.dst.Balance(ctx)
+				l := r.log.WithFields(log.Fields{"balance": bal, "threshold": thres})
+				if err != nil {
+					l.Error("failed to fetch relay wallet balance")
+				} else if bal.Cmp(thres) <= 0 {
+					l.Warn("relay wallet balance below threshold")
+				} else {
+					l.Info("relay wallet balance")
+				}
+			}()
 
 		case err := <-srcErrCh:
 			return err

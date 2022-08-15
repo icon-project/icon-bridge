@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/url"
 	"strconv"
 	"time"
@@ -65,8 +66,9 @@ func NewSender(
 }
 
 type senderOptions struct {
-	StepLimit       uint64 `json:"step_limit"`
-	TxDataSizeLimit uint64 `json:"tx_data_size_limit"`
+	StepLimit        uint64 `json:"step_limit"`
+	TxDataSizeLimit  uint64 `json:"tx_data_size_limit"`
+	BalanceThreshold uint64 `json:"balance_threshold"`
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
@@ -187,6 +189,11 @@ func (s *sender) Segment(
 	}
 
 	return tx, newMsg, nil
+}
+
+func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
+	bal, err := s.cl.GetBalance(&AddressParam{Address: Address(s.w.Address())})
+	return bal, (&big.Int{}).SetUint64(s.opts.BalanceThreshold), err
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*relayTx, error) {

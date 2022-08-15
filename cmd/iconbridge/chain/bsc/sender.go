@@ -72,9 +72,10 @@ const (
 */
 
 type senderOptions struct {
-	GasLimit        uint64  `json:"gas_limit"`
-	TxDataSizeLimit uint64  `json:"tx_data_size_limit"`
-	BoostGasPrice   float64 `json:"boost_gas_price"`
+	GasLimit         uint64  `json:"gas_limit"`
+	TxDataSizeLimit  uint64  `json:"tx_data_size_limit"`
+	BoostGasPrice    float64 `json:"boost_gas_price"`
+	BalanceThreshold uint64  `json:"balance_threshold"`
 }
 
 type sender struct {
@@ -218,6 +219,12 @@ func (s *sender) Segment(
 	}
 
 	return tx, newMsg, nil
+}
+
+func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
+	cl, _ := s.jointClient()
+	bal, err := cl.GetBalance(ctx, s.w.Address())
+	return bal, (&big.Int{}).SetUint64(s.opts.BalanceThreshold), err
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, gasPrice *big.Int) (*relayTx, error) {

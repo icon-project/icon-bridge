@@ -55,6 +55,13 @@ type Client struct {
 	//bmc *BMC
 }
 
+func (cl *Client) GetBalance(ctx context.Context, hexAddr string) (*big.Int, error) {
+	if !common.IsHexAddress(hexAddr) {
+		return nil, fmt.Errorf("invalid hex address: %v", hexAddr)
+	}
+	return cl.eth.BalanceAt(ctx, common.HexToAddress(hexAddr), nil)
+}
+
 func (cl *Client) GetBlockNumber() (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
