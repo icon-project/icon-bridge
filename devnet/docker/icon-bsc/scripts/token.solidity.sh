@@ -48,9 +48,9 @@ deploy_solidity_bts() {
     set +e
     local status="retry"
     for i in $(seq 1 20); do
-      BSH_COIN_NAME="${BSC_NATIVE_COIN_NAME}" \
-      BSH_COIN_FEE=100 \
-      BSH_FIXED_FEE=5000 \
+      BSH_COIN_NAME="${BSC_NATIVE_COIN_NAME[0]}" \
+      BSH_COIN_FEE=$2 \
+      BSH_FIXED_FEE=$1 \
       BMC_PERIPHERY_ADDRESS="$(cat $CONFIG_DIR/bsc.addr.bmcperiphery)" \
       truffle migrate --compile-none --network bsc --f 1 --to 1
       if [ $? == 0 ]; then
@@ -78,7 +78,7 @@ deploy_solidity_token() {
       BSH_COIN_NAME="$1" \
       BSH_COIN_SYMBOL=$2 \
       BSH_DECIMALS=18 \
-      BSH_INITIAL_SUPPLY=100000 \
+      BSH_INITIAL_SUPPLY=100000000 \
       truffle migrate --compile-none --network bsc --f 3 --to 3
       if [ $? == 0 ]; then
         status="ok"
@@ -157,7 +157,7 @@ configure_solidity_set_fee_ratio() {
   cd $CONTRACTS_DIR/solidity/bts
   if [ ! -f $CONFIG_DIR/bsc.configure.setfee ]; then
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-      --method setFeeRatio --name "${BSC_NATIVE_COIN_NAME}" --feeNumerator 100 --fixedFee 5000)
+      --method setFeeRatio --name "${BSC_NATIVE_COIN_NAME[0]}" --feeNumerator $2 --fixedFee $1)
     echo "$tx" >$CONFIG_DIR/tx/setFee.bsc
     local status=$(echo "$tx" | grep "status: true" | wc -l | awk '{$1=$1;print}')
     if [ "$status" != "1" ]; 
@@ -228,13 +228,13 @@ add_icon_relay() {
 
 bsc_register_wrapped_coin() {
   echo "bts: Register Wrapped Coin " $2
-  local bts_fee_numerator=100
-  local bts_fixed_fee=5000
+  #local bts_fee_numerator=100
+  #local bts_fixed_fee=5000
   cd $CONTRACTS_DIR/solidity/bts
   if [ ! -f $CONFIG_DIR/bsc.register.coin$2 ]; then
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-      --method register --name "$1" --symbol "$2" --decimals 18 --addr "0x0000000000000000000000000000000000000000" \
-      --feeNumerator ${bts_fee_numerator} --fixedFee ${bts_fixed_fee})
+      --method register --name "$1" --symbol "$2" --decimals "$5" --addr "0x0000000000000000000000000000000000000000" \
+      --feeNumerator $4 --fixedFee $3)
     echo "$tx" >$CONFIG_DIR/tx/register.$2.bsc
     local status=$(echo "$tx" | grep "status: true" | wc -l  | awk '{$1=$1;print}')
     if [ "$status" != "1" ]; 
@@ -248,14 +248,14 @@ bsc_register_wrapped_coin() {
 }
 
 bsc_register_native_token() {
-  local bts_fee_numerator=100
-  local bts_fixed_fee=5000
+  #local bts_fee_numerator=100
+  #local bts_fixed_fee=5000
   local addr=$(cat $CONFIG_DIR/bsc.addr.$2) 
   cd $CONTRACTS_DIR/solidity/bts
   if [ ! -f $CONFIG_DIR/bsc.register.coin$2 ]; then
     echo "bts: Register NativeCoin " $2
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-      --method register --name "$1" --symbol "$2" --decimals 18 --addr $addr --feeNumerator $bts_fee_numerator --fixedFee ${bts_fixed_fee})
+      --method register --name "$1" --symbol "$2" --decimals "$5" --addr $addr --feeNumerator $4 --fixedFee $3)
     echo "$tx" >$CONFIG_DIR/tx/register.$2.bsc
     local status=$(echo "$tx" | grep "status: true" | wc -l | awk '{$1=$1;print}')
     if [ "$status" != "1" ]; 

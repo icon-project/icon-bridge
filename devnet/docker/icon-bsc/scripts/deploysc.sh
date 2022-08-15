@@ -44,7 +44,7 @@ deploysc() {
       echo "Deploy solidity"
       sleep 2
       deploy_solidity_bmc
-      deploy_solidity_bts
+      deploy_solidity_bts "${BSC_NATIVE_COIN_FIXED_FEE[0]}" "${BSC_NATIVE_COIN_FEE_NUMERATOR[0]}" "${BSC_NATIVE_COIN_DECIMALS[0]}"
 
       if [ -n "${INIT_ADDRESS_PATH}" ];
       then
@@ -72,17 +72,17 @@ deploysc() {
       echo "CONFIGURE BSC"
       configure_solidity_add_bmc_owner
       configure_solidity_add_bts_service
-      configure_solidity_set_fee_ratio
+      configure_solidity_set_fee_ratio "${BSC_NATIVE_COIN_FIXED_FEE[0]}" "${BSC_NATIVE_COIN_FEE_NUMERATOR[0]}"
       configure_solidity_add_bts_owner
       echo "Register BSC Tokens"
       for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
       do
-          bsc_register_native_token "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}"
+          bsc_register_native_token "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}" "${BSC_NATIVE_TOKEN_FIXED_FEE[$i]}" "${BSC_NATIVE_TOKEN_FEE_NUMERATOR[$i]}" "${BSC_NATIVE_TOKEN_DECIMALS[$i]}"
           get_coinID "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}"
       done
       for i in "${!BSC_WRAPPED_COIN_SYM[@]}"
       do
-          bsc_register_wrapped_coin "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}"
+          bsc_register_wrapped_coin "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}" "${BSC_WRAPPED_COIN_FIXED_FEE[$i]}" "${BSC_WRAPPED_COIN_FEE_NUMERATOR[$i]}" "${BSC_WRAPPED_COIN_DECIMALS[$i]}"
           get_coinID "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}"
       done
       echo "deployedSol" > $CONFIG_DIR/bsc.deploy.all 
@@ -92,7 +92,7 @@ deploysc() {
       echo "Deploy Javascore"
       sleep 2
       deploy_javascore_bmc
-      deploy_javascore_bts
+      deploy_javascore_bts "${ICON_NATIVE_COIN_FIXED_FEE[0]}" "${ICON_NATIVE_COIN_FEE_NUMERATOR[0]}" "${ICON_NATIVE_COIN_DECIMALS[0]}"
 
       if [ -n "${INIT_ADDRESS_PATH}" ];
       then
@@ -122,16 +122,16 @@ deploysc() {
       configure_javascore_bmc_setFeeAggregator
       configure_javascore_add_bts
       configure_javascore_add_bts_owner
-      configure_javascore_bts_setICXFee
+      configure_javascore_bts_setICXFee "${ICON_NATIVE_COIN_FIXED_FEE[0]}" "${ICON_NATIVE_COIN_FEE_NUMERATOR[0]}"
       echo "Register ICON Tokens"
       for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
       do
-          configure_javascore_register_native_token "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}"
+          configure_javascore_register_native_token "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}" "${ICON_NATIVE_TOKEN_FIXED_FEE[$i]}" "${ICON_NATIVE_TOKEN_FEE_NUMERATOR[$i]}" "${ICON_NATIVE_TOKEN_DECIMALS[$i]}"
           get_btp_icon_coinId "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}"
       done
       for i in "${!ICON_WRAPPED_COIN_SYM[@]}"
       do
-          configure_javascore_register_wrapped_coin "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}"
+          configure_javascore_register_wrapped_coin "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}" "${ICON_WRAPPED_COIN_FIXED_FEE[$i]}" "${ICON_WRAPPED_COIN_FEE_NUMERATOR[$i]}" "${ICON_WRAPPED_COIN_DECIMALS[$i]}"
           get_btp_icon_coinId "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}"
       done
       echo "deployedJavascore" > $CONFIG_DIR/icon.deploy.all 
