@@ -429,45 +429,52 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    // it("Scenario 35: Should allow arbitrary client to query balance of an account", async () => {
-    //     let _coin = "ICON";
-    //     let _id = await bts_coreV2.coinId(_coin);
-    //     let _value = 2000;
-    //     await bts_coreV2.mintMock(accounts[2], _id, _value);
-    //     let balance = await bts_coreV2.getBalanceOf(accounts[2], _coin, {
-    //         from: accounts[2],
-    //     });
-    //     assert(
-    //         web3.utils.BN(balance._usableBalance).toNumber() === _value &&
-    //             web3.utils.BN(balance._lockedBalance).toNumber() === 0 &&
-    //             web3.utils.BN(balance._refundableBalance).toNumber() === 0
-    //     );
-    // });
-    //
-    // it("Scenario 36: Should allow arbitrary client to query a batch of balances of an account", async () => {
-    //     let _coin1 = "ICON";
-    //     let _coin2 = "TRON";
-    //     let _id = await bts_coreV2.coinId(_coin2);
-    //     let _value = 10000;
-    //     let another_value = 2000;
-    //     await bts_coreV2.mintMock(accounts[2], _id, _value);
-    //     let balance = await bts_coreV2.getBalanceOfBatch(
-    //         accounts[2],
-    //         [_coin1, _coin2],
-    //         { from: accounts[2] }
-    //     );
-    //     assert(
-    //         web3.utils.BN(balance._usableBalances[0]).toNumber() ===
-    //             another_value &&
-    //             web3.utils.BN(balance._lockedBalances[0]).toNumber() === 0 &&
-    //             web3.utils.BN(balance._refundableBalances[0]).toNumber() ===
-    //                 0 &&
-    //             web3.utils.BN(balance._usableBalances[1]).toNumber() ===
-    //                 _value &&
-    //             web3.utils.BN(balance._lockedBalances[1]).toNumber() === 0 &&
-    //             web3.utils.BN(balance._refundableBalances[1]).toNumber() === 0
-    //     );
-    // });
+    it("Scenario 35: Should allow arbitrary client to query balance of an account", async () => {
+        let _coin = "TRON";
+        let _id = await bts_coreV2.coinId(_coin);
+        let _value = 10000;
+        await bts_coreV2.mintMock(accounts[3], _id, _value);
+        let balance = await bts_coreV2.balanceOf(accounts[3], _coin, {
+            from: accounts[3],
+        });
+        assert(
+            web3.utils.BN(balance._usableBalance).toNumber() === 0 &&
+            web3.utils.BN(balance._lockedBalance).toNumber() === 0 &&
+            web3.utils.BN(balance._refundableBalance).toNumber() === 0 &&
+            web3.utils.BN(balance._userBalance).toNumber() === _value
+        );
+    });
+
+    it("Scenario 36: Should allow arbitrary client to query a batch of balances of an account", async () => {
+        let _coin1 = "BINANCE";
+        let _coin2 = "TRON";
+        let _id1 = await bts_coreV2.coinId(_coin1);
+        let _id2 = await bts_coreV2.coinId(_coin2);
+        let _value = 10000;
+        let another_value = 2000;
+        await bts_coreV2.mintMock(accounts[2], _id1, another_value);
+        await bts_coreV2.mintMock(accounts[2], _id2, _value);
+        let balance = await bts_coreV2.balanceOfBatch(
+            accounts[2],
+            [_coin1, _coin2],
+            { from: accounts[2] }
+        );
+        assert(
+            web3.utils.BN(balance._usableBalances[0]).toNumber() ===
+            0 &&
+            web3.utils.BN(balance._lockedBalances[0]).toNumber() === 0 &&
+            web3.utils.BN(balance._refundableBalances[0]).toNumber() ===
+            0 &&
+            web3.utils.BN(balance._userBalances[0]).toNumber() ===
+            another_value &&
+            web3.utils.BN(balance._usableBalances[1]).toNumber() ===
+            0 &&
+            web3.utils.BN(balance._lockedBalances[1]).toNumber() === 0 &&
+            web3.utils.BN(balance._refundableBalances[1]).toNumber() === 0 &&
+            web3.utils.BN(balance._userBalances[1]).toNumber() ===
+            _value
+        );
+    });
 
     it("Scenario 37: Should allow arbitrary client to query an Accumulated Fees", async () => {
         let _coin1 = "ICON";
@@ -513,19 +520,20 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
         );
     });
 
-    // it("Scenario 40: Should succeed when a client, which owns a refundable, tries to reclaim", async () => {
-    //     let _coin = "ICON";
-    //     let _value = 10000;
-    //     let _id = await bts_coreV2.coinId(_coin);
-    //     await bts_coreV2.mintMock(bts_coreV2.address, _id, _value);
-    //     let balanceBefore = await bts_coreV2.getBalanceOf(accounts[2], _coin);
-    //     await bts_coreV2.reclaim(_coin, _value, { from: accounts[2] });
-    //     let balanceAfter = await bts_coreV2.getBalanceOf(accounts[2], _coin);
-    //     assert(
-    //         web3.utils.BN(balanceAfter._usableBalance).toNumber() ===
-    //             web3.utils.BN(balanceBefore._usableBalance).toNumber() + _value
-    //     );
-    // });
+    it("Scenario 40: Should succeed when a client, which owns a refundable, tries to reclaim", async () => {
+        let _coin = "TRON";
+        let _value = 10000;
+        let _id = await bts_coreV2.coinId(_coin);
+        await bts_coreV2.mintMock(bts_coreV2.address, _id, _value);
+        await bts_coreV2.setRefundableBalance(accounts[5], _coin, _value);
+        let balanceBefore = await bts_coreV2.balanceOf(accounts[5], _coin);
+        await bts_coreV2.reclaim(_coin, _value, { from: accounts[5] });
+        let balanceAfter = await bts_coreV2.balanceOf(accounts[5], _coin);
+        assert(
+            web3.utils.BN(balanceAfter._userBalance).toNumber() ===
+            web3.utils.BN(balanceBefore._userBalance).toNumber() + _value
+        );
+    });
 
     it("Scenario 41: Should not allow any clients (even a contract owner) to call a refund()", async () => {
         //  This function should be called only by itself (BTSCore contract)
