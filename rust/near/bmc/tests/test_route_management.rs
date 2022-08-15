@@ -38,7 +38,7 @@ fn add_route_new_route() {
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination =
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
 
     contract.add_route(destination.clone(), link.clone());
@@ -64,7 +64,7 @@ fn add_route_existing_route() {
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination =
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     contract.add_route(destination.clone(), link.clone());
     contract.add_route(destination.clone(), link.clone());
@@ -108,7 +108,7 @@ fn remove_route() {
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination_2 =
         BTPAddress::new("btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     contract.add_route(destination_1.clone(), link.clone());
     contract.add_route(destination_2.clone(), link.clone());
@@ -136,7 +136,7 @@ fn remove_route_non_existing_route() {
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination_2 =
         BTPAddress::new("btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     contract.add_route(destination_1.clone(), link.clone());
     contract.remove_route(destination_2.clone());
@@ -152,7 +152,7 @@ fn remove_route_permission() {
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination =
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     contract.add_route(destination.clone(), link.clone());
     testing_env!(context(chuck()));
@@ -170,7 +170,7 @@ fn get_routes() {
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination_2 =
         BTPAddress::new("btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+  
     contract.add_link(link.clone());
     contract.add_route(destination_1.clone(), link.clone());
     contract.add_route(destination_2.clone(), link.clone());
@@ -207,7 +207,7 @@ fn resolve_route_link() {
     let mut contract = BtpMessageCenter::new("0x1.near".into(), 1500);
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+  
     contract.add_link(link.clone());
 
     let result = contract.resolve_route_pub(link.clone());
@@ -222,7 +222,7 @@ fn resolve_route_link_reachable() {
     let mut contract = BtpMessageCenter::new("0x1.near".into(), 1500);
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+  
     contract.add_link(link.clone());
 
     let bmc_service_message = BmcServiceMessage::new(BmcServiceType::Init {
@@ -239,7 +239,7 @@ fn resolve_route_link_reachable() {
         <Vec<u8>>::from(bmc_service_message.clone()),
         None,
     );
-    contract.handle_btp_messages(link.clone(), vec![btp_message]);
+    contract.handle_btp_messages(&link.clone(), vec![btp_message]);
     let result = contract.resolve_route_pub(BTPAddress::new(
         "btp://0x5.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     ));
@@ -260,11 +260,9 @@ fn resolve_route_route() {
         BTPAddress::new("btp://0x1.iconee/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination_2 =
         BTPAddress::new("btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    contract.add_verifier(link_1.network_address().unwrap(), verifier());
     contract.add_link(link_1.clone());
     contract.add_route(destination_1.clone(), link_1.clone());
 
-    contract.add_verifier(link_2.network_address().unwrap(), verifier());
     contract.add_link(link_2.clone());
     contract.add_route(destination_2.clone(), link_2.clone());
 

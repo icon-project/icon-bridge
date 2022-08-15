@@ -111,6 +111,8 @@ impl TryFrom<String> for SerializedMessage {
 
 impl Decodable for BtpMessage<SerializedMessage> {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        let data = rlp.as_val::<Vec<u8>>()?;
+        let rlp = rlp::Rlp::new(&data);
         Ok(Self {
             source: rlp.val_at::<BTPAddress>(0)?,
             destination: rlp.val_at::<BTPAddress>(1)?,
@@ -125,7 +127,7 @@ impl Decodable for BtpMessage<SerializedMessage> {
 impl From<&BtpMessage<SerializedMessage>> for String {
     fn from(btp_message: &BtpMessage<SerializedMessage>) -> Self {
         let rlp = rlp::encode(btp_message);
-        base64::encode_config(rlp, URL_SAFE_NO_PAD)
+        base64::encode_config(rlp::encode(&rlp), URL_SAFE_NO_PAD)
     }
 }
 

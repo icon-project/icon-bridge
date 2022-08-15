@@ -8,13 +8,13 @@ use libraries::{
 use std::{ops::Deref, convert::TryFrom};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Proof {
+pub struct Event {
     next: BTPAddress,
     sequence: u128,
     message: BtpMessage<SerializedMessage>,
 }
 
-impl Proof {
+impl Event {
     pub fn next(&self) -> &BTPAddress {
         &self.next
     }
@@ -26,26 +26,26 @@ impl Proof {
     pub fn message(&self) -> &BtpMessage<SerializedMessage> {
         &self.message
     }
-    // pub fn btp_message(&self) -> Option<BtpMessage<SerializedMessage>> {
-    //     match BtpMessage::try_from(self.message()) {
-    //         Ok(message) => {
-    //             return Some(message)
-    //         },
-    //         Err(_) => return None,
-    //     }
-    // }
+    pub fn btp_message(&self) -> Option<BtpMessage<SerializedMessage>> {
+        match BtpMessage::try_from(self.message.clone()) { // TODO : OPTIMIZE
+            Ok(message) => {
+                return Some(message)
+            },
+            Err(_) => return None,
+        }
+    }
 }
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Proofs(Vec<Proof>);
+pub struct Events(Vec<Event>);
 
-impl Deref for Proofs {
-    type Target = Vec<Proof>;
+impl Deref for Events {
+    type Target = Vec<Event>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl Decodable for Proof {
+impl Decodable for Event {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         // let data = rlp.as_val::<Vec<u8>>()?;
         // let rlp = rlp::Rlp::new(&data);
@@ -57,7 +57,7 @@ impl Decodable for Proof {
     }
 }
 
-impl Decodable for Proofs {
+impl Decodable for Events {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         let data = rlp.as_val::<Vec<u8>>()?;
         let rlp = rlp::Rlp::new(&data);

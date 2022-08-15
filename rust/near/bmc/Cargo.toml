@@ -35,7 +35,3 @@ path = "tests/test_route_management.rs"
 [[test]]
 name = "test_service_management"
 path = "tests/test_service_management.rs"
-
-[[test]]
-name = "test_verifier_management"
-path = "tests/test_verifier_management.rs"

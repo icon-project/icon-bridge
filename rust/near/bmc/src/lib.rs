@@ -11,8 +11,8 @@ use libraries::{
         Service,
 
         HashedCollection,
-        Address, BTPAddress, BmcEvent, Bmv, Connection, Connections, Links, RelayStatus,
-        Network, Owners, Routes, Services, VerifierStatus, Math, LinkStatus, Link, VerifierResponse
+        Address, BTPAddress, BmcEvent, Connection, Connections, Links, RelayStatus,
+        Network, Owners, Routes, Services, Math, LinkStatus, Link
     },
 };
 
@@ -38,6 +38,7 @@ mod relay_management;
 mod route_management;
 mod service_management;
 mod types;
+pub use types::RelayMessage;
 use external::*;
 
 const SERVICE: &str = "bmc";
