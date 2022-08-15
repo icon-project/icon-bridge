@@ -24,7 +24,7 @@ function hex2int() {
 
 function decimal2Hex() {
     hex=$(echo "obase=16; ibase=10; ${@}" | bc)
-    echo "0x${hex,,}"
+    echo "0x$(tr [A-Z] [a-z] <<< "$hex")"
 }
 
 PRECISION=18
