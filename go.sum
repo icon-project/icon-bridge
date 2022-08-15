@@ -439,9 +439,8 @@ github.com/haltingstate/secp256k1-go v0.0.0-20151224084235-572209b26df6 h1:HE4YD
 github.com/haltingstate/secp256k1-go v0.0.0-20151224084235-572209b26df6/go.mod h1:73mKQiY8bLnscfGakn57WAJZTzT0eSUAy3qgMQNR/DI=
 github.com/harmony-ek/gencodec v0.0.0-20190215044613-e6740dbdd846/go.mod h1:YZcPnufUw70msUSudLvxcQOSpnZJgaMS9WIU8IGEtBg=
 github.com/harmony-one/abool v1.0.1/go.mod h1:9sq0PJzb1SqRpKrpEV4Ttvm9WV5uud8sfrsPw3AIBJA=
+github.com/harmony-one/bls v0.0.6 h1:KG4q4JwdkPf3DtFvJmAgMRWT6QdY1A/wqN/Qt+S4VaQ=
 github.com/harmony-one/bls v0.0.6/go.mod h1:ML9osB/z3hR9WAYZVj7qH+IP6oaPRPmshDbxrQyia7g=
-github.com/harmony-one/bls v0.0.7 h1:Ef7AqG+oR+WneRm76dwIJHsJg8K2yz3dfewB2wyDcEc=
-github.com/harmony-one/bls v0.0.7/go.mod h1:ML9osB/z3hR9WAYZVj7qH+IP6oaPRPmshDbxrQyia7g=
 github.com/harmony-one/harmony v1.10.2 h1:KEfjufrUN+L85TcOzlCetbLJXCqoNWIKRmIm0gwj2/E=
 github.com/harmony-one/harmony v1.10.2/go.mod h1:QsUfRGisvY6k1KvpzVeBI3VBdHhYLlpVQTEbzrMmw1U=
 github.com/harmony-one/taggedrlp v0.1.4 h1:RZ+qy0VCzT+d/mTfq23gH3an5tSvxOhg6AddLDO6tKw=
