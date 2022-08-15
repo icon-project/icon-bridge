@@ -283,7 +283,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 									"height":     lbn.Height,
 									"lbnHash":    lbn.Hash,
 									"nextHeight": next,
-									"bnHash":     bn.Hash}).Error("verification failed ", err)
+									"bnHash":     bn.Hash}).Error("verification failed. refetching block ", err)
 								next--
 								break
 							}
