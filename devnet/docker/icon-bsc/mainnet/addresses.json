@@ -1,0 +1,13 @@
+{
+    "javascore": {
+         "sICX" : "cx2609b924e33ef00b648a409245c7ea394c467824",
+         "bnUSD" : "cx88fd7df7ddff82f7cc735c871dc519838cb235bb"
+    },
+    "solidity": {
+         "BUSD" : "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
+         "USDT" : "0x55d398326f99059ff775485246999027b3197955",
+         "USDC" : "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+         "BTCB" : "0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c",
+         "ETH" : "0x2170ed0880ac9a755fd29b2688956bd959f933f8"
+    }
+}

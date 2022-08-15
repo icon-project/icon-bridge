@@ -20,15 +20,20 @@ deploy_solidity_bmc() {
     echo $blockHeight | xargs printf "%d" > $CONFIG_DIR/bsc.chain.height
     eth_parentHash $blockHeight > $CONFIG_DIR/bsc.chain.parentHash
     set +e
+    local status="retry"
     for i in $(seq 1 20); do
       BMC_BTP_NET=$BSC_BMC_NET \
       truffle migrate --network bsc --compile-none
       if [ $? == 0 ]; then
+          status="ok"
           break
       fi
       echo "Retry: "$i
     done
     set -e
+    if [ "$status" == "retry" ]; then 
+      exit 1
+    fi
     generate_metadata "BMC"
     echo -n "bmc" > $CONFIG_DIR/bsc.deploy.bmc
   fi
@@ -41,18 +46,23 @@ deploy_solidity_bts() {
     rm -rf contracts/test build .openzeppelin
     truffle compile --all
     set +e
+    local status="retry"
     for i in $(seq 1 20); do
-      BSH_COIN_NAME="${BSC_NATIVE_COIN_NAME}" \
-      BSH_COIN_FEE=100 \
-      BSH_FIXED_FEE=5000 \
+      BSH_COIN_NAME="${BSC_NATIVE_COIN_NAME[0]}" \
+      BSH_COIN_FEE=$2 \
+      BSH_FIXED_FEE=$1 \
       BMC_PERIPHERY_ADDRESS="$(cat $CONFIG_DIR/bsc.addr.bmcperiphery)" \
       truffle migrate --compile-none --network bsc --f 1 --to 1
       if [ $? == 0 ]; then
+        status="ok"
         break
       fi
       echo "Retry: "$i
     done
     set -e
+    if [ "$status" == "retry" ]; then 
+      exit 1
+    fi
     generate_metadata "BTS"
     echo -n "bts" > $CONFIG_DIR/bsc.deploy.bts
   fi
@@ -63,18 +73,23 @@ deploy_solidity_token() {
   cd $CONTRACTS_DIR/solidity/bts
   if [ ! -f $CONFIG_DIR/bsc.deploy.coin$2 ]; then
     set +e
+    local status="retry"
     for i in $(seq 1 20); do
       BSH_COIN_NAME="$1" \
       BSH_COIN_SYMBOL=$2 \
       BSH_DECIMALS=18 \
-      BSH_INITIAL_SUPPLY=100000 \
+      BSH_INITIAL_SUPPLY=100000000 \
       truffle migrate --compile-none --network bsc --f 3 --to 3
       if [ $? == 0 ]; then
+        status="ok"
         break
       fi
       echo "Retry: "$i
     done
     set -e
+    if [ "$status" == "retry" ]; then 
+      exit 1
+    fi
     jq -r '.networks[] | .address' build/contracts/ERC20TKN.json >$CONFIG_DIR/bsc.addr.$2
     wait_for_file $CONFIG_DIR/bsc.addr.$2
     echo -n $2 > $CONFIG_DIR/bsc.deploy.coin$2
@@ -88,7 +103,7 @@ configure_solidity_add_bts_service() {
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
       --method addService --name "bts" --addr $(cat $CONFIG_DIR/bsc.addr.btsperiphery))
     echo "$tx" >$CONFIG_DIR/tx/addService.bsc
-    isTrue=$(echo "$tx" | grep "status: true" | wc -l)
+    isTrue=$(echo "$tx" | grep "status: true" | wc -l  | awk '{$1=$1;print}')
     if [ "$isTrue" == "1" ];
     then
       echo "addedBTS" > $CONFIG_DIR/bsc.configure.addbts
@@ -110,7 +125,7 @@ configure_solidity_add_bmc_owner() {
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
       --method addOwner --addr "0x${BSC_BMC_USER}")
     echo "$tx" >$CONFIG_DIR/tx/addBmcUser.bsc
-    ownerAdded=$(echo "$tx" | grep "status: true" | wc -l)
+    ownerAdded=$(echo "$tx" | grep "status: true" | wc -l | awk '{$1=$1;print}')
     if [ "$ownerAdded" != "1" ]; then
       echo "Error adding bmc owner"
       return 1 
@@ -129,7 +144,7 @@ configure_solidity_add_bmc_owner() {
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
       --method addOwner --addr "0x${BSC_BTS_USER}")
     echo "$tx" >$CONFIG_DIR/tx/addBtsUser.bsc
-    ownerAdded=$(echo "$tx" | grep "status: true" | wc -l)
+    ownerAdded=$(echo "$tx" | grep "status: true" | wc -l | awk '{$1=$1;print}')
     if [ "$ownerAdded" != "1" ]; then
       echo "Error adding bts owner"
       return 1
@@ -142,9 +157,9 @@ configure_solidity_set_fee_ratio() {
   cd $CONTRACTS_DIR/solidity/bts
   if [ ! -f $CONFIG_DIR/bsc.configure.setfee ]; then
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-      --method setFeeRatio --name "${BSC_NATIVE_COIN_NAME}" --feeNumerator 100 --fixedFee 5000)
+      --method setFeeRatio --name "${BSC_NATIVE_COIN_NAME[0]}" --feeNumerator $2 --fixedFee $1)
     echo "$tx" >$CONFIG_DIR/tx/setFee.bsc
-    status=$(echo "$tx" | grep "status: true" | wc -l)
+    local status=$(echo "$tx" | grep "status: true" | wc -l | awk '{$1=$1;print}')
     if [ "$status" != "1" ]; 
     then
       echo "Error setting fee ratio"
@@ -162,7 +177,7 @@ add_icon_link() {
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
     --method addLink --link $(cat $CONFIG_DIR/icon.addr.bmcbtp) --blockInterval 3000 --maxAggregation 2 --delayLimit 3)
     echo "$tx" >$CONFIG_DIR/tx/addLink.bsc
-    status=$(echo "$tx" | grep "status: true" | wc -l)
+    local status=$(echo "$tx" | grep "status: true" | wc -l  | awk '{$1=$1;print}')
     if [ "$status" != "1" ]; 
     then
       echo "Error adding link"
@@ -180,7 +195,7 @@ set_link_height() {
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
     --method setLinkRxHeight --link $(cat $CONFIG_DIR/icon.addr.bmcbtp) --height $(cat $CONFIG_DIR/icon.chain.height))
     echo "$tx" >$CONFIG_DIR/tx/setLinkRxHeight.bsc
-      status=$(echo "$tx" | grep "status: true" | wc -l)
+    local status=$(echo "$tx" | grep "status: true" | wc -l  | awk '{$1=$1;print}')
     if [ "$status" != "1" ]; 
     then
       echo "Error setting link"
@@ -199,7 +214,7 @@ add_icon_relay() {
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bmc.js \
       --method addRelay --link $(cat $CONFIG_DIR/icon.addr.bmcbtp) --addr "0x${BSC_RELAY_USER}")
     echo "$tx" >$CONFIG_DIR/tx/addRelay.bsc
-    status=$(echo "$tx" | grep "status: true" | wc -l)
+    local status=$(echo "$tx" | grep "status: true" | wc -l  | awk '{$1=$1;print}')
     if [ "$status" != "1" ]; 
     then
       echo "Error adding relay"
@@ -213,15 +228,15 @@ add_icon_relay() {
 
 bsc_register_wrapped_coin() {
   echo "bts: Register Wrapped Coin " $2
-  local bts_fee_numerator=100
-  local bts_fixed_fee=5000
+  #local bts_fee_numerator=100
+  #local bts_fixed_fee=5000
   cd $CONTRACTS_DIR/solidity/bts
   if [ ! -f $CONFIG_DIR/bsc.register.coin$2 ]; then
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-      --method register --name "$1" --symbol "$2" --decimals 18 --addr "0x0000000000000000000000000000000000000000" \
-      --feeNumerator ${bts_fee_numerator} --fixedFee ${bts_fixed_fee})
+      --method register --name "$1" --symbol "$2" --decimals "$5" --addr "0x0000000000000000000000000000000000000000" \
+      --feeNumerator $4 --fixedFee $3)
     echo "$tx" >$CONFIG_DIR/tx/register.$2.bsc
-    status=$(echo "$tx" | grep "status: true" | wc -l)
+    local status=$(echo "$tx" | grep "status: true" | wc -l  | awk '{$1=$1;print}')
     if [ "$status" != "1" ]; 
     then
       echo "Error registering wrapped coin " $2
@@ -233,16 +248,16 @@ bsc_register_wrapped_coin() {
 }
 
 bsc_register_native_token() {
-  local bts_fee_numerator=100
-  local bts_fixed_fee=5000
+  #local bts_fee_numerator=100
+  #local bts_fixed_fee=5000
   local addr=$(cat $CONFIG_DIR/bsc.addr.$2) 
   cd $CONTRACTS_DIR/solidity/bts
   if [ ! -f $CONFIG_DIR/bsc.register.coin$2 ]; then
     echo "bts: Register NativeCoin " $2
     tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-      --method register --name "$1" --symbol "$2" --decimals 18 --addr $addr --feeNumerator $bts_fee_numerator --fixedFee ${bts_fixed_fee})
+      --method register --name "$1" --symbol "$2" --decimals "$5" --addr $addr --feeNumerator $4 --fixedFee $3)
     echo "$tx" >$CONFIG_DIR/tx/register.$2.bsc
-    status=$(echo "$tx" | grep "status: true" | wc -l)
+    local status=$(echo "$tx" | grep "status: true" | wc -l | awk '{$1=$1;print}')
     if [ "$status" != "1" ]; 
     then
       echo "Error registering native token " $2
@@ -259,7 +274,7 @@ get_coinID() {
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
     --method coinId --coinName "$1")
   coinId=$(echo "$tx" | grep "coinId:" | sed -e "s/^coinId: //")
-  exists=$(echo $coinId | wc -l)
+  exists=$(echo $coinId | wc -l | awk '{$1=$1;print}')
   if [ "$exists" != "1" ]; 
   then
     echo "Error getting coinID " $2

@@ -34,16 +34,20 @@ ensure_bsc_key_store() {
     echo "Usage: ensure_key_store KEYSTORE_PATH SECRET_PATH"
     return 1
   fi
-  
+
   local KEY_STORE_PATH=$1
   local KEY_SECRET_PATH=$(ensure_key_secret $2)
   if [ ! -f "${KEY_STORE_PATH}" ]; then
     mkdir -p $ICONBRIDGE_CONFIG_DIR/keystore
-    tr -dc A-Fa-f0-9 </dev/urandom | head -c 64 > $ICONBRIDGE_CONFIG_DIR/keystore/$(basename ${KEY_STORE_PATH}).priv
-    tmpPath=$(geth account import --datadir $ICONBRIDGE_CONFIG_DIR --password $KEY_SECRET_PATH $ICONBRIDGE_CONFIG_DIR/keystore/$(basename ${KEY_STORE_PATH}).priv | sed -e "s/^Address: {//" -e "s/}//")
-    fileMatch=$(find $ICONBRIDGE_CONFIG_DIR/keystore -type f -name '*'$tmpPath)
-    cat $fileMatch | jq -r . > $KEY_STORE_PATH
-    rm $fileMatch
+    ethkey generate --passwordfile $KEY_SECRET_PATH --json tmp
+    cat tmp | jq -r . > $KEY_STORE_PATH
+    ethkey inspect --json --private --passwordfile $KEY_SECRET_PATH $KEY_STORE_PATH | jq -r .PrivateKey > ${KEY_SECRET_PATH}.priv
+    rm tmp 
+    # tr -dc A-Fa-f0-9 </dev/urandom | head -c 64 > $ICONBRIDGE_CONFIG_DIR/keystore/$(basename ${KEY_STORE_PATH}).priv
+    # tmpPath=$(geth account import --datadir $ICONBRIDGE_CONFIG_DIR --password $KEY_SECRET_PATH $ICONBRIDGE_CONFIG_DIR/keystore/$(basename ${KEY_STORE_PATH}).priv | sed -e "s/^Address: {//" -e "s/}//")
+    # fileMatch=$(find $ICONBRIDGE_CONFIG_DIR/keystore -type f -name '*'$tmpPath)
+    # cat $fileMatch | jq -r . > $KEY_STORE_PATH
+    # rm $fileMatch
   fi
   echo ${KEY_STORE_PATH}
 }
