@@ -136,8 +136,6 @@ func (r *relay) Start(ctx context.Context) error {
 					l.Error("failed to fetch relay wallet balance")
 				} else if bal.Cmp(thres) <= 0 {
 					l.Warn("relay wallet balance below threshold")
-				} else {
-					l.Info("relay wallet balance")
 				}
 			}()
 
