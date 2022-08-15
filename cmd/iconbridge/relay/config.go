@@ -22,9 +22,10 @@ type RelayConfig struct {
 }
 
 type ChainConfig struct {
-	Address  chain.BTPAddress       `json:"address"`
-	Endpoint []string               `json:"endpoint"`
-	Options  map[string]interface{} `json:"options,omitempty"`
+	Address  chain.BTPAddress `json:"address"`
+	Endpoint []string         `json:"endpoint"`
+	Options  json.RawMessage  `json:"options,omitempty"`
+	// Options  map[string]interface{} `json:"options,omitempty"`
 }
 
 type SrcConfig struct {

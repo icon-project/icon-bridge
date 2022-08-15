@@ -5,6 +5,7 @@ package hmny
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -138,6 +139,13 @@ func (cl *Client) GetChainID() (*big.Int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	return cl.eth.ChainID(ctx)
+}
+
+func (cl *Client) GetBalance(ctx context.Context, hexAddr string) (*big.Int, error) {
+	if !common.IsHexAddress(hexAddr) {
+		return nil, fmt.Errorf("invalid hex address: %v", hexAddr)
+	}
+	return cl.eth.BalanceAt(ctx, common.HexToAddress(hexAddr), nil)
 }
 
 func (cl *Client) GetBlockNumber() (uint64, error) {

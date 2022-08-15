@@ -75,14 +75,14 @@ type receiver struct {
 	logFilter eventLogRawFilter
 }
 
-func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]interface{}, l log.Logger) (chain.Receiver, error) {
+func NewReceiver(src, dst chain.BTPAddress, urls []string, rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error) {
 	if len(urls) == 0 {
 		return nil, errors.New("List of Urls is empty")
 	}
 	client := NewClient(urls[0], l)
 
 	var recvOpts ReceiverOptions
-	if err := recvOpts.Unmarshal(opts); err != nil {
+	if err := json.Unmarshal(rawOpts, &recvOpts); err != nil {
 		return nil, errors.Wrapf(err, "recvOpts.Unmarshal: %v", err)
 	}
 

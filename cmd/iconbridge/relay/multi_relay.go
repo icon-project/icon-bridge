@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"runtime/debug"
@@ -15,11 +16,19 @@ import (
 
 type NewSenderFunc func(
 	src, dst chain.BTPAddress, urls []string, w wallet.Wallet,
-	opts map[string]interface{}, l log.Logger) (chain.Sender, error)
+	opts json.RawMessage, l log.Logger) (chain.Sender, error)
 
 type NewReceiverFunc func(
 	src, dst chain.BTPAddress, urls []string,
-	opts map[string]interface{}, l log.Logger) (chain.Receiver, error)
+	opts json.RawMessage, l log.Logger) (chain.Receiver, error)
+
+// type NewSenderFunc func(
+// 	src, dst chain.BTPAddress, urls []string, w wallet.Wallet,
+// 	opts map[string]interface{}, l log.Logger) (chain.Sender, error)
+
+// type NewReceiverFunc func(
+// 	src, dst chain.BTPAddress, urls []string,
+// 	opts map[string]interface{}, l log.Logger) (chain.Receiver, error)
 
 var (
 	Senders   = map[string]NewSenderFunc{}
