@@ -5,11 +5,11 @@ module.exports = async function (callback) {
       const btsCore = await BTSCore.deployed();
       switch (argv["method"]) {
         case "setFeeRatio":
-            tx = await btsCore.setFeeRatio(argv.name, argv.feeNumerator, argv.fixedFee);
+            tx = await btsCore.setFeeRatio(argv.name, argv.feeNumerator, `${argv.fixedFee}`);
             console.log(tx);
             break;
         case "register":
-            tx = await btsCore.register(argv.name, argv.symbol, argv.decimals, argv.feeNumerator, argv.fixedFee, argv.addr);
+            tx = await btsCore.register(argv.name, argv.symbol, argv.decimals, argv.feeNumerator, `${argv.fixedFee}`, argv.addr);
             console.log(tx);
             break;
         case "coinId":
