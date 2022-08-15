@@ -131,9 +131,11 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 
 	r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Debug("syncVerifier: start")
 
-	for vr.Next().Int64() < height {
+	var prevHeader *types.Header
+	cursor := vr.Next().Int64()
+	for cursor <= height {
 		rqch := make(chan *req, r.opts.SyncConcurrency)
-		for i := vr.Next().Int64(); len(rqch) < cap(rqch); i++ {
+		for i := cursor; len(rqch) < cap(rqch); i++ {
 			rqch <- &req{height: i, retry: 5}
 		}
 		sres := make([]*res, 0, len(rqch))
@@ -146,8 +148,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 					rqch <- q
 					continue
 				}
-				r.log.WithFields(log.Fields{
-					"height": q.height, "error": q.err.Error()}).Debug("syncVerifier: req error")
+				r.log.WithFields(log.Fields{"height": q.height, "error": q.err.Error()}).Debug("syncVerifier: req error")
 				sres = append(sres, nil)
 				if len(sres) == cap(sres) {
 					close(rqch)
@@ -187,16 +188,21 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 			sort.SliceStable(sres, func(i, j int) bool {
 				return sres[i].Height < sres[j].Height
 			})
-			for _, r := range sres {
-				if vr.Next().Int64() >= height {
+			for i := range sres {
+				cursor++
+				next := sres[i]
+				if prevHeader == nil {
+					prevHeader = next.Header
+					continue
+				}
+				if vr.Next().Int64() >= height { // if height is greater than targetHeight, break loop
 					break
 				}
-				if vr.Next().Int64() == r.Height {
-					err := vr.Verify(r.Header)
-					if err != nil {
-						return errors.Wrapf(err, "syncVerifier: Update: %v", err)
-					}
+				err := vr.Verify(prevHeader, next.Header)
+				if err != nil {
+					return errors.Wrapf(err, "syncVerifier: Update: %v", err)
 				}
+				prevHeader = next.Header
 			}
 			r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Debug("syncVerifier: syncing")
 		}
@@ -259,9 +265,9 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			latest++
 
 		case <-heightPoller.C:
-			if height := latestHeight(); height > latest {
+			if height := latestHeight(); height > 0 {
 				latest = height
-				r.log.Debugf("receiveLoop: poll height; latest=%d, next=%d", latest, next)
+				r.log.Infof("receiveLoop: poll height; latest=%d, next=%d", latest, next)
 			}
 
 		case bn := <-bnch:
@@ -269,10 +275,9 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			for ; bn != nil; next++ {
 				if lbn != nil {
 					if vr != nil {
-						if err := vr.Verify(lbn.Header); err != nil {
-							r.log.WithFields(log.Fields{"height": bn.Height, "hash": bn.Hash}).Error("verification failed")
-							break
-							// return errors.Wrapf(err, "verification failed %v", err)
+						if err := vr.Verify(lbn.Header, bn.Header); err != nil {
+							r.log.WithFields(log.Fields{"height": lbn.Height, "hash": lbn.Hash, "next": next}).Error("verification failed ", err)
+							return errors.Wrapf(err, "verification failed %v", err)
 						}
 					}
 					if err := callback(lbn); err != nil {
@@ -285,7 +290,8 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			}
 			// remove unprocessed notifications
 			for len(bnch) > 0 {
-				<-bnch
+				t := <-bnch
+				r.log.Info("Remove Unprocessed Notifications ", len(bnch), "  ", t.Height)
 			}
 
 		default:

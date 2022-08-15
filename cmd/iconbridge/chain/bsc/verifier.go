@@ -34,9 +34,15 @@ func (vr *Verifier) Next() *big.Int {
 	return (&big.Int{}).Set(vr.next)
 }
 
-func (vr *Verifier) Verify(h *types.Header) error {
+func (vr *Verifier) Verify(h *types.Header, newHeader *types.Header) error {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
+	if newHeader.Number.Cmp((&big.Int{}).Add(h.Number, big1)) != 0 {
+		return fmt.Errorf("Different height between successive header: Prev %v New %v", h.Number, newHeader.Number)
+	}
+	if !bytes.Equal(h.Hash().Bytes(), newHeader.ParentHash.Bytes()) {
+		return fmt.Errorf("Different hash between successive header: (%v): Prev %v New %v", h.Number.String(), h.Hash(), newHeader.ParentHash)
+	}
 	if vr.next.Cmp(h.Number) != 0 {
 		return fmt.Errorf("Unexpected height: Got %v Expected %v", h.Number.String(), vr.next.String())
 	}
@@ -44,10 +50,13 @@ func (vr *Verifier) Verify(h *types.Header) error {
 		return fmt.Errorf("Unexpected Hash(%v): Got %v Expected %v", h.Number.String(), h.ParentHash.Hex(), vr.parentHash.Hex())
 	}
 	vr.parentHash = h.Hash()
-	vr.next.Add(vr.next, big1) // next height should have vr.parentHash as parentHash
+	vr.next.Add(h.Number, big1)
 	return nil
 }
 
 // func (vr *Verifier) Update(h *types.Header) error {
-// 	return vr.Verify(h)
+// 	vr.mu.Lock()
+// 	defer vr.mu.Unlock()
+// 	// next height should have vr.parentHash as parentHash
+// 	return nil
 // }
