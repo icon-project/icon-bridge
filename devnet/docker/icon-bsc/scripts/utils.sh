@@ -17,15 +17,14 @@ get_bob_address() {
   echo 0x$(cat $CONFIG_DIR/bob.ks.json | jq -r .address)
 }
 
-hex2int() {
-  input=$1
-  input=$(echo $input | sed 's/^0x//g')
-  input=$(uppercase $input)
-  echo "ibase=16; $input" | bc
+function hex2int() {
+    hex=${@#0x}
+    echo "obase=10; ibase=16; ${hex^^}" | bc
 }
 
-decimal2Hex() {
-  printf '0x%x\n' $1
+function decimal2Hex() {
+    hex=$(echo "obase=16; ibase=10; ${@}" | bc)
+    echo "0x${hex,,}"
 }
 
 PRECISION=18
