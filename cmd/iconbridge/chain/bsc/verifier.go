@@ -41,13 +41,13 @@ func (vr *Verifier) Verify(h *types.Header, newHeader *types.Header) error {
 		return fmt.Errorf("Different height between successive header: Prev %v New %v", h.Number, newHeader.Number)
 	}
 	if !bytes.Equal(h.Hash().Bytes(), newHeader.ParentHash.Bytes()) {
-		return fmt.Errorf("Different hash between successive header: (%v): Prev %v New %v", h.Number.String(), h.Hash(), newHeader.ParentHash)
+		return fmt.Errorf("Different hash between successive header: (%v): Prev %v New %v", h.Number, h.Hash(), newHeader.ParentHash)
 	}
 	if vr.next.Cmp(h.Number) != 0 {
-		return fmt.Errorf("Unexpected height: Got %v Expected %v", h.Number.String(), vr.next.String())
+		return fmt.Errorf("Unexpected height: Got %v Expected %v", h.Number, vr.next)
 	}
 	if !bytes.Equal(h.ParentHash.Bytes(), vr.parentHash.Bytes()) {
-		return fmt.Errorf("Unexpected Hash(%v): Got %v Expected %v", h.Number.String(), h.ParentHash.Hex(), vr.parentHash.Hex())
+		return fmt.Errorf("Unexpected Hash(%v): Got %v Expected %v", h.Number, h.ParentHash, vr.parentHash)
 	}
 	vr.parentHash = h.Hash()
 	vr.next.Add(h.Number, big1)
