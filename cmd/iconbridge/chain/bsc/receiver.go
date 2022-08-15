@@ -276,8 +276,11 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				if lbn != nil {
 					if vr != nil {
 						if err := vr.Verify(lbn.Header, bn.Header); err != nil {
-							r.log.WithFields(log.Fields{"height": lbn.Height, "hash": lbn.Hash, "next": next}).Error("verification failed ", err)
-							return errors.Wrapf(err, "verification failed %v", err)
+							r.log.WithFields(log.Fields{"height": lbn.Height, "hash": lbn.Hash}).Error("verification failed ", err)
+							lbn = nil
+							next -= 1
+							r.log.WithFields(log.Fields{"height": next}).Info("Refetch ")
+							break
 						}
 					}
 					if err := callback(lbn); err != nil {
