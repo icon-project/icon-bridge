@@ -19,7 +19,7 @@ export ICON_BMC_NET=${ICON_BMC_NET:-"0x2.icon"}
 export GOLOOP_RPC_NID="0x2"
 export BSC_NID="97"
 
-export ICON_ENDPOINT="https://lisbon.net.solidwallet.io/api/v3"
+export ICON_ENDPOINT="https://lisbon.net.solidwallet.io/api/v3/dex"
 export ICON_NATIVE_COIN_SYM=("ICX")
 export ICON_NATIVE_COIN_NAME=("btp-$ICON_BMC_NET-ICX")
 export ICON_NATIVE_TOKEN_SYM=("sICX" "bnUSD")
@@ -66,7 +66,7 @@ export BSC_WRAPPED_COIN_DECIMALS=(18 18 18)
 # export GOLOOP_RPC_NID="0x1"
 # export BSC_NID="56"
 
-# export ICON_ENDPOINT="https://ctz.solidwallet.io/api/v3"
+# export ICON_ENDPOINT="https://ctz.solidwallet.io/api/v3/dex"
 # export ICON_NATIVE_COIN_SYM=("ICX")
 # export ICON_NATIVE_COIN_NAME=("btp-$ICON_BMC_NET-ICX")
 # export ICON_NATIVE_TOKEN_SYM=("sICX" "bnUSD")
