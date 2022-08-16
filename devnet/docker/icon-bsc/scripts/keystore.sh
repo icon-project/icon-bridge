@@ -41,7 +41,7 @@ ensure_bsc_key_store() {
     mkdir -p $ICONBRIDGE_CONFIG_DIR/keystore
     ethkey generate --passwordfile $KEY_SECRET_PATH --json tmp
     cat tmp | jq -r . > $KEY_STORE_PATH
-    ethkey inspect --json --private --passwordfile $KEY_SECRET_PATH $KEY_STORE_PATH | jq -r .PrivateKey > ${KEY_SECRET_PATH}.priv
+    ethkey inspect --json --private --passwordfile $KEY_SECRET_PATH $KEY_STORE_PATH | jq -r .PrivateKey > ${KEY_STORE_PATH}.priv
     rm tmp 
     # tr -dc A-Fa-f0-9 </dev/urandom | head -c 64 > $ICONBRIDGE_CONFIG_DIR/keystore/$(basename ${KEY_STORE_PATH}).priv
     # tmpPath=$(geth account import --datadir $ICONBRIDGE_CONFIG_DIR --password $KEY_SECRET_PATH $ICONBRIDGE_CONFIG_DIR/keystore/$(basename ${KEY_STORE_PATH}).priv | sed -e "s/^Address: {//" -e "s/}//")
