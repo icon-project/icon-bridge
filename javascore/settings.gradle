@@ -3,5 +3,6 @@ rootProject.name = 'javascore-btp'
 include (
         'lib',
         'bmc',
-        'bts'
+        'bts',
+        'irc2Tradeable'
 )
