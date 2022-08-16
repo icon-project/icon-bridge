@@ -84,7 +84,7 @@ jobs:
           working-directory: ./solidity/bmc
           run: |
             truffle develop &
-            sleep 10
+            sleep 20
             yarn test:integration
 
         - name: Install yarn (BTS)
@@ -103,5 +103,5 @@ jobs:
           working-directory: ./solidity/bts
           run: |
             truffle develop &
-            sleep 10
+            sleep 20
             yarn test:unit
