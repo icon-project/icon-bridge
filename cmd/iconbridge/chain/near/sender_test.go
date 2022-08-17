@@ -3,13 +3,14 @@ package near
 import (
 	"context"
 	"crypto/ed25519"
+	"math/big"
 	"testing"
 
 	"github.com/btcsuite/btcutil/base58"
-	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests"
 	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,7 +29,7 @@ func TestNearSender(t *testing.T) {
 
 					sender, err := newMockSender(links[1], links[0], client, nil, nil, nil)
 					assert.Nil(f, err)
-					
+
 					status, err := sender.Status(context.Background())
 					assert.Nil(f, err)
 					assert.NotNil(f, status)
@@ -51,7 +52,7 @@ func TestNearSender(t *testing.T) {
 				f.Run(testData.Description, func(f *testing.T) {
 					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api: &mockApi,
+						api:    &mockApi,
 						logger: log.New(),
 					}
 
@@ -61,7 +62,7 @@ func TestNearSender(t *testing.T) {
 					privateKeyBytes := base58.Decode("22yx6AjQgG1jGuAmPuEwLnVKFnuq5LU23dbU3JBZodKxrJ8dmmqpDZKtRSfiU4F8UQmv1RiZSrjWhQMQC3ye7M1J")
 					privateKey := ed25519.PrivateKey(privateKeyBytes)
 					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
-			
+
 					assert.NoError(f, err)
 					sender, err := newMockSender(links[1], links[0], client, nearWallet, nil, log.New())
 					assert.Nil(f, err)
@@ -92,7 +93,7 @@ func TestNearSender(t *testing.T) {
 				f.Run(testData.Description, func(f *testing.T) {
 					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api: &mockApi,
+						api:    &mockApi,
 						logger: log.New(),
 					}
 
@@ -102,7 +103,7 @@ func TestNearSender(t *testing.T) {
 					privateKeyBytes := base58.Decode("22yx6AjQgG1jGuAmPuEwLnVKFnuq5LU23dbU3JBZodKxrJ8dmmqpDZKtRSfiU4F8UQmv1RiZSrjWhQMQC3ye7M1J")
 					privateKey := ed25519.PrivateKey(privateKeyBytes)
 					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
-			
+
 					assert.NoError(f, err)
 					sender, err := newMockSender(links[1], links[0], client, nearWallet, nil, log.New())
 					assert.Nil(f, err)
@@ -122,6 +123,46 @@ func TestNearSender(t *testing.T) {
 						expected, Ok := (testData.Expected.Success).(int)
 						assert.True(f, Ok)
 						assert.Equal(f, uint64(expected), blockHeight)
+					} else {
+						assert.Error(f, err)
+					}
+				})
+			}
+		})
+	}
+
+	if test, err := tests.GetTest("GetBalance", t); err == nil {
+		t.Run(test.Description(), func(f *testing.T) {
+			for _, testData := range test.TestDatas() {
+				f.Run(testData.Description, func(f *testing.T) {
+					mockApi := NewMockApi(testData.MockStorage)
+					client := &Client{
+						api:    &mockApi,
+						logger: log.New(),
+					}
+
+					input, Ok := (testData.Input).(struct {
+						PrivateKey  string
+						Source      chain.BTPAddress
+						Destination chain.BTPAddress
+					})
+					assert.True(f, Ok)
+
+					privateKeyBytes := base58.Decode(input.PrivateKey)
+					privateKey := ed25519.PrivateKey(privateKeyBytes)
+					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
+
+					assert.NoError(f, err)
+					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, nil, log.New())
+					assert.Nil(f, err)
+
+					balance, _, err := sender.Balance(context.Background())
+					assert.Nil(f, err)
+
+					if testData.Expected.Success != nil {
+						expected, Ok := (testData.Expected.Success).(*big.Int)
+						assert.True(f, Ok)
+						assert.Equal(f, expected, balance)
 					} else {
 						assert.Error(f, err)
 					}

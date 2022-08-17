@@ -19,7 +19,7 @@ type Receiver struct {
 	options     struct{}
 }
 
-func NewReceiver(src, dst chain.BTPAddress, urls []string, opt map[string]interface{}, logger log.Logger) (chain.Receiver, error) {
+func NewReceiver(src, dst chain.BTPAddress, urls []string, options json.RawMessage, logger log.Logger) (chain.Receiver, error) {
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
@@ -30,21 +30,16 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, opt map[string]interf
 		destination: dst,
 		logger:      logger,
 	}
-	b, err := json.Marshal(opt)
-	if err != nil {
-		logger.Panicf("fail to marshal opt:%#v err:%+v", opt, err)
-	}
-	if err = json.Unmarshal(b, &r.options); err != nil {
-		logger.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
-	}
 
-	if err != nil {
+	if err := json.Unmarshal(options, &r.options); err != nil {
+		logger.Panicf("fail to unmarshal opt:%#v err:%+v", options, err)
 		return nil, err
 	}
+
 	return r, nil
 }
 
-func newMockReceiver(source, destination chain.BTPAddress, client *Client, urls []string, _ map[string]interface{}, logger log.Logger) (*Receiver, error) {
+func newMockReceiver(source, destination chain.BTPAddress, client *Client, urls []string, _ json.RawMessage, logger log.Logger) (*Receiver, error) {
 	clients := make([]*Client, 0)
 	clients = append(clients, client)
 	receiver := &Receiver{
