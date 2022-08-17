@@ -7,27 +7,27 @@ contract BTSCoreV2 is BTSCore {
     using String for string;
     using SafeMathUpgradeable for uint256;
 
-    mapping(address => mapping(string => uint256)) private stakes;
-
-    //  @notice This is just an example to show how to add more function in upgrading a contract
-    function addStake(string calldata _coinName, uint256 _value)
-        external
-        payable
-    {
-        if (_coinName.compareTo(nativeCoinName)) {
-            require(msg.value == _value, "InvalidAmount");
-        } else {
-            address _erc20Address = coins[_coinName];
-            IERC20Tradable(_erc20Address).transferFrom(
-                msg.sender,
-                address(this),
-                _value
-            );
-        }
-        stakes[msg.sender][_coinName] = stakes[msg.sender][_coinName].add(
-            _value
-        );
-    }
+//    mapping(address => mapping(string => uint256)) private stakes;
+//
+//    //  @notice This is just an example to show how to add more function in upgrading a contract
+//    function addStake(string calldata _coinName, uint256 _value)
+//        external
+//        payable
+//    {
+//        if (_coinName.compareTo(nativeCoinName)) {
+//            require(msg.value == _value, "InvalidAmount");
+//        } else {
+//            address _erc20Address = coins[_coinName];
+//            IERC20Tradable(_erc20Address).transferFrom(
+//                msg.sender,
+//                address(this),
+//                _value
+//            );
+//        }
+//        stakes[msg.sender][_coinName] = stakes[msg.sender][_coinName].add(
+//            _value
+//        );
+//    }
 
     //  @notice This is just an example to show how to add more function in upgrading a contract
     function mintMock(

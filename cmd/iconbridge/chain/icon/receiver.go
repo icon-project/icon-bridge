@@ -37,16 +37,17 @@ const (
 	EventIndexSignature = 0
 	EventIndexNext      = 1
 	EventIndexSequence  = 2
+	RPCCallRetry        = 5
 )
-const MAX_RETRY = 3
+
 const RECONNECT_ON_UNEXPECTED_HEIGHT = "Unexpected Block Height. Should Reconnect"
 const (
-	SyncVerifierMaxConcurrency = 300 // 150
 	MonitorBlockMaxConcurrency = 300
 )
 
 type ReceiverOptions struct {
-	Verifier *VerifierOptions `json:"verifier"`
+	SyncConcurrency uint64           `json:"syncConcurrency"`
+	Verifier        *VerifierOptions `json:"verifier"`
 }
 
 func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
@@ -74,14 +75,14 @@ type receiver struct {
 	logFilter eventLogRawFilter
 }
 
-func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]interface{}, l log.Logger) (chain.Receiver, error) {
+func NewReceiver(src, dst chain.BTPAddress, urls []string, rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error) {
 	if len(urls) == 0 {
 		return nil, errors.New("List of Urls is empty")
 	}
 	client := NewClient(urls[0], l)
 
 	var recvOpts ReceiverOptions
-	if err := recvOpts.Unmarshal(opts); err != nil {
+	if err := json.Unmarshal(rawOpts, &recvOpts); err != nil {
 		return nil, errors.Wrapf(err, "recvOpts.Unmarshal: %v", err)
 	}
 
@@ -98,6 +99,12 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, opts map[string]inter
 	efAddr, err := ef.Addr.Value()
 	if err != nil {
 		return nil, errors.Wrapf(err, "ef.Addr.Value: %v", err)
+	}
+
+	if recvOpts.SyncConcurrency < 1 {
+		recvOpts.SyncConcurrency = 1
+	} else if recvOpts.SyncConcurrency > MonitorBlockMaxConcurrency {
+		recvOpts.SyncConcurrency = MonitorBlockMaxConcurrency
 	}
 
 	recvr := &receiver{
@@ -172,10 +179,10 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 		retry  int64
 	}
 
-	r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Debug("syncVerifier: start")
+	r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Info("syncVerifier: start")
 
 	for vr.Next() < height {
-		rqch := make(chan *req, SyncVerifierMaxConcurrency)
+		rqch := make(chan *req, r.opts.SyncConcurrency)
 		for i := vr.Next(); len(rqch) < cap(rqch); i++ {
 			rqch <- &req{height: i}
 		}
@@ -255,7 +262,7 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 		}
 	}
 
-	r.log.WithFields(log.Fields{"height": vr.Next()}).Debug("syncVerifier: complete")
+	r.log.WithFields(log.Fields{"height": vr.Next()}).Info("syncVerifier: complete")
 	return nil
 }
 
@@ -282,10 +289,10 @@ func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64
 		Receipts       []*chain.Receipt
 	}
 
-	ech := make(chan error)                                           // error channel
-	rech := make(chan struct{}, 1)                                    // reconnect channel
-	bnch := make(chan *BlockNotification, MonitorBlockMaxConcurrency) // block notification channel
-	brch := make(chan *res, cap(bnch))                                // block result channel
+	ech := make(chan error)                                       // error channel
+	rech := make(chan struct{}, 1)                                // reconnect channel
+	bnch := make(chan *BlockNotification, r.opts.SyncConcurrency) // block notification channel
+	brch := make(chan *res, cap(bnch))                            // block result channel
 
 	reconnect := func() {
 		select {
@@ -333,13 +340,18 @@ loop:
 					func(conn *websocket.Conn) {},
 					func(c *websocket.Conn, err error) {})
 				if err != nil {
-					if websocket.IsUnexpectedCloseError(err) {
-						time.Sleep(time.Second * 5)
-						reconnect() // unexpected error
-						r.log.WithFields(log.Fields{"error": err}).Error("reconnect: monitor block error")
-					} else if !errors.Is(err, context.Canceled) {
-						ech <- err
+					if errors.Is(err, context.Canceled) {
+						return
 					}
+					time.Sleep(time.Second * 5)
+					reconnect()
+					r.log.WithFields(log.Fields{"error": err}).Error("reconnect: monitor block error")
+					// if websocket.IsUnexpectedCloseError(err) {
+					// 	reconnect() // unexpected error
+					// 	r.log.WithFields(log.Fields{"error": err}).Error("reconnect: monitor block error")
+					// } else if !errors.Is(err, context.Canceled) {
+					// 	ech <- err
+					// }
 				}
 			}(ctxMonitorBlock, cancelMonitorBlock)
 
@@ -358,9 +370,9 @@ loop:
 					ok, err := vr.Verify(br.Header, br.Votes)
 					if !ok || err != nil {
 						if err != nil {
-							r.log.WithFields(log.Fields{"height": br.Height, "error": err}).Debug("receiveLoop: verification error")
+							r.log.WithFields(log.Fields{"height": br.Height, "error": err}).Error("receiveLoop: verification error")
 						} else if !ok {
-							r.log.WithFields(log.Fields{"height": br.Height, "hash": br.Hash}).Debug("receiveLoop: invalid header")
+							r.log.WithFields(log.Fields{"height": br.Height, "hash": br.Hash}).Error("receiveLoop: invalid header")
 						}
 						reconnect() // reconnect websocket
 						r.log.WithFields(log.Fields{"height": br.Height, "hash": br.Hash}).Error("reconnect: verification failed")
@@ -411,7 +423,7 @@ loop:
 						hash:    bn.Hash,
 						indexes: bn.Indexes,
 						events:  bn.Events,
-						retry:   3,
+						retry:   RPCCallRetry,
 					} // fill qch with requests
 					if bn = nil; len(bnch) > 0 && len(qch) < cap(qch) {
 						bn = <-bnch
@@ -580,7 +592,7 @@ loop:
 												"height":              q.height,
 												"receipt_index":       index,
 												"got_num_events":      len(receipt.Events),
-												"expected_num_events": len(p.Events)}).Info("failed to verify all events for the receipt")
+												"expected_num_events": len(p.Events)}).Error("failed to verify all events for the receipt")
 											q.err = errors.New("failed to verify all events for the receipt")
 											return
 										}

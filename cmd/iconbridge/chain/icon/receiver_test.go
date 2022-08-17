@@ -2,6 +2,7 @@ package icon
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -26,10 +27,14 @@ func TestReceiver(t *testing.T) {
 			"validatorsHash": "0xa6760c547c3f76b7071658ef383d69ec01e11ea71d695600788695b50659e409",
 		},
 	}
+	rawOpts, err := json.Marshal(&opts)
+	if err != nil {
+		panic(err)
+	}
 	l := log.New()
 	log.SetGlobalLogger(l)
 	// log.AddForwarder(&log.ForwarderConfig{Vendor: log.HookVendorSlack, Address: "https://hooks.slack.com/services/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", Level: "info"})
-	recv, err := NewReceiver(chain.BTPAddress(srcAddress), chain.BTPAddress(dstAddress), srcEndpoint, opts, l)
+	recv, err := NewReceiver(chain.BTPAddress(srcAddress), chain.BTPAddress(dstAddress), srcEndpoint, rawOpts, l)
 	if err != nil {
 		panic(err)
 	}

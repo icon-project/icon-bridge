@@ -35,6 +35,7 @@ public class AbstractBTPTokenService extends TestBase {
     public String ICON = "ICON";
     public String PARA = "PARA";
     public String ETH_ADDR = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+    public String SERVICE = "bts";
     public static final BigInteger UINT_CAP = pow(BigInteger.TWO,256).subtract(BigInteger.ONE);
 
     BTPAddress btpAddress1 = new BTPAddress("network","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
@@ -62,7 +63,7 @@ public class AbstractBTPTokenService extends TestBase {
                 eq("getBtpAddress"), any())).thenReturn(btpAddress.toString());
 
         score = sm.deploy(owner, BTPTokenService.class,
-                bmcMock.getAddress(), ICON, 18, bytes);
+                bmcMock.getAddress(), ICON, 18, BigInteger.ZERO, BigInteger.ZERO, bytes);
 
         BTPTokenService instance = (BTPTokenService) score.getInstance();
         scoreSpy = spy(instance);
@@ -110,7 +111,7 @@ public class AbstractBTPTokenService extends TestBase {
         score.invoke(owner, "addBlacklistAddress", net, addr);
         byte[] _msg = blacklistSuccessfulResponse();
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", sn, _msg);
+                "fromString", SERVICE, sn, _msg);
     }
 
     protected void removeBlackListedUser(String net, String[] addr, BigInteger sn) {
@@ -118,7 +119,7 @@ public class AbstractBTPTokenService extends TestBase {
         score.invoke(owner, "removeBlacklistAddress", net, addr);
         byte[] _msg = blacklistRemoveSuccessfulResponse();
         score.invoke(bmcMock, "handleBTPMessage",
-                "fromString", "svc", sn, _msg);
+                "fromString", SERVICE, sn, _msg);
     }
 
     protected byte[] blacklistSuccessfulResponse() {
@@ -126,7 +127,7 @@ public class AbstractBTPTokenService extends TestBase {
         response.setCode(BlacklistResponse.RC_OK);
         BTSMessage message = new BTSMessage();
         message.setData(response.toBytes());
-        message.setServiceType(BTSMessage.ADD_TO_BLACKLIST);
+        message.setServiceType(BTSMessage.BLACKLIST_MESSAGE);
         return message.toBytes();
     }
 
@@ -135,7 +136,7 @@ public class AbstractBTPTokenService extends TestBase {
         response.setCode(BlacklistResponse.RC_OK);
         BTSMessage message = new BTSMessage();
         message.setData(response.toBytes());
-        message.setServiceType(BTSMessage.REMOVE_FROM_BLACKLIST);
+        message.setServiceType(BTSMessage.BLACKLIST_MESSAGE);
         return message.toBytes();
     }
 

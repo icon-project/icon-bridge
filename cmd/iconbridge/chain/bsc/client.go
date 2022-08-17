@@ -55,6 +55,13 @@ type Client struct {
 	//bmc *BMC
 }
 
+func (cl *Client) GetBalance(ctx context.Context, hexAddr string) (*big.Int, error) {
+	if !common.IsHexAddress(hexAddr) {
+		return nil, fmt.Errorf("invalid hex address: %v", hexAddr)
+	}
+	return cl.eth.BalanceAt(ctx, common.HexToAddress(hexAddr), nil)
+}
+
 func (cl *Client) GetBlockNumber() (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
@@ -65,10 +72,20 @@ func (cl *Client) GetBlockNumber() (uint64, error) {
 	return bn, nil
 }
 
-func (cl *Client) GetBlockByHash(hash common.Hash) (*types.Block, error) {
+type Block struct {
+	Transactions []string `json:"transactions"`
+	GasUsed      string   `json:"gasUsed"`
+}
+
+func (cl *Client) GetBlockByHash(hash common.Hash) (*Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
-	return cl.eth.BlockByHash(ctx, hash)
+	var hb Block
+	err := cl.rpc.CallContext(ctx, &hb, "eth_getBlockByHash", hash, false)
+	if err != nil {
+		return nil, err
+	}
+	return &hb, nil
 }
 
 func (cl *Client) GetHeaderByHeight(height *big.Int) (*types.Header, error) {
@@ -78,23 +95,26 @@ func (cl *Client) GetHeaderByHeight(height *big.Int) (*types.Header, error) {
 }
 
 func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
-	txnCount, err := cl.eth.TransactionCount(context.TODO(), hash)
+	hb, err := cl.GetBlockByHash(hash)
 	if err != nil {
 		return nil, err
-	} else if txnCount == 0 {
+	}
+	if hb.GasUsed == "0x0" || len(hb.Transactions) == 0 {
 		return nil, nil
 	}
+	txhs := hb.Transactions
+	// fetch all txn receipts concurrently
 	type rcq struct {
-		txIdx int
+		txh   string
 		v     *types.Receipt
 		err   error
 		retry int
 	}
-	qch := make(chan *rcq, txnCount)
-	for i := 0; i < int(txnCount); i++ {
-		qch <- &rcq{i, nil, nil, 3}
+	qch := make(chan *rcq, len(txhs))
+	for _, txh := range txhs {
+		qch <- &rcq{txh, nil, nil, RPCCallRetry}
 	}
-	rmap := make(map[int]*types.Receipt)
+	rmap := make(map[string]*types.Receipt)
 	for q := range qch {
 		switch {
 		case q.err != nil:
@@ -105,7 +125,7 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
 			q.err = nil
 			qch <- q
 		case q.v != nil:
-			rmap[q.txIdx] = q.v
+			rmap[q.txh] = q.v
 			if len(rmap) == cap(qch) {
 				close(qch)
 			}
@@ -117,22 +137,16 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
 				if q.v == nil {
 					q.v = &types.Receipt{}
 				}
-				txn, err := cl.eth.TransactionInBlock(ctx, hash, uint(q.txIdx))
-				if err != nil {
-					q.err = errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, Index: %v) Err: %v", hash, q.txIdx, err)
-				} else {
-					q.v, err = cl.eth.TransactionReceipt(ctx, txn.Hash())
-					if q.err != nil {
-						q.err = errors.Wrapf(q.err, "getTranasctionReceipt %v", q.err)
-					}
+				q.v, err = cl.eth.TransactionReceipt(ctx, common.HexToHash(q.txh))
+				if q.err != nil {
+					q.err = errors.Wrapf(q.err, "getTranasctionReceipt: %v", q.err)
 				}
-
 			}(q)
 		}
 	}
-	receipts := make(types.Receipts, 0, txnCount)
-	for i := 0; i < int(txnCount); i++ {
-		if r, ok := rmap[i]; ok {
+	receipts := make(types.Receipts, 0, len(txhs))
+	for _, txh := range txhs {
+		if r, ok := rmap[txh]; ok {
 			receipts = append(receipts, r)
 		}
 	}

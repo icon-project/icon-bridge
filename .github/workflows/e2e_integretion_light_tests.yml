@@ -80,12 +80,12 @@ jobs:
           working-directory: ./solidity/bmc
           run: yarn contract:compile
 
-#        - name: BMC solidity test
-#          working-directory: ./solidity/bmc
-#          run: |
-#            truffle develop &
-#            sleep 10
-#            yarn test:integration
+        - name: BMC solidity test
+          working-directory: ./solidity/bmc
+          run: |
+            truffle develop &
+            sleep 20
+            yarn test:integration
 
         - name: Install yarn (BTS)
           working-directory: ./solidity/bts
@@ -95,10 +95,13 @@ jobs:
           working-directory: ./solidity/bts
           run: yarn contract:compile
 
-#        - name: BTS solidity test
-#          working-directory: ./solidity/bts
-#          run: |
-#            truffle develop &
-#            sleep 10
-#            yarn test:unit
-#            yarn test:integration
+        - name: Check contract size
+          working-directory: ./solidity/bts
+          run: yarn contract:size
+
+        - name: BTS solidity test
+          working-directory: ./solidity/bts
+          run: |
+            truffle develop &
+            sleep 20
+            yarn test:unit

@@ -83,9 +83,15 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         );
     }
 
+    /**
+        @notice Get name of nativecoin
+        @dev caller can be any
+        @return Name of nativecoin
+    */
     function getNativeCoinName() external override view returns (string memory) {
         return nativeCoinName;
     }
+
     /**
        @notice Adding another Onwer.
        @dev Caller must be an Onwer of BTP network
@@ -175,6 +181,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
     ) external override onlyOwner {
         require(_feeNumerator <= FEE_DENOMINATOR, "InvalidSetting");
         require(_name.compareTo(nativeCoinName) || coins[_name] != address(0), "TokenNotExists");
+        require(_fixedFee >= 0 && _feeNumerator >= 0, "LessThan0");
         coinDetails[_name].feeNumerator = _feeNumerator;
         coinDetails[_name].fixedFee = _fixedFee;
     }
@@ -198,6 +205,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         require(!_name.compareTo(nativeCoinName), "ExistNativeCoin");
         require(coins[_name] == address(0), "ExistCoin");
         require(_feeNumerator <= FEE_DENOMINATOR, "InvalidFeeSetting");
+        require(_fixedFee >= 0 && _feeNumerator >= 0, "LessThan0");
         if (_addr == address(0)) {
             address deployedERC20 = address(
                 new ERC20Tradable(_name, _symbol, _decimals)
@@ -271,6 +279,24 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
     }
 
     /**
+        @notice Get fee numerator and fixed fee
+        @dev caller can be any
+        @param _coinName Coin name
+        @return _feeNumerator Fee numerator for given coin
+        @return _fixedFee Fixed fee for given coin
+    */
+    function feeRatio(string calldata _coinName)
+        external
+        override
+        view
+        returns (uint _feeNumerator, uint _fixedFee)
+    {
+        Coin memory coin = coinDetails[_coinName];
+        _feeNumerator = coin.feeNumerator;
+        _fixedFee = coin.fixedFee;
+    }
+
+    /**
         @notice Return a usable/locked/refundable balance of an account based on coinName.
         @return _usableBalance the balance that users are holding.
         @return _lockedBalance when users transfer the coin, 
@@ -289,12 +315,11 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         )
     {
         if (_coinName.compareTo(nativeCoinName)) {
-            uint balance = address(_owner).balance;
             return (
-                balance,
+                0,
                 balances[_owner][_coinName].lockedBalance,
                 balances[_owner][_coinName].refundableBalance,
-                balance
+                address(_owner).balance
             );
         }
         address _erc20Address = coins[_coinName];
@@ -480,6 +505,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         //  @dev `_value` is a requested amount to transfer, from a Requester, including charged fee
         //  The true amount to receive at a destination receiver is calculated by
         //  _amounts[0] = _value.sub(_chargeAmt);
+        require(_value > _chargeAmt, "ValueGreaterThan0");
         lockBalance(_from, _coinName, _value);
         string[] memory _coins = new string[](1);
         _coins[0] = _coinName;
@@ -509,6 +535,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
         string calldata _to
     ) external payable override {
         require(_coinNames.length == _values.length, "InvalidRequest");
+        require(_coinNames.length > 0, "Zero length arguments");
         uint256 size = msg.value != 0
             ? _coinNames.length.add(1)
             : _coinNames.length;
@@ -526,6 +553,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
             require(_erc20Addresses != address(0), "UnregisterCoin");
             coinName = _coinNames[i];
             value = _values[i];
+            require(value > 0,"ZeroOrLess");
 
             btsPeriphery.checkTransferRestrictions(
                 coinName,
@@ -568,7 +596,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
                 .div(FEE_DENOMINATOR)
                 .add(coinDetails[nativeCoinName].fixedFee);
             _amounts[size - 1] = msg.value.sub(_chargeAmts[size - 1]);
-            lockBalance(msg.sender, coinsName[0], msg.value);
+            lockBalance(msg.sender, nativeCoinName, msg.value);
         }
 
         //  @dev `_amounts` is true amounts to receive at a destination after deducting charged fees

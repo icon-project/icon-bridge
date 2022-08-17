@@ -8,10 +8,10 @@ import (
 	"math/big"
 	"math/rand"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -20,14 +20,15 @@ import (
 )
 
 const (
-	BlockInterval              = 5 * time.Second
+	BlockInterval              = 3 * time.Second
 	BlockHeightPollInterval    = 60 * time.Second
-	monitorBlockMaxConcurrency = 1000 // number of concurrent requests to synchronize older blocks from source chain
+	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
 )
+const RPCCallRetry = 5
 
 func NewReceiver(
 	src, dst chain.BTPAddress, urls []string,
-	opts map[string]interface{}, l log.Logger) (chain.Receiver, error) {
+	rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error) {
 	r := &receiver{
 		log: l,
 		src: src,
@@ -36,10 +37,16 @@ func NewReceiver(
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
-	err := r.opts.Unmarshal(opts)
+	err := json.Unmarshal(rawOpts, &r.opts)
 	if err != nil {
 		return nil, err
 	}
+	if r.opts.SyncConcurrency < 1 {
+		r.opts.SyncConcurrency = 1
+	} else if r.opts.SyncConcurrency > MonitorBlockMaxConcurrency {
+		r.opts.SyncConcurrency = MonitorBlockMaxConcurrency
+	}
+
 	r.cls, r.bmcs, err = newClients(urls, src.ContractAddress(), r.log)
 	if err != nil {
 		return nil, err
@@ -48,7 +55,8 @@ func NewReceiver(
 }
 
 type ReceiverOptions struct {
-	SyncConcurrency uint64 `json:"syncConcurrency"`
+	SyncConcurrency uint64           `json:"syncConcurrency"`
+	Verifier        *VerifierOptions `json:"verifier"`
 }
 
 func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
@@ -83,27 +91,149 @@ type BnOptions struct {
 	Concurrency uint64
 }
 
-func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback func(v *BlockNotification) error) error {
+func (r *receiver) newVerifer(opts *VerifierOptions) (*Verifier, error) {
+	vr := Verifier{
+		next:       big.NewInt(int64(opts.BlockHeight)),
+		parentHash: common.HexToHash(opts.BlockHash.String()),
+	}
+	header, err := r.client().GetHeaderByHeight(big.NewInt(int64(opts.BlockHeight)))
+	if err != nil {
+		err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
+		return nil, err
+	}
+	if !bytes.Equal(header.ParentHash.Bytes(), vr.parentHash.Bytes()) {
+		return nil, fmt.Errorf("Unexpected Hash(%v): Got %v Expected %v", opts.BlockHeight, header.ParentHash.Hex(), vr.parentHash.Hex())
+	}
+	return &vr, nil
+}
+
+func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
+	if height == vr.Next().Int64() {
+		return nil
+	}
+	if vr.Next().Int64() > height {
+		return fmt.Errorf(
+			"invalid target height: verifier height (%s) > target height (%d)",
+			vr.Next().String(), height)
+	}
+
+	type res struct {
+		Height int64
+		Header *types.Header
+	}
+
+	type req struct {
+		height int64
+		err    error
+		res    *res
+		retry  int64
+	}
+
+	r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Info("syncVerifier: start")
+
+	var prevHeader *types.Header
+	cursor := vr.Next().Int64()
+	for cursor <= height {
+		rqch := make(chan *req, r.opts.SyncConcurrency)
+		for i := cursor; len(rqch) < cap(rqch); i++ {
+			rqch <- &req{height: i, retry: 5}
+		}
+		sres := make([]*res, 0, len(rqch))
+		for q := range rqch {
+			switch {
+			case q.err != nil:
+				if q.retry > 0 {
+					q.retry--
+					q.res, q.err = nil, nil
+					rqch <- q
+					continue
+				}
+				r.log.WithFields(log.Fields{"height": q.height, "error": q.err.Error()}).Debug("syncVerifier: req error")
+				sres = append(sres, nil)
+				if len(sres) == cap(sres) {
+					close(rqch)
+				}
+			case q.res != nil:
+				sres = append(sres, q.res)
+				if len(sres) == cap(sres) {
+					close(rqch)
+				}
+			default:
+				go func(q *req) {
+					defer func() {
+						time.Sleep(500 * time.Millisecond)
+						rqch <- q
+					}()
+					if q.res == nil {
+						q.res = &res{}
+					}
+					q.res.Height = q.height
+					q.res.Header, q.err = r.client().GetHeaderByHeight(big.NewInt(q.height))
+					if q.err != nil {
+						q.err = errors.Wrapf(q.err, "syncVerifier: getBlockHeader: %v", q.err)
+						return
+					}
+				}(q)
+			}
+		}
+		// filter nil
+		_sres, sres := sres, sres[:0]
+		for _, v := range _sres {
+			if v != nil {
+				sres = append(sres, v)
+			}
+		}
+		// sort and forward notifications
+		if len(sres) > 0 {
+			sort.SliceStable(sres, func(i, j int) bool {
+				return sres[i].Height < sres[j].Height
+			})
+			for i := range sres {
+				cursor++
+				next := sres[i]
+				if prevHeader == nil {
+					prevHeader = next.Header
+					continue
+				}
+				if vr.Next().Int64() >= height { // if height is greater than targetHeight, break loop
+					break
+				}
+				err := vr.Verify(prevHeader, next.Header)
+				if err != nil {
+					return errors.Wrapf(err, "syncVerifier: Update: %v", err)
+				}
+				prevHeader = next.Header
+			}
+			r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Debug("syncVerifier: syncing")
+		}
+	}
+
+	r.log.WithFields(log.Fields{"height": vr.Next().String()}).Info("syncVerifier: complete")
+	return nil
+}
+
+func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback func(v *BlockNotification) error) (err error) {
 
 	if opts == nil {
 		return errors.New("receiveLoop: invalid options: <nil>")
 	}
 
-	if opts.Concurrency < 1 || opts.Concurrency > monitorBlockMaxConcurrency {
-		concurrency := opts.Concurrency
-		if concurrency < 1 {
-			opts.Concurrency = 1
-		} else {
-			opts.Concurrency = monitorBlockMaxConcurrency
+	var vr *Verifier
+	if r.opts.Verifier != nil {
+		vr, err = r.newVerifer(r.opts.Verifier)
+		if err != nil {
+			return err
 		}
-		r.log.Warnf("receiveLoop: opts.Concurrency (%d): value out of range [%d, %d]: setting to default %d",
-			concurrency, 1, monitorBlockMaxConcurrency, opts.Concurrency)
+		err = r.syncVerifier(vr, int64(opts.StartHeight))
+		if err != nil {
+			return errors.Wrapf(err, "receiveLoop: syncVerifier: %v", err)
+		}
 	}
 
 	// block notification channel
 	// (buffered: to avoid deadlock)
 	// increase concurrency parameter for faster sync
-	bnch := make(chan *BlockNotification, opts.Concurrency)
+	bnch := make(chan *BlockNotification, r.opts.SyncConcurrency)
 
 	heightTicker := time.NewTicker(BlockInterval)
 	defer heightTicker.Stop()
@@ -119,12 +249,10 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		}
 		return height
 	}
-
 	next, latest := opts.StartHeight, latestHeight()
 
 	// last unverified block notification
 	var lbn *BlockNotification
-
 	// start monitor loop
 	for {
 		select {
@@ -135,19 +263,34 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			latest++
 
 		case <-heightPoller.C:
-			if height := latestHeight(); height > latest {
+			if height := latestHeight(); height > 0 {
 				latest = height
-				if next > latest {
-					r.log.Debugf("receiveLoop: skipping; latest=%d, next=%d", latest, next)
-				}
+				r.log.WithFields(log.Fields{"latest": latest, "next": next}).Debug("poll height")
 			}
-
 		case bn := <-bnch:
 			// process all notifications
 			for ; bn != nil; next++ {
 				if lbn != nil {
-					if err := callback(lbn); err != nil {
-						return errors.Wrapf(err, "receiveLoop: callback: %v", err)
+					if bn.Height.Cmp(lbn.Height) == 0 {
+						if !bytes.Equal(bn.Header.ParentHash.Bytes(), lbn.Header.ParentHash.Bytes()) {
+							r.log.WithFields(log.Fields{"lbnHash": lbn.Header.ParentHash, "bnHash": bn.Hash}).Error("verification failed on retry ")
+							break
+						}
+					} else {
+						if vr != nil {
+							if err := vr.Verify(lbn.Header, bn.Header); err != nil {
+								r.log.WithFields(log.Fields{
+									"height":     lbn.Height,
+									"lbnHash":    lbn.Hash,
+									"nextHeight": next,
+									"bnHash":     bn.Hash}).Error("verification failed. refetching block ", err)
+								next--
+								break
+							}
+						}
+						if err := callback(lbn); err != nil {
+							return errors.Wrapf(err, "receiveLoop: callback: %v", err)
+						}
 					}
 				}
 				if lbn, bn = bn, nil; len(bnch) > 0 {
@@ -156,7 +299,8 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			}
 			// remove unprocessed notifications
 			for len(bnch) > 0 {
-				<-bnch
+				t := <-bnch
+				r.log.WithFields(log.Fields{"lenBnch": len(bnch), "height": t.Height}).Info("remove unprocessed block noitification")
 			}
 		default:
 			if next >= latest {
@@ -174,22 +318,21 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			qch := make(chan *bnq, cap(bnch))
 			for i := next; i < latest &&
 				len(qch) < cap(qch); i++ {
-				qch <- &bnq{i, nil, nil, 3} // fill bch with requests
+				qch <- &bnq{i, nil, nil, RPCCallRetry} // fill bch with requests
+			}
+			if len(qch) == 0 {
+				r.log.Error("Fatal: Zero length of query channel. Avoiding deadlock")
+				continue
 			}
 			bns := make([]*BlockNotification, 0, len(qch))
 			for q := range qch {
 				switch {
 				case q.err != nil:
 					if q.retry > 0 {
-						if !strings.HasSuffix(q.err.Error(), "requested block number greater than current block number") {
-							q.retry--
-							q.v, q.err = nil, nil
-							qch <- q
-							continue
-						}
-						if latest >= q.h {
-							latest = q.h - 1
-						}
+						q.retry--
+						q.v, q.err = nil, nil
+						qch <- q
+						continue
 					}
 					r.log.Debugf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash(), q.err)
 					bns = append(bns, nil)

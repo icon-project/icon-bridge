@@ -34,7 +34,7 @@ const (
 func NewSender(
 	src, dst chain.BTPAddress,
 	urls []string, w wallet.Wallet,
-	opts map[string]interface{}, l log.Logger) (chain.Sender, error) {
+	rawOpts json.RawMessage, l log.Logger) (chain.Sender, error) {
 	s := &sender{
 		log: l,
 		w:   w.(*wallet.EvmWallet),
@@ -44,7 +44,7 @@ func NewSender(
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
-	err := s.opts.Unmarshal(opts)
+	err := json.Unmarshal(rawOpts, &s.opts)
 	if err != nil {
 		return nil, err
 	}
@@ -63,9 +63,10 @@ func NewSender(
 }
 
 type senderOptions struct {
-	GasLimit        uint64  `json:"gas_limit"`
-	BoostGasPrice   float64 `json:"boost_gas_price"`
-	TxDataSizeLimit uint64  `json:"tx_data_size_limit"`
+	GasLimit         uint64  `json:"gas_limit"`
+	BoostGasPrice    float64 `json:"boost_gas_price"`
+	TxDataSizeLimit  uint64  `json:"tx_data_size_limit"`
+	BalanceThreshold big.Int `json:"balance_threshold"`
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
@@ -177,6 +178,13 @@ func (s *sender) Segment(
 	}
 
 	return tx, newMsg, nil
+}
+
+func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
+	cl, _ := s.jointClient()
+	bal, err := cl.GetBalance(ctx, s.w.Address())
+	return bal, &s.opts.BalanceThreshold, err
+
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*relayTx, error) {
