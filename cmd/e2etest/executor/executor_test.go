@@ -137,8 +137,8 @@ func TestKeystore(t *testing.T) {
 
 func getKeystores() (map[chain.ChainType][]string, error) {
 	pathPerChain := map[chain.ChainType]string{
-		chain.ICON: ".,/wallets/icon",
-		chain.BSC:  ".,/wallets/bsc",
+		chain.ICON: "../../../devnet/docker/icon-bsc/_ixh/wallets/icon",
+		chain.BSC:  "../../../devnet/docker/icon-bsc/_ixh/wallets/bsc",
 	}
 	keystores := map[chain.ChainType][]string{
 		chain.ICON: {},

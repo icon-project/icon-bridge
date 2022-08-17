@@ -56,7 +56,7 @@ contract('BMC tests', (accounts) => {
             let buff = new Buffer(_relayMsg, 'base64');
             let data = buff.toString('utf-8');
             //await bmcManagement.updateLinkRxSeq("btp://0x7.icon/cxfe6b306c41bf7cd880dafe46a952fb4d1764d49b",8)
-            await bmcPeriphery.handleRelayMessage("btp://0x7.icon/cxfe6b306c41bf7cd880dafe46a952fb4d1764d49b", _relayMsg);
+            // await bmcPeriphery.handleRelayMessage("btp://0x7.icon/cxfe6b306c41bf7cd880dafe46a952fb4d1764d49b", _relayMsg);
     
             let bmcLink = await bmcManagement.getLink(link);
             let status= await bmcPeriphery.getStatus(link);

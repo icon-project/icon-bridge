@@ -7,6 +7,7 @@
 BUILD_ROOT = $(abspath ./)
 BIN_DIR = ./bin
 LINUX_BIN_DIR = ./build/linux
+
 GOBUILD = go build
 GOBUILD_TAGS =
 # GOBUILD_ENVS = CGO_ENABLED=0
@@ -70,25 +71,20 @@ $(SOLIDITY_DIST_DIR)/%:
 	rm -rf $@/contracts/Mock ; \
 
 $(PYSCORE_DIST_DIR)/%:
-	$(eval MODULE := $(patsubst $(PYSCORE_DIST_DIR)/%.zip,%,$@))
-	mkdir -p $(PYSCORE_DIST_DIR)/$(MODULE) ; \
-	cp -r pyscore/lib pyscore/$(MODULE) $(PYSCORE_DIST_DIR)/$(MODULE)/
+	$(eval MODULE := $(patsubst $(PYSCORE_DIST_DIR)/%,%,$@))
+	mkdir -p $@ ; \
+	cp -r pyscore/lib pyscore/$(MODULE) $@/
 
-dist-py-bmc: $(PYSCORE_DIST_DIR)/bmc.zip
-ifeq (,$(wildcard $(PYSCORE_DIST_DIR)/bmc.zip))
+dist-py-bmc: $(PYSCORE_DIST_DIR)/bmc
 	cd $(PYSCORE_DIST_DIR)/bmc ; \
 	echo '{"version": "0.0.1","main_module": "bmc.bmc","main_score": "BTPMessageCenter"}' > package.json ; \
-	zip -r -v $(PYSCORE_DIST_DIR)/bmc.zip bmc lib package.json -x *__pycache__* -x *tests* ; \
-	rm -rf $(PYSCORE_DIST_DIR)/bmc ;
-endif
+	zip -r -v $(PYSCORE_DIST_DIR)/bmc.zip bmc lib package.json -x *__pycache__* -x *tests*
 
-dist-py-bmv: $(PYSCORE_DIST_DIR)/bmv.zip
-ifeq (,$(wildcard $(PYSCORE_DIST_DIR)/bmv.zip))
+dist-py-bmv: $(PYSCORE_DIST_DIR)/bmv
 	cd $(PYSCORE_DIST_DIR)/bmv ; \
 	echo '{"version": "0.0.1","main_module": "bmv.icon.icon","main_score": "BTPMessageVerifier"}' > package.json ; \
 	zip -r -v $(PYSCORE_DIST_DIR)/bmv.zip bmv lib package.json -x *__pycache__* -x *tests*
-endif
-
+	
 dist-py-irc2: $(PYSCORE_DIST_DIR)/token_bsh
 	cd $(PYSCORE_DIST_DIR)/token_bsh ; \
 	echo '{"version": "0.0.1","main_module": "token_bsh.token_bsh","main_score": "TokenBSH"}' > package.json ; \

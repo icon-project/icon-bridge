@@ -19,7 +19,14 @@ interface IBTSCore {
        @param _owner    Address of a new Onwer.
     */
     function addOwner(address _owner) external;
+
+    /**
+        @notice Get name of nativecoin
+        @dev caller can be any
+        @return Name of nativecoin
+    */
     function getNativeCoinName() external view returns (string memory);
+
     /**
        @notice Removing an existing Owner.
        @dev Caller must be an Owner of BTP network
@@ -108,6 +115,18 @@ interface IBTSCore {
         external
         view
         returns (bool _valid);
+
+    /**
+        @notice Get fee numerator and fixed fee
+        @dev caller can be any
+        @param _coinName Coin name
+        @return _feeNumerator Fee numerator for given coin
+        @return _fixedFee Fixed fee for given coin
+    */
+    function feeRatio(string calldata _coinName)
+        external
+        view
+        returns (uint _feeNumerator, uint _fixedFee);
 
     /**
         @notice Return a usable/locked/refundable balance of an account based on coinName.

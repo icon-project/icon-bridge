@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/big"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
@@ -251,4 +252,23 @@ func (api *api) getReceiptProof(blockHash *types.CryptoHash, receiptId *types.Cr
 	}
 
 	return receiptProof, nil
+}
+
+func (api *api) getBalance(accountId string) (*big.Int, error) {
+	var response types.Account
+	params := struct {
+		AccountId    string `json:"account_id"`
+		Finality     string `json:"finality"`
+		Request_type string `json:"request_type"`
+	}{
+		AccountId:    accountId,
+		Finality:     "final",
+		Request_type: "view_account",
+	}
+
+	if _, err := api.Do("query", params, &response); err != nil {
+		return nil, err
+	}
+
+	return (*big.Int)(&response.Amount), nil
 }

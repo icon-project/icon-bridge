@@ -136,6 +136,9 @@ func (sh *SlackHook) forward() {
 	tick := time.NewTicker(time.Millisecond * RATE_LIMIT / 10) // throttle (one-tenth) readFromStack() which mutex locks read/write operation
 	go func() {
 		reqStr := ""
+		bold := "*"
+		mono := "```"
+		header := ""
 		var err error
 		defer tick.Stop()
 		for {
@@ -148,22 +151,32 @@ func (sh *SlackHook) forward() {
 							req = e.Data
 						}
 						// Add the message passed to logging
-						if e.Level == logrus.WarnLevel || e.Level == logrus.ErrorLevel || e.Level == logrus.FatalLevel || e.Level == logrus.PanicLevel {
-							req["Message"] = "*" + e.Message + "*"
-						} else {
-							req["Message"] = e.Message
+						srv := "Service"
+						if vi, ok := req[FieldKeyService]; ok {
+							if vs, ok := vi.(string); ok {
+								srv = vs
+							}
 						}
+						header = "[" + srv + "]" + "[" + e.Level.String() + "][ICON-BRIDGE][" + e.Time.UTC().Format("2006-01-02T15:04:05.000Z") + "]\n"
+						req["Message"] = e.Message
 						req["Level"] = e.Level
-						req["Time"] = e.Time.UTC().Format("2006-01-02 15:04:05.000") // UTC Event log
+						req["Time"] = e.Time.UTC().Format("2006-01-02T15:04:05.000Z") // UTC Event log
+
 						if reqBytes, err := json.Marshal(req); err == nil && reqBytes != nil {
-							reqStr += string(reqBytes) + "\n"
+							if e.Level == logrus.WarnLevel || e.Level == logrus.ErrorLevel || e.Level == logrus.FatalLevel || e.Level == logrus.PanicLevel {
+								reqStr += header + bold + mono + string(reqBytes) + mono + bold
+							} else {
+								reqStr += header + mono + string(reqBytes) + mono + "\n"
+							}
 						} else {
 							// If couldn't process message; save the error, so the error can be reported instead
-							reqStr += "SlackHook; forwardFunc; JSON Marshal log entry; Err: " + err.Error() + "\n"
+							reqStr += header + bold + mono + "SlackHook; forwardFunc; JSON Marshal log entry; Err: " + err.Error() + mono + bold + "\n"
 						}
 						if len(reqStr) > MAX_PAYLOAD_SIZE {
 							if err = send(reqStr); err != nil {
-								reqStr = "forwardFunc; Message of length " + strconv.FormatInt(int64(len(reqStr)), 10) + " dropped because of error " + err.Error() + "\n"
+								reqStr = header + bold + mono +
+									"forwardFunc; Message of length " + strconv.FormatInt(int64(len(reqStr)), 10) + " dropped because of error " + err.Error() +
+									mono + bold + "\n"
 							} else {
 								reqStr = ""
 							}
@@ -171,7 +184,8 @@ func (sh *SlackHook) forward() {
 					}
 					if len(reqStr) > 0 { // send concatenated string if hasn't been sent
 						if err = send(reqStr); err != nil { // forwarding this message is delayed as the reqStr can get sent only the next time readFromStack returns entries
-							reqStr = "forwardFunc; Message of length " + strconv.FormatInt(int64(len(reqStr)), 10) + " dropped because of error " + err.Error() + "\n"
+							header = "[Common][error][ICON-BRIDGE][" + time.Now().UTC().Format("2006-01-02T15:04:05.000Z") + "]\n"
+							reqStr = header + bold + mono + "forwardFunc; Message of length " + strconv.FormatInt(int64(len(reqStr)), 10) + " dropped because of error " + err.Error() + mono + bold + "\n"
 						} else {
 							reqStr = ""
 						}

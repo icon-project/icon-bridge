@@ -1,0 +1,37 @@
+version = '0.1.0'
+
+dependencies {
+    compileOnly("foundation.icon:javaee-api:$javaeeVersion")
+    implementation("foundation.icon:javaee-scorex:$scorexVersion")
+    implementation fileTree(dir: '../lib', include: 'lib-0.1.0.jar')
+    implementation("com.github.sink772:javaee-tokens:0.6.0")
+}
+
+optimizedJar {
+    mainClassName = 'foundation.icon.btp.irc2Tradeable.IRC2Tradeable'
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    } { exclude "score/*" }
+    enableDebug = debugJar
+}
+
+deployJar {
+    endpoints {
+        berlin {
+            uri = 'https://berlin.net.solidwallet.io/api/v3'
+            nid = 7
+        }
+        local {
+            uri = 'http://localhost:9082/api/v3'
+            nid = 3
+        }
+    }
+    keystore = rootProject.hasProperty('keystoreName') ? "$keystoreName" : ''
+    password = rootProject.hasProperty('keystorePass') ? "$keystorePass" : ''
+    parameters {[
+            arg('_name', 'DEV'),
+            arg('_symbol', 'DEV'),
+            arg('_decimals', '18')
+        ]
+    }
+}

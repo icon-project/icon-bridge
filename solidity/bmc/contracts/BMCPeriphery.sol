@@ -77,17 +77,15 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
     }
 
     function requireRegisteredRelay(string calldata _prev) internal view {
-        address relay = address(0);
         address[] memory relays = IBMCManagement(bmcManagement).getLinkRelays(
             _prev
         );
         for (uint256 i = 0; i < relays.length; i++) {
             if (msg.sender == relays[i]) {
-                relay = msg.sender;
-                break;
+                return;
             }
         }
-        require(relay == msg.sender, BMCRevertUnauthorized);
+        revert(BMCRevertUnauthorized);
     }
 
     /**
@@ -121,16 +119,14 @@ contract BMCPeriphery is IBMCPeriphery, Initializable {
             }
             rxHeight = rps[i].height;
             for (uint256 j = 0; j < rps[i].events.length; j++) {
-                rxSeq++;
                 ev = rps[i].events[j];
+                require(ev.nextBmc.compareTo(bmcBtpAddress), "Invalid Next BMC");
+                rxSeq++;
                 if (ev.seq < rxSeq) {
                     rxSeq--;
                     continue;  // ignore lower sequence number
                 } else if (ev.seq > rxSeq) {
                     revert(BMCRevertInvalidSeqNumber);
-                }
-                if (!ev.nextBmc.compareTo(bmcBtpAddress)) {
-                    continue;
                 }
                 try this.tryDecodeBTPMessage(ev.message) returns (
                     Types.BMCMessage memory _decoded

@@ -89,7 +89,7 @@ func (r *ReceiverCore) syncVerifier(vr *Verifier, height int64) error {
 	r.Log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Debug("syncVerifier: start")
 
 	for vr.Next() < height {
-		rqch := make(chan *req, SyncVerifierMaxConcurrency)
+		rqch := make(chan *req, MonitorBlockMaxConcurrency)
 		for i := vr.Next(); len(rqch) < cap(rqch); i++ {
 			rqch <- &req{height: i}
 		}

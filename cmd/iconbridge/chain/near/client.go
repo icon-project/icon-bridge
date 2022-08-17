@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strconv"
 	"time"
@@ -45,6 +46,7 @@ type Api interface {
 	getNonce(string, string) (int64, error)
 	getReceiptProof(blockHash, receiptId *types.CryptoHash, receiverId string) (types.ReceiptProof, error)
 	getTransactionResult(string, string) (types.TransactionResult, error)
+	getBalance(string) (*big.Int, error)
 }
 
 func newClients(urls []string, logger log.Logger) []*Client {

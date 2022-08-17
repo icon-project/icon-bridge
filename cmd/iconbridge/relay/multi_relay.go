@@ -2,9 +2,11 @@ package relay
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -14,11 +16,19 @@ import (
 
 type NewSenderFunc func(
 	src, dst chain.BTPAddress, urls []string, w wallet.Wallet,
-	opts map[string]interface{}, l log.Logger) (chain.Sender, error)
+	opts json.RawMessage, l log.Logger) (chain.Sender, error)
 
 type NewReceiverFunc func(
 	src, dst chain.BTPAddress, urls []string,
-	opts map[string]interface{}, l log.Logger) (chain.Receiver, error)
+	opts json.RawMessage, l log.Logger) (chain.Receiver, error)
+
+// type NewSenderFunc func(
+// 	src, dst chain.BTPAddress, urls []string, w wallet.Wallet,
+// 	opts map[string]interface{}, l log.Logger) (chain.Sender, error)
+
+// type NewReceiverFunc func(
+// 	src, dst chain.BTPAddress, urls []string,
+// 	opts map[string]interface{}, l log.Logger) (chain.Receiver, error)
 
 var (
 	Senders   = map[string]NewSenderFunc{}
@@ -37,13 +47,19 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 		if err != nil {
 			return nil, err
 		}
-
+		chainName := rc.Dst.Address.BlockChain()
+		srvName := "BMR-"
+		if strings.ToUpper(chainName) == "ICON" {
+			srvName += strings.ToUpper(rc.Src.Address.BlockChain())
+		} else {
+			srvName += strings.ToUpper(chainName)
+		}
 		l := l.WithFields(log.Fields{
-			log.FieldKeyModule: rc.Name,
-			log.FieldKeyWallet: w.Address(),
+			log.FieldKeyModule:  rc.Name,
+			log.FieldKeyWallet:  w.Address(),
+			log.FieldKeyService: srvName,
 		})
 
-		chainName := rc.Dst.Address.BlockChain()
 		if sender, ok := Senders[chainName]; ok {
 			if dst, err = sender(
 				rc.Src.Address,
