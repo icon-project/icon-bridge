@@ -2442,3 +2442,85 @@ def go_repositories():
         sum = "h1:2Usl1nmF/WZucqkFZhnfFYxxxu8LG21F6nPQBE5gKV8=",
         version = "v1.3.1",
     )
+    go_repository(
+        name = "build_aspect_cli",
+        importpath = "aspect.build/cli",
+        sum = "h1:tBH4doieIF4ccEKagmb3MjVeocoat/nhALkNsYMgARA=",
+        version = "v0.6.0",
+    )
+
+    go_repository(
+        name = "com_github_bazelbuild_bazelisk",
+        importpath = "github.com/bazelbuild/bazelisk",
+        sum = "h1:2EWA2lRrt/k8B5ASt0mlTDQ+7mnzvKdF6ShNWLbk0o0=",
+        version = "v1.10.1",
+    )
+    go_repository(
+        name = "com_github_bazelbuild_rules_go",
+        importpath = "github.com/bazelbuild/rules_go",
+        sum = "h1:fNtx0dJpG5ENGdMj3/GICoi/7z+ixB3IIW5rERTzOgM=",
+        version = "v0.28.0",
+    )
+
+    go_repository(
+        name = "com_github_hashicorp_go_plugin",
+        importpath = "github.com/hashicorp/go-plugin",
+        sum = "h1:DXmvivbWD5qdiBts9TpBC7BYL1Aia5sxbRgQB+v6UZM=",
+        version = "v1.4.3",
+    )
+
+    go_repository(
+        name = "com_github_hashicorp_go_version",
+        importpath = "github.com/hashicorp/go-version",
+        sum = "h1:McDWVJIU/y+u1BRV06dPaLfLCaT7fUTJLp5r04x7iNw=",
+        version = "v1.3.0",
+    )
+
+    go_repository(
+        name = "com_github_hashicorp_yamux",
+        importpath = "github.com/hashicorp/yamux",
+        sum = "h1:b5rjCoWHc7eqmAS4/qyk21ZsHyb6Mxv/jykxvNTkU4M=",
+        version = "v0.0.0-20180604194846-3520598351bb",
+    )
+
+    go_repository(
+        name = "com_github_jhump_protoreflect",
+        importpath = "github.com/jhump/protoreflect",
+        sum = "h1:h5jfMVslIg6l29nsMs0D8Wj17RDVdNYti0vDN/PZZoE=",
+        version = "v1.6.0",
+    )
+
+    go_repository(
+        name = "com_github_juju_ansiterm",
+        importpath = "github.com/juju/ansiterm",
+        sum = "h1:FaWFmfWdAUKbSCtOU2QjDaorUexogfaMgbipgYATUMU=",
+        version = "v0.0.0-20180109212912-720a0952cc2a",
+    )
+
+    go_repository(
+        name = "com_github_lunixbochs_vtclean",
+        importpath = "github.com/lunixbochs/vtclean",
+        sum = "h1:weJVJJRzAJBFRlAiJQROKQs8oC9vOxvm4rZmBBk0ONw=",
+        version = "v0.0.0-20180621232353-2d01aacdc34a",
+    )
+
+    go_repository(
+        name = "com_github_manifoldco_promptui",
+        importpath = "github.com/manifoldco/promptui",
+        sum = "h1:R95mMF+McvXZQ7j1g8ucVZE1gLP3Sv6j9vlF9kyRqQo=",
+        version = "v0.8.0",
+    )
+
+    go_repository(
+        name = "com_github_oklog_run",
+        importpath = "github.com/oklog/run",
+        sum = "h1:Ru7dDtJNOyC66gQ5dQmaCa0qIsAUFY3sFpK1Xk8igrw=",
+        version = "v1.0.0",
+    )
+
+    go_repository(
+        name = "com_github_pkg_browser",
+        importpath = "github.com/pkg/browser",
+        sum = "h1:TdFv+3Gr3GaghJ/o80aulO4ian7GHGWMdLBXoLZH1Is=",
+        version = "v0.0.0-20210904010418-6d279e18f982",
+    )

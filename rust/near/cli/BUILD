@@ -36,7 +36,7 @@ create_account(
 )
 
 create_sub_account(
-    name = "nativecoinbsh",
+    name = "bts",
 )
 
 create_sub_account(
@@ -61,18 +61,18 @@ genrule(
 )
 
 genrule(
-    name = "deploy_native_coin_bsh",
+    name = "deploy_bts",
     srcs = [
         "@near//bsh/nativecoin:native_coin_wasm",
     ],
     outs = ["deploy_natvie_coin_bsh.out"],
-    cmd = """$(execpath :near_binary) deploy $$(cat $(location @near//cli:create_sub_account_nativecoinbsh)) --nodeUrl $$(cat $(locations @near//:node_url)) --wasmFile $(locations @near//bsh/nativecoin:native_coin_wasm) --accountId $$(cat $(location @near//cli:create_sub_account_nativecoinbsh)) --initFunction \"new\" --initArgs  \\'\\{\\"service_name\\":\\"bts\\"\\,\\"bmc\\":\\"$$(cat $(location @near//cli:encode_public_key_bmc))\\"\\,\\"network\\":\\"0x1.near\\"\\,\\"native_coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"NEAR\\"\\,\\"symbol\\":\\"NEAR\\"\\,\\"uri\\":null\\,\\"network\\":\\"0x1.near\\"\\,\\"fee_numerator\\":\\"0\\"\\,\\"fixed_fee\\":\\"0\\"\\,\\"extras\\":null\\}\\}\\}\\' > $@""",
+    cmd = """$(execpath :near_binary) deploy $$(cat $(location @near//cli:create_sub_account_bts)) --nodeUrl $$(cat $(locations @near//:node_url)) --wasmFile $(locations @near//bsh/nativecoin:native_coin_wasm) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --initFunction \"new\" --initArgs  \\'\\{\\"service_name\\":\\"bts\\"\\,\\"bmc\\":\\"$$(cat $(location @near//cli:encode_public_key_bmc))\\"\\,\\"network\\":\\"0x1.near\\"\\,\\"native_coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"NEAR\\"\\,\\"symbol\\":\\"NEAR\\"\\,\\"uri\\":null\\,\\"network\\":\\"0x1.near\\"\\,\\"fee_numerator\\":\\"0\\"\\,\\"fixed_fee\\":\\"0\\"\\,\\"extras\\":null\\}\\}\\}\\' > $@""",
     executable = True,
     local = True,
     tools = [
         "@near//:node_url",
         "@near//cli:create_account_bmc",
-        "@near//cli:create_sub_account_nativecoinbsh",
+        "@near//cli:create_sub_account_bts",
         "@near//cli:encode_public_key_bmc",
         "@near//cli:near_binary",
     ],
@@ -115,32 +115,32 @@ genrule(
 )
 
 genrule(
-    name = "add_nativecoinbsh_service",
-    outs = ["add_nativecoinbsh_service.out"],
-    cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:encode_public_key_bmc)) add_service \\'\\{\\"name\\":\\"bts\\"\\,\\"service\\":\\"$$(cat $(location @near//cli:create_sub_account_nativecoinbsh))\\"\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:encode_public_key_bmc)) > $@ """,
+    name = "add_bts_service",
+    outs = ["add_bts_service.out"],
+    cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:encode_public_key_bmc)) add_service \\'\\{\\"name\\":\\"bts\\"\\,\\"service\\":\\"$$(cat $(location @near//cli:create_sub_account_bts))\\"\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:encode_public_key_bmc)) > $@ """,
     executable = True,
     local = True,
     tools = [
         "@near//:node_url",
-        "@near//cli:create_sub_account_nativecoinbsh",
+        "@near//cli:create_sub_account_bts",
         "@near//cli:encode_public_key_bmc",
         "@near//cli:near_binary",
     ],
 )
 
 genrule(
-    name = "register_wrapped_coin_native_coin_bsh",
+    name = "register_wrapped_coin_bts",
     srcs = [
-        "@near//cli:add_nativecoinbsh_service",
+        "@near//cli:add_bts_service",
         "@icon//:network_address",
     ],
     outs = ["regsiter_new_wrapped_coin.out"],
-    cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:create_sub_account_nativecoinbsh)) register \\'\\{\\"coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"ICX\\"\\,\\"symbol\\":\\"icx\\",\\"uri\\":\\"wicx.$$(cat $(location @near//cli:create_sub_account_nativecoinbsh))\\"\\,\\"network\\":\\"$$(cat $(location @icon//:network_address))\\"\\,\\"fee_numerator\\":\\"0\\"\\,\\"fixed_fee\\":\\"0\\"\\,\\"extras\\":\\{\\"spec\\":\\"ft-1.0.0\\",\\"icon\\":null,\\"reference\\":null,\\"reference_hash\\":null,\\"decimals\\":24\\}\\}\\}\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:create_sub_account_nativecoinbsh)) --amount 10 --gas 300000000000000 >$@""",
+    cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:create_sub_account_bts)) register \\'\\{\\"coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"ICX\\"\\,\\"symbol\\":\\"icx\\",\\"uri\\":\\"wicx.$$(cat $(location @near//cli:create_sub_account_bts))\\"\\,\\"network\\":\\"$$(cat $(location @icon//:network_address))\\"\\,\\"fee_numerator\\":\\"0\\"\\,\\"fixed_fee\\":\\"0\\"\\,\\"extras\\":\\{\\"spec\\":\\"ft-1.0.0\\",\\"icon\\":null,\\"reference\\":null,\\"reference_hash\\":null,\\"decimals\\":24\\}\\}\\}\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --amount 10 --gas 300000000000000 >$@""",
     executable = True,
     local = True,
     tools = [
         "@near//:node_url",
-        "@near//cli:create_sub_account_nativecoinbsh",
+        "@near//cli:create_sub_account_bts",
         "@near//cli:near_binary",
     ],
 )
