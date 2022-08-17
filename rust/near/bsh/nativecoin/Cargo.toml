@@ -39,3 +39,11 @@ path = "tests/test_handle_transfer_request.rs"
 [[test]]
 name = "test_fee_management"
 path = "tests/test_fee_management.rs"
+
+[[test]]
+name = "test_coin_management"
+path = "tests/test_coin_management.rs"
+
+[[test]]
+name = "test_coin_transfer"
+path = "tests/test_coin_transfer.rs"

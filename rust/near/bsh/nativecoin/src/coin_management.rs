@@ -16,6 +16,15 @@ impl NativeCoinService {
         self.assert_coin_does_not_exists(&coin);
 
         if coin.network() == &self.network {
+            if let Some(uri) = coin.metadata().uri_deref() {
+                env::promise_create(
+                    uri,
+                    "storage_deposit",
+                    &json!({}).to_string().as_bytes(),
+                    env::attached_deposit(),
+                    estimate::GAS_FOR_TOKEN_STORAGE_DEPOSIT,
+                );
+            };
             self.register_coin(coin);
         } else {
             let coin_metadata = coin.extras().clone().expect("Coin Metadata Missing");
@@ -126,7 +135,7 @@ impl NativeCoinService {
             PromiseResult::Successful(_) => self.register_coin(coin),
             PromiseResult::NotReady => log!("Not Ready"),
             PromiseResult::Failed => {
-                log!("Faild to register the coin")
+                log!("Failed to register the coin")
             }
         }
     }
@@ -164,7 +173,7 @@ impl NativeCoinService {
             coin.symbol().to_string(),
             env::current_account_id(),
             estimate::NO_DEPOSIT,
-            estimate::GAS_FOR_MT_TRANSFER_CALL,
+            estimate::GAS_FOR_FT_TRANSFER_CALL,
         ));
     }
 

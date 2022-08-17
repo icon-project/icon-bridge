@@ -1,18 +1,19 @@
 use btp_common::btp_address::Address;
 use btp_common::errors::BshError;
 use libraries::types::{
-    Account, AccountBalance, AccumulatedAssetFees, TransferableAsset, BTPAddress, AssetId, WrappedNativeCoin,
+    Account, AccountBalance, AccumulatedAssetFees, AssetId, BTPAddress, TransferableAsset,
+    WrappedNativeCoin,
 };
 use libraries::{
     types::messages::BtpMessage, types::messages::SerializedMessage,
-    types::messages::TokenServiceMessage, types::messages::TokenServiceType, types::Balances,
-    types::Math, types::Network, types::Owners,
-    types::Requests, types::StorageBalances, types::Asset, types::AssetFees, types::Assets, types::AssetMetadata
+    types::messages::TokenServiceMessage, types::messages::TokenServiceType, types::Asset,
+    types::AssetFees, types::AssetMetadata, types::Assets, types::Balances, types::Math,
+    types::Network, types::Owners, types::Requests, types::StorageBalances,
 };
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LazyOption;
-use near_sdk::serde_json::{to_value, Value};
 use near_sdk::serde_json::json;
+use near_sdk::serde_json::{to_value, Value};
 use near_sdk::PromiseOrValue;
 use near_sdk::{assert_one_yocto, AccountId};
 use near_sdk::{
@@ -68,12 +69,7 @@ pub struct NativeCoinService {
 #[near_bindgen]
 impl NativeCoinService {
     #[init]
-    pub fn new(
-        service_name: String,
-        bmc: AccountId,
-        network: String,
-        native_coin: Coin,
-    ) -> Self {
+    pub fn new(service_name: String, bmc: AccountId, network: String, native_coin: Coin) -> Self {
         require!(!env::state_exists(), "Already initialized");
         let mut owners = Owners::new();
         owners.add(&env::current_account_id());

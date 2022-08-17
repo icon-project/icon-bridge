@@ -1,13 +1,12 @@
-use nativecoin_service::{Coin, NativeCoinService};
-use near_sdk::{env, serde_json::to_value, testing_env, AccountId, PromiseResult, VMContext};
+use nativecoin_service::NativeCoinService;
+use near_sdk::{json_types::U128, testing_env, AccountId, VMContext, serde_json::to_value, env, PromiseResult};
+use std::collections::HashSet;
 pub mod accounts;
 use accounts::*;
-use libraries::types::{Asset, AssetItem, WrappedNativeCoin};
+use libraries::types::{AccountBalance, WrappedNativeCoin, Asset, Math, AssetItem};
 mod token;
 use token::*;
-
-pub type Token = Asset<WrappedNativeCoin>;
-pub type TokenItem = AssetItem;
+pub type Coin = Asset<WrappedNativeCoin>;
 
 fn get_context(
     input: Vec<u8>,
@@ -47,29 +46,28 @@ fn register_token() {
     );
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
     let mut contract = NativeCoinService::new(
-        "TokenBSH".to_string(),
+        "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let baln = <Token>::new(BALN.to_owned());
-    contract.register(baln.clone());
-    contract.register_coin_callback(baln.clone());
-
+    let icx_coin = <Coin>::new(ICON_COIN.to_owned());
+    contract.register(icx_coin.clone());
+    contract.register_coin_callback(icx_coin.clone());
+    
     let result = contract.coins();
     let expected = to_value(vec![
         AssetItem {
             name: nativecoin.name().to_owned(),
             network: nativecoin.network().to_owned(),
-            symbol: nativecoin.symbol().to_owned(),
+            symbol: nativecoin.symbol().to_owned()
         },
-        TokenItem {
-            name: baln.name().to_owned(),
-            network: baln.network().to_owned(),
-            symbol: baln.symbol().to_owned(),
-        },
-    ])
-    .unwrap();
+        AssetItem {
+            name: icx_coin.name().to_owned(),
+            network: icx_coin.network().to_owned(),
+            symbol: icx_coin.symbol().to_owned()
+        }
+    ]).unwrap();
     assert_eq!(result, expected);
 }
 
@@ -78,7 +76,7 @@ fn register_token() {
 fn register_existing_token() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
     testing_env!(
-        context(alice(), 1_000_000_000_000_000_000_000_000),
+        context(alice(), 0),
         Default::default(),
         Default::default(),
         Default::default(),
@@ -89,54 +87,20 @@ fn register_existing_token() {
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
-        nativecoin,
+        nativecoin.clone(),
     );
-    let baln = <Token>::new(BALN.to_owned());
-    contract.register(baln.clone());
-    contract.register_coin_callback(baln.clone());
-
-    contract.register(baln.clone());
+    let icx_coin = <Coin>::new(ICON_COIN.to_owned());
+    contract.register(icx_coin.clone());
+    contract.register_coin_callback(icx_coin.clone());
+    contract.register(icx_coin.clone());
 }
 
 #[test]
 #[should_panic(expected = "BSHRevertNotExistsPermission")]
 fn register_token_permission() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
-    testing_env!(context(alice(), 0));
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
-        "nativecoin".to_string(),
-        bmc(),
-        "0x1.near".into(),
-        nativecoin,
-    );
-    testing_env!(context(chuck(), 0));
-    let baln = <Token>::new(BALN.to_owned());
-    contract.register(baln.clone());
-}
-
-#[test]
-#[should_panic(
-    expected = "BSHRevertNotExistsToken: [38, 6b, d, cf, f4, cf, 7b, f0, f7, 91, 97, 88, ec, 8f, f2, d6, 98, e5, 32, 16, 2a, e4, 5, 3d, 32, 3b, 8d, 4f, e0, bd, ae, 94]"
-)]
-fn get_non_exist_token_id() {
-    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
-    testing_env!(context(alice(), 0));
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
-        "nativecoin".to_string(),
-        bmc(),
-        "0x1.near".into(),
-        nativecoin,
-    );
-    let token_id = contract.coin_id("ICON".to_string());
-}
-
-#[test]
-fn get_registered_token_id() {
-    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
     testing_env!(
-        context(alice(), 1_000_000_000_000_000_000_000_000),
+        context(alice(), 0),
         Default::default(),
         Default::default(),
         Default::default(),
@@ -147,13 +111,41 @@ fn get_registered_token_id() {
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
-        nativecoin,
+        nativecoin.clone(),
     );
-    let baln = <Token>::new(BALN.to_owned());
-    contract.register(baln.clone());
-    contract.register_coin_callback(baln.clone());
+    testing_env!(context(chuck(), 0));
+    let icx_coin = <Coin>::new(ICON_COIN.to_owned());
+    contract.register(icx_coin.clone());
+    contract.register_coin_callback(icx_coin.clone());
+}
 
-    let token_id = contract.coin_id("BALN".to_string());
-    let expected = env::sha256(baln.name().as_bytes());
-    assert_eq!(token_id, expected)
+#[test]
+fn get_registered_coin_id() {
+    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    testing_env!(context(alice(), 0));
+    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let mut contract = NativeCoinService::new(
+        "nativecoin".to_string(),
+        bmc(),
+        "0x1.near".into(),
+        nativecoin.clone(),
+    );
+    let coin_id = contract.coin_id("NEAR".to_string());
+    let expected = env::sha256(nativecoin.name().as_bytes());
+    assert_eq!(coin_id,expected)
+}
+
+#[test]
+#[should_panic(expected = "BSHRevertNotExistsToken: [38, 6b, d, cf, f4, cf, 7b, f0, f7, 91, 97, 88, ec, 8f, f2, d6, 98, e5, 32, 16, 2a, e4, 5, 3d, 32, 3b, 8d, 4f, e0, bd, ae, 94]")]
+fn get_non_exist_coin_id() {
+    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    testing_env!(context(alice(), 0));
+    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let mut contract = NativeCoinService::new(
+        "nativecoin".to_string(),
+        bmc(),
+        "0x1.near".into(),
+        nativecoin.clone(),
+    );
+    let coin_id = contract.coin_id("ICON".to_string());
 }

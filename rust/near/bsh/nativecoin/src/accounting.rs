@@ -71,21 +71,34 @@ impl NativeCoinService {
                 None,
                 coin.metadata().uri().to_owned().unwrap(),
                 estimate::NO_DEPOSIT,
-                estimate::GAS_FOR_MT_TRANSFER_CALL,
+                estimate::GAS_FOR_FT_TRANSFER_CALL,
             )
         } else {
-            Promise::new(account.clone()).transfer(amount + 1)
+            if let Some(uri) = coin.metadata().uri_deref() {
+                ext_ft::ft_transfer(
+                    account.clone(),
+                    U128::from(amount),
+                    None,
+                    uri,
+                    estimate::ONE_YOCTO,
+                    estimate::GAS_FOR_FT_TRANSFER_CALL,
+                )
+            } else {
+                Promise::new(account.clone()).transfer(amount)
+            }
         };
 
-        transfer_promise.then(ext_self::on_withdraw(
-            account.clone(),
-            amount,
-            coin_id,
-            coin.symbol().to_owned(),
-            env::current_account_id(),
-            estimate::NO_DEPOSIT,
-            estimate::GAS_FOR_MT_TRANSFER_CALL,
-        ));
+        transfer_promise
+            .then(ext_self::on_withdraw(
+                account.clone(),
+                amount,
+                coin_id,
+                coin.symbol().to_owned(),
+                env::current_account_id(),
+                estimate::NO_DEPOSIT,
+                estimate::GAS_FOR_FT_TRANSFER_CALL,
+            ))
+            .then(Promise::new(account.clone()).transfer(1));
     }
 
     pub fn reclaim(&mut self, coin_id: CoinId, amount: U128) {
