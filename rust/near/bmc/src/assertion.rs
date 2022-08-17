@@ -1,3 +1,5 @@
+use crate::types::Event;
+
 use super::*;
 
 impl BtpMessageCenter {
@@ -154,6 +156,12 @@ impl BtpMessageCenter {
     pub fn ensure_service_exists(&self, name: &str) -> Result<(), BmcError> {
         if !self.services.contains(name) {
             return Err(BmcError::ServiceNotExist);
+        }
+        Ok(())
+    }
+    pub fn ensure_valid_sequence(&self, link: &Link, event: &Event) -> Result<(), BmcError> {
+        if link.rx_seq() != event.sequence() {
+            return Err(BmcError::InvalidSequence);
         }
         Ok(())
     }

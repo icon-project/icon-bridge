@@ -1,39 +1,28 @@
-use super::{ Nullable, Proofs};
+use super:: Events;
 use libraries::rlp::{self, Decodable};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct ReceiptProof {
+pub struct Receipt {
     index: u64,
-    events: Proofs,
+    events: Events,
     height: u64,
 }
 
-impl ReceiptProof {
+impl Receipt {
     pub fn index(&self) -> u64 {
         self.index
     }
 
-    pub fn events(&self) -> &Proofs {
+    pub fn events(&self) -> &Events {
         &self.events
     }
 
     pub fn height(&self) -> u64 {
         self.height
     }
-
-    // pub fn event_len(&self) -> Result<usize,String>{
-    //     match  self.events.get() {
-    //         Ok(proofs) => {
-    //             Ok(proofs.len())
-    //         },
-    //         Err(err) => {
-    //             Err(err.to_string())
-    //         },
-    //     }
-    // }
 }
 
-impl Decodable for ReceiptProof {
+impl Decodable for Receipt {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
 
         

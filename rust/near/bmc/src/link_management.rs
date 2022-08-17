@@ -80,21 +80,9 @@ impl BtpMessageCenter {
         self.assert_have_permission();
         self.assert_link_exists(&link);
         self.assert_valid_set_link_param(max_aggregation, delay_limit);
-
-        // TODO: Fix Set Link
-    }
-
-    #[private]
-    pub fn set_link_bmv_callback(
-        &mut self,
-        link: BTPAddress,
-        block_interval: u64,
-        max_aggregation: u64,
-        delay_limit: u64,
-        #[callback] verifier_status: VerifierStatus,
-    ) {
         if let Some(link_property) = self.links.get(&link).as_mut() {
             let previous_rotate_term = link_property.rotate_term();
+
             link_property
                 .block_interval_dst_mut()
                 .clone_from(&block_interval);
@@ -111,9 +99,6 @@ impl BtpMessageCenter {
                 link_property
                     .rx_height_mut()
                     .clone_from(&env::block_height());
-                link_property
-                    .rx_height_src_mut()
-                    .clone_from(&verifier_status.mta_height());
             }
             self.links.set(&link, link_property);
         }

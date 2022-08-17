@@ -34,7 +34,6 @@ fn add_link_new_link(){
     let link = BTPAddress::new(
         "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     );
-    contract.add_verifier(link.network_address().unwrap(), verifier());
     contract.add_link(link);
 
     let result = contract.get_links();
@@ -52,20 +51,8 @@ fn add_link_existing_link(){
     let link = BTPAddress::new(
         "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     );
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
-    contract.add_link(link);
-}
-
-#[test]
-#[should_panic(expected = "BMCRevertNotExistBMV")]
-fn add_link_non_existing_verifier(){
-    let context = |v: AccountId| (get_context(vec![], false, v));
-    testing_env!(context(alice()));
-    let mut contract = BtpMessageCenter::new("0x1.near".into(), 1500);
-    let link = BTPAddress::new(
-        "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
-    );
     contract.add_link(link);
 }
 
@@ -78,7 +65,7 @@ fn add_link_permission(){
     let link = BTPAddress::new(
         "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     );
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
 
     testing_env!(context(chuck()));
     contract.add_link(link);
@@ -95,10 +82,8 @@ fn remove_link_existing_link(){
     let link_2 = BTPAddress::new(
         "btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     );
-    contract.add_verifier(link_1.network_address().unwrap(), verifier());
     contract.add_link(link_1.clone());
 
-    contract.add_verifier(link_2.network_address().unwrap(), verifier());
     contract.add_link(link_2);
     contract.remove_link(link_1);
 
@@ -120,7 +105,6 @@ fn remove_link_non_exisitng_link(){
     let link_2 = BTPAddress::new(
         "btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     );
-    contract.add_verifier(link_1.network_address().unwrap(), verifier());
     contract.add_link(link_1.clone());
 
     contract.remove_link(link_2);
@@ -135,7 +119,7 @@ fn remove_link_permission(){
     let link = BTPAddress::new(
         "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     );
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     testing_env!(context(chuck()));
     contract.remove_link(link);
@@ -149,11 +133,10 @@ fn set_link_existing_link(){
     let link = BTPAddress::new(
         "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     );
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
 
     contract.set_link(link.clone(), 1500, 100, 5);
-    contract.set_link_bmv_callback(link.clone(), 1500, 100, 5, VerifierStatus::new(1, 1, 1));
     let link_status = contract.get_status(link);
 
     assert_eq!(link_status.block_interval_dst(), 1500);
@@ -183,7 +166,6 @@ fn set_link_permission(){
     let link = BTPAddress::new(
         "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     );
-    contract.add_verifier(link.network_address().unwrap(), verifier());
     contract.add_link(link.clone());
     testing_env!(context(chuck()));
     contract.set_link(link.clone(), 1, 1, 1);
@@ -198,8 +180,6 @@ fn set_link_invalid_param(){
     let link = BTPAddress::new(
         "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     );
-
-    contract.add_verifier(link.network_address().unwrap(), verifier());
     contract.add_link(link.clone());
     contract.set_link(link, 0, 0, 0);
 }
@@ -216,10 +196,10 @@ fn get_links(){
     let link_2 = BTPAddress::new(
         "btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     );
-    contract.add_verifier(link_1.network_address().unwrap(), verifier());
+   
     contract.add_link(link_1.clone());
 
-    contract.add_verifier(link_2.network_address().unwrap(), verifier());
+    
     contract.add_link(link_2);
 
     let result = contract.get_links();
@@ -237,11 +217,9 @@ fn get_status_exisitng_link(){
     let link = BTPAddress::new(
         "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
     );
-    contract.add_verifier(link.network_address().unwrap(), verifier());
     contract.add_link(link.clone());
 
     contract.set_link(link.clone(), 1, 10, 1);
-    contract.set_link_bmv_callback(link.clone(), 1, 10, 1, VerifierStatus::new(1, 1, 1));
     
     testing_env!(context(charlie()));
     let link_status = contract.get_status(link);

@@ -1,4 +1,4 @@
-use super::ReceiptProof;
+use super::Receipt;
 use btp_common::errors::BmcError;
 use libraries::{rlp::{self, Decodable}, types::messages::SerializedMessage};
 use near_sdk::{
@@ -8,13 +8,13 @@ use near_sdk::{
 use std::convert::TryFrom;
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RelayMessage {
-    receipt_proofs: Vec<ReceiptProof>,
+    receipts: Vec<Receipt>,
 }
 
 impl RelayMessage {
 
-    pub fn receipt_proofs(&self) -> &Vec<ReceiptProof> {
-        &self.receipt_proofs
+    pub fn receipts(&self) -> &Vec<Receipt> {
+        &self.receipts
     }
 }
 
@@ -30,7 +30,7 @@ impl Serialize for RelayMessage {
 impl Decodable for RelayMessage {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         Ok(Self {
-            receipt_proofs: rlp.list_at(0)?,
+            receipts: rlp.list_at(0)?,
         })
     }
 }
@@ -50,10 +50,10 @@ impl TryFrom<String> for RelayMessage {
     }
 }
 
-impl TryFrom<SerializedMessage> for RelayMessage {
+impl TryFrom<Vec<u8>> for RelayMessage {
     type Error = BmcError;
-    fn try_from(value: SerializedMessage) -> Result<Self, Self::Error> {
-        let decoded = base64::decode_config(value.data(), URL_SAFE_NO_PAD).map_err(|error| {
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        let decoded = base64::decode_config(value, URL_SAFE_NO_PAD).map_err(|error| {
             BmcError::DecodeFailed {
                 message: format!("base64: {}", error),
             }
@@ -92,7 +92,7 @@ mod tests {
         assert_eq!(
             relay_message,
             RelayMessage {
-                receipt_proofs: vec![]
+                receipts: vec![]
             }
         )
     }
@@ -100,7 +100,7 @@ mod tests {
     #[test]
     fn deserialize_relay_message1() {
         let message = "-QEE-QEBuP_4_QG49fjz-PG4T2J0cDovLzB4MS5uZWFyL2VkOTQzNmM0ZTRjZmEwNDVmMzhjMGI1NzljYzYzZDgxZDc5NjE3YmM2YjZjMWU4NTVhYjE4ZjllMTEzMThmMDABuJ34m7g5YnRwOi8vMHgyLmljb24vY3hlZWNkYmIwNzMwMDZhMmIyMDIzMmRkOGY5ZTQ1MDc4YTI4MWJjNTA4uE9idHA6Ly8weDEubmVhci9lZDk0MzZjNGU0Y2ZhMDQ1ZjM4YzBiNTc5Y2M2M2Q4MWQ3OTYxN2JjNmI2YzFlODU1YWIxOGY5ZTExMzE4ZjAwg2JtYwCJyIRJbml0gsHAhACnJzQ=";
-        let btp_message:BtpMessage<BmcServiceMessage> = RelayMessage::try_from(message.to_string()).unwrap().receipt_proofs[0].events()[0].message().clone().try_into().unwrap();
+        let btp_message:BtpMessage<SerializedMessage> = RelayMessage::try_from(message.to_string()).unwrap().receipts[0].events()[0].message().clone().try_into().unwrap();
         println!("{:?}",btp_message);
         
     }
