@@ -47,7 +47,7 @@ pub static FEE_DENOMINATOR: u128 = 10_u128.pow(4);
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
-pub struct NativeCoinService {
+pub struct BtpTokenService {
     native_coin_name: String,
     network: Network,
     owners: Owners,
@@ -67,7 +67,7 @@ pub struct NativeCoinService {
 }
 
 #[near_bindgen]
-impl NativeCoinService {
+impl BtpTokenService {
     #[init]
     pub fn new(service_name: String, bmc: AccountId, network: String, native_coin: Coin) -> Self {
         require!(!env::state_exists(), "Already initialized");

@@ -1,7 +1,7 @@
 use super::*;
 
 #[near_bindgen]
-impl NativeCoinService {
+impl BtpTokenService {
     pub fn transfer(&mut self, coin_id: CoinId, destination: BTPAddress, amount: U128) {
         let sender_id = env::predecessor_account_id();
         self.assert_have_minimum_amount(amount.into());
@@ -37,7 +37,7 @@ impl NativeCoinService {
     }
 }
 
-impl NativeCoinService {
+impl BtpTokenService {
     pub fn process_external_transfer(
         &mut self,
         coin_id: &CoinId,
@@ -135,7 +135,11 @@ impl NativeCoinService {
         });
     }
 
-    pub fn finalize_external_transfer(&mut self, sender_id: &AccountId, assets: &Vec<TransferableAsset>) {
+    pub fn finalize_external_transfer(
+        &mut self,
+        sender_id: &AccountId,
+        assets: &Vec<TransferableAsset>,
+    ) {
         assets.iter().for_each(|asset| {
             let coin_id = Self::hash_coin_id(asset.name());
             let coin = self.coins.get(&coin_id).unwrap();
@@ -173,7 +177,11 @@ impl NativeCoinService {
         });
     }
 
-    pub fn rollback_external_transfer(&mut self, sender_id: &AccountId, assets: &Vec<TransferableAsset>) {
+    pub fn rollback_external_transfer(
+        &mut self,
+        sender_id: &AccountId,
+        assets: &Vec<TransferableAsset>,
+    ) {
         assets.iter().for_each(|asset| {
             let coin_id = Self::hash_coin_id(asset.name());
             let mut coin_fee = self.coin_fees.get(&coin_id).unwrap().to_owned();

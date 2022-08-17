@@ -1,8 +1,8 @@
-use libraries::types::{AssetId,messages::TokenServiceMessage};
+use libraries::types::{messages::TokenServiceMessage, AssetId};
 use near_sdk::ext_contract;
 
 #[ext_contract(ext_self)]
-pub trait NativeCoinService {
+pub trait BtpTokenService {
     fn on_withdraw(
         &mut self,
         account: AccountId,
@@ -19,12 +19,7 @@ pub trait NativeCoinService {
         receiver_id: AccountId,
     );
 
-    fn on_burn(
-        &mut self, 
-        amount: u128, 
-        coin_id: AssetId,
-        coin_symbol: String,
-    );
+    fn on_burn(&mut self, amount: u128, coin_id: AssetId, coin_symbol: String);
 
     fn send_service_message_callback(&mut self, message: TokenServiceMessage, serial_no: i128);
 }

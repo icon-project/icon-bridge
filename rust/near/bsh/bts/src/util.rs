@@ -1,6 +1,6 @@
 use super::*;
 
-impl NativeCoinService {
+impl BtpTokenService {
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * Utils * * * * * * *

@@ -1,6 +1,6 @@
 use super::*;
 
-impl NativeCoinService {
+impl BtpTokenService {
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
     // * * * * Internal Validations  * *
@@ -14,11 +14,7 @@ impl NativeCoinService {
         )
     }
 
-    pub fn assert_coin_id_len_match_amount_len(
-        &self,
-        coin_ids: &Vec<CoinId>,
-        amounts: &Vec<U128>,
-    ) {
+    pub fn assert_coin_id_len_match_amount_len(&self, coin_ids: &Vec<CoinId>, amounts: &Vec<U128>) {
         require!(
             coin_ids.len() == amounts.len(),
             format!(

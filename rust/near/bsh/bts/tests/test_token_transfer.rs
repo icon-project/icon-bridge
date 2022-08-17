@@ -1,4 +1,4 @@
-use nativecoin_service::{Coin, NativeCoinService};
+use bts::{BtpTokenService, Coin};
 use near_sdk::{env, json_types::U128, testing_env, AccountId, PromiseResult, VMContext};
 pub mod accounts;
 use accounts::*;
@@ -66,7 +66,7 @@ fn deposit_wnear() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -115,7 +115,7 @@ fn withdraw_wnear() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -180,7 +180,7 @@ fn withdraw_wnear_higher_amount() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -227,7 +227,7 @@ fn external_transfer() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -294,7 +294,7 @@ fn handle_success_response_wnear_external_transfer() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -398,7 +398,7 @@ fn handle_success_response_baln_external_transfer() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -532,7 +532,7 @@ fn handle_failure_response_wnear_external_transfer() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -638,7 +638,7 @@ fn handle_failure_response_baln_coin_external_transfer() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -759,7 +759,7 @@ fn reclaim_baln_coin() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -853,7 +853,7 @@ fn external_transfer_higher_amount() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -902,7 +902,7 @@ fn external_transfer_unregistered_coin() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -939,7 +939,7 @@ fn external_transfer_nil_balance() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -988,7 +988,7 @@ fn external_transfer_batch() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -1045,7 +1045,7 @@ fn external_transfer_batch_higher_amount() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -1093,7 +1093,7 @@ fn external_transfer_batch_unregistered_coin() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
@@ -1147,7 +1147,7 @@ fn external_transfer_batch_nil_balance() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),

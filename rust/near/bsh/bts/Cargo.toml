@@ -1,5 +1,5 @@
 [package]
-name = "nativecoin-service"
+name = "bts"
 version = "0.1.0"
 authors = ["Icon Foundation<foo@icon.foundation>"]
 edition = "2018"

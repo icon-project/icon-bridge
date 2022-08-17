@@ -6,7 +6,7 @@ use libraries::types::WrappedI128;
 use super::*;
 
 #[near_bindgen]
-impl NativeCoinService {
+impl BtpTokenService {
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
     // * * * * * *  Messaging  * * * * *
@@ -100,7 +100,7 @@ impl NativeCoinService {
     }
 }
 
-impl NativeCoinService {
+impl BtpTokenService {
     fn handle_service_message(
         &mut self,
         message: Result<BtpMessage<TokenServiceMessage>, BshError>,

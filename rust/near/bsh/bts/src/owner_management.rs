@@ -1,7 +1,7 @@
 use super::*;
 
 #[near_bindgen]
-impl NativeCoinService {
+impl BtpTokenService {
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
     // * * * * Owner Management  * * * *

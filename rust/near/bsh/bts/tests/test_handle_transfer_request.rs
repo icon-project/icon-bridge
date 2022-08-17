@@ -1,4 +1,4 @@
-use nativecoin_service::NativeCoinService;
+use bts::BtpTokenService;
 use near_sdk::{env, json_types::U128, testing_env, AccountId, PromiseResult, VMContext};
 use std::{collections::HashSet, convert::TryInto};
 pub mod accounts;
@@ -50,7 +50,7 @@ fn handle_transfer_mint_registered_icx() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(vec![], false, account_id, deposit, env::storage_usage())
     };
-    
+
     testing_env!(
         context(alice(), 0),
         Default::default(),
@@ -58,9 +58,9 @@ fn handle_transfer_mint_registered_icx() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    
+
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
-    let mut contract = NativeCoinService::new(
+    let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),

@@ -1,7 +1,7 @@
 use super::*;
 
 #[near_bindgen]
-impl NativeCoinService {
+impl BtpTokenService {
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
     // * * * * Coin Management  * * * *
@@ -141,7 +141,7 @@ impl NativeCoinService {
     }
 }
 
-impl NativeCoinService {
+impl BtpTokenService {
     pub fn mint(&mut self, coin_id: &CoinId, amount: u128, coin: &Coin, receiver_id: AccountId) {
         ext_nep141::mint(
             amount.into(),
