@@ -8,7 +8,7 @@ ensure_key_secret() {
   local KEY_SECRET=$1
   if [ ! -f "${KEY_SECRET}" ]; then
     mkdir -p $(dirname ${KEY_SECRET})
-    echo -n $(date|md5sum|head -c16) > ${KEY_SECRET}
+    echo -n $(openssl rand -hex 20) > ${KEY_SECRET}
   fi
   echo ${KEY_SECRET}
 }
@@ -24,7 +24,7 @@ ensure_key_store() {
     goloop ks gen --out ${KEY_STORE}tmp -p $(cat ${KEY_SECRET}) > /dev/null 2>&1
     cat ${KEY_STORE}tmp | jq -r . > ${KEY_STORE}
     rm ${KEY_STORE}tmp
-    
+
   fi
   echo ${KEY_STORE}
 }
@@ -42,7 +42,7 @@ ensure_bsc_key_store() {
     ethkey generate --passwordfile $KEY_SECRET_PATH --json tmp
     cat tmp | jq -r . > $KEY_STORE_PATH
     ethkey inspect --json --private --passwordfile $KEY_SECRET_PATH $KEY_STORE_PATH | jq -r .PrivateKey > ${KEY_STORE_PATH}.priv
-    rm tmp 
+    rm tmp
     # tr -dc A-Fa-f0-9 </dev/urandom | head -c 64 > $ICONBRIDGE_CONFIG_DIR/keystore/$(basename ${KEY_STORE_PATH}).priv
     # tmpPath=$(geth account import --datadir $ICONBRIDGE_CONFIG_DIR --password $KEY_SECRET_PATH $ICONBRIDGE_CONFIG_DIR/keystore/$(basename ${KEY_STORE_PATH}).priv | sed -e "s/^Address: {//" -e "s/}//")
     # fileMatch=$(find $ICONBRIDGE_CONFIG_DIR/keystore -type f -name '*'$tmpPath)
