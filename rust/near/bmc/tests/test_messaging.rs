@@ -255,6 +255,7 @@ fn deserialize_serialized_btp_messages_from_json() {
     // TODO: Add;
 }
 
+#[ignore]
 #[test]
 #[cfg(feature = "testable")]
 fn handle_route_message() {
@@ -277,10 +278,10 @@ fn handle_route_message() {
                     .to_string()
             ),
             BTPAddress::new(
-                "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string()
+                "btp://0x1.near/88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4".to_string()
             ),
             "bmc".to_string(),
-            WrappedI128::new(-10),
+            WrappedI128::new(10),
             error_message.clone().into(),
             None
         )
@@ -367,6 +368,7 @@ fn handle_external_service_message_non_existing_service() {
         link.clone(),
         <BtpMessage<SerializedMessage>>::try_from(&btp_message).unwrap(),
     );
+
     let btp_message: BtpMessage<ErrorMessage> = contract.get_message().unwrap().try_into().unwrap();
     let error_message = ErrorMessage::new(16, "BMCRevertNotExistBSH".to_string());
     assert_eq!(

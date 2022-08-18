@@ -101,7 +101,5 @@ mod tests {
     fn deserialize_relay_message1() {
         let message = "-QEE-QEBuP_4_QG49fjz-PG4T2J0cDovLzB4MS5uZWFyL2VkOTQzNmM0ZTRjZmEwNDVmMzhjMGI1NzljYzYzZDgxZDc5NjE3YmM2YjZjMWU4NTVhYjE4ZjllMTEzMThmMDABuJ34m7g5YnRwOi8vMHgyLmljb24vY3hlZWNkYmIwNzMwMDZhMmIyMDIzMmRkOGY5ZTQ1MDc4YTI4MWJjNTA4uE9idHA6Ly8weDEubmVhci9lZDk0MzZjNGU0Y2ZhMDQ1ZjM4YzBiNTc5Y2M2M2Q4MWQ3OTYxN2JjNmI2YzFlODU1YWIxOGY5ZTExMzE4ZjAwg2JtYwCJyIRJbml0gsHAhACnJzQ=";
         let btp_message:BtpMessage<SerializedMessage> = RelayMessage::try_from(message.to_string()).unwrap().receipts[0].events()[0].message().clone().try_into().unwrap();
-        println!("{:?}",btp_message);
-        
     }
 }

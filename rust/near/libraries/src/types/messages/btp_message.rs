@@ -133,7 +133,7 @@ impl From<&BtpMessage<SerializedMessage>> for String {
 
 impl From<BtpMessage<SerializedMessage>> for Vec<u8> {
     fn from(btp_message: BtpMessage<SerializedMessage>) -> Self {
-        rlp::encode(&btp_message).to_vec()
+        rlp::encode(&rlp::encode(&btp_message)).to_vec()
     }
 }
 
