@@ -336,6 +336,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bts"
+version = "0.1.0"
+dependencies = [
+ "btp-common",
+ "lazy_static",
+ "libraries",
+ "near-contract-standards",
+ "near-sdk",
+ "tiny-keccak",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1320,18 +1332,6 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
-]
-
-[[package]]
-name = "nativecoin-service"
-version = "0.1.0"
-dependencies = [
- "btp-common",
- "lazy_static",
- "libraries",
- "near-contract-standards",
- "near-sdk",
- "tiny-keccak",
 ]
 
 [[package]]
@@ -2756,18 +2756,6 @@ name = "tinyvec_macros"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
-
-[[package]]
-name = "token-service"
-version = "0.1.0"
-dependencies = [
- "btp-common",
- "lazy_static",
- "libraries",
- "near-contract-standards",
- "near-sdk",
- "tiny-keccak",
-]
 
 [[package]]
 name = "tokio"

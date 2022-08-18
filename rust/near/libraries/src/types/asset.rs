@@ -47,6 +47,10 @@ impl<T: AssetMetadata> Asset<T>  {
         &self.metadata
     }
 
+    pub fn metadata_mut(&mut self) -> &mut T {
+        &mut self.metadata
+    }
+
     pub fn extras(&self) -> &Option<AssetMetadataExtras>{
         &self.metadata.extras()
     }
