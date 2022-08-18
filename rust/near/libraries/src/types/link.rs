@@ -298,6 +298,7 @@ impl Links {
             &Link {
                 relays: Relays::new(link),
                 block_interval_src,
+                rx_seq: 1,
                 ..Default::default()
             },
         );
@@ -366,6 +367,7 @@ mod tests {
         let mut links = Links::new();
         links.add(&link, 0);
         let expected = Link {
+            rx_seq: 1,
             ..Default::default()
         };
         assert_eq!(links.get(&link).unwrap(), expected);
@@ -390,6 +392,7 @@ mod tests {
             links.set(&link_1, &link);
         }
         let mut expected = Link {
+            rx_seq: 1,
             ..Default::default()
         };
         expected.relays.add(
@@ -414,6 +417,7 @@ mod tests {
             links.set(&link_1, &link);
         }
         let expected = Link {
+            rx_seq: 1,
             block_interval_dst: 1000,
             ..Default::default()
         };
@@ -434,6 +438,7 @@ mod tests {
             links.set(&link_1, &link);
         }
         let expected = Link {
+            rx_seq: 1,
             max_aggregation: 10,
             ..Default::default()
         };
@@ -454,6 +459,7 @@ mod tests {
             links.set(&link_1, &link);
         }
         let expected = Link {
+            rx_seq: 1,
             delay_limit: 100,
             ..Default::default()
         };
@@ -485,6 +491,7 @@ mod tests {
             links.set(&link_1, &link);
         }
         let mut expected = Link {
+            rx_seq: 1,
             ..Default::default()
         };
         expected.relays.set(&vec![

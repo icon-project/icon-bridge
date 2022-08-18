@@ -1,3 +1,5 @@
+use crate::types::Event;
+
 use super::*;
 
 impl BtpMessageCenter {
@@ -116,20 +118,6 @@ impl BtpMessageCenter {
         );
     }
 
-    pub fn assert_verifier_exists(&self, network: &str) {
-        require!(
-            self.bmv.contains(network),
-            format!("{}", BmcError::VerifierNotExist)
-        );
-    }
-
-    pub fn assert_verifier_does_not_exists(&self, network: &str) {
-        require!(
-            !self.bmv.contains(network),
-            format!("{}", BmcError::VerifierExist)
-        );
-    }
-
     pub fn assert_valid_set_link_param(&self, max_aggregation: u64, delay_limit: u64) {
         require!(
             max_aggregation >= 1 && delay_limit >= 1,
@@ -168,6 +156,12 @@ impl BtpMessageCenter {
     pub fn ensure_service_exists(&self, name: &str) -> Result<(), BmcError> {
         if !self.services.contains(name) {
             return Err(BmcError::ServiceNotExist);
+        }
+        Ok(())
+    }
+    pub fn ensure_valid_sequence(&self, link: &Link, event: &Event) -> Result<(), BmcError> {
+        if link.rx_seq() != event.sequence() {
+            return Err(BmcError::InvalidSequence);
         }
         Ok(())
     }

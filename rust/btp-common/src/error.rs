@@ -180,6 +180,7 @@ pub mod errors {
         SameSenderReceiver,
         AccountNotExist,
         TokenNotRegistered,
+        LessThanZero,
     }
 
     impl Exception for BshError {
@@ -270,8 +271,13 @@ pub mod errors {
                 }
                 BshError::Unknown => {
                     write!(f, "{}", "Unknown")
+                },
+                BshError::LessThanZero => {
+                    write!(f, "{}", "LessThanZero")
+                },
+                BshError::Failure => {
+                    write!(f, "{}", "Failure")
                 }
-                _ => todo!(),
             }
         }
     }
@@ -302,11 +308,12 @@ pub mod errors {
         RouteNotExist,
         ServiceExist,
         ServiceNotExist,
-        Unknown,
+        Unknown{message: String},
         Unreachable { destination: String },
         VerifierExist,
         VerifierNotExist,
         Unauthorized { message: &'static str },
+        InvalidSequence,
         InternalEventHandleNotExists
     }
 
@@ -322,7 +329,7 @@ pub mod errors {
     impl From<&BmcError> for u32 {
         fn from(bmc_error: &BmcError) -> Self {
             match bmc_error {
-                BmcError::Unknown => 0,
+                BmcError::Unknown{message:_} => 0,
                 BmcError::PermissionNotExist => 1,
                 BmcError::InvalidSerialNo => 2,
                 BmcError::VerifierExist => 3,
@@ -335,6 +342,7 @@ pub mod errors {
                 BmcError::RelayNotExist { link: _ } => 10,
                 BmcError::Unreachable { destination: _ } => 11,
                 BmcError::ErrorDrop => 12,
+                BmcError::InvalidSequence => 13,
                 _ => 0,
             }
         }
@@ -363,6 +371,7 @@ pub mod errors {
                 BmcError::InvalidParam => write!(f, "{}{}", label, "InvalidParam"),
                 BmcError::VerifierExist => write!(f, "{}{}", label, "AlreadyExistsBMV"),
                 BmcError::VerifierNotExist => write!(f, "{}{}", label, "NotExistBMV"),
+                BmcError::InvalidSequence => write!(f, "{}{}", label, "InvalidSequence"),
                 BmcError::RelayExist { link } => {
                     write!(f, "{}{} for {}", label, "RelayExist", link)
                 }
@@ -391,8 +400,8 @@ pub mod errors {
                 BmcError::Unreachable { destination } => {
                     write!(f, "{}{} at {}", label, "Unreachable", destination)
                 }
-                BmcError::Unknown => {
-                    write!(f, "{}{}", label, "Unknown")
+                BmcError::Unknown {message} => {
+                    write!(f, "{}{}:{}", label, "Unknown",message)
                 }
                 BmcError::InvalidSerialNo => {
                     write!(f, "{}{}", label, "Invalid Serial No")
