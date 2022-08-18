@@ -1,6 +1,8 @@
-use libraries::types::WrappedI128;
+use std::convert::TryFrom;
 
 use super::*;
+use crate::types::{Event, RelayMessage};
+use libraries::types::WrappedI128;
 
 #[near_bindgen]
 impl BtpMessageCenter {
@@ -10,108 +12,19 @@ impl BtpMessageCenter {
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
 
-    pub fn handle_relay_message(&mut self, source: BTPAddress, message: SerializedMessage) {
+    pub fn handle_relay_message(&mut self, source: BTPAddress, message: RelayMessage) {
         self.assert_link_exists(&source);
         self.assert_relay_is_registered(&source);
-        let verifier = self.bmv.get(&source.network_address().unwrap()).unwrap();
 
-        let link = self.links.get(&source).unwrap();
-
-        bmv_contract::handle_relay_message(
-            self.btp_address.clone(),
-            source.clone(),
-            link.rx_seq(),
-            message,
-            verifier.clone(),
-            estimate::NO_DEPOSIT,
-            estimate::HANDLE_RELAY_MESSAGE,
-        )
-        .then(bmc_contract::handle_relay_message_bmv_callback(
-            source,
+        let mut link = self.links.get(&source).unwrap();
+        let btp_messages = self.get_btp_messages(message, &mut link).unwrap();
+        self.process_bmc_messages(
+            &source,
+            &mut link,
+            btp_messages,
             env::predecessor_account_id(),
-            env::current_account_id(),
-            estimate::NO_DEPOSIT,
-            estimate::HANDLE_RELAY_MESSAGE_BMV_CALLBACK,
-        ));
-    }
-
-    #[private]
-    pub fn handle_relay_message_bmv_callback(
-        &mut self,
-        source: BTPAddress,
-        #[callback] verifier_response: VerifierResponse,
-        relay: AccountId,
-    ) {
-        if let Some(mut link) = self.links.get(&source) {
-            let accepted_relay = match link.rotate_relay(
-                verifier_response.verifier_status.last_height(),
-                !verifier_response.messages.is_empty(),
-            ) {
-                Some(accepted_relay) => {
-                    self.assert_relay_is_valid(&relay, accepted_relay);
-                    relay
-                }
-                None => relay,
-            };
-
-            let mut relay_status = match link.relays().status(&accepted_relay) {
-                Some(status) => status,
-                None => RelayStatus::default(),
-            };
-            relay_status
-                .block_count_mut()
-                .add(verifier_response.verifier_status.mta_height())
-                .unwrap()
-                .sub(verifier_response.previous_height)
-                .unwrap();
-            relay_status
-                .message_count_mut()
-                .add(verifier_response.messages.len().try_into().unwrap())
-                .unwrap();
-            link.relays_mut().set_status(&accepted_relay, &relay_status);
-            self.links.set(&source, &link);
-            self.handle_btp_messages(source, verifier_response.messages)
-        }
-    }
-
-    #[cfg(feature = "mockable")]
-    #[private]
-    pub fn handle_relay_message_bmv_callback_mockable(
-        &mut self,
-        source: BTPAddress,
-        verifier_response: VerifierResponse,
-        relay: AccountId,
-    ) {
-        if let Some(mut link) = self.links.get(&source) {
-            let accepted_relay = match link.rotate_relay(
-                verifier_response.verifier_status.last_height(),
-                !verifier_response.messages.is_empty(),
-            ) {
-                Some(accepted_relay) => {
-                    self.assert_relay_is_valid(&relay, accepted_relay);
-                    relay
-                }
-                None => relay,
-            };
-
-            let mut relay_status = match link.relays().status(&accepted_relay) {
-                Some(status) => status,
-                None => RelayStatus::default(),
-            };
-            relay_status
-                .block_count_mut()
-                .add(verifier_response.verifier_status.mta_height())
-                .unwrap()
-                .sub(verifier_response.previous_height)
-                .unwrap();
-            relay_status
-                .message_count_mut()
-                .add(verifier_response.messages.len().try_into().unwrap())
-                .unwrap();
-            link.relays_mut().set_status(&accepted_relay, &relay_status);
-            self.links.set(&source, &link);
-            self.handle_btp_messages(source, verifier_response.messages)
-        }
+        ).unwrap();
+        self.links.set(&source, &link);
     }
 
     #[cfg(feature = "testable")]
@@ -135,7 +48,7 @@ impl BtpMessageCenter {
             self.emit_message(next, message);
         } else {
             self.send_error(
-                previous,
+                &previous,
                 &BtpException::Bmc(BmcError::Unreachable {
                     destination: destination.to_string(),
                 }),
@@ -233,7 +146,7 @@ impl BtpMessageCenter {
 impl BtpMessageCenter {
     pub fn handle_btp_messages(
         &mut self,
-        source: BTPAddress,
+        source: &BTPAddress,
         #[allow(unused_mut)] mut messages: SerializedBtpMessages,
     ) {
         messages
@@ -280,7 +193,7 @@ impl BtpMessageCenter {
         message: &BtpMessage<SerializedMessage>,
     ) -> bool {
         if self.btp_address.network_address() == message.destination().network_address() {
-            self.increment_link_rx_seq(source);
+            
             let outcome = match message.service().as_str() {
                 SERVICE => self.handle_internal_service_message(source, message.clone().try_into()),
                 _ => self.handle_external_service_message(source, message),
@@ -365,7 +278,7 @@ impl BtpMessageCenter {
         source: &BTPAddress,
         message: &BtpMessage<SerializedMessage>,
     ) -> bool {
-        self.increment_link_rx_seq(source);
+        
         self.send_message(source, &message.destination(), message.to_owned());
         false
     }
@@ -389,5 +302,64 @@ impl BtpMessageCenter {
             )
             .into(),
         );
+    }
+
+    fn process_bmc_messages(
+        &mut self,
+        source: &BTPAddress,
+        link: &mut Link,
+        btp_messages: SerializedBtpMessages,
+        relay: AccountId,
+    ) -> Result<(),BmcError>{
+        let mut relay_status = match link.relays().status(&relay) {
+            Some(status) => status,
+            None => RelayStatus::default(),
+        };
+
+        if relay_status
+            .message_count_mut()
+            .add(btp_messages.len().try_into().unwrap())
+            .is_err(){
+                return Err(BmcError::Unknown { message: "FAILED TO UPDATE RELAY STATUS".to_string() })
+            }
+        link.relays_mut().set_status(&relay, &relay_status);
+
+        self.handle_btp_messages(source, btp_messages);
+        Ok(())
+    }
+
+    fn get_btp_messages(
+        &mut self,
+        message: RelayMessage,
+        link: &mut Link,
+    ) -> Result<SerializedBtpMessages, BmcError> {
+        let mut event: &Event;
+        let mut btp_messages: SerializedBtpMessages = vec![];
+
+        let receipts = message.receipts();
+        for rps_idx in 0..receipts.len() {
+            if receipts[rps_idx].height() < link.rx_height() {
+                continue;
+            }
+            link.rx_height_mut().clone_from(&receipts[rps_idx].height());
+
+            for event_idx in 0..receipts[rps_idx].events().len() {
+                event = &receipts[rps_idx].events()[event_idx];
+                self.ensure_valid_sequence(link, event)?;
+                if  link.rx_seq_mut().add(1).is_err(){
+                    return Err(BmcError::Unknown { message: "FAILED TO UPDATE SEQUENCE".to_string() })
+                };
+                
+                if event.next() != &self.btp_address {
+                    continue;
+                }
+                match event.btp_message() {
+                    Some(btp_message) => btp_messages.push(btp_message),
+                    None => continue,
+                };
+            }
+        }
+
+        Ok(btp_messages)
     }
 }

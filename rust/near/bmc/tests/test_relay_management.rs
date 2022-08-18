@@ -34,7 +34,7 @@ fn add_relay_new_relay() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -56,7 +56,7 @@ fn add_relays_new_relay() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -85,7 +85,7 @@ fn add_relay_existing_relay() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -125,7 +125,7 @@ fn get_relays() {
     let mut contract = BtpMessageCenter::new("0x1.near".into(), 1500);
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -155,7 +155,7 @@ fn add_relays_permission() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     testing_env!(context(chuck()));
     contract.add_relays(
@@ -176,7 +176,7 @@ fn add_relay_permission() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -200,7 +200,7 @@ fn remove_relay_existing_relay() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+    
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -240,7 +240,7 @@ fn remove_relay_permission() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+  
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -266,7 +266,7 @@ fn remove_relay_non_existing_relay() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+  
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -289,9 +289,9 @@ fn rotate_relay() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    contract.add_verifier(link.network_address().unwrap(), verifier());
+  
     contract.add_link(link.clone());
-    contract.set_link_bmv_callback(link.clone(), 2000, 50, 1, VerifierStatus::new(10, 0, 10));
+    contract.set_link(link.clone(), 2000, 50, 1);
     contract.add_relays(
         link.clone(),
         vec![
@@ -309,10 +309,8 @@ fn rotate_relay() {
 
     testing_env!(context(alice(), 51));
 
-    contract.handle_relay_message_bmv_callback(link.clone(), VerifierResponse {
-        messages: vec![],
-        verifier_status: VerifierStatus::new(10, 0, 11),
-        previous_height: 10
-    },
-    "verifier_2.near".parse::<AccountId>().unwrap());
+    let mut link = contract.get_link(link);
+    let account_id = link.rotate_relay(1200, true);
+    let account_id = link.rotate_relay(3200, true);
+
 }

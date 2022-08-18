@@ -219,11 +219,10 @@ impl Link {
     }
 
     //TODO: Confirm if relay status is linked with link
-    pub fn status(&self, verifier: &AccountId) -> LinkStatus {
+    pub fn status(&self) -> LinkStatus {
         LinkStatus {
             rx_seq: self.rx_seq,
             tx_seq: self.tx_seq,
-            verifier: verifier.to_owned(),
             relays: self.relays.bmr_status(),
             relay_index: self.relay_index,
             rotate_height: self.rotate_height,
@@ -244,7 +243,6 @@ impl Link {
 pub struct LinkStatus {
     rx_seq: u128,
     tx_seq: u128,
-    verifier: AccountId,
     relays: Vec<BmrStatus>,
     relay_index: u64,
     rotate_height: u64,
@@ -300,6 +298,7 @@ impl Links {
             &Link {
                 relays: Relays::new(link),
                 block_interval_src,
+                rx_seq: 1,
                 ..Default::default()
             },
         );
@@ -368,6 +367,7 @@ mod tests {
         let mut links = Links::new();
         links.add(&link, 0);
         let expected = Link {
+            rx_seq: 1,
             ..Default::default()
         };
         assert_eq!(links.get(&link).unwrap(), expected);
@@ -392,6 +392,7 @@ mod tests {
             links.set(&link_1, &link);
         }
         let mut expected = Link {
+            rx_seq: 1,
             ..Default::default()
         };
         expected.relays.add(
@@ -416,6 +417,7 @@ mod tests {
             links.set(&link_1, &link);
         }
         let expected = Link {
+            rx_seq: 1,
             block_interval_dst: 1000,
             ..Default::default()
         };
@@ -436,6 +438,7 @@ mod tests {
             links.set(&link_1, &link);
         }
         let expected = Link {
+            rx_seq: 1,
             max_aggregation: 10,
             ..Default::default()
         };
@@ -456,6 +459,7 @@ mod tests {
             links.set(&link_1, &link);
         }
         let expected = Link {
+            rx_seq: 1,
             delay_limit: 100,
             ..Default::default()
         };
@@ -487,6 +491,7 @@ mod tests {
             links.set(&link_1, &link);
         }
         let mut expected = Link {
+            rx_seq: 1,
             ..Default::default()
         };
         expected.relays.set(&vec![

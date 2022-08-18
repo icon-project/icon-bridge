@@ -9,9 +9,10 @@ use libraries::{
             SerializedMessage,
         },
         Service,
-        Verifier,
-        Address, BTPAddress, BmcEvent, Bmv, Connection, Connections, HashedCollection, Links, RelayStatus,
-        Network, Owners, Routes, Services, VerifierStatus, Math, LinkStatus, Link, VerifierResponse
+
+        HashedCollection,
+        Address, BTPAddress, BmcEvent, Connection, Connections, Links, RelayStatus,
+        Network, Owners, Routes, Services, Math, LinkStatus, Link
     },
 };
 
@@ -36,7 +37,8 @@ mod owner_management;
 mod relay_management;
 mod route_management;
 mod service_management;
-mod verifier_management;
+mod types;
+pub use types::RelayMessage;
 use external::*;
 
 const SERVICE: &str = "bmc";
@@ -48,7 +50,6 @@ pub struct BtpMessageCenter {
     btp_address: BTPAddress,
     owners: Owners,
     services: Services,
-    bmv: Bmv,
     links: Links,
     routes: Routes,
     connections: Connections,
@@ -71,7 +72,6 @@ impl BtpMessageCenter {
             )),
             owners,
             services: Services::new(),
-            bmv: Bmv::new(),
             links: Links::new(),
             routes: Routes::new(),
             connections: Connections::new(),
