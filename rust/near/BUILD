@@ -174,7 +174,7 @@ genrule(
     name = "bmr_options",
     outs = ["bmr_options.json"],
     cmd = """
-        jq <<<{} '' > $@
+        jq <<<{} '.balance_threshold = $$balance_threshold' --argjson balance_threshold 1000000000000000000000000> $@
     """,
     executable = True,
     local = True,

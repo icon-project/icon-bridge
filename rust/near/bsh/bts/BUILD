@@ -4,7 +4,7 @@ load("@rust//:wasm_generator.bzl", "rust_wasm_generator")
 package(default_visibility = ["//visibility:public"])
 
 rust_shared_library(
-    name = "native_coin",
+    name = "bts",
     srcs = [
         "src/external/bmc.rs",
         "src/external/mod.rs",
@@ -38,13 +38,13 @@ rust_shared_library(
     deps = [
         "@rules_rust//wasm_bindgen/raze:wasm_bindgen",
         "@rust//btp-common:btp_common",
-        "@rust//near/bsh/nativecoin/cargo:near_sdk",
+        "@rust//near/bsh/bts/cargo:near_sdk",
         "@rust//near/libraries",
-        "@rust//near/bsh/nativecoin/cargo:near_contract_standards",
+        "@rust//near/bsh/bts/cargo:near_contract_standards",
     ],
 )
 
 rust_wasm_generator(
-    name = "native_coin_wasm",
-    wasm_file = ":native_coin",
+    name = "bts_wasm",
+    wasm_file = ":bts",
 )
