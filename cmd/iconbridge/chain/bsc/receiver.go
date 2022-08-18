@@ -356,22 +356,36 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 							time.Sleep(500 * time.Millisecond)
 							qch <- q
 						}()
+
 						if q.v == nil {
 							q.v = &BlockNotification{}
 						}
+
 						q.v.Height = (&big.Int{}).SetUint64(q.h)
-						q.v.Header, q.err = r.client().GetHeaderByHeight(q.v.Height)
-						if q.err != nil {
-							q.err = errors.Wrapf(q.err, "GetHeaderByHeight: %v", q.err)
-							return
-						}
-						q.v.Hash = q.v.Header.Hash()
-						if q.v.Header.GasUsed > 0 {
-							if exists, err := r.hasBTPMessage(ctx, q.v.Height); err != nil {
-								r.log.WithFields(log.Fields{"Height": q.v.Height}).Error("hasBTPMessage ", err)
-							} else if !exists {
+
+						if q.v.Header == nil {
+							header, err := r.client().GetHeaderByHeight(q.v.Height)
+							if err != nil {
+								q.err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
 								return
 							}
+							q.v.Header = header
+							q.v.Hash = q.v.Header.Hash()
+						}
+
+						if q.v.Header.GasUsed > 0 {
+							if q.v.HasBTPMessage == nil {
+								hasBTPMessage, err := r.hasBTPMessage(ctx, q.v.Height)
+								if err != nil {
+									q.err = errors.Wrapf(err, "hasBTPMessage: %v", err)
+									return
+								}
+								q.v.HasBTPMessage = &hasBTPMessage
+							}
+							if !*q.v.HasBTPMessage {
+								return
+							}
+							// TODO optimize retry of GetBlockReceipts()
 							q.v.Receipts, q.err = r.client().GetBlockReceipts(q.v.Hash)
 							if q.err == nil {
 								receiptsRoot := ethTypes.DeriveSha(q.v.Receipts, trie.NewStackTrie(nil))
