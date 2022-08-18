@@ -15,6 +15,7 @@ go_library(
         "nonce.go",
         "receipt_proof.go",
         "transaction.go",
+        "account.go"
     ],
     importpath = "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types",
     visibility = ["//visibility:public"],

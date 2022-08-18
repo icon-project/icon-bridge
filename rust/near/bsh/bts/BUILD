@@ -9,6 +9,7 @@ rust_shared_library(
         "src/external/bmc.rs",
         "src/external/mod.rs",
         "src/external/native_coin.rs",
+        "src/external/fungible_token.rs",
         "src/external/nep141.rs",
         "src/types/mod.rs",
         "src/types/registered_coins.rs",

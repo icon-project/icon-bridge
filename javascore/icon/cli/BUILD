@@ -209,26 +209,26 @@ genrule(
     ],
 )
 
-genrule(
-    name = "add_bsr",
-    srcs= [
-        ":deploy_bsr",
-    ],
-    outs = ["add_bsr.out"],
-    cmd = """
-    $(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx  call --to $$(cat $(location @icon//cli:get_score_address_bts)) --method addRestrictor  --param _addr=$$(cat $(location @icon//cli:get_score_address_bsr))  --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . >$@
-    """,
-    executable = True,
-    local = True,
-    tools = [
-        "@com_github_icon_project_goloop//cmd/goloop",
-        "@icon//:goloop_config_dir",
-        "@icon//:network_id",
-        "@icon//:node_url",
-        "@icon//cli:get_score_address_bsr",
-        "@icon//cli:get_score_address_bts",
-    ]
-)
+# genrule(
+#     name = "add_bsr",
+#     srcs= [
+#         ":deploy_bsr",
+#     ],
+#     outs = ["add_bsr.out"],
+#     cmd = """
+#     $(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx  call --to $$(cat $(location @icon//cli:get_score_address_bts)) --method addRestrictor  --param _addr=$$(cat $(location @icon//cli:get_score_address_bsr))  --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . >$@
+#     """,
+#     executable = True,
+#     local = True,
+#     tools = [
+#         "@com_github_icon_project_goloop//cmd/goloop",
+#         "@icon//:goloop_config_dir",
+#         "@icon//:network_id",
+#         "@icon//:node_url",
+#         "@icon//cli:get_score_address_bsr",
+#         "@icon//cli:get_score_address_bts",
+#     ]
+# )
 
 genrule(
     name = "send_icx_to_near",
