@@ -10,7 +10,9 @@ import (
 	"sort"
 	"time"
 
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
@@ -273,7 +275,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				if lbn != nil {
 					if bn.Height.Cmp(lbn.Height) == 0 {
 						if !bytes.Equal(bn.Header.ParentHash.Bytes(), lbn.Header.ParentHash.Bytes()) {
-							r.log.WithFields(log.Fields{"lbnHash": lbn.Header.ParentHash, "bnHash": bn.Hash}).Error("verification failed on retry ")
+							r.log.WithFields(log.Fields{"lbnParentHash": lbn.Header.ParentHash, "bnParentHash": bn.Header.ParentHash}).Error("verification failed on retry ")
 							break
 						}
 					} else {
@@ -299,8 +301,8 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			}
 			// remove unprocessed notifications
 			for len(bnch) > 0 {
-				t := <-bnch
-				r.log.WithFields(log.Fields{"lenBnch": len(bnch), "height": t.Height}).Info("remove unprocessed block noitification")
+				<-bnch
+				//r.log.WithFields(log.Fields{"lenBnch": len(bnch), "height": t.Height}).Info("remove unprocessed block noitification")
 			}
 		default:
 			if next >= latest {
@@ -362,6 +364,11 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						}
 						q.v.Hash = q.v.Header.Hash()
 						if q.v.Header.GasUsed > 0 {
+							if exists, err := r.hasBTPMessage(ctx, q.v.Height); err != nil {
+								r.log.WithFields(log.Fields{"Height": q.v.Height}).Error("hasBTPMessage ", err)
+							} else if !exists {
+								return
+							}
 							q.v.Receipts, q.err = r.client().GetBlockReceipts(q.v.Hash)
 							if q.err == nil {
 								receiptsRoot := ethTypes.DeriveSha(q.v.Receipts, trie.NewStackTrie(nil))
@@ -399,6 +406,23 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			}
 		}
 	}
+}
+
+func (r *receiver) hasBTPMessage(ctx context.Context, height *big.Int) (bool, error) {
+	ctxNew, cancel := context.WithTimeout(ctx, defaultReadTimeout)
+	defer cancel()
+	logs, err := r.client().eth.FilterLogs(ctxNew, ethereum.FilterQuery{
+		FromBlock: height,
+		ToBlock:   height,
+		Addresses: []ethCommon.Address{ethCommon.HexToAddress(r.src.ContractAddress())},
+	})
+	if err != nil {
+		return false, errors.Wrapf(err, "FilterLogs %v", err)
+	}
+	if len(logs) > 0 {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (r *receiver) Subscribe(

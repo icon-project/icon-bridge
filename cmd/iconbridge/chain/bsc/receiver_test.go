@@ -3,6 +3,7 @@ package bsc
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +24,13 @@ const (
 
 func newTestReceiver(t *testing.T, src, dst chain.BTPAddress) chain.Receiver {
 	url := "https://data-seed-prebsc-1-s1.binance.org:8545"
-	receiver, _ := NewReceiver(src, dst, []string{url}, nil, log.New())
+	mp := map[string]interface{}{"syncConcurrency": 2}
+	res, err := json.Marshal(mp)
+	require.NoError(t, err)
+	receiver, err := NewReceiver(src, dst, []string{url}, res, log.New())
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
 	return receiver
 }
 
@@ -36,11 +44,28 @@ func newTestClient(t *testing.T, bmcAddr string) *Client {
 func TestMedianGasPrice(t *testing.T) {
 	url := "https://data-seed-prebsc-1-s1.binance.org:8545"
 	cls, _, err := newClients([]string{url}, BSC_BMC_PERIPHERY, log.New())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	_, _, err = cls[0].GetMedianGasPriceForBlock()
 	require.NoError(t, err)
+}
+
+func TestFilterLogs(t *testing.T) {
+	var src, dst chain.BTPAddress
+	err := src.Set(BSC_BMC_PERIPHERY)
+	require.NoError(t, err)
+	err = dst.Set(ICON_BMC)
+	require.NoError(t, err)
+
+	recv := newTestReceiver(t, src, dst).(*receiver)
+	if recv == nil {
+		t.Fatal(errors.New("Receiver is nil"))
+	}
+	exists, err := recv.hasBTPMessage(context.TODO(), big.NewInt(BlockHeight))
+	require.NoError(t, err)
+	if !exists {
+		require.NoError(t, errors.New("Expected true"))
+	}
 }
 
 func TestSubscribeMessage(t *testing.T) {
