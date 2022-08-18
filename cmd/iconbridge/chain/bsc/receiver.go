@@ -25,8 +25,9 @@ const (
 	BlockInterval              = 3 * time.Second
 	BlockHeightPollInterval    = 60 * time.Second
 	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
+	BlockDelay                 = 5
+	RPCCallRetry               = 5
 )
-const RPCCallRetry = 5
 
 func NewReceiver(
 	src, dst chain.BTPAddress, urls []string,
@@ -249,7 +250,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			r.log.WithFields(log.Fields{"error": err}).Error("receiveLoop: failed to GetBlockNumber")
 			return 0
 		}
-		return height
+		return height - BlockDelay
 	}
 	next, latest := opts.StartHeight, latestHeight()
 
@@ -269,6 +270,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				latest = height
 				r.log.WithFields(log.Fields{"latest": latest, "next": next}).Debug("poll height")
 			}
+
 		case bn := <-bnch:
 			// process all notifications
 			for ; bn != nil; next++ {
@@ -304,6 +306,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				<-bnch
 				//r.log.WithFields(log.Fields{"lenBnch": len(bnch), "height": t.Height}).Info("remove unprocessed block noitification")
 			}
+
 		default:
 			if next >= latest {
 				time.Sleep(10 * time.Millisecond)
