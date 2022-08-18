@@ -91,10 +91,14 @@ library Types {
         REQUEST_COIN_TRANSFER,
         REQUEST_COIN_REGISTER,
         REPONSE_HANDLE_SERVICE,
-        ADD_TO_BLACKLIST,
-        REMOVE_FROM_BLACKLIST,
+        BLACKLIST_MESSAGE,
         CHANGE_TOKEN_LIMIT,
         UNKNOWN_TYPE
+    }
+
+    enum BlacklistService {
+        ADD_TO_BLACKLIST,
+        REMOVE_FROM_BLACKLIST
     }
 
     struct PendingTransferCoin {
@@ -112,6 +116,7 @@ library Types {
     }
 
     struct BlacklistMessage {
+        BlacklistService serviceType;
         string[] addrs;
         string net;
     }

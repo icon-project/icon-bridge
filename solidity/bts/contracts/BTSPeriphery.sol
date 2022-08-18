@@ -91,6 +91,11 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         _;
     }
 
+    modifier onlyBTSCore() {
+        require(msg.sender == address(btsCore), "Unauthorized");
+        _;
+    }
+
     function initialize(address _bmc, address _btsCore) public initializer {
         bmc = IBMCPeriphery(_bmc);
         btsCore = IBTSCore(_btsCore);
@@ -128,8 +133,9 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         require(msg.sender == address(this), "Unauthorized");
         for (uint i = 0; i < _address.length; i++) {
             try this.checkParseAddress(_address[i]) {
-                require( blacklist[_address[i].parseAddress()], "UserNotBlacklisted");
-                blacklist[_address[i].parseAddress()] = false;
+                address addr = _address[i].parseAddress();
+                require(blacklist[addr], "UserNotBlacklisted");
+                delete blacklist[addr];
             } catch {
                 revert("InvalidAddress");
             }
@@ -148,7 +154,6 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         require(msg.sender == address(this) || msg.sender == address(btsCore), "Unauthorized");
         require(_coinNames.length == _tokenLimits.length,"InvalidParams");
         for(uint i = 0; i < _coinNames.length; i++) {
-            require(btsCore.isValidCoin(_coinNames[i]), "NotRegistered");
             tokenLimit[_coinNames[i]] = _tokenLimits[i];
         }
     }
@@ -159,7 +164,7 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         string[] memory _coinNames,
         uint256[] memory _values,
         uint256[] memory _fees
-    ) external override {
+    ) external override onlyBTSCore {
         //  Send Service Message to BMC
         //  If '_to' address is an invalid BTP Address format
         //  VM throws an error and revert(). Thus, it does not need
@@ -261,51 +266,44 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
                 errMsg,
                 RC_ERR
             );
-        } else if (_sm.serviceType == Types.ServiceType.ADD_TO_BLACKLIST) {
+        } else if (_sm.serviceType == Types.ServiceType.BLACKLIST_MESSAGE) {
             Types.BlacklistMessage memory _bm = _sm.data.decodeBlackListMsg();
             string[] memory addresses = _bm.addrs;
 
-            try this.addToBlacklist(addresses) {
-                // send message to bmc
-                sendResponseMessage(
-                    Types.ServiceType.ADD_TO_BLACKLIST,
-                    _from,
-                    _sn,
-                    "AddedToBlacklist",
-                    RC_OK
-                );
-                return;
-            } catch {
-                errMsg = "ErrorAddToBlackList";
+            if (_bm.serviceType == Types.BlacklistService.ADD_TO_BLACKLIST ) {
+                try this.addToBlacklist(addresses) {
+                    // send message to bmc
+                    sendResponseMessage(
+                        Types.ServiceType.BLACKLIST_MESSAGE,
+                        _from,
+                        _sn,
+                        "AddedToBlacklist",
+                        RC_OK
+                    );
+                    return;
+                } catch {
+                    errMsg = "ErrorAddToBlackList";
+                }
+            } else if (_bm.serviceType == Types.BlacklistService.REMOVE_FROM_BLACKLIST) {
+                try this.removeFromBlacklist(addresses) {
+                    // send message to bmc
+                    sendResponseMessage(
+                        Types.ServiceType.BLACKLIST_MESSAGE,
+                        _from,
+                        _sn,
+                        "RemovedFromBlacklist",
+                        RC_OK
+                    );
+                    return;
+                } catch {
+                    errMsg = "ErrorRemoveFromBlackList";
+                }
+            } else {
+                errMsg = "BlacklistServiceTypeErr";
             }
 
             sendResponseMessage(
-                Types.ServiceType.ADD_TO_BLACKLIST,
-                _from,
-                _sn,
-                errMsg,
-                RC_ERR
-            );
-
-        } else if (_sm.serviceType == Types.ServiceType.REMOVE_FROM_BLACKLIST) {
-            Types.BlacklistMessage memory _bm = _sm.data.decodeBlackListMsg();
-            string[] memory addresses = _bm.addrs;
-            try this.removeFromBlacklist(addresses) {
-                // send message to bmc
-                sendResponseMessage(
-                    Types.ServiceType.REMOVE_FROM_BLACKLIST,
-                    _from,
-                    _sn,
-                    "RemovedFromBlacklist",
-                    RC_OK
-                );
-                return;
-            } catch {
-                errMsg = "ErrorRemoveFromBlackList";
-            }
-
-            sendResponseMessage(
-                Types.ServiceType.REMOVE_FROM_BLACKLIST,
+                Types.ServiceType.BLACKLIST_MESSAGE,
                 _from,
                 _sn,
                 errMsg,
@@ -388,8 +386,8 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         require(bytes(requests[_sn].from).length != 0, "InvalidSN");
         string memory _emitMsg = string("errCode: ")
             .concat(", errMsg: ")
+            .concat(_code.toString())
             .concat(_msg);
-        // .concat(_code.toString())
         handleResponseService(_sn, RC_ERR, _emitMsg);
     }
 

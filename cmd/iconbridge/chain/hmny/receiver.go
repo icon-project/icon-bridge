@@ -28,11 +28,12 @@ const (
 	BlockHeightPollInterval    = 60 * time.Second
 	defaultReadTimeout         = 15 * time.Second
 	monitorBlockMaxConcurrency = 1000 // number of concurrent requests to synchronize older blocks from source chain
+	RPCCallRetry               = 3
 )
 
 func NewReceiver(
 	src, dst chain.BTPAddress, urls []string,
-	opts map[string]interface{}, l log.Logger) (chain.Receiver, error) {
+	rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error) {
 	r := &receiver{
 		log: l,
 		src: src,
@@ -41,7 +42,7 @@ func NewReceiver(
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
-	err := r.opts.Unmarshal(opts)
+	err := json.Unmarshal(rawOpts, &r.opts)
 	if err != nil {
 		return nil, err
 	}
@@ -222,11 +223,9 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			latest++
 
 		case <-heightPoller.C:
-			if height := latestHeight(); height > latest {
+			if height := latestHeight(); height > 0 {
 				latest = height
-				if next > latest {
-					r.log.Debugf("receiveLoop: skipping; latest=%d, next=%d", latest, next)
-				}
+				r.log.WithFields(log.Fields{"latest": latest, "next": next}).Debug("poll height")
 			}
 
 		case bn := <-bnch:
@@ -277,7 +276,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			qch := make(chan *bnq, cap(bnch))
 			for i := next; i < latest &&
 				len(qch) < cap(qch); i++ {
-				qch <- &bnq{i, nil, nil, 3} // fill bch with requests
+				qch <- &bnq{i, nil, nil, RPCCallRetry} // fill bch with requests
 			}
 			bns := make([]*BlockNotification, 0, len(qch))
 			for q := range qch {

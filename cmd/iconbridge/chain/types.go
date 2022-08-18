@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"math/big"
 )
 
 // RelayMessage is encoded
@@ -77,6 +78,9 @@ type Sender interface {
 	// returns a "tx" Tx object including events upto "txSizeLimit" bytes and
 	// returns rest of the "msg" Message as "newMsg"
 	Segment(ctx context.Context, msg *Message) (tx RelayTx, newMsg *Message, err error)
+
+	// Returns the current relayer balance
+	Balance(ctx context.Context) (balance, threshold *big.Int, err error)
 }
 
 type Relayer interface {

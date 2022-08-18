@@ -3,6 +3,7 @@ package near
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
@@ -70,6 +71,11 @@ func NewMockApi(storage mock.Storage) Mockapi {
 		defaults.ContractStateChangeMap[key] = value
 	}
 	storage.ContractStateChangeMap = defaults.ContractStateChangeMap
+
+	for key, value := range storage.AccountMap {
+		defaults.AccountMap[key] = value
+	}
+	storage.AccountMap = defaults.AccountMap
 
 	return Mockapi{
 		&storage,
@@ -281,4 +287,16 @@ func (api *Mockapi) getTransactionResult(transactionId string, senderId string) 
 	}
 
 	return transactionResult, fmt.Errorf("failed to cast TransactionResult to []byte")
+}
+
+func (api *Mockapi) getBalance(accountId string) (*big.Int, error) {
+	if api.AccountMap[accountId].Error != nil {
+		return nil, api.AccountMap[accountId].Error
+	}
+
+	if account, Ok := (api.AccountMap[accountId].Reponse).(types.Account); Ok {
+		return (*big.Int)(&account.Amount), nil
+	}
+
+	return nil, fmt.Errorf("failed to cast Balance to *big.Int")
 }

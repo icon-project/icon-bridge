@@ -90,6 +90,28 @@ func LoadNonceFromFile(names []string) map[string]Response {
 	return nonceMap
 }
 
+func LoadAccountsFromFile(accounts []string) map[string]Response {
+	sectionDir := mockDataPath + "/accounts"
+	validateDirectory(sectionDir)
+
+	var accountMap = map[string]Response{}
+
+	for index, buffer := range loadFiles(accounts, sectionDir) {
+		var account types.Account
+
+		err := json.Unmarshal(buffer, &account)
+		if err != nil {
+			panic(fmt.Errorf("error [LoadAccount][ParseJson]: %v", err))
+		}
+		accountMap[accounts[index]] = Response{
+			Reponse: account,
+			Error:   nil,
+		}
+	}
+
+	return accountMap
+}
+
 func LoadBmcStatusFromFile(names []string) map[string]Response {
 	sectionDir := mockDataPath + "/contractsdata/bmc"
 	validateDirectory(sectionDir)

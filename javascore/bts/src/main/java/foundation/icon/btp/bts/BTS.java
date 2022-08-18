@@ -129,7 +129,7 @@ public interface BTS {
     List<Map<String, BigInteger>> balanceOfBatch(Address _owner, String[] _coinNames);
 
     @External(readonly = true)
-    BigInteger getAccumulatedFees(String coinName);
+    Map<String, BigInteger> getAccumulatedFees();
 
     @External
     void tokenFallback(Address _from, BigInteger _value, byte[] _data);

@@ -25,18 +25,18 @@ const (
 	defaultGetTxTimeout  = 15 * time.Second
 )
 
-var balance = types.BigInt(*big.NewInt(0))
-
 type Sender struct {
 	clients     []*Client
 	source      chain.BTPAddress
 	destination chain.BTPAddress
 	wallet      Wallet
 	logger      log.Logger
-	options     struct{}
+	options     struct {
+		BalanceThreshold big.Int `json:"balance_threshold"`
+	}
 }
 
-func NewSender(source, destination chain.BTPAddress, urls []string, wallet wallet.Wallet, options map[string]interface{}, logger log.Logger) (chain.Sender, error) {
+func NewSender(source, destination chain.BTPAddress, urls []string, wallet wallet.Wallet, options json.RawMessage, logger log.Logger) (chain.Sender, error) {
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
@@ -48,14 +48,8 @@ func NewSender(source, destination chain.BTPAddress, urls []string, wallet walle
 		wallet:      wallet,
 		logger:      logger,
 	}
-	byteData, err := json.Marshal(options)
 
-	if err != nil {
-		logger.Panicf("fail to marshal options:%#v err:%+v", options, err)
-		return nil, err
-	}
-
-	if err = json.Unmarshal(byteData, &sender.options); err != nil {
+	if err := json.Unmarshal(options, &sender.options); err != nil {
 		logger.Panicf("fail to unmarshal options:%#v err:%+v", options, err)
 		return nil, err
 	}
@@ -149,7 +143,7 @@ func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message [
 		data, err := json.Marshal(relayMessage)
 		if err != nil {
 			return nil, err
-		} 
+		}
 
 		actions := []types.Action{
 			{
@@ -158,7 +152,7 @@ func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message [
 					MethodName: functionCallMethod,
 					Args:       data,
 					Gas:        gas,
-					Deposit:    big.Int(balance),
+					Deposit:    *big.NewInt(0),
 				},
 			},
 		}
@@ -210,7 +204,7 @@ func (relayTx *RelayTransaction) Receipt(ctx context.Context) (blockHeight uint6
 
 		txStatus, err = relayTx.client.api.getTransactionResult(relayTx.Transaction.Txid.Base58Encode(), string(relayTx.Transaction.SignerId))
 		if err != nil {
-			return blockHeight, err 
+			return blockHeight, err
 		}
 	}
 
@@ -274,4 +268,9 @@ func (s *Sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	}
 
 	return status, nil
+}
+
+func (s *Sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
+	balance, err = s.client().api.getBalance(s.wallet.Address())
+	return balance, &s.options.BalanceThreshold, err
 }

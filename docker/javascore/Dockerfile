@@ -23,9 +23,9 @@ RUN gradle bts:optimizedJar
 WORKDIR ${ROOT}
 RUN mkdir /dist
 
-RUN cp ${JAVASCORE_SRC}/bmc/build/libs/bmc-0.1.0-optimized.jar ${DIST_DIR}/bmc.jar
+RUN cp ${JAVASCORE_SRC}/bmc/build/libs/bmc-optimized.jar ${DIST_DIR}/bmc.jar
 #RUN cp ${JAVASCORE_SRC}/bsr/build/libs/restrictions-0.1.0-optimized.jar ${DIST_DIR}/bsr.jar
-RUN cp ${JAVASCORE_SRC}/bts/build/libs/bts-0.1.0-optimized.jar ${DIST_DIR}/bts.jar
+RUN cp ${JAVASCORE_SRC}/bts/build/libs/bts-optimized.jar ${DIST_DIR}/bts.jar
 RUN cp ${JAVASCORE_SRC}/lib/irc2Tradeable-0.1.0-optimized.jar ${DIST_DIR}/irc2Tradeable.jar
 
 RUN git clone https://github.com/icon-project/java-score-examples.git
