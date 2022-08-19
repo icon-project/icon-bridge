@@ -25,7 +25,7 @@ import score.ObjectWriter;
 public class BlacklistResponse {
     public static BigInteger RC_OK = BigInteger.ZERO;
     public static BigInteger RC_ERR = BigInteger.ONE;
-    public static String OK_MSG = "Transfer Success";
+    public static String OK_MSG = "Blacklist Success";
     public static String ERR_MSG_UNKNOWN_TYPE = "UNKNOWN_TYPE";
 
     private BigInteger code;

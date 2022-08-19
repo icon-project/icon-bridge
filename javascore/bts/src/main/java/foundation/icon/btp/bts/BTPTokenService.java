@@ -97,6 +97,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         name = _name;
         serializedIrc2 = _serializedIrc2;
         blacklistDB = new BlacklistDB();
+        restriction.set(true);
 
         // set sn to zero
         sn.set(BigInteger.ZERO);
