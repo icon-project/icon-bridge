@@ -63,10 +63,10 @@ genrule(
 genrule(
     name = "deploy_bts",
     srcs = [
-        "@near//bsh/nativecoin:native_coin_wasm",
+        "@near//bsh/bts:bts_wasm",
     ],
     outs = ["deploy_natvie_coin_bsh.out"],
-    cmd = """$(execpath :near_binary) deploy $$(cat $(location @near//cli:create_sub_account_bts)) --nodeUrl $$(cat $(locations @near//:node_url)) --wasmFile $(locations @near//bsh/nativecoin:native_coin_wasm) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --initFunction \"new\" --initArgs  \\'\\{\\"service_name\\":\\"bts\\"\\,\\"bmc\\":\\"$$(cat $(location @near//cli:encode_public_key_bmc))\\"\\,\\"network\\":\\"0x1.near\\"\\,\\"native_coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"NEAR\\"\\,\\"symbol\\":\\"NEAR\\"\\,\\"uri\\":null\\,\\"network\\":\\"0x1.near\\"\\,\\"fee_numerator\\":\\"0\\"\\,\\"fixed_fee\\":\\"0\\"\\,\\"extras\\":null\\}\\}\\}\\' > $@""",
+    cmd = """$(execpath :near_binary) deploy $$(cat $(location @near//cli:create_sub_account_bts)) --nodeUrl $$(cat $(locations @near//:node_url)) --wasmFile $(locations @near//bsh/bts:bts_wasm) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --initFunction \"new\" --initArgs  \\'\\{\\"service_name\\":\\"bts\\"\\,\\"bmc\\":\\"$$(cat $(location @near//cli:encode_public_key_bmc))\\"\\,\\"network\\":\\"0x1.near\\"\\,\\"native_coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"NEAR\\"\\,\\"symbol\\":\\"NEAR\\"\\,\\"uri\\":null\\,\\"network\\":\\"0x1.near\\"\\,\\"fee_numerator\\":\\"0\\"\\,\\"fixed_fee\\":\\"0\\"\\,\\"extras\\":null\\}\\}\\}\\' > $@""",
     executable = True,
     local = True,
     tools = [
@@ -142,6 +142,7 @@ genrule(
         "@near//:node_url",
         "@near//cli:create_sub_account_bts",
         "@near//cli:near_binary",
+        "@icon//:network_id"
     ],
 )
 

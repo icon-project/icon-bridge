@@ -12,7 +12,7 @@ genrule(
     name = "javascore_serialized",
     outs = ["javascore_serialized.out"],
     srcs = [":javascore"],
-    cmd = "echo $$($$(xxd -p $(location :javascore) | tr -d '\n') | jq -r .) > $@",
+    cmd = "echo $$(xxd -p $(location :javascore) | tr -d '\n') > $@",
     executable = True,
     local = True,
 )
