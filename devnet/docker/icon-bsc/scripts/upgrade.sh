@@ -21,10 +21,12 @@ upgrade_javascore_bts() {
     echo "upgrading javascore bts"
     cd $CONFIG_DIR
     if [ ! -f icon.addr.bts ]; then
-        echo "BTS address file icon.addr.bts does not exit"
+        echo "BTS address file icon.addr.bts does not exist"
+        exit
     fi
     if [ ! -f icon.addr.bmc ]; then
-        echo "BMC address file icon.addr.bmc does not exit"
+        echo "BMC address file icon.addr.bmc does not exist"
+        exit
     fi
     if [ ! -f icon.addr.bts.upgrade ]; then
         goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bts.jar \
