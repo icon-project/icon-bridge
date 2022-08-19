@@ -694,7 +694,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         List<String> coinNames = new ArrayList<>();
         List<BigInteger> feeAmounts = new ArrayList<>();
-        for (String coinName : getCoinNamesAsList()) {
+        for (String coinName : coinNames()) {
             BigInteger feeAmount = clearFee(coinName);
             if (feeAmount.compareTo(BigInteger.ZERO) > 0) {
                 coinNames.add(coinName);
