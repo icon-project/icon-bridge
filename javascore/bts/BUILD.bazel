@@ -8,7 +8,4 @@ genrule(
     cmd = "gradle -q -b $$PWD/external/javascore/bts/build.gradle optimizedJar; cp $$PWD/external/javascore/bts/build/libs/bts-optimized.jar $@",
     executable = True,
     local = True,
-    tools = [
-        "@javascore//bsr:javascore",
-    ],
 )

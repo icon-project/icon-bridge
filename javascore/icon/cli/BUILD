@@ -112,6 +112,27 @@ genrule(
 )
 
 genrule(
+    name = "set_near_link_height",
+    srcs = [
+        "@near//:btp_address",
+        "@icon//:goloop_config_dir",
+        "@icon//cli:add_near_link",
+        "@near//:latest_block_height",
+    ],
+    outs = ["set_near_link_height.out"],
+    cmd = """$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx  call --to $$(cat $(location @icon//cli:get_score_address_bmc))  --method setLinkRxHeight --param _link=$$(cat $(location @near//:btp_address)) --param _height=$$(($$(cat $(location  @near//:latest_block_height))+1)) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . >$@ """,
+    executable = True,
+    local = True,
+    tools = [
+        "@com_github_icon_project_goloop//cmd/goloop",
+        "@icon//:network_id",
+        "@icon//:node_url",
+        "@icon//cli:get_score_address_bmc",
+        "@javascore//bmc:javascore",
+    ],
+)
+
+genrule(
     name = "set_near_link_delay_limit",
     srcs = [
         "@near//:btp_address",
@@ -136,6 +157,7 @@ genrule(
     srcs = [
         "@icon//cli:set_near_link_rotate_term",
         "@icon//cli:set_near_link_delay_limit",
+        "@icon//cli:set_near_link_height",
     ],
     outs = ["set_near_link.out"],
     cmd = "echo 'set_link_completed' >$@",

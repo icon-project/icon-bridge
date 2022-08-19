@@ -148,7 +148,7 @@ genrule(
 genrule(
     name = "add_icon_bmr",
     srcs = [
-        "@near//cli:set_icon_link",
+        "@near//cli:set_icon_height",
         "@near//cli:get_wallet_near_keystore",
     ],
     outs = ["add_icon_bmr.out"],
@@ -212,6 +212,25 @@ genrule(
     local = True,
 )
 
+genrule(
+    name = "set_icon_height",
+   srcs = [
+        "@near//cli:set_icon_link",
+        "@near//cli:get_wallet_near_keystore",
+        "@icon//:latest_block_height"
+    ],
+    outs = ["set_icon_height.out"],
+    cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:encode_public_key_bmc)) set_link_rx_height \\'\\{\\"link\\":\\"$$(cat $(location @icon//:btp_address))\\"\\,\\"height\\":$$(($$(cat $(location  @icon//:latest_block_height))+1))\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:encode_public_key_bmc)) > $@""",
+    executable = True,
+    local = True,
+    tools = [
+        "@icon//:btp_address",
+        "@near//:node_url",
+        "@near//cli:encode_public_key_bmc",
+        "@near//cli:near_binary",
+    ],
+
+)
 
 select({
     "@near//:localnet": exports_files(glob(["configs/localnet/*"])),
