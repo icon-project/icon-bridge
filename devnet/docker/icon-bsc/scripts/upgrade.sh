@@ -38,7 +38,7 @@ upgrade_javascore_bts() {
         --param _serializedIrc2=$(xxd -p $CONTRACTS_DIR/javascore/irc2Tradeable.jar | tr -d '\n') | jq -r . > tx/tx.icon.bts.upgrade
         sleep 5
         extract_scoreAddress tx/tx.icon.bts.upgrade icon.addr.bts.upgrade
-        echo "Upgraded. New Address: "
+        echo "Upgraded Address: "
         cat icon.addr.bts.upgrade
     fi
 }
