@@ -32,7 +32,7 @@ type Sender struct {
 	wallet      Wallet
 	logger      log.Logger
 	options     struct {
-		BalanceThreshold big.Int `json:"balance_threshold"`
+		BalanceThreshold types.BigInt `json:"balance_threshold"`
 	}
 }
 
@@ -272,5 +272,7 @@ func (s *Sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 
 func (s *Sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
 	balance, err = s.client().api.getBalance(s.wallet.Address())
-	return balance, &s.options.BalanceThreshold, err
+	t := big.Int(s.options.BalanceThreshold)
+	
+	return balance, &t, err
 }

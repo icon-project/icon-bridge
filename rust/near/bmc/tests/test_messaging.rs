@@ -1,10 +1,10 @@
 use bmc::{BtpMessageCenter, RelayMessage};
 use near_sdk::{
-    base64,
+    base64, env,
     json_types::Base64VecU8,
     serde::Deserialize,
     serde_json::{self, from_value, json},
-    testing_env, AccountId, VMContext, env,
+    testing_env, AccountId, VMContext,
 };
 use std::{collections::HashSet, convert::TryFrom};
 pub mod accounts;
@@ -13,15 +13,11 @@ use libraries::types::{
     messages::BmcServiceMessage, messages::BmcServiceType, messages::BtpMessage,
     messages::ErrorMessage, messages::SerializedBtpMessages, messages::SerializedMessage,
     messages::TokenServiceMessage, messages::TokenServiceType, Account, Address, BTPAddress,
-    HashedCollection, WrappedI128,
+    HashedCollection, WrappedI128, LinkStatus
 };
 use std::convert::TryInto;
 
-fn get_context(
-    input: Vec<u8>,
-    is_view: bool,
-    signer_account_id: AccountId,
-) -> VMContext {
+fn get_context(input: Vec<u8>, is_view: bool, signer_account_id: AccountId) -> VMContext {
     VMContext {
         current_account_id: alice().to_string(),
         signer_account_id: signer_account_id.to_string(),
@@ -44,7 +40,7 @@ fn get_context(
 
 #[test]
 fn decode() {
-    let message: RelayMessage = RelayMessage::try_from("-QEE-QEBuP_4_QG49fjz-PG4T2J0cDovLzB4MS5uZWFyL2QwYWU4NGNkYzhmZTdmMTE3M2ZhYzQ5NTY2MjZiNzRlZTNiNGQzZTFhZjkwODRlMjRiNmQ1ZjYzOWU0NmExZTYBuJ34m7g5YnRwOi8vMHgyLmljb24vY3gxNzY2OTY1MWU2YjhmMGI2YTdiMDJhOTEyMzQwZWRlYTE5MTk4ZmQ4uE9idHA6Ly8weDEubmVhci9kMGFlODRjZGM4ZmU3ZjExNzNmYWM0OTU2NjI2Yjc0ZWUzYjRkM2UxYWY5MDg0ZTI0YjZkNWY2MzllNDZhMWU2g2JtYwCJyIRJbml0gsHAhACpFhA=".to_string()).unwrap();
+    let message: RelayMessage = RelayMessage::try_from("-QEE-QEBuP_4_QG49fjz-PG4T2J0cDovLzB4MS5uZWFyLzFkMGQwNjQ4NDYyMmY3MDYxYjAxNWY1ZWQwNjVkMjVjMGJmMDIzYmFjNzNiNGRkNDA3ODAxNzJmYjZlNDExOTQBuJ34m7g5YnRwOi8vMHgyLmljb24vY3g3NmVhNjU4ZWI4MDFhM2Y0YWEzN2ExOWFkMGEwNjc2YjVkNmNlY2M5uE9idHA6Ly8weDEubmVhci8xZDBkMDY0ODQ2MjJmNzA2MWIwMTVmNWVkMDY1ZDI1YzBiZjAyM2JhYzczYjRkZDQwNzgwMTcyZmI2ZTQxMTk0g2JtYwCJyIRJbml0gsHAhACuKaM=".to_string()).unwrap();
 
     let context = |v: AccountId| (get_context(vec![], false, v));
     testing_env!(context(alice()));
@@ -64,7 +60,7 @@ fn decode() {
     );
     testing_env!(context(charlie()));
 
-    contract.handle_relay_message(source, message)
+    contract.handle_relay_message(source, message);
 }
 
 #[test]
@@ -81,36 +77,24 @@ fn handle_internal_service_message_init() {
     testing_env!(context(alice()));
     let mut contract = BtpMessageCenter::new("0x1.near".into(), 1500);
     let link =
-        BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
+        BTPAddress::new("btp://0x2.icon/cx76ea658eb801a3f4aa37a19ad0a0676b5d6cecc9".to_string());
     contract.add_link(link.clone());
-    let bmc_service_message = BmcServiceMessage::new(BmcServiceType::Init {
-        links: vec![
-            BTPAddress::new("btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string()),
-            BTPAddress::new("btp://0x5.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string()),
+    let message: RelayMessage = RelayMessage::try_from("-QEE-QEBuP_4_QG49fjz-PG4T2J0cDovLzB4MS5uZWFyLzFkMGQwNjQ4NDYyMmY3MDYxYjAxNWY1ZWQwNjVkMjVjMGJmMDIzYmFjNzNiNGRkNDA3ODAxNzJmYjZlNDExOTQBuJ34m7g5YnRwOi8vMHgyLmljb24vY3g3NmVhNjU4ZWI4MDFhM2Y0YWEzN2ExOWFkMGEwNjc2YjVkNmNlY2M5uE9idHA6Ly8weDEubmVhci8xZDBkMDY0ODQ2MjJmNzA2MWIwMTVmNWVkMDY1ZDI1YzBiZjAyM2JhYzczYjRkZDQwNzgwMTcyZmI2ZTQxMTk0g2JtYwCJyIRJbml0gsHAhACuKaM=".to_string()).unwrap();
+
+    contract.add_relays(
+        link.clone(),
+        vec![
+            alice(),
         ],
-    });
-    let btp_message = <BtpMessage<SerializedMessage>>::new(
-        BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string()),
-        BTPAddress::new(
-            "btp://0x1.near/88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
-                .to_string(),
-        ),
-        "bmc".to_string(),
-        WrappedI128::new(1),
-        <Vec<u8>>::from(bmc_service_message.clone()),
-        None,
     );
 
-    contract.handle_btp_messages(&link.clone(), vec![btp_message]);
+    contract.handle_relay_message(link.clone(), message);
     let reachables = contract.get_reachable_link(link.clone());
     let mut expected = HashedCollection::new();
-    expected.add(BTPAddress::new(
-        "btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
-    ));
-    expected.add(BTPAddress::new(
-        "btp://0x5.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
-    ));
     assert_eq!(reachables, expected);
+
+    let link_status = contract.get_status(link);
+    assert_eq!(link_status.rx_seq(), 1);
 }
 
 #[test]
@@ -251,7 +235,7 @@ fn deserialize_serialized_btp_messages_from_json() {
         <Vec<u8>>::from(bmc_service_message_2.clone()),
         None,
     );
-    assert_eq!(serialized_btp_messages,vec![btp_message_2])
+    assert_eq!(serialized_btp_messages, vec![btp_message_2])
     // TODO: Add;
 }
 
@@ -268,7 +252,8 @@ fn handle_route_message() {
         BTPAddress::new("btp://0x2.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     contract.add_link(link.clone());
     contract.handle_btp_messages(&link.clone(), serialized_btp_messages);
-    let btp_message: BtpMessage<SerializedMessage> = contract.get_message().unwrap().try_into().unwrap();
+    let btp_message: BtpMessage<SerializedMessage> =
+        contract.get_message().unwrap().try_into().unwrap();
     let error_message = ErrorMessage::new(21, "BMCRevertUnreachable at btp://0x1.pra/88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4".to_string());
     assert_eq!(
         btp_message,
@@ -278,7 +263,8 @@ fn handle_route_message() {
                     .to_string()
             ),
             BTPAddress::new(
-                "btp://0x1.near/88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4".to_string()
+                "btp://0x1.near/88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
+                    .to_string()
             ),
             "bmc".to_string(),
             WrappedI128::new(10),
@@ -287,18 +273,16 @@ fn handle_route_message() {
         )
     );
 
-    let btp_message:BtpMessage<SerializedMessage> = BtpMessage::new(
+    let btp_message: BtpMessage<SerializedMessage> = BtpMessage::new(
         BTPAddress::new(
             "btp://0x1.near/88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
-                .to_string()
+                .to_string(),
         ),
-        BTPAddress::new(
-            "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string()
-        ),
+        BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string()),
         "bmc".to_string(),
         WrappedI128::new(-10),
         error_message.clone().into(),
-        None
+        None,
     );
 }
 
