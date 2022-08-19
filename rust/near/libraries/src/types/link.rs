@@ -221,7 +221,7 @@ impl Link {
     //TODO: Confirm if relay status is linked with link
     pub fn status(&self) -> LinkStatus {
         LinkStatus {
-            rx_seq: self.rx_seq,
+            rx_seq: self.rx_seq - 1,
             tx_seq: self.tx_seq,
             relays: self.relays.bmr_status(),
             relay_index: self.relay_index,
@@ -267,6 +267,10 @@ impl LinkStatus {
 
     pub fn block_interval_dst(&self) -> u64 {
         self.block_interval_dst
+    }
+
+    pub fn rx_seq(&self) -> u128 {
+        self.rx_seq
     }
 
     pub fn rx_height(&self) -> u64 {
