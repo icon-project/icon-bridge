@@ -50,7 +50,7 @@ genrule(
     name = "deploy_bts",
     srcs = ["@icon//:goloop_config_dir", "@javascore//bts:javascore"],
     outs = ["deploy_bts.out"],
-    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url))  sendtx deploy $(location @javascore//bts:javascore) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --content_type application/java --step_limit 13610920001 --param _bmc=$$(cat $(location @icon//cli:get_score_address_bmc)) --param  _serializedIrc2=$$(cat $(location @javascore//irc2Tradeable:javascore_serialized)) --param _name=\"btp-$$(cat $(location @icon//:network_id))-ICX\" --param _decimals=18 --param _feeNumerator=100 --param _fixedFee=4300000000000000000 | echo $$(tr -d '\"') > $@",
+    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url))  sendtx deploy $(location @javascore//bts:javascore) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --content_type application/java --step_limit 13610920001 --param _bmc=$$(cat $(location @icon//cli:get_score_address_bmc)) --param  _serializedIrc2=$$(cat $(location @javascore//irc2Tradeable:javascore_serialized)) --param _name=\"btp-$$(cat $(location @icon//:network_id))-ICX\" --param _decimals=\"0x$$(printf '%x' 18)\" --param _feeNumerator=\"0x$$(printf '%x' 100)\" --param _fixedFee=\"0x$$(printf '%x' 4300000000000000000)\" | echo $$(tr -d '\"') > $@",
     executable = True,
     local = True,
     tools = [
