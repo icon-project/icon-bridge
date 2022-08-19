@@ -15,6 +15,7 @@ members = [
 
 [features]
 integration-tests = []
+testable = []
 
 [dev-dependencies]
 libraries = { path = "./libraries" }
