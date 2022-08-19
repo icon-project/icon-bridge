@@ -268,6 +268,10 @@ impl LinkStatus {
     pub fn block_interval_dst(&self) -> u64 {
         self.block_interval_dst
     }
+
+    pub fn rx_height(&self) -> u64 {
+        self.rx_height
+    }
 }
 
 #[derive(BorshDeserialize, BorshSerialize)]

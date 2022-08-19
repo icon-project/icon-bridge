@@ -96,9 +96,6 @@ impl BtpMessageCenter {
                 link_property
                     .rotate_height_mut()
                     .clone_from(&(env::block_height() + current_rotate_term));
-                link_property
-                    .rx_height_mut()
-                    .clone_from(&env::block_height());
             }
             self.links.set(&link, link_property);
         }
@@ -107,6 +104,16 @@ impl BtpMessageCenter {
     pub fn get_status(&self, link: BTPAddress) -> LinkStatus {
         self.assert_link_exists(&link);
         self.links.get(&link).unwrap().status()
+    }
+
+    pub fn set_link_rx_height(&mut self, link: BTPAddress, height: u64) {
+        self.assert_have_permission();
+        self.assert_link_exists(&link);
+
+        if let Some(link_property) = self.links.get(&link).as_mut() {
+            link_property.rx_height_mut().clone_from(&height);
+            self.links.set(&link, &link_property);
+        }
     }
 }
 
