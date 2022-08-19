@@ -1,0 +1,9 @@
+package(default_visibility = ["//visibility:public"])
+
+genrule(
+    name = "javascore",
+    outs = ["irc2Tradeable-0.1.0-optimized.jar",],
+    cmd = "gradle -q -b $$PWD/external/javascore/bmc/build.gradle build; cp $$PWD/external/javascore/irc2Tradeable/build/libs/irc2Tradeable-0.1.0-optimized.jar $@",
+    executable = True,
+    local = True,
+)
