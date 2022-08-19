@@ -135,7 +135,7 @@ genrule(
         "@icon//:network_address",
     ],
     outs = ["regsiter_new_wrapped_coin.out"],
-    cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:create_sub_account_bts)) register \\'\\{\\"coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"ICX\\"\\,\\"symbol\\":\\"icx\\",\\"uri\\":\\"wicx.$$(cat $(location @near//cli:create_sub_account_bts))\\"\\,\\"network\\":\\"$$(cat $(location @icon//:network_address))\\"\\,\\"fee_numerator\\":\\"0\\"\\,\\"fixed_fee\\":\\"0\\"\\,\\"extras\\":\\{\\"spec\\":\\"ft-1.0.0\\",\\"icon\\":null,\\"reference\\":null,\\"reference_hash\\":null,\\"decimals\\":24\\}\\}\\}\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --amount 10 --gas 300000000000000 >$@""",
+    cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:create_sub_account_bts)) register \\'\\{\\"coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"btp-$$(cat $(location @icon//:network_id))-ICX\\"\\,\\"symbol\\":\\"ICX\\",\\"uri\\":\\"btp-$$(cat $(location @icon//:network_id)).$$(cat $(location @near//cli:create_sub_account_bts))\\"\\,\\"network\\":\\"$$(cat $(location @icon//:network_address))\\"\\,\\"fee_numerator\\":\\"100\\"\\,\\"fixed_fee\\":\\"4300000000000000000\\"\\,\\"extras\\":\\{\\"spec\\":\\"ft-1.0.0\\",\\"icon\\":null,\\"reference\\":null,\\"reference_hash\\":null,\\"decimals\\":18\\}\\}\\}\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --amount 10 --gas 300000000000000 >$@""",
     executable = True,
     local = True,
     tools = [
