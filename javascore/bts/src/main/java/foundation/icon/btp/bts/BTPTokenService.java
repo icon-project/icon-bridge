@@ -97,6 +97,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         name = _name;
         serializedIrc2 = _serializedIrc2;
         blacklistDB = new BlacklistDB();
+        restriction.set(true);
 
         // set sn to zero
         sn.set(BigInteger.ZERO);
@@ -694,7 +695,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         List<String> coinNames = new ArrayList<>();
         List<BigInteger> feeAmounts = new ArrayList<>();
-        for (String coinName : getCoinNamesAsList()) {
+        for (String coinName : coinNames()) {
             BigInteger feeAmount = clearFee(coinName);
             if (feeAmount.compareTo(BigInteger.ZERO) > 0) {
                 coinNames.add(coinName);
