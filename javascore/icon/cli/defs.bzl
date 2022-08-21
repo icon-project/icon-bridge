@@ -98,7 +98,7 @@ def configure_bmr(name):
             "@icon//:node_url",
         ],
         outs = ["transfer_amount_%s_address.out" % name],
-        cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx transfer --to $$(cat $(location @icon//cli:get_wallet_%s_keystore)) --value 1000000000000000000000000 --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001 >$@" % name,
+        cmd = """$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx transfer --to $$(cat $(location @icon//cli:get_wallet_%s_keystore)) --value 0x8ac7230489e80000 --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid "$$(cat $(location @icon//:network_id))" --step_limit 13610920001 >$@""" % name,
         executable = True,
         local = True,
     )

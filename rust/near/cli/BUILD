@@ -117,6 +117,7 @@ genrule(
 genrule(
     name = "add_bts_service",
     outs = ["add_bts_service.out"],
+    srcs = ["@near//cli:deploy_bts"],
     cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:encode_public_key_bmc)) add_service \\'\\{\\"name\\":\\"bts\\"\\,\\"service\\":\\"$$(cat $(location @near//cli:create_sub_account_bts))\\"\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:encode_public_key_bmc)) > $@ """,
     executable = True,
     local = True,
