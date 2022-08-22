@@ -106,9 +106,14 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
                 "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
         require(_fixedFee.compareTo(BigInteger.ZERO) >= 0, "Fixed fee cannot be less than zero");
 
+            coinDb.set(_name, new Coin(ZERO_SCORE_ADDRESS, _name, "", _decimals,
+                    _feeNumerator, _fixedFee, NATIVE_COIN_TYPE));
+        }
+        onUpdate();
+    }
 
-        coinDb.set(_name, new Coin(ZERO_SCORE_ADDRESS, _name, "", _decimals,
-                _feeNumerator, _fixedFee, NATIVE_COIN_TYPE));
+    private void onUpdate() {
+        sn.set(BigInteger.ONE);
     }
 
     @External(readonly = true)
