@@ -110,6 +110,10 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
                 _feeNumerator, _fixedFee, NATIVE_COIN_TYPE));
     }
 
+    private void onUpdate(){
+        sn.set(BigInteger.ONE);
+    }
+
     @External(readonly = true)
     public String name() {
         return "BTP Token Service";
