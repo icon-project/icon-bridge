@@ -25,7 +25,7 @@ const (
 	BlockInterval              = 3 * time.Second
 	BlockHeightPollInterval    = 60 * time.Second
 	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
-	BlockConfirmationInterval  = 5
+	BlockConfirmationInterval  = 12
 	RPCCallRetry               = 5
 )
 
@@ -244,7 +244,15 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 	heightPoller := time.NewTicker(BlockHeightPollInterval)
 	defer heightPoller.Stop()
 
-	latestHeight := func() uint64 {
+	syncLatestHeightCh := make(chan struct{}, 1)
+	syncLatestHeight := func() {
+		select {
+		case syncLatestHeightCh <- struct{}{}:
+		default:
+		}
+	}
+
+	getLatestHeight := func() uint64 {
 		height, err := r.client().GetBlockNumber()
 		if err != nil {
 			r.log.WithFields(log.Fields{"error": err}).Error("receiveLoop: failed to GetBlockNumber")
@@ -252,7 +260,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		}
 		return height - BlockConfirmationInterval
 	}
-	next, latest := opts.StartHeight, latestHeight()
+	next, latest := opts.StartHeight, getLatestHeight()
 
 	// last unverified block notification
 	var lbn *BlockNotification
@@ -266,7 +274,10 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			latest++
 
 		case <-heightPoller.C:
-			if height := latestHeight(); height > 0 {
+			syncLatestHeight()
+
+		case <-syncLatestHeightCh:
+			if height := getLatestHeight(); height > 0 {
 				latest = height
 				r.log.WithFields(log.Fields{"latest": latest, "next": next}).Debug("poll height")
 			}
@@ -319,11 +330,12 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				err   error
 				retry int
 			}
-
+			lastHeightReq := next
 			qch := make(chan *bnq, cap(bnch))
 			for i := next; i < latest &&
 				len(qch) < cap(qch); i++ {
 				qch <- &bnq{i, nil, nil, RPCCallRetry} // fill bch with requests
+				lastHeightReq = i
 			}
 			if len(qch) == 0 {
 				r.log.Error("Fatal: Zero length of query channel. Avoiding deadlock")
@@ -410,15 +422,25 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 					bns = append(bns, v)
 				}
 			}
-			// sort and forward notifications
+			// sort by height
+			sort.SliceStable(bns, func(i, j int) bool {
+				return bns[i].Height.Uint64() < bns[j].Height.Uint64()
+			})
+			// keep contiguous chain
+			_bns_, bns = bns, bns[:0]
+			for i, v := range _bns_ {
+				if v.Height.Uint64() != next+uint64(i) {
+					break
+				}
+				bns = append(bns, v)
+			}
 			if len(bns) > 0 {
-				sort.SliceStable(bns, func(i, j int) bool {
-					return bns[i].Height.Uint64() < bns[j].Height.Uint64()
-				})
-				for i, v := range bns {
-					if v.Height.Uint64() == next+uint64(i) {
-						bnch <- v
-					}
+				lastHeightRes := bns[len(bns)-1].Height.Uint64()
+				if lastHeightReq == latest && lastHeightReq-lastHeightRes > 1 {
+					syncLatestHeight()
+				}
+				for _, v := range bns {
+					bnch <- v
 				}
 			}
 		}
