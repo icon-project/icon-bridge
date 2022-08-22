@@ -97,19 +97,24 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         name = _name;
         serializedIrc2 = _serializedIrc2;
         blacklistDB = new BlacklistDB();
-        restriction.set(true);
+
+        if (restriction.get() == null) {
+            restriction.set(true);
+        }
 
         // set sn to zero
-        sn.set(BigInteger.ZERO);
-        require(_feeNumerator.compareTo(BigInteger.ZERO) >= 0 &&
-                        _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
-                "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
-        require(_fixedFee.compareTo(BigInteger.ZERO) >= 0, "Fixed fee cannot be less than zero");
+        if (sn.get() == null) {
+            sn.set(BigInteger.ZERO);
+        }
+        if (coinDb.get(_name) == null) {
+            require(_feeNumerator.compareTo(BigInteger.ZERO) >= 0 &&
+                            _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
+                    "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
+            require(_fixedFee.compareTo(BigInteger.ZERO) >= 0, "Fixed fee cannot be less than zero");
 
-
-        coinDb.set(_name, new Coin(ZERO_SCORE_ADDRESS, _name, "", _decimals,
-                _feeNumerator, _fixedFee, NATIVE_COIN_TYPE));
-    }
+            coinDb.set(_name, new Coin(ZERO_SCORE_ADDRESS, _name, "", _decimals,
+                    _feeNumerator, _fixedFee, NATIVE_COIN_TYPE));
+        }
 
         onUpdate();
     }
