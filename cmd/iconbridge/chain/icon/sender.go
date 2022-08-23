@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/url"
@@ -58,7 +59,8 @@ func NewSender(
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
-	if err := json.Unmarshal(rawOpts, &s.opts); err != nil {
+
+	if err := unmarshalOpt(rawOpts, &s.opts); err != nil {
 		return nil, err
 	}
 	s.cl = NewClient(urls[0], l)
@@ -69,6 +71,32 @@ type senderOptions struct {
 	StepLimit        uint64  `json:"step_limit"`
 	TxDataSizeLimit  uint64  `json:"tx_data_size_limit"`
 	BalanceThreshold big.Int `json:"balance_threshold"`
+}
+
+func unmarshalOpt(data []byte, opts *senderOptions) error {
+	type SenderOptionsTemp struct {
+		StepLimit        uint64  `json:"step_limit"`
+		TxDataSizeLimit  uint64  `json:"tx_data_size_limit"`
+		BalanceThreshold string `json:"balance_threshold"`
+	}
+	var senderOptionsObj SenderOptionsTemp
+
+	if err := json.Unmarshal(data, &senderOptionsObj); err != nil {
+		return err
+	}
+
+	opts.StepLimit = senderOptionsObj.StepLimit
+	opts.TxDataSizeLimit = senderOptionsObj.TxDataSizeLimit
+
+	threshold := new(big.Int)
+	valueInt, ok := threshold.SetString(senderOptionsObj.BalanceThreshold, 10)
+	if !ok {
+		return errors.New("Can't parse field Balance Threshold")
+	} else{
+		opts.BalanceThreshold = *valueInt
+	}
+
+	return nil
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {

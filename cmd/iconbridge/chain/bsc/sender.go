@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -94,6 +95,7 @@ func (s *sender) jointClient() (*Client, *BMC) {
 	return s.cls[randInt], s.bmcs[randInt]
 }
 
+
 func NewSender(
 	src, dst chain.BTPAddress,
 	urls []string, w wallet.Wallet,
@@ -105,16 +107,19 @@ func NewSender(
 		dst:          dst,
 		prevGasPrice: big.NewInt(defaultGasPrice),
 	}
+
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
-	err := json.Unmarshal(rawOpts, &s.opts)
+	err := unmarshalOpt(rawOpts, &s.opts)
 	if err != nil {
 		return nil, fmt.Errorf("fail to unmarshal opt:%v err:%+v", rawOpts, err)
 	}
+
 	if s.opts.BoostGasPrice < 1.0 {
 		s.opts.BoostGasPrice = 1.0
 	}
+
 	if s.opts.BoostGasPrice > maxGasPriceBoost {
 		s.opts.BoostGasPrice = maxGasPriceBoost
 	}
@@ -123,6 +128,35 @@ func NewSender(
 		return nil, err
 	}
 	return s, nil
+}
+
+
+func unmarshalOpt(data []byte, opts *senderOptions) error {
+	type SenderOptionsTemp struct {
+		GasLimit         uint64  `json:"gas_limit"`
+		TxDataSizeLimit  uint64  `json:"tx_data_size_limit"`
+		BoostGasPrice    float64 `json:"boost_gas_price"`
+		BalanceThreshold string `json:"balance_threshold"`
+	}
+	var senderOptionsObj SenderOptionsTemp
+
+	if err := json.Unmarshal(data, &senderOptionsObj); err != nil {
+		return err
+	}
+
+	opts.GasLimit = senderOptionsObj.GasLimit
+	opts.TxDataSizeLimit = senderOptionsObj.TxDataSizeLimit
+	opts.BoostGasPrice = senderOptionsObj.BoostGasPrice
+
+	threshold := new(big.Int)
+	valueInt, ok := threshold.SetString(senderOptionsObj.BalanceThreshold, 10)
+	if !ok {
+		return errors.New("Can't parse field Balance Threshold")
+	} else{
+		opts.BalanceThreshold = *valueInt
+	}
+
+	return nil
 }
 
 // BMCLinkStatus ...

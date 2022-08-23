@@ -1,7 +1,4 @@
-//go:build hmny
-// +build hmny
-
-package hmny
+package bsc
 
 import (
 	"github.com/stretchr/testify/assert"

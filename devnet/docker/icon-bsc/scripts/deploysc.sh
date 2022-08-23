@@ -8,7 +8,7 @@ source rpc.sh
 
 
 deploysc() {
-    
+
     echo "start..."
     echo "check god keys..."
     if [ ! -f "${ICON_KEY_STORE}" ]; then
@@ -55,19 +55,19 @@ deploysc() {
         for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
         do
           addr=$(cat $INIT_ADDRESS_PATH | jq -r .solidity.${BSC_NATIVE_TOKEN_SYM[$i]})
-          if [ "$addr" != "null" ]; 
+          if [ "$addr" != "null" ];
           then
             echo -n $addr > $CONFIG_DIR/bsc.addr.${BSC_NATIVE_TOKEN_SYM[$i]}
-          else 
+          else
             echo "BSC Token does not exist on address file" ${BSC_NATIVE_TOKEN_SYM[$i]}
             return 1
           fi
         done
-      else 
+      else
         for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
         do
             deploy_solidity_token "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}"
-        done              
+        done
       fi
       echo "CONFIGURE BSC"
       configure_solidity_add_bmc_owner
@@ -85,7 +85,7 @@ deploysc() {
           bsc_register_wrapped_coin "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}" "${BSC_WRAPPED_COIN_FIXED_FEE[$i]}" "${BSC_WRAPPED_COIN_FEE_NUMERATOR[$i]}" "${BSC_WRAPPED_COIN_DECIMALS[$i]}"
           get_coinID "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}"
       done
-      echo "deployedSol" > $CONFIG_DIR/bsc.deploy.all 
+      echo "deployedSol" > $CONFIG_DIR/bsc.deploy.all
     fi
 
     if [ ! -f $CONFIG_DIR/icon.deploy.all ]; then
@@ -103,19 +103,19 @@ deploysc() {
         for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
         do
           addr=$(cat $INIT_ADDRESS_PATH | jq -r .javascore.${ICON_NATIVE_TOKEN_SYM[$i]})
-          if [ "$addr" != "null" ]; 
+          if [ "$addr" != "null" ];
           then
             echo -n $addr > $CONFIG_DIR/icon.addr.${ICON_NATIVE_TOKEN_SYM[$i]}
-          else 
+          else
             echo "ICON Token ${ICON_NATIVE_TOKEN_SYM[$i]} does not exist on address file"
             return 1
           fi
         done
-      else 
+      else
         for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
         do
             deploy_javascore_token "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}"
-        done           
+        done
       fi
       echo "CONFIGURE ICON"
       configure_javascore_add_bmc_owner
@@ -134,7 +134,7 @@ deploysc() {
           configure_javascore_register_wrapped_coin "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}" "${ICON_WRAPPED_COIN_FIXED_FEE[$i]}" "${ICON_WRAPPED_COIN_FEE_NUMERATOR[$i]}" "${ICON_WRAPPED_COIN_DECIMALS[$i]}"
           get_btp_icon_coinId "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}"
       done
-      echo "deployedJavascore" > $CONFIG_DIR/icon.deploy.all 
+      echo "deployedJavascore" > $CONFIG_DIR/icon.deploy.all
     fi
 
     if [ ! -f $CONFIG_DIR/link.all ]; then
@@ -149,7 +149,7 @@ deploysc() {
       echo "linked" > $CONFIG_DIR/link.all
     fi
 
-    generate_addresses_json >$CONFIG_DIR/addresses.json  
+    generate_addresses_json >$CONFIG_DIR/addresses.json
     generate_relay_config >$CONFIG_DIR/bmr.config.json
     wait_for_file $CONFIG_DIR/bmr.config.json
     echo "Done deploying"
@@ -206,7 +206,7 @@ generate_relay_config() {
         --argfile dst_key_store "$CONFIG_DIR/keystore/icon.bmr.wallet.json" \
         --arg dst_key_store_cointype "icx" \
         --arg dst_key_password "$(cat $CONFIG_DIR/keystore/icon.bmr.wallet.secret)" \
-        --argjson dst_options '{"step_limit":13610920010, "tx_data_size_limit":8192,"balance_threshold":10000000000000000000}'
+        --argjson dst_options '{"step_limit":13610920010, "tx_data_size_limit":8192,"balance_threshold":"10000000000000000000"}'
     )" \
     --argjson i2b_relay "$(
       jq -n '
@@ -235,7 +235,7 @@ generate_relay_config() {
         --arg dst_key_store_cointype "evm" \
         --arg dst_key_password "$(cat $CONFIG_DIR/keystore/bsc.bmr.wallet.secret)" \
         --argjson dst_tx_data_size_limit 8192 \
-        --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":100000000000000000000,"boost_gas_price":1.0}'
+        --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":"100000000000000000000","boost_gas_price":1.0}'
     )"
 }
 

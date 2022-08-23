@@ -44,10 +44,11 @@ func NewSender(
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
-	err := json.Unmarshal(rawOpts, &s.opts)
+	err := unmarshalOpt(rawOpts, &s.opts)
 	if err != nil {
 		return nil, err
 	}
+
 	if s.opts.BoostGasPrice < 1.0 {
 		s.opts.BoostGasPrice = 1.0
 	}
@@ -75,6 +76,34 @@ func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
 		return err
 	}
 	return json.Unmarshal(b, opts)
+}
+
+func unmarshalOpt(data []byte, opts *senderOptions) error {
+	type SenderOptionsTemp struct {
+		GasLimit         uint64  `json:"gas_limit"`
+		BoostGasPrice    float64 `json:"boost_gas_price"`
+		TxDataSizeLimit  uint64  `json:"tx_data_size_limit"`
+		BalanceThreshold string `json:"balance_threshold"`
+	}
+	var senderOptionsObj SenderOptionsTemp
+
+	if err := json.Unmarshal(data, &senderOptionsObj); err != nil {
+		return err
+	}
+
+	opts.GasLimit = senderOptionsObj.GasLimit
+	opts.BoostGasPrice = senderOptionsObj.BoostGasPrice
+	opts.TxDataSizeLimit = senderOptionsObj.TxDataSizeLimit
+
+	threshold := new(big.Int)
+	valueInt, ok := threshold.SetString(senderOptionsObj.BalanceThreshold, 10)
+	if !ok {
+		return errors.New("Can't parse field Balance Threshold")
+	} else{
+		opts.BalanceThreshold = *valueInt
+	}
+
+	return nil
 }
 
 type sender struct {
