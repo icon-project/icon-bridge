@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"math/rand"
 	"time"
+	"errors"
 
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
