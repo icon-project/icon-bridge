@@ -204,7 +204,7 @@ func (r *relay) Start(ctx context.Context) error {
 					r.log.WithFields(log.Fields{"id": tx.ID(), "error": err}).Error("tx.Send failed")
 					return err
 				case errors.Is(err, chain.ErrInsufficientBalance):
-					r.log.WithFields(log.Fields{"error": err}).Error(
+					r.log.WithFields(log.Fields{"error": err}).Errorf(
 						"add balance to relay account: waiting for %v", relayInsufficientBalanceWaitInterval)
 					time.Sleep(relayInsufficientBalanceWaitInterval)
 				default:
