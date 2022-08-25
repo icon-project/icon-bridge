@@ -206,7 +206,7 @@ generate_relay_config() {
         --argfile dst_key_store "$CONFIG_DIR/keystore/icon.bmr.wallet.json" \
         --arg dst_key_store_cointype "icx" \
         --arg dst_key_password "$(cat $CONFIG_DIR/keystore/icon.bmr.wallet.secret)" \
-        --argjson dst_options '{"step_limit":13610920010, "tx_data_size_limit":8192,"balance_threshold":10000000000000000000}'
+        --argjson dst_options '{"step_limit":2500000000, "tx_data_size_limit":8192,"balance_threshold":"10000000000000000000"}'
     )" \
     --argjson i2b_relay "$(
       jq -n '
@@ -235,7 +235,7 @@ generate_relay_config() {
         --arg dst_key_store_cointype "evm" \
         --arg dst_key_password "$(cat $CONFIG_DIR/keystore/bsc.bmr.wallet.secret)" \
         --argjson dst_tx_data_size_limit 8192 \
-        --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":100000000000000000000,"boost_gas_price":1.0}'
+        --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":"100000000000000000000","boost_gas_price":1.0}'
     )"
 }
 
