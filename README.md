@@ -1,6 +1,7 @@
 # ICON Bridge
 <p>
   <img alt="GitHub release (latest SemVer including pre-releases)" src="https://img.shields.io/github/v/release/icon-project/icon-bridge?include_prereleases">
+  <img src="https://goreportcard.com/badge/github.com/icon-project/icon-bridge">
   <a href="https://discord.gg/ZkgByPn92j">
     <img src="https://img.shields.io/discord/880651922682560582?label=discord" alt="Discord">
   </a>
