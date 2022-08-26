@@ -29,9 +29,10 @@ jobs:
           PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
         run: |
           truffle compile --all
-          PRIVATE_KEY=$PRIVATE_KEY BSC_RPC_URI=$BSC_RPC_URI BSC_NID=$BSC_NID \
+          PRIVATE_KEY=$PRIVATE_KEY BSC_RPC_URI=$BSC_RPC_URI BSC_NID=$BSC_NID BSC_BMC_NET=$BSC_BMC_NET \
           truffle migrate --network bsc --compile-none
 
       # - name: Deployment txresult
