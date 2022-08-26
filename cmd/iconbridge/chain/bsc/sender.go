@@ -198,7 +198,7 @@ func (s *sender) Segment(
 		return nil, nil, err
 	}
 	cl, _ := s.jointClient()
-	gasPrice, gasHeight, err := cl.GetMedianGasPriceForBlock()
+	gasPrice, gasHeight, err := cl.GetMedianGasPriceForBlock(ctx)
 	if err != nil || gasPrice.Int64() == 0 {
 		s.log.Infof("GetMedianGasPriceForBlock(%v) Msg: %v. Using default value for gas price \n", gasHeight.String(), err)
 		gasPrice = s.prevGasPrice
