@@ -17,6 +17,10 @@ get_bob_address() {
   echo 0x$(cat $CONFIG_DIR/bob.ks.json | jq -r .address)
 }
 
+toJsonArray() {
+    jq --compact-output --null-input '$ARGS.positional' --args -- "$@"
+}
+
 function hex2int() {
     hex=${@#0x}
     echo "obase=10; ibase=16; ${hex^^}" | bc
