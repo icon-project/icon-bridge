@@ -413,7 +413,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     public void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
         checkUintLimit(_value);
         String _coinName = coinAddressName.get(Context.getCaller());
-        if (_coinName != null && _from != Context.getAddress()) {
+        if (_coinName != null && !Context.getAddress().equals(_from)) {
             Context.require(coinAddresses.get(_coinName) != null, "CoinNotExists");
             Balance _userBalance = getBalance(_coinName, _from);
             _userBalance.setUsable(_userBalance.getUsable().add(_value));
