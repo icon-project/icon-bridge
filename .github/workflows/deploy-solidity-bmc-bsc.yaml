@@ -22,10 +22,9 @@ jobs:
         working-directory: ./solidity/bmc
         run: npm install
 
-      - name: Deploy javascore bmc optimized jar
+      - name: Truffle compile and Deploy solidity bmc
         working-directory: ./solidity/bmc
         shell: bash
-        timeout-minutes: 1
         env:
           PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
