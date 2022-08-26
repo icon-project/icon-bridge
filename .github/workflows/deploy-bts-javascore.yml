@@ -1,0 +1,92 @@
+name: 'Deploy bts Javascore'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - deploy-bts-javascore-#342
+  workflow_call:
+jobs:
+  deploy-bts-javascore:
+    name: deploy bts Javascore to testnet
+    runs-on: ubuntu-latest
+    container:
+      image: iconbridge/build
+      options: --user 1001
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Add SHORT_SHA env property with commit short sha
+        run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
+
+      - name: Build javascore bts optimized jar
+        working-directory: ./javascore
+        run: gradle bts:optimizedJar
+
+      - name: Retrieve the secret and decode it to a file
+        working-directory: ./javascore
+        env:
+          GOLOOP_RPC_KEY_STORE_B64: ${{ secrets.GOLOOP_RPC_KEY_STORE_B64 }}
+        run: |
+          echo $GOLOOP_RPC_KEY_STORE_B64 | base64 -d > key.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Sync tx.icon.bts
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        run: |
+          aws s3 cp s3://$AWS_S3_BUCKET/tx-icon-bmc ./javascore/tx-icon-bmc
+          cat ./javascore/tx-icon-bmc | jq -r .scoreAddress > ./javascore/icon-addr-bmc
+
+      - name: Deploy javascore bts optimized jar
+        working-directory: ./javascore
+        shell: bash
+        timeout-minutes: 1
+        env:
+          GOLOOP_RPC_KEY_PASSWORD: ${{ secrets.GOLOOP_RPC_KEY_PASSWORD }}
+          GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+        run: |
+          goloop rpc sendtx deploy bts/build/libs/bts-optimized.jar \
+                --content_type application/java \
+                --param _name="btp-0x2.icon-ICX" \
+                --param _bmc=$(cat icon-addr-bmc) \
+                --param _decimals=0x12 \
+                --param _feeNumerator=0x0 \
+                --param _fixedFee=0x3bacab37b62e0000 \
+                --param _serializedIrc2=$(xxd -p ./lib/irc2Tradeable-0.1.0-optimized.jar | tr -d '\n') \
+                --nid=0x2 \
+                --step_limit=3000000000 \
+                --uri $GOLOOP_RPC_URI \
+                --key_store=./key.json | tee | jq -r . > tx.icon.bts
+
+      - name: Get deployment txresult
+        working-directory: ./javascore
+        shell: bash
+        timeout-minutes: 1
+        env:
+          GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+        run: |
+          while true; do
+            str=`goloop rpc --uri $GOLOOP_RPC_URI txresult $(cat tx.icon.bts) | tee tx-icon-bts || exit 0`
+            echo Output: $str
+            if cat tx-icon-bts | jq ".status" | grep -q "0x1"; then
+              break
+            fi
+            echo Wait
+            sleep 2
+          done
+          echo Finished
+
+      - name: Sync tx.icon.bts
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        run: |
+          aws s3 cp ./javascore/tx-icon-bts s3://$AWS_S3_BUCKET/tx-icon-bts-$GITHUB_REF_NAME
+          aws s3 mv ./javascore/tx-icon-bts s3://$AWS_S3_BUCKET/tx-icon-bts
