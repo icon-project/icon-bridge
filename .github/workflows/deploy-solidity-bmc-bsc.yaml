@@ -1,7 +1,9 @@
 name: 'Deploy Solidity BMC to BSC Testnet'
 
 on:
-  push: ["feat/344-deploy-solidity-bmc-bsc"]
+  push:
+    branches:
+      - feat/344-deploy-solidity-bmc-bsc
   workflow_dispatch:
   workflow_call:
 
