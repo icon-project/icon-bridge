@@ -1,0 +1,42 @@
+name: Codecov
+on: [push, pull_request]
+env:
+  CI: true
+
+jobs:
+  codecov:
+    name: Node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18]
+        os: [ubuntu-latest]
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+
+      - name: Set Node.js version
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: solidity bmc
+        working-directory: ./solidity/bmc
+        run: |
+              npm install
+              npm install -g nyc codecov coveralls
+              cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
+              mkdir .nyc_output
+              nyc report --reporter=text-lcov > coverage.lcov # && codecov -t ${{ secrets.CODECOV_TOKEN }}
+      - name: solidity bts
+        working-directory: ./solidity/bts
+        run: |
+              npm install
+              cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
+              mkdir .nyc_output
+              nyc report --reporter=text-lcov > coverage.lcov # && codecov -t ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload
+        uses: codecov/codecov-action@v3
