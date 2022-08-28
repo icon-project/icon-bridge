@@ -1,0 +1,10 @@
+github_checks:
+  annotations: true
+coverage:
+  range: 90..100
+  round: down
+  precision: 2
+comment:
+  layout: "reach, diff, flags, files"
+  require_base: no
+  require_head: no
