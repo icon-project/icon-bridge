@@ -1,12 +1,13 @@
+use crate::rlp::{self, Decodable, Encodable};
 use crate::types::{messages::Message, BTPAddress, WrappedI128};
 use btp_common::errors::BmcError;
 use near_sdk::{
     base64::{self, URL_SAFE_NO_PAD}, // TODO: Confirm
     borsh::{self, maybestd::io, BorshDeserialize, BorshSerialize},
-    serde::{de, ser, Deserialize, Serialize, Serializer, Deserializer},
+    serde::{de, ser, Deserialize, Deserializer, Serialize, Serializer},
 };
-use crate::rlp::{self, Decodable, Encodable};
 use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::vec::IntoIter;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -85,14 +86,12 @@ impl Message for SerializedMessage {}
 
 impl Encodable for BtpMessage<SerializedMessage> {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
-        stream
-        .begin_unbounded_list()
-        .append(self.source())
-        .append(self.destination())
-        .append(self.service())
-        .append(self.serial_no())
-        .append(self.payload())
-        .finalize_unbounded_list()
+        stream.begin_list(5)
+            .append(self.source())
+            .append(self.destination())
+            .append(self.service())
+            .append(self.serial_no())
+            .append(self.payload());
     }
 }
 
@@ -108,12 +107,9 @@ impl TryFrom<String> for SerializedMessage {
     }
 }
 
-
 impl Decodable for BtpMessage<SerializedMessage> {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let data = rlp.as_val::<Vec<u8>>()?;
-        let rlp = rlp::Rlp::new(&data);
-        Ok(Self {
+       Ok(Self {
             source: rlp.val_at::<BTPAddress>(0)?,
             destination: rlp.val_at::<BTPAddress>(1)?,
             service: rlp.val_at::<String>(2)?,
@@ -127,13 +123,14 @@ impl Decodable for BtpMessage<SerializedMessage> {
 impl From<&BtpMessage<SerializedMessage>> for String {
     fn from(btp_message: &BtpMessage<SerializedMessage>) -> Self {
         let rlp = rlp::encode(btp_message);
-        base64::encode_config(rlp::encode(&rlp), URL_SAFE_NO_PAD)
+
+        base64::encode_config(&rlp, URL_SAFE_NO_PAD)
     }
 }
 
 impl From<BtpMessage<SerializedMessage>> for Vec<u8> {
     fn from(btp_message: BtpMessage<SerializedMessage>) -> Self {
-        rlp::encode(&rlp::encode(&btp_message)).to_vec()
+        rlp::encode(&btp_message).to_vec()
     }
 }
 
@@ -145,7 +142,9 @@ impl TryFrom<String> for BtpMessage<SerializedMessage> {
                 message: format!("base64: {}", error),
             }
         })?;
+
         let rlp = rlp::Rlp::new(&decoded);
+
         Self::decode(&rlp).map_err(|error| BmcError::DecodeFailed {
             message: format!("rlp: {}", error),
         })
@@ -159,7 +158,6 @@ impl TryFrom<Vec<u8>> for BtpMessage<SerializedMessage> {
         Self::decode(&rlp).map_err(|error| format!("rlp: {}", error))
     }
 }
-
 
 impl Serialize for BtpMessage<SerializedMessage> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, <S as ser::Serializer>::Error>

@@ -1,4 +1,4 @@
-use super:: Events;
+use super:: {Events};
 use libraries::rlp::{self, Decodable};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -24,8 +24,6 @@ impl Receipt {
 
 impl Decodable for Receipt {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-
-        
         let data = rlp.as_val::<Vec<u8>>()?;
         let rlp = rlp::Rlp::new(&data);
         Ok(Self {

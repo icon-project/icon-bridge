@@ -39,6 +39,8 @@ impl From<BtpMessage<ErrorMessage>> for BtpMessage<SerializedMessage> {
 
 impl Decodable for ErrorMessage {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        let data = rlp.as_val::<Vec<u8>>()?;
+        let rlp = rlp::Rlp::new(&data);
         Ok(Self {
             code: rlp.val_at(0)?,
             message: rlp.val_at(1)?,
@@ -70,10 +72,13 @@ impl TryFrom<BtpMessage<SerializedMessage>> for BtpMessage<ErrorMessage> {
 
 impl Encodable for ErrorMessage {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
-        stream
+        let mut params = rlp::RlpStream::new();
+        params
             .begin_unbounded_list()
             .append(&self.code)
             .append(&self.message)
             .finalize_unbounded_list();
+
+        stream.append(&params.out());
     }
 }

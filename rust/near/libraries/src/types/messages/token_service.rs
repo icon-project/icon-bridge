@@ -191,7 +191,7 @@ pub struct TokenServiceMessage {
 
 #[cfg(test)]
 mod tests {
-    use super::{TokenServiceMessage, TokenServiceType, TransferableAsset};
+    use super::{TokenServiceMessage, TokenServiceType, TransferableAsset, BtpMessage, SerializedMessage};
     use std::convert::TryFrom;
 
     #[test]
@@ -236,5 +236,10 @@ mod tests {
             String::from(&service_message),
             "-FoAuFf4VaoweGMyOTRiMUE2MkU4MmQzZjEzNUE4RjliMmY5Y0FFQUEyM2ZiRDZDZjWKMHgxMjM0NTY3ON7JhElDT06DAwqEyYRUUk9OgwSQwMmEUEFSQYMBhEg".to_string(),
         );
+    }
+
+    #[test]
+    fn deserialize_transfer_request_message_btp_message() {
+        let btp_message = <BtpMessage<SerializedMessage>>::try_from("-QEfuDlidHA6Ly8weDIuaWNvbi9jeDY3ZTIzOGQ4YjFiY2Q4MTVmMzI0ZWQ3ZjU4NWExYWExODhkZDYzZDm4T2J0cDovLzB4MS5uZWFyLzQzODI3ZGZjMDZiZTZiNmQ2ZGEwNDhlYWIyOTdmOWEzNWJhZjIyYjJjZmE1MTFiNDZiMzk1ZTRiODkxNTFmZjODYnRzB7iM-IoAuIf4hapoeGRlYjY5Yjg0YjhjNGY5ZmZhNmU2MWJiNmM3MzMxMTBmMjRlODU0NGO4QDE2YTEyNTVhMDViMTAyZGQzMTY1NDJiODc4MGNmZWRmN2M2M2ZhYjJlODNjYzEyMmIwMWJmYzRiYzQyMDBlMWbX1otidHAtMHgyLUlDWIkAwcP4n1QPcKM".to_string()).unwrap();
     }
 }
