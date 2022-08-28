@@ -27,16 +27,16 @@ jobs:
         working-directory: ./solidity/bmc
         run: |
               npm install
-              npm install -g nyc codecov coveralls
+              npm install -g nyc codecov
               cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
               mkdir .nyc_output
-              nyc report --reporter=text-lcov > coverage.lcov # && codecov -t ${{ secrets.CODECOV_TOKEN }}
+              nyc report --reporter=text-lcov > coverage.lcov && codecov -t ${{ secrets.CODECOV_TOKEN }}
       - name: solidity bts
         working-directory: ./solidity/bts
         run: |
               npm install
               cp ../../devnet/docker/icon-bsc/local/keys/env ./.env
               mkdir .nyc_output
-              nyc report --reporter=text-lcov > coverage.lcov # && codecov -t ${{ secrets.CODECOV_TOKEN }}
+              nyc report --reporter=text-lcov > coverage.lcov && codecov -t ${{ secrets.CODECOV_TOKEN }}
       - name: Upload
         uses: codecov/codecov-action@v3
