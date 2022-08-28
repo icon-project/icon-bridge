@@ -32,11 +32,6 @@ impl BtpMessageCenter {
         self.event.get_message()
     }
 
-    #[cfg(feature = "mockable")]
-    pub fn get_message(&self) -> Result<BtpMessage<SerializedMessage>, String> {
-        self.event.get_message()
-    }
-
     #[cfg(feature = "testable")]
     pub fn send_message(
         &mut self,
@@ -354,7 +349,9 @@ impl BtpMessageCenter {
                     continue;
                 }
                 match event.btp_message() {
-                    Some(btp_message) => btp_messages.push(btp_message),
+                    Some(btp_message) => {
+                        btp_messages.push(btp_message)
+                    },
                     None => continue,
                 };
             }

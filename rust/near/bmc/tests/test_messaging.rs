@@ -15,6 +15,9 @@ use libraries::types::{
     messages::TokenServiceMessage, messages::TokenServiceType, Account, Address, BTPAddress,
     HashedCollection, WrappedI128, LinkStatus
 };
+use libraries::BytesMut;
+use libraries::rlp::Encodable;
+
 use std::convert::TryInto;
 
 fn get_context(input: Vec<u8>, is_view: bool, signer_account_id: AccountId) -> VMContext {
@@ -40,7 +43,7 @@ fn get_context(input: Vec<u8>, is_view: bool, signer_account_id: AccountId) -> V
 
 #[test]
 fn decode() {
-    let message: RelayMessage = RelayMessage::try_from("-QEE-QEBuP_4_QG49fjz-PG4T2J0cDovLzB4MS5uZWFyLzFkMGQwNjQ4NDYyMmY3MDYxYjAxNWY1ZWQwNjVkMjVjMGJmMDIzYmFjNzNiNGRkNDA3ODAxNzJmYjZlNDExOTQBuJ34m7g5YnRwOi8vMHgyLmljb24vY3g3NmVhNjU4ZWI4MDFhM2Y0YWEzN2ExOWFkMGEwNjc2YjVkNmNlY2M5uE9idHA6Ly8weDEubmVhci8xZDBkMDY0ODQ2MjJmNzA2MWIwMTVmNWVkMDY1ZDI1YzBiZjAyM2JhYzczYjRkZDQwNzgwMTcyZmI2ZTQxMTk0g2JtYwCJyIRJbml0gsHAhACuKaM=".to_string()).unwrap();
+    let message: RelayMessage = RelayMessage::try_from("-QEE-QEBuP_4_QG49fjz-PG4T2J0cDovLzB4MS5uZWFyLzQzMTBlOWI3YTQwMDMzMTkxM2EyYjE4NmNmNzMwODE3Njc4NmIzYTFhN2NkYzZhMzEzMjYxODAxY2NhMDliMGUBuJ34m7g5YnRwOi8vMHgyLmljb24vY3g0YzFhOWQ2MGRmMTE0MWEwODhhYTdiYTRhZDVhZDM3OGM3OTFjNmQxuE9idHA6Ly8weDEubmVhci80MzEwZTliN2E0MDAzMzE5MTNhMmIxODZjZjczMDgxNzY3ODZiM2ExYTdjZGM2YTMxMzI2MTgwMWNjYTA5YjBlg2JtYwCJyIRJbml0gsHAhACyR14=".to_string()).unwrap();
 
     let context = |v: AccountId| (get_context(vec![], false, v));
     testing_env!(context(alice()));
@@ -61,6 +64,27 @@ fn decode() {
     testing_env!(context(charlie()));
 
     contract.handle_relay_message(source, message);
+
+
+    let btp_message = <BtpMessage<TokenServiceMessage>>::new(
+        BTPAddress::new("btp://0x38.bsc/0x034AaDE86BF402F023Aa17E5725fABC4ab9E9798".to_string()),
+        BTPAddress::new(
+            "btp://0x1.icon/cx23a91ee3dd290486a9113a6a42429825d813de53"
+                .to_string(),
+        ),
+        "bts".to_string(),
+        WrappedI128::new(21),
+        vec![],
+        Some(TokenServiceMessage::new(
+            TokenServiceType::RequestTokenTransfer {
+                sender: "0x7A4341Af4995884546Bcf7e09eB98beD3eD26D28".to_owned(),
+                receiver: "hx937517ac042d0a14f09d4677d302bb211184ac5f".to_owned(),
+                assets: vec![]
+            },
+        )),
+    );
+
+    let serialized_message = <BtpMessage<SerializedMessage>>::try_from(&btp_message).unwrap();
 }
 
 #[test]
@@ -323,6 +347,8 @@ fn handle_external_service_message_existing_service() {
     );
 }
 
+
+// #[ignore]
 #[test]
 #[cfg(feature = "testable")]
 fn handle_external_service_message_non_existing_service() {
@@ -348,6 +374,7 @@ fn handle_external_service_message_non_existing_service() {
     testing_env!(context(alice()));
     let mut contract = BtpMessageCenter::new("0x1.near".into(), 1500);
     contract.add_link(link.clone());
+    
     contract.handle_service_message_testable(
         link.clone(),
         <BtpMessage<SerializedMessage>>::try_from(&btp_message).unwrap(),

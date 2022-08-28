@@ -54,18 +54,6 @@ impl BtpMessageCenter {
         HashedCollection::new()
     }
 
-    #[cfg(feature = "mockable")]
-    pub fn get_reachable_link(&self, link: BTPAddress) -> HashedCollection<BTPAddress> {
-        if let Some(link) = self.links.get(&link) {
-            return link
-                .reachable()
-                .to_owned()
-                .into_iter()
-                .collect::<HashedCollection<BTPAddress>>();
-        }
-        HashedCollection::new()
-    }
-
     pub fn get_links(&self) -> serde_json::Value {
         self.links.to_vec().into()
     }
