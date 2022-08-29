@@ -1,0 +1,43 @@
+name: Code Coverage with Codecov
+
+on:
+  push:
+    branches:
+      - main
+      # - feature/145-codecov
+  pull_request:
+    branches:
+      - main
+jobs:
+  codecov:
+    runs-on: ubuntu-latest
+    container:
+      image: iconbridge/build
+      options: --user 1001
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
+
+    - name: Javascore BMC coverage
+      working-directory: ./javascore/bmc
+      run: |
+        gradle test
+    - name: Javascore BTS coverage
+      working-directory: ./javascore/bts
+      run: |
+        gradle test
+
+    - name: Solidity BTS coverage
+      working-directory: ./solidity/bts
+      run: |
+        npm install
+        truffle run coverage || exit 0 # Bug on truffle to compile while running coverage and it fails, so exit 0
+    - name: Solidity BMC coverage
+      working-directory: ./solidity/bmc
+      run: |
+        npm install
+        truffle run coverage || exit 0
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
