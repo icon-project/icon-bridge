@@ -42,7 +42,7 @@ public abstract class IRC2Basic implements IRC2 {
 
             // decimals must be larger than 0 and less than 21
             Context.require(_decimals >= 0, "decimals needs to be positive");
-            Context.require(_decimals <= 21, "decimals needs to be equal or lower than 21");
+            Context.require(_decimals <= 24, "decimals needs to be equal or lower than 21");
             this.decimals.set(BigInteger.valueOf(_decimals));
         }
     }
