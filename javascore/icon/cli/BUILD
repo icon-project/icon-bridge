@@ -3,7 +3,7 @@ load("@icon//cli:defs.bzl", "configure_bmr", "configure_link", "create_keystore"
 package(default_visibility = ["//visibility:public"])
 
 create_keystore(
-    name = "bmc",
+    name = "bob",
 )
 
 get_score_address(
@@ -24,6 +24,9 @@ get_score_address(
 get_score_address(
     name = "get_score_address_bts",
     contract = "bts",
+)
+create_keystore(
+    name = "icon",   
 )
 
 configure_bmr(
@@ -50,10 +53,11 @@ genrule(
     name = "deploy_bts",
     srcs = ["@icon//:goloop_config_dir", "@javascore//bts:javascore"],
     outs = ["deploy_bts.out"],
-    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url))  sendtx deploy $(location @javascore//bts:javascore) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --content_type application/java --step_limit 13610920001 --param _bmc=$$(cat $(location @icon//cli:get_score_address_bmc)) --param  _serializedIrc2=$$(cat $(location @javascore//irc2Tradeable:javascore_serialized)) --param _name=\"btp-$$(cat $(location @icon//:network_id))-ICX\" --param _decimals=\"0x$$(printf '%x' 18)\" --param _feeNumerator=\"0x$$(printf '%x' 100)\" --param _fixedFee=\"0x$$(printf '%x' 4300000000000000000)\" | echo $$(tr -d '\"') > $@",
+    cmd = "$(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url))  sendtx deploy $(location @javascore//bts:javascore) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --content_type application/java --step_limit 13610920001 --param _bmc=$$(cat $(location @icon//cli:get_score_address_bmc)) --param  _serializedIrc2=$$(cat $(location @javascore//irc2Tradeable:javascore_serialized)) --param _name=\"btp-$$(cat $(location @icon//:network_address))-ICX\" --param _decimals=\"0x$$(printf '%x' 18)\" --param _feeNumerator=\"0x$$(printf '%x' 100)\" --param _fixedFee=\"0x$$(printf '%x' 4300000000000000000)\" | echo $$(tr -d '\"') > $@",
     executable = True,
     local = True,
     tools = [
+        "@icon//:network_address",
         "@com_github_icon_project_goloop//cmd/goloop",
         "@icon//:network_id",
         "@icon//:node_url",
@@ -231,26 +235,29 @@ genrule(
     ],
 )
 
-# genrule(
-#     name = "add_bsr",
-#     srcs= [
-#         ":deploy_bsr",
-#     ],
-#     outs = ["add_bsr.out"],
-#     cmd = """
-#     $(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx  call --to $$(cat $(location @icon//cli:get_score_address_bts)) --method addRestrictor  --param _addr=$$(cat $(location @icon//cli:get_score_address_bsr))  --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . >$@
-#     """,
-#     executable = True,
-#     local = True,
-#     tools = [
-#         "@com_github_icon_project_goloop//cmd/goloop",
-#         "@icon//:goloop_config_dir",
-#         "@icon//:network_id",
-#         "@icon//:node_url",
-#         "@icon//cli:get_score_address_bsr",
-#         "@icon//cli:get_score_address_bts",
-#     ]
-# )
+
+genrule(
+    name = "register_wrapped_coin_bts",
+    srcs = [
+        ":add_bts_icon",
+        ":set_near_link",
+        "@com_github_icon_project_goloop//cmd/goloop",
+        "@icon//:goloop_config_dir",
+        "@icon//cli:keysecret",
+        "@icon//cli:get_score_address_bts",
+        "@near//:network_address"
+    ],
+    outs = ["register_wrapped_coin_bts.out"],
+    cmd = """
+        $(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx call --to $$(cat $(location get_score_address_bts)) --method register --param _decimals="0x18" --param _feeNumerator="0x0" --param _fixedFee="0x11c37937e08000" --param _name="btp-$$(cat $(location @near//:network_address))-NEAR" --param _symbol="NEAR" --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . >$@
+    """,
+    executable = True,
+    local = True,
+    tools = [
+        "@icon//:network_id",
+        "@icon//:node_url",
+    ],
+)
 
 genrule(
     name = "send_icx_to_near",
@@ -259,13 +266,16 @@ genrule(
         ":set_near_link",
         "@com_github_icon_project_goloop//cmd/goloop",
         "@icon//:goloop_config_dir",
+        "@icon//cli:keysecret",
         "@icon//cli:get_score_address_bts",
         "@near//cli:encode_public_key_alice",
         "@near//cli:register_wrapped_coin_bts",
+        ":create_keystore_bob",
+        ":get_wallet_bob_keystore"
     ],
     outs = ["send_icx_to_near.out"],
     cmd = """
-     $(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx  call --to $$(cat $(location get_score_address_bts)) --method transferNativeCoin  --param _to=\"btp://0x1.near/$$(cat $(location @near//cli:encode_public_key_alice))\"  --value 0x$$(printf '%x' 1000000000000000000000000) --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001 >$@
+        $(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx call --to $$(cat $(location get_score_address_bts)) --method transferNativeCoin  --param _to=\"btp://0x1.near/$$(cat $(location @near//cli:encode_public_key_alice))\"  --value 0x$$(printf '%x' 100000000000000000000000) --key_store $(location :create_keystore_bob) --key_password $$(cat $(location @icon//cli:keysecret)) --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001 >$@
     """,
     executable = True,
     local = True,

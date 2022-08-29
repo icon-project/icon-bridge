@@ -45,7 +45,7 @@ def create_account(name):
     native.genrule(
         name = "create_account_%s" % name,
         outs = ["create_account_%s.out" % name],
-        cmd = "$(execpath :near_binary) send $$(cat $(location @near//cli:get_master_account)) $$(cat $(location @near//cli:encode_public_key_%s)) 50 --masterAccount $$(cat $(location @near//cli:get_master_account)) --nodeUrl $$(cat $(locations @near//:node_url)) --keyPath $$(cat $(location @near//:near_config_dir))/master_key.json > $@" % name,
+        cmd = "$(execpath :near_binary) send $$(cat $(location @near//cli:get_master_account)) $$(cat $(location @near//cli:encode_public_key_%s)) 10 --masterAccount $$(cat $(location @near//cli:get_master_account)) --nodeUrl $$(cat $(locations @near//:node_url)) --keyPath $$(cat $(location @near//:near_config_dir))/master_key.json > $@" % name,
         executable = True,
         local = True,
         output_to_bindir = True,
@@ -63,7 +63,7 @@ def create_sub_account(name):
     native.genrule(
         name = "create_sub_account_%s" % name,
         outs = ["create_sub_account_%s.out" % name],
-        cmd = "$(execpath :near_binary) create-account %s.$$(cat $(location @near//cli:get_master_account)) --masterAccount $$(cat $(location @near//cli:get_master_account)) --nodeUrl $$(cat $(locations @near//:node_url)) --keyPath $$(cat $(location @near//:near_config_dir))/master_key.json; $(execpath :near_binary) send $$(cat $(location @near//cli:get_master_account)) %s.$$(cat $(location @near//cli:get_master_account)) 50 --nodeUrl $$(cat $(locations @near//:node_url)) --keyPath $$(cat $(location @near//:near_config_dir))/master_key.json ; echo \"%s.$$(cat $(location @near//cli:get_master_account))\" > $@" % (name, name, name),
+        cmd = "$(execpath :near_binary) create-account %s.$$(cat $(location @near//cli:get_master_account)) --masterAccount $$(cat $(location @near//cli:get_master_account)) --nodeUrl $$(cat $(locations @near//:node_url)) --keyPath $$(cat $(location @near//:near_config_dir))/master_key.json; $(execpath :near_binary) send $$(cat $(location @near//cli:get_master_account)) %s.$$(cat $(location @near//cli:get_master_account)) 10 --nodeUrl $$(cat $(locations @near//:node_url)) --keyPath $$(cat $(location @near//:near_config_dir))/master_key.json ; echo \"%s.$$(cat $(location @near//cli:get_master_account))\" > $@" % (name, name, name),
         executable = True,
         local = True,
         output_to_bindir = True,
@@ -76,26 +76,10 @@ def create_sub_account(name):
     )
 
 def configure_link(name):
-    # native.genrule(
-    #     name = "add_%s_verifier" % name,
-    #     srcs = ["@near//cli:deploy_%s_bmv" % name, "@near//cli:deploy_bmc"],
-    #     outs = ["add_%s_verifier.out" % name],
-    #     cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:encode_public_key_bmc)) add_verifier \\'\\{\\"network\\":\\"$$(cat $(location @%s//:network_address))\\"\\,\\"verifier\\":\\"$$(cat $(location @near//cli:encode_public_key_%sbmv))\\"\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:encode_public_key_bmc)) > $@""" % (name, name),
-    #     executable = True,
-    #     local = True,
-    #     tools = [
-    #         "@%s//:network_address" % name,
-    #         "@near//:node_url",
-    #         "@near//cli:encode_public_key_bmc",
-    #         "@near//cli:encode_public_key_%sbmv" % name,
-    #         "@near//cli:near_binary",
-    #     ],
-    # )
     native.genrule(
         name = "add_%s_link" % name,
         srcs = [
             "@near//cli:deploy_bmc",
-            # "@near//cli:add_%s_verifier" % name,
         ],
         outs = ["add_%s_link.out" % name],
         cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:encode_public_key_bmc)) add_link \\'\\{\\"link\\":\\"$$(cat $(location @%s//:btp_address))\\"\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:encode_public_key_bmc))  > $@""" % name,
@@ -138,7 +122,7 @@ def configure_bmr(name):
             "@near//:near_config_dir",
         ],
         outs = ["transfer_amount_%s_address.out" % name],
-        cmd = "$(execpath @near//cli:near_binary) send $$(cat $(location @near//cli:get_master_account)) $$(cat $(location @near//cli:get_wallet_%s_keystore)) 50 --masterAccount $$(cat $(location @near//cli:get_master_account)) --nodeUrl $$(cat $(locations @near//:node_url)) --keyPath $$(cat $(location @near//:near_config_dir))/master_key.json > $@" % (name),
+        cmd = "$(execpath @near//cli:near_binary) send $$(cat $(location @near//cli:get_master_account)) $$(cat $(location @near//cli:get_wallet_%s_keystore)) 10 --masterAccount $$(cat $(location @near//cli:get_master_account)) --nodeUrl $$(cat $(locations @near//:node_url)) --keyPath $$(cat $(location @near//:near_config_dir))/master_key.json > $@" % (name),
         executable = True,
         local = True,
         tools = [

@@ -66,7 +66,7 @@ genrule(
         "@near//bsh/bts:bts_wasm",
     ],
     outs = ["deploy_natvie_coin_bsh.out"],
-    cmd = """$(execpath :near_binary) deploy $$(cat $(location @near//cli:create_sub_account_bts)) --nodeUrl $$(cat $(locations @near//:node_url)) --wasmFile $(locations @near//bsh/bts:bts_wasm) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --initFunction \"new\" --initArgs  \\'\\{\\"service_name\\":\\"bts\\"\\,\\"bmc\\":\\"$$(cat $(location @near//cli:encode_public_key_bmc))\\"\\,\\"network\\":\\"0x1.near\\"\\,\\"native_coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"NEAR\\"\\,\\"symbol\\":\\"NEAR\\"\\,\\"uri\\":null\\,\\"network\\":\\"0x1.near\\"\\,\\"fee_numerator\\":\\"0\\"\\,\\"fixed_fee\\":\\"0\\"\\,\\"extras\\":null\\}\\}\\}\\' > $@""",
+    cmd = """$(execpath :near_binary) deploy $$(cat $(location @near//cli:create_sub_account_bts)) --nodeUrl $$(cat $(locations @near//:node_url)) --wasmFile $(locations @near//bsh/bts:bts_wasm) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --initFunction \"new\" --initArgs  \\'\\{\\"service_name\\":\\"bts\\"\\,\\"bmc\\":\\"$$(cat $(location @near//cli:encode_public_key_bmc))\\"\\,\\"network\\":\\"0x1.near\\"\\,\\"native_coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"btp-0x1.near-NEAR\\"\\,\\"symbol\\":\\"NEAR\\"\\,\\"uri\\":null\\,\\"network\\":\\"0x1.near\\"\\,\\"fee_numerator\\":\\"0\\"\\,\\"fixed_fee\\":\\"0\\"\\,\\"extras\\":null\\}\\}\\}\\' > $@""",
     executable = True,
     local = True,
     tools = [
@@ -78,23 +78,6 @@ genrule(
     ],
 )
 
-genrule(
-    name = "deploy_token_bsh",
-    srcs = [
-        "@near//bsh/token:token_bsh_wasm",
-    ],
-    outs = ["deploy_token_bsh.out"],
-    cmd = """$(execpath :near_binary) deploy $$(cat $(location @near//cli:encode_public_key_tokenbsh)) --nodeUrl $$(cat $(locations @near//:node_url)) --wasmFile $(locations @near//bsh/token:token_bsh_wasm) --accountId $$(cat $(location @near//cli:create_sub_account_tokenbsh)) --initFunction \"new\" --initArgs \\'\\{\\"service_name\\":\\"tokenbsh\\"\\,\\"bmc\\":\\"$$(cat $(location @near//cli:encode_public_key_bmc))\\"\\,\\"network\\":\\"0x1.near\\"\\}\\' > $@""",
-    executable = True,
-    local = True,
-    tools = [
-        "@near//:node_url",
-        "@near//cli:create_account_tokenbsh",
-        "@near//cli:create_sub_account_tokenbsh",
-        "@near//cli:encode_public_key_bmc",
-        "@near//cli:near_binary",
-    ],
-)
 
 genrule(
     name = "set_icon_link",
@@ -116,8 +99,8 @@ genrule(
 
 genrule(
     name = "add_bts_service",
-    outs = ["add_bts_service.out"],
     srcs = ["@near//cli:deploy_bts"],
+    outs = ["add_bts_service.out"],
     cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:encode_public_key_bmc)) add_service \\'\\{\\"name\\":\\"bts\\"\\,\\"service\\":\\"$$(cat $(location @near//cli:create_sub_account_bts))\\"\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:encode_public_key_bmc)) > $@ """,
     executable = True,
     local = True,
@@ -136,14 +119,13 @@ genrule(
         "@icon//:network_address",
     ],
     outs = ["regsiter_new_wrapped_coin.out"],
-    cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:create_sub_account_bts)) register \\'\\{\\"coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"btp-$$(cat $(location @icon//:network_id))-ICX\\"\\,\\"symbol\\":\\"ICX\\",\\"uri\\":\\"btp-$$(cat $(location @icon//:network_id)).$$(cat $(location @near//cli:create_sub_account_bts))\\"\\,\\"network\\":\\"$$(cat $(location @icon//:network_address))\\"\\,\\"fee_numerator\\":\\"100\\"\\,\\"fixed_fee\\":\\"4300000000000000000\\"\\,\\"extras\\":\\{\\"spec\\":\\"ft-1.0.0\\",\\"icon\\":null,\\"reference\\":null,\\"reference_hash\\":null,\\"decimals\\":18\\}\\}\\}\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --amount 10 --gas 300000000000000 >$@""",
+    cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:create_sub_account_bts)) register \\'\\{\\"coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"btp-$$(cat $(location @icon//:network_address))-ICX\\"\\,\\"symbol\\":\\"ICX\\",\\"uri\\":\\"btp-icx.$$(cat $(location @near//cli:create_sub_account_bts))\\"\\,\\"network\\":\\"$$(cat $(location @icon//:network_address))\\"\\,\\"fee_numerator\\":\\"100\\"\\,\\"fixed_fee\\":\\"4300000000000000000\\"\\,\\"extras\\":\\{\\"spec\\":\\"ft-1.0.0\\",\\"icon\\":null,\\"reference\\":null,\\"reference_hash\\":null,\\"decimals\\":18\\}\\}\\}\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --amount 10 --gas 300000000000000 >$@""",
     executable = True,
     local = True,
     tools = [
-        "@near//:node_url",
         "@near//cli:create_sub_account_bts",
+        "@near//:node_url",
         "@near//cli:near_binary",
-        "@icon//:network_id"
     ],
 )
 
@@ -209,17 +191,17 @@ genrule(
         "master_account.out",
     ],
     cmd = "echo $$(cat $(SRCS)) | jq -r .account_id > $@",
-    output_to_bindir = True,
     executable = True,
     local = True,
+    output_to_bindir = True,
 )
 
 genrule(
     name = "set_icon_height",
-   srcs = [
+    srcs = [
         "@near//cli:set_icon_link",
         "@near//cli:get_wallet_near_keystore",
-        "@icon//:latest_block_height"
+        "@icon//:latest_block_height",
     ],
     outs = ["set_icon_height.out"],
     cmd = """$(execpath :near_binary) call $$(cat $(location @near//cli:encode_public_key_bmc)) set_link_rx_height \\'\\{\\"link\\":\\"$$(cat $(location @icon//:btp_address))\\"\\,\\"height\\":$$(($$(cat $(location  @icon//:latest_block_height))+1))\\}\\' --nodeUrl $$(cat $(locations @near//:node_url)) --accountId $$(cat $(location @near//cli:encode_public_key_bmc)) > $@""",
@@ -231,7 +213,49 @@ genrule(
         "@near//cli:encode_public_key_bmc",
         "@near//cli:near_binary",
     ],
+)
 
+genrule(
+    name = "deposit_near_to_bts",
+    srcs = [
+        "@near//cli:encode_public_key_alice",
+        "@near//cli:create_account_alice",
+    ],
+    outs = ["deposit_near_to_bts.out"],
+    cmd = """ $(execpath :near_binary) call $$(cat $(location @near//cli:create_sub_account_bts)) deposit --amount 5 --accountId $$(cat $(location @near//cli:encode_public_key_alice)) --nodeUrl $$(cat $(locations @near//:node_url)) >$@ """,
+    tools = [
+        "@near//cli:create_sub_account_bts",
+        "@near//:node_url",
+        "@near//cli:near_binary",
+    ],
+    executable = True,
+    local = True,
+)
+
+genrule(
+    name = "send_near_to_icon",
+    srcs = [
+        ":add_bts_service",
+        "@icon//cli:get_wallet_bob_keystore",
+        ":set_icon_link",
+        "@near//cli:encode_public_key_alice",
+        "@near//cli:create_account_alice",
+        "@icon//cli:register_wrapped_coin_bts",
+        "@icon//:network_address",
+    ],
+    outs = ["send_near_to_icon.out"],
+    cmd = """
+    params="'"$$(jq -rc <<<{} '.coin_id=[ 247, 184, 188,  27, 185,  62, 246, 213,  77, 228, 101, 193, 206, 130, 171, 233,  39, 148, 195, 217, 177, 33, 141, 212,  41, 223,  44, 241, 83, 209,  37, 217 ] | .destination=$$destination | .amount=$$amount' --arg destination "btp://$$(cat $(location @icon//:network_address))/$$(cat $(location @icon//cli:get_wallet_bob_keystore))" --arg amount 100000000000000000000000)"'"
+    $(execpath :near_binary) call $$(cat $(location @near//cli:create_sub_account_bts)) transfer $$params --accountId $$(cat $(location @near//cli:encode_public_key_alice)) --nodeUrl $$(cat $(locations @near//:node_url))  --gas 300000000000000 >$@
+    """,
+    executable = True,
+    local = True,
+    tools = [
+        ":deposit_near_to_bts",
+        "@near//cli:create_sub_account_bts",
+        "@near//:node_url",
+        "@near//cli:near_binary",
+    ],
 )
 
 select({
@@ -239,5 +263,5 @@ select({
     "@near//:docker_localnet": exports_files(glob(["configs/localnet/*"])),
     "@near//:testnet": exports_files(glob(["configs/testnet/*"])),
     "@near//:mainnet": exports_files(glob(["configs/mainnet/*"])),
-    "//conditions:default": []
+    "//conditions:default": [],
 })
