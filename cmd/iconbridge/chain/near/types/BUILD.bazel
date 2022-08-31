@@ -4,6 +4,7 @@ go_library(
     name = "types",
     srcs = [
         "block.go",
+        "block_notification.go",
         "block_producer.go",
         "bmc_status.go",
         "bmv_status.go",
@@ -20,6 +21,7 @@ go_library(
     importpath = "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types",
     visibility = ["//visibility:public"],
     deps = [
+        "//cmd/iconbridge/chain",
         "//common/codec",
         "//common/wallet",
         "@com_github_btcsuite_btcutil//base58:go_default_library",

@@ -3,6 +3,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "errors",
     srcs = [
+        "base.go",
+        "block_notification_errors.go",
         "transaction_errors.go",
     ],
     importpath = "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/errors",
