@@ -89,3 +89,11 @@ jobs:
       - name: Build BMR
         working-directory: ./cmd/iconbridge
         run: go build
+
+      - name: Run BMR unit tests
+        working-directory: ./cmd/iconbridge
+        run: go test ./...
+
+      - name: Run BMR common unit tests
+        working-directory: ./common
+        run: go test ./...
