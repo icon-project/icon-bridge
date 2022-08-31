@@ -13,6 +13,7 @@ import (
 )
 
 type api struct {
+	host string
 	*jsonrpc.Client
 	logger log.Logger
 }
@@ -200,6 +201,7 @@ func (api *api) getBmcLinkStatus(accountId string, link *chain.BTPAddress) (type
 	if _, err := api.Do("query", &param, &response); err != nil {
 		return bmcStatus, err
 	}
+	
 	err = json.Unmarshal(response.Result, &bmcStatus)
 	if err != nil {
 		return bmcStatus, err

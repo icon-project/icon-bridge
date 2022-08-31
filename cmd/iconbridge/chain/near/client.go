@@ -1,27 +1,29 @@
 package near
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
-	"net/http"
-	"strconv"
-	"time"
-
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/near/borsh-go"
 	"github.com/reactivex/rxgo/v2"
+	"math/big"
+	"net/http"
+	url_pkg "net/url"
+	"strconv"
+	"time"
 )
 
 const BmcContractMessageStateKey = "bWVzc2FnZQ=="
 
 type Client struct {
-	api Api
+	subClients []*Client
+	api  Api
 	*jsonrpc.Client
 	logger          log.Logger
 	isMonitorClosed bool
@@ -52,12 +54,19 @@ type Api interface {
 func newClients(urls []string, logger log.Logger) []*Client {
 	transport := &http.Transport{MaxIdleConnsPerHost: 1000}
 	clients := make([]*Client, 0)
+
 	for _, url := range urls {
+		url, err := url_pkg.Parse(url)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		client := &Client{
 			logger:          logger,
 			isMonitorClosed: false,
 			api: &api{
-				Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: transport}, url),
+				host:   url.Host,
+				Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: transport}, url.String()),
 				logger: logger,
 			},
 		}
@@ -150,20 +159,29 @@ func (c *Client) MonitorBlockHeight(offset int64) rxgo.Observable {
 	return rxgo.FromChannel(channel, rxgo.WithCPUPool())
 }
 
-func (c *Client) MonitorBlocks(height uint64, callback func(rxgo.Observable) error) error {
-	return callback(c.MonitorBlockHeight(int64(height)).FlatMap(func(i rxgo.Item) rxgo.Observable {
-		if i.E != nil {
-			return rxgo.Just(errors.New(i.E.Error()))()
-		}
+func (c *Client) MonitorBlocks(height uint64, source string, concurrency uint, callback func(rxgo.Observable) error, subClient func() *Client) error {
+	return callback(c.MonitorBlockHeight(int64(height)).Map(func(_ context.Context, offset interface{}) (interface{}, error) {
+		if offset, Ok := (offset).(int64); Ok {
+			block, err := subClient().api.getBlockByHeight(offset)
+			bn := types.NewBlockNotification(offset)
 
-		block, err := c.api.getBlockByHeight(i.V.(int64))
-		if err != nil {
-			c.logger.Error(err)
-			return rxgo.Empty()
-		}
+			if err != nil {
+				return bn, nil // TODO: Handle Error
+			}
 
-		return rxgo.Just(block)()
-	}).TakeUntil(func(i interface{}) bool {
+			bn.SetBlock(block)
+			receipts, _ := subClient().GetReceipts(&block, source) // TODO: Handle Error
+
+			bn.SetReceipts(receipts)
+
+			return bn, nil
+		}
+		return nil, fmt.Errorf("error casting offset to int64")
+	}, rxgo.WithPool(int(concurrency))).Serialize(int(height), func(_bn interface{}) int {
+		bn := _bn.(*types.BlockNotification)
+
+		return int(bn.Offset())
+	}, rxgo.WithPool(int(concurrency)), rxgo.WithErrorStrategy(rxgo.ContinueOnError)).TakeUntil(func(i interface{}) bool {
 		return c.isMonitorClosed
 	}))
 }
@@ -210,12 +228,12 @@ func (c *Client) GetReceipts(block *types.Block, accountId string) ([]*chain.Rec
 		}
 
 		receipts = append(receipts, &chain.Receipt{
-			Index:  uint64(i),
+			Index: uint64(i),
 			Events: []*chain.Event{
 				{
-					Next: event.Next,
+					Next:     event.Next,
 					Sequence: uint64(sequence),
-					Message: event.Message,
+					Message:  event.Message,
 				},
 			},
 			Height: uint64(block.Height()),
