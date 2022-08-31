@@ -16,7 +16,9 @@ type Receiver struct {
 	source      chain.BTPAddress
 	destination chain.BTPAddress
 	logger      log.Logger
-	options     struct{}
+	options     struct {
+		SyncConcurrency uint `json:"syncConcurrency"`
+	}
 }
 
 func NewReceiver(src, dst chain.BTPAddress, urls []string, options json.RawMessage, logger log.Logger) (chain.Receiver, error) {
@@ -52,8 +54,8 @@ func newMockReceiver(source, destination chain.BTPAddress, client *Client, urls 
 	return receiver, nil
 }
 
-func (r *Receiver) receiveBlocks(height uint64, processBlock func(block *types.Block)) error {
-	return r.client().MonitorBlocks(height, func(observable rxgo.Observable) error {
+func (r *Receiver) receiveBlocks(height uint64, source string, processBlockNotification func(blockNotification *types.BlockNotification)) error {
+	return r.client().MonitorBlocks(height, r.source.ContractAddress(), r.options.SyncConcurrency, func(observable rxgo.Observable) error {
 		result := observable.Observe()
 
 		for item := range result {
@@ -61,10 +63,15 @@ func (r *Receiver) receiveBlocks(height uint64, processBlock func(block *types.B
 				return err
 			}
 
-			block, _ := item.V.(types.Block)
-			processBlock(&block)
+			bn, _ := item.V.(*types.BlockNotification)
+
+			if *bn.Block().Hash() != [32]byte{} {
+				processBlockNotification(bn)
+			}
 		}
 		return nil
+	}, func() *Client {
+		return r.client()
 	})
 }
 
@@ -75,12 +82,9 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 	go func() {
 		defer close(_errCh)
 
-		if err := r.receiveBlocks(opts.Height, func(block *types.Block) {
-			r.logger.WithFields(log.Fields{"height": block.Height()}).Debug("block notification")
-			receipts, err := r.client().GetReceipts(block, r.source.ContractAddress())
-			if err != nil {
-				_errCh <- err
-			}
+		if err := r.receiveBlocks(opts.Height, r.source.ContractAddress(), func(blockNotification *types.BlockNotification) {
+			r.logger.WithFields(log.Fields{"height": blockNotification.Block().Height()}).Debug("block notification")
+			receipts := blockNotification.Receipts()
 
 			for _, receipt := range receipts {
 				events := receipt.Events[:0]
