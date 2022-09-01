@@ -6,11 +6,8 @@ source config.sh
 source keystore.sh
 source rpc.sh
 
-
-deploysc() {
-    
-    echo "start..."
-    echo "check god keys..."
+setup_account() {
+      echo "check god keys..."
     if [ ! -f "${ICON_KEY_STORE}" ]; then
         ensure_key_store $ICON_KEY_STORE $ICON_SECRET
         echo "Fund newly created wallet " $ICON_KEY_STORE
@@ -32,7 +29,10 @@ deploysc() {
     ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bts.wallet.json $CONFIG_DIR/keystore/bsc.bts.wallet.secret
     ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bmc.wallet.json $CONFIG_DIR/keystore/bsc.bmc.wallet.secret
     ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bmr.wallet.json $CONFIG_DIR/keystore/bsc.bmr.wallet.secret
+}
 
+deploysc() {
+    echo "start..."
     echo "$GOLOOP_RPC_NID.icon" >$CONFIG_DIR/net.btp.icon #0x240fa7.icon
     mkdir -p $CONFIG_DIR/tx
 
@@ -241,4 +241,5 @@ generate_relay_config() {
 
 #wait-for-it.sh $GOLOOP_RPC_ADMIN_URI
 # run provisioning
+setup_account
 deploysc
