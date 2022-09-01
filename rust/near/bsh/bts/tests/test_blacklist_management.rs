@@ -54,68 +54,14 @@ fn add_user_to_blacklist() {
         nativecoin.clone(),
     );
 
-    let chuck_btpaddress =
-        BTPAddress::from_str(format!("btp://0x1.near/{}", chuck().clone()).as_str()).unwrap();
+    let users = vec![chuck(), charlie()];
 
-    let charlie_btpaddress =
-        BTPAddress::from_str(format!("btp://0x1.near/{}", charlie().clone()).as_str()).unwrap();
-
-    let users = vec![chuck_btpaddress, charlie_btpaddress];
-
-    let result = contract.add_to_blacklist(users);
-    match result {
-        Ok(()) => {
-            let users = contract.get_blacklisted_user();
-            let result: HashSet<_> = users.iter().collect();
-            let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
-            let expected: HashSet<_> = expected_users.iter().collect();
-            assert_eq!(expected, result)
-        }
-        Err(_) => todo!(),
-    }
-}
-
-#[test]
-fn add_already_blacklisted_user_to_blacklist() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
-    testing_env!(context(alice(), 0));
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
-    let mut contract = BtpTokenService::new(
-        "nativecoin".to_string(),
-        bmc(),
-        "0x1.near".into(),
-        nativecoin.clone(),
-    );
-
-    let chuck_btpaddress =
-        BTPAddress::from_str(format!("btp://0x1.near/{}", chuck().clone()).as_str()).unwrap();
-
-    let charlie_btpaddress =
-        BTPAddress::from_str(format!("btp://0x1.near/{}", charlie().clone()).as_str()).unwrap();
-
-    let users = vec![chuck_btpaddress, charlie_btpaddress];
-
-    let result = contract.add_to_blacklist(users.clone());
-    match result {
-        Ok(()) => {
-            let users = contract.get_blacklisted_user();
-            let result: HashSet<_> = users.iter().collect();
-            let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
-            let expected: HashSet<_> = expected_users.iter().collect();
-            assert_eq!(expected, result)
-        }
-        Err(_) => todo!(),
-    }
-
-    let result = contract.add_to_blacklist(users.clone());
-    match result {
-        Ok(()) => {}
-        Err(err) => {
-            assert_eq!(BshError::UserAlreadyBlacklisted, err)
-        }
-    }
+    contract.add_to_blacklist(users);
+    let users = contract.get_blacklisted_user();
+    let result: HashSet<_> = users.iter().collect();
+    let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
+    let expected: HashSet<_> = expected_users.iter().collect();
+    assert_eq!(expected, result)
 }
 
 #[test]
@@ -132,27 +78,16 @@ fn remove_blacklisted_user_from_blacklist() {
         nativecoin.clone(),
     );
 
-    let chuck_btpaddress =
-        BTPAddress::from_str(format!("btp://0x1.near/{}", chuck().clone()).as_str()).unwrap();
+    let users = vec![chuck().clone(), charlie().clone()];
 
-    let charlie_btpaddress =
-        BTPAddress::from_str(format!("btp://0x1.near/{}", charlie().clone()).as_str()).unwrap();
+    contract.add_to_blacklist(users.clone());
+    let users = contract.get_blacklisted_user();
+    let result: HashSet<_> = users.iter().collect();
+    let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
+    let expected: HashSet<_> = expected_users.iter().collect();
+    assert_eq!(expected, result);
 
-    let users = vec![chuck_btpaddress.clone(), charlie_btpaddress.clone()];
-
-    let result = contract.add_to_blacklist(users.clone());
-    match result {
-        Ok(()) => {
-            let users = contract.get_blacklisted_user();
-            let result: HashSet<_> = users.iter().collect();
-            let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
-            let expected: HashSet<_> = expected_users.iter().collect();
-            assert_eq!(expected, result)
-        }
-        Err(_) => todo!(),
-    }
-
-    let users = vec![chuck_btpaddress.clone()];
+    let users = vec![chuck().clone()];
     let result = contract.remove_from_blacklist(users.clone());
     match result {
         Ok(()) => {
@@ -178,33 +113,26 @@ fn remove_non_blacklisted_user_from_blacklist() {
         nativecoin.clone(),
     );
 
-    let chuck_btpaddress =
-        BTPAddress::from_str(format!("btp://0x1.near/{}", chuck().clone()).as_str()).unwrap();
+    let users = vec![chuck().clone(), charlie().clone()];
 
-    let charlie_btpaddress =
-        BTPAddress::from_str(format!("btp://0x1.near/{}", charlie().clone()).as_str()).unwrap();
+    contract.add_to_blacklist(users.clone());
+    let users = contract.get_blacklisted_user();
+    let result: HashSet<_> = users.iter().collect();
+    let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
+    let expected: HashSet<_> = expected_users.iter().collect();
+    assert_eq!(expected, result);
 
-    let users = vec![chuck_btpaddress.clone(), charlie_btpaddress.clone()];
-
-    let result = contract.add_to_blacklist(users.clone());
-    match result {
-        Ok(()) => {
-            let users = contract.get_blacklisted_user();
-            let result: HashSet<_> = users.iter().collect();
-            let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
-            let expected: HashSet<_> = expected_users.iter().collect();
-            assert_eq!(expected, result)
-        }
-        Err(_) => todo!(),
-    }
-    let carol_btpaddress =
-        BTPAddress::from_str(format!("btp://0x1.near/{}", carol().clone()).as_str()).unwrap();
-    let users = vec![carol_btpaddress.clone()];
+    let users = vec![carol().clone()];
     let result = contract.remove_from_blacklist(users.clone());
     match result {
         Ok(()) => {}
         Err(err) => {
-            assert_eq!(BshError::UserNotBlacklisted, err)
+            assert_eq!(
+                BshError::BlacklistedUsers {
+                    message: carol().to_string()
+                },
+                err
+            )
         }
     }
 }
