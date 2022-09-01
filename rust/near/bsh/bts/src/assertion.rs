@@ -179,13 +179,6 @@ impl BtpTokenService {
         )
     }
 
-    pub fn ensure_user_not_blacklisted(&self, user: &AccountId) -> Result<(), BshError> {
-        if self.blacklisted_accounts.contains(user) {
-            return Err(BshError::UserAlreadyBlacklisted);
-        }
-        Ok(())
-    }
-
     pub fn ensure_user_blacklisted(&self, user: &AccountId) -> Result<(), BshError> {
         if !self.blacklisted_accounts.contains(user) {
             return Err(BshError::UserNotBlacklisted);

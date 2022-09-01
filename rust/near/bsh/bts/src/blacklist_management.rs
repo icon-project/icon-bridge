@@ -1,48 +1,26 @@
 use super::*;
 
 impl BtpTokenService {
-    pub fn add_to_blacklist(&mut self, users: Vec<BTPAddress>) -> Result<(), BshError> {
-        for user in users.iter() {
-            match user.is_valid() {
-                Ok(valid) => {
-                    if valid {
-                        match self.ensure_user_not_blacklisted(&user.account_id()) {
-                            Ok(()) => {
-                                self.blacklisted_accounts.add(&user.account_id());
-                            }
-                            Err(err) => return Err(err),
-                        }
-                    } else {
-                        return Err(BshError::InvalidAddress {
-                            message: user.account_id().to_string(),
-                        });
-                    }
-                }
-                Err(err) => return Err(BshError::InvalidAddress { message: err }),
-            }
-        }
-        Ok(())
+    pub fn add_to_blacklist(&mut self, users: Vec<AccountId>) {
+        users
+            .iter()
+            .for_each(|user| self.blacklisted_accounts.add(user));
     }
 
-    pub fn remove_from_blacklist(&mut self, users: Vec<BTPAddress>) -> Result<(), BshError> {
-        for user in users.iter() {
-            match user.is_valid() {
-                Ok(valid) => {
-                    if valid {
-                        match self.ensure_user_blacklisted(&user.account_id()) {
-                            Ok(()) => {
-                                self.blacklisted_accounts.remove(&user.account_id());
-                            }
-                            Err(err) => return Err(err),
-                        }
-                    } else {
-                        return Err(BshError::InvalidAddress {
-                            message: user.account_id().to_string(),
-                        });
-                    }
+    pub fn remove_from_blacklist(&mut self, users: Vec<AccountId>) -> Result<(), BshError> {
+        let mut non_blacklisted_user: Vec<String> = Vec::new();
+        users
+            .iter()
+            .for_each(|user| match self.ensure_user_blacklisted(user) {
+                Ok(()) => {
+                    self.blacklisted_accounts.remove(user);
                 }
-                Err(err) => return Err(BshError::InvalidAddress { message: err }),
-            }
+                Err(_) => non_blacklisted_user.push(user.to_string()),
+            });
+        if !non_blacklisted_user.is_empty() {
+            return Err(BshError::BlacklistedUsers {
+                message: non_blacklisted_user.join(", "),
+            });
         }
         Ok(())
     }

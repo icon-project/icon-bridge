@@ -191,6 +191,7 @@ pub mod errors {
         LessThanZero,
         UserAlreadyBlacklisted,
         UserNotBlacklisted,
+        BlacklistedUsers { message: String },
     }
 
     impl Exception for BshError {
@@ -293,6 +294,9 @@ pub mod errors {
                 }
                 BshError::UserNotBlacklisted => {
                     write!(f, "{}", "NotBlacklisted")
+                }
+                BshError::BlacklistedUsers { message } => {
+                    write!(f, "{}{} for {}", label, "UsersBlacklisted", message)
                 }
             }
         }
