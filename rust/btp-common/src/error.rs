@@ -145,10 +145,18 @@ pub mod errors {
                     write!(f, "{}{}: {}", label, "InvalidEvenProof", message)
                 }
                 BmvError::InvalidSequence { expected, actual } => {
-                    write!(f, "{}{} expected: {}, but got: {}", label, "InvalidSequence", expected, actual)
+                    write!(
+                        f,
+                        "{}{} expected: {}, but got: {}",
+                        label, "InvalidSequence", expected, actual
+                    )
                 }
                 BmvError::InvalidSequenceHigher { expected, actual } => {
-                    write!(f, "{}{} expected: {}, but got: {}", label, "InvalidSequenceHigher", expected, actual)
+                    write!(
+                        f,
+                        "{}{} expected: {}, but got: {}",
+                        label, "InvalidSequenceHigher", expected, actual
+                    )
                 }
             }
         }
@@ -181,6 +189,9 @@ pub mod errors {
         AccountNotExist,
         TokenNotRegistered,
         LessThanZero,
+        UserAlreadyBlacklisted,
+        UserNotBlacklisted,
+        BlacklistedUsers { message: String },
     }
 
     impl Exception for BshError {
@@ -271,12 +282,21 @@ pub mod errors {
                 }
                 BshError::Unknown => {
                     write!(f, "{}", "Unknown")
-                },
+                }
                 BshError::LessThanZero => {
                     write!(f, "{}", "LessThanZero")
-                },
+                }
                 BshError::Failure => {
                     write!(f, "{}", "Failure")
+                }
+                BshError::UserAlreadyBlacklisted => {
+                    write!(f, "{}", "AlreadyBlacklisted")
+                }
+                BshError::UserNotBlacklisted => {
+                    write!(f, "{}", "NotBlacklisted")
+                }
+                BshError::BlacklistedUsers { message } => {
+                    write!(f, "{}{} for {}", label, "UsersBlacklisted", message)
                 }
             }
         }
@@ -308,13 +328,13 @@ pub mod errors {
         RouteNotExist,
         ServiceExist,
         ServiceNotExist,
-        Unknown{message: String},
+        Unknown { message: String },
         Unreachable { destination: String },
         VerifierExist,
         VerifierNotExist,
         Unauthorized { message: &'static str },
         InvalidSequence,
-        InternalEventHandleNotExists
+        InternalEventHandleNotExists,
     }
 
     impl Exception for BmcError {
@@ -329,7 +349,7 @@ pub mod errors {
     impl From<&BmcError> for u32 {
         fn from(bmc_error: &BmcError) -> Self {
             match bmc_error {
-                BmcError::Unknown{message:_} => 0,
+                BmcError::Unknown { message: _ } => 0,
                 BmcError::PermissionNotExist => 1,
                 BmcError::InvalidSerialNo => 2,
                 BmcError::VerifierExist => 3,
@@ -400,15 +420,15 @@ pub mod errors {
                 BmcError::Unreachable { destination } => {
                     write!(f, "{}{} at {}", label, "Unreachable", destination)
                 }
-                BmcError::Unknown {message} => {
-                    write!(f, "{}{}:{}", label, "Unknown",message)
+                BmcError::Unknown { message } => {
+                    write!(f, "{}{}:{}", label, "Unknown", message)
                 }
                 BmcError::InvalidSerialNo => {
                     write!(f, "{}{}", label, "Invalid Serial No")
                 }
                 BmcError::Unauthorized { message } => {
                     write!(f, "{}{}: {}", label, "Unauthorized", message)
-                },
+                }
                 BmcError::InternalEventHandleNotExists => {
                     write!(f, "{}{}", label, "NotExistInternalEventHandle")
                 }

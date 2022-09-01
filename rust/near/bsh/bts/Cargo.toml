@@ -47,3 +47,7 @@ path = "tests/test_coin_management.rs"
 [[test]]
 name = "test_coin_transfer"
 path = "tests/test_coin_transfer.rs"
+
+[[test]]
+name = "test_blacklist_management"
+path = "tests/test_blacklist_management.rs"
