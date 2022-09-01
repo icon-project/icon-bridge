@@ -7,8 +7,9 @@ use libraries::types::{
 use libraries::{
     types::messages::BtpMessage, types::messages::SerializedMessage,
     types::messages::TokenServiceMessage, types::messages::TokenServiceType, types::Asset,
-    types::AssetFees, types::AssetMetadata, types::Assets, types::Balances, types::Math,
-    types::Network, types::Owners, types::Requests, types::StorageBalances,
+    types::AssetFees, types::AssetMetadata, types::Assets, types::Balances,
+    types::BlackListedAccounts, types::Math, types::Network, types::Owners, types::Requests,
+    types::StorageBalances,
 };
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LazyOption;
@@ -22,12 +23,14 @@ use near_sdk::{
     log, near_bindgen, require, Gas, PanicOnDefault, Promise, PromiseResult,
 };
 
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 mod external;
 use external::*;
 mod accounting;
 mod assertion;
+mod blacklist_management;
 mod coin_management;
 mod estimate;
 mod fee_management;
@@ -59,6 +62,7 @@ pub struct BtpTokenService {
     serial_no: i128,
     bmc: AccountId,
     name: String,
+    blacklisted_accounts: BlackListedAccounts,
 
     #[cfg(feature = "testable")]
     pub message: LazyOption<Base64VecU8>,
@@ -80,7 +84,7 @@ impl BtpTokenService {
 
         balances.add(&env::current_account_id(), &native_coin_id);
         coins.add(&native_coin_id, &native_coin);
-
+        let blacklisted_accounts = BlackListedAccounts::new();
         let mut coin_fees = CoinFees::new();
         coin_fees.add(&native_coin_id);
         Self {
@@ -95,6 +99,7 @@ impl BtpTokenService {
             requests: Requests::new(),
             bmc,
             name: service_name,
+            blacklisted_accounts,
 
             #[cfg(feature = "testable")]
             message: LazyOption::new(b"message".to_vec(), None),
