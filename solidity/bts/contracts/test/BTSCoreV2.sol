@@ -55,11 +55,11 @@ contract BTSCoreV2 is BTSCore {
     }
 
     //  @notice This is just an example to show how to add more function in upgrading a contract
-    function clearAggregationFee() external {
-        for (uint256 i = 0; i < coinsName.length; i++) {
-            delete aggregationFee[coinsName[i]];
-        }
-    }
+//    function clearAggregationFee() external {
+//        for (uint256 i = 0; i < coinsName.length; i++) {
+//            delete aggregationFee[coinsName[i]];
+//        }
+//    }
 
     //  @notice This is just an example to show how to add more function in upgrading a contract
     function clearBTSPeripherySetting() external {
