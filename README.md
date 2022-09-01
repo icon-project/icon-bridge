@@ -1,5 +1,5 @@
 # Icon Bridge
-[![codecov](https://codecov.io/gh/icon-project/icon-bridge/branch/fix/145-codecov/graph/badge.svg?token=YXV6EE5KB5)](https://codecov.io/gh/icon-project/icon-bridge)
+[![codecov](https://codecov.io/gh/icon-project/icon-bridge/branch/main/graph/badge.svg?token=YXV6EE5KB5)](https://codecov.io/gh/icon-project/icon-bridge)
 ## Introduction
 
 We need to build a usable centralized bridge for [BTP](doc/btp.md) Relay System which can deliver digital tokens between multiple chains.
