@@ -2,7 +2,6 @@ use super::*;
 
 impl BtpTokenService {
     pub fn add_to_blacklist(&mut self, users: Vec<BTPAddress>) -> Result<(), BshError> {
-        self.assert_have_permission();
         for user in users.iter() {
             match user.is_valid() {
                 Ok(valid) => {
@@ -26,7 +25,6 @@ impl BtpTokenService {
     }
 
     pub fn remove_from_blacklist(&mut self, users: Vec<BTPAddress>) -> Result<(), BshError> {
-        self.assert_have_permission();
         for user in users.iter() {
             match user.is_valid() {
                 Ok(valid) => {
