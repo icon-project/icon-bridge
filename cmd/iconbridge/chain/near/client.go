@@ -6,24 +6,25 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"net/http"
+	url_pkg "net/url"
+	"strconv"
+	"time"
+
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/near/borsh-go"
 	"github.com/reactivex/rxgo/v2"
-	"math/big"
-	"net/http"
-	url_pkg "net/url"
-	"strconv"
-	"time"
 )
 
 const BmcContractMessageStateKey = "bWVzc2FnZQ=="
 
 type Client struct {
 	subClients []*Client
-	api  Api
+	api        Api
 	*jsonrpc.Client
 	logger          log.Logger
 	isMonitorClosed bool
