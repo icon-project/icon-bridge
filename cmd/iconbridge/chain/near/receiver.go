@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
+
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/reactivex/rxgo/v2"
-	"math/rand"
 )
 
 type Receiver struct {
@@ -16,9 +17,7 @@ type Receiver struct {
 	source      chain.BTPAddress
 	destination chain.BTPAddress
 	logger      log.Logger
-	options     struct {
-		SyncConcurrency uint `json:"syncConcurrency"`
-	}
+	options     struct{}
 }
 
 func NewReceiver(src, dst chain.BTPAddress, urls []string, options json.RawMessage, logger log.Logger) (chain.Receiver, error) {
@@ -27,13 +26,13 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, options json.RawMessa
 	}
 
 	r := &Receiver{
-		clients:     newClients(urls, logger),
-		source:      src,
-		destination: dst,
-		logger:      logger,
+		Clients:     NewClients(urls, logger),
+		Source:      src,
+		Destination: dst,
+		Logger:      logger,
 	}
 
-	if err := json.Unmarshal(options, &r.options); err != nil {
+	if err := json.Unmarshal(options, &r.Options); err != nil {
 		logger.Panicf("fail to unmarshal opt:%#v err:%+v", options, err)
 		return nil, err
 	}
@@ -45,10 +44,10 @@ func newMockReceiver(source, destination chain.BTPAddress, client *Client, urls 
 	clients := make([]*Client, 0)
 	clients = append(clients, client)
 	receiver := &Receiver{
-		clients:     clients,
-		source:      source,
-		destination: destination,
-		logger:      logger,
+		Clients:     clients,
+		Source:      source,
+		Destination: destination,
+		Logger:      logger,
 	}
 
 	return receiver, nil
@@ -82,9 +81,12 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 	go func() {
 		defer close(_errCh)
 
-		if err := r.receiveBlocks(opts.Height, r.source.ContractAddress(), func(blockNotification *types.BlockNotification) {
-			r.logger.WithFields(log.Fields{"height": blockNotification.Block().Height()}).Debug("block notification")
-			receipts := blockNotification.Receipts()
+		if err := r.receiveBlocks(opts.Height, func(block *types.Block) {
+			r.logger.WithFields(log.Fields{"height": block.Height()}).Debug("block notification")
+			receipts, err := r.client().GetReceipts(block, r.source.ContractAddress())
+			if err != nil {
+				_errCh <- err
+			}
 
 			for _, receipt := range receipts {
 				events := receipt.Events[:0]
@@ -96,7 +98,7 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 						opts.Seq++
 
 					case event.Sequence > opts.Seq:
-						r.logger.WithFields(log.Fields{
+						r.Logger.WithFields(log.Fields{
 							"seq": log.Fields{"got": event.Sequence, "expected": opts.Seq},
 						}).Error("invalid event seq")
 
@@ -109,7 +111,7 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 
 			if len(receipts) > 0 {
 				msgCh <- &chain.Message{
-					From:     r.source,
+					From:     r.Source,
 					Receipts: receipts,
 				}
 			}
@@ -122,7 +124,7 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 }
 
 func (r *Receiver) client() *Client {
-	return r.clients[rand.Intn(len(r.clients))]
+	return r.Clients[rand.Intn(len(r.Clients))]
 }
 
 func (r *Receiver) StopReceivingBlocks() {

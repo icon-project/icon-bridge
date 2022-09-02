@@ -51,7 +51,7 @@ type Api interface {
 	getBalance(string) (*big.Int, error)
 }
 
-func newClients(urls []string, logger log.Logger) []*Client {
+func NewClients(urls []string, logger log.Logger) []*Client {
 	transport := &http.Transport{MaxIdleConnsPerHost: 1000}
 	clients := make([]*Client, 0)
 
@@ -74,6 +74,10 @@ func newClients(urls []string, logger log.Logger) []*Client {
 	}
 
 	return clients
+}
+
+func (c *Client) Call(method string, args interface{}, res interface{}) (*jsonrpc.Response, error) {
+	return c.Client.Do(method, args, res)
 }
 
 func (c *Client) GetBMCLinkStatus(destination, source chain.BTPAddress) (*chain.BMCLinkStatus, error) {

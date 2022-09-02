@@ -42,7 +42,7 @@ func NewSender(source, destination chain.BTPAddress, urls []string, wallet walle
 	}
 
 	sender := &Sender{
-		clients:     newClients(urls, logger),
+		clients:     NewClients(urls, logger),
 		source:      source,
 		destination: destination,
 		wallet:      wallet,
@@ -273,6 +273,6 @@ func (s *Sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 func (s *Sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
 	balance, err = s.client().api.getBalance(s.wallet.Address())
 	t := big.Int(s.options.BalanceThreshold)
-	
+
 	return balance, &t, err
 }
