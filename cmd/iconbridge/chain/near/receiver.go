@@ -13,11 +13,11 @@ import (
 )
 
 type Receiver struct {
-	clients     []*Client
-	source      chain.BTPAddress
-	destination chain.BTPAddress
-	logger      log.Logger
-	options     struct{}
+	Clients     []*Client
+	Source      chain.BTPAddress
+	Destination chain.BTPAddress
+	Logger      log.Logger
+	Options     struct{}
 }
 
 func NewReceiver(src, dst chain.BTPAddress, urls []string, options json.RawMessage, logger log.Logger) (chain.Receiver, error) {
@@ -82,8 +82,8 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		defer close(_errCh)
 
 		if err := r.receiveBlocks(opts.Height, func(block *types.Block) {
-			r.logger.WithFields(log.Fields{"height": block.Height()}).Debug("block notification")
-			receipts, err := r.client().GetReceipts(block, r.source.ContractAddress())
+			r.Logger.WithFields(log.Fields{"height": block.Height()}).Debug("block notification")
+			receipts, err := r.client().GetReceipts(block, r.Source.ContractAddress())
 			if err != nil {
 				_errCh <- err
 			}
