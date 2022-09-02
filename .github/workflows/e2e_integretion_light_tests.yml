@@ -20,8 +20,8 @@ jobs:
       run: |
            go run main.go
 
-  solidity_integration:
-      name: Solidity integration tests
+  solidity_bmc_integration:
+      name: Solidity BMC integration tests
       runs-on: ubuntu-22.04
       container:
         image: iconbridge/build
@@ -44,6 +44,16 @@ jobs:
             truffle develop > /dev/null 2>&1 &
             sleep 20
             yarn test:integration
+
+  solidity_bts_integration:
+      name: Solidity BTS integration tests
+      runs-on: ubuntu-22.04
+      container:
+        image: iconbridge/build
+        options: --user 1001 --cpus 2
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v3
 
         - name: Install yarn (BTS)
           working-directory: ./solidity/bts
