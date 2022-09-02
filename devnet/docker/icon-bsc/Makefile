@@ -15,10 +15,10 @@ clean:
 buildsc:
 	make -C ../../../ dist-javascore dist-sol
 
-build:
-	make -C ../../../ dist-javascore dist-sol iconbridge-image
+buildimg:
+	#make -C ../../../ dist-javascore dist-sol iconbridge-image
 	mkdir -p ./data/bsc/node1
-	docker-compose build
+	./build.sh
 
 run-bsc:
 	docker-compose up --remove-orphans -d binancesmartchain

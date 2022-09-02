@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 create_ensure_bob_account() {
   cd ${CONFIG_DIR}

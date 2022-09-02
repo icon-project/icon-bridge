@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 ensure_key_secret() {
   if [ $# -lt 1 ] ; then
