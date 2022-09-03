@@ -120,6 +120,40 @@ impl BtpTokenService {
                     ref message,
                 } => self.handle_response(btp_message.serial_no(), *code, &message),
 
+                TokenServiceType::RequestBlacklist {
+                    request_type,
+                    addresses,
+                    network,
+                } => {
+                    let mut non_valid_addresses: Vec<String> = Vec::new();
+                    let mut valid_addresses: Vec<AccountId> = Vec::new();
+                    addresses.into_iter().clone().for_each(|address| {
+                        match AccountId::try_from(address.clone()) {
+                            Ok(account_id) => valid_addresses.push(account_id),
+                            Err(_) => non_valid_addresses.push(address.to_string()),
+                        }
+                    });
+                    if !non_valid_addresses.is_empty() {
+                        return Err(BshError::InvalidAddress {
+                            message: non_valid_addresses.join(", "),
+                        });
+                    }
+                    match request_type {
+                        BlackListType::AddToBlacklist => {
+                            self.add_to_blacklist(valid_addresses);
+
+                            Ok(None)
+                        }
+                        BlackListType::RemoveFromBlacklist => {
+                            match self.remove_from_blacklist(valid_addresses) {
+                                Ok(_) => Ok(None),
+                                Err(err) => Err(err),
+                            }
+                        }
+                        BlackListType::UnhandledType => todo!(),
+                    }
+                }
+
                 TokenServiceType::UnknownType => {
                     log!(
                         "Unknown Response: from {} for serial_no {}",
