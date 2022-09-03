@@ -14,7 +14,7 @@ func NewClients(urls []string, l log.Logger) (cls []*Client, err error) {
 	for _, url := range urls {
 		clrpc, err := rpc.Dial(url)
 		if err != nil {
-			l.Errorf("failed to create hmny rpc client: url=%v, %v", url, err)
+			l.Errorf("failed to create bsc rpc client: url=%v, %v", url, err)
 			return nil, err
 		}
 		cleth := ethclient.NewClient(clrpc)

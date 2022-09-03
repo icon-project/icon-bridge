@@ -1,9 +1,9 @@
-const BTSPeripheryV1 = artifacts.require("BTSPeripheryV1");
-const BTSPeripheryV2 = artifacts.require("BTSPeripheryV2");
+// const BTSPeripheryV1 = artifacts.require("BTSPeripheryV1");
+// const BTSPeripheryV2 = artifacts.require("BTSPeripheryV2");
 const BTSCoreV1 = artifacts.require("BTSCoreV1");
 const BTSCoreV2 = artifacts.require("BTSCoreV2");
 const BMC = artifacts.require("MockBMC");
-const Holder = artifacts.require("AnotherHolder");
+// const Holder = artifacts.require("AnotherHolder");
 const NotPayable = artifacts.require("NotPayable");
 const NonRefundable = artifacts.require("NonRefundable");
 const Refundable = artifacts.require("Refundable");

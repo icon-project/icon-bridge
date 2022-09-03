@@ -489,7 +489,7 @@ func (c *Client) getCommitVoteListByHeight(height int64) (*commitVoteList, error
 	return &cvl, nil
 }
 
-func (c *Client) getValidatorsByHash(hash common.HexBytes) ([]common.HexBytes, error) {
+func (c *Client) getValidatorsByHash(hash common.HexHash) ([]common.Address, error) {
 	data, err := c.GetDataByHash(&DataHashParam{Hash: NewHexBytes(hash.Bytes())})
 	if err != nil {
 		return nil, errors.Wrapf(err, "GetDataByHash; %v", err)
@@ -498,12 +498,12 @@ func (c *Client) getValidatorsByHash(hash common.HexBytes) ([]common.HexBytes, e
 		return nil, errors.Errorf(
 			"invalid data: hash=%v, data=%v", hash, common.HexBytes(data))
 	}
-	var vs []common.HexBytes
-	_, err = codec.BC.UnmarshalFromBytes(data, &vs)
+	var validators []common.Address
+	_, err = codec.BC.UnmarshalFromBytes(data, &validators)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Unmarshal Validators: %v", err)
 	}
-	return vs, nil
+	return validators, nil
 }
 
 func (c *Client) GetBalance(param *AddressParam) (*big.Int, error) {

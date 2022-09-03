@@ -10,8 +10,8 @@ import (
 )
 
 type VerifierOptions struct {
-	BlockHeight    uint64          `json:"blockHeight"`
-	ValidatorsHash common.HexBytes `json:"validatorsHash"`
+	BlockHeight    uint64         `json:"blockHeight"`
+	ValidatorsHash common.HexHash `json:"validatorsHash"`
 }
 
 type commitVoteItem struct {
@@ -79,8 +79,8 @@ type TxResult struct {
 type Verifier struct {
 	mu                 sync.RWMutex
 	next               int64
-	nextValidatorsHash common.HexBytes
-	validators         map[string][]common.HexBytes
+	nextValidatorsHash common.HexHash
+	validators         map[string][]common.Address // convert this to lru cache
 }
 
 func (vr *Verifier) Next() int64 { return vr.next }
@@ -90,9 +90,14 @@ func (vr *Verifier) Verify(h *BlockHeader, votes []byte) (ok bool, err error) {
 	defer vr.mu.RUnlock()
 
 	nvh := vr.nextValidatorsHash
-	validators, ok := vr.validators[nvh.String()]
+	listValidators, ok := vr.validators[nvh.String()]
 	if !ok {
 		return false, fmt.Errorf("no validators for hash=%v", nvh)
+	}
+
+	requiredVotes := (2 * len(listValidators)) / 3
+	if requiredVotes < 1 {
+		requiredVotes = 1
 	}
 
 	cvl := &commitVoteList{}
@@ -114,26 +119,35 @@ func (vr *Verifier) Verify(h *BlockHeader, votes []byte) (ok bool, err error) {
 		},
 	}
 
-	votesCount := 0
+	numVotes := 0
+	validators := make(map[common.Address]struct{})
+	for _, val := range listValidators {
+		validators[val] = struct{}{}
+	}
+
 	for _, item := range cvl.Items {
 		vote.Timestamp = item.Timestamp
 		pub, err := item.Signature.RecoverPublicKey(crypto.SHA3Sum256(codec.BC.MustMarshalToBytes(vote)))
 		if err != nil {
-			continue
+			continue // skip error
 		}
 		address := common.NewAccountAddressFromPublicKey(pub)
-		if listContains(validators, address.Bytes()) {
-			votesCount++
+		if address == nil {
+			continue
+		}
+		if _, ok := validators[*address]; !ok {
+			continue // already voted or invalid validator
+		}
+		delete(validators, *address)
+		if numVotes++; numVotes >= requiredVotes {
+			return true, nil
 		}
 	}
-	if votesCount < (2*len(validators))/3 {
-		return false, fmt.Errorf("insufficient votes")
-	}
 
-	return true, nil
+	return false, fmt.Errorf("insufficient votes")
 }
 
-func (vr *Verifier) Update(h *BlockHeader, nextValidators []common.HexBytes) (err error) {
+func (vr *Verifier) Update(h *BlockHeader, nextValidators []common.Address) (err error) {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
 	nvh := common.HexBytes(h.NextValidatorsHash)
@@ -145,7 +159,7 @@ func (vr *Verifier) Update(h *BlockHeader, nextValidators []common.HexBytes) (er
 	return nil
 }
 
-func (vr *Verifier) Validators(nvh common.HexBytes) []common.HexBytes {
+func (vr *Verifier) Validators(nvh common.HexBytes) []common.Address {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
 	validators, ok := vr.validators[nvh.String()]

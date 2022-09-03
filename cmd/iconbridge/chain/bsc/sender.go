@@ -30,6 +30,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/codec"
+	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
 )
@@ -72,10 +73,10 @@ const (
 */
 
 type senderOptions struct {
-	GasLimit         uint64  `json:"gas_limit"`
-	TxDataSizeLimit  uint64  `json:"tx_data_size_limit"`
-	BoostGasPrice    float64 `json:"boost_gas_price"`
-	BalanceThreshold big.Int `json:"balance_threshold"`
+	GasLimit         uint64         `json:"gas_limit"`
+	TxDataSizeLimit  uint64         `json:"tx_data_size_limit"`
+	BoostGasPrice    float64        `json:"boost_gas_price"`
+	BalanceThreshold intconv.BigInt `json:"balance_threshold"`
 }
 
 type sender struct {
@@ -197,7 +198,7 @@ func (s *sender) Segment(
 		return nil, nil, err
 	}
 	cl, _ := s.jointClient()
-	gasPrice, gasHeight, err := cl.GetMedianGasPriceForBlock()
+	gasPrice, gasHeight, err := cl.GetMedianGasPriceForBlock(ctx)
 	if err != nil || gasPrice.Int64() == 0 {
 		s.log.Infof("GetMedianGasPriceForBlock(%v) Msg: %v. Using default value for gas price \n", gasHeight.String(), err)
 		gasPrice = s.prevGasPrice
@@ -220,7 +221,7 @@ func (s *sender) Segment(
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
 	cl, _ := s.jointClient()
 	bal, err := cl.GetBalance(ctx, s.w.Address())
-	return bal, &s.opts.BalanceThreshold, err
+	return bal, &s.opts.BalanceThreshold.Int, err
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, gasPrice *big.Int) (*relayTx, error) {
