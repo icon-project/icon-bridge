@@ -3,6 +3,7 @@ package icon
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	ethc "github.com/ethereum/go-ethereum/common"
@@ -85,8 +86,74 @@ func TestVerifierSufficientVotes(t *testing.T) {
 	require.NoError(t, err)
 
 	ok, err := vr.Verify(h, rawVotes)
+
 	require.NoError(t, err)
 	require.True(t, ok)
+}
+
+func TestVerifierVotesDecodeError(t *testing.T) {
+	h := getSampleHeader()
+	vr := NewSampleTestVerifier()
+
+	rawVotes := []byte("impossible serialize in to the vote object")
+
+	ok, err := vr.Verify(h, rawVotes)
+
+	require.Error(t, err)
+	require.True(t, strings.Contains(err.Error(), "invalid votes"))
+	require.False(t, ok)
+}
+
+func TestVerifierNoValidators(t *testing.T) {
+	h := getSampleHeader()
+	vr := NewSampleTestVerifier()
+	cvl := getSampleCommitVoteList()
+	cvl.Items = cvl.Items[:2]
+
+	// Set don't exist ValidatorsHash
+	vr.nextValidatorsHash = ethc.Hex2Bytes("77d4ab43f7351fab97f93bc72d2e02c823b08a7c469c5da6ef01ccdd91f881f4")
+	rawVotes, err := codec.BC.MarshalToBytes(cvl)
+	require.NoError(t, err)
+
+	ok, err := vr.Verify(h, rawVotes)
+
+	require.Error(t, err)
+	require.False(t, ok)
+}
+
+
+func TestVerifierWhenNoVoteItems(t *testing.T) {
+	h := getSampleHeader()
+	vr := NewSampleTestVerifier()
+	cvl := getSampleCommitVoteList()
+	cvl.Items = nil
+
+	rawVotes, err := codec.BC.MarshalToBytes(cvl)
+	require.NoError(t, err)
+
+	ok, err := vr.Verify(h, rawVotes)
+
+	require.EqualError(t, err, "insufficient votes")
+	require.False(t, ok)
+}
+
+func TestVerifierWhenInvalidAddress(t *testing.T) {
+	h := getSampleHeader()
+	vr := NewSampleTestVerifier()
+	cvl := getSampleCommitVoteList()
+	cvl.Items = []commitVoteItem{
+			getCommitVoteItem(1652523324922454, ""),
+			getCommitVoteItem(1652523324922454, ""),
+			getCommitVoteItem(1652523324922454, ""),
+		}
+
+	rawVotes, err := codec.BC.MarshalToBytes(cvl)
+	require.NoError(t, err)
+
+	ok, err := vr.Verify(h, rawVotes)
+
+	require.EqualError(t, err, "insufficient votes")
+	require.False(t, ok)
 }
 
 func TestVerifierInsufficientVotes(t *testing.T) {
@@ -148,4 +215,40 @@ func TestVerifierMinimumRequiredValidators(t *testing.T) {
 	ok, err := vr.Verify(h, rawVotes)
 	require.EqualError(t, err, "insufficient votes")
 	require.False(t, ok)
+}
+
+func TestVerifier_Update(t *testing.T) {
+	vr := NewSampleTestVerifier()
+	blockHeaderNew := BlockHeader{
+		NextValidatorsHash : []byte("New"),
+		Height: 1000,
+	}
+	newAddress := []common.Address{
+		*common.MustNewAddress(ethc.Hex2Bytes("009c63f73d3c564a54d0eed84f90718b1ebed16f09")),
+		*common.MustNewAddress(ethc.Hex2Bytes("0081719dcfe8f58ca07044b7bede49cecd61f9bd3f")),
+	}
+
+	err := vr.Update(&blockHeaderNew, newAddress)
+
+	require.NoError(t, err)
+	require.Equal(t, 2, len(vr.validators))
+	require.EqualValues(t, blockHeaderNew.NextValidatorsHash, vr.nextValidatorsHash)
+	require.EqualValues(t, blockHeaderNew.Height + 1, vr.next)
+}
+
+func TestVerifier_GetValidators_Success(t *testing.T) {
+	vr := NewSampleTestVerifier()
+
+	address := vr.Validators(vr.nextValidatorsHash.Bytes())
+
+	require.EqualValues(t, len(vr.validators[vr.nextValidatorsHash.String()]), len(address))
+	require.EqualValues(t, vr.validators[vr.nextValidatorsHash.String()], address)
+}
+
+func TestVerifier_GetValidators_NotFound(t *testing.T) {
+	vr := NewSampleTestVerifier()
+
+	address := vr.Validators([]byte("Unknown validator address"))
+
+	require.Nil(t, address)
 }
