@@ -300,3 +300,7 @@ func (api *Mockapi) getBalance(accountId string) (*big.Int, error) {
 
 	return nil, fmt.Errorf("failed to cast Balance to *big.Int")
 }
+
+func (api *Mockapi) NewClient() *api {
+	return api.NewClient()
+}

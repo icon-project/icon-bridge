@@ -2,6 +2,7 @@ package near
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -31,7 +32,27 @@ func TestGetCoinNames(t *testing.T) {
 		return
 	}
 
-	api.CallBTS("coins", nil)
+	res, err := api.CallBTS("coins", nil)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	fmt.Println(res)
+}
+
+func TestIsUserBlackListed(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	res, err := rpi.CallBTS(chain.IsUserBlackListed, []interface{}{
+		"0x61.bsc",
+		GodDstAddr,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("Res ", res)
 }
 
 func TestTransferIntraChain(t *testing.T) {

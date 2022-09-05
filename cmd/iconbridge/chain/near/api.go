@@ -201,7 +201,7 @@ func (api *api) getBmcLinkStatus(accountId string, link *chain.BTPAddress) (type
 	if _, err := api.Do("query", &param, &response); err != nil {
 		return bmcStatus, err
 	}
-	
+
 	err = json.Unmarshal(response.Result, &bmcStatus)
 	if err != nil {
 		return bmcStatus, err
@@ -273,4 +273,8 @@ func (api *api) getBalance(accountId string) (*big.Int, error) {
 	}
 
 	return (*big.Int)(&response.Amount), nil
+}
+
+func (api *api) NewClient() *api {
+	return api
 }

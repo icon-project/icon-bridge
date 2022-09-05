@@ -50,6 +50,7 @@ type Api interface {
 	getReceiptProof(blockHash, receiptId *types.CryptoHash, receiverId string) (types.ReceiptProof, error)
 	getTransactionResult(string, string) (types.TransactionResult, error)
 	getBalance(string) (*big.Int, error)
+	NewClient() *api
 }
 
 func NewClients(urls []string, logger log.Logger) []*Client {
@@ -78,7 +79,7 @@ func NewClients(urls []string, logger log.Logger) []*Client {
 }
 
 func (c *Client) Call(method string, args interface{}, res interface{}) (*jsonrpc.Response, error) {
-	return c.Client.Do(method, args, res)
+	return c.api.NewClient().Do(method, args, res)
 }
 
 func (c *Client) GetBMCLinkStatus(destination, source chain.BTPAddress) (*chain.BMCLinkStatus, error) {
@@ -194,7 +195,6 @@ func (c *Client) MonitorBlocks(height uint64, source string, concurrency uint, c
 func (c *Client) CloseMonitor() {
 	c.isMonitorClosed = true
 }
-
 func (c *Client) GetReceipts(block *types.Block, accountId string) ([]*chain.Receipt, error) {
 	receipts := make([]*chain.Receipt, 0)
 

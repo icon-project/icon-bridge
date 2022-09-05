@@ -51,7 +51,7 @@ func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (toke
 		err = fmt.Errorf("Call to Method %v returned nil", "coinNames")
 		return
 	}
-	resArr, ok := res.([]interface{})
+	resArr, ok := res.(near.CallFunctionResult).Result.
 	if !ok {
 		err = fmt.Errorf("For method coinNames, Expected Type []interface{} Got %T", resArr)
 		return
