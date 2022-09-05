@@ -22,6 +22,12 @@ type requestAPI struct {
 	nativeTokensAddr      map[string]string
 }
 
+type coinNames struct {
+	Name    string `json:"name"`
+	Symbol  string `json:"symbol"`
+	Network string `json:"network"`
+}
+
 func newRequestAPI(cl *near.Client, cfg *chain.Config) (req *requestAPI, err error) {
 	if !strings.Contains(cfg.NetworkID, ".near") {
 		return nil, fmt.Errorf("Expected cfg.NetwrkID=0xnid.near Got %v", cfg.NetworkID)
@@ -33,12 +39,13 @@ func newRequestAPI(cl *near.Client, cfg *chain.Config) (req *requestAPI, err err
 		stepLimit:             cfg.GasLimit,
 		nativeCoin:            cfg.NativeCoin,
 	}
-	// req.nativeTokensAddr, req.wrappedCoinsAddr, err = req.getCoinAddresses(cfg.NativeTokens, cfg.WrappedCoins)
+	req.nativeTokensAddr, req.wrappedCoinsAddr, err = req.getCoinAddresses(cfg.NativeTokens, cfg.WrappedCoins)
 	return req, err
 }
 
 func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (tokenAddrMap, wrappedAddrMap map[string]string, err error) {
 	btsaddr, ok := r.contractNameToAddress[chain.BTS]
+	var coin_names []coinNames
 	if !ok {
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
@@ -51,18 +58,16 @@ func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (toke
 		err = fmt.Errorf("Call to Method %v returned nil", "coinNames")
 		return
 	}
-	resArr, ok := res.(near.CallFunctionResult).Result.
-	if !ok {
-		err = fmt.Errorf("For method coinNames, Expected Type []interface{} Got %T", resArr)
+	resArr := res.(near.CallFunctionResult).Result
+	err = json.Unmarshal(resArr, &coin_names)
+	println(coin_names)
+	if err != nil {
+		err = fmt.Errorf("For method coinNames, Expected Type []interface{} Got %T", err)
 		return
 	}
 	coinNames := []string{}
-	for _, re := range resArr {
-		c, ok := re.(string)
-		if !ok {
-			err = fmt.Errorf("Expected Type string Got %T", re)
-			return
-		}
+	for _, re := range coin_names {
+		c := re.Name
 		if c == r.nativeCoin {
 			continue
 		}
@@ -94,7 +99,8 @@ func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (toke
 	}
 	getAddr := func(coin string) (coinId string, err error) {
 		var res interface{}
-		// res, err = r.callContract(btsaddr, map[string]interface{}{"_coinName": coin}, "coinId")
+
+		res, err = r.callContract(btsaddr, map[string]interface{}{"coin_name": coin}, "coin_id")
 		if err != nil {
 			err = errors.Wrap(err, "callContract coinId ")
 			return
@@ -102,7 +108,14 @@ func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (toke
 			err = fmt.Errorf("Call to Method %v returned nil for _coinName=%v", "coinId", coin)
 			return
 		}
-		coinId, ok := res.(string)
+		resArr := res.(near.CallFunctionResult).Result
+		var coin_id []byte
+		err = json.Unmarshal(resArr, &coin_id)
+		if err != nil {
+			err = errors.Wrap(err, "callContract coinId ")
+			return
+		}
+		coinId = base64.StdEncoding.EncodeToString(coin_id)
 		if !ok {
 			err = fmt.Errorf("For method coinId, Expected Type string Got %T", res)
 			return

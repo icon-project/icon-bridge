@@ -102,8 +102,8 @@ func getNewApi() (chain.ChainAPI, error) {
 		URL:               srcEndpoint,
 		ContractAddresses: addrToName,
 		NativeTokens:      []string{},
-		WrappedCoins:      []string{"ICX", "sICX", "bnUSD"},
-		NativeCoin:        "NEAR",
+		WrappedCoins:      []string{"btp-0x2.icon-ICX"},
+		NativeCoin:        "btp-0x1.near-NEAR",
 		NetworkID:         "0x1.near",
 		GasLimit:          300000000000000,
 	})
