@@ -409,161 +409,48 @@ func (r *requestAPI) reclaim(coinName string, ownerKey string, amount *big.Int) 
 	return
 }
 
-func (a *api) TransactWithBTS(ownerKey string, method chain.ContractTransactMethodName, args []interface{}) (txnHash string, err error) {
-	// if method == chain.SetTokenLimit {
-	// 	if args == nil {
-	// 		return "", errors.New("Got nil args")
-	// 	} else if len(args) != 2 {
-	// 		return "", fmt.Errorf("Expected 2 args for _coinNames, _tokenLimits. Got %v", len(args))
-	// 	}
-	// 	_coinNames, ok := args[0].([]string)
-	// 	if !ok {
-	// 		return "", fmt.Errorf("Expected first arg _coinNames field of type []string{}; Got %T", args[0])
-	// 	}
-	// 	_tokenLimits, ok := args[1].([]*big.Int)
-	// 	if !ok {
-	// 		return "", fmt.Errorf("Expected second arg _tokenLimits field of type []interface{}; Got %T", args[0])
-	// 	}
-	// 	txo, errs := a.requester.getTransactionRequest(ownerKey)
-	// 	if errs != nil {
-	// 		err = errors.Wrapf(errs, "getTransactionRequest %v", errs)
-	// 		return
-	// 	}
-	// 	txo.Context = context.Background()
-	// 	txn, errs := a.requester.btsp.SetTokenLimit(txo, _coinNames, _tokenLimits)
-	// 	if errs != nil {
-	// 		err = errors.Wrapf(errs, "btsp.SetTokenLimit %v", errs)
-	// 		return
-	// 	}
-	// 	txnHash = txn.Hash().String()
-	// 	return
-	// } else if method == chain.AddBlackListAddress {
-	// 	if len(args) != 1 {
-	// 		return "", fmt.Errorf("Expected 1 args for _addresses. Got %v", len(args))
-	// 	}
-	// 	_addresses, ok := args[0].([]string)
-	// 	if !ok {
-	// 		return "", fmt.Errorf("Expected first arg _addresses field of type []string{}; Got %T", args[0])
-	// 	}
-	// 	txo, errs := a.requester.getTransactionRequest(ownerKey)
-	// 	if errs != nil {
-	// 		err = errors.Wrapf(errs, "getTransactionRequest %v", errs)
-	// 		return
-	// 	}
-	// 	txo.Context = context.Background()
-	// 	txn, errs := a.requester.btsp.AddToBlacklist(txo, _addresses)
-	// 	if errs != nil {
-	// 		err = errors.Wrapf(errs, "btsp.SetTokenLimit %v", errs)
-	// 		return
-	// 	}
-	// 	txnHash = txn.Hash().String()
-	// 	return
-	// } else if method == chain.RemoveBlackListAddress {
-	// 	if len(args) != 1 {
-	// 		return "", fmt.Errorf("Expected 1 args for _addresses. Got %v", len(args))
-	// 	}
-	// 	_addresses, ok := args[0].([]string)
-	// 	if !ok {
-	// 		return "", fmt.Errorf("Expected first arg _addresses field of type []string{}; Got %T", args[0])
-	// 	}
-	// 	txo, errs := a.requester.getTransactionRequest(ownerKey)
-	// 	if errs != nil {
-	// 		err = errors.Wrapf(errs, "getTransactionRequest %v", errs)
-	// 		return
-	// 	}
-	// 	txo.Context = context.Background()
-	// 	txn, errs := a.requester.btsp.RemoveFromBlacklist(txo, _addresses)
-	// 	if errs != nil {
-	// 		err = errors.Wrapf(errs, "btsp.SetTokenLimit %v", errs)
-	// 		return
-	// 	}
-	// 	txnHash = txn.Hash().String()
-	// 	return
-	// }
-	return "", fmt.Errorf("method %v not supported", method)
+func (r *api) SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*big.Int) (txnHash string, err error) {
+	return "", errors.New("not implemented")
+}
+func (r *api) AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error) {
+	return "", errors.New("not implemented")
 }
 
-func (a *api) CallBTS(method chain.ContractCallMethodName, args []interface{}) (response interface{}, err error) {
-	if method == chain.CheckTransferRestrictions {
-		if args == nil {
-			return nil, errors.New("Got nil args")
-		} else if len(args) != 4 {
-			return nil, fmt.Errorf("Expected 4 args for _net,_coinName, _user, _value. Got %v", len(args))
-		}
-		_net, ok := args[0].(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected first arg _net field of type string; Got %T", args[0])
-		} else if ok && _net != a.requester.networkID+".bsc" {
-			return nil, fmt.Errorf("Expected networkID %v got %v", a.requester.networkID, _net)
-		}
-		_coinName, ok := args[1].(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected second arg _coinName field of type string; Got %T", args[1])
-		}
-		_addr, ok := args[2].(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected third arg _addr field of type string hex address; Got %T", args[2])
-		}
-		_value, ok := args[3].(*big.Int)
-		if !ok {
-			return nil, fmt.Errorf("Expected fourth arg _value field of type *big.Int; Got %v", args[3])
-		}
-		if strings.Contains(_addr, "btp:") {
-			splts := strings.Split(_addr, "/")
-			_addr = splts[len(splts)-1]
-		}
-		response = a.requester.btsp.CheckTransferRestrictions(&bind.CallOpts{Pending: false, Context: context.TODO()}, _coinName, ethCommon.HexToAddress(_addr), _value)
-		return
-	} else if method == chain.IsUserBlackListed {
-		if args == nil {
-			return nil, errors.New("Got nil args")
-		} else if len(args) != 2 {
-			return nil, fmt.Errorf("Expected 2 args for _net, _address. Got %v", len(args))
-		}
-		_net, ok := args[0].(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected first arg _net field of type string; Got %T", args[0])
-		} else if ok && _net != a.requester.networkID+".bsc" {
-			return nil, fmt.Errorf("Expected networkID %v got %v", a.requester.networkID, _net)
-		}
-		_addr, ok := args[1].(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected first arg of type string for hex address; Got %T", args[1])
-		}
-		if strings.Contains(_addr, "btp:") {
-			splts := strings.Split(_addr, "/")
-			_addr = splts[len(splts)-1]
-		}
-		response, err = a.requester.btsp.Blacklist(&bind.CallOpts{Pending: false, Context: context.TODO()}, ethCommon.HexToAddress(_addr))
-		return
-	} else if method == chain.GetTokenLimit {
-		if args == nil {
-			return nil, errors.New("Got nil args")
-		} else if len(args) != 1 {
-			return nil, fmt.Errorf("Expected 1 args for coinName. Got %v", len(args))
-		}
-		_coin, ok := args[0].(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected first arg of type string for coinName; Got %T", args[0])
-		}
-		response, err = a.requester.btsp.TokenLimit(&bind.CallOpts{Pending: false, Context: context.TODO()}, _coin)
-		return
-	} else if method == chain.IsOwner {
-		if args == nil {
-			return nil, errors.New("Got nil args")
-		} else if len(args) != 1 {
-			return nil, fmt.Errorf("Expected 1 args for coinName. Got %v", len(args))
-		}
-		_addr, ok := args[0].(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected first arg of type string for _addr; Got %T", args[0])
-		}
-		if strings.Contains(_addr, "btp:") {
-			splts := strings.Split(_addr, "/")
-			_addr = splts[len(splts)-1]
-		}
-		response, err = a.requester.btsc.IsOwner(&bind.CallOpts{Pending: false, Context: context.TODO()}, ethCommon.HexToAddress(_addr))
-		return
+func (r *api) RemoveBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error) {
+	return "", errors.New("not implemented")
+}
+
+func (r *api) ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error) {
+	return "", errors.New("not implemented")
+}
+
+func (r *api) IsUserBlackListed(net, addr string) (response bool, err error) {
+	if strings.Contains(addr, "btp:") {
+		splts := strings.Split(addr, "/")
+		addr = splts[len(splts)-1]
 	}
-	return nil, fmt.Errorf("method %v not supported", method)
+	response, err = r.requester.btsp.Blacklist(&bind.CallOpts{Pending: false, Context: context.TODO()}, ethCommon.HexToAddress(addr))
+	return
+}
+
+func (r *api) GetTokenLimit(coinName string) (tokenLimit *big.Int, err error) {
+	tokenLimit, err = r.requester.btsp.TokenLimit(&bind.CallOpts{Pending: false, Context: context.TODO()}, coinName)
+	return
+}
+
+func (r *api) IsBTSOwner(addr string) (response bool, err error) {
+	if strings.Contains(addr, "btp:") {
+		splts := strings.Split(addr, "/")
+		addr = splts[len(splts)-1]
+	}
+	response, err = r.requester.btsc.IsOwner(&bind.CallOpts{Pending: false, Context: context.TODO()}, ethCommon.HexToAddress(addr))
+	return
+}
+
+func (r *api) GetTokenLimitStatus(net, coinName string) (response bool, err error) {
+	return false, errors.New("not implemented")
+}
+
+func (r *api) GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error) {
+	return nil, errors.New("not implemented")
 }

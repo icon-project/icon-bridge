@@ -281,6 +281,7 @@ func TestGetKeyFromFile(t *testing.T) {
 	fmt.Println(priv, "   ", pub)
 }
 
+/*
 func TestIsOwner(t *testing.T) {
 	rpi, err := getNewApi()
 	if err != nil {
@@ -434,3 +435,4 @@ func TestGetBlackListedUsers(t *testing.T) {
 	}
 	fmt.Println("Res ", res)
 }
+*/

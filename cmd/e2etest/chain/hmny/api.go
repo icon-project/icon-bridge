@@ -264,14 +264,38 @@ func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	}
 	return res, nil
 }
-func (a *api) GetNetwork() string {
-	return a.requester.networkID + ".hmny"
+
+func (r *api) SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*big.Int) (txnHash string, err error) {
+	return "", errors.New("not implemented")
+}
+func (r *api) AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error) {
+	return "", errors.New("not implemented")
 }
 
-func (a *api) CallBTS(method chain.ContractCallMethodName, args []interface{}) (response interface{}, err error) {
-	return nil, fmt.Errorf("method %v not supported", method)
+func (r *api) RemoveBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error) {
+	return "", errors.New("not implemented")
 }
 
-func (a *api) TransactWithBTS(ownerKey string, method chain.ContractTransactMethodName, args []interface{}) (txnHash string, err error) {
-	return "", fmt.Errorf("method %v not supported", method)
+func (r *api) ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error) {
+	return "", errors.New("not implemented")
+}
+
+func (r *api) IsUserBlackListed(net, addr string) (response bool, err error) {
+	return false, errors.New("not implemented")
+}
+
+func (r *api) GetTokenLimit(coinName string) (tokenLimit *big.Int, err error) {
+	return nil, errors.New("not implemented")
+}
+
+func (r *api) IsBTSOwner(addr string) (response bool, err error) {
+	return false, errors.New("not implemented")
+}
+
+func (r *api) GetTokenLimitStatus(net, coinName string) (response bool, err error) {
+	return false, errors.New("not implemented")
+}
+
+func (r *api) GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error) {
+	return nil, errors.New("not implemented")
 }

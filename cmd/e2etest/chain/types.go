@@ -35,26 +35,21 @@ type CoinBalance struct {
 	UserBalance       *big.Int
 }
 
-type ContractCallMethodName string
+// type ContractCallMethodName string
 
-const (
-	CheckTransferRestrictions ContractCallMethodName = "CheckTransferRestrictions" // net, coinName, addr, amount => isRestricted
-	IsUserBlackListed         ContractCallMethodName = "IsUserBlackListed"         // net, addr => isBlackListed
-	GetTokenLimit             ContractCallMethodName = "GetTokenLimit"             // coin => limitAmount
-	IsOwner                   ContractCallMethodName = "IsOwner"
-	GetTokenLimitStatus       ContractCallMethodName = "GetTokenLimitStatus"
-	GetBlackListedUsers       ContractCallMethodName = "GetBlackListedUsers"
-)
+// const (
 
-type ContractTransactMethodName string
+// )
 
-const (
-	SetTokenLimit          ContractTransactMethodName = "SetTokenLimit"
-	AddBlackListAddress    ContractTransactMethodName = "AddBlackListAddress"
-	RemoveBlackListAddress ContractTransactMethodName = "RemoveBlackListAddress"
-	AddRestriction         ContractTransactMethodName = "AddRestriction"
-	DisableRestrictions    ContractTransactMethodName = "DisableRestrictions"
-)
+// type ContractTransactMethodName string
+
+// const (
+// 	SetTokenLimit          ContractTransactMethodName = "SetTokenLimit"
+// 	AddBlackListAddress    ContractTransactMethodName = "AddBlackListAddress"
+// 	RemoveBlackListAddress ContractTransactMethodName = "RemoveBlackListAddress"
+// 	AddRestriction         ContractTransactMethodName = "AddRestriction"
+// 	DisableRestrictions    ContractTransactMethodName = "DisableRestrictions"
+// )
 
 func (cb *CoinBalance) String() string {
 	return "Usable " + cb.UsableBalance.String() +
@@ -75,10 +70,6 @@ type SrcAPI interface {
 	NativeCoin() string
 	NativeTokens() []string
 	GetBTPAddress(addr string) string
-	GetNetwork() string
-
-	CallBTS(method ContractCallMethodName, args []interface{}) (response interface{}, err error)
-	TransactWithBTS(ownerKey string, method ContractTransactMethodName, args []interface{}) (txnHash string, err error)
 }
 
 type DstAPI interface {
@@ -86,7 +77,6 @@ type DstAPI interface {
 	WatchForTransferReceived(requestID uint64, seq int64) error
 	GetBTPAddress(addr string) string
 	NativeTokens() []string
-	GetNetwork() string
 }
 
 type TxnResult struct {
@@ -96,10 +86,14 @@ type TxnResult struct {
 }
 
 type ChainAPI interface {
+	// Subscription
 	Subscribe(ctx context.Context) (sinkChan chan *EventLogInfo, errChan chan error, err error)
+
+	// Account
 	GetKeyPairs(num int) ([][2]string, error)
 	GetKeyPairFromKeystore(keystoreFile, secretFile string) (string, string, error)
 
+	// Transfer
 	TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error)
 	Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error)
 	WaitForTxnResult(ctx context.Context, hash string) (txnr *TxnResult, err error)
@@ -110,13 +104,21 @@ type ChainAPI interface {
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
 
+	// Query
 	NativeCoin() string
 	NativeTokens() []string
 	GetBTPAddress(addr string) string
-	GetNetwork() string
 
-	CallBTS(method ContractCallMethodName, args []interface{}) (response interface{}, err error)
-	TransactWithBTS(ownerKey string, method ContractTransactMethodName, args []interface{}) (txnHash string, err error)
+	// Configure
+	SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*big.Int) (txnHash string, err error)
+	AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
+	RemoveBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
+	ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error)
+	IsUserBlackListed(net, addr string) (response bool, err error)
+	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
+	IsBTSOwner(addr string) (response bool, err error)
+	GetTokenLimitStatus(net, coinName string) (response bool, err error)
+	GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error)
 }
 
 type Config struct {

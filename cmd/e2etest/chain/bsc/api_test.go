@@ -223,6 +223,7 @@ func getNewApi() (chain.ChainAPI, error) {
 	return rx, nil
 }
 
+/*
 func TestIsOwner(t *testing.T) {
 	rpi, err := getNewApi()
 	if err != nil {
@@ -282,3 +283,4 @@ func TestCheckTransferRestrictions(t *testing.T) {
 	}
 	fmt.Println("Res ", res)
 }
+*/
