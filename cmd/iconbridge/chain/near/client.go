@@ -82,6 +82,18 @@ func (c *Client) Call(method string, args interface{}, res interface{}) (*jsonrp
 	return c.api.NewClient().Do(method, args, res)
 }
 
+func (c *Client) CallLatestBlockHeight() (int64, error) {
+	return c.api.getLatestBlockHeight()
+}
+
+func (c *Client) CallgetBalance(addr string) (*big.Int, error) {
+	return c.api.getBalance(addr)
+}
+
+func (c *Client) CallgetTransactionResult(transactionId string, senderId string) (types.TransactionResult, error) {
+	return c.api.getTransactionResult(transactionId, senderId)
+}
+
 func (c *Client) GetBMCLinkStatus(destination, source chain.BTPAddress) (*chain.BMCLinkStatus, error) {
 	bmcStatus, err := c.api.getBmcLinkStatus(destination.ContractAddress(), &source)
 	if err != nil {
