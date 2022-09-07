@@ -8,7 +8,7 @@ set -e
 # docker-compose build
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 echo "Build BMR"
-cd ../../../../icon-bridge/
+cd ../../../
 docker build -f ./devnet/docker/icon-bsc/Dockerfile -t iconbridge_bsc:latest .
 echo "Build BSC"
 docker build --tag bsc-node ./devnet/docker/bsc-node --build-arg KEYSTORE_PASS="Perlia0"
