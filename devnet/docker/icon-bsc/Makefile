@@ -4,16 +4,19 @@ remove:
 	docker rm -f javascore-dist
 	docker rmi -f iconbridge
 	docker rmi -f btp/javascore
-	rm -rf local/artifacts local/log
+	rm -rf local/artifacts local/log local/goloop
 	rm -rf ../../../build/*
 	rm -rf ./data/bsc/node1
 	
 clean:
 	docker-compose down -v --remove-orphans
 	rm -rf local/artifacts
+	rm -rf local/goloop
+	rm -rf local/log
 
 buildsc:
 	make -C ../../../ dist-javascore dist-sol
+	mv ../../../build .
 
 buildimg:
 	#make -C ../../../ dist-javascore dist-sol iconbridge-image
