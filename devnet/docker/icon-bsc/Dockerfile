@@ -1,7 +1,15 @@
+FROM node:15.12.0-alpine AS node
+FROM alpine:3.16
 
-FROM canhlinh/truffle:5.5.5-alpine as truffle
-FROM node:18-alpine as node
+# Install Nodejs
+COPY --from=node /usr/lib /usr/lib
+COPY --from=node /usr/local/share /usr/local/share
+COPY --from=node /usr/local/lib /usr/local/lib
+COPY --from=node /usr/local/include /usr/local/include
+COPY --from=node /usr/local/bin /usr/local/bin
 
+RUN npm install -g truffle@5.5.5
+RUN rm /usr/local/bin/yarn && rm /usr/local/bin/yarnpkg && npm install -g yarn
 
 # go
 COPY --from=golang:1.16-alpine /usr/local/go/ /usr/local/go/ 
@@ -9,7 +17,6 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 ENV PATH="/root/go/bin:${PATH}"
 
 # install pkgs
-COPY --from=truffle /usr/local/node /usr/local/node
 RUN apk update && apk upgrade
 RUN apk add --update nodejs-current npm
 RUN apk add --no-cache jq curl inotify-tools git bash gcc libc-dev openssl gradle
