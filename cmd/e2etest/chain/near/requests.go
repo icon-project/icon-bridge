@@ -220,16 +220,21 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
 	}
-
-	param := near.TransactionParam{
-		Version:     near.NewHexInt(icon.JsonrpcApiVersion),
-		ToAddress:   near.Address(contractAddress),
-		Value:       near.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
-		FromAddress: near.Address(senderWallet.Address().String()),
-		StepLimit:   near.NewHexInt(r.stepLimit),
-		Timestamp:   near.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
-		NetworkID:   near.HexInt(r.networkID),
-		DataType:    "call",
+	publicKey := types.PublicKey {
+		KeyType: ,
+		Data : 
+	}
+	accountID := ""
+	nonce, _ := r.cl.GetNonce(publicKey, accountID)
+	param := types.Transaction{
+		SignerId:   accountID,
+		PublicKey:  publicKey,
+		Nonce:      int(nonce),
+		ReceiverId: accountID,
+		BlockHash:  "CryptoHash",
+		// Actions  :  []Action,
+		Signature: "Signature",
+		Txid:      "CryptoHash",
 	}
 	argMap := map[string]interface{}{}
 	argMap["method"] = method
