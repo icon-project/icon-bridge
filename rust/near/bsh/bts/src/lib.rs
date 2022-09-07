@@ -9,7 +9,7 @@ use libraries::{
     types::messages::TokenServiceMessage, types::messages::TokenServiceType, types::Asset,
     types::AssetFees, types::AssetMetadata, types::Assets, types::Balances,
     types::BlackListedAccounts, types::Math, types::Network, types::Owners, types::Requests,
-    types::StorageBalances,
+    types::StorageBalances, types::TokenLimits,
 };
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LazyOption;
@@ -63,6 +63,7 @@ pub struct BtpTokenService {
     bmc: AccountId,
     name: String,
     blacklisted_accounts: BlackListedAccounts,
+    tokenlimits: TokenLimits,
 
     #[cfg(feature = "testable")]
     pub message: LazyOption<Base64VecU8>,
@@ -104,6 +105,7 @@ impl BtpTokenService {
             #[cfg(feature = "testable")]
             message: LazyOption::new(b"message".to_vec(), None),
             registered_coins: RegisteredCoins::new(),
+            tokenlimits: TokenLimits::new(),
         }
     }
 
