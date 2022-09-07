@@ -12,7 +12,8 @@ ENV PATH="/root/go/bin:${PATH}"
 COPY --from=truffle /usr/local/node /usr/local/node
 RUN apk update && apk upgrade
 RUN apk add --update nodejs-current npm
-RUN apk add --no-cache jq curl inotify-tools git bash gcc libc-dev openssl gradle make binutils-gold python3 py3-pip g++
+RUN apk add --no-cache jq curl inotify-tools git bash gcc libc-dev openssl gradle
+#RUN apk add --no-cache make binutils-gold python3 py3-pip g++
 ENV PATH $PATH:/usr/local/node/bin
 
 #install goloop, ethkey
