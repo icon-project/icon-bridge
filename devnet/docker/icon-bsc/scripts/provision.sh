@@ -36,7 +36,7 @@ deploysc() {
 
     source token.javascore.sh
     source token.solidity.sh
-    sleep 15
+    sleep 120
 
     if [ ! -f $CONFIG_DIR/icon.deploy.all ]; then
       echo "Deploy Javascore"
