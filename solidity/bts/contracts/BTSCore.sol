@@ -589,6 +589,13 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
             //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
             //  Thus, it's likely that _chargeAmt is always greater than 0
             //  require(_chargeAmt > 0) can be omitted
+            btsPeriphery.checkTransferRestrictions(
+                nativeCoinName,
+                msg.sender,
+                value
+            );
+
+
             _coins[size - 1] = nativeCoinName; // push native_coin at the end of request
             _chargeAmts[size - 1] = msg
                 .value
