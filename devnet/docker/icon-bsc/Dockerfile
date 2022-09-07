@@ -1,5 +1,5 @@
 
-FROM canhlinh/truffle:5.3.0-alpine as truffle
+FROM canhlinh/truffle:5.5.5-alpine as truffle
 FROM node:18-alpine as node
 
 
