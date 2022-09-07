@@ -14,7 +14,7 @@ build_bts() {
     gradle clean
     gradle bts:optimizedJar
     cp bts/build/libs/bts-optimized.jar $CONTRACTS_DIR/javascore/bts.jar
-    cp bts/lib/irc2Tradeable-0.1.0-optimized.jar  $CONTRACTS_DIR/javascore/irc2Tradeable.jar
+    cp lib/irc2Tradeable-0.1.0-optimized.jar  $CONTRACTS_DIR/javascore/irc2Tradeable.jar
     echo "build bts complete"
 }
 
