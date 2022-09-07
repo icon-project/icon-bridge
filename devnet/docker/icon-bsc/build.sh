@@ -6,7 +6,7 @@ set -e
 # #docker-compose -f docker-compose.yml -f docker-compose.provision.yml up -d   --force-recreate && docker-compose stop
 # #docker inspect iconbridge_src -f '{{ json .State.Health.Log }}' | jq .
 # docker-compose build
-
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
 echo "Build BMR"
 cd ../../../../icon-bridge/
 docker build -f ./devnet/docker/icon-bsc/Dockerfile -t iconbridge_bsc:latest .
