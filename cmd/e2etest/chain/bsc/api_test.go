@@ -12,15 +12,15 @@ import (
 )
 
 const (
-	RPC_URI      = "http://localhost:8545"
-	TokenGodKey  = ""
-	TokenGodAddr = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
+	RPC_URI      = "https://data-seed-prebsc-1-s1.binance.org:8545"
+	TokenGodKey  = "0cd7fa22c3b4187161d96b6c8da4ec86925f1723410fc3aa99f24f76175c8b8a"
+	TokenGodAddr = "btp://0x61.bsc/59d1d3450c1275ebf4ca477bf49fbcf910676e62"
 	GodKey       = ""
 	GodAddr      = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
 	DemoSrcKey   = ""
 	DemoSrcAddr  = "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
-	DemoDstAddr  = "btp://0x5b9a77.icon/hx0000000000000000000000000000000000000000"
-	GodDstAddr   = "btp://0x5b9a77.icon/hxad8eec2e167c24020600ddf1acd4d03673d3f49b"
+	DemoDstAddr  = "btp://0x2.icon/hx0000000000000000000000000000000000000000"
+	GodDstAddr   = "btp://0x2.icon/hx077ada6dd02f63b02650c5861f9f41166e45d9f1"
 	BtsAddr      = "btp://0x61.bsc/0x71a1520bBb7e6072Bbf3682A60c73D63b693690A"
 )
 
@@ -31,7 +31,7 @@ func TestApprove(t *testing.T) {
 	}
 	amt := new(big.Int)
 	amt.SetString("100000000000000000", 10)
-	for _, coin := range []string{"BUSD", "USDT", "USDC", "BTCB", "ETH"} {
+	for _, coin := range []string{"btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH", "btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC"} {
 		// coin := "USDC"
 		approveHash, err := rpi.Approve(coin, TokenGodKey, amt)
 		if err != nil {
@@ -52,10 +52,10 @@ func TestTransferIntraChain(t *testing.T) {
 	}
 
 	senderKey := TokenGodKey
-	dstAddr := "btp://0x61.bsc/0x8Bde22A645051B8772E4d6d9125Bb0B77EE2Ca0d"
+	dstAddr := "btp://0x61.bsc/0xDf1930A268e204c24fAA25E7E72D26166551F933"
 	amt := new(big.Int)
-	amt.SetString("5000000000000000000", 10)
-	for _, coin := range []string{"BNB"} {
+	amt.SetString("50000000000000000", 10)
+	for _, coin := range []string{"btp-0x61.bsc-BTCB"} {
 		hash, err := rpi.Transfer(coin, senderKey, dstAddr, amt)
 		if err != nil {
 			t.Fatalf("%+v", err)
@@ -77,7 +77,7 @@ func TestTransferIntraChain(t *testing.T) {
 
 func TestTransferInterChain(t *testing.T) {
 	//"BUSD", "USDT", "USDC", "BTCB", "ETH"
-	coin := "BNB"
+	coin := "btp-0x61.bsc-BNB"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -94,7 +94,7 @@ func TestTransferInterChain(t *testing.T) {
 	}
 
 	amt := new(big.Int)
-	amt.SetString("100000000000000000", 10)
+	amt.SetString("50000000000000000", 10)
 	txnHash, err := rpi.Transfer(coin, srcKey, dstAddr, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -124,11 +124,11 @@ func TestBatchTransfer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	coins := []string{"BUSD", "USDT", "USDC", "BTCB", "ETH"}
+	coins := []string{"btp-0x61.bsc-ETH", "btp-0x61.bsc-BTCB"}
 
 	largeAmt := new(big.Int)
-	largeAmt.SetString("1000000000000000000000", 10)
-	amounts := []*big.Int{largeAmt, largeAmt, largeAmt, largeAmt, largeAmt}
+	largeAmt.SetString("5000000000000000000", 10)
+	amounts := []*big.Int{largeAmt, largeAmt}
 	for i, coin := range coins {
 		fmt.Println("coin", coin)
 		if coin == rpi.NativeCoin() {
@@ -166,8 +166,8 @@ func TestGetCoinBalance(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	for _, coin := range []string{"BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH", "DUM", "ICX", "sICX", "bnUSD"} {
-		res, err := rpi.GetCoinBalance(coin, DemoSrcAddr)
+	for _, coin := range []string{"btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH", "btp-0x2.icon-ICX", "btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD", "btp-0x61.bsc-BNB"} {
+		res, err := rpi.GetCoinBalance(coin, TokenGodAddr)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -201,8 +201,8 @@ func TestGetKeyPair(t *testing.T) {
 
 func getNewApi() (chain.ChainAPI, error) {
 	ctrMap := map[chain.ContractName]string{
-		chain.BTS:          "0x71a1520bBb7e6072Bbf3682A60c73D63b693690A",
-		chain.BTSPeriphery: "0x3abC8DFF0C95B8982399daCf6ED5bD7b94a40068",
+		chain.BTS:          "0x41453d754A4D6ea89000B551AAC7f62d54B06a2F",
+		chain.BTSPeriphery: "0xdA0b35BC68D33c2817e9D982F851FAe8c9A5659B",
 	}
 
 	l := log.New()
@@ -211,11 +211,10 @@ func getNewApi() (chain.ChainAPI, error) {
 		Name:              chain.BSC,
 		URL:               RPC_URI,
 		ContractAddresses: ctrMap,
-		NativeTokens:      []string{"BUSD", "USDT", "USDC", "BTCB", "ETH", "DUM"},
-		WrappedCoins:      []string{"ICX", "sICX", "bnUSD"},
-		NativeCoin:        "BNB",
+		NativeTokens:      []string{"btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH"},
+		WrappedCoins:      []string{"btp-0x2.icon-ICX", "btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"},
+		NativeCoin:        "btp-0x61.bsc-BNB",
 		NetworkID:         "0x61.bsc",
-		GasLimit:          8000000,
 	})
 	if err != nil {
 		return nil, err

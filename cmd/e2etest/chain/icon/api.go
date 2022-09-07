@@ -285,3 +285,7 @@ func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv stri
 	pub = gocommon.NewAccountAddressFromPublicKey(privKey.PublicKey()).String()
 	return
 }
+
+func (a *api) GasPrice() *big.Int {
+	return big.NewInt(12500000000)
+}

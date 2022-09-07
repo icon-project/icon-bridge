@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -14,19 +13,17 @@ import (
 )
 
 type testSuite struct {
-	id                 uint64
-	clsPerChain        map[chain.ChainType]chain.ChainAPI
-	godKeysPerChain    map[chain.ChainType]keypair
-	demoKeysPerChain   map[chain.ChainType][]keypair
-	logger             log.Logger
-	subChan            <-chan *evt
-	btsAddressPerChain map[chain.ChainType]string
-	gasLimitPerChain   map[chain.ChainType]int64
-	fee                fee
-	src                chain.ChainType
-	dst                chain.ChainType
-	report             string
-	env                string
+	id      uint64
+	src     chain.ChainType
+	dst     chain.ChainType
+	logger  log.Logger
+	subChan <-chan *evt
+
+	report string
+
+	clsPerChain     map[chain.ChainType]chain.ChainAPI
+	godKeysPerChain map[chain.ChainType]keypair
+	cfgPerChain     map[chain.ChainType]*chain.Config
 }
 
 func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain.SrcAPI, dst chain.DstAPI, err error) {
@@ -45,7 +42,7 @@ func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain
 	return
 }
 
-func (ts *testSuite) withFeeAdded(bal *big.Int) *big.Int {
+func (ts *testSuite) withFeeAdded(bal *big.Int, chainName chain.ChainType, coinName string) *big.Int {
 	// val  * ratio + fixed = charge
 	// val - charge = newVal
 	// for newVal to be zero, val = charge
@@ -53,37 +50,22 @@ func (ts *testSuite) withFeeAdded(bal *big.Int) *big.Int {
 	// val(1 - ratio) = fixed
 	// val = fixed/(1 - ratio)
 	// val = (fixed * denom)/(denom - num)
-	bplusf := bal.Add(bal, ts.fee.fixed)
-	bplusf.Mul(bplusf, ts.fee.denominator)
-	dminusn := new(big.Int).Sub(ts.fee.denominator, ts.fee.numerator)
-	bplusf.Div(bplusf, dminusn)
-	return bplusf
-}
-
-func (ts *testSuite) SuggestGasPrice() *big.Int {
-	pricePerUnitGas := big.NewInt(6000000000)                                            // this price will later be fetched from transactions
-	return pricePerUnitGas.Mul(pricePerUnitGas, big.NewInt(ts.gasLimitPerChain[ts.src])) // gasLimit depends on what kind of transactions we're doing
-}
-
-func (ts *testSuite) GetDemoKeyPairs(chainName chain.ChainType) (key, addr string, err error) {
-	cl, ok := ts.clsPerChain[chainName]
-	if !ok {
-		err = fmt.Errorf("Chain %v not found", chainName)
-		return
+	coinDetails := ts.cfgPerChain[chainName].CoinDetails
+	for i := 0; i < len(coinDetails); i++ {
+		if coinDetails[i].Name == coinName {
+			fixedFee := new(big.Int)
+			fixedFee.SetString(coinDetails[i].FixedFee, 10)
+			bplusf := bal.Add(bal, fixedFee)
+			bplusf.Mul(bplusf, big.NewInt(10000))
+			dminusn := new(big.Int).Sub(big.NewInt(10000), big.NewInt(int64(coinDetails[i].FeeNumerator)))
+			bplusf.Div(bplusf, dminusn)
+			return bplusf
+		}
 	}
-	demoKeys, ok := ts.demoKeysPerChain[chainName]
-	if !ok {
-		err = fmt.Errorf("Chain %v not found", chainName)
-		return
-	}
-	idx := rand.Intn(len(demoKeys))
-	return demoKeys[idx].PrivKey, cl.GetBTPAddress(demoKeys[idx].PubKey), nil
+	return big.NewInt(0)
 }
 
 func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, err error) {
-	if ts.env == "testnet" {
-		return ts.GetGodKeyPairs(chainName)
-	}
 	cl, ok := ts.clsPerChain[chainName]
 	if !ok {
 		err = fmt.Errorf("Chain %v not found", chainName)
@@ -116,8 +98,7 @@ func (ts *testSuite) GetGodKeyPairs(chainName chain.ChainType) (key, addr string
 }
 
 func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
-	// If coin is a native, intrachain-tranfer,
-	// else if it's wrapped inter-chain, else not found
+	// IntraChain Transfer of Tokens from God to an address
 	srcCl, ok := ts.clsPerChain[ts.src]
 	if !ok {
 		return fmt.Errorf("Chain %v not found", ts.src)
@@ -129,7 +110,7 @@ func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 	if strings.Contains(addr, godKey.PubKey) {
 		return nil // Sender == Receiver; so skip
 	}
-	ts.logger.Infof("Transfer coin %v addr %v amt %v ", coinName, addr, amount.String())
+	ts.logger.Infof("Fund coin %v addr %v amt %v ", coinName, addr, amount.String())
 	hash, err := srcCl.Transfer(coinName, godKey.PrivKey, addr, amount)
 	if err != nil {
 		return errors.Wrapf(err, "srcCl.Transfer err=%v", err)
@@ -144,32 +125,9 @@ func (ts *testSuite) ValidateTransactionResult(ctx context.Context, hash string)
 		err = fmt.Errorf("Chain %v not found", ts.src)
 		return
 	}
-	time.Sleep(time.Second * 5)
 	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	res, err = srcCl.WaitForTxnResult(tctx, hash)
-	if err != nil {
-		err = errors.Wrapf(err, "WaitForTxnResult Hash %v", hash)
-	} else if res == nil {
-		err = fmt.Errorf("WaitForTxnResult; Transaction Result is nil. Hash %v", hash)
-	} else if res != nil && res.StatusCode != 1 {
-		err = errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
-		err = StatusCodeZero
-		return
-	}
-	return
-}
-
-func (ts *testSuite) ValidateTransactionResultOnDestination(ctx context.Context, hash string) (res *chain.TxnResult, err error) {
-	dstCl, ok := ts.clsPerChain[ts.dst]
-	if !ok {
-		err = fmt.Errorf("Chain %v not found", ts.src)
-		return
-	}
-	time.Sleep(time.Second * 5)
-	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	res, err = dstCl.WaitForTxnResult(tctx, hash)
 	if err != nil {
 		err = errors.Wrapf(err, "WaitForTxnResult Hash %v", hash)
 	} else if res == nil {

@@ -57,7 +57,7 @@ func main() {
 	if !testCfg.StressTest.Disable {
 		log.Info("Starting Stress Test ....")
 		for _, fts := range testCfg.FlowTest.Chains {
-			err = ex.RunStressTest(ctx, fts.SrcChain, fts.DstChain, fts.CoinNames)
+			err = ex.RunFlowTest(ctx, fts.SrcChain, fts.DstChain, fts.CoinNames)
 			if err != nil {
 				log.Errorf("%+v", err)
 			}

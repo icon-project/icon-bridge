@@ -45,6 +45,5 @@ var (
 )
 
 type Config struct {
-	Env    string          `json:"env"`
 	Chains []*chain.Config `json:"chains"`
 }

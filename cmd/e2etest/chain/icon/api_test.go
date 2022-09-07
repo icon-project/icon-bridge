@@ -13,17 +13,17 @@ import (
 )
 
 const (
-	RPC_URI      = "http://localhost:9080/api/v3/default"
-	TokenGodKey  = ""
-	TokenGodAddr = "btp://0x5b9a77.icon/hxff0ea998b84ab9955157ab27915a9dc1805edd35"
+	RPC_URI      = "https://lisbon.net.solidwallet.io/api/v3/icon_dex"
+	TokenGodKey  = "c6e4954a60ed41a76d96b4b5eebead9d13c697de176553d96fdbd6faebd01838"
+	TokenGodAddr = "btp://0x2.icon/hx077ada6dd02f63b02650c5861f9f41166e45d9f1"
 	GodKey       = ""
-	GodAddr      = "btp://0x5b9a77.icon/hxff0ea998b84ab9955157ab27915a9dc1805edd35"
+	GodAddr      = "btp://0x2.icon/hx077ada6dd02f63b02650c5861f9f41166e45d9f1"
 	DemoSrcKey   = ""
-	DemoSrcAddr  = "btp://0x5b9a77.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
+	DemoSrcAddr  = "btp://0x2.icon/hx691ead88bd5945a43c8a1da331ff6dd80e2936ee"
 	DemoDstAddr  = "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
 	GodDstAddr   = "btp://0x61.bsc/0x70E789D2f5D469eA30e0525DbfDD5515d6EAd30D"
-	NID          = "0x5b9a77.icon"
-	BtsOwner     = "btp://0x5b9a77.icon/hx1a2aeb3a100f2179846307095b82aa8ace43ca9d"
+	NID          = "0x2.icon"
+	BtsOwner     = "btp://0x2.icon/hx1a2aeb3a100f2179846307095b82aa8ace43ca9d"
 )
 
 func TestTransferIntraChain(t *testing.T) {
@@ -36,13 +36,13 @@ func TestTransferIntraChain(t *testing.T) {
 	amount.SetString("10000000000000000000", 10)
 	srckey := TokenGodKey
 	dstaddr := DemoSrcAddr
-	for _, coinName := range []string{"ICX", "bnUSD"} {
+	for _, coinName := range []string{"btp-0x2.icon-ICX", "btp-0x2.icon-bnUSD"} {
 		txnHash, err := api.Transfer(coinName, srckey, dstaddr, amount)
 		if err != nil {
 			t.Fatal(err)
 		}
 		time.Sleep(time.Second * 3)
-		t.Logf("Transaction Hash %v", txnHash)
+		t.Logf("Transaction Hash %v %v", coinName, txnHash)
 		res, err := api.WaitForTxnResult(context.TODO(), txnHash)
 		if err != nil {
 			t.Fatal(err)
@@ -82,13 +82,13 @@ func TestApprove(t *testing.T) {
 	ownerKey := TokenGodKey
 	ownerAddr := TokenGodAddr
 	showBalance(ownerAddr)
-	coin := "sICX"
+	coin := "btp-0x61.bsc-BUSD"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	amt := new(big.Int)
-	amt.SetString("100000000000000", 10)
+	amt.SetString("4300000000000000000", 10)
 	approveHash, err := rpi.Approve(coin, ownerKey, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -108,7 +108,7 @@ func TestTransferInterChain(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
-	coin := "sICX"
+	coin := "btp-0x2.icon-sICX"
 	srcKey := TokenGodKey
 	srcAddr := TokenGodAddr
 	dstAddr := "btp://0x61.bsc/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81201"
@@ -119,7 +119,7 @@ func TestTransferInterChain(t *testing.T) {
 	}
 
 	amount := new(big.Int)
-	amount.SetString("110000000000001", 10)
+	amount.SetString("4300000000000000000", 10)
 
 	txnHash, err := api.Transfer(coin, srcKey, dstAddr, amount)
 	if err != nil {
@@ -154,10 +154,10 @@ func TestBatchTransfer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	coins := []string{"sICX", "bnUSD", "ICX"}
+	coins := []string{"btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD", "btp-0x2.icon-ICX"}
 
 	amount := new(big.Int)
-	amount.SetString("1000000000000000000000", 10)
+	amount.SetString("4500000000000000000", 10)
 	amounts := []*big.Int{amount, amount, amount}
 	for i, coin := range coins {
 
@@ -202,7 +202,7 @@ func showBalance(addr string) error {
 	if err != nil {
 		return err
 	}
-	for _, coinName := range []string{"ICX", "sICX", "bnUSD", "BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH"} {
+	for _, coinName := range []string{"btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH", "btp-0x2.icon-ICX", "btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD", "btp-0x61.bsc-BNB"} {
 		res, err := api.GetCoinBalance(coinName, addr)
 		if err != nil {
 			return err
@@ -241,7 +241,7 @@ func TestReceiver(t *testing.T) {
 func getNewApi() (chain.ChainAPI, error) {
 	srcEndpoint := RPC_URI
 	addrToName := map[chain.ContractName]string{
-		chain.BTS: "cxcc01466ab63a245eeb5c2e0d01258e4dfd53979e",
+		chain.BTS: "cx220b39946c06487027b6fbbedc8eea58899a73a2",
 	}
 	l := log.New()
 	log.SetGlobalLogger(l)
@@ -250,10 +250,9 @@ func getNewApi() (chain.ChainAPI, error) {
 		URL:               srcEndpoint,
 		ContractAddresses: addrToName,
 		NetworkID:         NID,
-		NativeCoin:        "ICX",
-		NativeTokens:      []string{"sICX", "bnUSD", "DUM"},
-		WrappedCoins:      []string{"BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH"},
-		GasLimit:          8000000,
+		NativeCoin:        "btp-0x2.icon-ICX",
+		NativeTokens:      []string{"btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"},
+		WrappedCoins:      []string{"btp-0x61.bsc-BNB", "btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH"},
 	})
 }
 

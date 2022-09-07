@@ -35,22 +35,6 @@ type CoinBalance struct {
 	UserBalance       *big.Int
 }
 
-// type ContractCallMethodName string
-
-// const (
-
-// )
-
-// type ContractTransactMethodName string
-
-// const (
-// 	SetTokenLimit          ContractTransactMethodName = "SetTokenLimit"
-// 	AddBlackListAddress    ContractTransactMethodName = "AddBlackListAddress"
-// 	RemoveBlackListAddress ContractTransactMethodName = "RemoveBlackListAddress"
-// 	AddRestriction         ContractTransactMethodName = "AddRestriction"
-// 	DisableRestrictions    ContractTransactMethodName = "DisableRestrictions"
-// )
-
 func (cb *CoinBalance) String() string {
 	return "Usable " + cb.UsableBalance.String() +
 		" Locked " + cb.LockedBalance.String() + " Refundable " + cb.RefundableBalance.String() +
@@ -108,6 +92,7 @@ type ChainAPI interface {
 	NativeCoin() string
 	NativeTokens() []string
 	GetBTPAddress(addr string) string
+	GasPrice() *big.Int
 
 	// Configure
 	SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*big.Int) (txnHash string, err error)
@@ -128,11 +113,20 @@ type Config struct {
 	NativeCoin             string                  `json:"native_coin"`
 	NativeTokens           []string                `json:"native_tokens"`
 	WrappedCoins           []string                `json:"wrapped_coins"`
+	CoinDetails            []CoinDetails           `json:"coin_details"`
 	GodWalletKeystorePath  string                  `json:"god_wallet_keystore_path"`
 	GodWalletSecretPath    string                  `json:"god_wallet_secret_path"`
+	BTSOwnerKeystorePath   string                  `json:"bts_owner_keystore_path"`
+	BTSOwnerSecretPath     string                  `json:"bts_owner_secret_path"`
 	DemoWalletKeystorePath string                  `json:"demo_wallet_keystore_path"`
 	NetworkID              string                  `json:"network_id"`
-	GasLimit               int64                   `json:"gas_limit"`
+}
+
+type CoinDetails struct {
+	Name         string `json:"name"`
+	FixedFee     string `json:"fixed_fee"`
+	FeeNumerator uint   `json:"fee_numerator"`
+	Decimals     uint   `json:"decimals"`
 }
 
 type EventLogInfo struct {
@@ -161,11 +155,6 @@ type AssetTransferDetails struct {
 	Value *big.Int
 	Fee   *big.Int
 }
-
-// type AssetDetails struct {
-// 	Name  string
-// 	Value *big.Int
-// }
 
 type TransferEndEvent struct {
 	From     string

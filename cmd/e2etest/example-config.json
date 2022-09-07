@@ -6,13 +6,16 @@
             "contract_addresses": {
                 "BTS":  "cx69774ba6f0d2718bef41065227345529a11b57f1"
             },
-            "native_coin": {
-                "name":"ICX",
-                "fixed_fee" : "4300000000000000000",
-                "fee_numerator":100,
-                "decimals":18
-            },
-            "native_tokens":[
+            "native_coin":"ICX",
+            "native_tokens":["sICX", "bnUSD"],
+            "wrapped_coins":["BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH"],
+            "coin_details":[
+                {
+                    "name":"ICX",
+                    "fixed_fee" : "4300000000000000000",
+                    "fee_numerator":100,
+                    "decimals":18
+                },
                 {
                     "name":"sICX",
                     "fixed_fee" : "3900000000000000000",
@@ -24,9 +27,7 @@
                     "fixed_fee" : "1500000000000000000",
                     "fee_numerator":100,
                     "decimals":18
-                }
-            ],
-            "wrapped_coins":[
+                },
                 {
                     "name":"BNB",
                     "fixed_fee" : "1500000000000000000",
@@ -78,13 +79,16 @@
                 "BTS":      "0x9F90806DBDaA783766483d2D24b431CFFB793eEb",
                 "BTSPeriphery": "0x94D9842507AAbB4D7ce010206f662b44efA8496F"
             },
-            "native_coin": {
-                "name":"BNB",
-                "fixed_fee" : "5000000000000000",
-                "fee_numerator":100,
-                "decimals":18
-            },
-            "native_tokens":[
+            "native_coin":"BNB",
+            "native_tokens":["BUSD", "USDT", "USDC", "BTCB", "ETH"],
+            "wrapped_coins":["ICX", "sICX", "bnUSD"],
+            "coin_details":[
+                {
+                    "name":"BNB",
+                    "fixed_fee" : "5000000000000000",
+                    "fee_numerator":100,
+                    "decimals":18
+                },
                 {
                     "name":"BUSD",
                     "fixed_fee" : "1500000000000000000",
@@ -114,9 +118,7 @@
                     "fixed_fee" : "1500000000000000000",
                     "fee_numerator":100,
                     "decimals":18
-                }
-            ],
-            "wrapped_coins":[
+                },
                 {
                     "name":"ICX",
                     "fixed_fee" : "4300000000000000000",

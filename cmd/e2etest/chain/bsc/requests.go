@@ -26,9 +26,14 @@ import (
 	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
-// const (
-// 	DefaultGasLimit = 20000000
-// )
+const (
+	TransferNativeIntraChainGasLimit = 25000  // 21K
+	TransferTokenIntraChainGasLimit  = 60000  // 54K
+	ApproveTokenGasLimit             = 50000  // 46K
+	TransferInterChainGasLimit       = 60000  // 54K
+	TransferBatchInterChainGasLimit  = 800000 // 768K
+	DefaultGasLimit                  = 5000000
+)
 
 type requestAPI struct {
 	contractNameToAddress map[chain.ContractName]string
@@ -74,7 +79,7 @@ func newRequestAPI(cfg *chain.Config) (*requestAPI, error) {
 		ethCl:                 cleth,
 		btsc:                  btscore,
 		btsp:                  btsp,
-		gasLimit:              uint64(cfg.GasLimit),
+		gasLimit:              uint64(DefaultGasLimit),
 		nativeCoin:            cfg.NativeCoin,
 		nativeTokens:          cfg.NativeTokens,
 	}
@@ -180,7 +185,7 @@ func (r *requestAPI) getTransactionRequest(senderKey string) (*bind.TransactOpts
 	if err != nil {
 		return nil, errors.Wrap(err, "SuggestGasPrice ")
 	}
-	txo.GasLimit = r.gasLimit
+	txo.GasLimit = r.gasLimit // max gas limit
 	return txo, nil
 }
 
@@ -242,7 +247,7 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 		err = errors.Wrap(err, "ChainID ")
 		return
 	}
-	tx := types.NewTransaction(nonce, common.HexToAddress(recepientAddress), amount, r.gasLimit, gasPrice, []byte{})
+	tx := types.NewTransaction(nonce, common.HexToAddress(recepientAddress), amount, TransferNativeIntraChainGasLimit, gasPrice, []byte{})
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), senderPrivKey)
 	if err != nil {
 		err = errors.Wrap(err, "SignTx ")
@@ -270,6 +275,7 @@ func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string,
 		return
 	}
 	txo.Context = context.Background()
+	txo.GasLimit = TransferTokenIntraChainGasLimit
 	txn, err := erc.Transfer(txo, common.HexToAddress(recepientAddress), amount)
 	if err != nil {
 		err = errors.Wrap(err, "hrc.Transfer ")
@@ -294,6 +300,7 @@ func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress
 	}
 	txo.Value = amount
 	txo.Context = context.Background()
+	txo.GasLimit = TransferInterChainGasLimit
 	txn, err := r.btsc.TransferNativeCoin(txo, recepientAddress)
 	if err != nil {
 		err = errors.Wrap(err, "btsc.TransferNativeCoin ")
@@ -315,6 +322,7 @@ func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepi
 		return
 	}
 	txo.Context = context.Background()
+	txo.GasLimit = TransferInterChainGasLimit
 	txn, err := r.btsc.Transfer(txo, coinName, amount, recepientAddress)
 	if err != nil {
 		err = errors.Wrap(err, "btsc.Transfer ")
@@ -334,6 +342,7 @@ func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddre
 		return
 	}
 	txo.Context = context.Background()
+	txo.GasLimit = TransferBatchInterChainGasLimit
 	filterNames := []string{}
 	filterAmounts := []*big.Int{}
 	for i := 0; i < len(amounts); i++ {
@@ -368,6 +377,7 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount *big.Int) (a
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
+	txo.GasLimit = ApproveTokenGasLimit
 	btscaddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
 		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTS)
@@ -404,6 +414,7 @@ func (r *requestAPI) reclaim(coinName string, ownerKey string, amount *big.Int) 
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
+	// Add GasLimit
 	txn, err := r.btsc.Reclaim(txo, coinName, amount)
 	txnHash = txn.Hash().String()
 	return

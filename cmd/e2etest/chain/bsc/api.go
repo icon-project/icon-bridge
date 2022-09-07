@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"math/big"
 	"os"
 	"strings"
@@ -266,5 +267,36 @@ func (r *api) GetKeyPairFromKeystore(keystoreFile string, secretFile string) (pr
 	privBytes := crypto.FromECDSA(key.PrivateKey)
 	privKey = hex.EncodeToString(privBytes)
 	pubKey = crypto.PubkeyToAddress(key.PrivateKey.PublicKey).String()
+	return
+}
+
+func (r *api) GasPrice() (gasPrice *big.Int) {
+	ctx := context.TODO()
+	cleth := r.client()
+	gasPrice = big.NewInt(15000000000) // default Gas Price
+	header, err := cleth.HeaderByNumber(ctx, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "GetHeaderByNumber(height:latest) Err: %v", err)
+		return
+	}
+	height := header.Number
+	txnCount, err := cleth.TransactionCount(ctx, header.Hash())
+	if err != nil {
+		err = errors.Wrapf(err, "GetTransactionCount(height:%v, headerHash: %v) Err: %v", height, header.Hash(), err)
+		r.log.Error(err)
+		return
+	} else if err == nil && txnCount == 0 {
+		err = fmt.Errorf("TransactionCount is zero for height(%v, headerHash %v)", height, header.Hash())
+		r.log.Error(err)
+		return
+	}
+
+	txnS, err := cleth.TransactionInBlock(ctx, header.Hash(), uint(math.Floor(float64(txnCount)/2)))
+	if err != nil {
+		err = errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, txnCount-1, err)
+		r.log.Error(err)
+		return
+	}
+	gasPrice = txnS.GasPrice()
 	return
 }

@@ -299,3 +299,7 @@ func (r *api) GetTokenLimitStatus(net, coinName string) (response bool, err erro
 func (r *api) GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error) {
 	return nil, errors.New("not implemented")
 }
+
+func (a *api) GasPrice() *big.Int {
+	return big.NewInt(12500000000)
+}

@@ -3,7 +3,6 @@ package executor
 import (
 	"context"
 	"fmt"
-	"math/big"
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/common/errors"
@@ -30,16 +29,7 @@ func (ex *executor) RunFlowTest(ctx context.Context, srcChainName, dstChainName 
 	if !ok {
 		return fmt.Errorf("GodKeys for chain %v not found", dstChainName)
 	}
-	srcDemo, ok := ex.demoKeysPerChain[srcChainName]
-	if !ok {
-		return fmt.Errorf("DemoKeys for chain %v not found", srcChainName)
-	}
-	srcDemo = append(srcDemo, srcGod)
-	dstDemo, ok := ex.demoKeysPerChain[dstChainName]
-	if !ok {
-		return fmt.Errorf("DemoKeys for chain %v not found", dstChainName)
-	}
-	dstDemo = append(dstDemo, dstGod)
+
 	srcCfg, ok := ex.cfgPerChain[srcChainName]
 	if !ok {
 		return fmt.Errorf("Cfg for chain %v not found", srcChainName)
@@ -48,36 +38,7 @@ func (ex *executor) RunFlowTest(ctx context.Context, srcChainName, dstChainName 
 	if !ok {
 		return fmt.Errorf("Cfg for chain %v not found", srcChainName)
 	}
-	btsAddressPerChain := map[chain.ChainType]string{
-		srcChainName: srcCfg.ContractAddresses[chain.BTS],
-		dstChainName: dstCfg.ContractAddresses[chain.BTS],
-	}
-	gasLimitPerChain := map[chain.ChainType]int64{
-		srcChainName: srcCfg.GasLimit,
-		dstChainName: dstCfg.GasLimit,
-	}
 
-	id, err := ex.getID()
-	if err != nil {
-		return errors.Wrap(err, "getID ")
-	}
-	log := ex.log.WithFields(log.Fields{"pid": id})
-	sinkChan := make(chan *evt)
-	ex.addChan(id, sinkChan)
-	defer ex.removeChan(id)
-
-	ts := &testSuite{
-		id:                 id,
-		logger:             log,
-		env:                ex.env,
-		subChan:            sinkChan,
-		btsAddressPerChain: btsAddressPerChain,
-		gasLimitPerChain:   gasLimitPerChain,
-		clsPerChain:        map[chain.ChainType]chain.ChainAPI{srcChainName: srcCl, dstChainName: dstCl},
-		godKeysPerChain:    map[chain.ChainType]keypair{srcChainName: srcGod, dstChainName: dstGod},
-		demoKeysPerChain:   map[chain.ChainType][]keypair{srcChainName: srcDemo, dstChainName: dstDemo},
-		fee:                fee{numerator: big.NewInt(FEE_NUMERATOR), denominator: big.NewInt(FEE_DENOMINATOR), fixed: big.NewInt(FIXED_PRICE)},
-	}
 	for _, coin := range coinNames {
 		for _, cb := range []Script{
 			TransferWithApprove,
@@ -90,7 +51,26 @@ func (ex *executor) RunFlowTest(ctx context.Context, srcChainName, dstChainName 
 			// TransferExceedingBTSBalance,
 		} {
 			if cb.Callback != nil {
-				_, err := cb.Callback(ctx, srcChainName, dstChainName, []string{coin}, ts)
+				id, err := ex.getID()
+				if err != nil {
+					return errors.Wrap(err, "getID ")
+				}
+				log := ex.log.WithFields(log.Fields{"pid": id})
+				sinkChan := make(chan *evt)
+				ex.addChan(id, sinkChan)
+				defer ex.removeChan(id)
+
+				ts := &testSuite{
+					src:             srcChainName,
+					dst:             dstChainName,
+					id:              id,
+					logger:          log,
+					subChan:         sinkChan,
+					clsPerChain:     map[chain.ChainType]chain.ChainAPI{srcChainName: srcCl, dstChainName: dstCl},
+					godKeysPerChain: map[chain.ChainType]keypair{srcChainName: srcGod, dstChainName: dstGod},
+					cfgPerChain:     map[chain.ChainType]*chain.Config{srcChainName: srcCfg, dstChainName: dstCfg},
+				}
+				_, err = cb.Callback(ctx, srcChainName, dstChainName, []string{coin}, ts)
 				if err != nil {
 					return err
 				}
