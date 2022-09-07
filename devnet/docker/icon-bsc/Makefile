@@ -4,7 +4,7 @@ remove:
 	docker rm -f javascore-dist
 	docker rmi -f iconbridge
 	docker rmi -f btp/javascore
-	rm -rf local/artifacts local/log
+	rm -rf local/artifacts local/log local/goloop
 	rm -rf ../../../build/*
 	rm -rf ./data/bsc/node1
 	
