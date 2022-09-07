@@ -11,9 +11,12 @@ remove:
 clean:
 	docker-compose down -v --remove-orphans
 	rm -rf local/artifacts
+	rm -rf local/goloop
+	rm -rf local/log
 
 buildsc:
 	make -C ../../../ dist-javascore dist-sol
+	mv ../../../build .
 
 buildimg:
 	#make -C ../../../ dist-javascore dist-sol iconbridge-image
