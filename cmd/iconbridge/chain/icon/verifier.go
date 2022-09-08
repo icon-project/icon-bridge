@@ -2,6 +2,7 @@ package icon
 
 import (
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"sync"
 
 	"github.com/icon-project/goloop/common"
@@ -9,51 +10,20 @@ import (
 	"github.com/icon-project/icon-bridge/common/crypto"
 )
 
-type VerifierOptions struct {
-	BlockHeight    uint64         `json:"blockHeight"`
-	ValidatorsHash common.HexHash `json:"validatorsHash"`
-}
 
-type commitVoteItem struct {
-	Timestamp int64
-	Signature common.Signature
-}
-
-type commitVoteList struct {
-	Round          int32
-	BlockPartSetID *PartSetID
-	Items          []commitVoteItem
-}
-
-type PartSetID struct {
-	Count uint16
-	Hash  []byte
-}
-
-type _HR struct {
-	Height int64
-	Round  int32
-}
-
-type voteBase struct {
-	_HR
-	Type           VoteType
-	BlockID        []byte
-	BlockPartSetID *PartSetID
-}
-
-type vote struct {
-	voteBase
-	Timestamp int64
-}
-
-type VoteType byte
 
 const (
-	VoteTypePrevote VoteType = iota
+	VoteTypePrevote types.VoteType = iota
 	VoteTypePrecommit
 	numberOfVoteTypes
 )
+
+type IVerifier interface {
+	Next() int64
+	Verify(blockHeader *types.BlockHeader, votes []byte) (ok bool, err error)
+	Update(blockHeader *types.BlockHeader, nextValidators []common.Address) (err error)
+	Validators(nextValidatorsHash common.HexBytes) []common.Address
+}
 
 type BlockHeaderResult struct {
 	StateHash        []byte
@@ -68,12 +38,12 @@ type TxResult struct {
 	CumulativeStepUsed []byte
 	StepUsed           []byte
 	StepPrice          []byte
-	LogsBloom          []byte
-	EventLogs          []EventLog
-	ScoreAddress       []byte
-	EventLogsHash      common.HexBytes
-	TxIndex            HexInt
-	BlockHeight        HexInt
+	LogsBloom     	[]byte
+	EventLogs     	[]types.EventLog
+	ScoreAddress  	[]byte
+	EventLogsHash 	common.HexBytes
+	TxIndex       	types.HexInt
+	BlockHeight   	types.HexInt
 }
 
 type Verifier struct {
@@ -85,7 +55,7 @@ type Verifier struct {
 
 func (vr *Verifier) Next() int64 { return vr.next }
 
-func (vr *Verifier) Verify(blockHeader *BlockHeader, votes []byte) (ok bool, err error) {
+func (vr *Verifier) Verify(blockHeader *types.BlockHeader, votes []byte) (ok bool, err error) {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
 
@@ -100,22 +70,23 @@ func (vr *Verifier) Verify(blockHeader *BlockHeader, votes []byte) (ok bool, err
 		requiredVotes = 1
 	}
 
-	cvl := &commitVoteList{}
+	cvl := &types.CommitVoteList{}
 	_, err = codec.BC.UnmarshalFromBytes(votes, cvl)
 	if err != nil {
 		return false, fmt.Errorf("invalid votes: %v; err=%v", common.HexBytes(votes), err)
 	}
 
 	hash := crypto.SHA3Sum256(codec.BC.MustMarshalToBytes(blockHeader))
-	vote := &vote{
-		voteBase: voteBase{
-			_HR: _HR{
+
+	vote := &types.Vote{
+		VoteBase: types.VoteBase{
+			HR: types.HR{
 				Height: blockHeader.Height,
 				Round:  cvl.Round,
 			},
 			Type:           VoteTypePrecommit,
 			BlockID:        hash,
-			BlockPartSetID: cvl.BlockPartSetID,
+			BlockPartSetID: *cvl.BlockPartSetID,
 		},
 	}
 
@@ -147,7 +118,7 @@ func (vr *Verifier) Verify(blockHeader *BlockHeader, votes []byte) (ok bool, err
 	return false, fmt.Errorf("insufficient votes")
 }
 
-func (vr *Verifier) Update(blockHeader *BlockHeader, nextValidators []common.Address) (err error) {
+func (vr *Verifier) Update(blockHeader *types.BlockHeader, nextValidators []common.Address) (err error) {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
 	nextValidatorsHash := common.HexBytes(blockHeader.NextValidatorsHash)
@@ -171,7 +142,7 @@ func (vr *Verifier) Validators(nextValidatorsHash common.HexBytes) []common.Addr
 	return nil
 }
 
-// func (r *receiver) syncVerifier(hexHeight HexInt) error {
+// func (r *Receiver) syncVerifier(hexHeight HexInt) error {
 // 	ht, hterr := hexHeight.Value()
 // 	if hterr != nil {
 // 		return errors.Wrapf(hterr, "syncVerifier; HexInt Conversion Error at Height %v ", hexHeight)
@@ -207,7 +178,7 @@ func (vr *Verifier) Validators(nextValidatorsHash common.HexBytes) []common.Addr
 // 				return errors.Wrap(err, "syncVerifier; ")
 // 			} else {
 // 				if !bytes.Equal(header.NextValidatorsHash, r.hv.validatorsHash) { // should update
-// 					if vs, err := getValidatorsFromHash(r.cl, header.NextValidatorsHash); err != nil {
+// 					if vs, err := getValidatorsFromHash(r.Client, header.NextValidatorsHash); err != nil {
 // 						return errors.Wrap(err, "syncVerifier; ")
 // 					} else {
 // 						r.log.WithFields(log.Fields{"ValidatorsHeight": NewHexInt(int64(ht + 1)), "NewValidatorsHash": common.HexBytes(header.NextValidatorsHash), "OldValidatorsHash": r.hv.validatorsHash}).Info("Sync Verifier; Updating Validator Hash ")

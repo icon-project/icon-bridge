@@ -3,6 +3,14 @@ codecov:
 comment:
   behavior: default
   layout: "reach, diff, flags, files"
+
+
+ignore:
+  - "**/test_*"
+  - "**/*_test.*"
+  - "**/mocks/*"
+  - "**/mock/*"
+
 coverage:
   precision: 2
   range:

@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"sort"
 	"time"
 
@@ -47,15 +48,7 @@ const (
 
 type ReceiverOptions struct {
 	SyncConcurrency uint64           `json:"syncConcurrency"`
-	Verifier        *VerifierOptions `json:"verifier"`
-}
-
-func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(b, opts)
+	Verifier        *types.VerifierOptions `json:"verifier"`
 }
 
 type eventLogRawFilter struct {
@@ -65,40 +58,71 @@ type eventLogRawFilter struct {
 	seq       uint64
 }
 
-type receiver struct {
+type Receiver struct {
 	log       log.Logger
 	src       chain.BTPAddress
-	dst       chain.BTPAddress
-	cl        *Client
-	opts      ReceiverOptions
-	blockReq  BlockRequest
+	dst    chain.BTPAddress
+	Client IClient
+	opts   ReceiverOptions
+	blockReq  types.BlockRequest
 	logFilter eventLogRawFilter
 }
 
-func NewReceiver(src, dst chain.BTPAddress, urls []string, rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error) {
-	if len(urls) == 0 {
-		return nil, errors.New("List of Urls is empty")
-	}
-	client := NewClient(urls[0], l)
+type response struct {
+	Height         int64
+	Header         *types.BlockHeader
+	Votes          []byte
+	NextValidators []common.Address
+	err      error
+}
 
+type request struct {
+	height int64
+	err      error
+	response *response
+	retry    int
+}
+
+type receiverResponse struct {
+	Height         int64
+	Hash           common.HexHash
+	Header         *types.BlockHeader
+	Votes          []byte
+	NextValidators []common.Address
+	Receipts       []*chain.Receipt
+}
+
+type receiverRequest struct {
+	height  int64
+	hash    types.HexBytes
+	indexes [][]types.HexInt
+	events  [][][]types.HexInt
+
+	retry int
+
+	err error
+	res *receiverResponse
+}
+
+func NewReceiver(src, dst chain.BTPAddress, client IClient, rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error) {
 	var recvOpts ReceiverOptions
 	if err := json.Unmarshal(rawOpts, &recvOpts); err != nil {
 		return nil, errors.Wrapf(err, "recvOpts.Unmarshal: %v", err)
 	}
 
 	dstAddr := dst.String()
-	ef := &EventFilter{
-		Addr:      Address(src.ContractAddress()),
+	eventFilter := &types.EventFilter{
+		Addr:      types.Address(src.ContractAddress()),
 		Signature: EventSignature,
 		Indexed:   []*string{&dstAddr},
 	}
-	evtReq := BlockRequest{
-		EventFilters: []*EventFilter{ef},
+	evtReq := types.BlockRequest{
+		EventFilters: []*types.EventFilter{eventFilter},
 	} // fill height later
 
-	efAddr, err := ef.Addr.Value()
+	efAddr, err := eventFilter.Addr.Value()
 	if err != nil {
-		return nil, errors.Wrapf(err, "ef.Addr.Value: %v", err)
+		return nil, errors.Wrapf(err, "eventFilter.Addr.Value: %v", err)
 	}
 
 	if recvOpts.SyncConcurrency < 1 {
@@ -107,11 +131,11 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, rawOpts json.RawMessa
 		recvOpts.SyncConcurrency = MonitorBlockMaxConcurrency
 	}
 
-	recvr := &receiver{
+	recvr := &Receiver{
 		log:      l,
 		src:      src,
 		dst:      dst,
-		cl:       client,
+		Client:   client,
 		opts:     recvOpts,
 		blockReq: evtReq,
 		logFilter: eventLogRawFilter{
@@ -124,8 +148,8 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, rawOpts json.RawMessa
 	return recvr, nil
 }
 
-func (r *receiver) newVerifer(opts *VerifierOptions) (*Verifier, error) {
-	validators, err := r.cl.getValidatorsByHash(opts.ValidatorsHash)
+func (r *Receiver) newVerifier(opts *types.VerifierOptions) (*Verifier, error) {
+	validators, err := r.Client.GetValidatorsByHash(opts.ValidatorsHash)
 	if err != nil {
 		return nil, err
 	}
@@ -136,12 +160,12 @@ func (r *receiver) newVerifer(opts *VerifierOptions) (*Verifier, error) {
 			opts.ValidatorsHash.String(): validators,
 		},
 	}
-	header, err := r.cl.getBlockHeaderByHeight(int64(vr.next))
+	header, err := r.Client.GetBlockHeaderByHeight(vr.next)
 	if err != nil {
 		return nil, err
 	}
-	votes, err := r.cl.GetVotesByHeight(
-		&BlockHeightParam{Height: NewHexInt(vr.next)})
+	votes, err := r.Client.GetVotesByHeight(
+		&types.BlockHeightParam{Height: types.NewHexInt(vr.next)})
 	if err != nil {
 		return nil, err
 	}
@@ -155,161 +179,155 @@ func (r *receiver) newVerifer(opts *VerifierOptions) (*Verifier, error) {
 	return &vr, nil
 }
 
-func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
-	if height == vr.Next() {
+func (r *Receiver) syncVerifier(verifier *Verifier, height int64) error {
+	if height == verifier.Next() {
 		return nil
 	}
-	if vr.Next() > height {
+	if verifier.Next() > height {
 		return fmt.Errorf(
 			"invalid target height: verifier height (%d) > target height (%d)",
-			vr.Next(), height)
+			verifier.Next(), height)
 	}
 
-	type res struct {
-		Height         int64
-		Header         *BlockHeader
-		Votes          []byte
-		NextValidators []common.Address
-	}
+	r.log.WithFields(log.Fields{"height": verifier.Next(), "target": height}).Info("syncVerifier: start")
 
-	type req struct {
-		height int64
-		err    error
-		res    *res
-		retry  int64
-	}
-
-	r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Info("syncVerifier: start")
-
-	for vr.Next() < height {
-		rqch := make(chan *req, r.opts.SyncConcurrency)
-		for i := vr.Next(); len(rqch) < cap(rqch); i++ {
-			rqch <- &req{height: i}
+	for verifier.Next() < height {
+		requestCh := make(chan *request, r.opts.SyncConcurrency)
+		for i := verifier.Next(); len(requestCh) < cap(requestCh); i++ {
+			requestCh <- &request{height: i, retry: 3}
 		}
-		sres := make([]*res, 0, len(rqch))
-		for q := range rqch {
-			switch {
-			case q.err != nil:
-				if q.retry > 0 {
-					q.retry--
-					q.res, q.err = nil, nil
-					rqch <- q
-					continue
-				}
-				r.log.WithFields(log.Fields{
-					"height": q.height, "error": q.err.Error()}).Debug("syncVerifier: req error")
-				sres = append(sres, nil)
-				if len(sres) == cap(sres) {
-					close(rqch)
-				}
-			case q.res != nil:
-				sres = append(sres, q.res)
-				if len(sres) == cap(sres) {
-					close(rqch)
-				}
-			default:
-				go func(q *req) {
-					defer func() {
-						time.Sleep(500 * time.Millisecond)
-						rqch <- q
-					}()
-					if q.res == nil {
-						q.res = &res{}
-					}
-					q.res.Height = q.height
-					q.res.Header, q.err = r.cl.getBlockHeaderByHeight(q.height)
-					if q.err != nil {
-						q.err = errors.Wrapf(q.err, "syncVerifier: getBlockHeader: %v", q.err)
-						return
-					}
-					q.res.Votes, q.err = r.cl.GetVotesByHeight(
-						&BlockHeightParam{Height: NewHexInt(int64(q.height))})
-					if q.err != nil {
-						q.err = errors.Wrapf(q.err, "syncVerifier: GetVotesByHeight: %v", q.err)
-						return
-					}
-					if len(vr.Validators(q.res.Header.NextValidatorsHash)) == 0 {
-						q.res.NextValidators, q.err = r.cl.getValidatorsByHash(q.res.Header.NextValidatorsHash)
-						if q.err != nil {
-							q.err = errors.Wrapf(q.err, "syncVerifier: getValidatorsByHash: %v", q.err)
-							return
-						}
-					}
-				}(q)
-			}
-		}
+
+		responseCh := validateRequests(requestCh, r.Client, verifier, r.log)
+
 		// filter nil
-		_sres, sres := sres, sres[:0]
-		for _, v := range _sres {
-			if v != nil {
-				sres = append(sres, v)
+		_sres, responseCh := responseCh, responseCh[:0]
+		for _, resp := range _sres {
+			if resp != nil  && resp.err == nil {
+				responseCh = append(responseCh, resp)
 			}
 		}
+
 		// sort and forward notifications
-		if len(sres) > 0 {
-			sort.SliceStable(sres, func(i, j int) bool {
-				return sres[i].Height < sres[j].Height
+		if len(responseCh) > 0 {
+			sort.SliceStable(responseCh, func(i, j int) bool {
+				return responseCh[i].Height < responseCh[j].Height
 			})
-			for _, r := range sres {
-				if vr.Next() == r.Height {
-					ok, err := vr.Verify(r.Header, r.Votes)
+
+			for _, response := range responseCh {
+				if verifier.Next() == response.Height {
+					ok, err := verifier.Verify(response.Header, response.Votes)
 					if err != nil {
-						return errors.Wrapf(err, "syncVerifier: Verify: height=%d, error=%v", r.Height, err)
+						return errors.Wrapf(err, "syncVerifier: Verify: height=%d, error=%v", response.Height, err)
 					}
 					if !ok {
-						return fmt.Errorf("syncVerifier: invalid header: height=%d", r.Height)
+						return fmt.Errorf("syncVerifier: invalid header: height=%d", response.Height)
 					}
-					err = vr.Update(r.Header, r.NextValidators)
+
+					err = verifier.Update(response.Header, response.NextValidators)
 					if err != nil {
 						return errors.Wrapf(err, "syncVerifier: Update: %v", err)
 					}
 				}
 			}
-			r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Debug("syncVerifier: syncing")
+			r.log.WithFields(log.Fields{"height": verifier.Next(), "target": height}).Debug("syncVerifier: syncing")
 		}
 	}
 
-	r.log.WithFields(log.Fields{"height": vr.Next()}).Info("syncVerifier: complete")
+	r.log.WithFields(log.Fields{"height": verifier.Next()}).Info("syncVerifier: complete")
 	return nil
 }
 
-func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64, callback func(rs []*chain.Receipt) error) (err error) {
+func validateRequests(requestCh chan *request, client IClient, verifier IVerifier, logger log.Logger) []*response {
+	responseCh := make([]*response, 0, len(requestCh))
+
+	for req := range requestCh {
+		switch {
+			case req.err != nil:
+				if req.retry > 1 {
+					req.retry--
+					req.response, req.err = nil, nil
+					requestCh <- req
+					continue
+				}
+				logger.WithFields(log.Fields{"height": req.height, "error": req.err.Error()}).
+					Debug("syncVerifier: request error")
+
+				responseCh = append(responseCh, &response{err: req.err})
+				if len(responseCh) == cap(responseCh) {
+					close(requestCh)
+				}
+
+			case req.response != nil:
+				responseCh = append(responseCh, req.response)
+				if len(responseCh) == cap(responseCh) {
+					close(requestCh)
+				}
+
+			default:
+				go func(req *request) {
+					defer func() {
+						time.Sleep(500 * time.Millisecond)
+						requestCh <- req
+					}()
+					if req.response == nil {
+						req.response = &response{}
+					}
+					req.response.Height = req.height
+					req.response.Header, req.err = client.GetBlockHeaderByHeight(req.height)
+					if req.err != nil {
+						req.err = errors.Wrapf(req.err, "syncVerifier: block height: %v, getBlockHeader: %v", req.height, req.err)
+						return
+					}
+					req.response.Votes, req.err = client.GetVotesByHeight(
+						&types.BlockHeightParam{Height: types.NewHexInt(req.height)})
+					if req.err != nil {
+						req.err = errors.Wrapf(req.err, "syncVerifier: block height: %v, GetVotesByHeight: %v", req.height, req.err)
+						return
+					}
+					if len(verifier.Validators(req.response.Header.NextValidatorsHash)) == 0 {
+						req.response.NextValidators, req.err = client.GetValidatorsByHash(req.response.Header.NextValidatorsHash)
+						if req.err != nil {
+							req.err = errors.Wrapf(req.err, "syncVerifier: block height: %v, GetValidatorsByHash: %v", req.height, req.err)
+							return
+						}
+					}
+				}(req)
+		}
+	}
+
+	return responseCh
+}
+
+
+func (r *Receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64, callback func(rs []*chain.Receipt) error) (err error) {
 
 	blockReq, logFilter := r.blockReq, r.logFilter // copy
 
-	blockReq.Height, logFilter.seq = NewHexInt(int64(startHeight)), startSeq
+	blockReq.Height, logFilter.seq = types.NewHexInt(int64(startHeight)), startSeq
 
 	var vr *Verifier
 	if r.opts.Verifier != nil {
-		vr, err = r.newVerifer(r.opts.Verifier)
+		vr, err = r.newVerifier(r.opts.Verifier)
 		if err != nil {
 			return err
 		}
 	}
 
-	type res struct {
-		Height         int64
-		Hash           common.HexHash
-		Header         *BlockHeader
-		Votes          []byte
-		NextValidators []common.Address
-		Receipts       []*chain.Receipt
-	}
 
-	ech := make(chan error)                                       // error channel
-	rech := make(chan struct{}, 1)                                // reconnect channel
-	bnch := make(chan *BlockNotification, r.opts.SyncConcurrency) // block notification channel
-	brch := make(chan *res, cap(bnch))                            // block result channel
+	errorChannel := make(chan error)                                                 // error channel
+	reconnectChannel := make(chan struct{}, 1)                                       // reconnect channel
+	blockNotifChannel := make(chan *types.BlockNotification, r.opts.SyncConcurrency) // block notification channel
+	blockResultChannel := make(chan *receiverResponse, cap(blockNotifChannel))       // block result channel
 
 	reconnect := func() {
 		select {
-		case rech <- struct{}{}:
+		case reconnectChannel <- struct{}{}:
 		default:
 		}
-		for len(brch) > 0 || len(bnch) > 0 {
+		for len(blockResultChannel) > 0 || len(blockNotifChannel) > 0 {
 			select {
-			case <-brch: // clear block result channel
-			case <-bnch: // clear block notification channel
+			case <-blockResultChannel: // clear block result channel
+			case <-blockNotifChannel: // clear block notification channel
 			}
 		}
 	}
@@ -320,30 +338,33 @@ func (r *receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64
 	ctxMonitorBlock, cancelMonitorBlock := context.WithCancel(ctx)
 	reconnect()
 
+
 loop:
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 
-		case err := <-ech:
+		case err := <-errorChannel:
 			return err
 
-		case <-rech:
+		// reconnect channel
+		case <-reconnectChannel:
 			cancelMonitorBlock()
 			ctxMonitorBlock, cancelMonitorBlock = context.WithCancel(ctx)
+
+			var connectBlock = func(conn *websocket.Conn, v *types.BlockNotification) error {
+				if !errors.Is(ctx.Err(), context.Canceled) {
+					blockNotifChannel <- v
+				}
+				return nil
+			}
 
 			// start new monitor loop
 			go func(ctx context.Context, cancel context.CancelFunc) {
 				defer cancel()
-				blockReq.Height = NewHexInt(next)
-				err := r.cl.MonitorBlock(ctx, &blockReq,
-					func(conn *websocket.Conn, v *BlockNotification) error {
-						if !errors.Is(ctx.Err(), context.Canceled) {
-							bnch <- v
-						}
-						return nil
-					},
+				blockReq.Height = types.NewHexInt(next)
+				err := r.Client.MonitorBlock(ctx, &blockReq, connectBlock,
 					func(conn *websocket.Conn) {},
 					func(c *websocket.Conn, err error) {})
 				if err != nil {
@@ -353,14 +374,9 @@ loop:
 					time.Sleep(time.Second * 5)
 					reconnect()
 					r.log.WithFields(log.Fields{"error": err}).Error("reconnect: monitor block error")
-					// if websocket.IsUnexpectedCloseError(err) {
-					// 	reconnect() // unexpected error
-					// 	r.log.WithFields(log.Fields{"error": err}).Error("reconnect: monitor block error")
-					// } else if !errors.Is(err, context.Canceled) {
-					// 	ech <- err
-					// }
 				}
 			}(ctxMonitorBlock, cancelMonitorBlock)
+
 
 			// sync verifier
 			if vr != nil {
@@ -369,53 +385,21 @@ loop:
 				}
 			}
 
-		case br := <-brch:
-			for ; br != nil; next++ {
-				r.log.WithFields(log.Fields{"height": br.Height}).Debug("block notification")
+		case blockResponse := <-blockResultChannel:
 
-				if vr != nil {
-					ok, err := vr.Verify(br.Header, br.Votes)
-					if !ok || err != nil {
-						if err != nil {
-							r.log.WithFields(log.Fields{"height": br.Height, "error": err}).Error("receiveLoop: verification error")
-						} else if !ok {
-							r.log.WithFields(log.Fields{"height": br.Height, "hash": br.Hash}).Error("receiveLoop: invalid header")
-						}
-						reconnect() // reconnect websocket
-						r.log.WithFields(log.Fields{"height": br.Height, "hash": br.Hash}).Error("reconnect: verification failed")
-						break
-					}
-					if err := vr.Update(br.Header, br.NextValidators); err != nil {
-						return errors.Wrapf(err, "receiveLoop: update verifier: %v", err)
-					}
-				}
-				if err := callback(br.Receipts); err != nil {
-					return errors.Wrapf(err, "receiveLoop: callback: %v", err)
-				}
-				if br = nil; len(brch) > 0 {
-					br = <-brch
-				}
+			processBlockResult(blockResponse, vr, &next, reconnect,  callback, blockResultChannel, r.log)
+			if err != nil{
+				panic(err)
 			}
+
 		default:
 			select {
 			default:
-			case bn := <-bnch:
+			case blockNotif := <-blockNotifChannel:
 
-				type req struct {
-					height  int64
-					hash    HexBytes
-					indexes [][]HexInt
-					events  [][][]HexInt
-
-					retry int
-
-					err error
-					res *res
-				}
-
-				qch := make(chan *req, cap(bnch))
-				for i := int64(0); bn != nil; i++ {
-					height, err := bn.Height.Value()
+				requestCh := make(chan *receiverRequest, cap(blockNotifChannel))
+				for i := int64(0); blockNotif != nil; i++ {
+					height, err := blockNotif.Height.Value()
 					if err != nil {
 						panic(err)
 					} else if height != next+i {
@@ -425,188 +409,43 @@ loop:
 						reconnect()
 						continue loop
 					}
-					qch <- &req{
+					requestCh <- &receiverRequest{
 						height:  height,
-						hash:    bn.Hash,
-						indexes: bn.Indexes,
-						events:  bn.Events,
+						hash:    blockNotif.Hash,
+						indexes: blockNotif.Indexes,
+						events:  blockNotif.Events,
 						retry:   RPCCallRetry,
-					} // fill qch with requests
-					if bn = nil; len(bnch) > 0 && len(qch) < cap(qch) {
-						bn = <-bnch
+					} // fill requestCh with requests
+					if blockNotif = nil; len(blockNotifChannel) > 0 && len(requestCh) < cap(requestCh) {
+						blockNotif = <-blockNotifChannel
 					}
 				}
 
-				brs := make([]*res, 0, len(qch))
-				for q := range qch {
+				brs := make([]*receiverResponse, 0, len(requestCh))
+				for request := range requestCh {
 					switch {
-					case q.err != nil:
-						if q.retry > 0 {
-							q.retry--
-							q.res, q.err = nil, nil
-							qch <- q
+					case request.err != nil:
+						if request.retry > 0 {
+							request.retry--
+							request.res, request.err = nil, nil
+							requestCh <- request
 							continue
 						}
-						r.log.WithFields(log.Fields{"height": q.height, "error": q.err}).Debug("receiveLoop: req error")
+						r.log.WithFields(log.Fields{"height": request.height, "error": request.err}).Debug("receiveLoop: request error")
 						brs = append(brs, nil)
 						if len(brs) == cap(brs) {
-							close(qch)
+							close(requestCh)
 						}
 
-					case q.res != nil:
-						brs = append(brs, q.res)
+					case request.res != nil:
+						brs = append(brs, request.res)
 						if len(brs) == cap(brs) {
-							close(qch)
+							close(requestCh)
 						}
 
 					default:
-						go func(q *req) {
-							defer func() {
-								time.Sleep(500 * time.Millisecond)
-								qch <- q
-							}()
-							if q.res == nil {
-								q.res = &res{}
-							}
-							q.res.Height = q.height
-							q.res.Hash, q.err = q.hash.Value()
-							if q.err != nil {
-								q.err = errors.Wrapf(q.err,
-									"invalid hash: height=%v, hash=%v, %v", q.height, q.hash, q.err)
-								return
-							}
+						go requestProcessor(request, requestCh, vr, r.Client, logFilter, r.log)
 
-							q.res.Header, q.err = r.cl.getBlockHeaderByHeight(q.height)
-							if q.err != nil {
-								q.err = errors.Wrapf(q.err, "getBlockHeader: %v", q.err)
-								return
-							}
-							// fetch votes, next validators only if verifier exists
-							if vr != nil {
-								q.res.Votes, q.err = r.cl.GetVotesByHeight(
-									&BlockHeightParam{Height: NewHexInt(int64(q.height))})
-								if q.err != nil {
-									q.err = errors.Wrapf(q.err, "GetVotesByHeight: %v", q.err)
-									return
-								}
-								if len(vr.Validators(q.res.Header.NextValidatorsHash)) == 0 {
-									q.res.NextValidators, q.err = r.cl.getValidatorsByHash(q.res.Header.NextValidatorsHash)
-									if q.err != nil {
-										q.err = errors.Wrapf(q.err, "getValidatorsByHash: %v", q.err)
-										return
-									}
-								}
-							}
-
-							if len(q.indexes) > 0 && len(q.events) > 0 {
-								var hr BlockHeaderResult
-								_, err := codec.RLP.UnmarshalFromBytes(q.res.Header.Result, &hr)
-								if q.err != nil {
-									q.err = errors.Wrapf(q.err, "BlockHeaderResult.UnmarshalFromBytes: %v", err)
-									return
-								}
-								for i, index := range q.indexes[0] {
-									p := &ProofEventsParam{
-										Index:     index,
-										BlockHash: q.hash,
-										Events:    q.events[0][i],
-									}
-									proofs, err := r.cl.GetProofForEvents(p)
-									if err != nil {
-										q.err = errors.Wrapf(err, "GetProofForEvents: %v", err)
-										return
-									}
-									if len(proofs) != 1+len(p.Events) { // num_receipt + num_events
-										q.err = errors.Wrapf(q.err,
-											"Proof does not include all events: len(proofs)=%d, expected=%d",
-											len(proofs), len(p.Events)+1,
-										)
-										return
-									}
-
-									// Processing receipt index
-									serializedReceipt, err := mptProve(index, proofs[0], hr.ReceiptHash)
-									if err != nil {
-										q.err = errors.Wrapf(err, "MPTProve Receipt: %v", err)
-										return
-									}
-									var result TxResult
-									_, err = codec.RLP.UnmarshalFromBytes(serializedReceipt, &result)
-									if err != nil {
-										q.err = errors.Wrapf(err, "Unmarshal Receipt: %v", err)
-										return
-									}
-
-									idx, _ := index.Value()
-									receipt := &chain.Receipt{
-										Index:  uint64(idx),
-										Height: uint64(q.height),
-									}
-									for j := 0; j < len(p.Events); j++ {
-										// nextEP is pointer to event where sequence has caught up
-										serializedEventLog, err := mptProve(
-											p.Events[j], proofs[j+1], common.HexBytes(result.EventLogsHash))
-										if err != nil {
-											q.err = errors.Wrapf(err, "event.MPTProve: %v", err)
-											return
-										}
-										var el EventLog
-										_, err = codec.RLP.UnmarshalFromBytes(serializedEventLog, &el)
-										if err != nil {
-											q.err = errors.Wrapf(err, "event.UnmarshalFromBytes: %v", err)
-											return
-										}
-
-										if bytes.Equal(el.Addr, logFilter.addr) &&
-											bytes.Equal(el.Indexed[EventIndexSignature], logFilter.signature) &&
-											bytes.Equal(el.Indexed[EventIndexNext], logFilter.next) {
-											var seqGot common.HexInt
-											seqGot.SetBytes(el.Indexed[EventIndexSequence])
-											evt := &chain.Event{
-												Next:     chain.BTPAddress(el.Indexed[EventIndexNext]),
-												Sequence: seqGot.Uint64(),
-												Message:  el.Data[0],
-											}
-											receipt.Events = append(receipt.Events, evt)
-										} else {
-											if !bytes.Equal(el.Addr, logFilter.addr) {
-												r.log.WithFields(log.Fields{
-													"height":   q.height,
-													"got":      common.HexBytes(el.Addr),
-													"expected": common.HexBytes(logFilter.addr)}).Error("invalid event: cannot match addr")
-											}
-											if !bytes.Equal(el.Indexed[EventIndexSignature], logFilter.signature) {
-												r.log.WithFields(log.Fields{
-													"height":   q.height,
-													"got":      common.HexBytes(el.Indexed[EventIndexSignature]),
-													"expected": common.HexBytes(logFilter.signature)}).Error("invalid event: cannot match sig")
-											}
-											if !bytes.Equal(el.Indexed[EventIndexNext], logFilter.next) {
-												r.log.WithFields(log.Fields{
-													"height":   q.height,
-													"got":      common.HexBytes(el.Indexed[EventIndexNext]),
-													"expected": common.HexBytes(logFilter.next)}).Error("invalid event: cannot match next")
-											}
-											q.err = errors.New("invalid event")
-											return
-										}
-									}
-									if len(receipt.Events) > 0 {
-										if len(receipt.Events) == len(p.Events) {
-											q.res.Receipts = append(q.res.Receipts, receipt)
-										} else {
-											r.log.WithFields(log.Fields{
-												"height":              q.height,
-												"receipt_index":       index,
-												"got_num_events":      len(receipt.Events),
-												"expected_num_events": len(p.Events)}).Error("failed to verify all events for the receipt")
-											q.err = errors.New("failed to verify all events for the receipt")
-											return
-										}
-									}
-								}
-							}
-						}(q)
 					}
 				}
 				// filter nil
@@ -622,8 +461,8 @@ loop:
 						return brs[i].Height < brs[j].Height
 					})
 					for i, d := range brs {
-						if d.Height == int64(next)+int64(i) {
-							brch <- d
+						if d.Height == next+int64(i) {
+							blockResultChannel <- d
 						}
 					}
 				}
@@ -633,7 +472,199 @@ loop:
 
 }
 
-func (r *receiver) Subscribe(
+func requestProcessor(request *receiverRequest, requestCh chan *receiverRequest, vr IVerifier, client IClient, logFilter eventLogRawFilter, logger log.Logger)  {
+	defer func() {
+		time.Sleep(500 * time.Millisecond)
+		requestCh <- request
+	}()
+
+	if request.res == nil {
+		request.res = &receiverResponse{}
+	}
+	request.res.Height = request.height
+	request.res.Hash, request.err = request.hash.Value()
+	if request.err != nil {
+		request.err = errors.Wrapf(request.err,
+			"invalid hash: height=%v, hash=%v, %v", request.height, request.hash, request.err)
+		return
+	}
+
+	request.res.Header, request.err = client.GetBlockHeaderByHeight(request.height)
+	if request.err != nil {
+		request.err = errors.Wrapf(request.err, "getBlockHeader: %v", request.err)
+		return
+	}
+	// fetch votes, next validators only if verifier exists
+	if vr != nil {
+		request.res.Votes, request.err = client.GetVotesByHeight(
+			&types.BlockHeightParam{Height: types.NewHexInt(request.height)})
+		if request.err != nil {
+			request.err = errors.Wrapf(request.err, "GetVotesByHeight: %v", request.err)
+			return
+		}
+		if len(vr.Validators(request.res.Header.NextValidatorsHash)) == 0 {
+			request.res.NextValidators, request.err = client.GetValidatorsByHash(request.res.Header.NextValidatorsHash)
+			if request.err != nil {
+				request.err = errors.Wrapf(request.err, "GetValidatorsByHash: %v", request.err)
+				return
+			}
+		}
+	}
+
+	if len(request.indexes) > 0 && len(request.events) > 0 {
+		var hr BlockHeaderResult
+		_, err := codec.RLP.UnmarshalFromBytes(request.res.Header.Result, &hr)
+		if err != nil {
+			request.err = errors.Wrapf(err, "BlockHeaderResult.UnmarshalFromBytes: %v", request.err)
+			return
+		}
+		for i, index := range request.indexes[0] {
+			p := &types.ProofEventsParam{
+				Index:     index,
+				BlockHash: request.hash,
+				Events:    request.events[0][i],
+			}
+			proofs, err := client.GetProofForEvents(p)
+			if err != nil {
+				request.err = errors.Wrapf(err, "GetProofForEvents: %v", err)
+				return
+			}
+
+			if len(proofs) != 1+len(p.Events) { // num_receipt + num_events
+				var err error
+				if request.err != nil {
+					err = request.err
+				} else {
+					err = errors.New("Proof does not include all events")
+				}
+
+				request.err = errors.Wrapf(err,
+					"Proof does not include all events: len(proofs)=%d, expected=%d",
+					len(proofs), len(p.Events)+1)
+				return
+			}
+
+			// Processing receipt index
+			serializedReceipt, err := mptProve(index, proofs[0], hr.ReceiptHash)
+			if err != nil {
+				request.err = errors.Wrapf(err, "MPTProve Receipt: %v", err)
+				return
+			}
+			var result TxResult
+			_, err = codec.RLP.UnmarshalFromBytes(serializedReceipt, &result)
+			if err != nil {
+				request.err = errors.Wrapf(err, "Unmarshal Receipt: %v", err)
+				return
+			}
+
+			idx, _ := index.Value()
+			receipt := &chain.Receipt{
+				Index:  uint64(idx),
+				Height: uint64(request.height),
+			}
+			for j := 0; j < len(p.Events); j++ {
+				// nextEP is pointer to event where sequence has caught up
+				serializedEventLog, err := mptProve(
+					p.Events[j], proofs[j+1], common.HexBytes(result.EventLogsHash))
+				if err != nil {
+					request.err = errors.Wrapf(err, "event.MPTProve: %v", err)
+					return
+				}
+				var el types.EventLog
+				_, err = codec.RLP.UnmarshalFromBytes(serializedEventLog, &el)
+				if err != nil {
+					request.err = errors.Wrapf(err, "event.UnmarshalFromBytes: %v", err)
+					return
+				}
+
+				if bytes.Equal(el.Addr, logFilter.addr) &&
+					bytes.Equal(el.Indexed[EventIndexSignature], logFilter.signature) &&
+					bytes.Equal(el.Indexed[EventIndexNext], logFilter.next) {
+					var seqGot common.HexInt
+					seqGot.SetBytes(el.Indexed[EventIndexSequence])
+					evt := &chain.Event{
+						Next:     chain.BTPAddress(el.Indexed[EventIndexNext]),
+						Sequence: seqGot.Uint64(),
+						Message:  el.Data[0],
+					}
+					receipt.Events = append(receipt.Events, evt)
+				} else {
+					if !bytes.Equal(el.Addr, logFilter.addr) {
+						logger.WithFields(log.Fields{
+							"height":   request.height,
+							"got":      common.HexBytes(el.Addr),
+							"expected": common.HexBytes(logFilter.addr)}).Error("invalid event: cannot match addr")
+					}
+					if !bytes.Equal(el.Indexed[EventIndexSignature], logFilter.signature) {
+						logger.WithFields(log.Fields{
+							"height":   request.height,
+							"got":      common.HexBytes(el.Indexed[EventIndexSignature]),
+							"expected": common.HexBytes(logFilter.signature)}).Error("invalid event: cannot match sig")
+					}
+					if !bytes.Equal(el.Indexed[EventIndexNext], logFilter.next) {
+						logger.WithFields(log.Fields{
+							"height":   request.height,
+							"got":      common.HexBytes(el.Indexed[EventIndexNext]),
+							"expected": common.HexBytes(logFilter.next)}).Error("invalid event: cannot match next")
+					}
+					request.err = errors.New("invalid event")
+					return
+				}
+			}
+			if len(receipt.Events) > 0 {
+				if len(receipt.Events) == len(p.Events) {
+					request.res.Receipts = append(request.res.Receipts, receipt)
+				} else {
+					logger.WithFields(log.Fields{
+						"height":              request.height,
+						"receipt_index":       index,
+						"got_num_events":      len(receipt.Events),
+						"expected_num_events": len(p.Events)}).Error("failed to verify all events for the receipt")
+					request.err = errors.New("failed to verify all events for the receipt")
+					return
+				}
+			}
+		}
+	}
+}
+
+
+func processBlockResult(blockResponse *receiverResponse, vr IVerifier, next *int64,
+	reconnect func(), callback func(rs []*chain.Receipt) error,
+	blockResultChannel chan *receiverResponse, logger log.Logger) error {
+
+	for ; blockResponse != nil; *next++ {
+		log.WithFields(log.Fields{"height": blockResponse.Height}).Debug("block notification")
+
+		if vr != nil {
+			ok, err := vr.Verify(blockResponse.Header, blockResponse.Votes)
+			if !ok || err != nil {
+				if err != nil {
+					logger.WithFields(log.Fields{"height": blockResponse.Height, "error": err}).Error("receiveLoop: verification error")
+				} else if !ok {
+					logger.WithFields(log.Fields{"height": blockResponse.Height, "hash": blockResponse.Hash}).Error("receiveLoop: invalid header")
+				}
+
+				reconnect() // reconnect websocket
+				logger.WithFields(log.Fields{"height": blockResponse.Height, "hash": blockResponse.Hash}).Error("reconnect: verification failed")
+				break
+			}
+			if err := vr.Update(blockResponse.Header, blockResponse.NextValidators); err != nil {
+				return errors.Wrapf(err, "receiveLoop: update verifier: %v", err)
+			}
+		}
+		if err := callback(blockResponse.Receipts); err != nil {
+			return errors.Wrapf(err, "receiveLoop: callback: %v", err)
+		}
+		if blockResponse = nil; len(blockResultChannel) > 0 {
+			blockResponse = <-blockResultChannel
+		}
+	}
+
+	return nil
+}
+
+func (r *Receiver) Subscribe(
 	ctx context.Context, msgCh chan<- *chain.Message,
 	opts chain.SubscribeOptions) (errCh <-chan error, err error) {
 
