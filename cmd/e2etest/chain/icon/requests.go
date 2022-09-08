@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"math/big"
 	"strings"
 	"time"
@@ -63,14 +64,14 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 		return
 	}
 
-	param := icon.TransactionParam{
-		Version:     icon.NewHexInt(icon.JsonrpcApiVersion),
-		ToAddress:   icon.Address(contractAddress),
-		Value:       icon.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
-		FromAddress: icon.Address(senderWallet.Address().String()),
-		StepLimit:   icon.NewHexInt(r.stepLimit),
-		Timestamp:   icon.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
-		NetworkID:   icon.HexInt(r.networkID),
+	param := types.TransactionParam{
+		Version:     types.NewHexInt(types.JsonrpcApiVersion),
+		ToAddress:   types.Address(contractAddress),
+		Value:       types.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
+		FromAddress: types.Address(senderWallet.Address().String()),
+		StepLimit:   types.NewHexInt(r.stepLimit),
+		Timestamp:   types.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
+		NetworkID:   types.HexInt(r.networkID),
 		DataType:    "call",
 	}
 	argMap := map[string]interface{}{}
@@ -97,8 +98,8 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 }
 
 func (r *requestAPI) callContract(contractAddress string, args map[string]interface{}, method string) (interface{}, error) {
-	param := &icon.CallParam{
-		ToAddress: icon.Address(contractAddress),
+	param := &types.CallParam{
+		ToAddress: types.Address(contractAddress),
 		DataType:  "call",
 	}
 	argMap := map[string]interface{}{}
@@ -138,14 +139,14 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
 	}
-	param := icon.TransactionParam{
-		Version:     icon.NewHexInt(icon.JsonrpcApiVersion),
-		ToAddress:   icon.Address(recepientAddress),
-		Value:       icon.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
-		FromAddress: icon.Address(senderWallet.Address().String()),
-		StepLimit:   icon.NewHexInt(r.stepLimit),
-		Timestamp:   icon.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
-		NetworkID:   icon.HexInt(r.networkID),
+	param := types.TransactionParam{
+		Version:     types.NewHexInt(types.JsonrpcApiVersion),
+		ToAddress:   types.Address(recepientAddress),
+		Value:       types.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
+		FromAddress: types.Address(senderWallet.Address().String()),
+		StepLimit:   types.NewHexInt(r.stepLimit),
+		Timestamp:   types.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
+		NetworkID:   types.HexInt(r.networkID),
 	}
 	if err = SignTransactionParam(senderWallet, &param); err != nil {
 		err = errors.Wrap(err, "SignTransactionParam ")
@@ -420,14 +421,14 @@ func (r *requestAPI) getNativeCoinBalance(coinName, addr string) (bal *chain.Coi
 	zeroBalance := big.NewInt(0)
 	bal = &chain.CoinBalance{UsableBalance: zeroBalance, RefundableBalance: zeroBalance, LockedBalance: zeroBalance, UserBalance: new(big.Int)}
 	// Native
-	bal.UserBalance, err = r.cl.GetBalance(&icon.AddressParam{Address: icon.Address(addr)})
+	bal.UserBalance, err = r.cl.GetBalance(&types.AddressParam{Address: types.Address(addr)})
 	if err != nil {
 		return nil, errors.Wrapf(err, "%v", err)
 	}
 	return
 }
 
-func SignTransactionParam(wallet module.Wallet, param *icon.TransactionParam) error {
+func SignTransactionParam(wallet module.Wallet, param *types.TransactionParam) error {
 	js, err := json.Marshal(param)
 	if err != nil {
 		return errors.Wrap(err, "jsonMarshal ")

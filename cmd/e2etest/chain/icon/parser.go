@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"math/big"
 	"strings"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"
 	"github.com/icon-project/icon-bridge/common"
 )
 
@@ -43,7 +43,7 @@ func (p *parser) ParseTxn(log *TxnEventLog) (resLog interface{}, eventType chain
 	return
 }
 
-func (p *parser) Parse(log *icon.EventLog) (resLog interface{}, eventType chain.EventLogType, err error) {
+func (p *parser) Parse(log *types.EventLog) (resLog interface{}, eventType chain.EventLogType, err error) {
 	eventName := strings.Split(string(log.Indexed[0]), "(")
 	eventType = chain.EventLogType(strings.TrimSpace(eventName[0]))
 	if eventType == chain.TransferStart {
@@ -73,7 +73,7 @@ func rlpDecodeHex(str string, out interface{}) error {
 	return nil
 }
 
-func parseTransferStart(log *icon.EventLog) (*chain.TransferStartEvent, error) {
+func parseTransferStart(log *types.EventLog) (*chain.TransferStartEvent, error) {
 	if len(log.Data) != 3 {
 		return nil, fmt.Errorf("Unexpected length of log.Data. Got %d. Expected 3", len(log.Data))
 	}
@@ -109,7 +109,7 @@ func parseTransferStart(log *icon.EventLog) (*chain.TransferStartEvent, error) {
 	return ts, nil
 }
 
-func parseTransferReceived(log *icon.EventLog) (*chain.TransferReceivedEvent, error) {
+func parseTransferReceived(log *types.EventLog) (*chain.TransferReceivedEvent, error) {
 	if len(log.Data) != 2 || len(log.Indexed) != 3 {
 		return nil, fmt.Errorf("Unexpected length. Got %v and %v. Expected 2 and 3", len(log.Data), len(log.Indexed))
 	}
@@ -140,7 +140,7 @@ func parseTransferReceived(log *icon.EventLog) (*chain.TransferReceivedEvent, er
 	return ts, nil
 }
 
-func parseTransferEnd(log *icon.EventLog) (*chain.TransferEndEvent, error) {
+func parseTransferEnd(log *types.EventLog) (*chain.TransferEndEvent, error) {
 	var sn common.HexInt
 	sn.SetBytes(log.Data[0])
 

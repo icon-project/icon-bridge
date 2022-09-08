@@ -3,6 +3,7 @@ package icon
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"strings"
 	"testing"
 
@@ -24,15 +25,15 @@ func NewSampleTestVerifier() *Verifier {
 	}
 }
 
-func getCommitVoteItem(ts int64, sig string) commitVoteItem {
-	cv := commitVoteItem{Timestamp: ts}
+func getCommitVoteItem(ts int64, sig string) types.CommitVoteItem {
+	cv := types.CommitVoteItem{Timestamp: ts}
 	_sig, _ := json.Marshal(sig)
 	cv.Signature.UnmarshalJSON([]byte(_sig))
 	return cv
 }
 
-func getSampleHeader() *BlockHeader {
-	var header BlockHeader
+func getSampleHeader() *types.BlockHeader {
+	var header types.BlockHeader
 	json.Unmarshal([]byte(`{"Version":2,"Height":50000001,"Timestamp":1652523322961762,"Proposer":"AIFxnc/o9YygcES3vt5Jzs1h+b0/","PrevID":"wJ4ZEWkntBrtt1OXVElzQXqoBayMNTYsL/I8W2SoddY=","VotesHash":"ZxdjQqB1gvmvbHH+G3USOa/9dpplfkym2+0zVwipmj4=","NextValidatorsHash":"NNSrQ/c1H6uX+TvHLS4CyCOwinxGnF2m7wHM3ZH4gfQ=","PatchTransactionsHash":null,"NormalTransactionsHash":"dZOh1mazDheqYZHXv2d9VW8WYGAZzDlwlSQ9HPnRR6o=","LogsBloom":"AQAgcEgsGg8DBEEAMIhsOh8QAEKiMGicUi8YjMHIEagcBA==","Result":"+M6gTDv1XbPHjPnCiT5Pz9kY9QfB7W+j2pjJxIVZ0/BMN5r4AKBQAFawZ+KCE9Yavl66ZIKKnDnfGS672n662//Rvi8gQ7iI+IagcwNDeKHFwzcfmUzXMozEqoqim/Kn/K9xfaMiWK2agi2gVy3PwnfzQ/w2CqBXdUPZq6avi9EqIiuupnDSBLCwS7b4AKDXVDsjgbWsLdJWrXY0tDrnq5xw07gCTkjVTMjV1cUz/6C9MDzp0VE5J3q8nZFNKlV5nFeNeZBl1ZEb5aT776wH5w=="}`), &header)
 	return &header
 }
@@ -45,14 +46,14 @@ func getSampleValidators() []common.Address {
 	}
 }
 
-func getSampleCommitVoteList() *commitVoteList {
-	cvl := commitVoteList{
+func getSampleCommitVoteList() *types.CommitVoteList {
+	cvl := types.CommitVoteList{
 		Round: 0,
-		BlockPartSetID: &PartSetID{
+		BlockPartSetID: &types.PartSetID{
 			Count: 1,
 			Hash:  ethc.Hex2Bytes("3b27a2dea9d1e8ecd1c94ff723f9efe8ed79e54f0708fa459a57148ff2aab3f1"),
 		},
-		Items: []commitVoteItem{
+		Items: []types.CommitVoteItem{
 			getCommitVoteItem(1652523324922454, "5QIv0HrkyBU0wqqy/f6HFhPiCbqf9GK11z46LyrL9WAQD25TZdthyZfJXd4B3+4eIMxzW4i5oXicbD6+UtbtWQE="),
 			getCommitVoteItem(1652523324864943, "weofhyea6ixet/a1sKH986dRgYRoQZ6PxA9is90eIuJ/036poH3Hj28PtCKJ2ayWikbjkIYhpkBxFegnIkLnMgA="),
 			getCommitVoteItem(1652523324882445, "ocjI0SOiMpd3ZCDWAmPqAyqaRZK4zi5A3cg9y4OFC8Ft/4H5Gkpfc2fCSkvzJMva0rPvUNLjgnyWUyKiUWILhgE="),
@@ -62,25 +63,25 @@ func getSampleCommitVoteList() *commitVoteList {
 }
 
 func TestNextValidatorHash(t *testing.T) {
-	raw := HexBytes("0xf86e950038f35eff5e5516b48a713fe3c8031c94124191f09500f526cc053c33a7c3a48b70111834cf3a71609f0c950014d4c29c4bd2bb2cc79f1284d7b6a403ad6a677a950024791b621e1f25bbac71e2bab8294ff38294a2c69500ed5f818ba1486f996b92cf02db32e4920bfc095f")
+	raw := types.HexBytes("0xf86e950038f35eff5e5516b48a713fe3c8031c94124191f09500f526cc053c33a7c3a48b70111834cf3a71609f0c950014d4c29c4bd2bb2cc79f1284d7b6a403ad6a677a950024791b621e1f25bbac71e2bab8294ff38294a2c69500ed5f818ba1486f996b92cf02db32e4920bfc095f")
 	data, err := raw.Value()
 	require.NoError(t, err, "failed to decode raw")
 
-	rawh := HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b")
+	rawh := types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b")
 	hash, err := rawh.Value()
 	require.NoError(t, err, "failed to decode rawh")
 
 	h := crypto.SHA3Sum256(data)
 	require.Equal(t, hash, h, "hash should match")
 
-	fmt.Println(NewHexBytes(h))
+	fmt.Println(types.NewHexBytes(h))
 }
 
 func TestVerifierSufficientVotes(t *testing.T) {
 	h := getSampleHeader()
 	vr := NewSampleTestVerifier()
 	cvl := getSampleCommitVoteList()
-	cvl.Items = cvl.Items[:2]
+	//cvl.Items = cvl.Items[:2]
 
 	rawVotes, err := codec.BC.MarshalToBytes(cvl)
 	require.NoError(t, err)
@@ -95,7 +96,7 @@ func TestVerifierVotesDecodeError(t *testing.T) {
 	h := getSampleHeader()
 	vr := NewSampleTestVerifier()
 
-	rawVotes := []byte("impossible serialize in to the vote object")
+	rawVotes := []byte("impossible serialize in to the Vote object")
 
 	ok, err := vr.Verify(h, rawVotes)
 
@@ -141,7 +142,7 @@ func TestVerifierWhenInvalidAddress(t *testing.T) {
 	h := getSampleHeader()
 	vr := NewSampleTestVerifier()
 	cvl := getSampleCommitVoteList()
-	cvl.Items = []commitVoteItem{
+	cvl.Items = []types.CommitVoteItem{
 			getCommitVoteItem(1652523324922454, ""),
 			getCommitVoteItem(1652523324922454, ""),
 			getCommitVoteItem(1652523324922454, ""),
@@ -219,7 +220,7 @@ func TestVerifierMinimumRequiredValidators(t *testing.T) {
 
 func TestVerifier_Update(t *testing.T) {
 	vr := NewSampleTestVerifier()
-	blockHeaderNew := BlockHeader{
+	blockHeaderNew := types.BlockHeader{
 		NextValidatorsHash : []byte("New"),
 		Height: 1000,
 	}
