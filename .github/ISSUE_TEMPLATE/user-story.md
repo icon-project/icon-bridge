@@ -1,8 +1,8 @@
 ---
 name: User Story
 about: Describe a user story
-title: ''
-labels: story
+title: '<type>(<scope>): <subject>'
+labels: draft, story
 assignees: ''
 
 ---
