@@ -40,9 +40,9 @@ func TestNearReceiver(t *testing.T) {
 						})
 						assert.True(f, Ok)
 
-						err = receiver.receiveBlocks(input.Offset, func(block *types.Block) {
-							if expected.Height == uint64(block.Height()) {
-								assert.Equal(f, expected.Hash, block.Hash().Base58Encode())
+						err = receiver.receiveBlocks(input.Offset, input.Source.ContractAddress(), func(blockNotification *types.BlockNotification) {
+							if expected.Height == uint64(blockNotification.Offset()) {
+								assert.Equal(f, expected.Hash, blockNotification.Block().Hash().Base58Encode())
 
 								receiver.StopReceivingBlocks()
 							}
