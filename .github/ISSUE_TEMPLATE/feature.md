@@ -16,9 +16,10 @@ Why the feature is necessary.
 ## Stories
 Link stories here
 
-## Tests
-Link tests here
+## Test Scenarios
+Link test scenarios here
 
 ## Acceptance Criteria
 
-- All associated user stories and tests acceptance criteria are passed
+- All associated user stories and test scenarios acceptance criteria are passed
+- Additional feature requirements listed here
