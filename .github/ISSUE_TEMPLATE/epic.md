@@ -13,5 +13,10 @@ Brief summary of what this Epic is, whether it's a larger project, goal, or user
 ## Rationale
 Describe why this Epic is needed.
 
+## Features
+Link associated features here
+
 ## Acceptance Criteria
-Define what is needed to consider this epic complete.
+
+- All associated features acceptance criteria are passed
+- Additional requirements listed here
