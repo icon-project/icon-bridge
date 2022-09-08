@@ -13,5 +13,12 @@ A clear and concise description of what the feature is.
 ## Rationale
 Why the feature is necessary.
 
+## Stories
+Link stories here
+
+## Tests
+Link tests here
+
 ## Acceptance Criteria
-List of requirements to be considered complete.
+
+- All associated user stories and tests acceptance criteria are passed
