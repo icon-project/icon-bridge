@@ -85,14 +85,14 @@ type Verifier struct {
 
 func (vr *Verifier) Next() int64 { return vr.next }
 
-func (vr *Verifier) Verify(h *BlockHeader, votes []byte) (ok bool, err error) {
+func (vr *Verifier) Verify(blockHeader *BlockHeader, votes []byte) (ok bool, err error) {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
 
-	nvh := vr.nextValidatorsHash
-	listValidators, ok := vr.validators[nvh.String()]
+	nextValidatorsHash := vr.nextValidatorsHash
+	listValidators, ok := vr.validators[nextValidatorsHash.String()]
 	if !ok {
-		return false, fmt.Errorf("no validators for hash=%v", nvh)
+		return false, fmt.Errorf("no validators for hash=%v", nextValidatorsHash)
 	}
 
 	requiredVotes := (2 * len(listValidators)) / 3
@@ -106,11 +106,11 @@ func (vr *Verifier) Verify(h *BlockHeader, votes []byte) (ok bool, err error) {
 		return false, fmt.Errorf("invalid votes: %v; err=%v", common.HexBytes(votes), err)
 	}
 
-	hash := crypto.SHA3Sum256(codec.BC.MustMarshalToBytes(h))
+	hash := crypto.SHA3Sum256(codec.BC.MustMarshalToBytes(blockHeader))
 	vote := &vote{
 		voteBase: voteBase{
 			_HR: _HR{
-				Height: h.Height,
+				Height: blockHeader.Height,
 				Round:  cvl.Round,
 			},
 			Type:           VoteTypePrecommit,
@@ -147,22 +147,24 @@ func (vr *Verifier) Verify(h *BlockHeader, votes []byte) (ok bool, err error) {
 	return false, fmt.Errorf("insufficient votes")
 }
 
-func (vr *Verifier) Update(h *BlockHeader, nextValidators []common.Address) (err error) {
+func (vr *Verifier) Update(blockHeader *BlockHeader, nextValidators []common.Address) (err error) {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
-	nvh := common.HexBytes(h.NextValidatorsHash)
-	if _, ok := vr.validators[nvh.String()]; !ok {
-		vr.validators[nvh.String()] = nextValidators
+	nextValidatorsHash := common.HexBytes(blockHeader.NextValidatorsHash)
+
+	if _, ok := vr.validators[nextValidatorsHash.String()]; !ok {
+		vr.validators[nextValidatorsHash.String()] = nextValidators
 	}
-	vr.next = h.Height + 1
-	vr.nextValidatorsHash = h.NextValidatorsHash
+
+	vr.next = blockHeader.Height + 1
+	vr.nextValidatorsHash = blockHeader.NextValidatorsHash
 	return nil
 }
 
-func (vr *Verifier) Validators(nvh common.HexBytes) []common.Address {
+func (vr *Verifier) Validators(nextValidatorsHash common.HexBytes) []common.Address {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
-	validators, ok := vr.validators[nvh.String()]
+	validators, ok := vr.validators[nextValidatorsHash.String()]
 	if ok {
 		return validators
 	}

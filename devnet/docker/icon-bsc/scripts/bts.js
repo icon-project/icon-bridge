@@ -21,6 +21,16 @@ module.exports = async function (callback) {
             tx = await btsCore.addOwner(argv.addr)
             console.log(tx)
             break;
+        case "removeOwner":
+            console.log("Remove bts owner ", argv.addr)
+            tx = await btsCore.removeOwner(argv.addr)
+            console.log(tx)
+            break;
+        case "getOwners":
+            console.log("Fetch current bts owners ")
+            tx = await btsCore.getOwners()
+            console.log("BTS Contract owners are: ",tx)
+            break;
         case "isOwner":
             console.log("Addr ", argv.addr)
             tx = await btsCore.isOwner(argv.addr)
