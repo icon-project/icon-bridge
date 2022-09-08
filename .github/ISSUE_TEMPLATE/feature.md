@@ -2,7 +2,7 @@
 name: Feature
 about: Describes a planned feature
 title: ''
-labels: ''
+labels: 'draft, feature :rocket:'
 assignees: ''
 
 ---
