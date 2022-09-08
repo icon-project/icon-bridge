@@ -2,7 +2,7 @@
 name: Epic
 about: Describes a planned epic
 title: ''
-labels: epic
+labels: draft, epic
 assignees: ''
 
 ---
