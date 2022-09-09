@@ -592,7 +592,7 @@ contract BTSCore is Initializable, IBTSCore, ReentrancyGuardUpgradeable {
             btsPeriphery.checkTransferRestrictions(
                 nativeCoinName,
                 msg.sender,
-                value
+                msg.value
             );
 
 
