@@ -300,6 +300,10 @@ func (r *api) GetBlackListedUsers(net string, startCursor, endCursor int) (addrs
 	return nil, errors.New("not implemented")
 }
 
-func (a *api) GasPrice() *big.Int {
-	return big.NewInt(12500000000)
+func (r *api) ChargedGasFee(txnHash string) (*big.Int, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (r *api) SuggestGasPrice() *big.Int {
+	return nil
 }

@@ -48,11 +48,11 @@ func New(l log.Logger, cfg *Config) (ex *executor, err error) {
 		ex.cfgPerChain[chainCfg.Name] = chainCfg
 		ex.clientsPerChain[chainCfg.Name], err = apiFunc(l, chainCfg)
 		if err != nil {
-			err = errors.Wrap(err, "hmny.NewApi ")
+			err = errors.Wrap(err, "NewApi ")
 			return nil, err
 		}
 		if priv, pub, err := ex.clientsPerChain[chainCfg.Name].GetKeyPairFromKeystore(chainCfg.GodWalletKeystorePath, chainCfg.GodWalletSecretPath); err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairFromKeystore %v", err)
+			return nil, errors.Wrapf(err, "GetKeyPairFromKeystore %v %v", chainCfg.Name, err)
 		} else {
 			ex.godKeysPerChain[chainCfg.Name] = keypair{PrivKey: priv, PubKey: pub}
 		}

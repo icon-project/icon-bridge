@@ -198,7 +198,7 @@ func (c *Client) WaitForResults(ctx context.Context, thp *TransactionHashParam) 
 				switch re := err.(type) {
 				case *jsonrpc.Error:
 					switch re.Code {
-					case JsonrpcErrorCodePending, JsonrpcErrorCodeExecuting:
+					case JsonrpcErrorCodePending, JsonrpcErrorCodeExecuting, JsonrpcErrorCodeNotFound:
 						continue
 					}
 				}

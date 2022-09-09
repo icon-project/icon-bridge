@@ -286,6 +286,18 @@ func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv stri
 	return
 }
 
-func (a *api) GasPrice() *big.Int {
+func (r *api) ChargedGasFee(txnHash string) (*big.Int, error) {
+	txr, err := r.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(txnHash)})
+	if err != nil {
+		return nil, errors.Wrapf(err, "TransactionByHash %v", err)
+	}
+	gasUsed, err := txr.StepUsed.BigInt()
+	if err != nil {
+		return nil, errors.Wrapf(err, "BigInt Conversion %v", err)
+	}
+	return (&big.Int{}).Mul(big.NewInt(12500000000), gasUsed), nil
+}
+
+func (r *api) SuggestGasPrice() *big.Int {
 	return big.NewInt(12500000000)
 }

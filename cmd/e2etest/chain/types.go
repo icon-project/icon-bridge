@@ -54,13 +54,14 @@ type SrcAPI interface {
 	NativeCoin() string
 	NativeTokens() []string
 	GetBTPAddress(addr string) string
+	ChargedGasFee(txnHash string) (*big.Int, error)
+	SuggestGasPrice() *big.Int
 }
 
 type DstAPI interface {
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	WatchForTransferReceived(requestID uint64, seq int64) error
 	GetBTPAddress(addr string) string
-	NativeTokens() []string
 }
 
 type TxnResult struct {
@@ -92,7 +93,8 @@ type ChainAPI interface {
 	NativeCoin() string
 	NativeTokens() []string
 	GetBTPAddress(addr string) string
-	GasPrice() *big.Int
+	ChargedGasFee(txnHash string) (*big.Int, error)
+	SuggestGasPrice() *big.Int
 
 	// Configure
 	SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*big.Int) (txnHash string, err error)
@@ -107,19 +109,19 @@ type ChainAPI interface {
 }
 
 type Config struct {
-	Name                   ChainType               `json:"name"`
-	URL                    string                  `json:"url"`
-	ContractAddresses      map[ContractName]string `json:"contract_addresses"`
-	NativeCoin             string                  `json:"native_coin"`
-	NativeTokens           []string                `json:"native_tokens"`
-	WrappedCoins           []string                `json:"wrapped_coins"`
-	CoinDetails            []CoinDetails           `json:"coin_details"`
-	GodWalletKeystorePath  string                  `json:"god_wallet_keystore_path"`
-	GodWalletSecretPath    string                  `json:"god_wallet_secret_path"`
-	BTSOwnerKeystorePath   string                  `json:"bts_owner_keystore_path"`
-	BTSOwnerSecretPath     string                  `json:"bts_owner_secret_path"`
-	DemoWalletKeystorePath string                  `json:"demo_wallet_keystore_path"`
-	NetworkID              string                  `json:"network_id"`
+	Name                  ChainType               `json:"name"`
+	URL                   string                  `json:"url"`
+	ContractAddresses     map[ContractName]string `json:"contract_addresses"`
+	NativeCoin            string                  `json:"native_coin"`
+	NativeTokens          []string                `json:"native_tokens"`
+	WrappedCoins          []string                `json:"wrapped_coins"`
+	CoinDetails           []CoinDetails           `json:"coin_details"`
+	GodWalletKeystorePath string                  `json:"god_wallet_keystore_path"`
+	GodWalletSecretPath   string                  `json:"god_wallet_secret_path"`
+	BTSOwnerKeystorePath  string                  `json:"bts_owner_keystore_path"`
+	BTSOwnerSecretPath    string                  `json:"bts_owner_secret_path"`
+	NetworkID             string                  `json:"network_id"`
+	GasLimit              map[GasLimitType]uint64 `json:"gas_limit"`
 }
 
 type CoinDetails struct {
@@ -162,3 +164,14 @@ type TransferEndEvent struct {
 	Code     *big.Int
 	Response string
 }
+
+type GasLimitType string
+
+const (
+	TransferNativeCoinIntraChainGasLimit GasLimitType = "TransferNativeCoinIntraChainGasLimit"
+	TransferTokenIntraChainGasLimit      GasLimitType = "TransferTokenIntraChainGasLimit"
+	ApproveTokenInterChainGasLimit       GasLimitType = "ApproveTokenInterChainGasLimit"
+	TransferCoinInterChainGasLimit       GasLimitType = "TransferCoinInterChainGasLimit"
+	TransferBatchCoinInterChainGasLimit  GasLimitType = "TransferBatchCoinInterChainGasLimit"
+	DefaultGasLimit                      GasLimitType = "DefaultGasLimit"
+)

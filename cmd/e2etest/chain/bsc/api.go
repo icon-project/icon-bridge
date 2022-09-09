@@ -270,7 +270,7 @@ func (r *api) GetKeyPairFromKeystore(keystoreFile string, secretFile string) (pr
 	return
 }
 
-func (r *api) GasPrice() (gasPrice *big.Int) {
+func (r *api) SuggestGasPrice() (gasPrice *big.Int) {
 	ctx := context.TODO()
 	cleth := r.client()
 	gasPrice = big.NewInt(15000000000) // default Gas Price
@@ -299,4 +299,16 @@ func (r *api) GasPrice() (gasPrice *big.Int) {
 	}
 	gasPrice = txnS.GasPrice()
 	return
+}
+
+func (r *api) ChargedGasFee(txnHash string) (*big.Int, error) {
+	txr, err := r.requester.ethCl.TransactionReceipt(context.Background(), ethCommon.HexToHash(txnHash))
+	if err != nil {
+		return nil, errors.Wrapf(err, "TransactionByHash %v", err)
+	}
+	txh, _, err := r.requester.ethCl.TransactionByHash(context.Background(), ethCommon.HexToHash(txnHash))
+	if err != nil {
+		return nil, errors.Wrapf(err, "TransactionByHash %v", err)
+	}
+	return (&big.Int{}).Mul(big.NewInt(int64(txr.GasUsed)), txh.GasPrice()), nil
 }

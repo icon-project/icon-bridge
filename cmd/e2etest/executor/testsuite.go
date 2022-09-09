@@ -14,8 +14,6 @@ import (
 
 type testSuite struct {
 	id      uint64
-	src     chain.ChainType
-	dst     chain.ChainType
 	logger  log.Logger
 	subChan <-chan *evt
 
@@ -37,32 +35,33 @@ func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain
 	if !ok {
 		err = fmt.Errorf("Chain %v not found", dstChain)
 	}
-	ts.src = srcChain
-	ts.dst = dstChain
 	return
 }
 
-func (ts *testSuite) withFeeAdded(bal *big.Int, chainName chain.ChainType, coinName string) *big.Int {
-	// val  * ratio + fixed = charge
-	// val - charge = newVal
-	// for newVal to be zero, val = charge
-	// val = val*ratio + fixed
-	// val(1 - ratio) = fixed
-	// val = fixed/(1 - ratio)
-	// val = (fixed * denom)/(denom - num)
+const DENOMINATOR = 10000
+
+func (ts *testSuite) getAmountBeforeFeeCharge(chainName chain.ChainType, coinName string, outputBalance *big.Int) (*big.Int, error) {
+	/*
+		What is the input amount that we must have so that the net transferrable amount
+		after fee charged on chainName is equal to outputBalance for coinName ?
+		feeCharged = inputBalance * ratio + fixedFee
+		outputBalance = inputBalance - feeCharged
+		inputBalance = (outputBalance + fixed) / (1 - ratio)
+		inputBalance = (outputBalance + fixed) * deniminator / (denominator - numerator)
+
+	*/
 	coinDetails := ts.cfgPerChain[chainName].CoinDetails
 	for i := 0; i < len(coinDetails); i++ {
 		if coinDetails[i].Name == coinName {
-			fixedFee := new(big.Int)
-			fixedFee.SetString(coinDetails[i].FixedFee, 10)
-			bplusf := bal.Add(bal, fixedFee)
-			bplusf.Mul(bplusf, big.NewInt(10000))
-			dminusn := new(big.Int).Sub(big.NewInt(10000), big.NewInt(int64(coinDetails[i].FeeNumerator)))
+			fixedFee, _ := (&big.Int{}).SetString(coinDetails[i].FixedFee, 10)
+			bplusf := (&big.Int{}).Add(outputBalance, fixedFee)
+			bplusf.Mul(bplusf, big.NewInt(DENOMINATOR))
+			dminusn := new(big.Int).Sub(big.NewInt(DENOMINATOR), big.NewInt(int64(coinDetails[i].FeeNumerator)))
 			bplusf.Div(bplusf, dminusn)
-			return bplusf
+			return bplusf, nil
 		}
 	}
-	return big.NewInt(0)
+	return nil, fmt.Errorf("Coin %v Not Found in coinDetails", coinName)
 }
 
 func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, err error) {
@@ -97,15 +96,15 @@ func (ts *testSuite) GetGodKeyPairs(chainName chain.ChainType) (key, addr string
 	return
 }
 
-func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
+func (ts *testSuite) Fund(chainName chain.ChainType, addr string, amount *big.Int, coinName string) error {
 	// IntraChain Transfer of Tokens from God to an address
-	srcCl, ok := ts.clsPerChain[ts.src]
+	srcCl, ok := ts.clsPerChain[chainName]
 	if !ok {
-		return fmt.Errorf("Chain %v not found", ts.src)
+		return fmt.Errorf("Chain %v not found", chainName)
 	}
-	godKey, ok := ts.godKeysPerChain[ts.src]
+	godKey, ok := ts.godKeysPerChain[chainName]
 	if !ok {
-		return fmt.Errorf("GodKeys %v not found", ts.src)
+		return fmt.Errorf("GodKeys %v not found", chainName)
 	}
 	if strings.Contains(addr, godKey.PubKey) {
 		return nil // Sender == Receiver; so skip
@@ -115,21 +114,21 @@ func (ts *testSuite) Fund(addr string, amount *big.Int, coinName string) error {
 	if err != nil {
 		return errors.Wrapf(err, "srcCl.Transfer err=%v", err)
 	}
-	_, err = ts.ValidateTransactionResult(context.TODO(), hash)
+	_, err = ts.ValidateTransactionResult(context.TODO(), chainName, hash)
 	return err
 }
 
-func (ts *testSuite) ValidateTransactionResult(ctx context.Context, hash string) (res *chain.TxnResult, err error) {
-	srcCl, ok := ts.clsPerChain[ts.src]
+func (ts *testSuite) ValidateTransactionResult(ctx context.Context, chainName chain.ChainType, hash string) (res *chain.TxnResult, err error) {
+	srcCl, ok := ts.clsPerChain[chainName]
 	if !ok {
-		err = fmt.Errorf("Chain %v not found", ts.src)
+		err = fmt.Errorf("Chain %v not found", chainName)
 		return
 	}
 	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	res, err = srcCl.WaitForTxnResult(tctx, hash)
 	if err != nil {
-		err = errors.Wrapf(err, "WaitForTxnResult Hash %v", hash)
+		err = errors.Wrapf(err, "WaitForTxnResult(%v) Err %v", hash, err)
 	} else if res == nil {
 		err = fmt.Errorf("WaitForTxnResult; Transaction Result is nil. Hash %v", hash)
 	} else if res != nil && res.StatusCode != 1 {
@@ -140,10 +139,10 @@ func (ts *testSuite) ValidateTransactionResult(ctx context.Context, hash string)
 	return
 }
 
-func (ts *testSuite) ValidateTransactionResultAndEvents(ctx context.Context, hash string, coinNames []string, srcAddr, dstAddr string, amts []*big.Int) (err error) {
-	srcCl, ok := ts.clsPerChain[ts.src]
+func (ts *testSuite) ValidateTransactionResultAndEvents(ctx context.Context, chainName chain.ChainType, hash string, coinNames []string, srcAddr, dstAddr string, amts []*big.Int) (err error) {
+	srcCl, ok := ts.clsPerChain[chainName]
 	if !ok {
-		return fmt.Errorf("Chain %v not found", ts.src)
+		return fmt.Errorf("Chain %v not found", chainName)
 	}
 	time.Sleep(time.Second * 5)
 	tctx, cancel := context.WithTimeout(ctx, 20*time.Second)
@@ -200,8 +199,8 @@ func (ts *testSuite) ValidateTransactionResultAndEvents(ctx context.Context, has
 	return
 }
 
-func (ts *testSuite) WaitForEvents(ctx context.Context, hash string, cbPerEvent map[chain.EventLogType]func(event *evt) error) (err error) {
-	res, err := ts.ValidateTransactionResult(ctx, hash)
+func (ts *testSuite) WaitForEvents(ctx context.Context, srcChainName, dstChainName chain.ChainType, hash string, cbPerEvent map[chain.EventLogType]func(event *evt) error) (err error) {
+	res, err := ts.ValidateTransactionResult(ctx, srcChainName, hash)
 	if err != nil {
 		return
 	}
@@ -216,7 +215,7 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, hash string, cbPerEvent 
 			return fmt.Errorf("EventLog; Execpted *chain.TransferStartEvent. Got %T Hash %v", el.EventLog, hash)
 		}
 		if startCb, ok := cbPerEvent[chain.TransferStart]; ok {
-			if err := startCb(&evt{chainType: ts.src, msg: el}); err != nil {
+			if err := startCb(&evt{chainType: srcChainName, msg: el}); err != nil {
 				return err
 				//ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", "TransferStart", err)
 			}
@@ -228,14 +227,14 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, hash string, cbPerEvent 
 	}
 
 	// Register WatchEvents
-	srcCl, ok := ts.clsPerChain[ts.src]
+	srcCl, ok := ts.clsPerChain[srcChainName]
 	if !ok {
-		err = fmt.Errorf("Client for chain %v not found", ts.src)
+		err = fmt.Errorf("Client for chain %v not found", srcChainName)
 		return
 	}
-	dstCl, ok := ts.clsPerChain[ts.dst]
+	dstCl, ok := ts.clsPerChain[dstChainName]
 	if !ok {
-		err = fmt.Errorf("Client for chain %v not found", ts.dst)
+		err = fmt.Errorf("Client for chain %v not found", dstChainName)
 		return
 	}
 	numExpectedEvents := 0

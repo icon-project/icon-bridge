@@ -4,146 +4,160 @@
             "name":"ICON",
             "url":"https://lisbon.net.solidwallet.io/api/v3/icon_dex",
             "contract_addresses": {
-                "BTS":  "cx69774ba6f0d2718bef41065227345529a11b57f1"
+                "BTS":  "cx9d4f2ecaa38d3c34d508bd9c8df73c52dbef60dd"
             },
-            "native_coin":"ICX",
-            "native_tokens":["sICX", "bnUSD"],
-            "wrapped_coins":["BNB", "BUSD", "USDT", "USDC", "BTCB", "ETH"],
+            "native_coin":"btp-0x2.icon-ICX",
+            "native_tokens":["btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"],
+            "wrapped_coins":["btp-0x61.bsc-BNB", "btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH"],
             "coin_details":[
                 {
-                    "name":"ICX",
+                    "name":"btp-0x2.icon-ICX",
                     "fixed_fee" : "4300000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"sICX",
+                    "name":"btp-0x2.icon-sICX",
                     "fixed_fee" : "3900000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"bnUSD",
+                    "name":"btp-0x2.icon-bnUSD",
                     "fixed_fee" : "1500000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"BNB",
+                    "name":"btp-0x61.bsc-BNB",
                     "fixed_fee" : "1500000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"BUSD",
+                    "name":"btp-0x61.bsc-BUSD",
                     "fixed_fee" : "1500000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"USDT",
+                    "name":"btp-0x61.bsc-USDT",
                     "fixed_fee" : "1500000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"BTCB",
+                    "name":"btp-0x61.bsc-BTCB",
                     "fixed_fee" : "62500000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"ETH",
+                    "name":"btp-0x61.bsc-ETH",
                     "fixed_fee" : "750000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"USDC",
+                    "name":"btp-0x61.bsc-USDC",
                     "fixed_fee" : "1500000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 }
             ],
-            "god_wallet_keystore_path":"../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
-            "god_wallet_secret_path":"../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
-            "bts_owner_keystore_path":"../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
-            "bts_owner_secret_path":"../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
+            "god_wallet_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
+            "god_wallet_secret_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
+            "bts_owner_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
+            "bts_owner_secret_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
             "network_id":"0x2.icon",
-            "max_gas_limit":5000000
+            "gas_limit":{
+                "TransferNativeCoinIntraChainGasLimit":150000,
+                "TransferTokenIntraChainGasLimit":300000,
+                "ApproveTokenInterChainGasLimit":800000,
+                "TransferCoinInterChainGasLimit":1600000,
+                "TransferBatchCoinInterChainGasLimit":2000000,
+                "DefaultGasLimit":5000000
+            }
         }, 
         {
             "name":"BSC", 
             "url":"https://data-seed-prebsc-1-s1.binance.org:8545",
             "contract_addresses": {
-                "BTS":      "0x9F90806DBDaA783766483d2D24b431CFFB793eEb",
-                "BTSPeriphery": "0x94D9842507AAbB4D7ce010206f662b44efA8496F"
+                "BTS":      "0x049a7Ef08e4f4D54Db764cA141f585b79C0310c7",
+                "BTSPeriphery": "0x5003101271147Fcb6A4c79EE2807C2571e8c6dC7"
             },
-            "native_coin":"BNB",
-            "native_tokens":["BUSD", "USDT", "USDC", "BTCB", "ETH"],
-            "wrapped_coins":["ICX", "sICX", "bnUSD"],
+            "native_coin":"btp-0x61.bsc-BNB",
+            "native_tokens":["btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH"],
+            "wrapped_coins":["btp-0x2.icon-ICX", "btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"],
             "coin_details":[
                 {
-                    "name":"BNB",
+                    "name":"btp-0x61.bsc-BNB",
                     "fixed_fee" : "5000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"BUSD",
+                    "name":"btp-0x61.bsc-BUSD",
                     "fixed_fee" : "1500000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"USDT",
+                    "name":"btp-0x61.bsc-USDT",
                     "fixed_fee" : "1500000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"BTCB",
+                    "name":"btp-0x61.bsc-BTCB",
                     "fixed_fee" : "62500000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"ETH",
+                    "name":"btp-0x61.bsc-ETH",
                     "fixed_fee" : "750000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"USDC",
+                    "name":"btp-0x61.bsc-USDC",
                     "fixed_fee" : "1500000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"ICX",
+                    "name":"btp-0x2.icon-ICX",
                     "fixed_fee" : "4300000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"sICX",
+                    "name":"btp-0x2.icon-sICX",
                     "fixed_fee" : "3900000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
                 {
-                    "name":"bnUSD",
+                    "name":"btp-0x2.icon-bnUSD",
                     "fixed_fee" : "1500000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 }
             ],
-            "god_wallet_keystore_path":"../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
-            "god_wallet_secret_path":"../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
-            "bts_owner_keystore_path":"../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
-            "bts_owner_secret_path":"../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
+            "god_wallet_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
+            "god_wallet_secret_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
+            "bts_owner_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
+            "bts_owner_secret_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
             "network_id":"0x61.bsc",
-            "max_gas_limit":5000000
+            "gas_limit":{
+                "TransferNativeCoinIntraChainGasLimit":25000,
+                "TransferTokenIntraChainGasLimit":60000,
+                "ApproveTokenInterChainGasLimit":50000,
+                "TransferCoinInterChainGasLimit":700000,
+                "TransferBatchCoinInterChainGasLimit":900000,
+                "DefaultGasLimit":5000000
+            }
         }
     ]
 }

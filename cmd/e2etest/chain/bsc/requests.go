@@ -30,8 +30,8 @@ const (
 	TransferNativeIntraChainGasLimit = 25000  // 21K
 	TransferTokenIntraChainGasLimit  = 60000  // 54K
 	ApproveTokenGasLimit             = 50000  // 46K
-	TransferInterChainGasLimit       = 60000  // 54K
-	TransferBatchInterChainGasLimit  = 800000 // 768K
+	TransferInterChainGasLimit       = 700000 // 54K
+	TransferBatchInterChainGasLimit  = 900000 // 768K
 	DefaultGasLimit                  = 5000000
 )
 
