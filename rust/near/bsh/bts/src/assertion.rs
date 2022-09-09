@@ -185,4 +185,23 @@ impl BtpTokenService {
         }
         Ok(())
     }
+
+    pub fn ensure_length_matches(
+        &self,
+        coin_names: &Vec<String>,
+        token_limits: &Vec<u128>,
+    ) -> Result<(), BshError> {
+        if coin_names.len() != token_limits.len() {
+            return Err(BshError::InvalidParams);
+        }
+        Ok(())
+    }
+
+    pub fn ensure_coin_exists(&self, coin_name: &str) -> bool {
+        let coin_id = Self::hash_coin_id(&coin_name.to_string());
+        match self.coins.get(&coin_id) {
+            Some(coin) => return true,
+            None => return false,
+        }
+    }
 }

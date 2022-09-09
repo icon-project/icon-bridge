@@ -199,4 +199,35 @@ impl BtpTokenService {
 
         self.balances.add(&env::current_account_id(), &coin_id);
     }
+
+    pub fn set_token_limit(
+        &mut self,
+        coin_names: Vec<String>,
+        token_limits: Vec<u128>,
+    ) -> Result<(), BshError> {
+        self.assert_have_permission();
+        match self.ensure_length_matches(&coin_names, &token_limits) {
+            Ok(()) => {
+                let mut invalid_coins: Vec<String> = Vec::new();
+                let mut valid_coins: Vec<String> = Vec::new();
+                coin_names
+                    .iter()
+                    .for_each(|coin| match self.ensure_coin_exists(coin.as_str()) {
+                        true => valid_coins.push(coin.clone()),
+                        false => invalid_coins.push(coin.clone()),
+                    });
+                if invalid_coins.is_empty() {
+                    return Err(BshError::TokenNotExist {
+                        message: invalid_coins.join(", "),
+                    });
+                }
+
+                for (index, coin_name) in valid_coins.iter().enumerate() {
+                    self.tokenlimits.add(coin_name, &token_limits[index])
+                }
+                return Ok(());
+            }
+            Err(err) => return Err(err),
+        }
+    }
 }

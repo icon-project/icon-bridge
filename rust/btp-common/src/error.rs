@@ -192,6 +192,7 @@ pub mod errors {
         UserAlreadyBlacklisted,
         UserNotBlacklisted,
         BlacklistedUsers { message: String },
+        InvalidParams,
     }
 
     impl Exception for BshError {
@@ -297,6 +298,9 @@ pub mod errors {
                 }
                 BshError::BlacklistedUsers { message } => {
                     write!(f, "{}{} for {}", label, "UsersBlacklisted", message)
+                }
+                BshError::InvalidParams => {
+                    write!(f, "{}", "InvalidParams")
                 }
             }
         }
