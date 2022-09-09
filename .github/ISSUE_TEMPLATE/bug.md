@@ -2,7 +2,7 @@
 name: Bug
 about: Describes a bug
 title: ''
-labels: ''
+labels: 'bug'
 assignees: ''
 
 ---
