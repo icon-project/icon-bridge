@@ -1,0 +1,10 @@
+version: '3.3'
+services:
+  bmr:
+    image: iconbridge/bmr
+    container_name: bmr
+    network_mode: host
+    restart: unless-stopped
+    entrypoint: ["/bin/iconbridge", "-config", "/config.json"]
+    volumes:
+      - ${PWD}/bmr.config.json:/config.json
