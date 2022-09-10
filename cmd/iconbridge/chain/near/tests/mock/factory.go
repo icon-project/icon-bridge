@@ -75,7 +75,7 @@ func LoadNonceFromFile(names []string) map[string]Response {
 	var nonceMap = map[string]Response{}
 
 	for index, buffer := range loadFiles(names, sectionDir) {
-		var nonce types.NonceResponse
+		var nonce types.AccessKeyResponse
 
 		err := json.Unmarshal(buffer, &nonce)
 		if err != nil {

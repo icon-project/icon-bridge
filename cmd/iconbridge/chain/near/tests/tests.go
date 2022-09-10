@@ -2,10 +2,9 @@ package tests
 
 import (
 	"fmt"
-	"testing"
-
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 type Test interface {

@@ -12,7 +12,7 @@ import (
 )
 
 type Receiver struct {
-	clients     []*Client
+	clients     []IClient
 	source      chain.BTPAddress
 	destination chain.BTPAddress
 	logger      log.Logger
@@ -42,7 +42,7 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, options json.RawMessa
 }
 
 func newMockReceiver(source, destination chain.BTPAddress, client *Client, urls []string, _ json.RawMessage, logger log.Logger) (*Receiver, error) {
-	clients := make([]*Client, 0)
+	clients := make([]IClient, 0)
 	clients = append(clients, client)
 	receiver := &Receiver{
 		clients:     clients,
@@ -70,7 +70,7 @@ func (r *Receiver) receiveBlocks(height uint64, source string, processBlockNotif
 			}
 		}
 		return nil
-	}, func() *Client {
+	}, func() IClient {
 		return r.client()
 	})
 }
@@ -121,7 +121,7 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 	return errCh, nil
 }
 
-func (r *Receiver) client() *Client {
+func (r *Receiver) client() IClient {
 	return r.clients[rand.Intn(len(r.clients))]
 }
 
