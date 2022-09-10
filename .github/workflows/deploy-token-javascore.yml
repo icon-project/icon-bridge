@@ -2,8 +2,9 @@ name: 'Deploy Token Javascore'
 
 on:
   workflow_dispatch:
-  branch:
-    - 
+  push:
+    branches:
+      - feature/442-deploy-register-token
   workflow_call:
 
 jobs:
