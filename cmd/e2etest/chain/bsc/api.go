@@ -241,6 +241,10 @@ func (r *api) WatchForSetTokenLmitResponse(ID uint64, seq int64) error {
 	return r.fd.watchFor(chain.TokenLimitResponse, ID, seq)
 }
 
+func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*chain.EventLogInfo, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	var err error
 	res := make([][2]string, num)

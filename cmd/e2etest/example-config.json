@@ -85,7 +85,8 @@
             "url":"https://data-seed-prebsc-1-s1.binance.org:8545",
             "contract_addresses": {
                 "BTS":      "0x049a7Ef08e4f4D54Db764cA141f585b79C0310c7",
-                "BTSPeriphery": "0x5003101271147Fcb6A4c79EE2807C2571e8c6dC7"
+                "BTSPeriphery": "0x5003101271147Fcb6A4c79EE2807C2571e8c6dC7",
+                "BMCPeriphery":"0x855183AefDA98Cd10Cf31488e26fF599685625a7"
             },
             "native_coin":"btp-0x61.bsc-BNB",
             "native_tokens":["btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH"],

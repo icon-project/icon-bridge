@@ -47,10 +47,10 @@ func TestExecutor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 240*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	ex.Subscribe(ctx)
 	time.Sleep(5 * time.Second)
-	err = ex.RunFlowTest(ctx, "BSC", "ICON", []string{"btp-0x61.bsc-BNB"})
+	err = ex.RunFlowTest(ctx, "ICON", "BSC", []string{"btp-0x2.icon-bnUSD"})
 	if err != nil {
 		t.Error(err)
 	}

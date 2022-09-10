@@ -73,13 +73,17 @@ type DstAPI interface {
 	GetBTPAddress(addr string) string
 }
 
-type SrcConfigureAPI interface {
+type FullConfigAPI interface {
 	SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*big.Int) (txnHash string, err error)
 	AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
 	RemoveBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
 	ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error)
 	GetTokenLimitStatus(net, coinName string) (response bool, err error)
 	GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error)
+	WatchForAddToBlacklistRequest(ID uint64, seq int64) error
+	WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error
+	WatchForSetTokenLmitRequest(ID uint64, seq int64) error
+	GetConfigRequestEvent(evtType EventLogType, hash string) (*EventLogInfo, error)
 
 	IsUserBlackListed(net, addr string) (response bool, err error)
 	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
@@ -88,10 +92,13 @@ type SrcConfigureAPI interface {
 	// Watch For TokenLimitStart, TokenLimitEnd
 }
 
-type DstConfigureAPI interface {
+type StandardConfigAPI interface {
 	IsUserBlackListed(net, addr string) (response bool, err error)
 	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
 	IsBTSOwner(addr string) (response bool, err error)
+
+	WatchForBlacklistResponse(ID uint64, seq int64) error
+	WatchForSetTokenLmitResponse(ID uint64, seq int64) error
 }
 
 type TxnResult struct {
@@ -133,11 +140,13 @@ type ChainAPI interface {
 	ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error)
 	GetTokenLimitStatus(net, coinName string) (response bool, err error)
 	GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error)
+
 	WatchForAddToBlacklistRequest(ID uint64, seq int64) error
 	WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error
 	WatchForBlacklistResponse(ID uint64, seq int64) error
 	WatchForSetTokenLmitRequest(ID uint64, seq int64) error
 	WatchForSetTokenLmitResponse(ID uint64, seq int64) error
+	GetConfigRequestEvent(evtType EventLogType, hash string) (*EventLogInfo, error)
 
 	IsUserBlackListed(net, addr string) (response bool, err error)
 	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)

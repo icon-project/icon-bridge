@@ -13,6 +13,7 @@ import (
 )
 
 const DENOMINATOR = 10000
+const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935"
 
 type testSuite struct {
 	id      uint64
@@ -40,7 +41,7 @@ func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain
 	return
 }
 
-func (ts *testSuite) GetConfigSrcAPI() (cfgSrc chain.SrcConfigureAPI, err error) {
+func (ts *testSuite) GetFullConfigAPI() (cfgSrc chain.FullConfigAPI, err error) {
 	cfgSrc, ok := ts.clsPerChain[chain.ICON]
 	if !ok {
 		err = fmt.Errorf("Chain %v not found", chain.ICON)
@@ -48,12 +49,29 @@ func (ts *testSuite) GetConfigSrcAPI() (cfgSrc chain.SrcConfigureAPI, err error)
 	return
 }
 
-func (ts *testSuite) GetConfigAPI(chainName chain.ChainType) (cfgAPI chain.DstConfigureAPI, err error) {
+func (ts *testSuite) GetStandardConfigAPI(chainName chain.ChainType) (cfgAPI chain.StandardConfigAPI, err error) {
 	cfgAPI, ok := ts.clsPerChain[chainName]
 	if !ok {
 		err = fmt.Errorf("Chain %v not found", chainName)
 	}
 	return
+}
+
+func (ts *testSuite) GetStandardConfigAPIOwnerKey(dstChain chain.ChainType) string {
+	return ts.godKeysPerChain[dstChain].PrivKey
+}
+
+func (ts *testSuite) FullConfigAPIsOwner() string {
+	return ts.godKeysPerChain[chain.ICON].PrivKey
+}
+
+func (ts *testSuite) FullConfigAPIChain() chain.ChainType {
+	return chain.ICON
+}
+
+func (ts *testSuite) NetAddr(btpAddr string) (net string, addr string) {
+	splts := strings.Split(btpAddr, "/")
+	return splts[len(splts)-2], splts[len(splts)-1]
 }
 
 func (ts *testSuite) getAmountBeforeFeeCharge(chainName chain.ChainType, coinName string, outputBalance *big.Int) (*big.Int, error) {
@@ -137,6 +155,83 @@ func (ts *testSuite) ValidateTransactionResult(ctx context.Context, chainName ch
 		return
 	}
 	return
+}
+
+func (ts *testSuite) WaitForConfigResponse(ctx context.Context, reqEvent, responseEvent chain.EventLogType, responseChainName chain.ChainType, reqHash string, cbPerEvent map[chain.EventLogType]func(event *evt) error) (err error) {
+	if responseChainName == ts.FullConfigAPIChain() {
+		return nil
+	}
+	fCfg, err := ts.GetFullConfigAPI()
+	if err != nil {
+		return errors.Wrapf(err, "GetFullConfigAPI %v", err)
+	}
+	reqEvtInfo, err := fCfg.GetConfigRequestEvent(reqEvent, reqHash)
+	if err != nil {
+		return errors.Wrapf(err, "%v %v", reqEvent, err)
+	}
+	if cb, ok := cbPerEvent[reqEvent]; ok && cb != nil {
+		if err = cb(&evt{msg: reqEvtInfo, chainType: chain.ICON}); err != nil {
+			return errors.Wrapf(err, "CallBack(%v) %v", reqEvent, err)
+		}
+	}
+	// RegisterWatchEvents
+	dstCfg, err := ts.GetStandardConfigAPI(responseChainName)
+	if err != nil {
+		return errors.Wrapf(err, "GetStandardConfigAPI %v", err)
+	}
+	if reqEvent == chain.AddToBlacklistRequest && responseEvent == chain.BlacklistResponse {
+		res, ok := reqEvtInfo.EventLog.(*chain.AddToBlacklistRequestEvent)
+		if !ok {
+			return errors.Wrapf(err, "Expected *chain.AddToBlacklistRequestEvent Got %T", reqEvtInfo.EventLog)
+		}
+		if err := dstCfg.WatchForBlacklistResponse(ts.id, res.Sn.Int64()); err != nil {
+			return errors.Wrapf(err, "WatchForBlacklistResponse %v", err)
+		}
+	} else if reqEvent == chain.RemoveFromBlacklistRequest && responseEvent == chain.BlacklistResponse {
+		res, ok := reqEvtInfo.EventLog.(*chain.RemoveFromBlacklistRequestEvent)
+		if !ok {
+			return errors.Wrapf(err, "Expected *chain.RemoveFromBlacklistRequestEvent Got %T", reqEvtInfo.EventLog)
+		}
+		if err := dstCfg.WatchForBlacklistResponse(ts.id, res.Sn.Int64()); err != nil {
+			return errors.Wrapf(err, "WatchForBlacklistResponse %v", err)
+		}
+	} else if reqEvent == chain.TokenLimitRequest && responseEvent == chain.TokenLimitResponse {
+		res, ok := reqEvtInfo.EventLog.(*chain.TokenLimitRequestEvent)
+		if !ok {
+			return errors.Wrapf(err, "Expected *chain.TokenLimitRequestEvent Got %T", reqEvtInfo.EventLog)
+		}
+		if err := dstCfg.WatchForSetTokenLmitResponse(ts.id, res.Sn.Int64()); err != nil {
+			return errors.Wrapf(err, "WatchForSetTokenLmitResponse %v", err)
+		}
+	}
+
+	// Listen to result from watchEvents
+	newCtx := context.Background()
+	timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*180)
+
+	for {
+		defer timedContextCancel()
+		select {
+		case <-timedContext.Done():
+			ts.report += "Context Timeout Exiting task"
+			return errors.New("Context Timeout Exiting task----------------")
+		case <-ctx.Done():
+			ts.report += "Context Cancelled. Return from Callback watch"
+			return errors.New("Context Cancelled. Return from Callback watch---------------")
+		case ev := <-ts.subChan:
+			if cb, ok := cbPerEvent[ev.msg.EventType]; ok && ev.msg.EventType == responseEvent {
+				if cb != nil {
+					if err := cb(ev); err != nil {
+						ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", ev.msg.EventType, err)
+						return errors.Wrapf(err, "Callback (%v) %v", responseEvent, err)
+					}
+				}
+				ts.report += "All events found. Exiting \n"
+				return
+			}
+		}
+	}
+	return nil
 }
 
 func (ts *testSuite) ValidateTransactionResultAndEvents(ctx context.Context, chainName chain.ChainType, hash string, coinNames []string, srcAddr, dstAddr string, amts []*big.Int) (err error) {
@@ -257,7 +352,7 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, srcChainName, dstChainNa
 	}
 	// Listen to result from watchEvents
 	newCtx := context.Background()
-	timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*120)
+	timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*180)
 
 	for {
 		defer timedContextCancel()

@@ -248,6 +248,10 @@ func (a *api) WatchForSetTokenLmitResponse(ID uint64, seq int64) error {
 	return errors.New("not implemented")
 }
 
+func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*chain.EventLogInfo, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (a *api) GetKeyPairFromKeystore(walFile string, password string) (privKey, pubKey string, err error) {
 	keyReader, err := os.Open(walFile)
 	if err != nil {
