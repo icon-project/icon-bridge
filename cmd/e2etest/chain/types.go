@@ -16,6 +16,8 @@ const (
 type ContractName string
 
 const (
+	BMC          ContractName = "BMC"
+	BMCPeriphery ContractName = "BMCPeriphery"
 	BTS          ContractName = "BTS"
 	BTSPeriphery ContractName = "BTSPeriphery"
 )
@@ -23,9 +25,15 @@ const (
 type EventLogType string
 
 const (
-	TransferStart    EventLogType = "TransferStart"
-	TransferReceived EventLogType = "TransferReceived"
-	TransferEnd      EventLogType = "TransferEnd"
+	TransferStart              EventLogType = "TransferStart"
+	TransferReceived           EventLogType = "TransferReceived"
+	TransferEnd                EventLogType = "TransferEnd"
+	AddToBlacklistRequest      EventLogType = "AddToBlacklistRequest"
+	RemoveFromBlacklistRequest EventLogType = "RemoveFromBlacklistRequest"
+	BlacklistResponse          EventLogType = "BlacklistResponse"
+	TokenLimitRequest          EventLogType = "TokenLimitRequest"
+	TokenLimitResponse         EventLogType = "TokenLimitResponse"
+	Message                    EventLogType = "Message"
 )
 
 type CoinBalance struct {
@@ -33,6 +41,7 @@ type CoinBalance struct {
 	LockedBalance     *big.Int
 	RefundableBalance *big.Int
 	UserBalance       *big.Int
+	TotalBalance      *big.Int // held by BTS + by itself
 }
 
 func (cb *CoinBalance) String() string {
@@ -62,6 +71,27 @@ type DstAPI interface {
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	WatchForTransferReceived(requestID uint64, seq int64) error
 	GetBTPAddress(addr string) string
+}
+
+type SrcConfigureAPI interface {
+	SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*big.Int) (txnHash string, err error)
+	AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
+	RemoveBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
+	ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error)
+	GetTokenLimitStatus(net, coinName string) (response bool, err error)
+	GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error)
+
+	IsUserBlackListed(net, addr string) (response bool, err error)
+	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
+	IsBTSOwner(addr string) (response bool, err error)
+
+	// Watch For TokenLimitStart, TokenLimitEnd
+}
+
+type DstConfigureAPI interface {
+	IsUserBlackListed(net, addr string) (response bool, err error)
+	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
+	IsBTSOwner(addr string) (response bool, err error)
 }
 
 type TxnResult struct {
@@ -101,11 +131,17 @@ type ChainAPI interface {
 	AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
 	RemoveBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
 	ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error)
+	GetTokenLimitStatus(net, coinName string) (response bool, err error)
+	GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error)
+	WatchForAddToBlacklistRequest(ID uint64, seq int64) error
+	WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error
+	WatchForBlacklistResponse(ID uint64, seq int64) error
+	WatchForSetTokenLmitRequest(ID uint64, seq int64) error
+	WatchForSetTokenLmitResponse(ID uint64, seq int64) error
+
 	IsUserBlackListed(net, addr string) (response bool, err error)
 	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
 	IsBTSOwner(addr string) (response bool, err error)
-	GetTokenLimitStatus(net, coinName string) (response bool, err error)
-	GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error)
 }
 
 type Config struct {
@@ -132,7 +168,7 @@ type CoinDetails struct {
 }
 
 type EventLogInfo struct {
-	IDs             []uint64
+	ID              uint64
 	ContractAddress string
 	EventType       EventLogType
 	EventLog        interface{}
@@ -163,6 +199,35 @@ type TransferEndEvent struct {
 	Sn       *big.Int
 	Code     *big.Int
 	Response string
+}
+
+type BlacklistResponseEvent struct {
+	Sn   *big.Int
+	Code int64
+	Msg  string
+}
+
+type TokenLimitResponseEvent struct {
+	Sn   *big.Int
+	Code int64
+	Msg  string
+}
+
+type AddToBlacklistRequestEvent struct {
+	Sn    *big.Int
+	Net   string
+	Addrs []string
+}
+
+type RemoveFromBlacklistRequestEvent struct {
+	Sn    *big.Int
+	Net   string
+	Addrs []string
+}
+type TokenLimitRequestEvent struct {
+	Sn          *big.Int
+	TokenLimits []*big.Int
+	CoinNames   []string
 }
 
 type GasLimitType string

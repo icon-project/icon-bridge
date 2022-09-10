@@ -404,6 +404,7 @@ func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalan
 		LockedBalance:     b.LockedBalance,
 		RefundableBalance: b.RefundableBalance,
 		UserBalance:       b.UserBalance,
+		TotalBalance:      b.UserBalance,
 	}
 	return bal, nil
 }

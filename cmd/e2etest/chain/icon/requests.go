@@ -322,6 +322,7 @@ func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalan
 	if err != nil {
 		return nil, errors.Wrapf(err, "getBalanceOfType(userBalance) %v", err)
 	}
+	bal.TotalBalance = (&big.Int{}).Add(bal.UserBalance, bal.UsableBalance)
 	return
 }
 
@@ -433,6 +434,7 @@ func (r *requestAPI) getNativeCoinBalance(coinName, addr string) (bal *chain.Coi
 	if err != nil {
 		return nil, errors.Wrapf(err, "%v", err)
 	}
+	bal.TotalBalance = (&big.Int{}).Set(bal.UserBalance)
 	return
 }
 
@@ -487,7 +489,11 @@ func (a *api) SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_coinNames": coinNames, "_tokenLimits": tokenLimits}, "setTokenLimit", a.requester.stepLimit)
+	strTokenLimits := make([]string, len(tokenLimits))
+	for i, v := range tokenLimits {
+		strTokenLimits[i] = intconv.FormatBigInt(v)
+	}
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_coinNames": coinNames, "_tokenLimits": strTokenLimits}, "setTokenLimit", a.requester.stepLimit)
 }
 
 func (a *api) AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error) {
@@ -629,7 +635,7 @@ func (a *api) GetBlackListedUsers(net string, startCursor, endCursor int) (users
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_net": net, "_start": startCursor, "_end": endCursor}, "getBlackListedUsers")
+	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_net": net, "_start": "0x0", "_end": "0x64"}, "getBlackListedUsers")
 	if err != nil {
 		return nil, err
 	} else if res == nil {

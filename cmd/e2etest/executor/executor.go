@@ -153,14 +153,8 @@ func (ex *executor) Subscribe(ctx context.Context) {
 					ex.log.Errorf("Got interface of type %T; Expected errorType", value)
 					break
 				}
-				if len(res.IDs) > 0 {
-					for _, id := range res.IDs {
-						if dst := ex.getChan(id); dst != nil {
-							dst <- &evt{chainType: chains[chosen], msg: res}
-						}
-					}
-				} else {
-					ex.log.Warnf("Message without target received %+v", res)
+				if dst := ex.getChan(res.ID); dst != nil {
+					dst <- &evt{chainType: chains[chosen], msg: res}
 				}
 			} else if chosen >= lenCls && chosen < 2*len(cases) {
 				res, eok := value.Interface().(error)

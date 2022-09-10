@@ -46,6 +46,10 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	if !ok {
 		return nil, errors.New("cfg.ConftractAddresses does not include chain.BTS")
 	}
+	bmcIconAddr, ok := cfg.ContractAddresses[chain.BMC]
+	if !ok {
+		return nil, errors.New("cfg.ConftractAddresses does not include chain.BMC")
+	}
 
 	evtReq := icon.BlockRequest{
 		EventFilters: []*icon.EventFilter{
@@ -62,6 +66,11 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 			{
 				Addr:      icon.Address(btsIconAddr),
 				Signature: "TransferEnd(Address,int,int,bytes)",
+				Indexed:   []*string{},
+			},
+			{
+				Addr:      icon.Address(bmcIconAddr),
+				Signature: "Message(str,int,bytes)",
 				Indexed:   []*string{},
 			},
 		},
@@ -100,11 +109,10 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 		// defer close(_errCh)
 		err := a.ReceiveLoop(ctx, height, 0, func(txnLogs []*icon.TxResult) error {
 			for _, txnLog := range txnLogs {
-				a.Log.Info("height ", txnLog.BlockHeight)
 				for _, el := range txnLog.EventLogs {
 					res, evtType, err := a.par.Parse(&el)
 					if err != nil {
-						a.Log.Debug(errors.Wrap(err, "Parse "))
+						//a.Log.Trace(errors.Wrapf(err, "Parseth %v", err))
 						err = nil
 						continue
 					}
@@ -239,6 +247,25 @@ func (a *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return a.fd.watchFor(chain.TransferEnd, id, seq)
 }
 
+func (a *api) WatchForAddToBlacklistRequest(ID uint64, seq int64) error {
+	return a.fd.watchFor(chain.AddToBlacklistRequest, ID, seq)
+}
+func (a *api) WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error {
+	return a.fd.watchFor(chain.RemoveFromBlacklistRequest, ID, seq)
+}
+
+func (a *api) WatchForSetTokenLmitRequest(ID uint64, seq int64) error {
+	return a.fd.watchFor(chain.TokenLimitRequest, ID, seq)
+}
+
+func (a *api) WatchForBlacklistResponse(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) WatchForSetTokenLmitResponse(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
 func (a *api) GetKeyPairs(num int) ([][2]string, error) {
 	var err error
 	res := make([][2]string, num)
@@ -286,8 +313,8 @@ func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv stri
 	return
 }
 
-func (r *api) ChargedGasFee(txnHash string) (*big.Int, error) {
-	txr, err := r.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(txnHash)})
+func (a *api) ChargedGasFee(txnHash string) (*big.Int, error) {
+	txr, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(txnHash)})
 	if err != nil {
 		return nil, errors.Wrapf(err, "TransactionByHash %v", err)
 	}
@@ -298,6 +325,6 @@ func (r *api) ChargedGasFee(txnHash string) (*big.Int, error) {
 	return (&big.Int{}).Mul(big.NewInt(12500000000), gasUsed), nil
 }
 
-func (r *api) SuggestGasPrice() *big.Int {
+func (a *api) SuggestGasPrice() *big.Int {
 	return big.NewInt(12500000000)
 }

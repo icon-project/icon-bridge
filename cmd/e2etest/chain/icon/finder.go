@@ -34,29 +34,41 @@ type runnableCache struct {
 }
 
 func (f *finder) watchFor(eventType chain.EventLogType, id uint64, seq int64) error {
-	contractAddress, ok := f.nameToAddrMap[chain.BTS]
+	btsAddr, ok := f.nameToAddrMap[chain.BTS]
 	if !ok {
 		return fmt.Errorf("watchFor; Contract %v not found on map", chain.BTS)
 	}
-
+	bmcAddr, ok := f.nameToAddrMap[chain.BMC]
+	if !ok {
+		return fmt.Errorf("watchFor; Contract %v not found on map", chain.BTS)
+	}
 	if eventType == chain.TransferStart {
-		args := args{id: id, eventType: chain.TransferStart, seq: seq, contractAddress: contractAddress}
+		args := args{id: id, eventType: chain.TransferStart, seq: seq, contractAddress: btsAddr}
 		f.addToRunCache(&runnable{args: args, callback: transferStartCB})
 	} else if eventType == chain.TransferReceived {
-		args := args{id: id, eventType: chain.TransferReceived, seq: seq, contractAddress: contractAddress}
+		args := args{id: id, eventType: chain.TransferReceived, seq: seq, contractAddress: btsAddr}
 		f.addToRunCache(&runnable{args: args, callback: transferReceivedCB})
 	} else if eventType == chain.TransferEnd {
-		args := args{id: id, eventType: chain.TransferEnd, seq: seq, contractAddress: contractAddress}
+		args := args{id: id, eventType: chain.TransferEnd, seq: seq, contractAddress: btsAddr}
 		f.addToRunCache(&runnable{args: args, callback: transferEndCB})
+	} else if eventType == chain.AddToBlacklistRequest {
+		args := args{id: id, eventType: chain.AddToBlacklistRequest, seq: seq, contractAddress: bmcAddr}
+		f.addToRunCache(&runnable{args: args, callback: addedToBlacklistCB})
+	} else if eventType == chain.RemoveFromBlacklistRequest {
+		args := args{id: id, eventType: chain.RemoveFromBlacklistRequest, seq: seq, contractAddress: bmcAddr}
+		f.addToRunCache(&runnable{args: args, callback: removedFromBlacklistCB})
+	} else if eventType == chain.TokenLimitRequest {
+		args := args{id: id, eventType: chain.TokenLimitRequest, seq: seq, contractAddress: bmcAddr}
+		f.addToRunCache(&runnable{args: args, callback: tokenLimitSetCB})
 	} else {
-		return fmt.Errorf("watchFor; EventType not among supported ones")
+		return fmt.Errorf("watchFor; EventType %v not among supported ones", eventType)
 	}
 	return nil
 }
 
 func (f *finder) Match(elinfo *chain.EventLogInfo) bool {
-	if matchedIndex, matchedIDs := f.lookupCache(elinfo); len(matchedIndex) > 0 {
-		elinfo.IDs = matchedIDs
+	if matchedIndex, matchedIDs := f.lookupCache(elinfo); matchedIndex >= 0 {
+		elinfo.ID = matchedIDs
 		f.removeFromFromRunCache(matchedIndex)
 		return true
 	}
@@ -75,20 +87,18 @@ func (f *finder) addToRunCache(r *runnable) {
 	f.runCache.mem = append(f.runCache.mem, r)
 }
 
-func (f *finder) removeFromFromRunCache(ids []int) {
+func (f *finder) removeFromFromRunCache(id int) {
 	f.runCache.mtx.Lock()
 	defer f.runCache.mtx.Unlock()
-	for _, id := range ids {
-		//f.log.Tracef("Removing %d", id)
-		f.runCache.mem[id] = nil
-	}
+	//f.log.Tracef("Removing %d", id)
+	f.runCache.mem[id] = nil
 }
 
-func (f *finder) lookupCache(elInfo *chain.EventLogInfo) ([]int, []uint64) {
+func (f *finder) lookupCache(elInfo *chain.EventLogInfo) (int, uint64) {
 	f.runCache.mtx.RLock()
 	defer f.runCache.mtx.RUnlock()
-	matchedIndex := []int{}
-	matchedIDs := []uint64{}
+	var matchedIndex int = -1
+	var matchedIDs uint64
 	for runid, runP := range f.runCache.mem {
 		if runP == nil { // nil is set for removed runnable. See removeFromFromRunCache
 			continue
@@ -96,8 +106,9 @@ func (f *finder) lookupCache(elInfo *chain.EventLogInfo) ([]int, []uint64) {
 		match, err := runP.callback(runP.args, elInfo)
 		if match {
 			//f.log.Warn("Match RunID ", runid)
-			matchedIndex = append(matchedIndex, runid)
-			matchedIDs = append(matchedIDs, runP.args.id)
+			matchedIndex = runid
+			matchedIDs = runP.args.id
+			break
 		} else if !match && err != nil {
 			//f.log.Error("Non Match ", err)
 		}
@@ -146,6 +157,45 @@ var transferEndCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bo
 		return false, fmt.Errorf("Unexpected Type. Gor %T. Expected *TransferEndEvent", elInfo.EventLog)
 	}
 	if elInfo.EventType == chain.TransferEnd &&
+		elInfo.ContractAddress == args.contractAddress &&
+		elog.Sn.Int64() == args.seq {
+		return true, nil
+	}
+	return false, nil
+}
+
+var addedToBlacklistCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
+	elog, ok := (elInfo.EventLog).(*chain.AddToBlacklistRequestEvent)
+	if !ok {
+		return false, fmt.Errorf("Unexpected Type. Gor %T. Expected *AddToBlacklistRequestEvent", elInfo.EventLog)
+	}
+	if elInfo.EventType == chain.AddToBlacklistRequest &&
+		elInfo.ContractAddress == args.contractAddress &&
+		elog.Sn.Int64() == args.seq {
+		return true, nil
+	}
+	return false, nil
+}
+
+var removedFromBlacklistCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
+	elog, ok := (elInfo.EventLog).(*chain.RemoveFromBlacklistRequestEvent)
+	if !ok {
+		return false, fmt.Errorf("Unexpected Type. Gor %T. Expected *RemoveFromBlacklistRequestEvent", elInfo.EventLog)
+	}
+	if elInfo.EventType == chain.RemoveFromBlacklistRequest &&
+		elInfo.ContractAddress == args.contractAddress &&
+		elog.Sn.Int64() == args.seq {
+		return true, nil
+	}
+	return false, nil
+}
+
+var tokenLimitSetCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
+	elog, ok := (elInfo.EventLog).(*chain.TokenLimitRequestEvent)
+	if !ok {
+		return false, fmt.Errorf("Unexpected Type. Gor %T. Expected *TokenLimitRequestEvent", elInfo.EventLog)
+	}
+	if elInfo.EventType == chain.TokenLimitRequest &&
 		elInfo.ContractAddress == args.contractAddress &&
 		elog.Sn.Int64() == args.seq {
 		return true, nil

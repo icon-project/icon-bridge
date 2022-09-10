@@ -12,6 +12,8 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
+const DENOMINATOR = 10000
+
 type testSuite struct {
 	id      uint64
 	logger  log.Logger
@@ -38,7 +40,21 @@ func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain
 	return
 }
 
-const DENOMINATOR = 10000
+func (ts *testSuite) GetConfigSrcAPI() (cfgSrc chain.SrcConfigureAPI, err error) {
+	cfgSrc, ok := ts.clsPerChain[chain.ICON]
+	if !ok {
+		err = fmt.Errorf("Chain %v not found", chain.ICON)
+	}
+	return
+}
+
+func (ts *testSuite) GetConfigAPI(chainName chain.ChainType) (cfgAPI chain.DstConfigureAPI, err error) {
+	cfgAPI, ok := ts.clsPerChain[chainName]
+	if !ok {
+		err = fmt.Errorf("Chain %v not found", chainName)
+	}
+	return
+}
 
 func (ts *testSuite) getAmountBeforeFeeCharge(chainName chain.ChainType, coinName string, outputBalance *big.Int) (*big.Int, error) {
 	/*
@@ -77,22 +93,6 @@ func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, e
 	}
 	key = keyPairs[0][0]
 	addr = cl.GetBTPAddress(keyPairs[0][1])
-	return
-}
-
-func (ts *testSuite) GetGodKeyPairs(chainName chain.ChainType) (key, addr string, err error) {
-	godkeyPair, ok := ts.godKeysPerChain[chainName]
-	if !ok {
-		err = errors.Wrapf(err, "GetKeyPairs %v", err)
-		return
-	}
-	cl, ok := ts.clsPerChain[chainName]
-	if !ok {
-		err = fmt.Errorf("Chain %v not found", chainName)
-		return
-	}
-	key = godkeyPair.PrivKey
-	addr = cl.GetBTPAddress(godkeyPair.PubKey)
 	return
 }
 
@@ -144,7 +144,6 @@ func (ts *testSuite) ValidateTransactionResultAndEvents(ctx context.Context, cha
 	if !ok {
 		return fmt.Errorf("Chain %v not found", chainName)
 	}
-	time.Sleep(time.Second * 5)
 	tctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	res, err := srcCl.WaitForTxnResult(tctx, hash)

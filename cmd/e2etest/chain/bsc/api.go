@@ -42,6 +42,7 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 			BlockReq: ethereum.FilterQuery{
 				Addresses: []ethCommon.Address{
 					ethCommon.HexToAddress(cfg.ContractAddresses[chain.BTSPeriphery]),
+					ethCommon.HexToAddress(cfg.ContractAddresses[chain.BMCPeriphery]),
 				},
 			},
 		},
@@ -95,7 +96,7 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 					for _, txnLog := range v.Logs {
 						res, evtType, err := r.par.Parse(&txnLog)
 						if err != nil {
-							r.log.Warn(errors.Wrap(err, "Parse "))
+							//r.log.Trace(errors.Wrap(err, "Parse "))
 							err = nil
 							continue
 						}
@@ -219,6 +220,25 @@ func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
 
 func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return r.fd.watchFor(chain.TransferEnd, id, seq)
+}
+
+func (r *api) WatchForAddToBlacklistRequest(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+func (r *api) WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
+func (r *api) WatchForSetTokenLmitRequest(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
+func (r *api) WatchForBlacklistResponse(ID uint64, seq int64) error {
+	return r.fd.watchFor(chain.BlacklistResponse, ID, seq)
+}
+
+func (r *api) WatchForSetTokenLmitResponse(ID uint64, seq int64) error {
+	return r.fd.watchFor(chain.TokenLimitResponse, ID, seq)
 }
 
 func (r *api) GetKeyPairs(num int) ([][2]string, error) {

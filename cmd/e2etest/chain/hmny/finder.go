@@ -58,8 +58,8 @@ func (f *finder) watchFor(eventType chain.EventLogType, id uint64, seq int64) er
 }
 
 func (f *finder) Match(elinfo *chain.EventLogInfo) bool {
-	if matchedIndex, matchedIDs := f.lookupCache(elinfo); len(matchedIndex) > 0 {
-		elinfo.IDs = matchedIDs
+	if matchedIndex, matchedIDs := f.lookupCache(elinfo); matchedIndex >= 0 {
+		elinfo.ID = matchedIDs
 		f.removeFromFromRunCache(matchedIndex)
 		return true
 	}
@@ -78,20 +78,18 @@ func (f *finder) addToRunCache(r *runnable) {
 	f.runCache.mem = append(f.runCache.mem, r)
 }
 
-func (f *finder) removeFromFromRunCache(ids []int) {
+func (f *finder) removeFromFromRunCache(id int) {
 	f.runCache.mtx.Lock()
 	defer f.runCache.mtx.Unlock()
-	for _, id := range ids {
-		//f.log.Tracef("Removing %d", id)
-		f.runCache.mem[id] = nil
-	}
+	//f.log.Tracef("Removing %d", id)
+	f.runCache.mem[id] = nil
 }
 
-func (f *finder) lookupCache(elInfo *chain.EventLogInfo) ([]int, []uint64) {
+func (f *finder) lookupCache(elInfo *chain.EventLogInfo) (int, uint64) {
 	f.runCache.mtx.RLock()
 	defer f.runCache.mtx.RUnlock()
-	matchedIndex := []int{}
-	matchedIDs := []uint64{}
+	var matchedIndex int = -1
+	var matchedIDs uint64
 	for runid, runP := range f.runCache.mem {
 		if runP == nil { // nil is set for removed runnable. See removeFromFromRunCache
 			continue
@@ -99,8 +97,9 @@ func (f *finder) lookupCache(elInfo *chain.EventLogInfo) ([]int, []uint64) {
 		match, err := runP.callback(runP.args, elInfo)
 		if match {
 			//f.log.Warn("Match RunID ", runid)
-			matchedIndex = append(matchedIndex, runid)
-			matchedIDs = append(matchedIDs, runP.args.id)
+			matchedIndex = runid
+			matchedIDs = runP.args.id
+			break
 		} else if !match && err != nil {
 			//f.log.Error("Non Match ", err)
 		}

@@ -3,7 +3,6 @@ package executor_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -51,12 +50,12 @@ func TestExecutor(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 240*time.Second)
 	ex.Subscribe(ctx)
 	time.Sleep(5 * time.Second)
-	err = ex.RunFlowTest(ctx, "ICON", "BSC", []string{"btp-0x2.icon-sICX"})
+	err = ex.RunFlowTest(ctx, "BSC", "ICON", []string{"btp-0x61.bsc-BNB"})
 	if err != nil {
 		t.Error(err)
 	}
 	cancel()
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 2)
 
 	// defer func() {
 	// 	cancel()
@@ -65,27 +64,4 @@ func TestExecutor(t *testing.T) {
 	// cancel()
 	// time.Sleep(time.Second * 3)
 	// l.Info("Exit")
-}
-
-func TestStress(t *testing.T) {
-	cfg, err := getConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
-	l := log.New()
-	log.SetGlobalLogger(l)
-	ex, err := executor.New(l, cfg)
-	if err != nil {
-		t.Fatalf("%+v", err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
-	ex.Subscribe(ctx)
-	time.Sleep(5 * time.Second)
-	for i := 0; i < 1; i++ {
-		fmt.Println("Epochs ", i)
-		ex.RunFlowTest(ctx, "ICON", "BSC", []string{"sICX", "bnUSD"})
-	}
-	// <-ex.Done()
-	cancel()
-	time.Sleep(time.Second * 2)
 }

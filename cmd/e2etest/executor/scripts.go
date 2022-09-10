@@ -777,20 +777,21 @@ var TransferToZeroAddress Script = Script{
 		if initDstBalance.UserBalance.Cmp(finalDstBalance.UserBalance) != 0 {
 			return nil, fmt.Errorf("Epected same; Got Different. initDstBalance %v finalDstBalance %v", initDstBalance, finalDstBalance)
 		}
+		fmt.Println("pass", err)
 		return nil, err
 	},
 }
 
 var TransferToUnknownNetwork Script = Script{
 	Name:        "TransferToUnknownNetwork",
-	Description: "Transfer to unknowm network",
+	Description: "Transfer to unknow network",
 	Type:        "Flow",
 	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
 		if len(coinNames) != 1 {
 			return nil, fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
 		}
 		coinName := coinNames[0]
-		src, dst, err := ts.GetChainPair(srcChain, dstChain)
+		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
 			return nil, errors.Wrapf(err, "GetChainPair %v", err)
 		}
@@ -820,7 +821,7 @@ var TransferToUnknownNetwork Script = Script{
 		dstAddr, err := changeBMCNetwork(tmpDstAddr)
 
 		// Funds
-		netTransferrableAmount := big.NewInt(1)
+		netTransferrableAmount := big.NewInt(-1)
 		userSuppliedAmount, err := ts.getAmountBeforeFeeCharge(srcChain, coinName, netTransferrableAmount)
 		gasLimitOnSrc := big.NewInt(int64(ts.cfgPerChain[srcChain].GasLimit[chain.TransferCoinInterChainGasLimit]))
 		if coinName != src.NativeCoin() {
@@ -838,10 +839,6 @@ var TransferToUnknownNetwork Script = Script{
 
 		// Record Initial Balance
 		initSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
-		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
-		}
-		initDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
 		if err != nil {
 			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
@@ -868,102 +865,43 @@ var TransferToUnknownNetwork Script = Script{
 			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
 		}
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
-		if err := ts.ValidateTransactionResultAndEvents(ctx, srcChain, transferHashOnSrc, []string{coinName}, srcAddr, dstAddr, []*big.Int{userSuppliedAmount}); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
-		}
-
-		// Wait For Events
-		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
-			chain.TransferStart: func(ev *evt) error {
-				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
-					return errors.New("Got nil value for event ")
+		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
+			if err.Error() == StatusCodeZero.Error() {
+				finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
+				if err != nil {
+					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 				}
-				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
-				if !ok {
-					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+				finalSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
+				if err != nil {
+					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 				}
-				startEvt.From = src.GetBTPAddress(startEvt.From)
-				if startEvt.From != srcAddr {
-					return fmt.Errorf("Expected Same Value for SrcAddr; Got startEvt.From: %v srcAddr: %v", startEvt.From, srcAddr)
+				gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
+				if err != nil {
+					return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
 				}
-				if startEvt.To != dstAddr {
-					return fmt.Errorf("Expected Same Value for DstAddr; Got startEvt.To: %v dstAddr: %v", startEvt.To, dstAddr)
+				if coinName != src.NativeCoin() {
+					if initSrcBalance.TotalBalance.Cmp(finalSrcBalance.TotalBalance) != 0 {
+						return nil, fmt.Errorf("Expected Same, Got Different. finalSrcBalance %v initialSrcBalance %v", finalSrcBalance.TotalBalance, initSrcBalance.TotalBalance)
+					}
+					gasSpentOnApprove, err := src.ChargedGasFee(approveHash)
+					if err != nil {
+						return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+					}
+					gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
+					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
+					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
+						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+					}
+				} else {
+					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
+					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
+						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+					}
 				}
-				if len(startEvt.Assets) != 1 {
-					return fmt.Errorf("For single token transfer; Expected single asset; Got %v", len(startEvt.Assets))
-				}
-				if startEvt.Assets[0].Name != coinName {
-					return fmt.Errorf("Expected same value for coinName; Got startEvt.Assets.Name: %v coinName %v", startEvt.Assets[0].Name, coinName)
-				}
-				if startEvt.Assets[0].Value.Cmp(netTransferrableAmount) != 0 {
-					return fmt.Errorf("Expected same value for coinName; Got startEvt.Value: %v AmountAfterFeeCharge %v", startEvt.Assets[0].Value, netTransferrableAmount)
-				}
-				sum := (&big.Int{}).Add(startEvt.Assets[0].Value, startEvt.Assets[0].Fee)
-				if sum.Cmp(userSuppliedAmount) != 0 {
-					return fmt.Errorf("Expected same value for coinName; Got startEvt.Value+Fee: %v AmountBeforeFeeCharge %v", sum, userSuppliedAmount)
-				}
-				return nil
-			},
-			chain.TransferEnd: func(ev *evt) error {
-				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
-					return errors.New("Got nil value for event ")
-				}
-				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
-				if !ok {
-					return fmt.Errorf("Expected *chain.TransferEndEvent Got %T", ev.msg.EventLog)
-				}
-				if endEvt.Code.String() != "1" {
-					return fmt.Errorf("Expected error code (1) Got %v", endEvt.Code.String())
-				}
-				return nil
-			},
-		})
-		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
-		}
-
-		// Final Tally
-		finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
-		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
-		}
-		finalDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
-		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
-		}
-		finalSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
-		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
-		}
-		gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
-		if err != nil {
-			return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
-		}
-		if coinName != src.NativeCoin() {
-			tmpDiff := (&big.Int{}).Sub(initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
-			feeCharged := (&big.Int{}).Sub(userSuppliedAmount, netTransferrableAmount)
-			if tmpDiff.Cmp(feeCharged) != 0 {
-				return nil, fmt.Errorf("Expected same value; Got different feeCharged %v BalanceDiff %v", feeCharged, tmpDiff)
+				fmt.Println("Pass 1")
+				return nil, nil
 			}
-			gasSpentOnApprove, err := src.ChargedGasFee(approveHash)
-			if err != nil {
-				return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
-			}
-			gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
-			tmpDiff = (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
-			if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
-			}
-		} else {
-			feeCharged := (&big.Int{}).Sub(userSuppliedAmount, netTransferrableAmount)
-			tmpNativeCoinUsed := (&big.Int{}).Add(feeCharged, gasSpentOnTxn)
-			tmpDiff := (&big.Int{}).Sub(initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
-			if tmpNativeCoinUsed.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same, Got Different. NativeCoinUsed %v SrcDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
-			}
-		}
-		if initDstBalance.UserBalance.Cmp(finalDstBalance.UserBalance) != 0 {
-			return nil, fmt.Errorf("Epected same; Got Different. initDstBalance %v finalDstBalance %v", initDstBalance, finalDstBalance)
+			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
 		}
 		return nil, err
 	},
@@ -1043,13 +981,10 @@ var TransferWithoutApprove Script = Script{
 				if err != nil {
 					return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
 				}
-
-				tmpDiff := (&big.Int{}).Sub(initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
-				feeCharged := (&big.Int{}).Sub(userSuppliedAmount, netTransferrableAmount)
-				if tmpDiff.Cmp(feeCharged) != 0 {
-					return nil, fmt.Errorf("Expected same value; Got different feeCharged %v BalanceDiff %v", feeCharged, tmpDiff)
+				if initSrcBalance.UserBalance.Cmp(finalSrcBalance.UserBalance) != 0 {
+					return nil, fmt.Errorf("Expected same value; Got different initSrcBalance %v finalSrcbalance %v", initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
 				}
-				tmpDiff = (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
+				tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
 				if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
 					return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
 				}
@@ -1070,7 +1005,7 @@ var TransferLessThanFee Script = Script{
 			return nil, fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
 		}
 		coinName := coinNames[0]
-		src, dst, err := ts.GetChainPair(srcChain, dstChain)
+		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
 			return nil, errors.Wrapf(err, "GetChainPair %v", err)
 		}
@@ -1106,10 +1041,6 @@ var TransferLessThanFee Script = Script{
 		if err != nil {
 			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
-		initDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
-		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
-		}
 		initSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
 			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
@@ -1133,14 +1064,9 @@ var TransferLessThanFee Script = Script{
 			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
 		}
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
-		if _, err = ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
-			if err.Error() == StatusCodeZero.Error() { // Failed as expected
-				// Final Tally
+		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
+			if err.Error() == StatusCodeZero.Error() {
 				finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
-				if err != nil {
-					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
-				}
-				finalDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
 				if err != nil {
 					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 				}
@@ -1152,33 +1078,26 @@ var TransferLessThanFee Script = Script{
 				if err != nil {
 					return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
 				}
-
 				if coinName != src.NativeCoin() {
-					tmpDiff := (&big.Int{}).Sub(initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
-					feeCharged := (&big.Int{}).Sub(userSuppliedAmount, netTransferrableAmount)
-					if tmpDiff.Cmp(feeCharged) != 0 {
-						return nil, fmt.Errorf("Expected same value; Got different feeCharged %v BalanceDiff %v", feeCharged, tmpDiff)
+					if initSrcBalance.TotalBalance.Cmp(finalSrcBalance.TotalBalance) != 0 {
+						return nil, fmt.Errorf("Expected Same, Got Different. finalSrcBalance %v initialSrcBalance %v", finalSrcBalance.TotalBalance, initSrcBalance.TotalBalance)
 					}
 					gasSpentOnApprove, err := src.ChargedGasFee(approveHash)
 					if err != nil {
 						return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
 					}
 					gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
-					tmpDiff = (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
+					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
 					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
 						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
 					}
 				} else {
-					feeCharged := (&big.Int{}).Sub(userSuppliedAmount, netTransferrableAmount)
-					tmpNativeCoinUsed := (&big.Int{}).Add(feeCharged, gasSpentOnTxn)
-					tmpDiff := (&big.Int{}).Sub(initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
-					if tmpNativeCoinUsed.Cmp(tmpDiff) != 0 {
-						return nil, fmt.Errorf("Expected same, Got Different. NativeCoinUsed %v SrcDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
+					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
+						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
 					}
 				}
-				if initDstBalance.UserBalance.Cmp(finalDstBalance.UserBalance) != 0 {
-					return nil, fmt.Errorf("Epected same; Got Different. initDstBalance %v finalDstBalance %v", initDstBalance, finalDstBalance)
-				}
+				fmt.Println("Pass 1")
 				return nil, nil
 			}
 			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
@@ -1260,62 +1179,93 @@ var TransferEqualToFee Script = Script{
 			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
 		}
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
-		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err == nil {
-			// Wait For Events
-			fmt.Println("Wait For Events")
-			err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
-				chain.TransferStart: func(ev *evt) error {
-					if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
-						return errors.New("Got nil value for event ")
+		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
+			if err.Error() == StatusCodeZero.Error() {
+				finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
+				if err != nil {
+					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				}
+				finalSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
+				if err != nil {
+					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				}
+				gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
+				if err != nil {
+					return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+				}
+				if coinName != src.NativeCoin() {
+					if initSrcBalance.TotalBalance.Cmp(finalSrcBalance.TotalBalance) != 0 {
+						return nil, fmt.Errorf("Expected Same, Got Different. finalSrcBalance %v initialSrcBalance %v", finalSrcBalance.TotalBalance, initSrcBalance.TotalBalance)
 					}
-					startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
-					if !ok {
-						return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+					gasSpentOnApprove, err := src.ChargedGasFee(approveHash)
+					if err != nil {
+						return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
 					}
-					startEvt.From = src.GetBTPAddress(startEvt.From)
-					if startEvt.From != srcAddr {
-						return fmt.Errorf("Expected Same Value for SrcAddr; Got startEvt.From: %v srcAddr: %v", startEvt.From, srcAddr)
+					gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
+					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
+					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
+						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
 					}
-					if startEvt.To != dstAddr {
-						return fmt.Errorf("Expected Same Value for DstAddr; Got startEvt.To: %v dstAddr: %v", startEvt.To, dstAddr)
+				} else {
+					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
+					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
+						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
 					}
-					if len(startEvt.Assets) != 1 {
-						return fmt.Errorf("For single token transfer; Expected single asset; Got %v", len(startEvt.Assets))
-					}
-					if startEvt.Assets[0].Name != coinName {
-						return fmt.Errorf("Expected same value for coinName; Got startEvt.Assets.Name: %v coinName %v", startEvt.Assets[0].Name, coinName)
-					}
-					if startEvt.Assets[0].Value.Cmp(netTransferrableAmount) != 0 {
-						return fmt.Errorf("Expected same value for coinName; Got startEvt.Value: %v AmountAfterFeeCharge %v", startEvt.Assets[0].Value, netTransferrableAmount)
-					}
-					sum := (&big.Int{}).Add(startEvt.Assets[0].Value, startEvt.Assets[0].Fee)
-					if sum.Cmp(userSuppliedAmount) != 0 {
-						return fmt.Errorf("Expected same value for coinName; Got startEvt.Value+Fee: %v AmountBeforeFeeCharge %v", sum, userSuppliedAmount)
-					}
-					return nil
-				},
-				chain.TransferEnd: func(ev *evt) error {
-					if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
-						return errors.New("Got nil value for event ")
-					}
-					endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
-					if !ok {
-						return fmt.Errorf("Expected *chain.TransferEndEvent Got %T", ev.msg.EventLog)
-					}
-					if endEvt.Code.String() != "1" {
-						return fmt.Errorf("Expected error code (1) Got %v", endEvt.Code.String())
-					}
-					return nil
-				},
-			})
-			if err != nil {
-				return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+				}
+				fmt.Println("Pass 1")
+				return nil, nil
 			}
-		} else if err != nil && err.Error() != StatusCodeZero.Error() {
 			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
 		}
-		// if err == nil && transferEnd.Code == 1 OR err != nil && err == StatusCodeZero
-		// then failed as expected; tally now
+		// Wait For Events
+		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
+			chain.TransferStart: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+				}
+				startEvt.From = src.GetBTPAddress(startEvt.From)
+				if startEvt.From != srcAddr {
+					return fmt.Errorf("Expected Same Value for SrcAddr; Got startEvt.From: %v srcAddr: %v", startEvt.From, srcAddr)
+				}
+				if startEvt.To != dstAddr {
+					return fmt.Errorf("Expected Same Value for DstAddr; Got startEvt.To: %v dstAddr: %v", startEvt.To, dstAddr)
+				}
+				if len(startEvt.Assets) != 1 {
+					return fmt.Errorf("For single token transfer; Expected single asset; Got %v", len(startEvt.Assets))
+				}
+				if startEvt.Assets[0].Name != coinName {
+					return fmt.Errorf("Expected same value for coinName; Got startEvt.Assets.Name: %v coinName %v", startEvt.Assets[0].Name, coinName)
+				}
+				if startEvt.Assets[0].Value.Cmp(netTransferrableAmount) != 0 {
+					return fmt.Errorf("Expected same value for coinName; Got startEvt.Value: %v AmountAfterFeeCharge %v", startEvt.Assets[0].Value, netTransferrableAmount)
+				}
+				sum := (&big.Int{}).Add(startEvt.Assets[0].Value, startEvt.Assets[0].Fee)
+				if sum.Cmp(userSuppliedAmount) != 0 {
+					return fmt.Errorf("Expected same value for coinName; Got startEvt.Value+Fee: %v AmountBeforeFeeCharge %v", sum, userSuppliedAmount)
+				}
+				return nil
+			},
+			chain.TransferEnd: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferEndEvent Got %T", ev.msg.EventLog)
+				}
+				if endEvt.Code.String() != "1" {
+					return fmt.Errorf("Expected error code (1) Got %v", endEvt.Code.String())
+				}
+				return nil
+			},
+		})
+		if err != nil {
+			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+		}
 		finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 		if err != nil {
 			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
@@ -1328,10 +1278,6 @@ var TransferEqualToFee Script = Script{
 		if err != nil {
 			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
 		}
-		fmt.Println(initSrcBalance)
-		fmt.Println(finalSrcBalance)
-		fmt.Println(initSrcNativeCoinBalance)
-		fmt.Println(finalSrcNativeCoinBalance)
 		gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
 		if err != nil {
 			return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
@@ -1362,7 +1308,7 @@ var TransferEqualToFee Script = Script{
 		if initDstBalance.UserBalance.Cmp(finalDstBalance.UserBalance) != 0 {
 			return nil, fmt.Errorf("Epected same; Got Different. initDstBalance %v finalDstBalance %v", initDstBalance, finalDstBalance)
 		}
-		fmt.Println("pass")
+		fmt.Println("pass 2")
 		return nil, err
 	},
 }

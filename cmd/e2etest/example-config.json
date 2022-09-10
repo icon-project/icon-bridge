@@ -4,6 +4,7 @@
             "name":"ICON",
             "url":"https://lisbon.net.solidwallet.io/api/v3/icon_dex",
             "contract_addresses": {
+                "BMC":  "cx3fbcd7c25be9aac63bd944a0b8d40becdaa35425",
                 "BTS":  "cx9d4f2ecaa38d3c34d508bd9c8df73c52dbef60dd"
             },
             "native_coin":"btp-0x2.icon-ICX",
