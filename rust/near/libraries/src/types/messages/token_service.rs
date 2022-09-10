@@ -25,6 +25,11 @@ pub enum TokenServiceType {
         addresses: Vec<String>,
         network: String,
     },
+    RequestChangeTokenLimit {
+        coin_names: Vec<String>,
+        token_limits: Vec<u128>,
+        network: String,
+    },
     UnknownType,
     UnhandledType,
 }
@@ -102,6 +107,25 @@ impl Encodable for TokenServiceMessage {
                 params.append(network);
                 stream.append::<u128>(&3).append(&params.out());
             }
+            &TokenServiceType::RequestChangeTokenLimit {
+                ref coin_names,
+                ref token_limits,
+                ref network,
+            } => {
+                let mut params = rlp::RlpStream::new_list(3);
+                params.begin_unbounded_list();
+                coin_names.iter().for_each(|coin_name| {
+                    params.append(coin_name);
+                });
+                params.finalize_unbounded_list();
+                params.begin_unbounded_list();
+                token_limits.iter().for_each(|toke_limit| {
+                    params.append(toke_limit);
+                });
+                params.finalize_unbounded_list();
+                params.append(network);
+                stream.append::<u128>(&3).append(&params.out());
+            }
             _ => (),
         }
         stream.finalize_unbounded_list();
@@ -141,9 +165,14 @@ impl TryFrom<(u128, &Vec<u8>)> for TokenServiceType {
                 message: payload.val_at(1)?,
             }),
             3 => Ok(Self::RequestBlacklist {
-                request_type: payload.val_at::<BlackListType>(0).unwrap(),
-                addresses: payload.list_at(1).unwrap(),
-                network: payload.val_at::<String>(2).unwrap(),
+                request_type: payload.val_at::<BlackListType>(0)?,
+                addresses: payload.list_at(1)?,
+                network: payload.val_at::<String>(2)?,
+            }),
+            4 => Ok(Self::RequestChangeTokenLimit {
+                coin_names: payload.list_at(0)?,
+                token_limits: payload.list_at(1)?,
+                network: payload.val_at::<String>(2)?,
             }),
             5 => Ok(Self::UnknownType),
             _ => Ok(Self::UnhandledType),
@@ -253,6 +282,20 @@ mod tests {
     };
     use std::convert::{TryFrom, TryInto};
 
+    #[test]
+    fn deserialize_change_token_limit() {
+        let service_message: BtpMessage<SerializedMessage> =  BtpMessage::try_from("-L64OWJ0cDovLzB4Mi5pY29uL2N4NjE5M2U2OTI3NzIzZWNiMzJkYWNiMGExMjVhOTg2NjMzNzY4N2IwM7hPYnRwOi8vMHgxLm5lYXIvN2ZlN2VkMGY4YjI2MTdmYjRlMTA4NWY3YzQzYTM0OWFjZDNmMzMwMGVlYTZiODgxODc2NDZhNDU4ZWNhYzIwY4NidHMKrOsEqejSkWJ0cC0weDEubmVhci1ORUFSy4oCHhngybqyQAAAiDB4MS5uZWFy".to_string()).unwrap();
+        let service: BtpMessage<TokenServiceMessage> = service_message.clone().try_into().unwrap();
+        let change_token_limit = TokenServiceMessage {
+            service_type: TokenServiceType::RequestChangeTokenLimit {
+                coin_names: vec!["btp-0x1.near-NEAR".to_string()],
+                token_limits: vec![10000000000000000000000],
+                network: "0x1.near".to_string(),
+            },
+        };
+        let result = service.message();
+        assert_eq!(result, &Some(change_token_limit))
+    }
     #[test]
     fn deserialize_blacklist_request_message() {
         let service_message:BtpMessage<SerializedMessage> = BtpMessage::try_from(
