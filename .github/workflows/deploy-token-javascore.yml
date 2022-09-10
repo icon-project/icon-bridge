@@ -2,14 +2,25 @@ name: 'Deploy Token Javascore'
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feature/442-deploy-register-token
   workflow_call:
-
+    secrets:
+      AWS_S3_BUCKET:
+        required: true
+      AWS_REGION:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      GOLOOP_RPC_KEY_STORE_B64:
+        required: true
+      GOLOOP_RPC_URI:
+        required: true
+      GOLOOP_RPC_KEY_PASSWORD:
+        required: true
 jobs:
   deploy-token-javascore:
-    name: deploy bmc Javascore to testnet
+    name: deploy token javascore
     runs-on: ubuntu-latest
     container:
       image: iconbridge/build
@@ -19,6 +30,18 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - name: Checkout tools repo
+        uses: actions/checkout@v3
+        with:
+          repository: icon-project/java-score-examples
+          path: java-score-examples
+
+      - name: javascore irc2.jar
+        working-directory: ./java-score-examples
+        run: |
+          gradle irc2-token:clean
+          gradle irc2-token:optimizedJar
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -41,7 +64,7 @@ jobs:
         run: |
           echo $GOLOOP_RPC_KEY_STORE_B64 | base64 -d > key.json
 
-      - name: Deploy javascore token
+      - name: deploy_javascore_token
         working-directory: ./javascore
         shell: bash
         timeout-minutes: 1
@@ -49,7 +72,7 @@ jobs:
           GOLOOP_RPC_KEY_PASSWORD: ${{ secrets.GOLOOP_RPC_KEY_PASSWORD }}
           GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
         run: |
-          goloop rpc sendtx deploy ~/java-score-examples/irc2-token/build/libs/irc2-token-0.9.1-optimized.jar --key_store=./key.json --content_type application/java --param _name="btp-0x2.icon-sICX" --param _symbol="sICX" --param _initialSupply="0x5f5e100" --param _decimals="0x12" --nid 0x2 --content_type application/java --step_limit 3000000000 | jq -r . | tee tx.icon.sICX
+          goloop rpc sendtx deploy ../java-score-examples/irc2-token/build/libs/irc2-token-0.9.1-optimized.jar --key_store=./key.json --content_type application/java --param _name="btp-0x2.icon-sICX" --param _symbol="sICX" --param _initialSupply="0x5f5e100" --param _decimals="0x12" --nid 0x2 --content_type application/java --step_limit 3000000000 | jq -r . | tee icon.addr.sICX
 
       - name: configure_javascore_add_bmc_owner
         working-directory: ./javascore
@@ -61,9 +84,9 @@ jobs:
         run: |
           icon_bmc_owner=$(cat ./key.json | jq -r .address)
 
-          goloop rpc sendtx call --to $(cat icon-addr-bmc) --method addOwner --param _addr=$icon_bmc_owner | jq -r . > addbmcowner.icon
+          goloop rpc sendtx call --to $(cat icon-addr-bmc) --method addOwner --param _addr=$icon_bmc_owner --key_store=./key.json --nid 0x2 --step_limit 3000000000| jq -r . > addbmcowner.icon
 
-          goloop rpc sendtx deploy ~/java-score-examples/irc2-token/build/libs/irc2-token-0.9.1-optimized.jar --key_store=./key.json --content_type application/java --param _name="btp-0x2.icon-sICX" --param _symbol="sICX" --param _initialSupply="0x5f5e100" --param _decimals="0x12" --nid 0x2 --content_type application/java --step_limit 3000000000 | jq -r . | tee tx.icon.sICX
+          goloop rpc sendtx deploy ../java-score-examples/irc2-token/build/libs/irc2-token-0.9.1-optimized.jar --key_store=./key.json --content_type application/java --param _name="btp-0x2.icon-sICX" --param _symbol="sICX" --param _initialSupply="0x5f5e100" --param _decimals="0x12" --nid 0x2 --content_type application/java --step_limit 3000000000 | jq -r . | tee tx.icon.sICX
 
       - name: configure_javascore_bmc_setFeeAggregator
         working-directory: ./javascore
@@ -76,10 +99,10 @@ jobs:
         run: |
           icon_bmc_owner=$(cat ./key.json | jq -r .address)
 
-          goloop rpc sendtx call --to $(cat icon-addr-bmc) --key_store=./key.json --method setFeeAggregator --param _addr=$(cat icon_bmc_owner) --nid 0x2 --step_limit 3000000000| jq -r . >setFeeAggregator.icon
-
+          goloop rpc sendtx call --to $(cat icon-addr-bmc) --key_store=./key.json --method setFeeAggregator --param _addr=$icon_bmc_owner --nid 0x2 --step_limit 3000000000| jq -r . >setFeeAggregator.icon
+          sleep 5
           goloop rpc sendtx call --to $(cat icon-addr-bmc) --method setFeeGatheringTerm --key_store=./key.json --param _value=$FEE_GATHERING_INTERVAL --nid 0x2 --step_limit 3000000000 | jq -r . >setFeeGatheringTerm.icon
-
+          sleep 5
           goloop rpc --uri $GOLOOP_RPC_URI txresult $(cat setFeeGatheringTerm.icon)
 
       - name: configure_javascore_add_bts
@@ -108,6 +131,7 @@ jobs:
         run: |
           icon_bts_owner=$(cat ./key.json | jq -r .address)
           goloop rpc sendtx call --to $(cat icon-addr-bts) --key_store=./key.json --method addOwner --param _addr=$icon_bts_owner --nid 0x2 --step_limit 3000000000 | jq -r . >addBtsOwner.icon
+          sleep 5
           goloop rpc --uri $GOLOOP_RPC_URI txresult $(cat addBtsOwner.icon)
 
       - name: configure_javascore_bts_setICXFee
@@ -120,4 +144,11 @@ jobs:
         run: |
           icon_bts_owner=$(cat ./key.json | jq -r .address)
           goloop rpc sendtx call --to $(cat icon-addr-bts) --key_store=./key.json --method addOwner --param _addr=$icon_bts_owner --nid 0x2 --step_limit 3000000000 | jq -r . >addBtsOwner.icon
+          sleep 5
           goloop rpc --uri $GOLOOP_RPC_URI txresult $(cat addBtsOwner.icon)
+
+      - name: Sync files for further steps
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        run: |
+          aws s3 cp javascore/icon.addr.sICX s3://$AWS_S3_BUCKET/icon.addr.sICX

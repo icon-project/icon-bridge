@@ -2,7 +2,25 @@ name: 'Deploy and Register Javascore BMC/BTS to Testnet'
 
 on:
   workflow_dispatch:
+  # push:
+  #   branches:
+  #     - feature/442-deploy-register-token
   workflow_call:
+    secrets:
+      AWS_S3_BUCKET:
+        required: true
+      AWS_REGION:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      GOLOOP_RPC_KEY_STORE_B64:
+        required: true
+      GOLOOP_RPC_URI:
+        required: true
+      GOLOOP_RPC_KEY_PASSWORD:
+        required: true
 
 jobs:
   deploy-bmc-javascore:
@@ -16,6 +34,14 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Build javascore bmc optimized jar
         working-directory: ./javascore
         run: |
@@ -37,6 +63,18 @@ jobs:
           GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
         run: |
           goloop rpc --uri $GOLOOP_RPC_URI sendtx deploy bmc/build/libs/bmc-optimized.jar --key_store=./key.json --nid 0x2 --content_type application/java --step_limit 3000000000 --param _net=0x2.icon | jq -r . | tee tx.icon.bmc
+          icon_block_height=$(goloop rpc lastblock | jq -r .height)
+
+          hex=$(echo "obase=16; ibase=10; $(($icon_block_height - 1))" | bc)
+          heigh=$(echo "0x$(tr [A-Z] [a-z] <<< "$hex")")
+
+          echo $(URI=$GOLOOP_RPC_URI HEIGHT=$heigh ../devnet/docker/icon-bsc/iconvalidators | jq -r .hash) > icon.chain.validators
+
+      - name: Sync icon.chain.validators for further steps
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        run: |
+          aws s3 cp ./javascore/icon.chain.validators s3://$AWS_S3_BUCKET/icon.chain.validators
 
       - name: Grab txresult
         working-directory: ./javascore
@@ -78,6 +116,13 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Retrieve the secret and decode it to a file
         working-directory: ./javascore
@@ -159,6 +204,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
 
@@ -216,13 +268,6 @@ jobs:
           done
           echo Finished
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
       - name: Sync tx-icon-bts-bmc for further steps
         env:
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
@@ -230,8 +275,6 @@ jobs:
           aws s3 cp ./javascore/tx-icon-bts-bmc s3://$AWS_S3_BUCKET/tx-icon-bts-bmc-$GITHUB_REF_NAME
           aws s3 mv ./javascore/tx-icon-bts-bmc s3://$AWS_S3_BUCKET/tx-icon-bts-bmc
 
-          aws s3 cp ./javascore/icon-addr-bmc s3://$AWS_S3_BUCKET/icon-addr-bmc-$GITHUB_REF_NAME
           aws s3 mv ./javascore/icon-addr-bmc s3://$AWS_S3_BUCKET/icon-addr-bmc
 
-          aws s3 cp ./javascore/icon-addr-bts s3://$AWS_S3_BUCKET/icon-addr-bts-$GITHUB_REF_NAME
           aws s3 mv ./javascore/icon-addr-bts s3://$AWS_S3_BUCKET/icon-addr-bts

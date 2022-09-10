@@ -1,0 +1,60 @@
+name: 'Deployment for Testnet'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/442-deploy-register-token
+  workflow_call:
+
+jobs:
+  deploy-javascore:
+    uses: icon-project/icon-bridge/.github/workflows/deploy-javascore-testnet.yml@feature/442-deploy-register-token
+    secrets:
+      AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      GOLOOP_RPC_KEY_STORE_B64: ${{ secrets.GOLOOP_RPC_KEY_STORE_B64 }}
+      GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+      GOLOOP_RPC_KEY_PASSWORD: ${{ secrets.GOLOOP_RPC_KEY_PASSWORD }}
+  deploy-solidity:
+    uses: icon-project/icon-bridge/.github/workflows/deploy-solidity-testnet.yml@feature/442-deploy-register-token
+    secrets:
+      AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+      BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+      BSC_NID: ${{ secrets.BSC_NID }}
+      BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+  deploy-token-javascore:
+    needs: [deploy-javascore]
+    uses: icon-project/icon-bridge/.github/workflows/deploy-token-javascore.yml@feature/442-deploy-register-token
+    secrets:
+      AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      GOLOOP_RPC_KEY_STORE_B64: ${{ secrets.GOLOOP_RPC_KEY_STORE_B64 }}
+      GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+      GOLOOP_RPC_KEY_PASSWORD: ${{ secrets.GOLOOP_RPC_KEY_PASSWORD }}
+  link-register-token:
+    needs: [deploy-javascore,deploy-solidity]
+    uses: icon-project/icon-bridge/.github/workflows/link-register-coin.yml@feature/442-deploy-register-token
+    secrets:
+      AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      GOLOOP_RPC_KEY_STORE_B64: ${{ secrets.GOLOOP_RPC_KEY_STORE_B64 }}
+      GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+      GOLOOP_RPC_KEY_PASSWORD: ${{ secrets.GOLOOP_RPC_KEY_PASSWORD }}
+      PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+      BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+      BSC_NID: ${{ secrets.BSC_NID }}
+      BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+  deploy-bmr:
+    needs: [link-register-token]
+    uses: icon-project/icon-bridge/.github/workflows/deploy-bmr.yml@feature/442-deploy-register-token

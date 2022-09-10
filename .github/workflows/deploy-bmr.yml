@@ -1,0 +1,167 @@
+name: 'Start BMR with Config'
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - feature/442-deploy-register-token
+  workflow_call:
+
+jobs:
+  start-bmr-config:
+    name: start bmr and config
+    runs-on: icon-bridge-proxy-temp
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Sync required files for further steps
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        run: |
+          aws s3 cp s3://$AWS_S3_BUCKET/icon-addr-bmc icon.addr.bmc
+          aws s3 cp s3://$AWS_S3_BUCKET/icon-addr-bts icon.addr.bts
+  
+          aws s3 cp s3://$AWS_S3_BUCKET/icon.addr.coin.sICX icon.addr.coin.sICX 
+          aws s3 cp s3://$AWS_S3_BUCKET/icon.addr.coin.BNB icon.addr.coin.BNB
+
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc.addr.coin.BUSD bsc.addr.coin.BUSD
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc.addr.coin.ICX bsc.addr.coin.ICX
+
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc-addr-btsperiphery.txt bsc.addr.btsperiphery
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc-addr-btscore.txt bsc.addr.btscore
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc-addr-bmcperiphery.txt bsc.addr.bmcperiphery
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc-addr-bmcmanagement.txt bsc.addr.bmcmanagement
+
+          aws s3 cp s3://$AWS_S3_BUCKET/icon.chain.height icon.chain.height
+          aws s3 cp s3://$AWS_S3_BUCKET/icon.addr.bmcbtp icon.addr.bmcbtp
+          aws s3 cp s3://$AWS_S3_BUCKET/icon.chain.validators icon.chain.validators
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc.addr.bmcbtp bsc.addr.bmcbtp
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc.chain.height bsc.chain.height
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc.chain.parentHash bsc.chain.parentHash
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc.bmr.wallet.json bsc.bmr.wallet.json
+      - name: generate addresses
+        run: |
+          export ICON_NATIVE_TOKEN_SYM="sICX"
+          export ICON_WRAPPED_COIN_SYM="BNB"
+          export BSC_NATIVE_TOKEN_SYM="BUSD"
+          export BSC_WRAPPED_COIN_SYM="ICX"
+          echo "{"
+          echo "    \"javascore\": {"
+          echo "        " \"sICX\" : \"$(cat icon.addr.coin.sICX)\",
+          echo "        " \"BNB\" : \"$(cat icon.addr.coin.BNB)\",
+          echo "        " \"bmc\": \"$(cat icon.addr.bmc)\",
+          echo "        " \"bts\": \"$(cat icon.addr.bts)\"
+          echo "    },"
+          echo "    \"solidity\": {"
+          echo "        " \"BUSD\" : \"$(cat bsc.addr.coin.BUSD)\",
+          echo "        " \"ICX\" : \"$(cat bsc.addr.coin.ICX)\",
+          echo "        " \"BMCManagement\": \"$(cat bsc.addr.bmcmanagement)\",
+          echo "        " \"BMCPeriphery\": \"$(cat bsc.addr.bmcperiphery)\",
+          echo "        " \"BTSCore\": \"$(cat bsc.addr.btscore)\",
+          echo "        " \"BTSPeriphery\": \"$(cat bsc.addr.btsperiphery)\"
+          echo "    }"
+          echo "}"> addresses.json
+          cat addresses.json
+
+      - name: Sync addresses.json for further steps
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        run: |
+          aws s3 cp addresses.json s3://$AWS_S3_BUCKET/addresses.json
+
+      - name: Retrieve key file
+        working-directory: ./javascore
+        env:
+          GOLOOP_RPC_KEY_STORE_B64: ${{ secrets.GOLOOP_RPC_KEY_STORE_B64 }}
+        run: |
+          echo $GOLOOP_RPC_KEY_STORE_B64 | base64 -d > key.json
+
+      - name: Generate BMR Config
+        env:
+          GOLOOP_RPC_KEY_PASSWORD: ${{ secrets.GOLOOP_RPC_KEY_PASSWORD }}
+          BSC_BMR_WALLET_SECRET: ${{ secrets.BSC_BMR_WALLET_SECRET }}
+          ICON_ENDPOINT: "https://lisbon.net.solidwallet.io/api/v3/icon_dex"
+          BSC_ENDPOINT: "https://data-seed-prebsc-1-s1.binance.org:8545"
+        run: |
+          jq -n '
+          .base_dir = "bmr" |
+          .log_level = "debug" |
+          .console_level = "trace" |
+          .log_writer.filename = "bmr/bmr.log" |
+          .relays = [ $b2i_relay, $i2b_relay ]' \
+          --arg base_dir "bmr" \
+          --arg log_writer_filename "bmr/bmr.log" \
+          --argjson b2i_relay "$(
+            jq -n '
+                  .name = "b2i" |
+                  .src.address = $src_address |
+                  .src.endpoint = [ $src_endpoint ] |
+                  .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
+                  .src.options.verifier.parentHash = $src_options_verifier_parentHash |
+                  .src.options.syncConcurrency = 100 |
+                  .src.offset = $src_offset |
+                  .dst.address = $dst_address |
+                  .dst.endpoint = [ $dst_endpoint ] |
+                  .dst.options = $dst_options |
+                  .dst.key_store = $dst_key_store |
+                  .dst.key_store.coinType = $dst_key_store_cointype |
+                  .dst.key_password = $dst_key_password ' \
+              --arg src_address "$(cat ./bsc.addr.bmcbtp)" \
+              --arg src_endpoint "$BSC_ENDPOINT" \
+              --argjson src_offset "$(cat ./bsc.chain.height)" \
+              --argjson src_options_verifier_blockHeight "$(cat ./bsc.chain.height)" \
+              --arg src_options_verifier_parentHash "$(cat ./bsc.chain.parentHash)" \
+              --arg dst_address "$(cat ./icon.addr.bmcbtp)" \
+              --arg dst_endpoint "$ICON_ENDPOINT" \
+              --argfile dst_key_store "./javascore/key.json" \
+              --arg dst_key_store_cointype "icx" \
+              --arg dst_key_password "$GOLOOP_RPC_KEY_PASSWORD" \
+              --argjson dst_options '{"step_limit":2500000000, "tx_data_size_limit":8192,"balance_threshold":"10000000000000000000"}'
+          )" \
+          --argjson i2b_relay "$(
+            jq -n '
+                  .name = "i2b" |
+                  .src.address = $src_address |
+                  .src.endpoint = [ $src_endpoint ] |
+                  .src.offset = $src_offset |
+                  .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
+                  .src.options.verifier.validatorsHash = $src_options_verifier_validatorsHash |
+                  .src.options.syncConcurrency = 100 |
+                  .dst.address = $dst_address |
+                  .dst.endpoint = [ $dst_endpoint ] |
+                  .dst.options = $dst_options |
+                  .dst.tx_data_size_limit = $dst_tx_data_size_limit |
+                  .dst.key_store = $dst_key_store |
+                  .dst.key_store.coinType = $dst_key_store_cointype |
+                  .dst.key_password = $dst_key_password ' \
+              --arg src_address "$(cat ./icon.addr.bmcbtp)" \
+              --arg src_endpoint "$ICON_ENDPOINT" \
+              --argjson src_offset "$(cat ./icon.chain.height)" \
+              --argjson src_options_verifier_blockHeight "$(cat ./icon.chain.height)" \
+              --arg src_options_verifier_validatorsHash "$(cat ./icon.chain.validators)" \
+              --arg dst_address "$(cat ./bsc.addr.bmcbtp)" \
+              --arg dst_endpoint "$BSC_ENDPOINT" \
+              --argfile dst_key_store "./bsc.bmr.wallet.json" \
+              --arg dst_key_store_cointype "evm" \
+              --arg dst_key_password "$BSC_BMR_WALLET_SECRET" \
+              --argjson dst_tx_data_size_limit 8192 \
+              --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":"100000000000000000000","boost_gas_price":1.0}'
+          )" > bmr.config.json
+
+      - name: start bmr
+        working-directory: ./build/bmr
+        run: |
+          mv ../../bmr.config.json .
+          docker stop bmr
+          /usr/local/bin/docker-compose up -d
+          docker ps 
+          docker logs bmr &
+          sleep 60
