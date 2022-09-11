@@ -96,6 +96,8 @@ type StandardConfigAPI interface {
 	IsUserBlackListed(net, addr string) (response bool, err error)
 	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
 	IsBTSOwner(addr string) (response bool, err error)
+	SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error)
+	GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error)
 
 	WatchForBlacklistResponse(ID uint64, seq int64) error
 	WatchForSetTokenLmitResponse(ID uint64, seq int64) error
@@ -151,6 +153,8 @@ type ChainAPI interface {
 	IsUserBlackListed(net, addr string) (response bool, err error)
 	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
 	IsBTSOwner(addr string) (response bool, err error)
+	SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error)
+	GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error)
 }
 
 type Config struct {

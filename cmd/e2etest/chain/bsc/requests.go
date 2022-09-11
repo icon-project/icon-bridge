@@ -357,6 +357,10 @@ func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddre
 		filterNames = append(filterNames, coinNames[i])
 	}
 	txn, err := r.btsc.TransferBatch(txo, filterNames, filterAmounts, recepientAddress)
+	if err != nil {
+		err = errors.Wrapf(err, "btsc.TransferBatch %v", err)
+		return
+	}
 	txnHash = txn.Hash().String()
 	return
 }
@@ -390,6 +394,23 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount *big.Int) (a
 		return
 	}
 	approveTxnHash = approveTxn.Hash().String()
+	return
+}
+
+func (r *requestAPI) setFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (hash string, err error) {
+	txo, err := r.getTransactionRequest(ownerKey)
+	if err != nil {
+		err = errors.Wrap(err, "getTransactionRequest ")
+		return
+	}
+	txo.GasLimit = DefaultGasLimit
+	txo.Context = context.Background()
+	txn, err := r.btsc.SetFeeRatio(txo, coinName, feeNumerator, fixedFee)
+	if err != nil {
+		err = errors.Wrap(err, "setFeeRatio ")
+		return
+	}
+	hash = txn.Hash().String()
 	return
 }
 

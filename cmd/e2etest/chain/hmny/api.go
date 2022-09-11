@@ -252,6 +252,14 @@ func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*c
 	return nil, errors.New("not implemented")
 }
 
+func (a *api) SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error) {
+	return "", errors.New("not implemented")
+}
+
+func (a *api) GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error) {
+	return nil, nil, errors.New("not implemented")
+}
+
 func (a *api) GetKeyPairFromKeystore(walFile string, password string) (privKey, pubKey string, err error) {
 	keyReader, err := os.Open(walFile)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	crypto "github.com/ethereum/go-ethereum/crypto"
@@ -245,6 +246,15 @@ func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*c
 	return nil, errors.New("not implemented")
 }
 
+func (a *api) SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error) {
+	return a.requester.setFeeRatio(ownerKey, coinName, feeNumerator, fixedFee)
+}
+
+func (a *api) GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error) {
+	res, err := a.requester.btsc.FeeRatio(&bind.CallOpts{Pending: false, Context: context.Background()}, coinName)
+	return res.FeeNumerator, res.FixedFee, err
+}
+
 func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	var err error
 	res := make([][2]string, num)
@@ -334,5 +344,6 @@ func (r *api) ChargedGasFee(txnHash string) (*big.Int, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "TransactionByHash %v", err)
 	}
-	return (&big.Int{}).Mul(big.NewInt(int64(txr.GasUsed)), txh.GasPrice()), nil
+	ret := (&big.Int{}).Mul(big.NewInt(int64(txr.GasUsed)), txh.GasPrice())
+	return ret, nil
 }

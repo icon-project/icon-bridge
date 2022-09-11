@@ -267,6 +267,14 @@ func (a *api) WatchForSetTokenLmitResponse(ID uint64, seq int64) error {
 	return errors.New("not implemented")
 }
 
+func (a *api) SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error) {
+	return a.requester.setFeeRatio(ownerKey, coinName, feeNumerator, fixedFee)
+}
+
+func (a *api) GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error) {
+	return a.requester.getFeeRatio(coinName)
+}
+
 func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*chain.EventLogInfo, error) {
 	txRes, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
 	if err != nil {

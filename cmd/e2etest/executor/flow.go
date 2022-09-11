@@ -16,7 +16,7 @@ func (ex *executor) RunFlowTest(ctx context.Context, srcChainName, dstChainName 
 
 	for _, coin := range coinNames {
 		for _, cb := range []Script{
-			ChangeTokenLimit,
+			TransferBatchBiDirection,
 		} {
 			if cb.Callback != nil {
 				id, err := ex.getID()
@@ -37,12 +37,13 @@ func (ex *executor) RunFlowTest(ctx context.Context, srcChainName, dstChainName 
 					cfgPerChain:     ex.cfgPerChain,
 				}
 				fmt.Printf("%v %v %v %v \n", cb.Name, srcChainName, dstChainName, coin)
-				_, err = cb.Callback(ctx, srcChainName, dstChainName, []string{coin}, ts)
+				_, err = cb.Callback(ctx, srcChainName, dstChainName, coinNames, ts)
 				if err != nil {
 					return fmt.Errorf("%v Err: %v ", cb.Name, err)
 				}
 			}
 		}
+		return nil
 	}
 
 	return nil

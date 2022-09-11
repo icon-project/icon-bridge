@@ -526,6 +526,57 @@ func (a *api) ChangeRestriction(ownerKey string, enable bool) (txnHash string, e
 	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "disableRestrictions", a.requester.stepLimit)
 }
 
+func (r *requestAPI) setFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (hash string, err error) {
+	btsAddr, ok := r.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	_feeNumerator := intconv.FormatBigInt(feeNumerator)
+	_fixedFee := intconv.FormatBigInt(fixedFee)
+	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_name": coinName, "_feeNumerator": _feeNumerator, "_fixedFee": _fixedFee}, "setFeeRatio", DefaultGasLimit)
+}
+
+func (r *requestAPI) getFeeRatio(coinName string) (feeNumerator, fixedFee *big.Int, err error) {
+	btsAddr, ok := r.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	res, err := r.callContract(btsAddr, map[string]interface{}{"_name": coinName}, "feeRatio")
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "callContract feeRatio ")
+	} else if res == nil {
+		return nil, nil, errors.New("callContract returned nil value ")
+	}
+	feeMap, ok := res.(map[string]interface{})
+	if !ok {
+		return nil, nil, fmt.Errorf("Expected type map[string]interface{} Got %T", res)
+	}
+	getFeeOfType := func(feeMap map[string]interface{}, key string) (bal *big.Int, err error) {
+		tmp, ok := feeMap[key]
+		if !ok {
+			return nil, fmt.Errorf("")
+		}
+		tmpStr, ok := tmp.(string)
+		if !ok {
+			return nil, fmt.Errorf("Expected type string Got %T", tmp)
+		}
+		bal = new(big.Int)
+		bal.SetString(tmpStr[2:], 16)
+		return
+	}
+	feeNumerator, err = getFeeOfType(feeMap, "feeNumerator")
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "getFeeOfType(feeNumerator) %v", err)
+	}
+	fixedFee, err = getFeeOfType(feeMap, "fixedFee")
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "getFeeOfType(fixedFee) %v", err)
+	}
+	return
+}
+
 func (a *api) IsUserBlackListed(net, addr string) (response bool, err error) {
 	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
 	if !ok {
