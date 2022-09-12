@@ -2,7 +2,7 @@
 name: Test Scenario
 about: Describes a test scenario
 title: ''
-labels: test
+labels: 'test'
 assignees: ''
 
 ---
@@ -19,3 +19,6 @@ The case being tested
     * The behavior to be tested.
   * Then
     * The expected outcome of the specified behavior.
+    
+## Bugs
+If applicable, include a link to the Git issue of the bugs identified performing the test.
