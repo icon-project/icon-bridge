@@ -1,3 +1,5 @@
+Closes #ISSUE-NUMBER
+
 ## Checklist:
 
 - [ ] I have performed a self-review of my own code
