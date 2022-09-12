@@ -54,5 +54,5 @@ pub use near_sdk::AccountId;
 pub use wrapped_nativecoin::*;
 mod blacklist;
 pub use blacklist::BlackListedAccounts;
-mod tokenlimit;
-pub use tokenlimit::{TokenLimit, TokenLimits};
+mod token_limit;
+pub use token_limit::{TokenLimit, TokenLimits};
