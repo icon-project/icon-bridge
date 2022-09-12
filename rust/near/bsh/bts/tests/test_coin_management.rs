@@ -2,10 +2,10 @@ use bts::BtpTokenService;
 use near_sdk::{
     env, json_types::U128, serde_json::to_value, testing_env, AccountId, PromiseResult, VMContext,
 };
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 pub mod accounts;
 use accounts::*;
-use libraries::types::{AccountBalance, Asset, AssetItem, Math, WrappedNativeCoin};
+use libraries::types::{AccountBalance, Asset, AssetItem, Math, TokenLimits, WrappedNativeCoin};
 mod token;
 use token::*;
 pub type Coin = Asset<WrappedNativeCoin>;
@@ -153,4 +153,51 @@ fn get_non_exist_coin_id() {
         nativecoin.clone(),
     );
     let coin_id = contract.coin_id("ICON".to_string());
+}
+
+#[test]
+#[cfg(feature = "testable")]
+fn set_token_limit() {
+    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    testing_env!(context(alice(), 0));
+    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let mut contract = BtpTokenService::new(
+        "nativecoin".to_string(),
+        bmc(),
+        "0x1.near".into(),
+        nativecoin.clone(),
+    );
+    let coins = vec!["NEAR".to_string()];
+    let limits = vec![10000000000000000000000_u128];
+    contract.set_token_limit(coins, limits).unwrap();
+    let tokenlimits = contract.get_token_limit();
+
+    assert_eq!(
+        tokenlimits.get("NEAR").unwrap(),
+        &10000000000000000000000_u128
+    )
+}
+
+#[test]
+#[cfg(feature = "testable")]
+fn udapte_token_limit() {
+    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    testing_env!(context(alice(), 0));
+    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let mut contract = BtpTokenService::new(
+        "nativecoin".to_string(),
+        bmc(),
+        "0x1.near".into(),
+        nativecoin.clone(),
+    );
+    let coins = vec!["NEAR".to_string()];
+    let limits = vec![10000000000000000000000_u128];
+    contract.set_token_limit(coins, limits).unwrap();
+
+    let coins = vec!["NEAR".to_string()];
+    let limits = vec![10000000000000000000003_u128];
+    contract.set_token_limit(coins, limits).unwrap();
+
+    let tokenlimits = contract.get_token_limit().get("NEAR").unwrap();
+    assert_eq!(tokenlimits, &10000000000000000000003_u128)
 }
