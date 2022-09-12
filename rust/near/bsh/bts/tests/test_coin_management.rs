@@ -168,11 +168,14 @@ fn set_token_limit() {
         nativecoin.clone(),
     );
     let coins = vec!["NEAR".to_string()];
-    let limits = vec![1000000000_u128];
+    let limits = vec![10000000000000000000000_u128];
     contract.set_token_limit(coins, limits).unwrap();
     let tokenlimits = contract.get_token_limit();
 
-    assert_eq!(tokenlimits.get("NEAR").unwrap(), &1000000000_u128)
+    assert_eq!(
+        tokenlimits.get("NEAR").unwrap(),
+        &10000000000000000000000_u128
+    )
 }
 
 #[test]
@@ -188,13 +191,13 @@ fn udapte_token_limit() {
         nativecoin.clone(),
     );
     let coins = vec!["NEAR".to_string()];
-    let limits = vec![1000000000_u128];
+    let limits = vec![10000000000000000000000_u128];
     contract.set_token_limit(coins, limits).unwrap();
 
     let coins = vec!["NEAR".to_string()];
-    let limits = vec![1000000003_u128];
+    let limits = vec![10000000000000000000003_u128];
     contract.set_token_limit(coins, limits).unwrap();
 
     let tokenlimits = contract.get_token_limit().get("NEAR").unwrap();
-    assert_eq!(tokenlimits, &1000000003_u128)
+    assert_eq!(tokenlimits, &10000000000000000000003_u128)
 }
