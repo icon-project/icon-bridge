@@ -75,22 +75,46 @@ impl BtpTokenService {
                 receiver,
                 assets,
             } => match env::promise_result(0) {
-                PromiseResult::Successful(_) => log!(
-                    "TransferStart({}, {}, {}, {:?})",
-                    sender,
-                    receiver,
-                    serial_no,
-                    assets
-                ),
+                PromiseResult::Successful(_) => {
+                    let mut assets_log: Vec<Value> = Vec::new();
+                    assets.iter().for_each(|asset| {
+                        assets_log.push(json!({
+                        "token_name": asset.name(),
+                        "amount":asset.amount(),
+                        "fee": asset.fees(),
+                        }))
+                    });
+                    let log = json!({
+                    "event": "TransferStart",
+                      "sender_address": sender,
+                      "serial_number": serial_no,
+                      "receiver_address": receiver,
+                      "assets" : assets_log
+
+                    });
+
+                    log!(log.as_str().unwrap().to_string())
+                }
                 PromiseResult::NotReady => log!("Not Ready"),
                 PromiseResult::Failed => {
-                    log!(
-                        "TransferFailed({}, {}, {}, {:?})",
-                        sender,
-                        receiver,
-                        serial_no,
-                        assets
-                    );
+                    let mut assets_log: Vec<Value> = Vec::new();
+                    assets.iter().for_each(|asset| {
+                        assets_log.push(json!({
+                        "token_name": asset.name(),
+                        "amount":asset.amount(),
+                        "fee": asset.fees(),
+                        }))
+                    });
+                    let log = json!({
+                    "event": "TransferFailed",
+                      "sender_address": sender,
+                      "serial_number": serial_no,
+                      "receiver_address": receiver,
+                      "assets" : assets_log
+
+                    });
+
+                    log!(log.as_str().unwrap().to_string());
                     self.rollback_external_transfer(&AccountId::from_str(sender).unwrap(), assets)
                 }
             },
@@ -230,13 +254,13 @@ impl BtpTokenService {
             }
             self.requests_mut().remove(*serial_no.get());
 
-            log!(
-                "TransferEnd({}, {}, {}, {:?})",
-                sender_id,
-                serial_no.get(),
-                code,
-                message
-            )
+            let log = json!({
+                "event": "TransferEnd",
+                "code":code,
+                "serial_number": serial_no.get(),
+                "message": message,
+            });
+            log!(log.as_str().unwrap())
         }
         Ok(None)
     }

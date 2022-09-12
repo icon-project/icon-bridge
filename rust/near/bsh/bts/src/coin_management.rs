@@ -98,12 +98,29 @@ impl BtpTokenService {
                     .set(&env::current_account_id(), &coin_id, balance);
 
                 self.internal_transfer(&env::current_account_id(), &receiver_id, &coin_id, amount);
+                let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
 
-                log!("[Mint] {} {}", amount, coin_symbol);
+                log!(json!(
+                {
+                    "event": "Mint",
+                    "amount": amount,
+                    "token_name": coin_name
+                })
+                .as_str()
+                .unwrap());
             }
             PromiseResult::NotReady => log!("Not Ready"),
             PromiseResult::Failed => {
-                log!("[Mint Failed] {} {}", amount, coin_symbol);
+                let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
+
+                log!(json!(
+                {
+                    "event": "Mint Failed",
+                    "amount": amount,
+                    "token_name": coin_name
+                })
+                .as_str()
+                .unwrap());
             }
         }
     }
@@ -119,12 +136,27 @@ impl BtpTokenService {
                 balance.deposit_mut().sub(amount).unwrap();
                 self.balances
                     .set(&env::current_account_id(), &coin_id, balance);
-
-                log!("[Burn] {} {}", amount, coin_symbol);
+                let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
+                log!(json!(
+                {
+                    "event": "Burn",
+                    "amount": amount,
+                    "token_name": coin_name
+                })
+                .as_str()
+                .unwrap());
             }
             PromiseResult::NotReady => log!("Not Ready"),
             PromiseResult::Failed => {
-                log!("[Burn Failed] {} {}", amount, coin_symbol);
+                let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
+                log!(json!(
+                {
+                    "event": "Burn Failed",
+                    "amount": amount,
+                    "token_name": coin_name
+                })
+                .as_str()
+                .unwrap());
             }
         }
     }
