@@ -3,7 +3,7 @@ use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::AccountId;
 use std::{collections::HashMap, hash::Hash};
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub struct TokenLimits(HashMap<String, u128>);
 
 #[derive(Serialize, Debug, Eq, PartialEq, Hash, Deserialize)]

@@ -216,7 +216,7 @@ impl BtpTokenService {
                         true => valid_coins.push(coin.clone()),
                         false => invalid_coins.push(coin.clone()),
                     });
-                if invalid_coins.is_empty() {
+                if !invalid_coins.is_empty() {
                     return Err(BshError::TokenNotExist {
                         message: invalid_coins.join(", "),
                     });
@@ -229,5 +229,10 @@ impl BtpTokenService {
             }
             Err(err) => return Err(err),
         }
+    }
+
+    #[cfg(feature = "testable")]
+    pub fn get_token_limit(&self) -> &TokenLimits {
+        &self.tokenlimits
     }
 }
