@@ -383,7 +383,7 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, srcChainName, dstChainNa
 	return nil
 }
 
-func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.ChainType, maxWaitSeconds uint64) error {
+func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.ChainType, maxWaitSeconds uint64, cbPerEvent map[chain.EventLogType]func(event *evt) error) error {
 	fCfg, err := ts.GetFullConfigAPI()
 	if err != nil {
 		return errors.Wrapf(err, "GetFullConfigAPI %v", err)
@@ -410,6 +410,13 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.Ch
 		case <-ctx.Done():
 			return ExternalContextCancelled
 		case ev := <-ts.subChan:
+			if cb, ok := cbPerEvent[ev.msg.EventType]; ok {
+				if cb != nil {
+					if err := cb(ev); err != nil {
+						return err
+					}
+				}
+			}
 			if ev.msg.EventType == chain.FeeGatheringRequest {
 				if err := src.WatchForFeeGatheringTransferStart(ts.id, feeAggBTPAddress); err != nil {
 					fmt.Println("FeeGatheringTransferStart")

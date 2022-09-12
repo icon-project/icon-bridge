@@ -16,7 +16,7 @@ func (ex *executor) RunFlowTest(ctx context.Context, srcChainName, dstChainName 
 
 	for _, coin := range coinNames {
 		for _, cb := range []Script{
-			FeeAggregation,
+			TransferToBlackListedDstAddress,
 		} {
 			if cb.Callback != nil {
 				id, err := ex.getID()
@@ -38,9 +38,13 @@ func (ex *executor) RunFlowTest(ctx context.Context, srcChainName, dstChainName 
 					feeAggregatorAddress: ex.feeAggregatorAddress,
 				}
 				fmt.Printf("%v %v %v %v \n", cb.Name, srcChainName, dstChainName, coin)
-				_, err = cb.Callback(ctx, srcChainName, dstChainName, []string{coin}, ts)
+				txnRes, err := cb.Callback(ctx, srcChainName, dstChainName, []string{coin}, ts)
 				if err != nil {
 					return fmt.Errorf("%v Err: %v ", cb.Name, err)
+				}
+				fmt.Println("Result")
+				for i, v := range txnRes {
+					fmt.Println(i, " %+v ", v)
 				}
 			}
 		}

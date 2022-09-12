@@ -18,7 +18,7 @@ var TransferExceedingBTSBalance Script = Script{
 	Name:        "TransferExceedingContractsBalance",
 	Type:        "Flow",
 	Description: "Transfer Native Tokens, which are of fixed supply, in different amounts. The Token should be native for both chains",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
 		if len(coinNames) == 0 {
 			errs =errors.New("Should specify at least one coinname, got zero")
  return
@@ -144,7 +144,7 @@ var TransferAllBTSBalance Script = Script{
 	Name:        "TransferAllBTSBalance",
 	Type:        "Flow",
 	Description: "Transfer Native Tokens, which are of fixed supply, in different amounts. The Token should be native for both chains",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
 		if len(coinNames) == 0 {
 			errs =errors.New("Should specify at least one coinname, got zero")
  return
@@ -265,7 +265,8 @@ var TransferBiDirection Script = Script{
 	Name:        "TransferBiDirectionWithApprove",
 	Type:        "Flow",
 	Description: "Transfer Fixed Amount of coin with approve and monitor eventlogs TransferReceived and TransferEnd",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
+		txnRec = make([]*txnRecord, 0)
 		if len(coinNames) != 1 {
 			errs = fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
 			return
@@ -391,6 +392,11 @@ var TransferBiDirection Script = Script{
 				if !ok {
 					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
 				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: srcChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{startEvt.Assets[0].Name: startEvt.Assets[0].Fee},
+				})
 				startEvt.From = src.GetBTPAddress(startEvt.From)
 				if startEvt.From != srcAddr {
 					return fmt.Errorf("Expected Same Value for SrcAddr; Got startEvt.From: %v srcAddr: %v", startEvt.From, srcAddr)
@@ -547,6 +553,11 @@ var TransferBiDirection Script = Script{
 				if !ok {
 					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
 				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: dstChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{startEvt.Assets[0].Name: startEvt.Assets[0].Fee},
+				})
 				startEvt.From = dst.GetBTPAddress(startEvt.From)
 				if startEvt.From != dstAddr {
 					return fmt.Errorf("Expected Same Value for SrcAddr; Got startEvt.From: %v srcAddr: %v", startEvt.From, dstAddr)
@@ -663,8 +674,6 @@ var TransferBiDirection Script = Script{
 			errs = fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tokenAmountAfterFeeChargeOnDst, tmpDiff)
 			return
 		}
-		fmt.Println("Pass")
-		errs = nil
 		return
 	},
 }
@@ -673,7 +682,8 @@ var TransferToZeroAddress Script = Script{
 	Name:        "TransferToZeroAddress",
 	Description: "Transfer to zero address",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
+		txnRec = []*txnRecord{}
 		if len(coinNames) != 1 {
 			errs = fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
 			return
@@ -773,7 +783,7 @@ var TransferToZeroAddress Script = Script{
 		}
 
 		// Wait For Events
-		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
+		errs = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
 			chain.TransferStart: func(ev *evt) error {
 				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
 					return errors.New("Got nil value for event ")
@@ -782,6 +792,11 @@ var TransferToZeroAddress Script = Script{
 				if !ok {
 					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
 				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: srcChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{startEvt.Assets[0].Name: startEvt.Assets[0].Fee},
+				})
 				startEvt.From = src.GetBTPAddress(startEvt.From)
 				if startEvt.From != srcAddr {
 					return fmt.Errorf("Expected Same Value for SrcAddr; Got startEvt.From: %v srcAddr: %v", startEvt.From, srcAddr)
@@ -818,7 +833,7 @@ var TransferToZeroAddress Script = Script{
 				return nil
 			},
 		})
-		if err != nil {
+		if errs != nil {
 			errs = errors.Wrapf(err, "WaitForEvents %v", err)
 			return
 		}
@@ -875,8 +890,6 @@ var TransferToZeroAddress Script = Script{
 			errs = fmt.Errorf("Epected same; Got Different. initDstBalance %v finalDstBalance %v", initDstBalance, finalDstBalance)
 			return
 		}
-		fmt.Println("pass", err)
-		errs = err
 		return
 	},
 }
@@ -885,7 +898,7 @@ var TransferToUnknownNetwork Script = Script{
 	Name:        "TransferToUnknownNetwork",
 	Description: "Transfer to unknow network",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
 		if len(coinNames) != 1 {
 			errs = fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
 			return
@@ -975,7 +988,7 @@ var TransferToUnknownNetwork Script = Script{
 			return
 		}
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
-		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
+		if _, errs = ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
 			if err.Error() == StatusCodeZero.Error() {
 				finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 				if err != nil {
@@ -1016,13 +1029,11 @@ var TransferToUnknownNetwork Script = Script{
 					}
 				}
 				fmt.Println("Pass 1")
-				errs = nil
 				return
 			}
 			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
 			return
 		}
-		errs = err
 		return
 	},
 }
@@ -1031,7 +1042,7 @@ var TransferWithoutApprove Script = Script{
 	Name:        "TransferWithoutApprove",
 	Description: "Transfer Without Approve",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
 		if len(coinNames) != 1 {
 			errs = fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
 			return
@@ -1123,7 +1134,6 @@ var TransferWithoutApprove Script = Script{
 					errs = fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
 					return
 				}
-				errs = nil
 				return
 			}
 			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
@@ -1138,7 +1148,7 @@ var TransferLessThanFee Script = Script{
 	Name:        "TransferLessThanFee",
 	Description: "Transfer to unknow network",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
 		if len(coinNames) != 1 {
 			errs = fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
 			return
@@ -1254,7 +1264,6 @@ var TransferLessThanFee Script = Script{
 					}
 				}
 				fmt.Println("Pass 1")
-				errs = nil
 				return
 			}
 			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
@@ -1269,7 +1278,8 @@ var TransferEqualToFee Script = Script{
 	Name:        "TransferEqualToFee",
 	Description: "Transfer equal to fee",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
+		txnRec = []*txnRecord{}
 		if len(coinNames) != 1 {
 			errs = fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
 			return
@@ -1391,7 +1401,6 @@ var TransferEqualToFee Script = Script{
 					}
 				}
 				fmt.Println("Pass 1")
-				errs = nil
 				return
 			}
 			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
@@ -1407,6 +1416,11 @@ var TransferEqualToFee Script = Script{
 				if !ok {
 					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
 				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: srcChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{startEvt.Assets[0].Name: startEvt.Assets[0].Fee},
+				})
 				startEvt.From = src.GetBTPAddress(startEvt.From)
 				if startEvt.From != srcAddr {
 					return fmt.Errorf("Expected Same Value for SrcAddr; Got startEvt.From: %v srcAddr: %v", startEvt.From, srcAddr)
@@ -1508,7 +1522,8 @@ var TransferToBlackListedDstAddress Script = Script{
 	Name:        "TransferToBlackListedDstAddress",
 	Description: "Transfer to BlackListed Destination Address",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
+		txnRec = []*txnRecord{}
 		if len(coinNames) != 1 {
 			errs = fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
 			return
@@ -1575,6 +1590,21 @@ var TransferToBlackListedDstAddress Script = Script{
 			return
 		}
 		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
+			chain.TransferStart: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: srcChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{startEvt.Assets[0].Name: startEvt.Assets[0].Fee},
+				})
+				return nil
+			},
 			chain.TransferEnd: func(ev *evt) error {
 				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
 					return errors.New("Got nil value for event ")
@@ -1637,6 +1667,11 @@ var TransferToBlackListedDstAddress Script = Script{
 						if !ok {
 							return fmt.Errorf("Expected *chain.AddToBlacklistRequestEvent. Got %T", ev.msg.EventLog)
 						}
+						txnRec = append(txnRec, &txnRecord{
+							ChainName: ts.FullConfigAPIChain(),
+							Sn:        reqEvt.Sn,
+							Fee:       map[string]*big.Int{},
+						})
 						if reqEvt.Net != blDstNet {
 							return fmt.Errorf("Expected same; Got different reqEvt.Net %v DstNet %v", reqEvt.Net, blDstNet)
 						}
@@ -1711,6 +1746,21 @@ var TransferToBlackListedDstAddress Script = Script{
 		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err == nil {
 			// Wait For Events
 			err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
+				chain.TransferStart: func(ev *evt) error {
+					if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+						return errors.New("Got nil value for event ")
+					}
+					startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
+					if !ok {
+						return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+					}
+					txnRec = append(txnRec, &txnRecord{
+						ChainName: srcChain,
+						Sn:        startEvt.Sn,
+						Fee:       map[string]*big.Int{startEvt.Assets[0].Name: startEvt.Assets[0].Fee},
+					})
+					return nil
+				},
 				chain.TransferEnd: func(ev *evt) error {
 					if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
 						return errors.New("Got nil value for event ")
@@ -1767,6 +1817,11 @@ var TransferToBlackListedDstAddress Script = Script{
 						if !ok {
 							return fmt.Errorf("Expected *chain.RemoveFromBlacklistRequestEvent. Got %T", ev.msg.EventLog)
 						}
+						txnRec = append(txnRec, &txnRecord{
+							ChainName: ts.FullConfigAPIChain(),
+							Sn:        reqEvt.Sn,
+							Fee:       map[string]*big.Int{},
+						})
 						if reqEvt.Net != blDstNet {
 							return fmt.Errorf("Expected same; Got different reqEvt.Net %v DstNet %v", reqEvt.Net, blDstNet)
 						}
@@ -1843,6 +1898,21 @@ var TransferToBlackListedDstAddress Script = Script{
 			return
 		}
 		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
+			chain.TransferStart: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: srcChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{startEvt.Assets[0].Name: startEvt.Assets[0].Fee},
+				})
+				return nil
+			},
 			chain.TransferEnd: func(ev *evt) error {
 				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
 					return errors.New("Got nil value for event ")
@@ -1862,7 +1932,6 @@ var TransferToBlackListedDstAddress Script = Script{
 			return
 		}
 		fmt.Println("pass")
-		errs = nil
 		return
 	},
 }
@@ -1871,7 +1940,8 @@ var TransferFromBlackListedSrcAddress Script = Script{
 	Name:        "TransferFromBlackListedSrcAddress",
 	Description: "Transfer from BlackListed Source Address",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
+		txnRec = []*txnRecord{}
 		if len(coinNames) != 1 {
 			errs = fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
 			return
@@ -1938,6 +2008,21 @@ var TransferFromBlackListedSrcAddress Script = Script{
 			return
 		}
 		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
+			chain.TransferStart: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: srcChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{startEvt.Assets[0].Name: startEvt.Assets[0].Fee},
+				})
+				return nil
+			},
 			chain.TransferEnd: func(ev *evt) error {
 				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
 					return errors.New("Got nil value for event ")
@@ -2000,6 +2085,11 @@ var TransferFromBlackListedSrcAddress Script = Script{
 						if !ok {
 							return fmt.Errorf("Expected *chain.AddToBlacklistRequestEvent. Got %T", ev.msg.EventLog)
 						}
+						txnRec = append(txnRec, &txnRecord{
+							ChainName: ts.FullConfigAPIChain(),
+							Sn:        reqEvt.Sn,
+							Fee:       map[string]*big.Int{},
+						})
 						if reqEvt.Net != blsSrcNet {
 							return fmt.Errorf("Expected same; Got different reqEvt.Net %v DstNet %v", reqEvt.Net, blsSrcNet)
 						}
@@ -2066,6 +2156,21 @@ var TransferFromBlackListedSrcAddress Script = Script{
 		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err == nil {
 			// Wait For Events
 			err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
+				chain.TransferStart: func(ev *evt) error {
+					if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+						return errors.New("Got nil value for event ")
+					}
+					startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
+					if !ok {
+						return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+					}
+					txnRec = append(txnRec, &txnRecord{
+						ChainName: srcChain,
+						Sn:        startEvt.Sn,
+						Fee:       map[string]*big.Int{startEvt.Assets[0].Name: startEvt.Assets[0].Fee},
+					})
+					return nil
+				},
 				chain.TransferEnd: func(ev *evt) error {
 					if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
 						return errors.New("Got nil value for event ")
@@ -2122,6 +2227,11 @@ var TransferFromBlackListedSrcAddress Script = Script{
 						if !ok {
 							return fmt.Errorf("Expected *chain.RemoveFromBlacklistRequestEvent. Got %T", ev.msg.EventLog)
 						}
+						txnRec = append(txnRec, &txnRecord{
+							ChainName: ts.FullConfigAPIChain(),
+							Sn:        reqEvt.Sn,
+							Fee:       map[string]*big.Int{},
+						})
 						if reqEvt.Net != blsSrcNet {
 							return fmt.Errorf("Expected same; Got different reqEvt.Net %v DstNet %v", reqEvt.Net, blsSrcNet)
 						}
@@ -2198,6 +2308,21 @@ var TransferFromBlackListedSrcAddress Script = Script{
 			return
 		}
 		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
+			chain.TransferStart: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: srcChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{startEvt.Assets[0].Name: startEvt.Assets[0].Fee},
+				})
+				return nil
+			},
 			chain.TransferEnd: func(ev *evt) error {
 				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
 					return errors.New("Got nil value for event ")
@@ -2217,7 +2342,6 @@ var TransferFromBlackListedSrcAddress Script = Script{
 			return
 		}
 		fmt.Println("pass")
-		errs = nil
 		return
 	},
 }
@@ -2226,7 +2350,7 @@ var ChangeFee Script = Script{
 	Name:        "ChangeFee",
 	Description: "Change Fee",
 	Type:        "Configure",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
 		if len(coinNames) != 1 {
 			errs = fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
 			return
@@ -2293,6 +2417,21 @@ var ChangeFee Script = Script{
 			return
 		}
 		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHash, map[chain.EventLogType]func(*evt) error{
+			chain.TransferStart: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: srcChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{startEvt.Assets[0].Name: startEvt.Assets[0].Fee},
+				})
+				return nil
+			},
 			chain.TransferEnd: func(ev *evt) error {
 				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
 					return errors.New("Got nil value for event ")
@@ -2357,7 +2496,6 @@ var ChangeFee Script = Script{
 		}
 
 		fmt.Println("Pass")
-		errs = nil
 		return
 	},
 }
@@ -2366,7 +2504,7 @@ var TransferBatchBiDirection Script = Script{
 	Name:        "TransferBatchBiDirection",
 	Description: "Transfer batch bi-direction",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
 		if len(coinNames) == 0 {
 			errs = fmt.Errorf(" Should specify at least one coinName, got zero")
 			return
@@ -2531,6 +2669,15 @@ var TransferBatchBiDirection Script = Script{
 				if !ok {
 					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
 				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: srcChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{},
+				})
+				for i := 0; i < len(startEvt.Assets); i++ {
+					txnRec[len(txnRec)-1].Fee[startEvt.Assets[i].Name] = startEvt.Assets[i].Fee
+				}
+
 				startEvt.From = src.GetBTPAddress(startEvt.From)
 				if startEvt.From != srcAddr {
 					return fmt.Errorf("Expected Same Value for SrcAddr; Got startEvt.From: %v srcAddr: %v", startEvt.From, srcAddr)
@@ -2720,6 +2867,14 @@ var TransferBatchBiDirection Script = Script{
 				if !ok {
 					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
 				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: dstChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{},
+				})
+				for i := 0; i < len(startEvt.Assets); i++ {
+					txnRec[len(txnRec)-1].Fee[startEvt.Assets[i].Name] = startEvt.Assets[i].Fee
+				}
 				startEvt.From = dst.GetBTPAddress(startEvt.From)
 				if startEvt.From != dstAddr {
 					return fmt.Errorf("Expected Same Value for SrcAddr; Got startEvt.From: %v srcAddr: %v", startEvt.From, dstAddr)
@@ -2867,7 +3022,6 @@ var TransferBatchBiDirection Script = Script{
 			}
 		}
 		fmt.Println("Pass")
-		errs = nil
 		return
 	},
 }
@@ -2875,7 +3029,7 @@ var TransferBatchBiDirection Script = Script{
 var FeeAggregation Script = Script{
 	Name:        "FeeAggregation",
 	Description: "Watches for fee aggregation message until context cancelled",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec []*txnRecord, errs error) {
 		fCfg, err := ts.GetFullConfigAPI()
 		if err != nil {
 			errs = errors.Wrapf(err, "GetFullConfigAPI %v", err)
@@ -2910,9 +3064,26 @@ var FeeAggregation Script = Script{
 			feeGatheredChain = dstChain
 		}
 		fmt.Println("Wait...")
-		err = ts.WaitForFeeGathering(ctx, feeGatheredChain, 60*60) // 10 mins max wait
-		fmt.Println("Err ", err)
-		errs = err
+		errs = ts.WaitForFeeGathering(ctx, feeGatheredChain, 60*60, map[chain.EventLogType]func(event *evt) error{
+			chain.TransferStart: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+				}
+				txnRec = append(txnRec, &txnRecord{
+					ChainName: dstChain,
+					Sn:        startEvt.Sn,
+					Fee:       map[string]*big.Int{},
+				})
+				for i := 0; i < len(startEvt.Assets); i++ {
+					txnRec[len(txnRec)-1].Fee[startEvt.Assets[i].Name] = startEvt.Assets[i].Fee
+				}
+				return nil
+			},
+		})
 		return
 	},
 }
