@@ -50,7 +50,7 @@ func TestExecutor(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	ex.Subscribe(ctx)
 	time.Sleep(5 * time.Second)
-	err = ex.RunFlowTest(ctx, "ICON", "BSC", []string{"btp-0x2.icon-bnUSD", "btp-0x2.icon-ICX"})
+	err = ex.RunFlowTest(ctx, "ICON", "BSC", []string{"btp-0x2.icon-bnUSD"})
 	if err != nil {
 		t.Error(err)
 	}

@@ -185,6 +185,10 @@ func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHas
 	return
 }
 
+func (a *api) GetAccumulatedFees() (map[string]*big.Int, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
 	txRes, err := a.requester.waitForResults(ctx, common.HexToHash(hash))
 	if err != nil {
@@ -337,4 +341,20 @@ func (a *api) ChargedGasFee(txnHash string) (*big.Int, error) {
 
 func (a *api) SuggestGasPrice() *big.Int {
 	return nil
+}
+
+func (a *api) SetFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error) {
+	return "", errors.New("not implemented")
+}
+
+func (a *api) GetFeeGatheringTerm() (interval uint64, err error) {
+	return 0, errors.New("not implemented")
+}
+
+func (a *api) WatchForFeeGatheringRequest(ID uint64, addr string) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) WatchForFeeGatheringTransferStart(ID uint64, addr string) error {
+	return errors.New("not implemented")
 }

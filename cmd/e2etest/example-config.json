@@ -161,5 +161,6 @@
                 "DefaultGasLimit":5000000
             }
         }
-    ]
+    ],
+    "fee_aggregator":"hx275136ac969aada5edfb5439912db5dcd1074bdf"
 }

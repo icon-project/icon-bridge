@@ -22,9 +22,10 @@ type testSuite struct {
 
 	report string
 
-	clsPerChain     map[chain.ChainType]chain.ChainAPI
-	godKeysPerChain map[chain.ChainType]keypair
-	cfgPerChain     map[chain.ChainType]*chain.Config
+	clsPerChain          map[chain.ChainType]chain.ChainAPI
+	godKeysPerChain      map[chain.ChainType]keypair
+	cfgPerChain          map[chain.ChainType]*chain.Config
+	feeAggregatorAddress string
 }
 
 func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain.SrcAPI, dst chain.DstAPI, err error) {
@@ -378,6 +379,86 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, srcChainName, dstChainNa
 				return
 			}
 		}
+	}
+	return nil
+}
+
+func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.ChainType, maxWaitSeconds uint64) error {
+	fCfg, err := ts.GetFullConfigAPI()
+	if err != nil {
+		return errors.Wrapf(err, "GetFullConfigAPI %v", err)
+	}
+	src, dst, err := ts.GetChainPair(chainName, ts.FullConfigAPIChain())
+	if err != nil {
+		return errors.Wrapf(err, "GetChainPair %v", err)
+	}
+	srcCfg, ok := ts.cfgPerChain[chainName]
+	if !ok {
+		return errors.Wrapf(err, "Config %v not found", chainName)
+	}
+	feeAggBTPAddress := dst.GetBTPAddress(ts.feeAggregatorAddress)
+	if err = fCfg.WatchForFeeGatheringRequest(ts.id, feeAggBTPAddress); err != nil {
+		return errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
+	}
+	newCtx := context.Background()
+	timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*time.Duration(maxWaitSeconds))
+	for {
+		defer timedContextCancel()
+		select {
+		case <-timedContext.Done():
+			return MaxDelayContextCancelled
+		case <-ctx.Done():
+			return ExternalContextCancelled
+		case ev := <-ts.subChan:
+			if ev.msg.EventType == chain.FeeGatheringRequest {
+				if err := src.WatchForFeeGatheringTransferStart(ts.id, feeAggBTPAddress); err != nil {
+					fmt.Println("FeeGatheringTransferStart")
+					return errors.Wrapf(err, "WatchForFeeGatheringTransferStart %v", err)
+				}
+			} else if ev.msg.EventType == chain.TransferStart {
+				if ev.msg.EventLog == nil {
+					return errors.New("Got nil value for TransferStart event")
+				}
+				fmt.Println("FeeGatheringTransferStart")
+				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
+				}
+				if startEvt.From != srcCfg.ContractAddresses[chain.BTS] {
+					return fmt.Errorf("Expected Same. Got Different startEvtFrom %v cfg.BTSCore %v", startEvt.From, srcCfg.ContractAddresses[chain.BTS])
+				}
+				if startEvt.To != feeAggBTPAddress {
+					return fmt.Errorf("Expected Same. Got Different startEvtTo %v feeAggBTPAddress %v", startEvt.To, feeAggBTPAddress)
+				}
+				if len(startEvt.Assets) > 0 {
+					fmt.Println("Assets ", startEvt.Assets)
+					if err := src.WatchForTransferEnd(ts.id, startEvt.Sn.Int64()); err != nil {
+						return errors.Wrapf(err, "watchForTransferEnd %v", err)
+					}
+				} else {
+					if err = fCfg.WatchForFeeGatheringRequest(ts.id, feeAggBTPAddress); err != nil {
+						return errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
+					}
+				}
+			} else if ev.msg.EventType == chain.TransferEnd {
+				if ev.msg.EventLog == nil {
+					return errors.New("Got nil value for TransferEnd event")
+				}
+				fmt.Println("FeeGatheringTransferEnd")
+				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", ev.msg.EventLog)
+				}
+				fmt.Println("EndEvt.Code ", endEvt)
+				if err = fCfg.WatchForFeeGatheringRequest(ts.id, feeAggBTPAddress); err != nil {
+					return errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
+				}
+				fmt.Println("WatchForFeeGatheringRequest")
+			} else {
+				return errors.Wrapf(err, "Unexpected EventType %v", ev.msg)
+			}
+		}
+
 	}
 	return nil
 }

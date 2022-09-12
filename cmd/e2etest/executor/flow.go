@@ -16,7 +16,7 @@ func (ex *executor) RunFlowTest(ctx context.Context, srcChainName, dstChainName 
 
 	for _, coin := range coinNames {
 		for _, cb := range []Script{
-			TransferBatchBiDirection,
+			FeeAggregation,
 		} {
 			if cb.Callback != nil {
 				id, err := ex.getID()
@@ -29,15 +29,16 @@ func (ex *executor) RunFlowTest(ctx context.Context, srcChainName, dstChainName 
 				defer ex.removeChan(id)
 
 				ts := &testSuite{
-					id:              id,
-					logger:          log,
-					subChan:         sinkChan,
-					clsPerChain:     ex.clientsPerChain,
-					godKeysPerChain: ex.godKeysPerChain,
-					cfgPerChain:     ex.cfgPerChain,
+					id:                   id,
+					logger:               log,
+					subChan:              sinkChan,
+					clsPerChain:          ex.clientsPerChain,
+					godKeysPerChain:      ex.godKeysPerChain,
+					cfgPerChain:          ex.cfgPerChain,
+					feeAggregatorAddress: ex.feeAggregatorAddress,
 				}
 				fmt.Printf("%v %v %v %v \n", cb.Name, srcChainName, dstChainName, coin)
-				_, err = cb.Callback(ctx, srcChainName, dstChainName, coinNames, ts)
+				_, err = cb.Callback(ctx, srcChainName, dstChainName, []string{coin}, ts)
 				if err != nil {
 					return fmt.Errorf("%v Err: %v ", cb.Name, err)
 				}

@@ -19,22 +19,24 @@ var (
 )
 
 type executor struct {
-	log             log.Logger
-	godKeysPerChain map[chain.ChainType]keypair
-	cfgPerChain     map[chain.ChainType]*chain.Config
-	clientsPerChain map[chain.ChainType]chain.ChainAPI
-	sinkChanPerID   map[uint64]chan *evt
-	syncChanMtx     sync.RWMutex
+	log                  log.Logger
+	godKeysPerChain      map[chain.ChainType]keypair
+	cfgPerChain          map[chain.ChainType]*chain.Config
+	clientsPerChain      map[chain.ChainType]chain.ChainAPI
+	sinkChanPerID        map[uint64]chan *evt
+	syncChanMtx          sync.RWMutex
+	feeAggregatorAddress string
 }
 
 func New(l log.Logger, cfg *Config) (ex *executor, err error) {
 	ex = &executor{
-		log:             l,
-		cfgPerChain:     make(map[chain.ChainType]*chain.Config),
-		godKeysPerChain: make(map[chain.ChainType]keypair),
-		clientsPerChain: make(map[chain.ChainType]chain.ChainAPI),
-		sinkChanPerID:   make(map[uint64]chan *evt),
-		syncChanMtx:     sync.RWMutex{},
+		log:                  l,
+		cfgPerChain:          make(map[chain.ChainType]*chain.Config),
+		godKeysPerChain:      make(map[chain.ChainType]keypair),
+		clientsPerChain:      make(map[chain.ChainType]chain.ChainAPI),
+		sinkChanPerID:        make(map[uint64]chan *evt),
+		syncChanMtx:          sync.RWMutex{},
+		feeAggregatorAddress: cfg.FeeAggregatorAddress,
 	}
 	for _, chainCfg := range cfg.Chains {
 		apiFunc, ok := APICallerFunc[chainCfg.Name]

@@ -526,6 +526,34 @@ func (a *api) ChangeRestriction(ownerKey string, enable bool) (txnHash string, e
 	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "disableRestrictions", a.requester.stepLimit)
 }
 
+func (r *requestAPI) setFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error) {
+	bmcAddr, ok := r.contractNameToAddress[chain.BMC]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BMC)
+		return
+	}
+	return r.transactWithContract(ownerKey, bmcAddr, big.NewInt(0), map[string]interface{}{"_value": hexutil.EncodeUint64(interval)}, "setFeeGatheringTerm", DefaultGasLimit)
+}
+
+func (r *requestAPI) getFeeGatheringTerm() (interval uint64, err error) {
+	bmcAddr, ok := r.contractNameToAddress[chain.BMC]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BMC)
+		return
+	}
+	res, err := r.callContract(bmcAddr, map[string]interface{}{}, "getFeeGatheringTerm")
+	if err != nil {
+		return 0, errors.Wrap(err, "callContract getFeeGatheringTerm ")
+	} else if res == nil {
+		return 0, errors.New("callContract getFeeGatheringTerm returned nil value ")
+	}
+	tmpStr, ok := res.(string)
+	if !ok {
+		return 0, fmt.Errorf("Expected type string Got %T", res)
+	}
+	return hexutil.DecodeUint64(tmpStr)
+}
+
 func (r *requestAPI) setFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (hash string, err error) {
 	btsAddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
@@ -535,6 +563,35 @@ func (r *requestAPI) setFeeRatio(ownerKey string, coinName string, feeNumerator,
 	_feeNumerator := intconv.FormatBigInt(feeNumerator)
 	_fixedFee := intconv.FormatBigInt(fixedFee)
 	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_name": coinName, "_feeNumerator": _feeNumerator, "_fixedFee": _fixedFee}, "setFeeRatio", DefaultGasLimit)
+}
+
+func (r *requestAPI) getAccumulatedFees() (ret map[string]*big.Int, err error) {
+	btsAddr, ok := r.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	res, err := r.callContract(btsAddr, map[string]interface{}{}, "getAccumulatedFees")
+	if err != nil {
+		return nil, errors.Wrap(err, "callContract getAccumulatedFees ")
+	} else if res == nil {
+		return nil, errors.New("callContract getAccumulatedFees returned nil value ")
+	}
+	resMap, ok := res.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Expected type map[string]interface{} Got %T", res)
+	}
+	ret = map[string]*big.Int{}
+	for k, v := range resMap {
+		tmpStr, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("Expected type string Got %T", v)
+		}
+		bal := new(big.Int)
+		bal.SetString(tmpStr[2:], 16)
+		ret[k] = bal
+	}
+	return
 }
 
 func (r *requestAPI) getFeeRatio(coinName string) (feeNumerator, fixedFee *big.Int, err error) {

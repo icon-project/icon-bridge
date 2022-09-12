@@ -33,6 +33,7 @@ const (
 	BlacklistResponse          EventLogType = "BlacklistResponse"
 	TokenLimitRequest          EventLogType = "TokenLimitRequest"
 	TokenLimitResponse         EventLogType = "TokenLimitResponse"
+	FeeGatheringRequest        EventLogType = "FeeGatheringRequest"
 	Message                    EventLogType = "Message"
 )
 
@@ -56,6 +57,7 @@ type SrcAPI interface {
 	WaitForTxnResult(ctx context.Context, hash string) (txnr *TxnResult, err error)
 	WatchForTransferStart(requestID uint64, seq int64) error
 	WatchForTransferEnd(ID uint64, seq int64) error
+	WatchForFeeGatheringTransferStart(ID uint64, addr string) error
 	Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
@@ -80,15 +82,18 @@ type FullConfigAPI interface {
 	ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error)
 	GetTokenLimitStatus(net, coinName string) (response bool, err error)
 	GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error)
+	SetFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error)
+	GetFeeGatheringTerm() (interval uint64, err error)
+
 	WatchForAddToBlacklistRequest(ID uint64, seq int64) error
 	WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error
 	WatchForSetTokenLmitRequest(ID uint64, seq int64) error
 	GetConfigRequestEvent(evtType EventLogType, hash string) (*EventLogInfo, error)
+	WatchForFeeGatheringRequest(ID uint64, addr string) error
 
 	IsUserBlackListed(net, addr string) (response bool, err error)
 	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
 	IsBTSOwner(addr string) (response bool, err error)
-
 	// Watch For TokenLimitStart, TokenLimitEnd
 }
 
@@ -98,6 +103,7 @@ type StandardConfigAPI interface {
 	IsBTSOwner(addr string) (response bool, err error)
 	SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error)
 	GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error)
+	GetAccumulatedFees() (map[string]*big.Int, error)
 
 	WatchForBlacklistResponse(ID uint64, seq int64) error
 	WatchForSetTokenLmitResponse(ID uint64, seq int64) error
@@ -142,6 +148,8 @@ type ChainAPI interface {
 	ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error)
 	GetTokenLimitStatus(net, coinName string) (response bool, err error)
 	GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error)
+	SetFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error)
+	GetFeeGatheringTerm() (interval uint64, err error)
 
 	WatchForAddToBlacklistRequest(ID uint64, seq int64) error
 	WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error
@@ -149,12 +157,15 @@ type ChainAPI interface {
 	WatchForSetTokenLmitRequest(ID uint64, seq int64) error
 	WatchForSetTokenLmitResponse(ID uint64, seq int64) error
 	GetConfigRequestEvent(evtType EventLogType, hash string) (*EventLogInfo, error)
+	WatchForFeeGatheringRequest(ID uint64, addr string) error
+	WatchForFeeGatheringTransferStart(ID uint64, addr string) error
 
 	IsUserBlackListed(net, addr string) (response bool, err error)
 	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
 	IsBTSOwner(addr string) (response bool, err error)
 	SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error)
 	GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error)
+	GetAccumulatedFees() (map[string]*big.Int, error)
 }
 
 type Config struct {
@@ -241,6 +252,11 @@ type TokenLimitRequestEvent struct {
 	Sn          *big.Int
 	TokenLimits []*big.Int
 	CoinNames   []string
+}
+
+type FeeGatheringRequestEvent struct {
+	FeeAggregator string
+	Services      []string
 }
 
 type GasLimitType string

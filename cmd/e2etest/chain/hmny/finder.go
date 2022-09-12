@@ -20,7 +20,7 @@ type finder struct {
 type args struct {
 	id              uint64
 	eventType       chain.EventLogType
-	seq             int64
+	data            interface{}
 	contractAddress string
 }
 
@@ -36,19 +36,19 @@ type runnableCache struct {
 	mtx sync.RWMutex
 }
 
-func (f *finder) watchFor(eventType chain.EventLogType, id uint64, seq int64) error {
+func (f *finder) watchFor(eventType chain.EventLogType, id uint64, data interface{}) error {
 	contractAddress, ok := f.nameToAddrMap[chain.BTSPeriphery]
 	if !ok {
 		return fmt.Errorf("watchFor; Contract %v not found on map", chain.BTSPeriphery)
 	}
 	if eventType == chain.TransferStart {
-		args := args{id: id, eventType: chain.TransferStart, seq: seq, contractAddress: contractAddress}
+		args := args{id: id, eventType: chain.TransferStart, data: data, contractAddress: contractAddress}
 		f.addToRunCache(&runnable{args: args, callback: transferStartCB})
 	} else if eventType == chain.TransferReceived {
-		args := args{id: id, eventType: chain.TransferReceived, seq: seq, contractAddress: contractAddress}
+		args := args{id: id, eventType: chain.TransferReceived, data: data, contractAddress: contractAddress}
 		f.addToRunCache(&runnable{args: args, callback: transferReceivedCB})
 	} else if eventType == chain.TransferEnd {
-		args := args{id: id, eventType: chain.TransferEnd, seq: seq, contractAddress: contractAddress}
+		args := args{id: id, eventType: chain.TransferEnd, data: data, contractAddress: contractAddress}
 		f.addToRunCache(&runnable{args: args, callback: transferEndCB})
 	} else {
 		return fmt.Errorf("EventType not among supported ones")
@@ -123,7 +123,7 @@ var transferStartCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (
 	}
 	if elInfo.EventType == chain.TransferStart &&
 		elInfo.ContractAddress == args.contractAddress &&
-		elog.Sn.Int64() == args.seq {
+		elog.Sn.Int64() == args.data.(int64) {
 		return true, nil
 	}
 	return false, nil
@@ -136,7 +136,7 @@ var transferReceivedCB callBackFunc = func(args args, elInfo *chain.EventLogInfo
 	}
 	if elInfo.EventType == chain.TransferReceived &&
 		elInfo.ContractAddress == args.contractAddress &&
-		elog.Sn.Int64() == args.seq {
+		elog.Sn.Int64() == args.data.(int64) {
 		return true, nil
 	}
 	return false, nil
@@ -149,7 +149,7 @@ var transferEndCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bo
 	}
 	if elInfo.EventType == chain.TransferEnd &&
 		elInfo.ContractAddress == args.contractAddress &&
-		elog.Sn.Int64() == args.seq {
+		elog.Sn.Int64() == args.data.(int64) {
 		return true, nil
 	}
 	return false, nil

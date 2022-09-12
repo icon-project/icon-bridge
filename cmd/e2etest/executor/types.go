@@ -40,10 +40,13 @@ type txnRecord struct {
 }
 
 var (
-	ZeroEvents     = errors.New("Got zero event logs, expected at least one")
-	StatusCodeZero = errors.New("Got status code zero(failed)")
+	ZeroEvents               = errors.New("Got zero event logs, expected at least one")
+	StatusCodeZero           = errors.New("Got status code zero(failed)")
+	ExternalContextCancelled = errors.New("External Context Cancelled")
+	MaxDelayContextCancelled = errors.New("context canceeled after exceeeding max delay")
 )
 
 type Config struct {
-	Chains []*chain.Config `json:"chains"`
+	Chains               []*chain.Config `json:"chains"`
+	FeeAggregatorAddress string          `json:"fee_aggregator"`
 }

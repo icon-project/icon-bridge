@@ -259,6 +259,14 @@ func (a *api) WatchForSetTokenLmitRequest(ID uint64, seq int64) error {
 	return a.fd.watchFor(chain.TokenLimitRequest, ID, seq)
 }
 
+func (a *api) WatchForFeeGatheringRequest(ID uint64, addr string) error {
+	return a.fd.watchFor(chain.FeeGatheringRequest, ID, addr)
+}
+
+func (a *api) WatchForFeeGatheringTransferStart(ID uint64, addr string) error {
+	return errors.New("not implemented")
+}
+
 func (a *api) WatchForBlacklistResponse(ID uint64, seq int64) error {
 	return errors.New("not implemented")
 }
@@ -273,6 +281,18 @@ func (a *api) SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedF
 
 func (a *api) GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error) {
 	return a.requester.getFeeRatio(coinName)
+}
+
+func (a *api) GetAccumulatedFees() (map[string]*big.Int, error) {
+	return a.requester.getAccumulatedFees()
+}
+
+func (a *api) SetFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error) {
+	return a.requester.setFeeGatheringTerm(ownerKey, interval)
+}
+
+func (a *api) GetFeeGatheringTerm() (interval uint64, err error) {
+	return a.requester.getFeeGatheringTerm()
 }
 
 func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*chain.EventLogInfo, error) {

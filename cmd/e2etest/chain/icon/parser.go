@@ -21,6 +21,7 @@ const (
 	REMOVE_FROM_BLACKLIST = 1
 	BLACKLIST_MESSAGE     = 3
 	CHANGE_TOKEN_LIMIT    = 4
+	FEE_GATHERING         = "FeeGathering"
 )
 
 type parser struct {
@@ -105,6 +106,7 @@ func parseMessageTxn(log *TxnEventLog) (res interface{}, evtType chain.EventLogT
 		err = errors.Wrapf(err, "rlpDecodeHex %v", err)
 		return
 	}
+	svcTypeStr := string(svcMessage.ServiceType)
 	svcTypeNum := (&big.Int{}).SetBytes(svcMessage.ServiceType).Int64()
 
 	if svcTypeNum == BLACKLIST_MESSAGE {
@@ -144,6 +146,16 @@ func parseMessageTxn(log *TxnEventLog) (res interface{}, evtType chain.EventLogT
 			TokenLimits: tokenLimits,
 			CoinNames:   svcMessagePayload.CoinNames,
 		}, chain.TokenLimitRequest, nil
+	} else if svcTypeStr == FEE_GATHERING {
+		svcMessagePayload := ServiceFeeGatheringRequestPayload{}
+		if err = rlpDecodeHex(hex.EncodeToString(svcMessage.Payload), &svcMessagePayload); err != nil {
+			err = errors.Wrapf(err, "rlpDecodeHex %v", err)
+			return
+		}
+		return &chain.FeeGatheringRequestEvent{
+			FeeAggregator: svcMessagePayload.FeeAggregator,
+			Services:      svcMessagePayload.Services,
+		}, chain.FeeGatheringRequest, nil
 	}
 	err = fmt.Errorf("Unexpected service type %v  ", svcTypeNum)
 	return
@@ -390,4 +402,9 @@ type ServiceTokenlimitMessagePayload struct {
 	CoinNames   []string
 	TokenLimits [][]byte
 	Net         string
+}
+
+type ServiceFeeGatheringRequestPayload struct {
+	FeeAggregator string
+	Services      []string
 }

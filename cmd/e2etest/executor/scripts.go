@@ -18,14 +18,16 @@ var TransferExceedingBTSBalance Script = Script{
 	Name:        "TransferExceedingContractsBalance",
 	Type:        "Flow",
 	Description: "Transfer Native Tokens, which are of fixed supply, in different amounts. The Token should be native for both chains",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) == 0 {
-			return nil, errors.New("Should specify at least one coinname, got zero")
+			errs =errors.New("Should specify at least one coinname, got zero")
+ return
 		}
 		coinName := coinNames[0]
 		src, dst, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetChainPair %v", err)
+			errs =errors.Wrapf(err, "GetChainPair %v", err)
+ return
 		}
 		// coinName should be a token common on both chains
 		tokenExists := false
@@ -42,54 +44,65 @@ var TransferExceedingBTSBalance Script = Script{
 		}
 		if !tokenExists {
 			ts.logger.Errorf("Token %v does not exist on both chains %v and %v", coinName, srcChain, dstChain)
-			return nil, nil
+			errs =nil
+ return
 		}
 
 		btsAddr, ok := ts.btsAddressPerChain[dstChain]
 		if !ok {
-			return nil, errors.Wrapf(err, "dst.GetBTPAddressOfBTS %v", err)
+			errs =errors.Wrapf(err, "dst.GetBTPAddressOfBTS %v", err)
+ return
 		}
 		btsBalance, err := dst.GetCoinBalance(coinName, btsAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "dst.getCoinBalance %v", err)
+			errs =errors.Wrapf(err, "dst.getCoinBalance %v", err)
+ return
 		}
 
 		// prepare accounts
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs =errors.Wrapf(err, "GetKeyPairs %v", err)
+ return
 		}
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs =errors.Wrapf(err, "GetKeyPairs %v", err)
+ return
 		}
 
 		amt := ts.withFeeAdded(btsBalance.UserBalance)
 		amt.Add(amt, big.NewInt(MINIMUM_BALANCE)) //exceed balance by 100g
 		if err := ts.Fund(srcAddr, amt, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund %v", err)
+			errs =errors.Wrapf(err, "Fund %v", err)
+ return
 		}
 
 		// how much is necessary as gas cost
 		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "AddGasFee %v", err)
+			errs =errors.Wrapf(err, "AddGasFee %v", err)
+ return
 		}
 
 		// approve
 		if approveHash, err := src.Approve(coinName, srcKey, amt); err != nil {
-			return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+			errs =errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+ return
 		} else {
 			if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
-				return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+				errs =errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+ return
 			}
 		}
 		// Transfer
 		hash, err := src.Transfer(coinName, srcKey, dstAddr, amt)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer %v", err)
+			errs =errors.Wrapf(err, "Transfer %v", err)
+ return
 		}
 		if err := ts.ValidateTransactionResultAndEvents(ctx, hash, []string{coinName}, srcAddr, dstAddr, []*big.Int{amt}); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultEvents %v", err)
+			errs =errors.Wrapf(err, "ValidateTransactionResultEvents %v", err)
+ return
 		}
 		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
 			// chain.TransferReceived: func(e *evt) error {
@@ -111,16 +124,19 @@ var TransferExceedingBTSBalance Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs =errors.Wrapf(err, "WaitForEvents %v", err)
+ return
 		}
 		// finalBtsBalance, err := dst.GetCoinBalance(coinName, btsAddr)
 		// if err != nil {
-		// 	return nil, errors.Wrapf(err, "dst.getCoinBalance %v", err)
+		// 	errs =errors.Wrapf(err, "dst.getCoinBalance %v", err)
+ return
 		// }
 		// if finalBtsBalance.UserBalance.Cmp(btsBalance.UserBalance) != 0 {
 		// 	return fmt.Errorf("BTS Balance should have been same since txn does not succeed. Init %v  Final %v", btsBalance.UserBalance.String(), finalBtsBalance.UserBalance.String())
 		// }
-		return nil, nil
+		errs =nil
+ return
 	},
 }
 
@@ -128,14 +144,16 @@ var TransferAllBTSBalance Script = Script{
 	Name:        "TransferAllBTSBalance",
 	Type:        "Flow",
 	Description: "Transfer Native Tokens, which are of fixed supply, in different amounts. The Token should be native for both chains",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) == 0 {
-			return nil, errors.New("Should specify at least one coinname, got zero")
+			errs =errors.New("Should specify at least one coinname, got zero")
+ return
 		}
 		coinName := coinNames[0]
 		src, dst, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetChainPair %v", err)
+			errs =errors.Wrapf(err, "GetChainPair %v", err)
+ return
 		}
 		// coinName should be a token common on both chains
 		tokenExists := false
@@ -152,53 +170,64 @@ var TransferAllBTSBalance Script = Script{
 		}
 		if !tokenExists {
 			ts.logger.Errorf("Token %v does not exist on both chains %v and %v", coinName, srcChain, dstChain)
-			return nil, nil
+			errs =nil
+ return
 		}
 
 		btsAddr, ok := ts.btsAddressPerChain[dstChain]
 		if !ok {
-			return nil, errors.Wrapf(err, "dst.GetBTPAddressOfBTS %v", err)
+			errs =errors.Wrapf(err, "dst.GetBTPAddressOfBTS %v", err)
+ return
 		}
 		btsBalance, err := dst.GetCoinBalance(coinName, btsAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "dst.getCoinBalance %v", err)
+			errs =errors.Wrapf(err, "dst.getCoinBalance %v", err)
+ return
 		}
 
 		// prepare accounts
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs =errors.Wrapf(err, "GetKeyPairs %v", err)
+ return
 		}
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs =errors.Wrapf(err, "GetKeyPairs %v", err)
+ return
 		}
 
 		amt := ts.withFeeAdded(btsBalance.UserBalance)
 		if err := ts.Fund(srcAddr, amt, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund %v", err)
+			errs =errors.Wrapf(err, "Fund %v", err)
+ return
 		}
 
 		// how much is necessary as gas cost
 		if err := ts.Fund(srcAddr, ts.SuggestGasPrice(), src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "AddGasFee %v", err)
+			errs =errors.Wrapf(err, "AddGasFee %v", err)
+ return
 		}
 
 		// approve
 		if approveHash, err := src.Approve(coinName, srcKey, amt); err != nil {
-			return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+			errs =errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+ return
 		} else {
 			if _, err := ts.ValidateTransactionResult(ctx, approveHash); err != nil {
-				return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+				errs =errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+ return
 			}
 		}
 		// Transfer
 		hash, err := src.Transfer(coinName, srcKey, dstAddr, amt)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer %v", err)
+			errs =errors.Wrapf(err, "Transfer %v", err)
+ return
 		}
 		if err := ts.ValidateTransactionResultAndEvents(ctx, hash, []string{coinName}, srcAddr, dstAddr, []*big.Int{amt}); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultEvents %v", err)
+			errs =errors.Wrapf(err, "ValidateTransactionResultEvents %v", err)
+ return
 		}
 		err = ts.WaitForEvents(ctx, hash, map[chain.EventLogType]func(*evt) error{
 			chain.TransferReceived: nil,
@@ -214,16 +243,19 @@ var TransferAllBTSBalance Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs =errors.Wrapf(err, "WaitForEvents %v", err)
+ return
 		}
 		// finalBtsBalance, err := dst.GetCoinBalance(coinName, btsAddr)
 		// if err != nil {
-		// 	return nil, errors.Wrapf(err, "dst.getCoinBalance %v", err)
+		// 	errs =errors.Wrapf(err, "dst.getCoinBalance %v", err)
+ return
 		// }
 		// if finalBtsBalance.UserBalance.Cmp(btsBalance.UserBalance) != 0 {
 		// 	return fmt.Errorf("BTS Balance should have been same since txn does not succeed. Init %v  Final %v", btsBalance.UserBalance.String(), finalBtsBalance.UserBalance.String())
 		// }
-		return nil, nil
+		errs =nil
+ return
 	},
 }
 
@@ -233,37 +265,44 @@ var TransferBiDirection Script = Script{
 	Name:        "TransferBiDirectionWithApprove",
 	Type:        "Flow",
 	Description: "Transfer Fixed Amount of coin with approve and monitor eventlogs TransferReceived and TransferEnd",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) != 1 {
-			return nil, fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
+			errs = fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
+			return
 		}
 		coinName := coinNames[0]
 		src, tmpOk := ts.clsPerChain[srcChain]
 		if !tmpOk {
-			return nil, fmt.Errorf("Chain %v not found", srcChain)
+			errs = fmt.Errorf("Chain %v not found", srcChain)
+			return
 		}
 		dst, tmpOk := ts.clsPerChain[dstChain]
 		if !tmpOk {
-			return nil, fmt.Errorf("Chain %v not found", srcChain)
+			errs = fmt.Errorf("Chain %v not found", srcChain)
+			return
 		}
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		dstKey, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		fmt.Println("Accounts ", srcAddr, dstAddr)
 		// How much tokens do we need on src and dst accounts ?
 		tokenAmountAfterFeeChargeOnDst := big.NewInt(1)
 		tokenAmountBeforeFeeChargeOnDst, err := ts.getAmountBeforeFeeCharge(dstChain, coinName, tokenAmountAfterFeeChargeOnDst)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getAmountBeforeFeeCharge %v", err)
+			errs = errors.Wrapf(err, "getAmountBeforeFeeCharge %v", err)
+			return
 		}
 		tokenAmountBeforeFeeChargeOnSrc, err := ts.getAmountBeforeFeeCharge(srcChain, coinName, tokenAmountBeforeFeeChargeOnDst)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getAmountBeforeFeeCharge %v", err)
+			errs = errors.Wrapf(err, "getAmountBeforeFeeCharge %v", err)
+			return
 		}
 		fmt.Println("Tokens ", tokenAmountAfterFeeChargeOnDst, tokenAmountBeforeFeeChargeOnDst, tokenAmountBeforeFeeChargeOnSrc)
 		// How much native coins do we need to cover gas fee ?
@@ -281,31 +320,38 @@ var TransferBiDirection Script = Script{
 		// Fund source side with the required tokens
 		// These tokens should be something a newly deployed god address can have
 		if err := ts.Fund(srcChain, srcAddr, tokenAmountBeforeFeeChargeOnSrc, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(dstChain, dstAddr, gasFeeOnDst, dst.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Record Initial Balance
 		initSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		initDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		initSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		initDstNativeCoinBalance, err := dst.GetCoinBalance(dst.NativeCoin(), dstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		fmt.Println("Init ", initSrcBalance, tokenAmountBeforeFeeChargeOnSrc)
 		fmt.Println("Init ", initDstBalance)
@@ -313,10 +359,12 @@ var TransferBiDirection Script = Script{
 		var approveHash string
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, tokenAmountBeforeFeeChargeOnSrc); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
@@ -324,11 +372,13 @@ var TransferBiDirection Script = Script{
 		// Transfer On Source
 		transferHashOnSrc, err := src.Transfer(coinName, srcKey, dstAddr, tokenAmountBeforeFeeChargeOnSrc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
 		if err := ts.ValidateTransactionResultAndEvents(ctx, srcChain, transferHashOnSrc, []string{coinName}, srcAddr, dstAddr, []*big.Int{tokenAmountBeforeFeeChargeOnSrc}); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			return
 		}
 
 		// Wait For Events
@@ -402,50 +452,60 @@ var TransferBiDirection Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs = errors.Wrapf(err, "WaitForEvents %v", err)
+			return
 		}
 
 		// Intermediate Tally
 		intermediateSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		intermediateSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		intermediateDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "ChargedGasFee For Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "ChargedGasFee For Transfer Err: %v", err)
+			return
 		}
 		if coinName != src.NativeCoin() {
 			gasSpentOnApprove, err := src.ChargedGasFee(approveHash)
 			if err != nil {
-				return nil, errors.Wrapf(err, "ChargedGasFee for Approve Err: %v", err)
+				errs = errors.Wrapf(err, "ChargedGasFee for Approve Err: %v", err)
+				return
 			}
 			gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
 			tmpDiff := (&big.Int{}).Sub(initSrcBalance.UserBalance, intermediateSrcBalance.UserBalance)
 			if tokenAmountBeforeFeeChargeOnSrc.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tokenAmountBeforeFeeChargeOnSrc, tmpDiff)
+				errs = fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tokenAmountBeforeFeeChargeOnSrc, tmpDiff)
+				return
 			}
 			tmpDiff = (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, intermediateSrcNativeCoinBalance.UserBalance)
 			if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same value for src nativeCoin balance after txn; Got GasSpentOnTxn %v srcDiffAmt %v", gasSpentOnTxn, tmpDiff)
+				errs = fmt.Errorf("Expected same value for src nativeCoin balance after txn; Got GasSpentOnTxn %v srcDiffAmt %v", gasSpentOnTxn, tmpDiff)
+				return
 			}
 		} else {
 			tmpNativeCoinUsed := (&big.Int{}).Add(tokenAmountBeforeFeeChargeOnSrc, gasSpentOnTxn)
 			tmpDiff := (&big.Int{}).Sub(initSrcBalance.UserBalance, intermediateSrcBalance.UserBalance)
 			if tmpNativeCoinUsed.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+				errs = fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+				return
 			}
 		}
 		tmpDiff := (&big.Int{}).Sub(intermediateDstBalance.UserBalance, initDstBalance.UserBalance)
 		if tokenAmountBeforeFeeChargeOnDst.Cmp(tmpDiff) != 0 {
-			return nil, fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tokenAmountBeforeFeeChargeOnDst, tmpDiff)
+			errs = fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tokenAmountBeforeFeeChargeOnDst, tmpDiff)
+			return
 		}
 
 		// Start Transfer On Opposite Direction
@@ -455,10 +515,12 @@ var TransferBiDirection Script = Script{
 		// ApproveToken On Destination
 		if coinName != dst.NativeCoin() {
 			if approveHash, err = dst.Approve(coinName, dstKey, tokenAmountBeforeFeeChargeOnDst); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, dstChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
@@ -466,11 +528,13 @@ var TransferBiDirection Script = Script{
 		// Transfer On Destination
 		transferHashOnDst, err := dst.Transfer(coinName, dstKey, srcAddr, tokenAmountBeforeFeeChargeOnDst)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 		fmt.Println("transferHashOnDst ", transferHashOnDst)
 		if err := ts.ValidateTransactionResultAndEvents(ctx, dstChain, transferHashOnDst, []string{coinName}, dstAddr, srcAddr, []*big.Int{tokenAmountBeforeFeeChargeOnDst}); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			return
 		}
 
 		// Wait For Events
@@ -544,53 +608,64 @@ var TransferBiDirection Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs = errors.Wrapf(err, "WaitForEvents %v", err)
+			return
 		}
 
 		// Final Tally
 		finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		finalDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		finalDstNativeCoinBalance, err := dst.GetCoinBalance(dst.NativeCoin(), dstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		gasSpentOnTxn, err = dst.ChargedGasFee(transferHashOnDst)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetGasUsed Err: %v", err)
+			errs = errors.Wrapf(err, "GetGasUsed Err: %v", err)
+			return
 		}
 		if coinName != src.NativeCoin() {
 			gasSpentOnApprove, err := dst.ChargedGasFee(approveHash)
 			if err != nil {
-				return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+				errs = errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+				return
 			}
 			gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
 			tmpDiff = (&big.Int{}).Sub(intermediateDstBalance.UserBalance, finalDstBalance.UserBalance)
 			if tokenAmountBeforeFeeChargeOnDst.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tokenAmountBeforeFeeChargeOnDst, tmpDiff)
+				errs = fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tokenAmountBeforeFeeChargeOnDst, tmpDiff)
+				return
 			}
 			tmpDiff = (&big.Int{}).Sub(initDstNativeCoinBalance.UserBalance, finalDstNativeCoinBalance.UserBalance)
 			if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same value for dst nativeCoin balance after txn; Got GasSpentOnTxn %v srcDiffAmt %v", gasSpentOnTxn, tmpDiff)
+				errs = fmt.Errorf("Expected same value for dst nativeCoin balance after txn; Got GasSpentOnTxn %v srcDiffAmt %v", gasSpentOnTxn, tmpDiff)
+				return
 			}
 		} else {
 			tmpNativeCoinUsed := (&big.Int{}).Add(tokenAmountBeforeFeeChargeOnDst, gasSpentOnTxn)
 			tmpDiff = (&big.Int{}).Sub(intermediateDstBalance.UserBalance, finalDstBalance.UserBalance)
 			if tmpNativeCoinUsed.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+				errs = fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+				return
 			}
 		}
 		tmpDiff = (&big.Int{}).Sub(finalSrcBalance.UserBalance, intermediateSrcBalance.UserBalance)
 		if tokenAmountAfterFeeChargeOnDst.Cmp(tmpDiff) != 0 {
-			return nil, fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tokenAmountAfterFeeChargeOnDst, tmpDiff)
+			errs = fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tokenAmountAfterFeeChargeOnDst, tmpDiff)
+			return
 		}
 		fmt.Println("Pass")
-		return nil, nil
+		errs = nil
+		return
 	},
 }
 
@@ -598,23 +673,27 @@ var TransferToZeroAddress Script = Script{
 	Name:        "TransferToZeroAddress",
 	Description: "Transfer to zero address",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) != 1 {
-			return nil, fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
+			errs = fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
+			return
 		}
 		coinName := coinNames[0]
 		src, dst, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetChainPair %v", err)
+			errs = errors.Wrapf(err, "GetChainPair %v", err)
+			return
 		}
 		// Account
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		_, tmpDstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		convertToZeroAddress := func(inputStr string) string {
 			splits := strings.Split(inputStr, "/")
@@ -642,34 +721,41 @@ var TransferToZeroAddress Script = Script{
 		gasFeeOnSrc := (&big.Int{}).Mul(src.SuggestGasPrice(), gasLimitOnSrc)
 
 		if err := ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Record Initial Balance
 		initSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		initDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		initSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 
 		// Approve
 		var approveHash string
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, userSuppliedAmount); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
@@ -677,11 +763,13 @@ var TransferToZeroAddress Script = Script{
 		// Transfer On Source
 		transferHashOnSrc, err := src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
 		if err := ts.ValidateTransactionResultAndEvents(ctx, srcChain, transferHashOnSrc, []string{coinName}, srcAddr, dstAddr, []*big.Int{userSuppliedAmount}); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			return
 		}
 
 		// Wait For Events
@@ -731,54 +819,65 @@ var TransferToZeroAddress Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs = errors.Wrapf(err, "WaitForEvents %v", err)
+			return
 		}
 
 		// Final Tally
 		finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		finalDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		finalSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+			return
 		}
 		if coinName != src.NativeCoin() {
 			tmpDiff := (&big.Int{}).Sub(initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
 			feeCharged := (&big.Int{}).Sub(userSuppliedAmount, netTransferrableAmount)
 			if tmpDiff.Cmp(feeCharged) != 0 {
-				return nil, fmt.Errorf("Expected same value; Got different feeCharged %v BalanceDiff %v", feeCharged, tmpDiff)
+				errs = fmt.Errorf("Expected same value; Got different feeCharged %v BalanceDiff %v", feeCharged, tmpDiff)
+				return
 			}
 			gasSpentOnApprove, err := src.ChargedGasFee(approveHash)
 			if err != nil {
-				return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+				errs = errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+				return
 			}
 			gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
 			tmpDiff = (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
 			if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+				errs = fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+				return
 			}
 		} else {
 			feeCharged := (&big.Int{}).Sub(userSuppliedAmount, netTransferrableAmount)
 			tmpNativeCoinUsed := (&big.Int{}).Add(feeCharged, gasSpentOnTxn)
 			tmpDiff := (&big.Int{}).Sub(initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
 			if tmpNativeCoinUsed.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same, Got Different. NativeCoinUsed %v SrcDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+				errs = fmt.Errorf("Expected same, Got Different. NativeCoinUsed %v SrcDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+				return
 			}
 		}
 		if initDstBalance.UserBalance.Cmp(finalDstBalance.UserBalance) != 0 {
-			return nil, fmt.Errorf("Epected same; Got Different. initDstBalance %v finalDstBalance %v", initDstBalance, finalDstBalance)
+			errs = fmt.Errorf("Epected same; Got Different. initDstBalance %v finalDstBalance %v", initDstBalance, finalDstBalance)
+			return
 		}
 		fmt.Println("pass", err)
-		return nil, err
+		errs = err
+		return
 	},
 }
 
@@ -786,23 +885,27 @@ var TransferToUnknownNetwork Script = Script{
 	Name:        "TransferToUnknownNetwork",
 	Description: "Transfer to unknow network",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) != 1 {
-			return nil, fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
+			errs = fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
+			return
 		}
 		coinName := coinNames[0]
 		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetChainPair %v", err)
+			errs = errors.Wrapf(err, "GetChainPair %v", err)
+			return
 		}
 		// Account
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		_, tmpDstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		changeBMCNetwork := func(inputStr string) (string, error) {
 			splits := strings.Split(inputStr, "/")
@@ -831,30 +934,36 @@ var TransferToUnknownNetwork Script = Script{
 		gasFeeOnSrc := (&big.Int{}).Mul(srcGasPrice, gasLimitOnSrc)
 
 		if err := ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Record Initial Balance
 		initSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		initSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 
 		// Approve
 		var approveHash string
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, userSuppliedAmount); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
@@ -862,48 +971,59 @@ var TransferToUnknownNetwork Script = Script{
 		// Transfer On Source
 		transferHashOnSrc, err := src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
 		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
 			if err.Error() == StatusCodeZero.Error() {
 				finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					return
 				}
 				finalSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					return
 				}
 				gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+					errs = errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+					return
 				}
 				if coinName != src.NativeCoin() {
 					if initSrcBalance.TotalBalance.Cmp(finalSrcBalance.TotalBalance) != 0 {
-						return nil, fmt.Errorf("Expected Same, Got Different. finalSrcBalance %v initialSrcBalance %v", finalSrcBalance.TotalBalance, initSrcBalance.TotalBalance)
+						errs = fmt.Errorf("Expected Same, Got Different. finalSrcBalance %v initialSrcBalance %v", finalSrcBalance.TotalBalance, initSrcBalance.TotalBalance)
+						return
 					}
 					gasSpentOnApprove, err := src.ChargedGasFee(approveHash)
 					if err != nil {
-						return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+						errs = errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+						return
 					}
 					gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
 					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
 					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						errs = fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						return
 					}
 				} else {
 					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
 					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						errs = fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						return
 					}
 				}
 				fmt.Println("Pass 1")
-				return nil, nil
+				errs = nil
+				return
 			}
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+			return
 		}
-		return nil, err
+		errs = err
+		return
 	},
 }
 
@@ -911,28 +1031,33 @@ var TransferWithoutApprove Script = Script{
 	Name:        "TransferWithoutApprove",
 	Description: "Transfer Without Approve",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) != 1 {
-			return nil, fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
+			errs = fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
+			return
 		}
 		coinName := coinNames[0]
 
 		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetChainPair %v", err)
+			errs = errors.Wrapf(err, "GetChainPair %v", err)
+			return
 		}
 		if coinName == src.NativeCoin() {
 			ts.logger.Warnf("Expected non-native coin; Got native coin %v", src.NativeCoin())
-			return nil, nil // not returning an error here
+			errs = nil // not returning an error here
+			return
 		}
 		// Account
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 
 		// Funds
@@ -943,26 +1068,31 @@ var TransferWithoutApprove Script = Script{
 		gasFeeOnSrc := (&big.Int{}).Mul(srcGasPrice, gasLimitOnSrc)
 
 		if err := ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Record Initial Balance
 		initSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		initSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 
 		// Transfer On Source
 		transferHashOnSrc, err := src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
 
@@ -971,28 +1101,36 @@ var TransferWithoutApprove Script = Script{
 				// Final Tally
 				finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					return
 				}
 				finalSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					return
 				}
 				gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+					errs = errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+					return
 				}
 				if initSrcBalance.UserBalance.Cmp(finalSrcBalance.UserBalance) != 0 {
-					return nil, fmt.Errorf("Expected same value; Got different initSrcBalance %v finalSrcbalance %v", initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
+					errs = fmt.Errorf("Expected same value; Got different initSrcBalance %v finalSrcbalance %v", initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
+					return
 				}
 				tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
 				if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-					return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+					errs = fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+					return
 				}
-				return nil, nil
+				errs = nil
+				return
 			}
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+			return
 		}
-		return nil, errors.New("Expected event to fail but it did not ")
+		errs = errors.New("Expected event to fail but it did not ")
+		return
 	},
 }
 
@@ -1000,23 +1138,27 @@ var TransferLessThanFee Script = Script{
 	Name:        "TransferLessThanFee",
 	Description: "Transfer to unknow network",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) != 1 {
-			return nil, fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
+			errs = fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
+			return
 		}
 		coinName := coinNames[0]
 		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetChainPair %v", err)
+			errs = errors.Wrapf(err, "GetChainPair %v", err)
+			return
 		}
 		// Account
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 
 		// Funds
@@ -1030,30 +1172,36 @@ var TransferLessThanFee Script = Script{
 		gasFeeOnSrc := (&big.Int{}).Mul(srcGasPrice, gasLimitOnSrc)
 
 		if err := ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Record Initial Balance
 		initSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		initSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 
 		// Approve
 		var approveHash string
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, userSuppliedAmount); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
@@ -1061,48 +1209,59 @@ var TransferLessThanFee Script = Script{
 		// Transfer On Source
 		transferHashOnSrc, err := src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
 		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
 			if err.Error() == StatusCodeZero.Error() {
 				finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					return
 				}
 				finalSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					return
 				}
 				gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+					errs = errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+					return
 				}
 				if coinName != src.NativeCoin() {
 					if initSrcBalance.TotalBalance.Cmp(finalSrcBalance.TotalBalance) != 0 {
-						return nil, fmt.Errorf("Expected Same, Got Different. finalSrcBalance %v initialSrcBalance %v", finalSrcBalance.TotalBalance, initSrcBalance.TotalBalance)
+						errs = fmt.Errorf("Expected Same, Got Different. finalSrcBalance %v initialSrcBalance %v", finalSrcBalance.TotalBalance, initSrcBalance.TotalBalance)
+						return
 					}
 					gasSpentOnApprove, err := src.ChargedGasFee(approveHash)
 					if err != nil {
-						return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+						errs = errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+						return
 					}
 					gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
 					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
 					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						errs = fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						return
 					}
 				} else {
 					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
 					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						errs = fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						return
 					}
 				}
 				fmt.Println("Pass 1")
-				return nil, nil
+				errs = nil
+				return
 			}
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+			return
 		}
-		return nil, err
+		errs = err
+		return
 	},
 }
 
@@ -1110,24 +1269,28 @@ var TransferEqualToFee Script = Script{
 	Name:        "TransferEqualToFee",
 	Description: "Transfer equal to fee",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) != 1 {
-			return nil, fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
+			errs = fmt.Errorf("Should specify a single coinName, got %v", len(coinNames))
+			return
 		}
 
 		coinName := coinNames[0]
 		src, dst, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetChainPair %v", err)
+			errs = errors.Wrapf(err, "GetChainPair %v", err)
+			return
 		}
 		// Account
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 
 		// Funds
@@ -1141,34 +1304,41 @@ var TransferEqualToFee Script = Script{
 		gasFeeOnSrc := (&big.Int{}).Mul(srcGasPrice, gasLimitOnSrc)
 
 		if err := ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Record Initial Balance
 		initSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		initDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		initSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 
 		// Approve
 		var approveHash string
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, userSuppliedAmount); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
@@ -1176,46 +1346,56 @@ var TransferEqualToFee Script = Script{
 		// Transfer On Source
 		transferHashOnSrc, err := src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
 		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
 			if err.Error() == StatusCodeZero.Error() {
 				finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					return
 				}
 				finalSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+					return
 				}
 				gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+					errs = errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+					return
 				}
 				if coinName != src.NativeCoin() {
 					if initSrcBalance.TotalBalance.Cmp(finalSrcBalance.TotalBalance) != 0 {
-						return nil, fmt.Errorf("Expected Same, Got Different. finalSrcBalance %v initialSrcBalance %v", finalSrcBalance.TotalBalance, initSrcBalance.TotalBalance)
+						errs = fmt.Errorf("Expected Same, Got Different. finalSrcBalance %v initialSrcBalance %v", finalSrcBalance.TotalBalance, initSrcBalance.TotalBalance)
+						return
 					}
 					gasSpentOnApprove, err := src.ChargedGasFee(approveHash)
 					if err != nil {
-						return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+						errs = errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+						return
 					}
 					gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
 					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
 					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						errs = fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						return
 					}
 				} else {
 					tmpDiff := (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
 					if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-						return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						errs = fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+						return
 					}
 				}
 				fmt.Println("Pass 1")
-				return nil, nil
+				errs = nil
+				return
 			}
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+			return
 		}
 		// Wait For Events
 		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
@@ -1264,52 +1444,63 @@ var TransferEqualToFee Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs = errors.Wrapf(err, "WaitForEvents %v", err)
+			return
 		}
 		finalSrcBalance, err := src.GetCoinBalance(coinName, srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		finalDstBalance, err := dst.GetCoinBalance(coinName, dstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		finalSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "GetGasUsed For Transfer Err: %v", err)
+			return
 		}
 		if coinName != src.NativeCoin() {
 			tmpDiff := (&big.Int{}).Sub(initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
 			feeCharged := (&big.Int{}).Sub(userSuppliedAmount, netTransferrableAmount)
 			if tmpDiff.Cmp(feeCharged) != 0 {
-				return nil, fmt.Errorf("Expected same value; Got different feeCharged %v BalanceDiff %v", feeCharged, tmpDiff)
+				errs = fmt.Errorf("Expected same value; Got different feeCharged %v BalanceDiff %v", feeCharged, tmpDiff)
+				return
 			}
 			gasSpentOnApprove, err := src.ChargedGasFee(approveHash)
 			if err != nil {
-				return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+				errs = errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+				return
 			}
 			gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
 			tmpDiff = (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, finalSrcNativeCoinBalance.UserBalance)
 			if gasSpentOnTxn.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+				errs = fmt.Errorf("Expected same value; Got different GasSpent %v NativeCoinBalanceDiff %v", gasSpentOnTxn, tmpDiff)
+				return
 			}
 		} else {
 			feeCharged := (&big.Int{}).Sub(userSuppliedAmount, netTransferrableAmount)
 			tmpNativeCoinUsed := (&big.Int{}).Add(feeCharged, gasSpentOnTxn)
 			tmpDiff := (&big.Int{}).Sub(initSrcBalance.UserBalance, finalSrcBalance.UserBalance)
 			if tmpNativeCoinUsed.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same, Got Different. NativeCoinUsed %v SrcDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+				errs = fmt.Errorf("Expected same, Got Different. NativeCoinUsed %v SrcDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+				return
 			}
 		}
 		if initDstBalance.UserBalance.Cmp(finalDstBalance.UserBalance) != 0 {
-			return nil, fmt.Errorf("Epected same; Got Different. initDstBalance %v finalDstBalance %v", initDstBalance, finalDstBalance)
+			errs = fmt.Errorf("Epected same; Got Different. initDstBalance %v finalDstBalance %v", initDstBalance, finalDstBalance)
+			return
 		}
 		fmt.Println("pass 2")
-		return nil, err
+		errs = err
+		return
 	},
 }
 
@@ -1317,23 +1508,27 @@ var TransferToBlackListedDstAddress Script = Script{
 	Name:        "TransferToBlackListedDstAddress",
 	Description: "Transfer to BlackListed Destination Address",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) != 1 {
-			return nil, fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
+			errs = fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
+			return
 		}
 		coinName := coinNames[0]
 		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetChainPair %v", err)
+			errs = errors.Wrapf(err, "GetChainPair %v", err)
+			return
 		}
 		// Account
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 
 		// Funds
@@ -1346,32 +1541,38 @@ var TransferToBlackListedDstAddress Script = Script{
 		gasFeeOnSrc := (&big.Int{}).Mul(src.SuggestGasPrice(), gasLimitOnSrc)
 
 		if err := ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Approve
 		var approveHash string
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, userSuppliedAmount); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
 		// Transfer On Source
 		transferHashOnSrc, err := src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
 		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			return
 		}
 		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
 			chain.TransferEnd: func(ev *evt) error {
@@ -1389,7 +1590,8 @@ var TransferToBlackListedDstAddress Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs = errors.Wrapf(err, "WaitForEvents %v", err)
+			return
 		}
 
 		fmt.Println("Start Add to blacklist")
@@ -1397,26 +1599,32 @@ var TransferToBlackListedDstAddress Script = Script{
 		// Add To BlackList
 		fCfg, err := ts.GetFullConfigAPI()
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetFullConfigAPI %v", err)
+			errs = errors.Wrapf(err, "GetFullConfigAPI %v", err)
+			return
 		}
 		fCfgOwnerKey := ts.FullConfigAPIsOwner()
 		stdCfg, err := ts.GetStandardConfigAPI(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetStandardConfigAPI %v", err)
+			errs = errors.Wrapf(err, "GetStandardConfigAPI %v", err)
+			return
 		}
 		blDstNet, blDstAddr := ts.NetAddr(dstAddr)
 		blackListAddHash, err := fCfg.AddBlackListAddress(fCfgOwnerKey, blDstNet, []string{blDstAddr})
 		if err != nil {
-			return nil, errors.Wrapf(err, "AddBlackListAddress %v", err)
+			errs = errors.Wrapf(err, "AddBlackListAddress %v", err)
+			return
 		}
 		if _, err := ts.ValidateTransactionResult(ctx, ts.FullConfigAPIChain(), blackListAddHash); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			return
 		}
 		isBlackListed, err := fCfg.IsUserBlackListed(blDstNet, blDstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "isBlackListed %v", err)
+			errs = errors.Wrapf(err, "isBlackListed %v", err)
+			return
 		} else if err == nil && !isBlackListed {
-			return nil, fmt.Errorf("Expected addr ( %v , %v ) to be blacklisted, but was not", blDstNet, blDstAddr)
+			errs = fmt.Errorf("Expected addr ( %v , %v ) to be blacklisted, but was not", blDstNet, blDstAddr)
+			return
 		}
 		if dstChain != ts.FullConfigAPIChain() { // for interchain-configurations
 			err = ts.WaitForConfigResponse(ctx, chain.AddToBlacklistRequest, chain.BlacklistResponse, dstChain, blackListAddHash,
@@ -1456,39 +1664,47 @@ var TransferToBlackListedDstAddress Script = Script{
 				},
 			)
 			if err != nil {
-				return nil, errors.Wrapf(err, "WaitForConfigResponse %v", err)
+				errs = errors.Wrapf(err, "WaitForConfigResponse %v", err)
+				return
 			}
 			isBlackListed, err = stdCfg.IsUserBlackListed(blDstNet, blDstAddr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "isBlackListed %v", err)
+				errs = errors.Wrapf(err, "isBlackListed %v", err)
+				return
 			} else if err == nil && !isBlackListed {
-				return nil, fmt.Errorf("Expected addr ( %v , %v ) to be blacklisted, but was not", blDstNet, blDstAddr)
+				errs = fmt.Errorf("Expected addr ( %v , %v ) to be blacklisted, but was not", blDstNet, blDstAddr)
+				return
 			}
 		}
 
 		// Send After BlackListing
 		fmt.Println("Send to blacklist")
 		if err := ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Approve
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, userSuppliedAmount); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
 		// Transfer On Source
 		transferHashOnSrc, err = src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
@@ -1510,11 +1726,13 @@ var TransferToBlackListedDstAddress Script = Script{
 				},
 			})
 			if err != nil {
-				return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+				errs = errors.Wrapf(err, "WaitForEvents %v", err)
+				return
 			}
 		} else {
 			if err.Error() != StatusCodeZero.Error() {
-				return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+				errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+				return
 			}
 		}
 
@@ -1523,16 +1741,20 @@ var TransferToBlackListedDstAddress Script = Script{
 
 		blackListRemoveHash, err := fCfg.RemoveBlackListAddress(fCfgOwnerKey, blDstNet, []string{blDstAddr})
 		if err != nil {
-			return nil, errors.Wrapf(err, "RemoveBlackListAddress %v", err)
+			errs = errors.Wrapf(err, "RemoveBlackListAddress %v", err)
+			return
 		}
 		if _, err := ts.ValidateTransactionResult(ctx, ts.FullConfigAPIChain(), blackListRemoveHash); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResult %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResult %v", err)
+			return
 		}
 		isBlackListed, err = fCfg.IsUserBlackListed(blDstNet, blDstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "isBlackListed %v", err)
+			errs = errors.Wrapf(err, "isBlackListed %v", err)
+			return
 		} else if err == nil && isBlackListed {
-			return nil, fmt.Errorf("Expected addr ( %v , %v ) to not be blacklisted, but was blackListed", blDstNet, blDstAddr)
+			errs = fmt.Errorf("Expected addr ( %v , %v ) to not be blacklisted, but was blackListed", blDstNet, blDstAddr)
+			return
 		}
 		if dstChain != ts.FullConfigAPIChain() { // for interchain-configurations
 			err = ts.WaitForConfigResponse(ctx, chain.RemoveFromBlacklistRequest, chain.BlacklistResponse, dstChain, blackListRemoveHash,
@@ -1572,44 +1794,53 @@ var TransferToBlackListedDstAddress Script = Script{
 				},
 			)
 			if err != nil {
-				return nil, errors.Wrapf(err, "WaitForConfigResponse %v", err)
+				errs = errors.Wrapf(err, "WaitForConfigResponse %v", err)
+				return
 			}
 			isBlackListed, err = stdCfg.IsUserBlackListed(blDstNet, blDstAddr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "isBlackListed %v", err)
+				errs = errors.Wrapf(err, "isBlackListed %v", err)
+				return
 			} else if err == nil && isBlackListed {
-				return nil, fmt.Errorf("Expected addr ( %v , %v ) to not be blacklisted, but was blackListed", blDstNet, blDstAddr)
+				errs = fmt.Errorf("Expected addr ( %v , %v ) to not be blacklisted, but was blackListed", blDstNet, blDstAddr)
+				return
 			}
 		}
 
 		fmt.Println("Final Send Should Succeed")
 		// Final Send Should Succeed
 		if err := ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Approve
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, userSuppliedAmount); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
 		// Transfer On Source
 		transferHashOnSrc, err = src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
 		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			return
 		}
 		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
 			chain.TransferEnd: func(ev *evt) error {
@@ -1627,10 +1858,12 @@ var TransferToBlackListedDstAddress Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs = errors.Wrapf(err, "WaitForEvents %v", err)
+			return
 		}
 		fmt.Println("pass")
-		return nil, nil
+		errs = nil
+		return
 	},
 }
 
@@ -1638,23 +1871,27 @@ var TransferFromBlackListedSrcAddress Script = Script{
 	Name:        "TransferFromBlackListedSrcAddress",
 	Description: "Transfer from BlackListed Source Address",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) != 1 {
-			return nil, fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
+			errs = fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
+			return
 		}
 		coinName := coinNames[0]
 		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetChainPair %v", err)
+			errs = errors.Wrapf(err, "GetChainPair %v", err)
+			return
 		}
 		// Account
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 
 		// Funds
@@ -1667,32 +1904,38 @@ var TransferFromBlackListedSrcAddress Script = Script{
 		gasFeeOnSrc := (&big.Int{}).Mul(src.SuggestGasPrice(), gasLimitOnSrc)
 
 		if err := ts.Fund(srcChain, srcAddr, (&big.Int{}).Mul(userSuppliedAmount, big.NewInt(2)), coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, (&big.Int{}).Mul(gasFeeOnSrc, big.NewInt(2)), src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Approve
 		var approveHash string
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, userSuppliedAmount); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
 		// Transfer On Source
 		transferHashOnSrc, err := src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
 		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			return
 		}
 		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
 			chain.TransferEnd: func(ev *evt) error {
@@ -1710,7 +1953,8 @@ var TransferFromBlackListedSrcAddress Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs = errors.Wrapf(err, "WaitForEvents %v", err)
+			return
 		}
 
 		fmt.Println("Start Add to blacklist")
@@ -1718,26 +1962,32 @@ var TransferFromBlackListedSrcAddress Script = Script{
 		// Add To BlackList
 		fCfg, err := ts.GetFullConfigAPI()
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetFullConfigAPI %v", err)
+			errs = errors.Wrapf(err, "GetFullConfigAPI %v", err)
+			return
 		}
 		fCfgOwnerKey := ts.FullConfigAPIsOwner()
 		stdCfg, err := ts.GetStandardConfigAPI(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetStandardConfigAPI %v", err)
+			errs = errors.Wrapf(err, "GetStandardConfigAPI %v", err)
+			return
 		}
 		blsSrcNet, blsSrcAddr := ts.NetAddr(srcAddr)
 		blackListAddHash, err := fCfg.AddBlackListAddress(fCfgOwnerKey, blsSrcNet, []string{blsSrcAddr})
 		if err != nil {
-			return nil, errors.Wrapf(err, "AddBlackListAddress %v", err)
+			errs = errors.Wrapf(err, "AddBlackListAddress %v", err)
+			return
 		}
 		if _, err := ts.ValidateTransactionResult(ctx, ts.FullConfigAPIChain(), blackListAddHash); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			return
 		}
 		isBlackListed, err := fCfg.IsUserBlackListed(blsSrcNet, blsSrcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "isBlackListed %v", err)
+			errs = errors.Wrapf(err, "isBlackListed %v", err)
+			return
 		} else if err == nil && !isBlackListed {
-			return nil, fmt.Errorf("Expected addr ( %v , %v ) to be blacklisted, but was not", blsSrcNet, blsSrcAddr)
+			errs = fmt.Errorf("Expected addr ( %v , %v ) to be blacklisted, but was not", blsSrcNet, blsSrcAddr)
+			return
 		}
 		if srcChain != ts.FullConfigAPIChain() { // for interchain-configurations
 			err = ts.WaitForConfigResponse(ctx, chain.AddToBlacklistRequest, chain.BlacklistResponse, srcChain, blackListAddHash,
@@ -1777,13 +2027,16 @@ var TransferFromBlackListedSrcAddress Script = Script{
 				},
 			)
 			if err != nil {
-				return nil, errors.Wrapf(err, "WaitForConfigResponse %v", err)
+				errs = errors.Wrapf(err, "WaitForConfigResponse %v", err)
+				return
 			}
 			isBlackListed, err = stdCfg.IsUserBlackListed(blsSrcNet, blsSrcAddr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "isBlackListed %v", err)
+				errs = errors.Wrapf(err, "isBlackListed %v", err)
+				return
 			} else if err == nil && !isBlackListed {
-				return nil, fmt.Errorf("Expected addr ( %v , %v ) to be blacklisted, but was not", blsSrcNet, blsSrcAddr)
+				errs = fmt.Errorf("Expected addr ( %v , %v ) to be blacklisted, but was not", blsSrcNet, blsSrcAddr)
+				return
 			}
 		}
 
@@ -1793,17 +2046,20 @@ var TransferFromBlackListedSrcAddress Script = Script{
 		// Approve
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, userSuppliedAmount); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil && err.Error() != StatusCodeZero.Error() {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
 		// Transfer On Source
 		transferHashOnSrc, err = src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
@@ -1825,11 +2081,13 @@ var TransferFromBlackListedSrcAddress Script = Script{
 				},
 			})
 			if err != nil {
-				return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+				errs = errors.Wrapf(err, "WaitForEvents %v", err)
+				return
 			}
 		} else {
 			if err.Error() != StatusCodeZero.Error() {
-				return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+				errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents Got Unexpected Error: %v", err)
+				return
 			}
 		}
 
@@ -1838,16 +2096,20 @@ var TransferFromBlackListedSrcAddress Script = Script{
 
 		blackListRemoveHash, err := fCfg.RemoveBlackListAddress(fCfgOwnerKey, blsSrcNet, []string{blsSrcAddr})
 		if err != nil {
-			return nil, errors.Wrapf(err, "RemoveBlackListAddress %v", err)
+			errs = errors.Wrapf(err, "RemoveBlackListAddress %v", err)
+			return
 		}
 		if _, err := ts.ValidateTransactionResult(ctx, ts.FullConfigAPIChain(), blackListRemoveHash); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResult %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResult %v", err)
+			return
 		}
 		isBlackListed, err = fCfg.IsUserBlackListed(blsSrcNet, blsSrcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "isBlackListed %v", err)
+			errs = errors.Wrapf(err, "isBlackListed %v", err)
+			return
 		} else if err == nil && isBlackListed {
-			return nil, fmt.Errorf("Expected addr ( %v , %v ) to not be blacklisted, but was blackListed", blsSrcNet, blsSrcAddr)
+			errs = fmt.Errorf("Expected addr ( %v , %v ) to not be blacklisted, but was blackListed", blsSrcNet, blsSrcAddr)
+			return
 		}
 		if srcChain != ts.FullConfigAPIChain() { // for interchain-configurations
 			err = ts.WaitForConfigResponse(ctx, chain.RemoveFromBlacklistRequest, chain.BlacklistResponse, dstChain, blackListRemoveHash,
@@ -1887,44 +2149,53 @@ var TransferFromBlackListedSrcAddress Script = Script{
 				},
 			)
 			if err != nil {
-				return nil, errors.Wrapf(err, "WaitForConfigResponse %v", err)
+				errs = errors.Wrapf(err, "WaitForConfigResponse %v", err)
+				return
 			}
 			isBlackListed, err = stdCfg.IsUserBlackListed(blsSrcNet, blsSrcAddr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "isBlackListed %v", err)
+				errs = errors.Wrapf(err, "isBlackListed %v", err)
+				return
 			} else if err == nil && isBlackListed {
-				return nil, fmt.Errorf("Expected addr ( %v , %v ) to not be blacklisted, but was blackListed", blsSrcNet, blsSrcAddr)
+				errs = fmt.Errorf("Expected addr ( %v , %v ) to not be blacklisted, but was blackListed", blsSrcNet, blsSrcAddr)
+				return
 			}
 		}
 
 		fmt.Println("Final Send Should Succeed")
 		// Final Send Should Succeed
 		if err := ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Approve
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, userSuppliedAmount); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
 		// Transfer On Source
 		transferHashOnSrc, err = src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
 		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			return
 		}
 		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHashOnSrc, map[chain.EventLogType]func(*evt) error{
 			chain.TransferEnd: func(ev *evt) error {
@@ -1942,10 +2213,12 @@ var TransferFromBlackListedSrcAddress Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs = errors.Wrapf(err, "WaitForEvents %v", err)
+			return
 		}
 		fmt.Println("pass")
-		return nil, nil
+		errs = nil
+		return
 	},
 }
 
@@ -1953,29 +2226,34 @@ var ChangeFee Script = Script{
 	Name:        "ChangeFee",
 	Description: "Change Fee",
 	Type:        "Configure",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) != 1 {
-			return nil, fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
+			errs = fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
+			return
 		}
 		coinName := coinNames[0]
 		src, _, err := ts.GetChainPair(srcChain, dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetChainPair %v", err)
+			errs = errors.Wrapf(err, "GetChainPair %v", err)
+			return
 		}
 		// Account
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		_, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 
 		// Fund
 		userSuppliedAmount, err := ts.getAmountBeforeFeeCharge(srcChain, coinName, big.NewInt(1))
 		if err != nil {
-			return nil, errors.Wrapf(err, "getAmountBeforeFeeCharge %v", err)
+			errs = errors.Wrapf(err, "getAmountBeforeFeeCharge %v", err)
+			return
 		}
 		gasLimitOnSrc := big.NewInt(int64(ts.cfgPerChain[srcChain].GasLimit[chain.TransferCoinInterChainGasLimit]))
 		if coinName != src.NativeCoin() {
@@ -1983,30 +2261,36 @@ var ChangeFee Script = Script{
 		}
 		gasFeeOnSrc := (&big.Int{}).Mul(src.SuggestGasPrice(), gasLimitOnSrc)
 		if err := ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		// Approve
 		var approveHash string
 		if coinName != src.NativeCoin() {
 			if approveHash, err = src.Approve(coinName, srcKey, userSuppliedAmount); err != nil {
-				return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash)
+				return
 			} else {
 				if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash); err != nil {
-					return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+					return
 				}
 			}
 		}
 		// Transfer Amount greater than tokenLimit
 		transferHash, err := src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHash); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+			errs = errors.Wrapf(err, "ValidateTransactionResult Err: %v Hash %v", err, approveHash)
+			return
 		}
 		err = ts.WaitForEvents(ctx, srcChain, dstChain, transferHash, map[chain.EventLogType]func(*evt) error{
 			chain.TransferEnd: func(ev *evt) error {
@@ -2027,44 +2311,54 @@ var ChangeFee Script = Script{
 		// Update Fee
 		stdCfg, err := ts.GetStandardConfigAPI(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetStandardConfigAPI %v", err)
+			errs = errors.Wrapf(err, "GetStandardConfigAPI %v", err)
+			return
 		}
 		feeNumerator, fixedFee, err := stdCfg.GetFeeRatio(coinName)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetFeeRatio %v", err)
+			errs = errors.Wrapf(err, "GetFeeRatio %v", err)
+			return
 		}
 		feeNumerator.Sub(feeNumerator, big.NewInt(2))
 		_, err = stdCfg.SetFeeRatio(ts.GetStandardConfigAPIOwnerKey(srcChain), coinName, feeNumerator, fixedFee)
 		if err != nil {
-			return nil, errors.Wrapf(err, "SetFeeRatio %v", err)
+			errs = errors.Wrapf(err, "SetFeeRatio %v", err)
+			return
 		}
 		time.Sleep(time.Second * 5) // TODO: Wait for status true on txn hash
 		newFeeNumerator, _, err := stdCfg.GetFeeRatio(coinName)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetFeeRatio %v", err)
+			errs = errors.Wrapf(err, "GetFeeRatio %v", err)
+			return
 		}
 		if newFeeNumerator.Cmp(feeNumerator) != 0 {
-			return nil, fmt.Errorf("Expected same. Got newFeeNumerator %v feeNumerator %v", newFeeNumerator, feeNumerator)
+			errs = fmt.Errorf("Expected same. Got newFeeNumerator %v feeNumerator %v", newFeeNumerator, feeNumerator)
+			return
 		}
 
 		//Fund
 		if err := ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		// Transfer Again
 		transferHash, err = src.Transfer(coinName, srcKey, dstAddr, userSuppliedAmount)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 		if _, err := ts.ValidateTransactionResult(ctx, ts.FullConfigAPIChain(), transferHash); err.Error() != StatusCodeZero.Error() {
-			return nil, errors.Wrapf(err, "Expected zero code Got Err %v", err)
+			errs = errors.Wrapf(err, "Expected zero code Got Err %v", err)
+			return
 		}
 
 		fmt.Println("Pass")
-		return nil, nil
+		errs = nil
+		return
 	},
 }
 
@@ -2072,31 +2366,38 @@ var TransferBatchBiDirection Script = Script{
 	Name:        "TransferBatchBiDirection",
 	Description: "Transfer batch bi-direction",
 	Type:        "Flow",
-	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error) {
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
 		if len(coinNames) == 0 {
-			return nil, fmt.Errorf(" Should specify at least one coinName, got zero")
+			errs = fmt.Errorf(" Should specify at least one coinName, got zero")
+			return
 		}
 		src, tmpOk := ts.clsPerChain[srcChain]
 		if !tmpOk {
-			return nil, fmt.Errorf("Chain %v not found", srcChain)
+			errs = fmt.Errorf("Chain %v not found", srcChain)
+			return
 		}
 		dst, tmpOk := ts.clsPerChain[dstChain]
 		if !tmpOk {
-			return nil, fmt.Errorf("Chain %v not found", srcChain)
+			errs = fmt.Errorf("Chain %v not found", srcChain)
+			return
 		}
 		if len(coinNames) == 1 && coinNames[0] == src.NativeCoin() {
-			return nil, fmt.Errorf("A single src.NativeCoin %v has been used", coinNames[0])
+			errs = fmt.Errorf("A single src.NativeCoin %v has been used", coinNames[0])
+			return
 		}
 		if len(coinNames) == 1 && coinNames[0] == dst.NativeCoin() {
-			return nil, fmt.Errorf("A single dst.NativeCoin %v has been used", coinNames[0])
+			errs = fmt.Errorf("A single dst.NativeCoin %v has been used", coinNames[0])
+			return
 		}
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		dstKey, dstAddr, err := ts.GetKeyPairs(dstChain)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetKeyPairs %v", err)
+			errs = errors.Wrapf(err, "GetKeyPairs %v", err)
+			return
 		}
 		fmt.Println("Calculate Transfer Amounts")
 		// Calculate Transfer Amounts
@@ -2106,7 +2407,8 @@ var TransferBatchBiDirection Script = Script{
 		for i := 0; i < len(coinNames); i++ {
 			tokenAmountBeforeFeeChargeOnDst[i], err = ts.getAmountBeforeFeeCharge(dstChain, coinNames[i], tokenAmountAfterFeeChargeOnDst)
 			if err != nil {
-				return nil, errors.Wrapf(err, "getAmountBeforeFeeCharge(%v) %v", coinNames[i], err)
+				errs = errors.Wrapf(err, "getAmountBeforeFeeCharge(%v) %v", coinNames[i], err)
+				return
 			}
 			if coinNames[i] == dst.NativeCoin() {
 				nativeCoinAmountBeforeFeeChargeOnDst.Set(tokenAmountBeforeFeeChargeOnDst[i])
@@ -2117,7 +2419,8 @@ var TransferBatchBiDirection Script = Script{
 		for i := 0; i < len(coinNames); i++ {
 			tokenAmountBeforeFeeChargeOnSrc[i], err = ts.getAmountBeforeFeeCharge(dstChain, coinNames[i], tokenAmountBeforeFeeChargeOnDst[i])
 			if err != nil {
-				return nil, errors.Wrapf(err, "getAmountBeforeFeeCharge(%v) %v", coinNames[i], err)
+				errs = errors.Wrapf(err, "getAmountBeforeFeeCharge(%v) %v", coinNames[i], err)
+				return
 			}
 			if coinNames[i] == src.NativeCoin() {
 				nativeCoinAmountBeforeFeeChargeOnSrc.Set(tokenAmountBeforeFeeChargeOnSrc[i])
@@ -2147,14 +2450,17 @@ var TransferBatchBiDirection Script = Script{
 		//Fund
 		for i := 0; i < len(coinNames); i++ {
 			if err := ts.Fund(srcChain, srcAddr, tokenAmountBeforeFeeChargeOnSrc[i], coinNames[i]); err != nil {
-				return nil, errors.Wrapf(err, "Fund Token %v", err)
+				errs = errors.Wrapf(err, "Fund Token %v", err)
+				return
 			}
 		}
 		if err := ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 		if err := ts.Fund(dstChain, dstAddr, gasFeeOnDst, dst.NativeCoin()); err != nil {
-			return nil, errors.Wrapf(err, "Fund Token %v", err)
+			errs = errors.Wrapf(err, "Fund Token %v", err)
+			return
 		}
 
 		fmt.Println("Record Initial Balance")
@@ -2164,20 +2470,24 @@ var TransferBatchBiDirection Script = Script{
 		for i := 0; i < len(coinNames); i++ {
 			initSrcBalance[i], err = src.GetCoinBalance(coinNames[i], srcAddr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				return
 			}
 			initDstBalance[i], err = dst.GetCoinBalance(coinNames[i], dstAddr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				return
 			}
 		}
 		initSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		initDstNativeCoinBalance, err := dst.GetCoinBalance(dst.NativeCoin(), dstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 
 		fmt.Println("ApproveToken On Source")
@@ -2186,10 +2496,12 @@ var TransferBatchBiDirection Script = Script{
 		for i, coinName := range coinNames {
 			if coinName != src.NativeCoin() {
 				if approveHash[coinName], err = src.Approve(coinName, srcKey, tokenAmountBeforeFeeChargeOnSrc[i]); err != nil {
-					return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash[coinName])
+					errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash[coinName])
+					return
 				} else {
 					if _, err := ts.ValidateTransactionResult(ctx, srcChain, approveHash[coinName]); err != nil {
-						return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash[coinName])
+						errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash[coinName])
+						return
 					}
 				}
 			}
@@ -2199,11 +2511,13 @@ var TransferBatchBiDirection Script = Script{
 		// Transfer On Source
 		transferHashOnSrc, err := src.TransferBatch(coinNames, srcKey, dstAddr, tokenAmountBeforeFeeChargeOnSrc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 		fmt.Println("transferHashOnSrc ", transferHashOnSrc)
 		if err := ts.ValidateTransactionResultAndEvents(ctx, srcChain, transferHashOnSrc, coinNames, srcAddr, dstAddr, tokenAmountBeforeFeeChargeOnSrc); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			return
 		}
 
 		fmt.Println("Wait For Events")
@@ -2297,7 +2611,8 @@ var TransferBatchBiDirection Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs = errors.Wrapf(err, "WaitForEvents %v", err)
+			return
 		}
 		fmt.Println("Intermediate Tally")
 		// Intermediate Tally
@@ -2306,27 +2621,32 @@ var TransferBatchBiDirection Script = Script{
 		for i, coinName := range coinNames {
 			intermediateSrcBalance[i], err = src.GetCoinBalance(coinName, srcAddr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				return
 			}
 			intermediateDstBalance[i], err = dst.GetCoinBalance(coinName, dstAddr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				return
 			}
 		}
 		intermediateSrcNativeCoinBalance, err := src.GetCoinBalance(src.NativeCoin(), srcAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 
 		gasSpentOnTxn, err := src.ChargedGasFee(transferHashOnSrc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "ChargedGasFee For Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "ChargedGasFee For Transfer Err: %v", err)
+			return
 		}
 		for _, coinName := range coinNames {
 			if coinName != src.NativeCoin() {
 				gasSpentOnApprove, err := src.ChargedGasFee(approveHash[coinName])
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+					errs = errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+					return
 				}
 				gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
 			}
@@ -2335,23 +2655,27 @@ var TransferBatchBiDirection Script = Script{
 			if coinName != src.NativeCoin() {
 				tmpDiff := (&big.Int{}).Sub(initSrcBalance[i].UserBalance, intermediateSrcBalance[i].UserBalance)
 				if tokenAmountBeforeFeeChargeOnSrc[i].Cmp(tmpDiff) != 0 {
-					return nil, fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tokenAmountBeforeFeeChargeOnSrc[i], tmpDiff)
+					errs = fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tokenAmountBeforeFeeChargeOnSrc[i], tmpDiff)
+					return
 				}
 				tmpDiff = (&big.Int{}).Sub(initSrcNativeCoinBalance.UserBalance, intermediateSrcNativeCoinBalance.UserBalance)
 				tmpNativeCoinUsed := (&big.Int{}).Add(nativeCoinAmountBeforeFeeChargeOnSrc, gasSpentOnTxn)
 				if tmpNativeCoinUsed.Cmp(tmpDiff) != 0 {
-					return nil, fmt.Errorf("Expected same value for src nativeCoin balance after txn; Got GasSpentOnTxn %v srcDiffAmt %v", gasSpentOnTxn, tmpDiff)
+					errs = fmt.Errorf("Expected same value for src nativeCoin balance after txn; Got GasSpentOnTxn %v srcDiffAmt %v", gasSpentOnTxn, tmpDiff)
+					return
 				}
 			} else {
 				tmpNativeCoinUsed := (&big.Int{}).Add(tokenAmountBeforeFeeChargeOnSrc[i], gasSpentOnTxn)
 				tmpDiff := (&big.Int{}).Sub(initSrcBalance[i].UserBalance, intermediateSrcBalance[i].UserBalance)
 				if tmpNativeCoinUsed.Cmp(tmpDiff) != 0 {
-					return nil, fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+					errs = fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+					return
 				}
 			}
 			tmpDiff := (&big.Int{}).Sub(intermediateDstBalance[i].UserBalance, initDstBalance[i].UserBalance)
 			if tokenAmountBeforeFeeChargeOnDst[i].Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tokenAmountBeforeFeeChargeOnDst[i], tmpDiff)
+				errs = fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tokenAmountBeforeFeeChargeOnDst[i], tmpDiff)
+				return
 			}
 		}
 
@@ -2361,10 +2685,12 @@ var TransferBatchBiDirection Script = Script{
 		for i, coinName := range coinNames {
 			if coinName != dst.NativeCoin() {
 				if approveHash[coinName], err = dst.Approve(coinName, dstKey, tokenAmountBeforeFeeChargeOnDst[i]); err != nil {
-					return nil, errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash[coinName])
+					errs = errors.Wrapf(err, "Approve Err: %v Hash %v", err, approveHash[coinName])
+					return
 				} else {
 					if _, err := ts.ValidateTransactionResult(ctx, dstChain, approveHash[coinName]); err != nil {
-						return nil, errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash[coinName])
+						errs = errors.Wrapf(err, "Approve ValidateTransactionResult Err: %v Hash %v", err, approveHash[coinName])
+						return
 					}
 				}
 			}
@@ -2374,11 +2700,13 @@ var TransferBatchBiDirection Script = Script{
 		// Transfer On Destination
 		transferHashOnDst, err := dst.TransferBatch(coinNames, dstKey, srcAddr, tokenAmountBeforeFeeChargeOnDst)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Transfer Err: %v", err)
+			errs = errors.Wrapf(err, "Transfer Err: %v", err)
+			return
 		}
 		fmt.Println("transferHashOnDst ", transferHashOnDst)
 		if err := ts.ValidateTransactionResultAndEvents(ctx, dstChain, transferHashOnDst, coinNames, dstAddr, srcAddr, tokenAmountBeforeFeeChargeOnDst); err != nil {
-			return nil, errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			return
 		}
 
 		fmt.Println("Wait For Events")
@@ -2471,7 +2799,8 @@ var TransferBatchBiDirection Script = Script{
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "WaitForEvents %v", err)
+			errs = errors.Wrapf(err, "WaitForEvents %v", err)
+			return
 		}
 
 		fmt.Println("final tally")
@@ -2481,26 +2810,31 @@ var TransferBatchBiDirection Script = Script{
 		for i, coinName := range coinNames {
 			finalSrcBalance[i], err = src.GetCoinBalance(coinName, srcAddr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				return
 			}
 			finalDstBalance[i], err = dst.GetCoinBalance(coinName, dstAddr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+				return
 			}
 		}
 		finalDstNativeCoinBalance, err := dst.GetCoinBalance(dst.NativeCoin(), dstAddr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			errs = errors.Wrapf(err, "GetCoinBalance Err: %v", err)
+			return
 		}
 		gasSpentOnTxn, err = dst.ChargedGasFee(transferHashOnDst)
 		if err != nil {
-			return nil, errors.Wrapf(err, "GetGasUsed Err: %v", err)
+			errs = errors.Wrapf(err, "GetGasUsed Err: %v", err)
+			return
 		}
 		for _, coinName := range coinNames {
 			if coinName != dst.NativeCoin() {
 				gasSpentOnApprove, err := dst.ChargedGasFee(approveHash[coinName])
 				if err != nil {
-					return nil, errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+					errs = errors.Wrapf(err, "GetGasUsed for Approve Err: %v", err)
+					return
 				}
 				gasSpentOnTxn.Add(gasSpentOnTxn, gasSpentOnApprove)
 			}
@@ -2509,26 +2843,76 @@ var TransferBatchBiDirection Script = Script{
 			if coinName != dst.NativeCoin() {
 				tmpDiff := (&big.Int{}).Sub(intermediateDstBalance[i].UserBalance, finalDstBalance[i].UserBalance)
 				if tokenAmountBeforeFeeChargeOnDst[i].Cmp(tmpDiff) != 0 {
-					return nil, fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tokenAmountBeforeFeeChargeOnDst[i], tmpDiff)
+					errs = fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tokenAmountBeforeFeeChargeOnDst[i], tmpDiff)
+					return
 				}
 				tmpNativeCoinUsed := (&big.Int{}).Add(nativeCoinAmountBeforeFeeChargeOnDst, gasSpentOnTxn)
 				tmpDiff = (&big.Int{}).Sub(initDstNativeCoinBalance.UserBalance, finalDstNativeCoinBalance.UserBalance)
 				if tmpNativeCoinUsed.Cmp(tmpDiff) != 0 {
-					return nil, fmt.Errorf("Expected same value for dst nativeCoin balance after txn; Got GasSpentOnTxn %v srcDiffAmt %v", gasSpentOnTxn, tmpDiff)
+					errs = fmt.Errorf("Expected same value for dst nativeCoin balance after txn; Got GasSpentOnTxn %v srcDiffAmt %v", gasSpentOnTxn, tmpDiff)
+					return
 				}
 			} else {
 				tmpNativeCoinUsed := (&big.Int{}).Add(tokenAmountBeforeFeeChargeOnDst[i], gasSpentOnTxn)
 				tmpDiff := (&big.Int{}).Sub(intermediateDstBalance[i].UserBalance, finalDstBalance[i].UserBalance)
 				if tmpNativeCoinUsed.Cmp(tmpDiff) != 0 {
-					return nil, fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+					errs = fmt.Errorf("Expected same value for dst balance After transfer, Got TransferAmt %v DstDiffAmt %v", tmpNativeCoinUsed, tmpDiff)
+					return
 				}
 			}
 			tmpDiff := (&big.Int{}).Sub(finalSrcBalance[i].UserBalance, intermediateSrcBalance[i].UserBalance)
 			if tokenAmountAfterFeeChargeOnDst.Cmp(tmpDiff) != 0 {
-				return nil, fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tokenAmountAfterFeeChargeOnDst, tmpDiff)
+				errs = fmt.Errorf("Expected same value for src balance After transfer, Got TransferAmt %v SrcDiffAmt %v", tokenAmountAfterFeeChargeOnDst, tmpDiff)
+				return
 			}
 		}
 		fmt.Println("Pass")
-		return nil, nil
+		errs = nil
+		return
+	},
+}
+
+var FeeAggregation Script = Script{
+	Name:        "FeeAggregation",
+	Description: "Watches for fee aggregation message until context cancelled",
+	Callback: func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, errs error) {
+		fCfg, err := ts.GetFullConfigAPI()
+		if err != nil {
+			errs = errors.Wrapf(err, "GetFullConfigAPI %v", err)
+			return
+		}
+
+		// check if feeGatheringInterval Updates
+		const FeeGatheringInterval = 150 // should be greater than the time it takes for a single inter-chain transaction
+		fCfgOwnerKey := ts.FullConfigAPIsOwner()
+		if setFeeHash, err := fCfg.SetFeeGatheringTerm(fCfgOwnerKey, FeeGatheringInterval); err != nil {
+			errs = errors.Wrapf(err, "SetFeeGatheringTerm %v ", err)
+			return
+		} else {
+			if _, err := ts.ValidateTransactionResult(ctx, ts.FullConfigAPIChain(), setFeeHash); err != nil {
+				errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+				return
+			}
+			term, err := fCfg.GetFeeGatheringTerm()
+			if err != nil {
+				errs = errors.Wrapf(err, "GetFeeGatheringTerm %v", err)
+				return
+			}
+			if term != FeeGatheringInterval {
+				errs = fmt.Errorf("Expected same. Got Different GetFeeGatheringTerm(%v) SetFeeGatheringTerm(%v) ", term, FeeGatheringInterval)
+				return
+			}
+		}
+		// Expected one of it to be ICON for now
+		// TODO:
+		feeGatheredChain := srcChain
+		if srcChain == ts.FullConfigAPIChain() {
+			feeGatheredChain = dstChain
+		}
+		fmt.Println("Wait...")
+		err = ts.WaitForFeeGathering(ctx, feeGatheredChain, 60*60) // 10 mins max wait
+		fmt.Println("Err ", err)
+		errs = err
+		return
 	},
 }
