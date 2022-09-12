@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.8.0;
 pragma abicoder v2;
-import "../BTSCore.sol";
+import "../BTSCoreV1.sol";
 
-contract BTSCoreV2 is BTSCore {
+contract BTSCoreTestV2 is BTSCoreV1 {
     using String for string;
     using SafeMathUpgradeable for uint256;
 
