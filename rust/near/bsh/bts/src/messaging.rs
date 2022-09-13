@@ -86,7 +86,7 @@ impl BtpTokenService {
                     });
                     let log = json!({
                       "event":"TransferStart",
-                      "status":"Success",
+                      "code":1,
                       "sender_address":sender,
                       "serial_number":serial_no,
                       "receiver_address":receiver,
@@ -95,26 +95,7 @@ impl BtpTokenService {
 
                     log!(log.as_str().unwrap().to_string())
                 }
-                PromiseResult::NotReady => {
-                    let mut assets_log: Vec<Value> = Vec::new();
-                    assets.iter().for_each(|asset| {
-                        assets_log.push(json!({
-                        "token_name": asset.name(),
-                        "amount":asset.amount(),
-                        "fee": asset.fees(),
-                        }))
-                    });
-                    let log = json!({
-                      "event":"TransferStart",
-                      "status":"Pending",
-                      "sender_address":sender,
-                      "serial_number":serial_no,
-                      "receiver_address":receiver,
-                      "assets":assets_log
-                    });
-
-                    log!(log.as_str().unwrap().to_string())
-                }
+                PromiseResult::NotReady => log!("Not Ready"),
                 PromiseResult::Failed => {
                     let mut assets_log: Vec<Value> = Vec::new();
                     assets.iter().for_each(|asset| {
@@ -126,7 +107,7 @@ impl BtpTokenService {
                     });
                     let log = json!({
                       "event": "TransferStart",
-                      "status":"Failed",
+                      "code":0,
                       "sender_address": sender,
                       "serial_number": serial_no,
                       "receiver_address": receiver,

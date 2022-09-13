@@ -103,7 +103,7 @@ impl BtpTokenService {
                 log!(json!(
                 {
                     "event":"Mint",
-                    "status":"Success",
+                    "code":1,
                     "amount":amount,
                     "token_name":coin_name
                 })
@@ -111,16 +111,7 @@ impl BtpTokenService {
                 .unwrap());
             }
             PromiseResult::NotReady => {
-                let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
-                log!(json!(
-                {
-                    "event":"Mint",
-                    "status":"Pending",
-                    "amount":amount,
-                    "token_name":coin_name
-                })
-                .as_str()
-                .unwrap());
+                log!("Not Ready")
             }
             PromiseResult::Failed => {
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
@@ -128,7 +119,7 @@ impl BtpTokenService {
                 log!(json!(
                 {
                     "event": "Mint",
-                    "status": "Failed",
+                    "code": 0,
                     "amount": amount,
                     "token_name": coin_name
                 })
@@ -153,31 +144,20 @@ impl BtpTokenService {
                 log!(json!(
                 {
                     "event":"Burn",
-                    "status":"Success",
+                    "code":1,
                     "amount":amount,
                     "token_name":coin_name
                 })
                 .as_str()
                 .unwrap());
             }
-            PromiseResult::NotReady => {
-                let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
-                log!(json!(
-                {
-                    "event":"Burn",
-                    "status":"Pending",
-                    "amount":amount,
-                    "token_name":coin_name
-                })
-                .as_str()
-                .unwrap());
-            }
+            PromiseResult::NotReady => log!("Not Ready"),
             PromiseResult::Failed => {
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
                 log!(json!(
                 {
                     "event":"Burn",
-                    "status":"Failed",
+                    "code":0,
                     "amount":amount,
                     "token_name":coin_name
                 })
