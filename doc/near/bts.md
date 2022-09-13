@@ -5,13 +5,17 @@
 
 
     #### Installation
-    ```npm install -g near-cli```
+    ```console
+    npm install -g near-cli
+    ```
 * **NEAR Wallet**  
     - Testnet: https://wallet.testnet.near.org/
     - Mainnet: https://wallet.near.org/
 
 * **Authorize CLI**  
-    ```near login```
+    ```console
+    near login
+    ```
 ## API
 *Path to BTS Rust ReadMe*
 
