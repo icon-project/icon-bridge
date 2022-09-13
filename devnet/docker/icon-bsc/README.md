@@ -41,9 +41,9 @@ Alternatives To Deploying ICON_BRIDGE:
     1.2 Piecewise Deployment    (Useful for developers. Steps run on docker+PC)
  
 2. Deploy on Mainnet/Testnet
- 
+------------------------------------------------------------------------------------------------
 
- 
+Description to the Alternative Deployment Processes:
 
  
 1. Deploy on PC
@@ -98,7 +98,7 @@ Alternatives To Deploying ICON_BRIDGE:
  
     make buildsc                    #Builds smart contracts
  
-    make deploysctesstnet           #Deploy smart contracts on Testnet. Using scripts/config.sh
+    make deploysctestnet           #Deploy smart contracts on Testnet. Using scripts/config.sh
  
     make runrelaysrc                #Run relay from source
  
