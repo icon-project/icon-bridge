@@ -48,7 +48,7 @@ Description to the Alternative Deployment Processes:
  
 1. Deploy on PC
  
-    1.1 Full Deployment - Section 3
+    1.1 Full Deployment 
  
         make cleanimglocal        #Clean Previous build & deployment artifacts if present
  
@@ -95,6 +95,7 @@ Description to the Alternative Deployment Processes:
 
  
 2 Deploy on Mainnet/Testnet
+    #Install Dependencies on PC- Ref: Section 3
  
     make buildsc                    #Builds smart contracts
  
