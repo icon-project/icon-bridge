@@ -10,12 +10,16 @@ setup_account() {
       echo "check god keys..."
     if [ ! -f "${ICON_KEY_STORE}" ]; then
         ensure_key_store $ICON_KEY_STORE $ICON_SECRET
-        echo "Fund newly created wallet " $ICON_KEY_STORE
+        echo "Do not Panic..."
+        echo "Missing ICON God Wallet on the required path. One has been created "$ICON_KEY_STORE
+        echo "Fund this newly created wallet and rerun ./deploysc.sh again" 
         exit 0
     fi
     if [ ! -f "${BSC_KEY_STORE}" ]; then
         ensure_bsc_key_store $BSC_KEY_STORE $BSC_SECRET
-        echo "Fund newly created wallet " $BSC_KEY_STORE
+        echo "Do not Panic..."
+        echo "Missing BSC God Wallet on the required path. One has been created "$BSC_KEY_STORE
+        echo "Fund this newly created wallet and rerun ./deploysc.sh again " 
         exit 0
     fi
     export PRIVATE_KEY="[\""$(cat $BSC_KEY_STORE.priv)"\"]"
@@ -32,7 +36,14 @@ setup_account() {
 }
 
 deploysc() {
-    echo "start..."
+    if [ ! -d $BUILD_DIR ]; then 
+      echo "Do not Panic..."
+      echo "Build Artifacts have not been created. Expected on path "$BUILD_DIR 
+      echo "Run make buildsc to do so. Check README.md for more"
+      exit 0
+    fi
+    echo "Start "
+    sleep 15
     echo "$GOLOOP_RPC_NID.icon" >$CONFIG_DIR/net.btp.icon #0x240fa7.icon
     mkdir -p $CONFIG_DIR/tx
 
@@ -152,7 +163,9 @@ deploysc() {
     generate_addresses_json >$CONFIG_DIR/addresses.json  
     generate_relay_config >$CONFIG_DIR/bmr.config.json
     wait_for_file $CONFIG_DIR/bmr.config.json
-    echo "Done deploying"
+    
+    echo "Smart contracts have been deployed "
+    echo "You can now run the relay with make runrelaysrc OR make runrelayimg"
 }
 
 wait_for_file() {
@@ -241,5 +254,6 @@ generate_relay_config() {
 
 #wait-for-it.sh $GOLOOP_RPC_ADMIN_URI
 # run provisioning
+echo "start..."
 setup_account
 deploysc
