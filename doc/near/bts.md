@@ -19,17 +19,25 @@
 
 **Transfer NEAR**  
 - Deposit  
-```NEAR_ENV=testnet near call <BTS> deposit --amount <AMOUNT in NEAR> --accountId <ACCOUNT ID>```
+```console
+NEAR_ENV=testnet near call <BTS> deposit --amount <AMOUNT in NEAR> --accountId <ACCOUNT ID>
+```
 - Transfer  
-```NEAR_ENV=testnet near call <BTS> transfer '{"coin_name": "<Registered Coin Name>", "destination": "btp://<Network>/<Address>", "amount": "<Amount in lowest Denomination, For NEAR in yoctoNEAR ie 1 NEAR = 1^24 yoctoNEAR>"}' --gas 300000000000000 --accountId <ACCOUNT ID>```
+```console
+NEAR_ENV=testnet near call <BTS> transfer '{"coin_name": "<Registered Coin Name>", "destination": "btp://<Network>/<Address>", "amount": "<Amount in lowest Denomination, For NEAR in yoctoNEAR ie 1 NEAR = 1^24 yoctoNEAR>"}' --gas 300000000000000 --accountId <ACCOUNT ID>
+```
 
 **Receiving Cross-Chain Native Coins**
 - Withdraw  
-```NEAR_ENV=testnet near call <BTS> withdraw '{"coin_name": "<Registered Coin Name>", "amount":"<Amount in lowest Denomination>"}' --amount 0.000000000000000000000001 --gas 300000000000000 --accountId <ACCOUNT ID>```
+```console
+NEAR_ENV=testnet near call <BTS> withdraw '{"coin_name": "<Registered Coin Name>", "amount":"<Amount in lowest Denomination>"}' --amount 0.000000000000000000000001 --gas 300000000000000 --accountId <ACCOUNT ID>
+```
 
 **Reclaiming Failed Transfer**
 - Reclaim  
-```NEAR_ENV=testnet near call <BTS> reclaim '{"coin_name": "<Registered Coin Name>", "amount":"<Amount in lowest Denomination>"}' --amount 0.000000000000000000000001 --gas 300000000000000 --accountId <ACCOUNT ID>```
+```console
+NEAR_ENV=testnet near call <BTS> reclaim '{"coin_name": "<Registered Coin Name>", "amount":"<Amount in lowest Denomination>"}' --amount 0.000000000000000000000001 --gas 300000000000000 --accountId <ACCOUNT ID>
+```
 
 ## Environment
 
