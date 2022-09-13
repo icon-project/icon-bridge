@@ -153,6 +153,7 @@ run_chain_nodes() {
     ethkey inspect --json --private --passwordfile $ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.secret $ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.json | jq -r .PrivateKey > $ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.json.priv
     echo "Nodes running"
     docker ps --filter name=goloop --filter name=binancesmartchain
+    echo "Wait 1 minute before deploying smart contracts to ensure nodes have initialized"
 }
 
 clean_deployment_artifacts() {
@@ -185,6 +186,9 @@ deploy_smart_contracts_on_localnet() {
         cp config_local.sh config.sh
     fi
 	./deploysc.sh
+    if [ -f config_testnet.sh ]; then
+        mv config_testnet.sh config.sh
+    fi
 }
 
 ########################################################
@@ -262,6 +266,4 @@ elif [ $1 == "runrelayimg" ]; then
     run_relay_img
 elif [ $1 == "stoprelayimg" ]; then 
     stop_relay_img
-else
-    echo "To build on docker container: make buildimg. To run on local PC: make buildsc  Check README.md for more"
 fi

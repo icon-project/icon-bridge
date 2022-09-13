@@ -7,6 +7,6 @@ build/
 bin/
 **/*/node_modules/
 abigenBindings/
-_ixh/
+_ixh*/
 hmny_wallets/
 tmp/
