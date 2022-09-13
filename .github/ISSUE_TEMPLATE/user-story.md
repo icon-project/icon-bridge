@@ -1,8 +1,8 @@
 ---
 name: User Story
 about: Describe a user story
-title: ''
-labels: story
+title: '<type>(<scope>): <subject>'
+labels: draft, story
 assignees: ''
 
 ---
@@ -17,4 +17,5 @@ As a [persona], I want [goal] so that [reason]
 
 ## Acceptance Criteria
 
-List of requirements to be considered complete.
+- Functional acceptance criteria to be met
+- Non-functional acceptance criteria to be met

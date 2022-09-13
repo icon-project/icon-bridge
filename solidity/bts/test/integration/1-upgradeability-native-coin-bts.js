@@ -1,7 +1,7 @@
 // const BTSPeripheryV1 = artifacts.require("BTSPeripheryV1");
 // const BTSPeripheryV2 = artifacts.require("BTSPeripheryV2");
-const BTSCoreV1 = artifacts.require("BTSCoreV1");
-const BTSCoreV2 = artifacts.require("BTSCoreV2");
+const BTSCoreTestV1 = artifacts.require("BTSCoreTestV1");
+const BTSCoreTestV2 = artifacts.require("BTSCoreTestV2");
 const BMC = artifacts.require("MockBMC");
 // const Holder = artifacts.require("AnotherHolder");
 const NotPayable = artifacts.require("NotPayable");
@@ -39,7 +39,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
 
         before(async () => {
             bmc = await BMC.new("1234.pra");
-            bts_coreV1 = await deployProxy(BTSCoreV1, [
+            bts_coreV1 = await deployProxy(BTSCoreTestV1, [
                 _native,
                 _fee,
                 _fixed_fee,
@@ -55,7 +55,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
                 bts_peripheryV1.address,
                 BTSPeripheryV2
             );
-            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreV2);
+            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreTestV2);
             await bmc.addService(service, bts_peripheryV2.address);
             await bmc.addVerifier(_net, accounts[1]);
             await bmc.addLink(_bmcICON);
@@ -452,7 +452,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
 
         before(async () => {
             bmc = await BMC.new("1234.pra");
-            bts_coreV1 = await deployProxy(BTSCoreV1, [
+            bts_coreV1 = await deployProxy(BTSCoreTestV1, [
                 _native,
                 _fee,
                 _fixed_fee,
@@ -469,7 +469,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
                 bts_peripheryV1.address,
                 BTSPeripheryV2
             );
-            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreV2);
+            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreTestV2);
             nonrefundable = await NonRefundable.new();
             refundable = await Refundable.new();
             await bmc.addVerifier(_net, accounts[1]);
@@ -1165,7 +1165,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
 
         before(async () => {
             bmc = await BMC.new("1234.pra");
-            bts_coreV1 = await deployProxy(BTSCoreV1, [
+            bts_coreV1 = await deployProxy(BTSCoreTestV1, [
                 _native,
                 _fee,
                 _fixed_fee,
@@ -1182,7 +1182,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
                 bts_peripheryV1.address,
                 BTSPeripheryV2
             );
-            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreV2);
+            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreTestV2);
             holder = await Holder.new();
             await bmc.addVerifier(_net, accounts[1]);
             await bmc.addLink(_bmcICON);
@@ -1724,7 +1724,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
 
         before(async () => {
             bmc = await BMC.new("1234.pra");
-            bts_coreV1 = await deployProxy(BTSCoreV1, [
+            bts_coreV1 = await deployProxy(BTSCoreTestV1, [
                 _native,
                 _fee,
                 _fixed_fee,
@@ -1741,7 +1741,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
                 bts_peripheryV1.address,
                 BTSPeripheryV2
             );
-            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreV2);
+            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreTestV2);
             notpayable = await NotPayable.new();
             refundable = await Refundable.new();
             await bmc.addVerifier(_net, accounts[1]);
@@ -1950,7 +1950,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
 
         before(async () => {
             bmc = await BMC.new("1234.pra");
-            bts_coreV1 = await deployProxy(BTSCoreV1, [
+            bts_coreV1 = await deployProxy(BTSCoreTestV1, [
                 _native,
                 _fee,
                 _fixed_fee,
@@ -1967,7 +1967,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
                 bts_peripheryV1.address,
                 BTSPeripheryV2
             );
-            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreV2);
+            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreTestV2);
             holder = await Holder.new();
             notpayable = await NotPayable.new();
             await bmc.addVerifier(_net, accounts[1]);
@@ -2202,7 +2202,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
 
         before(async () => {
             bmc = await BMC.new("1234.pra");
-            bts_coreV1 = await deployProxy(BTSCoreV1, [
+            bts_coreV1 = await deployProxy(BTSCoreTestV1, [
                 _native,
                 _fee,
                 _fixed_fee,
@@ -2219,7 +2219,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
                 bts_peripheryV1.address,
                 BTSPeripheryV2
             );
-            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreV2);
+            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreTestV2);
             holder = await Holder.new();
             btpAddr = await bmc.bmcAddress();
             await bmc.addVerifier(_net1, accounts[1]);
@@ -2568,7 +2568,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
 
         before(async () => {
             bmc = await BMC.new("1234.pra");
-            bts_coreV1 = await deployProxy(BTSCoreV1, [
+            bts_coreV1 = await deployProxy(BTSCoreTestV1, [
                 _native,
                 _fee,
                 _fixed_fee,
@@ -2585,7 +2585,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
                 bts_peripheryV1.address,
                 BTSPeripheryV2
             );
-            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreV2);
+            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreTestV2);
             holder = await Holder.new();
             refundable = await Refundable.new();
             btpAddr = await bmc.bmcAddress();
@@ -3150,7 +3150,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
 
         before(async () => {
             bmc = await BMC.new("1234.pra");
-            bts_coreV1 = await deployProxy(BTSCoreV1, [
+            bts_coreV1 = await deployProxy(BTSCoreTestV1, [
                 _native,
                 _fee,
                 _fixed_fee,
@@ -3167,7 +3167,7 @@ contract("NativeCoinBSH contracts - After Upgrading Contract", (accounts) => {
                 bts_peripheryV1.address,
                 BTSPeripheryV2
             );
-            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreV2);
+            bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreTestV2);
             holder = await Holder.new();
             await bmc.addVerifier(_net, accounts[1]);
             await bmc.addLink(_bmcICON);

@@ -43,7 +43,7 @@ deploysc() {
       exit 0
     fi
     echo "Start "
-    sleep 60
+    sleep 15
     echo "$GOLOOP_RPC_NID.icon" >$CONFIG_DIR/net.btp.icon #0x240fa7.icon
     mkdir -p $CONFIG_DIR/tx
 

@@ -13,7 +13,7 @@ export SCRIPTS_DIR=${SCRIPTS_DIR:-${ICONBRIDGE_SCRIPTS_DIR}}
 
 ###################################################################################
 
-# testnet: begin
+# localnet: begin
 export BSC_BMC_NET="0x61.bsc"
 export GOLOOP_RPC_NID=$(cat $CONFIG_DIR/nid.icon)
 export ICON_BMC_NET="$GOLOOP_RPC_NID.icon"
@@ -57,7 +57,7 @@ export BSC_WRAPPED_COIN_FIXED_FEE=(4300000000000000000 3900000000000000000 15000
 export BSC_WRAPPED_COIN_FEE_NUMERATOR=(100 100 100)
 export BSC_WRAPPED_COIN_DECIMALS=(18 18 18)
 
-# testnet: end
+# localnet: end
 
 
 GOLOOPCHAIN=${GOLOOPCHAIN:-"goloop"}
@@ -71,3 +71,14 @@ export GOLOOP_RPC_KEY_SECRET=$ICON_SECRET
 export BSC_RPC_URI=$BSC_ENDPOINT
 export BSC_KEY_STORE=$ICONBRIDGE_CONFIG_DIR/keystore/bsc.god.wallet.json
 export BSC_SECRET=$ICONBRIDGE_CONFIG_DIR/keystore/bsc.god.wallet.secret
+
+#use god keys for relay txns
+if [ ! -f $CONFIG_DIR/keystore/icon.bmr.wallet.json ]; then
+    cp $CONFIG_DIR/keystore/icon.god.wallet.json $CONFIG_DIR/keystore/icon.bmr.wallet.json
+    cp $CONFIG_DIR/keystore/icon.god.wallet.secret $CONFIG_DIR/keystore/icon.bmr.wallet.secret
+fi
+
+if [ ! -f $CONFIG_DIR/keystore/bsc.bmr.wallet.json ]; then
+    cp $CONFIG_DIR/keystore/bsc.god.wallet.json $CONFIG_DIR/keystore/bsc.bmr.wallet.json
+    cp $CONFIG_DIR/keystore/bsc.god.wallet.secret $CONFIG_DIR/keystore/bsc.bmr.wallet.secret
+fi
