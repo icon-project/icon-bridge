@@ -158,8 +158,8 @@ impl BtpTokenService {
                 {
                     "event": "Burn",
                     "code":0,
-                    "amount":amount,
-                    "token_name":coin_name
+                    "amount": amount,
+                    "token_name": coin_name
                 })
                 .as_str()
                 .unwrap());
