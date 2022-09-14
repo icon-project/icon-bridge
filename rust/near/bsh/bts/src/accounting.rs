@@ -163,7 +163,7 @@ impl BtpTokenService {
                 log!(json!(
                 {
                     "event":"Withdraw",
-                    "status":"Success",
+                    "code":1,
                     "by":account,
                     "amount":amount,
                     "token_name":coin_symbol
@@ -172,22 +172,13 @@ impl BtpTokenService {
                 .unwrap());
             }
             PromiseResult::NotReady => {
-                log!(json!(
-                {
-                    "event":"Withdraw",
-                    "status":"Pending",
-                    "by":account,
-                    "amount":amount,
-                    "token_name":coin_symbol
-                })
-                .as_str()
-                .unwrap());
+                log!("Not Ready")
             }
             PromiseResult::Failed => {
                 log!(json!(
                 {
                     "event":"Withdraw",
-                    "status":"Failed",
+                    "code":0,
                     "by":account,
                     "amount":amount,
                     "token_name":coin_symbol
