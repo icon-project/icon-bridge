@@ -80,17 +80,17 @@ impl BtpTokenService {
                     assets.iter().for_each(|asset| {
                         assets_log.push(json!({
                         "token_name": asset.name(),
-                        "amount":asset.amount(),
+                        "amount": asset.amount(),
                         "fee": asset.fees(),
                         }))
                     });
                     let log = json!({
-                      "event":"TransferStart",
+                      "event": "TransferStart",
                       "code":1,
-                      "sender_address":sender,
-                      "serial_number":serial_no,
-                      "receiver_address":receiver,
-                      "assets":assets_log
+                      "sender_address": sender,
+                      "serial_number": serial_no,
+                      "receiver_address": receiver,
+                      "assets": assets_log
                     });
 
                     log!(log.as_str().unwrap().to_string())
@@ -101,7 +101,7 @@ impl BtpTokenService {
                     assets.iter().for_each(|asset| {
                         assets_log.push(json!({
                         "token_name": asset.name(),
-                        "amount":asset.amount(),
+                        "amount": asset.amount(),
                         "fee": asset.fees(),
                         }))
                     });
@@ -256,7 +256,7 @@ impl BtpTokenService {
 
             let log = json!({
                 "event": "TransferEnd",
-                "code":code,
+                "code": code,
                 "serial_number": serial_no.get(),
                 "message": message,
             });

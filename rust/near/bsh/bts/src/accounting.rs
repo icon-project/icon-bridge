@@ -162,11 +162,13 @@ impl BtpTokenService {
                 self.balances.set(&account.clone(), &coin_id, balance);
                 log!(json!(
                 {
-                    "event":"Withdraw",
-                    "code":1,
-                    "by":account,
-                    "amount":amount,
-                    "token_name":coin_symbol
+
+                    "event": "Withdraw",
+                    "code": 0,
+                    "by": account,
+                    "amount": amount,
+                    "token_name": coin_symbol
+
                 })
                 .as_str()
                 .unwrap());
@@ -177,11 +179,11 @@ impl BtpTokenService {
             PromiseResult::Failed => {
                 log!(json!(
                 {
-                    "event":"Withdraw",
-                    "code":0,
-                    "by":account,
-                    "amount":amount,
-                    "token_name":coin_symbol
+                    "event": "Withdraw",
+                    "code": 0,
+                    "by": account,
+                    "amount": amount,
+                    "token_name": coin_symbol
                 })
                 .as_str()
                 .unwrap());

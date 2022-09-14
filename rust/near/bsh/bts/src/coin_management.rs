@@ -102,10 +102,10 @@ impl BtpTokenService {
 
                 log!(json!(
                 {
-                    "event":"Mint",
+                    "event": "Mint",
                     "code":1,
-                    "amount":amount,
-                    "token_name":coin_name
+                    "amount": amount,
+                    "token_name": coin_name
                 })
                 .as_str()
                 .unwrap());
@@ -143,10 +143,10 @@ impl BtpTokenService {
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
                 log!(json!(
                 {
-                    "event":"Burn",
+                    "event": "Burn",
                     "code":1,
-                    "amount":amount,
-                    "token_name":coin_name
+                    "amount": amount,
+                    "token_name": coin_name
                 })
                 .as_str()
                 .unwrap());
@@ -156,10 +156,10 @@ impl BtpTokenService {
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
                 log!(json!(
                 {
-                    "event":"Burn",
+                    "event": "Burn",
                     "code":0,
-                    "amount":amount,
-                    "token_name":coin_name
+                    "amount": amount,
+                    "token_name": coin_name
                 })
                 .as_str()
                 .unwrap());
