@@ -176,9 +176,9 @@ impl BtpTokenService {
                 {
                     "event":"Withdraw",
                     "status":"Pending",
-                    "by":account,
-                    "amount":amount,
-                    "token_name":coin_symbol
+                    "by": account,
+                    "amount": amount,
+                    "token_name": coin_symbol
                 })
                 .as_str()
                 .unwrap());
