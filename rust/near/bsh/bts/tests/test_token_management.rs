@@ -54,7 +54,8 @@ fn register_token() {
     );
     let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
-    contract.register_coin_callback(baln.clone());
+    let coin_id = env::sha256(baln.name().to_owned().as_bytes());
+    contract.register_coin_callback(baln.clone(), coin_id);
 
     let result = contract.coins();
     let expected = to_value(vec![
@@ -93,7 +94,8 @@ fn register_existing_token() {
     );
     let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
-    contract.register_coin_callback(baln.clone());
+    let coin_id = env::sha256(baln.name().to_owned().as_bytes());
+    contract.register_coin_callback(baln.clone(), coin_id);
 
     contract.register(baln.clone());
 }
@@ -151,7 +153,8 @@ fn get_registered_token_id() {
     );
     let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
-    contract.register_coin_callback(baln.clone());
+    let coin_id = env::sha256(baln.name().to_owned().as_bytes());
+    contract.register_coin_callback(baln.clone(), coin_id);
 
     let token_id = contract.coin_id("BALN".to_string());
     let expected = env::sha256(baln.name().as_bytes());

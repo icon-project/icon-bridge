@@ -49,12 +49,13 @@ impl BtpTokenService {
     }
 
     #[payable]
-    pub fn withdraw(&mut self, coin_id: CoinId, amount: U128) {
+    pub fn withdraw(&mut self, coin_name: String, amount: U128) {
         // To Prevent Spam
         assert_one_yocto();
 
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
+        let coin_id = self.get_coin_id(&coin_name).unwrap();
 
         self.assert_have_minimum_amount(amount);
         self.assert_have_sufficient_deposit(&account, &coin_id, amount, None);
@@ -101,10 +102,11 @@ impl BtpTokenService {
             .then(Promise::new(account.clone()).transfer(1));
     }
 
-    pub fn reclaim(&mut self, coin_id: CoinId, amount: U128) {
+    pub fn reclaim(&mut self, coin_name: String, amount: U128) {
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
         self.assert_have_minimum_amount(amount.into());
+        let coin_id = self.get_coin_id(&coin_name).unwrap();
         self.assert_coins_exists(&vec![coin_id.clone()]);
         self.assert_have_sufficient_refundable(&account, &coin_id, amount);
 
@@ -115,7 +117,8 @@ impl BtpTokenService {
         self.balances.set(&account, &coin_id, balance);
     }
 
-    pub fn locked_balance_of(&self, owner_id: AccountId, coin_id: CoinId) -> U128 {
+    pub fn locked_balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+        let coin_id = self.get_coin_id(&coin_name).unwrap();
         self.assert_coins_exists(&vec![coin_id.clone()]);
         let balance = self
             .balances
@@ -124,7 +127,8 @@ impl BtpTokenService {
         balance.locked().into()
     }
 
-    pub fn refundable_balance_of(&self, owner_id: AccountId, coin_id: CoinId) -> U128 {
+    pub fn refundable_balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+        let coin_id = self.get_coin_id(&coin_name).unwrap();
         self.assert_coins_exists(&vec![coin_id.clone()]);
         let balance = self
             .balances
@@ -134,11 +138,17 @@ impl BtpTokenService {
     }
 
     #[cfg(feature = "testable")]
-    pub fn account_balance(&self, owner_id: AccountId, coin_id: CoinId) -> Option<AccountBalance> {
+    pub fn account_balance(
+        &self,
+        owner_id: AccountId,
+        coin_name: String,
+    ) -> Option<AccountBalance> {
+        let coin_id = self.get_coin_id(&coin_name).unwrap();
         self.balances.get(&owner_id, &coin_id)
     }
 
-    pub fn balance_of(&self, owner_id: AccountId, coin_id: CoinId) -> U128 {
+    pub fn balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+        let coin_id = self.get_coin_id(&coin_name).unwrap();
         self.assert_coins_exists(&vec![coin_id.clone()]);
         let balance = self
             .balances

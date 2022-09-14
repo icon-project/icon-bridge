@@ -72,7 +72,8 @@ fn handle_transfer_mint_registered_icx() {
 
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    contract.register_coin_callback(icx_coin.clone());
+    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    contract.register_coin_callback(icx_coin.clone(), coin_id);
 
     let coin_id = contract.coin_id(icx_coin.name().to_owned());
 
@@ -108,9 +109,6 @@ fn handle_transfer_mint_registered_icx() {
         destination.account_id(),
     );
 
-    let result = contract.balance_of(
-        destination.account_id(),
-        contract.coin_id(icx_coin.name().to_owned()),
-    );
+    let result = contract.balance_of(destination.account_id(), icx_coin.name().to_string());
     assert_eq!(result, U128::from(900));
 }

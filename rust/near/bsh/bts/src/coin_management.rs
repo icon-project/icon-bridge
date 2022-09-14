@@ -14,7 +14,7 @@ impl BtpTokenService {
     pub fn register(&mut self, coin: Coin) {
         self.assert_have_permission();
         self.assert_coin_does_not_exists(&coin);
-
+        let coin_id = Self::hash_coin_id(coin.name());
         if coin.network() == &self.network {
             if let Some(uri) = coin.metadata().uri_deref() {
                 env::promise_create(
@@ -25,6 +25,8 @@ impl BtpTokenService {
                     estimate::GAS_FOR_TOKEN_STORAGE_DEPOSIT,
                 );
             };
+
+            self.coin_ids.add(coin.name(), &coin_id);
             self.register_coin(coin);
         } else {
             let coin_metadata = coin.extras().clone().expect("Coin Metadata Missing");
@@ -59,7 +61,9 @@ impl BtpTokenService {
                 promise_idx,
                 env::current_account_id(),
                 "register_coin_callback",
-                &json!({ "coin": coin }).to_string().into_bytes(),
+                &json!({ "coin": coin,"coin_id": coin_id })
+                    .to_string()
+                    .into_bytes(),
                 0,
                 estimate::GAS_FOR_RESOLVE_TRANSFER,
             );
@@ -130,9 +134,12 @@ impl BtpTokenService {
     }
 
     #[private]
-    pub fn register_coin_callback(&mut self, coin: Coin) {
+    pub fn register_coin_callback(&mut self, coin: Coin, coin_id: CoinId) {
         match env::promise_result(0) {
-            PromiseResult::Successful(_) => self.register_coin(coin),
+            PromiseResult::Successful(_) => {
+                self.coin_ids.add(coin.name(), &coin_id);
+                self.register_coin(coin)
+            }
             PromiseResult::NotReady => log!("Not Ready"),
             PromiseResult::Failed => {
                 log!("Failed to register the coin")

@@ -171,7 +171,6 @@ impl BtpTokenService {
             ),
         );
     }
-
     pub fn assert_coin_registered(&self, coin_account: &AccountId) {
         require!(
             self.registered_coins.contains(coin_account),
@@ -203,5 +202,54 @@ impl BtpTokenService {
             Some(coin) => return true,
             None => return false,
         }
+    }
+
+    pub fn get_coin_ids(&self, coin_name: &Vec<String>) -> Result<Vec<CoinId>, BshError> {
+        let mut invlaid_coins: Vec<String> = vec![];
+        let mut coin_ids: Vec<Vec<u8>> = vec![];
+        coin_name
+            .into_iter()
+            .for_each(|name| match self.coin_ids.get(&name) {
+                Some(coin_id) => coin_ids.push(coin_id.to_vec()),
+                None => invlaid_coins.push(name.to_string()),
+            });
+
+        require!(
+            invlaid_coins.len() == 0,
+            format!(
+                "{}",
+                BshError::TokenNotExist {
+                    message: invlaid_coins
+                        .iter()
+                        .map(|coin_id| format!("{:x?}", coin_id))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                }
+            ),
+        );
+        Ok(coin_ids)
+    }
+
+    pub fn get_coin_id(&self, coin_name: &String) -> Result<CoinId, BshError> {
+        let mut id: Vec<u8> = vec![];
+        let is_valid = match self.coin_ids.get(&coin_name) {
+            Some(coin_id) => {
+                id = coin_id.to_vec();
+                1
+            }
+            None => 0,
+        };
+
+        require!(
+            is_valid != 0,
+            format!(
+                "{}",
+                BshError::TokenNotExist {
+                    message: coin_name.to_string()
+                }
+            ),
+        );
+
+        Ok(id)
     }
 }
