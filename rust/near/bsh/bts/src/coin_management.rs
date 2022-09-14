@@ -1,3 +1,5 @@
+use libraries::types::FungibleToken;
+
 use super::*;
 
 #[near_bindgen]
@@ -79,11 +81,10 @@ impl BtpTokenService {
         coin_id
     }
 
-    pub fn coin_metadata(&self, coin_name: String) -> Value {
+    pub fn coin(&self, coin_name: String) -> Asset<FungibleToken> {
         let coin_id = Self::hash_coin_id(&coin_name);
         self.assert_coins_exists(&vec![coin_id.clone()]);
-        let coin_metadata = self.coins.get(&coin_id).unwrap();
-        to_value(coin_metadata).unwrap()
+        self.coins.get(&coin_id).unwrap()
     }
 
     #[private]
