@@ -87,10 +87,10 @@ impl BtpTokenService {
                     let log = json!({
                       "event":"TransferStart",
                       "code":1,
-                      "sender_address":sender,
-                      "serial_number":serial_no,
-                      "receiver_address":receiver,
-                      "assets":assets_log
+                      "sender_address": sender,
+                      "serial_number": serial_no,
+                      "receiver_address": receiver,
+                      "assets": assets_log
                     });
 
                     log!(log.as_str().unwrap().to_string())
