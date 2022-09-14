@@ -256,7 +256,7 @@ impl BtpTokenService {
 
             let log = json!({
                 "event": "TransferEnd",
-                "code":code,
+                "code": code,
                 "serial_number": serial_no.get(),
                 "message": message,
             });
