@@ -162,7 +162,7 @@ impl BtpTokenService {
                 self.balances.set(&account.clone(), &coin_id, balance);
                 log!(json!(
                 {
-                    "event":"Withdraw",
+                    "event": "Withdraw",
                     "code": 0,
                     "by": account,
                     "amount": amount,
