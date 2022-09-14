@@ -156,7 +156,7 @@ impl BtpTokenService {
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
                 log!(json!(
                 {
-                    "event":"Burn",
+                    "event": "Burn",
                     "code":0,
                     "amount":amount,
                     "token_name":coin_name
