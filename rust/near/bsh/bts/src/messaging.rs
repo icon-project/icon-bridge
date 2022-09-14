@@ -80,7 +80,7 @@ impl BtpTokenService {
                     assets.iter().for_each(|asset| {
                         assets_log.push(json!({
                         "token_name": asset.name(),
-                        "amount":asset.amount(),
+                        "amount": asset.amount(),
                         "fee": asset.fees(),
                         }))
                     });
