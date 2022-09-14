@@ -163,7 +163,7 @@ impl BtpTokenService {
                 log!(json!(
                 {
                     "event":"Withdraw",
-                    "status":"Success",
+                    "code": 0,
                     "by":account,
                     "amount":amount,
                     "token_name":coin_symbol
