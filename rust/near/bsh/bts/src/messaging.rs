@@ -86,7 +86,7 @@ impl BtpTokenService {
                     });
                     let log = json!({
                       "event": "TransferStart",
-                      "code":1,
+                      "code": 0,
                       "sender_address": sender,
                       "serial_number": serial_no,
                       "receiver_address": receiver,
@@ -107,7 +107,7 @@ impl BtpTokenService {
                     });
                     let log = json!({
                       "event": "TransferStart",
-                      "code":0,
+                      "code": 1,
                       "sender_address": sender,
                       "serial_number": serial_no,
                       "receiver_address": receiver,

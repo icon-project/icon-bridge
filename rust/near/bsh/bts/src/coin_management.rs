@@ -103,7 +103,7 @@ impl BtpTokenService {
                 log!(json!(
                 {
                     "event": "Mint",
-                    "code":1,
+                    "code": 0,
                     "amount": amount,
                     "token_name": coin_name
                 })
@@ -119,7 +119,7 @@ impl BtpTokenService {
                 log!(json!(
                 {
                     "event": "Mint",
-                    "code": 0,
+                    "code": 1,
                     "amount": amount,
                     "token_name": coin_name
                 })
@@ -144,7 +144,7 @@ impl BtpTokenService {
                 log!(json!(
                 {
                     "event": "Burn",
-                    "code":1,
+                    "code": 0,
                     "amount": amount,
                     "token_name": coin_name
                 })
@@ -157,7 +157,7 @@ impl BtpTokenService {
                 log!(json!(
                 {
                     "event": "Burn",
-                    "code":0,
+                    "code": 1,
                     "amount": amount,
                     "token_name": coin_name
                 })
