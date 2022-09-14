@@ -102,7 +102,7 @@ impl BtpTokenService {
 
                 log!(json!(
                 {
-                    "event":"Mint",
+                    "event": "Mint",
                     "code":1,
                     "amount":amount,
                     "token_name":coin_name
