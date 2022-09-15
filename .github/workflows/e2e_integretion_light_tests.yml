@@ -21,6 +21,7 @@ jobs:
       run: |
            go run main.go
 
+
   solidity_integration:
       name: Solidity BMC integration tests
       runs-on: icon-bridge-proxy-temp
