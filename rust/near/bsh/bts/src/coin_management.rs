@@ -99,16 +99,16 @@ impl BtpTokenService {
 
                 self.internal_transfer(&env::current_account_id(), &receiver_id, &coin_id, amount);
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
-
-                log!(json!(
+                let log = json!(
                 {
+
                     "event": "Mint",
-                    "code": 0,
-                    "amount": amount,
+                    "code": "0",
+                    "amount": amount.to_string(),
                     "token_name": coin_name
-                })
-                .as_str()
-                .unwrap());
+
+                });
+                log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
             PromiseResult::NotReady => {
                 log!("Not Ready")
@@ -116,15 +116,16 @@ impl BtpTokenService {
             PromiseResult::Failed => {
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
 
-                log!(json!(
+                let log = json!(
                 {
+
                     "event": "Mint",
-                    "code": 1,
-                    "amount": amount,
+                    "code": "1",
+                    "amount": amount.to_string(),
                     "token_name": coin_name
-                })
-                .as_str()
-                .unwrap());
+
+                });
+                log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
         }
     }
@@ -141,28 +142,26 @@ impl BtpTokenService {
                 self.balances
                     .set(&env::current_account_id(), &coin_id, balance);
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
-                log!(json!(
+                let log = json!(
                 {
                     "event": "Burn",
-                    "code": 0,
-                    "amount": amount,
+                    "code": "0",
+                    "amount": amount.to_string(),
                     "token_name": coin_name
-                })
-                .as_str()
-                .unwrap());
+                });
+                log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
             PromiseResult::NotReady => log!("Not Ready"),
             PromiseResult::Failed => {
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
-                log!(json!(
+                let log = json!(
                 {
                     "event": "Burn",
-                    "code": 1,
-                    "amount": amount,
+                    "code": "1",
+                    "amount": amount.to_string(),
                     "token_name": coin_name
-                })
-                .as_str()
-                .unwrap());
+                });
+                log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
         }
     }

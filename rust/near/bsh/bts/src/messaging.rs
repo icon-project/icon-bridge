@@ -80,15 +80,15 @@ impl BtpTokenService {
                     assets.iter().for_each(|asset| {
                         assets_log.push(json!({
                         "token_name": asset.name(),
-                        "amount": asset.amount(),
-                        "fee": asset.fees(),
+                        "amount": asset.amount().to_string(),
+                        "fee": asset.fees().to_string(),
                         }))
                     });
                     let log = json!({
                       "event": "TransferStart",
-                      "code": 0,
+                      "code": "0",
                       "sender_address": sender,
-                      "serial_number": serial_no,
+                      "serial_number": serial_no.to_string(),
                       "receiver_address": receiver,
                       "assets": assets_log
                     });
@@ -101,15 +101,15 @@ impl BtpTokenService {
                     assets.iter().for_each(|asset| {
                         assets_log.push(json!({
                         "token_name": asset.name(),
-                        "amount": asset.amount(),
-                        "fee": asset.fees(),
+                        "amount": asset.amount().to_string(),
+                        "fee": asset.fees().to_string(),
                         }))
                     });
                     let log = json!({
                       "event": "TransferStart",
-                      "code": 1,
+                      "code": "1",
                       "sender_address": sender,
-                      "serial_number": serial_no,
+                      "serial_number": serial_no.to_string(),
                       "receiver_address": receiver,
                       "assets" : assets_log
                     });
@@ -256,11 +256,11 @@ impl BtpTokenService {
 
             let log = json!({
                 "event": "TransferEnd",
-                "code": code,
-                "serial_number": serial_no.get(),
+                "code": code.to_string(),
+                "serial_number": serial_no.get().to_string(),
                 "message": message,
             });
-            log!(log.as_str().unwrap())
+            log!(near_sdk::serde_json::to_string(&log).unwrap())
         }
         Ok(None)
     }
