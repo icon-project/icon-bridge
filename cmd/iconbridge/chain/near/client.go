@@ -22,7 +22,7 @@ import (
 const BmcContractMessageStateKey = "bWVzc2FnZQ=="
 
 type Client struct {
-	api             *api
+	api             IApi
 	logger          log.Logger
 	isMonitorClosed bool
 }
@@ -30,6 +30,19 @@ type Client struct {
 type Wallet interface {
 	Address() string
 	Sign(data []byte) ([]byte, error)
+}
+
+type IApi interface {
+	Block(param interface{}) (response types.Block, err error)
+	BroadcastTxCommit(param interface{}) (response types.TransactionResult, err error)
+	BroadcastTxAsync(param interface{}) (response types.CryptoHash, err error)
+	Changes(param interface{}) (response types.ContractStateChange, err error)
+	LightClientProof(param interface{}) (response types.ReceiptProof, err error)
+	ViewAccount(param interface{}) (response types.Account, err error)
+	ViewAccessKey(param interface{}) (response types.AccessKeyResponse, err error)
+	CallFunction(param interface{}) (response types.CallFunctionResponse, err error)
+	Status(param interface{}) (response types.ChainStatus, err error)
+	Transaction(param interface{}) (response types.TransactionResult, err error)
 }
 
 type IClient interface {
@@ -61,7 +74,7 @@ func (c *Client) GetBalance(accountId types.AccountId) (balance *big.Int, err er
 		Finality:     "final",
 		Request_type: "view_account",
 	}
-	response, err := c.api.ViewAccount(&param)
+	response, err := c.api.ViewAccount(param)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +83,7 @@ func (c *Client) GetBalance(accountId types.AccountId) (balance *big.Int, err er
 }
 
 func (c *Client) GetBlock(param interface{}) (types.Block, error) {
-	block, err := c.api.Block(&param)
+	block, err := c.api.Block(param)
 	if err != nil {
 		return types.Block{}, err
 	}
@@ -118,7 +131,7 @@ func (c *Client) GetBmcLinkStatus(destination, source chain.BTPAddress) (*chain.
 		ArgumentsB64: base64.URLEncoding.EncodeToString(methodParam),
 	}
 
-	response, err := c.api.CallFunction(&param)
+	response, err := c.api.CallFunction(param)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +198,7 @@ func (c *Client) GetNonce(publicKey types.PublicKey, accountId string) (int64, e
 		Request_type: "view_access_key",
 	}
 
-	accessKeyResponse, err := c.api.ViewAccessKey(&param)
+	accessKeyResponse, err := c.api.ViewAccessKey(param)
 	if err != nil {
 		return -1, err
 	}
@@ -208,7 +221,7 @@ func (c *Client) GetReceipts(block *types.Block, accountId string) ([]*chain.Rec
 		BlockId:    block.Height(),
 	}
 
-	stateChanges, err := c.api.Changes(&param)
+	stateChanges, err := c.api.Changes(param)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +275,7 @@ func (c *Client) GetReceipts(block *types.Block, accountId string) ([]*chain.Rec
 func (c *Client) GetTransactionResult(transactionId types.CryptoHash, senderId types.AccountId) (types.TransactionResult, error) {
 	param := []string{transactionId.Base58Encode(), string(senderId)}
 
-	transactionResult, err := c.api.Transaction(&param)
+	transactionResult, err := c.api.Transaction(param)
 	if err != nil {
 		return types.TransactionResult{}, err
 	}
@@ -368,7 +381,7 @@ func newClients(urls []string, logger log.Logger) []IClient {
 }
 
 func (c *Client) SendTransaction(payload string) (*types.CryptoHash, error) {
-	txId, err := c.api.BroadcastTxAsync(&payload)
+	txId, err := c.api.BroadcastTxAsync(payload)
 	if err != nil {
 		return nil, err
 	}

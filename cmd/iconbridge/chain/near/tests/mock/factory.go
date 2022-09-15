@@ -241,3 +241,25 @@ func LoadLightClientBlocksFromFile(names []string) map[string]Response {
 	}
 	return LightClientBlockMap
 }
+
+func LoadChainStatusFromFile(blocks []string) Response {
+	sectionDir := mockDataPath + "/status"
+	validateDirectory(sectionDir)
+
+	var LatestChainStatus = Response{}
+	for _, buffer := range loadFiles(blocks, sectionDir) {
+		var ChainStatus types.ChainStatus
+
+		err := json.Unmarshal(buffer, &ChainStatus)
+		if err != nil {
+			panic(fmt.Errorf("error [LoadChainStatus][ParseJson]: %v", err))
+		}
+
+		LatestChainStatus = Response{
+			Reponse: buffer,
+			Error:   nil,
+		}
+	}
+
+	return LatestChainStatus
+}

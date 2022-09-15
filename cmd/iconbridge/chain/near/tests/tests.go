@@ -19,6 +19,7 @@ type TestData struct {
 		Success interface{}
 		Fail    interface{}
 	}
+	MockApi     *mock.MockApi
 	MockStorage mock.Storage
 }
 

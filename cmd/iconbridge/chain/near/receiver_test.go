@@ -8,7 +8,6 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/log"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,9 +16,8 @@ func TestNearReceiver(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api:    &mockApi,
+						api:    testData.MockApi,
 						logger: log.New(),
 					}
 
@@ -60,9 +58,8 @@ func TestNearReceiver(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api:    &mockApi,
+						api:    testData.MockApi,
 						logger: log.New(),
 					}
 
@@ -78,13 +75,13 @@ func TestNearReceiver(t *testing.T) {
 
 					if testData.Expected.Success != nil {
 						expected, Ok := (testData.Expected.Success).(struct {
-							From   chain.BTPAddress
+							From chain.BTPAddress
 						})
 						assert.True(f, Ok)
 
 						srcMsgCh := make(chan *chain.Message)
 
-						deadline, _ :=  f.Deadline()
+						deadline, _ := f.Deadline()
 						ctx, cancel := context.WithDeadline(context.Background(), deadline)
 						defer cancel()
 						_, err := receiver.Subscribe(ctx,

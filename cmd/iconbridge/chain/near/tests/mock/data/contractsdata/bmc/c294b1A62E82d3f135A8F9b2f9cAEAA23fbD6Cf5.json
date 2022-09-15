@@ -1,4 +1,5 @@
 {
+  "result": {
     "rx_seq": 0,
     "tx_seq": 1,
     "verifier": "dev-20211205172325-28827597417784",
@@ -19,3 +20,4 @@
     "block_interval_src": 1500,
     "current_height": 73998396
   }
+}

@@ -19,9 +19,8 @@ func TestNearSender(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api: &mockApi,
+						api: testData.MockApi,
 					}
 
 					links, Ok := (testData.Input).([]chain.BTPAddress)
@@ -50,9 +49,8 @@ func TestNearSender(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api:    &mockApi,
+						api:    testData.MockApi,
 						logger: log.New(),
 					}
 
@@ -91,9 +89,8 @@ func TestNearSender(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api:    &mockApi,
+						api:    testData.MockApi,
 						logger: log.New(),
 					}
 
@@ -135,9 +132,8 @@ func TestNearSender(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api:    &mockApi,
+						api:    testData.MockApi,
 						logger: log.New(),
 					}
 

@@ -6,8 +6,7 @@ type Response struct {
 }
 
 type Storage struct {
-	LatestBlockHeight      Response
-	LatestBlockHash        Response
+	LatestChainStatus      Response
 	BmcLinkStatusMap       map[string]Response
 	BmvStatusMap           map[string]Response
 	NonceMap               map[string]Response
