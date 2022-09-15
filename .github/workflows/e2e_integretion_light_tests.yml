@@ -23,7 +23,7 @@ jobs:
 
   solidity_integration:
       name: Solidity BMC integration tests
-      runs-on: ubuntu-20.04-16core
+      runs-on: icon-bridge-proxy-temp
       container:
         image: iconbridge/build
         options: --user 1001 --cpus 2
