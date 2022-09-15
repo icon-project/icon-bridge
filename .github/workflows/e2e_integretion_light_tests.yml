@@ -8,22 +8,22 @@ on:
     branches:
       - main
 jobs:
-  # bmr_e2e:
-  #   name: BMR e2e tests
-  #   runs-on: ubuntu-latest
-  #   container:
-  #     image: iconbridge/build
-  #     options: --user 1001
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - name: Run test
-  #     working-directory: ./cmd/e2etest
-  #     run: |
-  #          go run main.go
+  bmr_e2e:
+    name: BMR e2e tests
+    runs-on: ubuntu-latest
+    container:
+      image: iconbridge/build
+      options: --user 1001
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run test
+      working-directory: ./cmd/e2etest
+      run: |
+           go run main.go
 
   solidity_integration:
       name: Solidity BMC integration tests
-      runs-on: icon-bridge-proxy-temp
+      runs-on: ubuntu-22.04-4core
       container:
         image: iconbridge/build
         options: --user 1001 --cpus 2
