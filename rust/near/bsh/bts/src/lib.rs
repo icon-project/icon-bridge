@@ -1,7 +1,7 @@
 use btp_common::btp_address::Address;
 use btp_common::errors::BshError;
 use libraries::types::{
-    Account, AccountBalance, AccumulatedAssetFees, AssetId, BTPAddress, TransferableAsset,
+    Account, AccountBalance, AccumulatedAssetFees, AssetId, BTPAddress, CoinIds, TransferableAsset,
     WrappedNativeCoin,
 };
 use libraries::{
@@ -63,6 +63,7 @@ pub struct BtpTokenService {
     name: String,
     blacklisted_accounts: BlackListedAccounts,
     tokenlimits: TokenLimits,
+    coin_ids: CoinIds,
 
     #[cfg(feature = "testable")]
     pub message: LazyOption<Base64VecU8>,
@@ -87,6 +88,8 @@ impl BtpTokenService {
         let blacklisted_accounts = BlackListedAccounts::new();
         let mut coin_fees = CoinFees::new();
         coin_fees.add(&native_coin_id);
+        let mut coin_ids = CoinIds::new();
+        coin_ids.add(native_coin.name(), &native_coin_id);
         Self {
             native_coin_name: native_coin.name().to_owned(),
             network,
@@ -105,6 +108,7 @@ impl BtpTokenService {
             message: LazyOption::new(b"message".to_vec(), None),
             registered_coins: RegisteredCoins::new(),
             tokenlimits: TokenLimits::new(),
+            coin_ids,
         }
     }
 

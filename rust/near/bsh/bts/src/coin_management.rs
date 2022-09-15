@@ -14,7 +14,7 @@ impl BtpTokenService {
     pub fn register(&mut self, coin: Coin) {
         self.assert_have_permission();
         self.assert_coin_does_not_exists(&coin);
-
+        let coin_id = Self::hash_coin_id(coin.name());
         if coin.network() == &self.network {
             if let Some(uri) = coin.metadata().uri_deref() {
                 env::promise_create(
@@ -25,6 +25,8 @@ impl BtpTokenService {
                     estimate::GAS_FOR_TOKEN_STORAGE_DEPOSIT,
                 );
             };
+
+            self.coin_ids.add(coin.name(), &coin_id);
             self.register_coin(coin);
         } else {
             let coin_metadata = coin.extras().clone().expect("Coin Metadata Missing");
@@ -59,7 +61,9 @@ impl BtpTokenService {
                 promise_idx,
                 env::current_account_id(),
                 "register_coin_callback",
-                &json!({ "coin": coin }).to_string().into_bytes(),
+                &json!({ "coin": coin,"coin_id": coin_id })
+                    .to_string()
+                    .into_bytes(),
                 0,
                 estimate::GAS_FOR_RESOLVE_TRANSFER,
             );
@@ -70,13 +74,6 @@ impl BtpTokenService {
 
     pub fn coins(&self) -> Value {
         to_value(self.coins.to_vec()).unwrap()
-    }
-
-    // Hashing to be done out of chain
-    pub fn coin_id(&self, coin_name: String) -> CoinId {
-        let coin_id = Self::hash_coin_id(&coin_name);
-        self.assert_coins_exists(&vec![coin_id.clone()]);
-        coin_id
     }
 
     #[private]
@@ -167,9 +164,12 @@ impl BtpTokenService {
     }
 
     #[private]
-    pub fn register_coin_callback(&mut self, coin: Coin) {
+    pub fn register_coin_callback(&mut self, coin: Coin, coin_id: CoinId) {
         match env::promise_result(0) {
-            PromiseResult::Successful(_) => self.register_coin(coin),
+            PromiseResult::Successful(_) => {
+                self.coin_ids.add(coin.name(), &coin_id);
+                self.register_coin(coin)
+            }
             PromiseResult::NotReady => log!("Not Ready"),
             PromiseResult::Failed => {
                 log!("Failed to register the coin")
@@ -247,12 +247,13 @@ impl BtpTokenService {
             Ok(()) => {
                 let mut invalid_coins: Vec<String> = Vec::new();
                 let mut valid_coins: Vec<String> = Vec::new();
-                coin_names
-                    .iter()
-                    .for_each(|coin| match self.ensure_coin_exists(coin.as_str()) {
-                        true => valid_coins.push(coin.clone()),
-                        false => invalid_coins.push(coin.clone()),
-                    });
+                coin_names.into_iter().for_each(|coin_name| {
+                    match self.ensure_coin_exists(&coin_name) {
+                        true => valid_coins.push(coin_name),
+                        false => invalid_coins.push(coin_name),
+                    }
+                });
+
                 if !invalid_coins.is_empty() {
                     return Err(BshError::TokenNotExist {
                         message: invalid_coins.join(", "),
@@ -271,5 +272,11 @@ impl BtpTokenService {
     #[cfg(feature = "testable")]
     pub fn get_token_limit(&self) -> &TokenLimits {
         &self.tokenlimits
+    }
+
+    pub fn coin_id(&self, coin_name: &str) -> Result<CoinId, BshError> {
+        self.coin_ids.get(coin_name).map(|coin_id| coin_id.to_owned()).ok_or(BshError::TokenNotExist {
+            message: coin_name.to_string(),
+        })
     }
 }
