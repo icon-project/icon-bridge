@@ -93,7 +93,7 @@ impl BtpTokenService {
                       "assets": assets_log
                     });
 
-                    log!(log.as_str().unwrap())
+                    log!(near_sdk::serde_json::to_string(&log).unwrap())
                 }
                 PromiseResult::NotReady => log!("Not Ready"),
                 PromiseResult::Failed => {
@@ -114,7 +114,7 @@ impl BtpTokenService {
                       "assets" : assets_log
                     });
 
-                    log!(log.as_str().unwrap());
+                    log!(near_sdk::serde_json::to_string(&log).unwrap());
                     self.rollback_external_transfer(&AccountId::from_str(sender).unwrap(), assets)
                 }
             },
