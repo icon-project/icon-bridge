@@ -5,7 +5,10 @@ impl BtpTokenService {
     pub fn transfer(&mut self, coin_name: String, destination: BTPAddress, amount: U128) {
         let sender_id = env::predecessor_account_id();
         self.assert_have_minimum_amount(amount.into());
-        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
 
         let asset = self
             .process_external_transfer(&coin_id.to_owned(), &sender_id, amount.into())
@@ -16,13 +19,18 @@ impl BtpTokenService {
 
     pub fn transfer_batch(
         &mut self,
-        coin_name: Vec<String>,
+        coin_names: Vec<String>,
         destination: BTPAddress,
         amounts: Vec<U128>,
     ) {
         let sender_id = env::predecessor_account_id();
 
-        let coin_ids = self.get_coin_ids(&coin_name).unwrap();
+        let coin_ids = coin_names
+            .iter()
+            .map(|coin_name| self.coin_id(coin_name))
+            .collect::<Result<Vec<CoinId>, BshError>>()
+            .map_err(|err| format!("{}", err))
+            .unwrap();
 
         let assets = coin_ids
             .iter()

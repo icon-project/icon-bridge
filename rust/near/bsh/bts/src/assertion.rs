@@ -180,30 +180,4 @@ impl BtpTokenService {
             None => false,
         }
     }
-
-    pub fn get_coin_ids(&self, coin_name: &Vec<String>) -> Result<Vec<CoinId>, BshError> {
-        let mut invlaid_coins: Vec<String> = vec![];
-        let mut coin_ids: Vec<Vec<u8>> = vec![];
-        coin_name
-            .into_iter()
-            .for_each(|name| match self.coin_ids.get(&name) {
-                Some(coin_id) => coin_ids.push(coin_id.to_vec()),
-                None => invlaid_coins.push(name.to_string()),
-            });
-
-        require!(
-            invlaid_coins.len() == 0,
-            format!(
-                "{}",
-                BshError::TokenNotExist {
-                    message: invlaid_coins
-                        .iter()
-                        .map(|coin_id| format!("{:x?}", coin_id))
-                        .collect::<Vec<String>>()
-                        .join(", "),
-                }
-            ),
-        );
-        Ok(coin_ids)
-    }
 }
