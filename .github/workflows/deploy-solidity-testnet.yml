@@ -2,9 +2,9 @@ name: 'Deploy Solidity BMC/BTS to BSC Testnet'
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches:
-  #     - feature/442-deploy-register-token
+  push:
+    branches:
+      - feature/442-deploy-register-token
   workflow_call:
     secrets:
       AWS_S3_BUCKET:
@@ -50,13 +50,13 @@ jobs:
         shell: bash
         timeout-minutes: 5
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
         run: |
           truffle compile --all
-          PRIVATE_KEY="$PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
           truffle migrate --network bsc --compile-none
           jq -r '.networks[] | .address' build/contracts/BMCPeriphery.json > bsc-addr-bmcperiphery.txt
           jq -r '.networks[] | .address' build/contracts/BMCManagement.json > bsc-addr-bmcmanagement.txt
@@ -65,11 +65,6 @@ jobs:
         working-directory: ./solidity/bmc
         shell: bash
         timeout-minutes: 5
-        env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
-          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
-          BSC_NID: ${{ secrets.BSC_NID }}
-          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
         run: |
           blockHeight=$(curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' --data-raw '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[], "id": 1}' | jq -r .result)
           echo $blockHeight | xargs printf "%d" > bsc.chain.height
@@ -129,14 +124,14 @@ jobs:
         shell: bash
         timeout-minutes: 5
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
         run: |
           truffle compile --all
           cp .env.actions .env
-          PRIVATE_KEY="$PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
           BMC_PERIPHERY_ADDRESS=$(cat bsc-addr-bmcperiphery.txt) \
           truffle migrate --compile-none --network bsc --f 1 --to 1 && \
           sleep 5 && \
@@ -227,14 +222,14 @@ jobs:
         shell: bash
         timeout-minutes: 5
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
         working-directory: ./solidity/bmc
         run: |
           yarn install
-          PRIVATE_KEY="$PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
           truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bmc.js --method addService --name "bts" --addr $(cat ./bsc-addr-btsperiphery.txt) | tee addService-bsc.txt
 
       - name: Configure AWS credentials

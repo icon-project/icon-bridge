@@ -2,9 +2,9 @@ name: 'Deployment for Testnet'
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feature/442-deploy-register-token
+  # push:
+  #   branches:
+  #     - feature/442-deploy-register-token
   workflow_call:
 
 jobs:
