@@ -15,7 +15,7 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
-      PRIVATE_KEY:
+      BSC_PRIVATE_KEY:
         required: true
       BSC_RPC_URI:
         required: true
@@ -65,6 +65,8 @@ jobs:
         working-directory: ./solidity/bmc
         shell: bash
         timeout-minutes: 5
+        env:
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
         run: |
           blockHeight=$(curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' --data-raw '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[], "id": 1}' | jq -r .result)
           echo $blockHeight | xargs printf "%d" > bsc.chain.height

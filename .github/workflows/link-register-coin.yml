@@ -21,7 +21,7 @@ on:
         required: true
       GOLOOP_RPC_KEY_PASSWORD:
         required: true
-      PRIVATE_KEY:
+      BSC_PRIVATE_KEY:
         required: true
       BSC_RPC_URI:
         required: true
@@ -165,7 +165,7 @@ jobs:
         shell: bash
         working-directory: ./javascore
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
@@ -179,7 +179,7 @@ jobs:
         shell: bash
         working-directory: ./javascore
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
@@ -227,20 +227,20 @@ jobs:
         shell: bash
         working-directory: solidity/bmc
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
         run: |
           yarn install
-          PRIVATE_KEY="$PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
           truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bmc.js --method addLink --link $(cat icon.addr.bmcbtp) --blockInterval 3000 --maxAggregation 2 --delayLimit 3
 
       - name: set_link_height
         shell: bash
         working-directory: solidity/bmc
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
@@ -248,7 +248,7 @@ jobs:
         run: |
           icon_block_height=$(goloop rpc lastblock | jq -r .height)
           echo $icon_block_height > icon.chain.height
-          PRIVATE_KEY="$PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
           truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bmc.js --method setLinkRxHeight --link $(cat icon.addr.bmcbtp) --height $(cat icon.chain.height)
 
       - name: Sync tx-icon-bts-bmc for further steps
@@ -262,7 +262,7 @@ jobs:
         shell: bash
         working-directory: solidity/bmc
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
@@ -276,7 +276,7 @@ jobs:
         shell: bash
         working-directory: solidity/bmc
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
@@ -289,7 +289,7 @@ jobs:
         shell: bash
         working-directory: solidity/bts
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
@@ -314,7 +314,7 @@ jobs:
         shell: bash
         working-directory: solidity/bts
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
@@ -327,7 +327,7 @@ jobs:
         shell: bash
         working-directory: solidity/bts
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
@@ -340,7 +340,7 @@ jobs:
         shell: bash
         working-directory: solidity/bts
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
@@ -355,7 +355,7 @@ jobs:
         shell: bash
         working-directory: solidity/bts
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
