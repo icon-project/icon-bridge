@@ -4,8 +4,8 @@
             "name":"ICON",
             "url":"https://lisbon.net.solidwallet.io/api/v3/icon_dex",
             "contract_addresses": {
-                "BMC":  "cx3fbcd7c25be9aac63bd944a0b8d40becdaa35425",
-                "BTS":  "cx9d4f2ecaa38d3c34d508bd9c8df73c52dbef60dd"
+                "BMC":  "cx3f562d203e73519e6fe63e282f59a533109ed8b9",
+                "BTS":  "cxb1e4d2381361f5a2000cbf90e3b868db02d3044e"
             },
             "native_coin":"btp-0x2.icon-ICX",
             "native_tokens":["btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"],
@@ -31,7 +31,7 @@
                 },
                 {
                     "name":"btp-0x61.bsc-BNB",
-                    "fixed_fee" : "1500000000000000000",
+                    "fixed_fee" : "5000000000000000",
                     "fee_numerator":100,
                     "decimals":18
                 },
@@ -75,7 +75,7 @@
                 "TransferNativeCoinIntraChainGasLimit":150000,
                 "TransferTokenIntraChainGasLimit":300000,
                 "ApproveTokenInterChainGasLimit":800000,
-                "TransferCoinInterChainGasLimit":1600000,
+                "TransferCoinInterChainGasLimit":2500000,
                 "TransferBatchCoinInterChainGasLimit":2000000,
                 "DefaultGasLimit":5000000
             }
@@ -84,9 +84,9 @@
             "name":"BSC", 
             "url":"https://data-seed-prebsc-1-s1.binance.org:8545",
             "contract_addresses": {
-                "BTS":      "0x049a7Ef08e4f4D54Db764cA141f585b79C0310c7",
-                "BTSPeriphery": "0x5003101271147Fcb6A4c79EE2807C2571e8c6dC7",
-                "BMCPeriphery":"0x855183AefDA98Cd10Cf31488e26fF599685625a7"
+                "BTS":      "0xb319825645c90ad8De3881c1ec45fC76e46C3080",
+                "BTSPeriphery": "0x0f0CaF4BE74A1fBB09E5FBc8E9BbBbb7b279598D",
+                "BMCPeriphery":"0x04576539eB7C9f811a4f436ca84Fe2B47D60E4C8"
             },
             "native_coin":"btp-0x61.bsc-BNB",
             "native_tokens":["btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH"],

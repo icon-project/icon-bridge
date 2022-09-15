@@ -119,8 +119,8 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 					}
 					nel := &chain.EventLogInfo{ContractAddress: common.NewAddress(el.Addr).String(), EventType: evtType, EventLog: res}
 
-					a.Log.Infof("IFirst %+v", nel)
-					a.Log.Infof("ISecond %+v", nel.EventLog)
+					a.Log.Debugf("IFirst %+v", nel)
+					a.Log.Debugf("ISecond %+v", nel.EventLog)
 					if a.fd.Match(nel) { //el.IDs is updated by match if matched
 						//a.Log.Infof("Matched %+v", el)
 						a.sinkChan <- nel

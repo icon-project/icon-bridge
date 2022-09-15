@@ -7,8 +7,10 @@ import (
 	"io/ioutil"
 	"math"
 	"math/big"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -102,8 +104,8 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 							continue
 						}
 						nel := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
-						a.log.Infof("BFirst  %+v", nel)
-						a.log.Infof("BSecond  %+v", nel.EventLog)
+						a.log.Debugf("BFirst  %+v", nel)
+						a.log.Debugf("BSecond  %+v", nel.EventLog)
 						if a.fd.Match(nel) {
 							//a.log.Infof("Matched %+v", el)
 							a.sinkChan <- nel
@@ -145,8 +147,16 @@ func (a *api) Transfer(coinName, senderKey, recepientAddress string, amount *big
 	}
 	if within {
 		txnHash, err = a.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
+		if err != nil && strings.Contains(err.Error(), "replacement transaction underpriced") {
+			time.Sleep(time.Duration(rand.Intn(30) + 2))
+			txnHash, err = a.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
+		}
 	} else {
 		txnHash, err = a.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
+		if err != nil && strings.Contains(err.Error(), "replacement transaction underpriced") {
+			time.Sleep(time.Duration(rand.Intn(30) + 2))
+			txnHash, err = a.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
+		}
 	}
 	return
 }
@@ -327,7 +337,8 @@ func (a *api) GetKeyPairFromKeystore(keystoreFile string, secretFile string) (pr
 func (a *api) SuggestGasPrice() (gasPrice *big.Int) {
 	ctx := context.TODO()
 	cleth := a.client()
-	gasPrice = big.NewInt(15000000000) // default Gas Price
+
+	gasPrice = big.NewInt(20000000000) // default Gas Price
 	header, err := cleth.HeaderByNumber(ctx, nil)
 	if err != nil {
 		err = errors.Wrapf(err, "GetHeaderByNumber(height:latest) Err: %v", err)
@@ -351,7 +362,17 @@ func (a *api) SuggestGasPrice() (gasPrice *big.Int) {
 		a.log.Error(err)
 		return
 	}
-	gasPrice = txnS.GasPrice()
+	gasPrice = (&big.Int{}).Mul(txnS.GasPrice(), big.NewInt(112))
+	gasPrice = gasPrice.Div(gasPrice, big.NewInt(100))
+	suggested, err := a.Cls[0].SuggestGasPrice(ctx)
+	if err != nil && suggested.Cmp(gasPrice) > 0 {
+		fmt.Println("Using Suggested ", suggested, " instead of calculated ", gasPrice)
+		gasPrice = suggested
+	}
+	if gasPrice.Int64() == 0 {
+		fmt.Println("Calculated Gas Price was zero++++++++")
+		return big.NewInt(20000000000)
+	}
 	return
 }
 

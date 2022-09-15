@@ -33,11 +33,13 @@ func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain
 	src, ok = ts.clsPerChain[srcChain]
 	if !ok {
 		err = fmt.Errorf("Chain %v not found", srcChain)
+		ts.logger.Error(err)
 		return
 	}
 	dst, ok = ts.clsPerChain[dstChain]
 	if !ok {
 		err = fmt.Errorf("Chain %v not found", dstChain)
+		ts.logger.Error(err)
 	}
 	return
 }
@@ -46,6 +48,7 @@ func (ts *testSuite) GetFullConfigAPI() (cfgSrc chain.FullConfigAPI, err error) 
 	cfgSrc, ok := ts.clsPerChain[chain.ICON]
 	if !ok {
 		err = fmt.Errorf("Chain %v not found", chain.ICON)
+		ts.logger.Error(err)
 	}
 	return
 }
@@ -54,6 +57,7 @@ func (ts *testSuite) GetStandardConfigAPI(chainName chain.ChainType) (cfgAPI cha
 	cfgAPI, ok := ts.clsPerChain[chainName]
 	if !ok {
 		err = fmt.Errorf("Chain %v not found", chainName)
+		ts.logger.Error(err)
 	}
 	return
 }
@@ -103,11 +107,13 @@ func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, e
 	cl, ok := ts.clsPerChain[chainName]
 	if !ok {
 		err = fmt.Errorf("Chain %v not found", chainName)
+		ts.logger.Error(err)
 		return
 	}
 	keyPairs, err := cl.GetKeyPairs(1)
 	if err != nil {
 		err = errors.Wrapf(err, "GetKeyPairs %v", err)
+		ts.logger.Error(err)
 		return
 	}
 	key = keyPairs[0][0]
@@ -115,8 +121,9 @@ func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, e
 	return
 }
 
-func (ts *testSuite) Fund(chainName chain.ChainType, addr string, amount *big.Int, coinName string) error {
+func (ts *testSuite) Fund(chainName chain.ChainType, addr string, amount *big.Int, coinName string) (err error) {
 	// IntraChain Transfer of Tokens from God to an address
+	ts.logger.Debugf("Fund coin %v addr %v amt %v ", coinName, addr, amount.String())
 	srcCl, ok := ts.clsPerChain[chainName]
 	if !ok {
 		return fmt.Errorf("Chain %v not found", chainName)
@@ -128,10 +135,43 @@ func (ts *testSuite) Fund(chainName chain.ChainType, addr string, amount *big.In
 	if strings.Contains(addr, godKey.PubKey) {
 		return nil // Sender == Receiver; so skip
 	}
-	ts.logger.Infof("Fund coin %v addr %v amt %v ", coinName, addr, amount.String())
+
+	bal, err := srcCl.GetCoinBalance(coinName, srcCl.GetBTPAddress(godKey.PubKey))
+	if err != nil {
+		err = errors.Wrapf(err, "GetCoinBalance %v", err)
+		ts.logger.Error(err)
+		return
+	}
+	if amount.Cmp(bal.UserBalance) > 0 {
+		isNative := false
+		for _, chainNativeCoin := range append(ts.cfgPerChain[chainName].NativeTokens, ts.cfgPerChain[chainName].NativeCoin) {
+			if chainNativeCoin == coinName {
+				isNative = true
+				break
+			}
+		}
+		if isNative { // Native and InSufficient
+			fmt.Println("Insufficient ", bal.UserBalance, amount)
+			return InsufficientNativeToken
+		}
+		isWrapped := false
+		for _, chainNativeCoin := range ts.cfgPerChain[chainName].WrappedCoins {
+			if chainNativeCoin == coinName {
+				isWrapped = true
+				break
+			}
+		}
+		if isWrapped {
+			return InsufficientWrappedCoin
+		}
+		return InsufficientUnknownCoin
+	}
+
 	hash, err := srcCl.Transfer(coinName, godKey.PrivKey, addr, amount)
 	if err != nil {
-		return errors.Wrapf(err, "srcCl.Transfer err=%v", err)
+		err = errors.Wrapf(err, "srcCl.Transfer from %v bal %v err=%v", godKey.PubKey, bal.UserBalance, err)
+		ts.logger.Error(err)
+		return
 	}
 	_, err = ts.ValidateTransactionResult(context.TODO(), chainName, hash)
 	return err
@@ -152,6 +192,7 @@ func (ts *testSuite) ValidateTransactionResult(ctx context.Context, chainName ch
 		err = fmt.Errorf("WaitForTxnResult; Transaction Result is nil. Hash %v", hash)
 	} else if res != nil && res.StatusCode != 1 {
 		err = errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
+		//ts.logger.Debug(err)
 		err = StatusCodeZero
 		return
 	}
@@ -164,45 +205,65 @@ func (ts *testSuite) WaitForConfigResponse(ctx context.Context, reqEvent, respon
 	}
 	fCfg, err := ts.GetFullConfigAPI()
 	if err != nil {
-		return errors.Wrapf(err, "GetFullConfigAPI %v", err)
+		err = errors.Wrapf(err, "GetFullConfigAPI %v", err)
+		ts.logger.Error(err)
+		return
 	}
 	reqEvtInfo, err := fCfg.GetConfigRequestEvent(reqEvent, reqHash)
 	if err != nil {
-		return errors.Wrapf(err, "%v %v", reqEvent, err)
+		err = errors.Wrapf(err, "%v %v", reqEvent, err)
+		ts.logger.Error(err)
+		return
 	}
 	if cb, ok := cbPerEvent[reqEvent]; ok && cb != nil {
 		if err = cb(&evt{msg: reqEvtInfo, chainType: chain.ICON}); err != nil {
-			return errors.Wrapf(err, "CallBack(%v) %v", reqEvent, err)
+			err = errors.Wrapf(err, "CallBack(%v) %v", reqEvent, err)
+			ts.logger.Error(err)
+			return
 		}
 	}
 	// RegisterWatchEvents
 	dstCfg, err := ts.GetStandardConfigAPI(responseChainName)
 	if err != nil {
-		return errors.Wrapf(err, "GetStandardConfigAPI %v", err)
+		err = errors.Wrapf(err, "GetStandardConfigAPI %v", err)
+		ts.logger.Error(err)
+		return
 	}
 	if reqEvent == chain.AddToBlacklistRequest && responseEvent == chain.BlacklistResponse {
 		res, ok := reqEvtInfo.EventLog.(*chain.AddToBlacklistRequestEvent)
 		if !ok {
-			return errors.Wrapf(err, "Expected *chain.AddToBlacklistRequestEvent Got %T", reqEvtInfo.EventLog)
+			err = errors.Wrapf(err, "Expected *chain.AddToBlacklistRequestEvent Got %T", reqEvtInfo.EventLog)
+			ts.logger.Error(err)
+			return
 		}
-		if err := dstCfg.WatchForBlacklistResponse(ts.id, res.Sn.Int64()); err != nil {
-			return errors.Wrapf(err, "WatchForBlacklistResponse %v", err)
+		if err = dstCfg.WatchForBlacklistResponse(ts.id, res.Sn.Int64()); err != nil {
+			err = errors.Wrapf(err, "WatchForBlacklistResponse %v", err)
+			ts.logger.Error(err)
+			return
 		}
 	} else if reqEvent == chain.RemoveFromBlacklistRequest && responseEvent == chain.BlacklistResponse {
 		res, ok := reqEvtInfo.EventLog.(*chain.RemoveFromBlacklistRequestEvent)
 		if !ok {
-			return errors.Wrapf(err, "Expected *chain.RemoveFromBlacklistRequestEvent Got %T", reqEvtInfo.EventLog)
+			err = errors.Wrapf(err, "Expected *chain.RemoveFromBlacklistRequestEvent Got %T", reqEvtInfo.EventLog)
+			ts.logger.Error(err)
+			return
 		}
-		if err := dstCfg.WatchForBlacklistResponse(ts.id, res.Sn.Int64()); err != nil {
-			return errors.Wrapf(err, "WatchForBlacklistResponse %v", err)
+		if err = dstCfg.WatchForBlacklistResponse(ts.id, res.Sn.Int64()); err != nil {
+			err = errors.Wrapf(err, "WatchForBlacklistResponse %v", err)
+			ts.logger.Error(err)
+			return
 		}
 	} else if reqEvent == chain.TokenLimitRequest && responseEvent == chain.TokenLimitResponse {
 		res, ok := reqEvtInfo.EventLog.(*chain.TokenLimitRequestEvent)
 		if !ok {
-			return errors.Wrapf(err, "Expected *chain.TokenLimitRequestEvent Got %T", reqEvtInfo.EventLog)
+			err = errors.Wrapf(err, "Expected *chain.TokenLimitRequestEvent Got %T", reqEvtInfo.EventLog)
+			ts.logger.Error(err)
+			return
 		}
-		if err := dstCfg.WatchForSetTokenLmitResponse(ts.id, res.Sn.Int64()); err != nil {
-			return errors.Wrapf(err, "WatchForSetTokenLmitResponse %v", err)
+		if err = dstCfg.WatchForSetTokenLmitResponse(ts.id, res.Sn.Int64()); err != nil {
+			err = errors.Wrapf(err, "WatchForSetTokenLmitResponse %v", err)
+			ts.logger.Error(err)
+			return
 		}
 	}
 
@@ -215,16 +276,22 @@ func (ts *testSuite) WaitForConfigResponse(ctx context.Context, reqEvent, respon
 		select {
 		case <-timedContext.Done():
 			ts.report += "Context Timeout Exiting task"
-			return errors.New("Context Timeout Exiting task----------------")
+			err = errors.New("Context Timeout Exiting task----------------")
+			ts.logger.Error(err)
+			return
 		case <-ctx.Done():
 			ts.report += "Context Cancelled. Return from Callback watch"
-			return errors.New("Context Cancelled. Return from Callback watch---------------")
+			err = errors.New("Context Cancelled. Return from Callback watch---------------")
+			ts.logger.Error(err)
+			return
 		case ev := <-ts.subChan:
 			if cb, ok := cbPerEvent[ev.msg.EventType]; ok && ev.msg.EventType == responseEvent {
 				if cb != nil {
-					if err := cb(ev); err != nil {
+					if err = cb(ev); err != nil {
 						ts.report += fmt.Sprintf("CallBackPerEvent %v Err:%v \n", ev.msg.EventType, err)
-						return errors.Wrapf(err, "Callback (%v) %v", responseEvent, err)
+						err = errors.Wrapf(err, "Callback (%v) %v", responseEvent, err)
+						ts.logger.Error(err)
+						return
 					}
 				}
 				ts.report += "All events found. Exiting \n"
@@ -244,14 +311,21 @@ func (ts *testSuite) ValidateTransactionResultAndEvents(ctx context.Context, cha
 	defer cancel()
 	res, err := srcCl.WaitForTxnResult(tctx, hash)
 	if err != nil {
-		return errors.Wrapf(err, "WaitForTxnResult Hash %v", hash)
+		err = errors.Wrapf(err, "WaitForTxnResult Hash %v Err %v", hash, err)
+		ts.logger.Error(err)
+		return
 	} else if res == nil {
-		return fmt.Errorf("WaitForTxnResult; Transaction Result is nil. Hash %v", hash)
+		err = fmt.Errorf("WaitForTxnResult; Transaction Result is nil. Hash %v", hash)
+		ts.logger.Error(err)
+		return
 	} else if res != nil && res.StatusCode != 1 {
 		err = errors.Wrapf(err, "Transaction Result Expected Status 1. Got %v Hash %v", res.StatusCode, hash)
+		ts.logger.Error(err)
 		return StatusCodeZero
 	} else if res != nil && len(res.ElInfo) == 0 {
-		return fmt.Errorf("WaitForTxnResult; Got zero parsed event logs. Hash %v", hash)
+		err = fmt.Errorf("WaitForTxnResult; Got zero parsed event logs. Hash %v", hash)
+		ts.logger.Error(err)
+		return
 	}
 
 	evtFound := false
@@ -325,11 +399,13 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, srcChainName, dstChainNa
 	srcCl, ok := ts.clsPerChain[srcChainName]
 	if !ok {
 		err = fmt.Errorf("Client for chain %v not found", srcChainName)
+		ts.logger.Error(err)
 		return
 	}
 	dstCl, ok := ts.clsPerChain[dstChainName]
 	if !ok {
 		err = fmt.Errorf("Client for chain %v not found", dstChainName)
+		ts.logger.Error(err)
 		return
 	}
 	numExpectedEvents := 0
@@ -338,13 +414,17 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, srcChainName, dstChainNa
 			// Trasfer Start event is not watched as it is premise for other watches and as such
 			// has already been known to be true. i.e. startEvent got above and callback called if given
 		} else if ev == chain.TransferReceived {
-			if err := dstCl.WatchForTransferReceived(ts.id, startEvent.Sn.Int64()); err != nil {
-				return errors.Wrapf(err, "WatchForTransferStart Err=%v", err)
+			if err = dstCl.WatchForTransferReceived(ts.id, startEvent.Sn.Int64()); err != nil {
+				err = errors.Wrapf(err, "WatchForTransferStart Err=%v", err)
+				ts.logger.Error(err)
+				return
 			}
 			numExpectedEvents++
 		} else if ev == chain.TransferEnd {
-			if err := srcCl.WatchForTransferEnd(ts.id, startEvent.Sn.Int64()); err != nil {
-				return errors.Wrapf(err, "WatchForTransferStart Err=%v", err)
+			if err = srcCl.WatchForTransferEnd(ts.id, startEvent.Sn.Int64()); err != nil {
+				err = errors.Wrapf(err, "WatchForTransferStart Err=%v", err)
+				ts.logger.Error(err)
+				return
 			}
 			numExpectedEvents++
 		} else {
@@ -360,10 +440,14 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, srcChainName, dstChainNa
 		select {
 		case <-timedContext.Done():
 			ts.report += "Context Timeout Exiting task"
-			return errors.New("Context Timeout Exiting task----------------")
+			err = errors.New("Context Timeout Exiting task----------------")
+			ts.logger.Error(err)
+			return
 		case <-ctx.Done():
 			ts.report += "Context Cancelled. Return from Callback watch"
-			return errors.New("Context Cancelled. Return from Callback watch---------------")
+			err = errors.New("Context Cancelled. Return from Callback watch---------------")
+			ts.logger.Error(err)
+			return
 		case ev := <-ts.subChan:
 			if cb, ok := cbPerEvent[ev.msg.EventType]; ok {
 				numExpectedEvents--
@@ -383,22 +467,30 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, srcChainName, dstChainNa
 	return nil
 }
 
-func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.ChainType, maxWaitSeconds uint64, cbPerEvent map[chain.EventLogType]func(event *evt) error) error {
+func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.ChainType, maxWaitSeconds uint64, cbPerEvent map[chain.EventLogType]func(event *evt) error) (err error) {
 	fCfg, err := ts.GetFullConfigAPI()
 	if err != nil {
-		return errors.Wrapf(err, "GetFullConfigAPI %v", err)
+		err = errors.Wrapf(err, "GetFullConfigAPI %v", err)
+		ts.logger.Error(err)
+		return
 	}
 	src, dst, err := ts.GetChainPair(chainName, ts.FullConfigAPIChain())
 	if err != nil {
-		return errors.Wrapf(err, "GetChainPair %v", err)
+		err = errors.Wrapf(err, "GetChainPair %v", err)
+		ts.logger.Error(err)
+		return
 	}
 	srcCfg, ok := ts.cfgPerChain[chainName]
 	if !ok {
-		return errors.Wrapf(err, "Config %v not found", chainName)
+		err = errors.Wrapf(err, "Config %v not found", chainName)
+		ts.logger.Error(err)
+		return
 	}
 	feeAggBTPAddress := dst.GetBTPAddress(ts.feeAggregatorAddress)
 	if err = fCfg.WatchForFeeGatheringRequest(ts.id, feeAggBTPAddress); err != nil {
-		return errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
+		err = errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
+		ts.logger.Error(err)
+		return
 	}
 	newCtx := context.Background()
 	timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*time.Duration(maxWaitSeconds))
@@ -418,13 +510,17 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.Ch
 				}
 			}
 			if ev.msg.EventType == chain.FeeGatheringRequest {
-				if err := src.WatchForFeeGatheringTransferStart(ts.id, feeAggBTPAddress); err != nil {
+				if err = src.WatchForFeeGatheringTransferStart(ts.id, feeAggBTPAddress); err != nil {
 					fmt.Println("FeeGatheringTransferStart")
-					return errors.Wrapf(err, "WatchForFeeGatheringTransferStart %v", err)
+					err = errors.Wrapf(err, "WatchForFeeGatheringTransferStart %v", err)
+					ts.logger.Error(err)
+					return
 				}
 			} else if ev.msg.EventType == chain.TransferStart {
 				if ev.msg.EventLog == nil {
-					return errors.New("Got nil value for TransferStart event")
+					err = errors.New("Got nil value for TransferStart event")
+					ts.logger.Error(err)
+					return
 				}
 				fmt.Println("FeeGatheringTransferStart")
 				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
@@ -439,17 +535,23 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.Ch
 				}
 				if len(startEvt.Assets) > 0 {
 					fmt.Println("Assets ", startEvt.Assets)
-					if err := src.WatchForTransferEnd(ts.id, startEvt.Sn.Int64()); err != nil {
-						return errors.Wrapf(err, "watchForTransferEnd %v", err)
+					if err = src.WatchForTransferEnd(ts.id, startEvt.Sn.Int64()); err != nil {
+						err = errors.Wrapf(err, "watchForTransferEnd %v", err)
+						ts.logger.Error(err)
+						return
 					}
 				} else {
 					if err = fCfg.WatchForFeeGatheringRequest(ts.id, feeAggBTPAddress); err != nil {
-						return errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
+						err = errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
+						ts.logger.Error(err)
+						return
 					}
 				}
 			} else if ev.msg.EventType == chain.TransferEnd {
 				if ev.msg.EventLog == nil {
-					return errors.New("Got nil value for TransferEnd event")
+					err = errors.New("Got nil value for TransferEnd event")
+					ts.logger.Error(err)
+					return
 				}
 				fmt.Println("FeeGatheringTransferEnd")
 				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
@@ -458,11 +560,15 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.Ch
 				}
 				fmt.Println("EndEvt.Code ", endEvt)
 				if err = fCfg.WatchForFeeGatheringRequest(ts.id, feeAggBTPAddress); err != nil {
-					return errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
+					err = errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
+					ts.logger.Error(err)
+					return
 				}
 				fmt.Println("WatchForFeeGatheringRequest")
 			} else {
-				return errors.Wrapf(err, "Unexpected EventType %v", ev.msg)
+				err = errors.Wrapf(err, "Unexpected EventType %v", ev.msg)
+				ts.logger.Error(err)
+				return
 			}
 		}
 

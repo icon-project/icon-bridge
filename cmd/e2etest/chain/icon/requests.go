@@ -33,7 +33,7 @@ const (
 	TransferNativeIntraChainStepLimit = 150000  // 100K
 	TransferTokenIntraChainStepLimit  = 300000  // 236K
 	ApproveTokenStepLimit             = 800000  // 685K
-	TransferInterChainStepLimit       = 1600000 // 1514K
+	TransferInterChainStepLimit       = 2500000 // 1514K
 	TransferBatchInterChainStepLimit  = 2000000 // 1838K
 	DefaultGasLimit                   = 5000000
 )
