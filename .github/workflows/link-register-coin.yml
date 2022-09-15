@@ -302,7 +302,7 @@ jobs:
         shell: bash
         working-directory: solidity/bts
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
