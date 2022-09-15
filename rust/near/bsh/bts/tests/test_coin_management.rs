@@ -183,7 +183,7 @@ fn set_token_limit() {
 
 #[test]
 #[cfg(feature = "testable")]
-fn udapte_token_limit() {
+fn update_token_limit() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());

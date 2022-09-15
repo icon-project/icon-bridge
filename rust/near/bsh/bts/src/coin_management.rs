@@ -218,11 +218,12 @@ impl BtpTokenService {
                 let mut invalid_coins: Vec<String> = Vec::new();
                 let mut valid_coins: Vec<String> = Vec::new();
                 coin_names
-                    .iter()
-                    .for_each(|coin| match self.ensure_coin_exists(coin.as_str()) {
-                        true => valid_coins.push(coin.clone()),
-                        false => invalid_coins.push(coin.clone()),
+                    .into_iter()
+                    .for_each(|coin_name| match self.ensure_coin_exists(&coin_name) {
+                        true => valid_coins.push(coin_name),
+                        false => invalid_coins.push(coin_name),
                     });
+
                 if !invalid_coins.is_empty() {
                     return Err(BshError::TokenNotExist {
                         message: invalid_coins.join(", "),

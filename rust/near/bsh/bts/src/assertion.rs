@@ -196,11 +196,10 @@ impl BtpTokenService {
         Ok(())
     }
 
-    pub fn ensure_coin_exists(&self, coin_name: &str) -> bool {
-        let coin_id = Self::hash_coin_id(&coin_name.to_string());
-        match self.coins.get(&coin_id) {
-            Some(coin) => return true,
-            None => return false,
+    pub fn ensure_coin_exists(&self, coin_name: &String) -> bool {
+        match self.coin_ids.get(coin_name) {
+            Some(coin) => true,
+            None => false,
         }
     }
 
