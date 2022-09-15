@@ -160,22 +160,34 @@ impl BtpTokenService {
                 let mut balance = self.balances.get(&account, &coin_id).unwrap();
                 balance.deposit_mut().sub(amount).unwrap();
                 self.balances.set(&account.clone(), &coin_id, balance);
+                let log = json!(
+                {
 
-                log!(
-                    "[Withdrawn] Amount : {} by {}  {}",
-                    amount,
-                    account,
-                    coin_symbol
-                );
+                    "event": "Withdraw",
+                    "code": "0",
+                    "by": account,
+                    "amount": amount.to_string(),
+                    "token_name": coin_symbol
+
+                });
+                log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
-            PromiseResult::NotReady => log!("Not Ready"),
+            PromiseResult::NotReady => {
+                log!("Not Ready")
+            }
             PromiseResult::Failed => {
-                log!(
-                    "[Withdraw Failed] Amount : {} by {}  {}",
-                    amount,
-                    account,
-                    coin_symbol
-                );
+                println!("{}", amount.to_string());
+                let log = json!(
+                {
+
+                    "event": "Withdraw",
+                    "code": "1",
+                    "by": account,
+                    "amount": amount.to_string(),
+                    "token_name": coin_symbol
+
+                });
+                log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
         }
     }
