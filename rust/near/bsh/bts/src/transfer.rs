@@ -265,7 +265,7 @@ impl BtpTokenService {
             });
         }
 
-        let restrictions = self.check_for_transfer_restricition(&receiver_id, assets);
+        let restrictions = self.check_for_transfer_restriction(&receiver_id, assets);
         if restrictions.is_err() {
             return Err(BshError::Reverted {
                 message: format!("Restrictions {}", restrictions.unwrap_err()),
@@ -364,7 +364,7 @@ impl BtpTokenService {
 
         U128::from(0)
     }
-    fn check_for_transfer_restricition(
+    fn check_for_transfer_restriction(
         &self,
         user: &AccountId,
         assets: &Vec<TransferableAsset>,
