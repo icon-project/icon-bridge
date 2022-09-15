@@ -84,7 +84,7 @@ fn withdraw_native_coin() {
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let coin_id = contract.get_coin_id(nativecoin.name()).unwrap();
+    let coin_id = contract.coin_id(nativecoin.name()).unwrap();
     testing_env!(context(chuck(), 1000));
 
     contract.deposit();
@@ -138,7 +138,7 @@ fn withdraw_native_coin_higher_amount() {
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let coin_id = contract.get_coin_id(nativecoin.name()).unwrap();
+    let coin_id = contract.coin_id(nativecoin.name()).unwrap();
     testing_env!(context(chuck(), 100));
 
     contract.deposit();
@@ -334,7 +334,7 @@ fn handle_success_response_icx_coin_external_transfer() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let coin_id = contract.get_coin_id(icx_coin.name()).unwrap();
+    let coin_id = contract.coin_id(icx_coin.name()).unwrap();
 
     contract.on_mint(
         900,
@@ -432,7 +432,7 @@ fn handle_failure_response_native_coin_external_transfer() {
         nativecoin.clone(),
     );
     testing_env!(context(chuck(), 1000));
-    let coin_id = contract.get_coin_id(nativecoin.name()).unwrap();
+    let coin_id = contract.coin_id(nativecoin.name()).unwrap();
 
     contract.deposit();
     contract.transfer(
@@ -545,7 +545,7 @@ fn handle_failure_response_icx_coin_external_transfer() {
     );
     contract.handle_btp_message(btp_message.try_into().unwrap());
 
-    let coin_id = contract.get_coin_id(icx_coin.name()).unwrap();
+    let coin_id = contract.coin_id(icx_coin.name()).unwrap();
 
     contract.on_mint(
         900,
@@ -671,7 +671,7 @@ fn reclaim_icx_coin() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let coin_id = contract.get_coin_id(icx_coin.name()).unwrap();
+    let coin_id = contract.coin_id(icx_coin.name()).unwrap();
     contract.on_mint(900, coin_id.clone(), icx_coin.symbol().to_string(), chuck());
 
     testing_env!(context(chuck(), 0));
@@ -732,7 +732,7 @@ fn external_transfer_higher_amount() {
 }
 
 #[test]
-#[should_panic(expected = "BSHRevertNotExistsToken")]
+#[should_panic(expected = "BSHRevertNotExistsToken: ICON")]
 fn external_transfer_unregistered_coin() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
@@ -804,7 +804,7 @@ fn external_transfer_batch() {
         nativecoin.clone(),
     );
     testing_env!(context(chuck(), 1000));
-    let coin_id = contract.get_coin_id(nativecoin.name()).unwrap();
+    let coin_id = contract.coin_id(nativecoin.name()).unwrap();
 
     contract.deposit();
     contract.transfer_batch(

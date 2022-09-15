@@ -121,7 +121,7 @@ fn withdraw_wnear() {
     );
     let w_near = <Coin>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name().to_owned());
+    let token_id = contract.coin_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -233,7 +233,7 @@ fn external_transfer() {
     let w_near = <Coin>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
 
-    let token_id = contract.coin_id(w_near.name().to_owned());
+    let token_id = contract.coin_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -304,7 +304,7 @@ fn handle_success_response_wnear_external_transfer() {
     let w_near = <Coin>::new(WNEAR.to_owned());
 
     contract.register(w_near.clone());
-    let token_id = contract.get_coin_id(w_near.name()).unwrap();
+    let token_id = contract.coin_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -548,7 +548,7 @@ fn handle_failure_response_wnear_external_transfer() {
     );
     let w_near = <Coin>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
-    let token_id = contract.get_coin_id(w_near.name()).unwrap();
+    let token_id = contract.coin_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -895,7 +895,7 @@ fn external_transfer_higher_amount() {
 }
 
 #[test]
-#[should_panic(expected = "BSHRevertNotExistsToken")]
+#[should_panic(expected = "BSHRevertNotExistsToken: WNEAR")]
 fn external_transfer_unregistered_coin() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
@@ -1010,7 +1010,7 @@ fn external_transfer_batch() {
         nativecoin.clone(),
     );
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name().to_owned());
+    let token_id = contract.coin_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),

@@ -119,7 +119,7 @@ fn register_token_permission() {
 
 #[test]
 #[should_panic(
-    expected = "BSHRevertNotExistsToken: [38, 6b, d, cf, f4, cf, 7b, f0, f7, 91, 97, 88, ec, 8f, f2, d6, 98, e5, 32, 16, 2a, e4, 5, 3d, 32, 3b, 8d, 4f, e0, bd, ae, 94]"
+    expected = "BSHRevertNotExistsToken: ICON"
 )]
 fn get_non_exist_token_id() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
@@ -131,7 +131,7 @@ fn get_non_exist_token_id() {
         "0x1.near".into(),
         nativecoin,
     );
-    let token_id = contract.coin_id("ICON".to_string());
+    let coin_id = contract.coin_id("ICON").map_err(|err| format!("{}", err)).unwrap();
 }
 
 #[test]
@@ -156,7 +156,7 @@ fn get_registered_token_id() {
     let coin_id = env::sha256(baln.name().to_owned().as_bytes());
     contract.register_coin_callback(baln.clone(), coin_id);
 
-    let token_id = contract.coin_id("BALN".to_string());
+    let token_id = contract.coin_id("BALN").unwrap();
     let expected = env::sha256(baln.name().as_bytes());
     assert_eq!(token_id, expected)
 }

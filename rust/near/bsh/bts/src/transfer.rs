@@ -5,8 +5,7 @@ impl BtpTokenService {
     pub fn transfer(&mut self, coin_name: String, destination: BTPAddress, amount: U128) {
         let sender_id = env::predecessor_account_id();
         self.assert_have_minimum_amount(amount.into());
-        let coin_id = self.get_coin_id(&coin_name).unwrap();
-        self.assert_coins_exists(&vec![coin_id.clone()]);
+        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
 
         let asset = self
             .process_external_transfer(&coin_id.to_owned(), &sender_id, amount.into())
@@ -24,7 +23,6 @@ impl BtpTokenService {
         let sender_id = env::predecessor_account_id();
 
         let coin_ids = self.get_coin_ids(&coin_name).unwrap();
-        self.assert_coins_exists(&coin_ids);
 
         let assets = coin_ids
             .iter()

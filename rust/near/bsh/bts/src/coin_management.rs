@@ -76,13 +76,6 @@ impl BtpTokenService {
         to_value(self.coins.to_vec()).unwrap()
     }
 
-    // Hashing to be done out of chain
-    pub fn coin_id(&self, coin_name: String) -> CoinId {
-        let coin_id = Self::hash_coin_id(&coin_name);
-        self.assert_coins_exists(&vec![coin_id.clone()]);
-        coin_id
-    }
-
     #[private]
     pub fn on_mint(
         &mut self,
@@ -217,12 +210,12 @@ impl BtpTokenService {
             Ok(()) => {
                 let mut invalid_coins: Vec<String> = Vec::new();
                 let mut valid_coins: Vec<String> = Vec::new();
-                coin_names
-                    .into_iter()
-                    .for_each(|coin_name| match self.ensure_coin_exists(&coin_name) {
+                coin_names.into_iter().for_each(|coin_name| {
+                    match self.ensure_coin_exists(&coin_name) {
                         true => valid_coins.push(coin_name),
                         false => invalid_coins.push(coin_name),
-                    });
+                    }
+                });
 
                 if !invalid_coins.is_empty() {
                     return Err(BshError::TokenNotExist {
@@ -242,5 +235,11 @@ impl BtpTokenService {
     #[cfg(feature = "testable")]
     pub fn get_token_limit(&self) -> &TokenLimits {
         &self.tokenlimits
+    }
+
+    pub fn coin_id(&self, coin_name: &str) -> Result<CoinId, BshError> {
+        self.coin_ids.get(coin_name).map(|coin_id| coin_id.to_owned()).ok_or(BshError::TokenNotExist {
+            message: coin_name.to_string(),
+        })
     }
 }

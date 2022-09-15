@@ -136,14 +136,14 @@ fn get_registered_coin_id() {
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let coin_id = contract.coin_id("NEAR".to_string());
+    let coin_id = contract.coin_id("NEAR").unwrap();
     let expected = env::sha256(nativecoin.name().as_bytes());
     assert_eq!(coin_id, expected)
 }
 
 #[test]
 #[should_panic(
-    expected = "BSHRevertNotExistsToken: [38, 6b, d, cf, f4, cf, 7b, f0, f7, 91, 97, 88, ec, 8f, f2, d6, 98, e5, 32, 16, 2a, e4, 5, 3d, 32, 3b, 8d, 4f, e0, bd, ae, 94]"
+    expected = "BSHRevertNotExistsToken: ICON"
 )]
 fn get_non_exist_coin_id() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
@@ -155,7 +155,7 @@ fn get_non_exist_coin_id() {
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let coin_id = contract.coin_id("ICON".to_string());
+    let coin_id = contract.coin_id("ICON").map_err(|err| format!("{}", err)).unwrap();
 }
 
 #[test]
