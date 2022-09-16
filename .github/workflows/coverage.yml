@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - fix/462-codecov-false-alarm
   pull_request:
     branches:
       - main

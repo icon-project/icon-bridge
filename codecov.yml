@@ -10,8 +10,10 @@ coverage:
   - 100.0
   round: down
   status:
-    project: no
-    patch: yes
-    changes: yes
+    patch:
+      default:
+        target: auto
+        threshold: 0.03%
+        base: auto
 github_checks:
   annotations: true
