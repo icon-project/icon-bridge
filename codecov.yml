@@ -13,7 +13,18 @@ coverage:
     patch:
       default:
         target: auto
-        threshold: 0.03%
+        threshold: 0%
+        base: auto
+    project:
+      default:
+        target: auto
+        threshold: 0%
+        base: auto
+        if_ci_failed: error
+    changes:
+      default:
+        target: auto
+        threshold: 0%
         base: auto
 github_checks:
   annotations: true
