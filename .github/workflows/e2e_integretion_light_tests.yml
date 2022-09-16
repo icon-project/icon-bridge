@@ -35,6 +35,7 @@ jobs:
           with:
             node-version: 15.12.0
             cache: 'npm'
+            cache-dependency-path: solidity/bmc/package-lock.json
 
         - name: Install yarn (BMC)
           working-directory: ./solidity/bmc
