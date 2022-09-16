@@ -225,16 +225,16 @@ func (gen *pointGenerator) GenerateConfigPoints() (pts []*configPoint, err error
 	// return
 	pts = []*configPoint{
 		{
-			chainName: chain.BSC,
+			chainName: chain.ICON,
 			TokenLimits: map[string]*big.Int{
 				"btp-0x2.icon-ICX":  big.NewInt(9000000000000000000),
 				"btp-0x2.icon-BUSD": big.NewInt(7000000000000000000),
 			},
 			Fee: map[string][2]*big.Int{
-				"btp-0x2.icon-sICX": {
-					big.NewInt(100), big.NewInt(3900000000000000000),
+				"btp-0x2.icon-ICX": {
+					big.NewInt(100), big.NewInt(4300000000000000000),
 				},
-				"btp-0x2.icon-BTCB": {
+				"btp-0x61.bsc-BTCB": {
 					big.NewInt(100), big.NewInt(62500000000000),
 				},
 			},

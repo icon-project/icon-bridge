@@ -17,15 +17,6 @@ import (
 )
 
 func getConfig() (*executor.Config, error) {
-	for i := 0; i < 5; i++ {
-		func() {
-			defer func() {
-				fmt.Println("I ", i)
-			}()
-			fmt.Println("Counter ", i)
-		}()
-
-	}
 	loadConfig := func(file string) (*executor.Config, error) {
 		f, err := os.Open(file)
 		if err != nil {
@@ -51,9 +42,14 @@ func TestExecutor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return
 	l := log.New()
 	log.SetGlobalLogger(l)
+	if lv, err := log.ParseLevel(cfg.LogLevel); err != nil {
+		log.Panicf("Invalid log_level=%s", cfg.LogLevel)
+	} else {
+		l.SetConsoleLevel(lv)
+	}
+
 	ex, err := executor.New(l, cfg)
 	if err != nil {
 		t.Fatalf("%+v", err)

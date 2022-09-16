@@ -28,6 +28,28 @@ type testSuite struct {
 	feeAggregatorAddress string
 }
 
+func (ex *executor) getTestSuite() (ts *testSuite, err error) {
+	id, err := ex.getID()
+	if err != nil {
+		return nil, errors.Wrapf(err, "getID %v", err)
+	}
+	log := ex.log.WithFields(log.Fields{"pid": id})
+	sinkChan := make(chan *evt)
+	ex.addChan(id, sinkChan)
+
+	ts = &testSuite{
+		id:                   id,
+		logger:               log,
+		subChan:              sinkChan,
+		clsPerChain:          ex.clientsPerChain,
+		godKeysPerChain:      ex.godKeysPerChain,
+		cfgPerChain:          ex.cfgPerChain,
+		feeAggregatorAddress: ex.feeAggregatorAddress,
+	}
+
+	return ts, nil
+}
+
 func (ts *testSuite) GetChainPair(srcChain, dstChain chain.ChainType) (src chain.SrcAPI, dst chain.DstAPI, err error) {
 	ok := false
 	src, ok = ts.clsPerChain[srcChain]
@@ -161,7 +183,7 @@ func (ts *testSuite) Fund(chainName chain.ChainType, addr string, amount *big.In
 			}
 		}
 		if isNative { // Native and InSufficient
-			fmt.Println("Insufficient ", bal.UserBalance, amount)
+			//ts.logger.Warn("Insufficient Native Token %v RequestedAmount %v GodUserBalance %v", coinName, amount, bal.UserBalance)
 			return InsufficientNativeToken
 		}
 		isWrapped := false
@@ -506,10 +528,10 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, stopCtx context.Co
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("ctxDone")
+			ts.logger.Debug("ctxDone")
 			return ExternalContextCancelled
 		case <-stopCtx.Done():
-			fmt.Println("StopCtxDone ")
+			ts.logger.Debug("StopCtxDone ")
 			return nil // stop processing, safely exit, donot return error
 		case ev := <-ts.subChan:
 			if ev == nil {
@@ -534,7 +556,6 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, stopCtx context.Co
 					ts.logger.Error(err)
 					return
 				}
-				fmt.Println("FeeGatheringTransferStart")
 				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
 				if !ok {
 					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
@@ -546,7 +567,6 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, stopCtx context.Co
 					return fmt.Errorf("Expected Same. Got Different startEvtTo %v feeAggBTPAddress %v", startEvt.To, feeAggBTPAddress)
 				}
 				if len(startEvt.Assets) > 0 {
-					fmt.Println("Assets ", startEvt.Assets)
 					if err = src.WatchForTransferEnd(ts.id, startEvt.Sn.Int64()); err != nil {
 						err = errors.Wrapf(err, "watchForTransferEnd %v", err)
 						ts.logger.Error(err)
@@ -565,18 +585,16 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, stopCtx context.Co
 					ts.logger.Error(err)
 					return
 				}
-				fmt.Println("FeeGatheringTransferEnd")
 				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
 				if !ok {
 					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", ev.msg.EventLog)
 				}
-				fmt.Println("EndEvt.Code ", endEvt)
+				ts.logger.Debug("Fee Gathering EndEvt.Code ", endEvt)
 				if err = fCfg.WatchForFeeGatheringRequest(ts.id, feeAggBTPAddress); err != nil {
 					err = errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
 					ts.logger.Error(err)
 					return
 				}
-				fmt.Println("WatchForFeeGatheringRequest")
 			} else {
 				err = errors.Wrapf(err, "Unexpected EventType %v", ev.msg)
 				ts.logger.Error(err)

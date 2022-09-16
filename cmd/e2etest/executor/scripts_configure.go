@@ -32,6 +32,7 @@ var ConfigureFeeChange ConfigureScript = ConfigureScript{
 				return
 			}
 			if _, errs = ts.ValidateTransactionResult(ctx, conf.chainName, setFeeHash); errs != nil {
+				ts.logger.Error("ValidateTransactionResult SetFeeRatio Hash %v Err %v", setFeeHash, errs)
 				return
 			}
 		}
@@ -160,6 +161,24 @@ var ConfigureTokenLimit ConfigureScript = ConfigureScript{
 	},
 }
 
+func getAccumulatedFees(ts *testSuite) (feePerChain map[chain.ChainType]map[string]*big.Int, errs error) {
+	feePerChain = make(map[chain.ChainType]map[string]*big.Int)
+	for chainName := range ts.cfgPerChain {
+		api, err := ts.GetStandardConfigAPI(chainName)
+		if err != nil {
+			errs = fmt.Errorf("GetStandardConfigAPI(%v) Err: %v", chainName, err)
+			return
+		}
+		feePerCoin, err := api.GetAccumulatedFees()
+		if err != nil {
+			errs = fmt.Errorf("GetAccumulatedFees(%v) Err: %v", chainName, err)
+			return
+		}
+		feePerChain[chainName] = feePerCoin
+	}
+	return
+}
+
 func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context, ts *testSuite, saveCb func(txn *txnMsg), feeGatheringInterval uint64) (errs error) {
 	msg := &txnMsg{
 		res: &txnRecord{
@@ -209,8 +228,7 @@ func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context,
 		ts.logger.Error(errs)
 		return
 	}
-
-	fmt.Println("Spawn go routine ")
+	resMap := map[*big.Int]*txnMsg{}
 	go func() {
 		msg.err = ts.WaitForFeeGathering(ctx, stopCtx, responseChains[0], map[chain.EventLogType]func(event *evt) error{
 			chain.TransferStart: func(ev *evt) error {
@@ -231,17 +249,46 @@ func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context,
 					},
 				}
 				for i := 0; i < len(startEvt.Assets); i++ {
-					msgNew.res.feeRecords[len(msgNew.res.feeRecords)-1].Fee[startEvt.Assets[i].Name] = startEvt.Assets[i].Fee
+					msgNew.res.feeRecords[len(msgNew.res.feeRecords)-1].Fee[startEvt.Assets[i].Name] = startEvt.Assets[i].Value
 				}
-				saveCb(msgNew)
+				resMap[startEvt.Sn] = msgNew
+				return nil
+			},
+			chain.TransferEnd: func(ev *evt) error {
+				if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+					return errors.New("Got nil value for event ")
+				}
+				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
+				if !ok {
+					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", ev.msg.EventLog)
+				}
+				if msg, ok := resMap[endEvt.Sn]; !ok {
+					return fmt.Errorf("EndEvt.Sn %v does not exist on map ", endEvt.Sn)
+				} else {
+					if endEvt.Code.String() != "0" { // remove fee saved if it was unsuccessful response
+						ts.logger.Warn("Received Event Code %v Removing saved feeRecords")
+						for i := range msg.res.feeRecords {
+							msg.res.feeRecords[i].Fee = map[string]*big.Int{}
+						}
+					}
+					saveCb(msg)
+					delete(resMap, endEvt.Sn)
+				}
 				return nil
 			},
 		})
-		fmt.Println("msg err ", msg.err)
+		ts.logger.Debug("msg err ", msg.err)
 		if msg.err != nil && (msg.err.Error() == ExternalContextCancelled.Error() || msg.err.Error() != NilEventReceived.Error()) {
 			return
 		} else {
-			saveCb(msg)
+			if len(resMap) == 0 {
+				saveCb(msg)
+				return
+			}
+			for _, resMsg := range resMap {
+				resMsg.err = msg.err
+				saveCb(resMsg) // save partial response present in resMap and the error got while waiting for full response
+			}
 		}
 	}()
 	return

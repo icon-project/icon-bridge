@@ -2,7 +2,6 @@ package executor
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"reflect"
 	"sync"
@@ -99,7 +98,6 @@ func (ex *executor) removeChan(id uint64) {
 	if ch, ok := ex.sinkChanPerID[id]; ok {
 		//ex.log.Debugf("Cleaning up after function returns. Removing channel of id %v", id)
 		if ch != nil {
-			fmt.Println("Close subchan ")
 			close(ex.sinkChanPerID[id])
 		}
 		delete(ex.sinkChanPerID, id)

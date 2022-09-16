@@ -1,4 +1,6 @@
 {
+    "fee_aggregator":"hxc9b1d86544a7cb84339d91fbd5f1c97a34839dfe",
+    "log_level": "debug",
     "chains":[
         {
             "name":"ICON",
@@ -161,6 +163,5 @@
                 "DefaultGasLimit":5000000
             }
         }
-    ],
-    "fee_aggregator":"hx275136ac969aada5edfb5439912db5dcd1074bdf"
+    ]
 }

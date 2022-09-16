@@ -79,6 +79,7 @@ var (
 )
 
 type Config struct {
+	LogLevel             string          `json:"log_level"`
 	Chains               []*chain.Config `json:"chains"`
 	FeeAggregatorAddress string          `json:"fee_aggregator"`
 }

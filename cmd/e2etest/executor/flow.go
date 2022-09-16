@@ -9,7 +9,6 @@ import (
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/common/errors"
-	"github.com/icon-project/icon-bridge/common/log"
 )
 
 type txnMsg struct {
@@ -32,12 +31,19 @@ type configureReq struct {
 }
 
 var transferScripts = []*Script{
-	&TransferToBlackListedDstAddress,
+	&TransferUniDirection,
 }
 
 var configScripts = []*ConfigureScript{
 	&ConfigureFeeChange,
 	&ConfigureTokenLimit,
+}
+
+var ignoreableErrorMap = map[string]*struct{}{
+	InsufficientWrappedCoin.Error(): nil,
+	InsufficientUnknownCoin.Error(): nil,
+	UnsupportedCoinArgs.Error():     nil,
+	IgnoreableError.Error():         nil,
 }
 
 func (ex *executor) RunFlowTest(ctx context.Context) error {
@@ -62,35 +68,41 @@ func (ex *executor) RunFlowTest(ctx context.Context) error {
 		return errors.Wrapf(err, "GenerateConfigPoints %v", err)
 	}
 
-	bts, err := ex.getTestSuite()
+	ts, err := ex.getTestSuite()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "getTestSuite %v", err)
 	}
-	defer ex.removeChan(bts.id)
+	defer ex.removeChan(ts.id)
 
-	// Callback
 	bgJobRecords := []*txnMsg{}
-	tmu := sync.RWMutex{}
+	tmu := sync.Mutex{}
 	extractRecords := func() (ret []*txnMsg) {
 		tmu.Lock()
 		defer tmu.Unlock()
-		ret = bgJobRecords
+		ret = []*txnMsg{}
+		for _, v := range bgJobRecords {
+			ret = append(ret, v)
+		}
+		fmt.Printf("Extract from records %v", ret)
 		bgJobRecords = []*txnMsg{}
 		return
 	}
+
 	appendToRecords := func(rec *txnMsg) {
 		tmu.Lock()
 		defer tmu.Unlock()
+		fmt.Printf("Append to records %v", rec)
 		bgJobRecords = append(bgJobRecords, rec)
 	}
 
-	stopJob, err := ex.startBackgroundJob(ctx, bts, appendToRecords)
+	stopJob, err := ex.startBackgroundJob(ctx, ts, appendToRecords)
 	if err != nil {
 		return err
 	}
+	defer stopJob()
 
-	// Interate
 	for _, cpt := range cpts {
+		ex.initflowTransfer()
 		confResponse, err := ex.processConfigurePoint(ctx, cpt)
 		if err != nil {
 			return errors.Wrapf(err, "processConfigurePoint %v", err)
@@ -105,57 +117,128 @@ func (ex *executor) RunFlowTest(ctx context.Context) error {
 		}
 		bgResponse := extractRecords()
 		ex.postProcessBatch(confResponse, transResponse, bgResponse)
+	}
 
-	}
-	if stopJob != nil {
-		fmt.Println("StopJobs ")
-		stopJob()
-	}
+	stopJob()
 
 	return nil
 
 }
 
 func (ex *executor) postProcessBatch(confResponse []*configureReq, transResponse []*transferReq, bgResponse []*txnMsg) {
-	/*
-		ignoreableError := map[string]*struct{}{
-			InsufficientWrappedCoin.Error(): nil,
-			InsufficientUnknownCoin.Error(): nil,
-			UnsupportedCoinArgs.Error():     nil,
-			IgnoreableError.Error():         nil,
+
+	nonIgnoreErrorCount := 0
+	for _, t := range transResponse {
+		if t.msg.err == nil {
+			continue
 		}
-		ignoreErrorCount := 0
-		nonIgnoreErrorCount := 0
-		for _, err := range batchError {
-			if _, ignore := ignoreableError[err.Error()]; !ignore {
-				fmt.Println(err.Error())
-				nonIgnoreErrorCount++
-			} else {
-				ignoreErrorCount++
-			}
+		errs := t.msg.err
+		if _, ignore := ignoreableErrorMap[errs.Error()]; !ignore {
+			nonIgnoreErrorCount++
+			ex.log.Errorf("SN %v, PID %v, Type Transfer, Function %v, Input %+v", nonIgnoreErrorCount, t.id, t.scr.Name, t.pt)
 		}
-		fmt.Println("Len IgnoreErr ", ignoreErrorCount)
-		fmt.Println("Len Err ", nonIgnoreErrorCount)
-		fmt.Println("Len Response ", batchResponse)
-		for _, res := range batchResponse {
-			for _, fres := range res.feeRecords {
-				fmt.Printf("FeeResponse %+v\n", fres)
-			}
-			ex.refund(res.addresses)
+	}
+	for _, t := range transResponse {
+		if t.msg.err == nil {
+			continue
 		}
-	*/
+		errs := t.msg.err
+		if _, ignore := ignoreableErrorMap[errs.Error()]; !ignore {
+			nonIgnoreErrorCount++
+			ex.log.Errorf("SN %v, PID %v, Type Configuration, Function %v, Input %+v", nonIgnoreErrorCount, t.id, t.scr.Name, t.pt)
+		}
+	}
+	for _, t := range bgResponse {
+		if t.err == nil {
+			continue
+		}
+		errs := t.err
+		if _, ignore := ignoreableErrorMap[errs.Error()]; !ignore {
+			nonIgnoreErrorCount++
+			ex.log.Errorf("SN %v, PID %v, Type BackgroundProcess, Function %v, Input %+v", nonIgnoreErrorCount, "<>", "FeeGathering", "<>")
+		}
+	}
+
+	for _, t := range transResponse {
+		if t.msg.res == nil {
+			continue
+		}
+		for _, fres := range t.msg.res.feeRecords {
+			fmt.Printf("FeeResponse %+v\n", fres)
+		}
+		ex.refund(t.msg.res.addresses)
+	}
+
+	////////////////////////////
+	fmt.Println("CONFIGURATION++++++++++")
+	ignoreErrorCount = 0
+	nonIgnoreErrorCount = 0
+	for _, res := range confResponse {
+		if res.msg.err == nil {
+			continue
+		}
+		errs := res.msg.err
+		if _, ignore := ignoreableErrorMap[errs.Error()]; !ignore {
+			fmt.Println(errs.Error())
+			nonIgnoreErrorCount++
+		} else {
+			ignoreErrorCount++
+		}
+	}
+	fmt.Println("Len IgnoreErr ", ignoreErrorCount)
+	fmt.Println("Len Err ", nonIgnoreErrorCount)
+	fmt.Println("Len Response ", len(confResponse))
+	for _, t := range confResponse {
+		if t.msg.res == nil {
+			continue
+		}
+		for _, fres := range t.msg.res.feeRecords {
+			fmt.Printf("FeeResponse %+v\n", fres)
+		}
+		//ex.refund(t.msg.res.addresses)
+	}
+
+	////////////////////////////
+	fmt.Println("AGGREGATION++++++++++")
+	ignoreErrorCount = 0
+	nonIgnoreErrorCount = 0
+	for _, t := range bgResponse {
+		if t.err == nil {
+			continue
+		}
+		errs := t.err
+		if _, ignore := ignoreableErrorMap[errs.Error()]; !ignore {
+			fmt.Println(errs.Error())
+			nonIgnoreErrorCount++
+		} else {
+			ignoreErrorCount++
+		}
+	}
+	fmt.Println("Len IgnoreErr ", ignoreErrorCount)
+	fmt.Println("Len Err ", nonIgnoreErrorCount)
+	fmt.Println("Len Response ", len(bgResponse))
+	for _, t := range bgResponse {
+		if t.res == nil {
+			continue
+		}
+		for _, fres := range t.res.feeRecords {
+			fmt.Printf("FeeResponse %+v\n", fres)
+		}
+		//ex.refund(t.msg.res.addresses)
+	}
 }
 
 func (ex *executor) processConfigurePoint(ctx context.Context, pt *configPoint) (totalResponse []*configureReq, errs error) {
 	totalResponse = []*configureReq{}
 	for _, script := range configScripts {
-		q := &configureReq{scr: script, pt: pt}
+		q := &configureReq{scr: script, pt: pt, msg: &txnMsg{}}
 		ts, err := ex.getTestSuite()
 		if err != nil {
 			q.msg.err = err
 		}
 		defer ex.removeChan(ts.id)
 		q.id = ts.id
+		ts.logger.Debugf("%v %v \n", q.scr.Name, q.pt.Fee)
 		q.msg.res, q.msg.err = script.Callback(ctx, pt, ts)
 		totalResponse = append(totalResponse, q)
 	}
@@ -210,7 +293,7 @@ func (ex *executor) processTransferPoints(ctx context.Context, tpts []*transferP
 					}
 					defer ex.removeChan(ts.id)
 
-					ts.logger.Debug("%v %v %v %v \n", q.scr.Name, q.pt.SrcChain, q.pt.DstChain, q.pt.CoinNames)
+					ts.logger.Debugf("%v %v %v %v \n", q.scr.Name, q.pt.SrcChain, q.pt.DstChain, q.pt.CoinNames)
 					q.msg.res, q.msg.err = q.scr.Callback(ctx, q.pt.SrcChain, q.pt.DstChain, q.pt.CoinNames, ts)
 				}(q)
 
@@ -259,34 +342,25 @@ func (ex *executor) startBackgroundJob(ctx context.Context, ts *testSuite, cb fu
 
 	newCtx, newCancel := context.WithCancel(context.Background())
 	fmt.Println("watchFeeGatheringInBackground")
-	err := watchFeeGatheringInBackground(ctx, newCtx, ts, cb, 150)
+	err := watchFeeGatheringInBackground(ctx, newCtx, ts, cb, 90)
 	if err != nil {
 		fmt.Println("Got Error ", err)
 		newCancel()
 		return nil, err
 	}
-	fmt.Println("return channel")
 	return newCancel, nil
 }
 
-func (ex *executor) getTestSuite() (ts *testSuite, err error) {
-	id, err := ex.getID()
+func (ex *executor) initflowTransfer() (feePerChain map[chain.ChainType]map[string]*big.Int, errs error) {
+	ts, err := ex.getTestSuite()
 	if err != nil {
-		return nil, errors.Wrapf(err, "getID %v", err)
+		errs = fmt.Errorf("getTestSuite %v", err)
+		return
 	}
-	log := ex.log.WithFields(log.Fields{"pid": id})
-	sinkChan := make(chan *evt)
-	ex.addChan(id, sinkChan)
-
-	ts = &testSuite{
-		id:                   id,
-		logger:               log,
-		subChan:              sinkChan,
-		clsPerChain:          ex.clientsPerChain,
-		godKeysPerChain:      ex.godKeysPerChain,
-		cfgPerChain:          ex.cfgPerChain,
-		feeAggregatorAddress: ex.feeAggregatorAddress,
+	defer ex.removeChan(ts.id)
+	feePerChain, err = getAccumulatedFees(ts)
+	if err != nil {
+		errs = fmt.Errorf("getAccumulatedFees %v", err)
 	}
-
-	return ts, nil
+	return
 }
