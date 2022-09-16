@@ -1,3 +1,5 @@
+use libraries::types::FungibleToken;
+
 use super::*;
 
 #[near_bindgen]
@@ -275,8 +277,19 @@ impl BtpTokenService {
     }
 
     pub fn coin_id(&self, coin_name: &str) -> Result<CoinId, BshError> {
-        self.coin_ids.get(coin_name).map(|coin_id| coin_id.to_owned()).ok_or(BshError::TokenNotExist {
-            message: coin_name.to_string(),
-        })
+        self.coin_ids
+            .get(coin_name)
+            .map(|coin_id| coin_id.to_owned())
+            .ok_or(BshError::TokenNotExist {
+                message: coin_name.to_string(),
+            })
+    }
+
+    pub fn coin(&self, coin_name: String) -> Asset<FungibleToken> {
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
+        self.coins.get(&coin_id).unwrap()
     }
 }
