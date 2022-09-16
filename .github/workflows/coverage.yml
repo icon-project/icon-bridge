@@ -30,12 +30,9 @@ jobs:
       working-directory: ./cmd/iconbridge/chain/icon
       run: |
         go test -race -covermode=atomic -coverprofile=coverage.out || exit 0
+
     - name: GO test cmd/iconbridge
       working-directory: ./cmd/iconbridge
-      run: |
-        go test ./... -race -covermode=atomic -coverprofile=coverage.out || exit 0
-    - name: GO test common
-      working-directory: ./common
       run: |
         go test ./... -race -covermode=atomic -coverprofile=coverage.out || exit 0
 
