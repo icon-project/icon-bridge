@@ -74,6 +74,16 @@ func (ts *testSuite) FullConfigAPIChain() chain.ChainType {
 	return chain.ICON
 }
 
+func (ts *testSuite) StdConfigAPIChains() (stdChains []chain.ChainType) {
+	stdChains = []chain.ChainType{}
+	for name := range ts.clsPerChain {
+		if name != ts.FullConfigAPIChain() {
+			stdChains = append(stdChains, name)
+		}
+	}
+	return
+}
+
 func (ts *testSuite) NetAddr(btpAddr string) (net string, addr string) {
 	splts := strings.Split(btpAddr, "/")
 	return splts[len(splts)-2], splts[len(splts)-1]
@@ -467,7 +477,7 @@ func (ts *testSuite) WaitForEvents(ctx context.Context, srcChainName, dstChainNa
 	return nil
 }
 
-func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.ChainType, maxWaitSeconds uint64, cbPerEvent map[chain.EventLogType]func(event *evt) error) (err error) {
+func (ts *testSuite) WaitForFeeGathering(ctx context.Context, stopCtx context.Context, chainName chain.ChainType, cbPerEvent map[chain.EventLogType]func(event *evt) error) (err error) {
 	fCfg, err := ts.GetFullConfigAPI()
 	if err != nil {
 		err = errors.Wrapf(err, "GetFullConfigAPI %v", err)
@@ -492,16 +502,19 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.Ch
 		ts.logger.Error(err)
 		return
 	}
-	newCtx := context.Background()
-	timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*time.Duration(maxWaitSeconds))
+
 	for {
-		defer timedContextCancel()
 		select {
-		case <-timedContext.Done():
-			return MaxDelayContextCancelled
 		case <-ctx.Done():
+			fmt.Println("ctxDone")
 			return ExternalContextCancelled
+		case <-stopCtx.Done():
+			fmt.Println("StopCtxDone ")
+			return nil // stop processing, safely exit, donot return error
 		case ev := <-ts.subChan:
+			if ev == nil {
+				return NilEventReceived
+			}
 			if cb, ok := cbPerEvent[ev.msg.EventType]; ok {
 				if cb != nil {
 					if err := cb(ev); err != nil {
@@ -511,7 +524,6 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, chainName chain.Ch
 			}
 			if ev.msg.EventType == chain.FeeGatheringRequest {
 				if err = src.WatchForFeeGatheringTransferStart(ts.id, feeAggBTPAddress); err != nil {
-					fmt.Println("FeeGatheringTransferStart")
 					err = errors.Wrapf(err, "WatchForFeeGatheringTransferStart %v", err)
 					ts.logger.Error(err)
 					return

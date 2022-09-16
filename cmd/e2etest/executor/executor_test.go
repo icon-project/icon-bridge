@@ -3,6 +3,7 @@ package executor_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -16,6 +17,15 @@ import (
 )
 
 func getConfig() (*executor.Config, error) {
+	for i := 0; i < 5; i++ {
+		func() {
+			defer func() {
+				fmt.Println("I ", i)
+			}()
+			fmt.Println("Counter ", i)
+		}()
+
+	}
 	loadConfig := func(file string) (*executor.Config, error) {
 		f, err := os.Open(file)
 		if err != nil {
@@ -41,6 +51,7 @@ func TestExecutor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return
 	l := log.New()
 	log.SetGlobalLogger(l)
 	ex, err := executor.New(l, cfg)
@@ -54,9 +65,11 @@ func TestExecutor(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	fmt.Println("Main Context Cancel")
 	cancel()
-	time.Sleep(time.Second * 2)
 
+	time.Sleep(time.Second * 5)
+	fmt.Println("Exit")
 	// defer func() {
 	// 	cancel()
 	// }()

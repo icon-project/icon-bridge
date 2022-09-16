@@ -96,7 +96,7 @@ func (gen *pointGenerator) batchPointGenerator(pts []*transferPoint) []*transfer
 	return pts
 }
 
-func (gen *pointGenerator) GenerateTransferPoints() (pts []*transferPoint, err error) {
+func (gen *pointGenerator) GenerateTransferPoints(cpt *configPoint) (pts []*transferPoint, err error) {
 	if len(gen.cfgPerChain) != 2 {
 		err = fmt.Errorf("Expected a pair of chains. Got %v", len(gen.cfgPerChain))
 		return
@@ -154,22 +154,26 @@ func (gen *pointGenerator) tokenLimitsGenerator(pts []*configPoint) {
 		}
 		for _, amt := range []*big.Int{zero, one, maxUint256, maxUint256MinusOne} {
 			pts = append(pts, &configPoint{
+				chainName: chain,
 				TokenLimits: map[string]*big.Int{
 					chainNativeCoin: (&big.Int{}).Set(amt),
 				},
 			})
 			pts = append(pts, &configPoint{
+				chainName: chain,
 				TokenLimits: map[string]*big.Int{
 					chainNativeTokens[rand.Intn(len(chainNativeTokens))]: (&big.Int{}).Set(amt),
 				},
 			})
 			pts = append(pts, &configPoint{
+				chainName: chain,
 				TokenLimits: map[string]*big.Int{
 					chainNativeTokens[rand.Intn(len(chainNativeTokens))]: (&big.Int{}).Set(amt),
 					chainNativeTokens[rand.Intn(len(chainNativeTokens))]: (&big.Int{}).Set(amt),
 				},
 			})
 			pts = append(pts, &configPoint{
+				chainName: chain,
 				TokenLimits: map[string]*big.Int{
 					chainNativeCoin: (&big.Int{}).Set(amt),
 					chainNativeTokens[rand.Intn(len(chainNativeTokens))]: (&big.Int{}).Set(amt),
@@ -191,32 +195,50 @@ func (gen *pointGenerator) feeGenerator(pts []*configPoint) {
 }
 
 func (gen *pointGenerator) GenerateConfigPoints() (pts []*configPoint, err error) {
-	if len(gen.cfgPerChain) != 2 {
-		err = fmt.Errorf("Expected a pair of chains. Got %v", len(gen.cfgPerChain))
-		return
-	}
-	pts = []*configPoint{}
-	gen.tokenLimitsGenerator(pts)
-	gen.feeGenerator(pts)
-	if gen.transferFilter != nil {
-		pts = gen.configFilter(pts)
-	}
+	// if len(gen.cfgPerChain) != 2 {
+	// 	err = fmt.Errorf("Expected a pair of chains. Got %v", len(gen.cfgPerChain))
+	// 	return
+	// }
+	// pts = []*configPoint{}
+	// gen.tokenLimitsGenerator(pts)
+	// gen.feeGenerator(pts)
+	// if gen.transferFilter != nil {
+	// 	pts = gen.configFilter(pts)
+	// }
 
-	arrLen := len(pts)
-	for i := 0; i < arrLen; i++ {
-		a := rand.Intn(arrLen)
-		b := rand.Intn(arrLen)
-		tmp := pts[a]
-		pts[a] = pts[b]
-		pts[b] = tmp
-	}
+	// arrLen := len(pts)
+	// for i := 0; i < arrLen; i++ {
+	// 	a := rand.Intn(arrLen)
+	// 	b := rand.Intn(arrLen)
+	// 	tmp := pts[a]
+	// 	pts[a] = pts[b]
+	// 	pts[b] = tmp
+	// }
 
-	if gen.maxBatchSize != nil && len(pts) > *gen.maxBatchSize {
-		truncPts := make([]*configPoint, *gen.maxBatchSize)
-		for i := 0; i < *gen.maxBatchSize; i++ {
-			truncPts[i] = pts[i]
-		}
-		return truncPts, nil
+	// if gen.maxBatchSize != nil && len(pts) > *gen.maxBatchSize {
+	// 	truncPts := make([]*configPoint, *gen.maxBatchSize)
+	// 	for i := 0; i < *gen.maxBatchSize; i++ {
+	// 		truncPts[i] = pts[i]
+	// 	}
+	// 	return truncPts, nil
+	// }
+	// return
+	pts = []*configPoint{
+		{
+			chainName: chain.BSC,
+			TokenLimits: map[string]*big.Int{
+				"btp-0x2.icon-ICX":  big.NewInt(9000000000000000000),
+				"btp-0x2.icon-BUSD": big.NewInt(7000000000000000000),
+			},
+			Fee: map[string][2]*big.Int{
+				"btp-0x2.icon-sICX": {
+					big.NewInt(100), big.NewInt(3900000000000000000),
+				},
+				"btp-0x2.icon-BTCB": {
+					big.NewInt(100), big.NewInt(62500000000000),
+				},
+			},
+		},
 	}
 	return
 }

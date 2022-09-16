@@ -13,13 +13,21 @@ type evt struct {
 	chainType chain.ChainType
 }
 
-type callBackFunc func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error)
+type callBackFunc func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, err error)
 
 type Script struct {
 	Name        string
 	Type        string
 	Description string
 	Callback    callBackFunc
+}
+
+type configureCallBack func(ctx context.Context, conf *configPoint, ts *testSuite) (txnRec *txnRecord, err error)
+type ConfigureScript struct {
+	Name        string
+	Type        string
+	Description string
+	Callback    configureCallBack
 }
 
 type keypair struct {
@@ -53,6 +61,7 @@ type transferPoint struct {
 }
 
 type configPoint struct {
+	chainName   chain.ChainType
 	TokenLimits map[string]*big.Int
 	Fee         map[string][2]*big.Int
 }
@@ -61,7 +70,7 @@ var (
 	ZeroEvents               = errors.New("Got zero event logs, expected at least one")
 	StatusCodeZero           = errors.New("Got status code zero(failed)")
 	ExternalContextCancelled = errors.New("External Context Cancelled")
-	MaxDelayContextCancelled = errors.New("context canceeled after exceeeding max delay")
+	NilEventReceived         = errors.New("Nil Event Received")
 	InsufficientNativeToken  = errors.New("Insufficient Native Token")
 	InsufficientWrappedCoin  = errors.New("Insufficient Wrapped Coin")
 	InsufficientUnknownCoin  = errors.New("Insufficient Unknown Coin")
