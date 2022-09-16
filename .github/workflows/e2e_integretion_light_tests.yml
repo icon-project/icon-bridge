@@ -34,6 +34,8 @@ jobs:
         - uses: mskelton/setup-yarn@v1
           with:
             node-version: 15.12.0
+            cache: 'yarn'
+            cache-dependency-path: solidity/bmc/yarn.lock
 
         - name: Install yarn (BMC)
           working-directory: ./solidity/bmc
