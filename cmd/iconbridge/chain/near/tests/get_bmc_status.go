@@ -25,7 +25,13 @@ func init() {
 		{
 			Description: "GetBmcStatus Sucess",
 			Input:       []chain.BTPAddress{destination, source},
-			MockApi:     mock.NewMockApi(mock.Storage{}),
+			MockApi: func() *mock.MockApi {
+				mockApi := mock.NewMockApi(mock.Storage{})
+
+				mockApi.On("CallFunction", mock.MockParam).Return(mockApi.CallFunctionFactory())
+
+				return mockApi
+			}(),
 			Expected: struct {
 				Success interface{}
 				Fail    interface{}

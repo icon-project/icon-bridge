@@ -34,10 +34,16 @@ func init() {
 			MockApi: func() *mock.MockApi {
 				blockByHeightMap, blockByHashMap := mock.LoadBlockFromFile([]string{"377825", "377826", "377827", "377828", "377829", "377830", "377831"})
 				
-				return mock.NewMockApi(mock.Storage{
+				mockApi := mock.NewMockApi(mock.Storage{
 					BlockByHeightMap: blockByHeightMap,
 					BlockByHashMap:   blockByHashMap,
 				})
+
+				mockApi.On("Block", mock.MockParam).Return(mockApi.BlockFactory())
+				mockApi.On("Changes", mock.MockParam).Return(mockApi.ChangesFactory())
+				mockApi.On("Status", mock.MockParam).Return(mockApi.StatusFactory())
+
+				return mockApi
 			}(),
 			Expected: struct {
 				Success interface{}

@@ -13,9 +13,8 @@ var accounts = []string{"69c003c3b80ed12ea02f5c67c9e8167f0ce3b2e8020a0f43b1029c4
 func Default() Storage {
 	latestChainStatus := LoadChainStatusFromFile(LatestChainStatus)
 	blockByHeightMap, blockByHashMap := LoadBlockFromFile(Blocks)
-	nonceMap := LoadNonceFromFile(Nonce)
+	accessKeyMap := LoadAccessKeyFromFile(Nonce)
 	bmcLinkStatusMap := LoadBmcStatusFromFile(BmcLinkStatus)
-	bmvLinkStatusMap := LoadBmvStatusFromFile(BmvLinkStatus)
 	contractStateChangeMap := LoadEventsFromFile(GetEvents)
 	receiptProofMap := LoadReceiptsFromFile(GetReceiptsProof)
 	transactionHashMap := Response{
@@ -29,9 +28,8 @@ func Default() Storage {
 		LatestChainStatus:      latestChainStatus,
 		BlockByHeightMap:       blockByHeightMap,
 		BlockByHashMap:         blockByHashMap,
-		NonceMap:               nonceMap,
+		AccessKeyMap:           accessKeyMap,
 		BmcLinkStatusMap:       bmcLinkStatusMap,
-		BmvStatusMap:           bmvLinkStatusMap,
 		ContractStateChangeMap: contractStateChangeMap,
 		ReceiptProofMap:        receiptProofMap,
 		TransactionHash:        transactionHashMap,

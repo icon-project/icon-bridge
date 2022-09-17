@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
 	"github.com/shopspring/decimal"
 )
 
@@ -25,14 +26,21 @@ func init() {
 		{
 			Description: "GetBalance Pass",
 			Input: struct {
-				PrivateKey      string
+				PrivateKey  string
 				Source      chain.BTPAddress
 				Destination chain.BTPAddress
 			}{
-				PrivateKey:      "22yx6AjQgG1jGuAmPuEwLnVKFnuq5LU23dbU3JBZodKxrJ8dmmqpDZKtRSfiU4F8UQmv1RiZSrjWhQMQC3ye7M1J",
+				PrivateKey:  "22yx6AjQgG1jGuAmPuEwLnVKFnuq5LU23dbU3JBZodKxrJ8dmmqpDZKtRSfiU4F8UQmv1RiZSrjWhQMQC3ye7M1J",
 				Source:      chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
 				Destination: chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
 			},
+			MockApi: func() *mock.MockApi {
+				mockApi := mock.NewMockApi(mock.Storage{})
+
+				mockApi.On("ViewAccount", mock.MockParam).Return(mockApi.ViewAccountFactory())
+				
+				return mockApi
+			}(),
 			Expected: struct {
 				Success interface{}
 				Fail    interface{}

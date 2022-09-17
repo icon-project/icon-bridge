@@ -1,14 +1,14 @@
 package mock
 
 import (
-	"encoding/base64"
-	"encoding/json"
-	"errors"
-
 	"github.com/MuhammedIrfan/testify-mock/mock"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 )
+
+const (
+	MockParam = "mock.Anything"
+)
+var emptyResponse Response
 
 type MockApi struct {
 	mock.Mock
@@ -218,7 +218,6 @@ func (m *MockApi) ViewAccount(param interface{}) (types.Account, error) {
 }
 
 func NewMockApi(storage Storage) *MockApi {
-	var emptyResponse Response
 	var defaults = Default()
 
 	if storage.LatestChainStatus == emptyResponse {
@@ -244,20 +243,15 @@ func NewMockApi(storage Storage) *MockApi {
 	}
 	storage.BlockByHashMap = defaults.BlockByHashMap
 
-	for key, value := range storage.NonceMap {
-		defaults.NonceMap[key] = value
+	for key, value := range storage.AccessKeyMap {
+		defaults.AccessKeyMap[key] = value
 	}
-	storage.NonceMap = defaults.NonceMap
+	storage.AccessKeyMap = defaults.AccessKeyMap
 
 	for key, value := range storage.BmcLinkStatusMap {
 		defaults.BmcLinkStatusMap[key] = value
 	}
 	storage.BmcLinkStatusMap = defaults.BmcLinkStatusMap
-
-	for key, value := range storage.BmvStatusMap {
-		defaults.BmvStatusMap[key] = value
-	}
-	storage.BmvStatusMap = defaults.BmvStatusMap
 
 	for key, value := range storage.ContractStateChangeMap {
 		defaults.ContractStateChangeMap[key] = value
@@ -272,165 +266,6 @@ func NewMockApi(storage Storage) *MockApi {
 	mockApi := &MockApi{
 		Storage: &storage,
 	}
-
-	mockApi.On("Block", mock.Anything).Return(func(args mock.Arguments) mock.Arguments {
-		var block types.Block
-
-		blockHashParam, isBlockHashParam := args.Get(0).(struct {
-			BlockId string `json:"block_id"`
-		})
-
-		blockHeightParam, isBlockHeightParam := args.Get(0).(struct {
-			BlockId int64 `json:"block_id"`
-		})
-
-		if isBlockHashParam && storage.BlockByHashMap[blockHashParam.BlockId] != emptyResponse {
-			if storage.BlockByHashMap[blockHashParam.BlockId].Error != nil {
-				return []interface{}{block, storage.BlockByHashMap[blockHashParam.BlockId].Error}
-			}
-
-			if response, Ok := (storage.BlockByHashMap[blockHashParam.BlockId].Reponse).([]byte); Ok {
-				err := json.Unmarshal(response, &block)
-				if err != nil {
-					return []interface{}{block, err}
-				}
-
-				return []interface{}{block, nil}
-			}
-
-		}
-
-		if isBlockHeightParam && storage.BlockByHeightMap[blockHeightParam.BlockId] != emptyResponse {
-			if storage.BlockByHeightMap[blockHeightParam.BlockId].Error != nil {
-				return []interface{}{block, storage.BlockByHeightMap[blockHeightParam.BlockId].Error}
-			}
-			if response, Ok := (storage.BlockByHeightMap[blockHeightParam.BlockId].Reponse).([]byte); Ok {
-				err := json.Unmarshal(response, &block)
-				if err != nil {
-					return []interface{}{block, err}
-				}
-				return []interface{}{block, nil}
-			}
-
-		}
-
-		return []interface{}{block, errors.New("invalid Param")}
-	})
-
-	//BroadcastTxAsync
-	mockApi.On("BroadcastTxAsync", mock.Anything).Return(func(args mock.Arguments) mock.Arguments {
-		return []interface{}{nil}
-	})
-
-	//BroadcastTxCommit
-	mockApi.On("BroadcastTxCommit", mock.Anything).Return(func(args mock.Arguments) mock.Arguments {
-		return []interface{}{nil}
-	})
-
-	mockApi.On("CallFunction", mock.Anything).Return(func(args mock.Arguments) mock.Arguments {
-		var response types.CallFunctionResponse
-
-		param, Ok := args.Get(0).(types.CallFunction)
-
-		if Ok && param.MethodName == "get_status" {
-			var linkParam struct {
-				Link chain.BTPAddress `json:"link"`
-			}
-			data, err := base64.URLEncoding.DecodeString(param.ArgumentsB64)
-			if err != nil {
-				return []interface{}{response, err}
-			}
-
-			err = json.Unmarshal(data, &linkParam)
-			if err != nil {
-				return []interface{}{response, err}
-			}
-
-			if storage.BmcLinkStatusMap[linkParam.Link.ContractAddress()] != emptyResponse {
-				if storage.BmcLinkStatusMap[linkParam.Link.ContractAddress()].Error != nil {
-					return []interface{}{response, storage.BmcLinkStatusMap[linkParam.Link.ContractAddress()].Error}
-				}
-
-				if data, Ok := (storage.BmcLinkStatusMap[linkParam.Link.ContractAddress()].Reponse).([]byte); Ok {
-					err := json.Unmarshal(data, &response)
-					if err != nil {
-						return []interface{}{response, err}
-					}
-					return []interface{}{response, nil}
-				}
-			}
-
-		}
-
-		return []interface{}{response, errors.New("invalid Param")}
-	})
-
-	mockApi.On("Changes", mock.Anything).Return(func(args mock.Arguments) mock.Arguments {
-		var changes types.ContractStateChange
-
-		param, Ok := args.Get(0).(struct {
-			ChangeType string   `json:"changes_type"`
-			AccountIds []string `json:"account_ids"`
-			KeyPrefix  string   `json:"key_prefix_base64"`
-			BlockId    int64    `json:"block_id"`
-		})
-
-		if Ok && storage.ContractStateChangeMap[param.BlockId] != emptyResponse {
-			if storage.ContractStateChangeMap[param.BlockId].Error != nil {
-				return []interface{}{changes, storage.ContractStateChangeMap[param.BlockId].Error}
-			}
-
-			if response, Ok := (storage.ContractStateChangeMap[param.BlockId].Reponse).([]byte); Ok {
-				err := json.Unmarshal(response, &changes)
-				if err != nil {
-					return []interface{}{changes, err}
-				}
-
-				return []interface{}{changes, nil}
-			}
-		}
-
-		return []interface{}{changes, errors.New("invalid Param")}
-	})
-
-	mockApi.On("LightClientProof", mock.Anything).Return(func(args mock.Arguments) mock.Arguments {
-		return []interface{}{nil}
-	})
-
-	mockApi.On("Status", mock.Anything).Return(func(args mock.Arguments) mock.Arguments {
-		var chainStatus types.ChainStatus
-
-		if storage.LatestChainStatus != emptyResponse {
-			if storage.LatestChainStatus.Error != nil {
-				return []interface{}{chainStatus, storage.LatestChainStatus.Error}
-			}
-
-			if response, Ok := (storage.LatestChainStatus.Reponse).([]byte); Ok {
-				err := json.Unmarshal(response, &chainStatus)
-				if err != nil {
-					return []interface{}{chainStatus, err}
-				}
-				return []interface{}{chainStatus, nil}
-			}
-		}
-
-		return []interface{}{chainStatus, errors.New("invalid Param")}
-	})
-
-	//Transaction
-	mockApi.On("Transaction", mock.Anything).Return(func(args mock.Arguments) mock.Arguments {
-		return []interface{}{nil}
-	})
-
-	//ViewAccessKey
-	mockApi.On("ViewAccessKey", mock.Anything).Return(func(args mock.Arguments) mock.Arguments {
-		return []interface{}{nil}
-	})
-
-	//ViewAccount
-	mockApi.On("ViewAccount", mock.Anything).Return(func(args mock.Arguments) mock.Arguments {
-		return []interface{}{nil}
-	})
 
 	return mockApi
 }
