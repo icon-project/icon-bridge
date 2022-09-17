@@ -1,75 +1,44 @@
-remove:
-	docker-compose down -v --remove-orphans	
-	docker rmi -f icon-bsc_btp
-	docker rm -f javascore-dist
-	docker rmi -f iconbridge
-	docker rmi -f btp/javascore
-	rm -rf local/artifacts local/log
-	rm -rf ../../../build/*
-	rm -rf ./data/bsc/node1
-	
-clean:
-	docker-compose down -v --remove-orphans
-	rm -rf local/artifacts
-
 buildsc:
-	make -C ../../../ dist-javascore dist-sol
+	./build.sh buildsc
 
-build:
-	make -C ../../../ dist-javascore dist-sol iconbridge-image
-	mkdir -p ./data/bsc/node1
-	docker-compose build
+buildnodes:
+	./build.sh buildnodes
 
-run-bsc:
-	docker-compose up --remove-orphans -d binancesmartchain
+runnodes:
+	./build.sh runnodes
 
-run:
-	docker-compose up --remove-orphans -d
+deploysclocalnet:
+	./build.sh deploysclocalnet
+	
+deploysctestnet:
+	./build.sh deploysctestnet
 
-build-testnet:
-	make -C ../../../ dist-javascore dist-sol iconbridge-image
-	docker-compose -f docker-compose.testnet.yml build
+runrelaysrc:
+	./build.sh runrelaysrc
 
-run-testnet:
-	docker-compose -f docker-compose.testnet.yml up --remove-orphans -d
+stopnodes:
+	./build.sh stopnodes
 
-solidity:
-	make -C ../../../ dist-sol iconbridge-image
-	docker-compose up --remove-orphans -d binancesmartchain
+cleanartifacts:
+	./build.sh cleanartifacts
 
-alice_transfer_eth:
-	docker-compose exec btp sh /iconbridge/bin/transfer_eth.sh
+buildrelayimg:
+	./build.sh buildrelayimg
 
-alice_transfer_icx:
-	docker-compose exec btp sh /iconbridge/bin/transfer_icx.sh
+runrelayimg:
+	./build.sh runrelayimg
 
-alice_transfer_bnb:
-	docker-compose exec btp sh /iconbridge/bin/transfer_bnb.sh
+stoprelayimg:
+	./build.sh stoprelayimg	
 
-bob_transfer_eth:
-	docker-compose exec btp sh /iconbridge/bin/transfer_eth_bsc.sh
+buildimglocal:
+	./build.sh buildimg
 
-bob_transfer_bnb:
-	docker-compose exec btp sh /iconbridge/bin/transfer_bnb_bsc.sh
+runimglocal:
+	./build.sh runimglocal
 
-bob_transfer_icx:
-	docker-compose exec btp sh /iconbridge/bin/transfer_icx_bsc.sh
+cleanimglocal:
+	./build.sh cleanimglocal
 
-
-testnet_alice_transfer_eth:
-	docker-compose -f docker-compose.testnet.yml exec btp_testnet sh /iconbridge/bin/transfer_eth.sh
-
-testnet_alice_transfer_icx:
-	docker-compose -f docker-compose.testnet.yml exec btp_testnet sh /iconbridge/bin/transfer_icx.sh
-
-testnet_alice_transfer_bnb:
-	docker-compose -f docker-compose.testnet.yml exec btp_testnet sh /iconbridge/bin/transfer_bnb.sh
-
-testnet_bob_transfer_eth:
-	docker-compose -f docker-compose.testnet.yml exec btp_testnet sh /iconbridge/bin/transfer_eth_bsc.sh
-
-testnet_bob_transfer_bnb:
-	docker-compose -f docker-compose.testnet.yml exec btp_testnet sh /iconbridge/bin/transfer_bnb_bsc.sh
-
-testnet_bob_transfer_icx:
-	docker-compose -f docker-compose.testnet.yml exec btp_testnet sh /iconbridge/bin/transfer_icx_bsc.sh
+removeimglocal:
+	./build.sh runimglocal

@@ -156,14 +156,14 @@ func AddForwarder(c *ForwarderConfig) error {
 	var h logrus.Hook
 	var err error
 	switch c.Vendor {
-	case HookVendorFluentd:
-		h, err = newHook(c, fluentHookCreater)
-	case HookVendorLogstash:
-		h, err = newHook(c, logstashHookCreater)
-	case HookVendorSlack:
-		h, err = newHook(c, slackHookCreater)
-	default:
-		return fmt.Errorf("not supported forwarder %s", c.Vendor)
+		case HookVendorFluentd:
+			h, err = newHook(c, fluentHookCreater)
+		case HookVendorLogstash:
+			h, err = newHook(c, logstashHookCreater)
+		case HookVendorSlack:
+			h, err = newHook(c, slackHookCreater)
+		default:
+			return fmt.Errorf("not supported forwarder %s", c.Vendor)
 	}
 	if err != nil {
 		return err

@@ -21,13 +21,13 @@ func newClients(urls []string, bmc string, l log.Logger) (cls []*Client, bmcs []
 	for _, url := range urls {
 		clrpc, err := rpc.Dial(url)
 		if err != nil {
-			l.Errorf("failed to create hmny rpc client: url=%v, %v", url, err)
+			l.Errorf("failed to create bsc rpc client: url=%v, %v", url, err)
 			return nil, nil, err
 		}
 		cleth := ethclient.NewClient(clrpc)
 		clbmc, err := NewBMC(common.HexToAddress(bmc), cleth)
 		if err != nil {
-			l.Errorf("failed to create bmc binding to hmny ethclient: url=%v, %v", url, err)
+			l.Errorf("failed to create bmc binding to bsc ethclient: url=%v, %v", url, err)
 			return nil, nil, err
 		}
 		bmcs = append(bmcs, clbmc)
@@ -153,26 +153,26 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (types.Receipts, error) {
 	return receipts, nil
 }
 
-func (c *Client) GetMedianGasPriceForBlock() (gasPrice *big.Int, gasHeight *big.Int, err error) {
+func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error) {
 	gasPrice = big.NewInt(0)
-	header, err := c.eth.HeaderByNumber(context.TODO(), nil)
+	header, err := c.eth.HeaderByNumber(ctx, nil)
 	if err != nil {
 		err = errors.Wrapf(err, "GetHeaderByNumber(height:latest) Err: %v", err)
 		return
 	}
 	height := header.Number
-	txnCount, err := c.eth.TransactionCount(context.TODO(), header.Hash())
+	txnCount, err := c.eth.TransactionCount(ctx, header.Hash())
 	if err != nil {
 		err = errors.Wrapf(err, "GetTransactionCount(height:%v, headerHash: %v) Err: %v", height, header.Hash(), err)
 		return
 	} else if err == nil && txnCount == 0 {
 		return nil, nil, fmt.Errorf("TransactionCount is zero for height(%v, headerHash %v)", height, header.Hash())
 	}
-	// txnF, err := c.eth.TransactionInBlock(context.TODO(), header.Hash(), 0)
+	// txnF, err := c.eth.TransactionInBlock(ctx, header.Hash(), 0)
 	// if err != nil {
 	// 	return nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, 0, err)
 	// }
-	txnS, err := c.eth.TransactionInBlock(context.TODO(), header.Hash(), uint(math.Floor(float64(txnCount)/2)))
+	txnS, err := c.eth.TransactionInBlock(ctx, header.Hash(), uint(math.Floor(float64(txnCount)/2)))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, txnCount-1, err)
 	}

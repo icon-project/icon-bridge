@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 create_ensure_bob_account() {
   cd ${CONFIG_DIR}
@@ -15,6 +15,10 @@ get_alice_address() {
 get_bob_address() {
   #cat $CONFIG_DIR/bsc.ks.json | jq -r .address
   echo 0x$(cat $CONFIG_DIR/bob.ks.json | jq -r .address)
+}
+
+toJsonArray() {
+    jq --compact-output --null-input '$ARGS.positional' --args -- "$@"
 }
 
 function hex2int() {

@@ -1,4 +1,4 @@
-FROM iconloop/goloop-icon:v0.9.7
+FROM iconloop/goloop-icon:latest
 
 RUN apk add --no-cache jq zip
 
