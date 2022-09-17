@@ -8,7 +8,6 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/log"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,9 +16,8 @@ func TestNearReceiver(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api:    &mockApi,
+						api:    testData.MockApi,
 						logger: log.New(),
 					}
 
@@ -40,7 +38,7 @@ func TestNearReceiver(t *testing.T) {
 						})
 						assert.True(f, Ok)
 
-						err = receiver.receiveBlocks(input.Offset, input.Source.String(), func(blockNotification *types.BlockNotification) {
+						err = receiver.receiveBlocks(input.Offset, input.Source.ContractAddress(), func(blockNotification *types.BlockNotification) {
 							if expected.Height == uint64(blockNotification.Offset()) {
 								assert.Equal(f, expected.Hash, blockNotification.Block().Hash().Base58Encode())
 
@@ -60,9 +58,8 @@ func TestNearReceiver(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api:    &mockApi,
+						api:    testData.MockApi,
 						logger: log.New(),
 					}
 

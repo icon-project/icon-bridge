@@ -12,13 +12,13 @@ contract MockBTSCore is BTSCore {
         IERC20Tradable(_erc20Address).mint(_acc, _value);
     }
 
-    function burnMock(
-        address _acc,
-        address _erc20Address,
-        uint256 _value
-    ) external {
-        IERC20Tradable(_erc20Address).mint(_acc, _value);
-    }
+    // function burnMock(
+    //     address _acc,
+    //     address _erc20Address,
+    //     uint256 _value
+    // ) external {
+    //     IERC20Tradable(_erc20Address).mint(_acc, _value);
+    // }
 
     function setAggregationFee(string calldata _coinName, uint256 _value)
         external
@@ -26,11 +26,11 @@ contract MockBTSCore is BTSCore {
         aggregationFee[_coinName] += _value;
     }
 
-    function clearAggregationFee() external {
-        for (uint256 i = 0; i < coinsName.length; i++) {
-            delete aggregationFee[coinsName[i]];
-        }
-    }
+    // function clearAggregationFee() external {
+    //     for (uint256 i = 0; i < coinsName.length; i++) {
+    //         delete aggregationFee[coinsName[i]];
+    //     }
+    // }
 
     function clearBTSPeripherySetting() external {
         btsPeriphery = IBTSPeriphery(address(0));

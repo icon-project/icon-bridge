@@ -97,18 +97,24 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         name = _name;
         serializedIrc2 = _serializedIrc2;
         blacklistDB = new BlacklistDB();
-        restriction.set(true);
 
-        // set sn to zero
-        sn.set(BigInteger.ZERO);
-        require(_feeNumerator.compareTo(BigInteger.ZERO) >= 0 &&
-                        _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
-                "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
-        require(_fixedFee.compareTo(BigInteger.ZERO) >= 0, "Fixed fee cannot be less than zero");
+        if (restriction.get() == null) {
+            restriction.set(true);
+        }
 
+        if (sn.get() == null) {
+            sn.set(BigInteger.ZERO);
+        }
 
-        coinDb.set(_name, new Coin(ZERO_SCORE_ADDRESS, _name, "", _decimals,
-                _feeNumerator, _fixedFee, NATIVE_COIN_TYPE));
+        if (coinDb.get(_name) == null) {
+            require(_feeNumerator.compareTo(BigInteger.ZERO) >= 0 &&
+                            _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
+                    "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
+            require(_fixedFee.compareTo(BigInteger.ZERO) >= 0, "Fixed fee cannot be less than zero");
+
+            coinDb.set(_name, new Coin(ZERO_SCORE_ADDRESS, _name, "", _decimals,
+                    _feeNumerator, _fixedFee, NATIVE_COIN_TYPE));
+        }
     }
 
     @External(readonly = true)
@@ -413,7 +419,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     public void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
         checkUintLimit(_value);
         String _coinName = coinAddressName.get(Context.getCaller());
-        if (_coinName != null && _from != Context.getAddress()) {
+        if (_coinName != null && !Context.getAddress().equals(_from)) {
             Context.require(coinAddresses.get(_coinName) != null, "CoinNotExists");
             Balance _userBalance = getBalance(_coinName, _from);
             _userBalance.setUsable(_userBalance.getUsable().add(_value));
@@ -479,6 +485,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         require(len > 0, "Zero length arguments");
         Address owner = Context.getCaller();
         BTPAddress to = BTPAddress.valueOf(_to);
+        checkBlacklist(net, owner.toString(), to.account());
+        checkBlacklist(to.net(), owner.toString(), to.account());
         
         for (int i = 0; i < len; i++) {
             String coinName = _coinNames[i];
@@ -487,13 +495,14 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             checkUintLimit(value);
             coinNameList.add(coinName);
             values.add(_values[i]);
-            checkRestrictions(coinName, owner.toString(), to, value);
+            checkTokenLimit(coinName, value);
         }
 
         transferFromBatch(owner, Context.getAddress(), _coinNames, _values);
 
         BigInteger value = Context.getValue();
         if (value != null && value.compareTo(BigInteger.ZERO) > 0) {
+            checkTokenLimit(name, value);
             coinNameList.add(name);
             values.add(value);
         }
@@ -1220,6 +1229,27 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             validateRestriction(_net, _tokenName, _from, _to, _value);
         }
     }
+
+    private void checkBlacklist(String net, String from, String to) {
+        if (restriction.get() != null && restriction.get()) {
+            if (isUserBlackListed(net, from)) {
+                throw BTSException.restricted("from user blacklisted");
+            }
+            if (isUserBlackListed(net, to)) {
+                throw BTSException.restricted("to user blacklisted");
+            }
+        }
+    }
+
+    private void checkTokenLimit(String _tokenName, BigInteger _value) {
+        if (restriction.get() != null && restriction.get()) {
+            BigInteger tokenLimit = getTokenLimit(_tokenName);
+            if (_value.compareTo(tokenLimit) > 0) {
+                throw BTSException.restricted("Transfer amount exceeds the transaction limit");
+            }
+        }
+    }
+
 
     private void validateRestriction(String _net, String _token, String _from, String _to, BigInteger _value) {
         if (isUserBlackListed(_net, _from)) {

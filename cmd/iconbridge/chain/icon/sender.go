@@ -29,6 +29,7 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common"
 	"github.com/icon-project/icon-bridge/common/codec"
+	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
@@ -66,9 +67,9 @@ func NewSender(
 }
 
 type senderOptions struct {
-	StepLimit        uint64  `json:"step_limit"`
-	TxDataSizeLimit  uint64  `json:"tx_data_size_limit"`
-	BalanceThreshold big.Int `json:"balance_threshold"`
+	StepLimit        uint64         `json:"step_limit"`
+	TxDataSizeLimit  uint64         `json:"tx_data_size_limit"`
+	BalanceThreshold intconv.BigInt `json:"balance_threshold"`
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
@@ -193,7 +194,7 @@ func (s *sender) Segment(
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
 	bal, err := s.cl.GetBalance(&AddressParam{Address: Address(s.w.Address())})
-	return bal, &s.opts.BalanceThreshold, err
+	return bal, &s.opts.BalanceThreshold.Int, err
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*relayTx, error) {

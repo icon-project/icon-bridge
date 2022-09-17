@@ -22,10 +22,17 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract ERC20TKN is Initializable, ContextUpgradeable, ERC20Upgradeable {
+    uint8 decimal;
 
-    function initialize(string memory name, string memory symbol, uint _decimals, uint _initialSupply) initializer public {
+    function initialize(string memory name, string memory symbol, uint8 _decimals, uint _initialSupply) initializer public {
+        require(_decimals <= 77, "OverLimit");
+        decimal = _decimals;
         __Context_init_unchained();
        __ERC20_init(name, symbol);
-        _mint(msg.sender, _initialSupply* (10**uint256(_decimals)));
+        _mint(msg.sender, _initialSupply* (10**uint8(_decimals)));
+    }
+    
+    function decimals() override public view returns ( uint8 ) {
+        return decimal;
     }
 }

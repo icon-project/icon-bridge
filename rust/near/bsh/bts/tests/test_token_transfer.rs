@@ -76,8 +76,6 @@ fn deposit_wnear() {
     let w_near = <Coin>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
 
-    let token_id = contract.coin_id(w_near.name().to_owned());
-
     testing_env!(
         context(wnear(), 0),
         Default::default(),
@@ -88,7 +86,7 @@ fn deposit_wnear() {
     contract.ft_on_transfer(chuck(), U128::from(100), "".to_string());
 
     testing_env!(context(chuck(), 0));
-    let result = contract.balance_of(chuck(), token_id);
+    let result = contract.balance_of(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(100).unwrap();
     assert_eq!(result, U128::from(expected.deposit()))
@@ -123,7 +121,7 @@ fn withdraw_wnear() {
     );
     let w_near = <Coin>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name().to_owned());
+    let token_id = contract.coin_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -135,13 +133,13 @@ fn withdraw_wnear() {
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
     testing_env!(context(chuck(), 0));
-    let result = contract.balance_of(chuck(), token_id.clone());
+    let result = contract.balance_of(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(1000).unwrap();
     assert_eq!(result, U128::from(expected.deposit()));
 
     testing_env!(context(chuck(), 1));
-    contract.withdraw(token_id.clone(), U128::from(999));
+    contract.withdraw(w_near.name().to_string(), U128::from(999));
 
     testing_env!(
         context(alice(), 0),
@@ -152,7 +150,7 @@ fn withdraw_wnear() {
     );
     contract.on_withdraw(chuck(), 999, token_id.clone(), w_near.symbol().to_owned());
 
-    let result = contract.balance_of(chuck(), token_id.clone());
+    let result = contract.balance_of(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(1).unwrap();
     assert_eq!(result, U128::from(expected.deposit()));
@@ -188,19 +186,18 @@ fn withdraw_wnear_higher_amount() {
     );
     let w_near = <Coin>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name().to_owned());
 
     testing_env!(context(wnear(), 0));
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
     testing_env!(context(chuck(), 0));
-    let result = contract.balance_of(chuck(), token_id.clone());
+    let result = contract.balance_of(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(1000).unwrap();
     assert_eq!(result, U128::from(expected.deposit()));
 
     testing_env!(context(chuck(), 1));
-    contract.withdraw(token_id.clone(), U128::from(1001));
+    contract.withdraw(w_near.name().to_string(), U128::from(1001));
 }
 
 #[test]
@@ -236,7 +233,7 @@ fn external_transfer() {
     let w_near = <Coin>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
 
-    let token_id = contract.coin_id(w_near.name().to_owned());
+    let token_id = contract.coin_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -248,9 +245,13 @@ fn external_transfer() {
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
     testing_env!(context(chuck(), 0));
-    contract.transfer(token_id.clone(), destination.clone(), U128::from(999));
+    contract.transfer(
+        w_near.name().to_string(),
+        destination.clone(),
+        U128::from(999),
+    );
 
-    let result = contract.account_balance(chuck(), token_id.clone());
+    let result = contract.account_balance(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
 
     expected.deposit_mut().add(1).unwrap();
@@ -303,7 +304,7 @@ fn handle_success_response_wnear_external_transfer() {
     let w_near = <Coin>::new(WNEAR.to_owned());
 
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name().to_owned());
+    let token_id = contract.coin_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -315,9 +316,13 @@ fn handle_success_response_wnear_external_transfer() {
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
     testing_env!(context(chuck(), 0));
-    contract.transfer(token_id.clone(), destination.clone(), U128::from(999));
+    contract.transfer(
+        w_near.name().to_string(),
+        destination.clone(),
+        U128::from(999),
+    );
 
-    let result = contract.account_balance(chuck(), token_id.clone());
+    let result = contract.account_balance(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
 
     expected.deposit_mut().add(1).unwrap();
@@ -326,7 +331,7 @@ fn handle_success_response_wnear_external_transfer() {
 
     assert_eq!(result, Some(expected));
 
-    let result = contract.balance_of(alice(), token_id.clone());
+    let result = contract.balance_of(alice(), w_near.name().to_string());
     assert_eq!(result, U128::from(0));
 
     let btp_message = &BtpMessage::new(
@@ -346,10 +351,10 @@ fn handle_success_response_wnear_external_transfer() {
     testing_env!(context(bmc(), 0));
     contract.handle_btp_message(btp_message.try_into().unwrap());
 
-    let result = contract.balance_of(alice(), token_id.clone());
+    let result = contract.balance_of(alice(), w_near.name().to_string());
     assert_eq!(result, U128::from(999));
 
-    let result = contract.account_balance(chuck(), token_id.clone());
+    let result = contract.account_balance(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(1).unwrap();
 
@@ -407,9 +412,8 @@ fn handle_success_response_baln_external_transfer() {
 
     let baln = <Coin>::new(BALN.to_owned());
     contract.register(baln.clone());
-    contract.register_coin_callback(baln.clone());
-
-    let token_id = contract.coin_id(baln.name().to_owned());
+    let token_id = env::sha256(baln.name().to_owned().as_bytes());
+    contract.register_coin_callback(baln.clone(), token_id.clone());
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -439,16 +443,20 @@ fn handle_success_response_baln_external_transfer() {
     contract.on_mint(900, token_id.clone(), baln.symbol().to_string(), chuck());
 
     testing_env!(context(chuck(), 0, 10u64.pow(18)));
-    contract.transfer(token_id.clone(), destination.clone(), U128::from(800));
+    contract.transfer(
+        baln.name().to_string(),
+        destination.clone(),
+        U128::from(800),
+    );
 
-    let result = contract.account_balance(chuck(), token_id.clone());
+    let result = contract.account_balance(chuck(), baln.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(100).unwrap();
     expected.locked_mut().add(800).unwrap();
 
     assert_eq!(result, Some(expected));
 
-    let result = contract.balance_of(alice(), token_id.clone());
+    let result = contract.balance_of(alice(), baln.name().to_string());
     assert_eq!(result, U128::from(0));
 
     let btp_message = &BtpMessage::new(
@@ -478,10 +486,10 @@ fn handle_success_response_baln_external_transfer() {
     );
     contract.on_burn(719, token_id.clone(), baln.symbol().to_string());
 
-    let result = contract.balance_of(alice(), token_id.clone());
+    let result = contract.balance_of(alice(), baln.name().to_string());
     assert_eq!(result, U128::from(81));
 
-    let result = contract.account_balance(chuck(), token_id.clone());
+    let result = contract.account_balance(chuck(), baln.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(100).unwrap();
 
@@ -540,7 +548,7 @@ fn handle_failure_response_wnear_external_transfer() {
     );
     let w_near = <Coin>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name().to_owned());
+    let token_id = contract.coin_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -552,9 +560,13 @@ fn handle_failure_response_wnear_external_transfer() {
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
     testing_env!(context(chuck(), 0));
-    contract.transfer(token_id.clone(), destination.clone(), U128::from(999));
+    contract.transfer(
+        w_near.name().to_string(),
+        destination.clone(),
+        U128::from(999),
+    );
 
-    let result = contract.account_balance(chuck(), token_id.clone());
+    let result = contract.account_balance(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
 
     expected.deposit_mut().add(1).unwrap();
@@ -563,7 +575,7 @@ fn handle_failure_response_wnear_external_transfer() {
 
     assert_eq!(result, Some(expected));
 
-    let result = contract.balance_of(alice(), token_id.clone());
+    let result = contract.balance_of(alice(), w_near.name().to_string());
     assert_eq!(result, U128::from(0));
 
     let btp_message = &BtpMessage::new(
@@ -583,10 +595,10 @@ fn handle_failure_response_wnear_external_transfer() {
     testing_env!(context(bmc(), 0));
     contract.handle_btp_message(btp_message.try_into().unwrap());
 
-    let result = contract.balance_of(alice(), token_id.clone());
+    let result = contract.balance_of(alice(), w_near.name().to_string());
     assert_eq!(result, U128::from(100));
 
-    let result = contract.account_balance(chuck(), token_id.clone());
+    let result = contract.account_balance(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(1).unwrap();
     expected.refundable_mut().add(899).unwrap();
@@ -647,9 +659,8 @@ fn handle_failure_response_baln_coin_external_transfer() {
 
     let baln = <Coin>::new(BALN.to_owned());
     contract.register(baln.clone());
-    contract.register_coin_callback(baln.clone());
-
-    let token_id = contract.coin_id(baln.name().to_owned());
+    let token_id = env::sha256(baln.name().to_owned().as_bytes());
+    contract.register_coin_callback(baln.clone(), token_id.clone());
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -678,16 +689,20 @@ fn handle_failure_response_baln_coin_external_transfer() {
     contract.on_mint(900, token_id.clone(), baln.symbol().to_string(), chuck());
 
     testing_env!(context(chuck(), 0));
-    contract.transfer(token_id.clone(), destination.clone(), U128::from(800));
+    contract.transfer(
+        baln.name().to_string(),
+        destination.clone(),
+        U128::from(800),
+    );
 
-    let result = contract.account_balance(chuck(), token_id.clone());
+    let result = contract.account_balance(chuck(), baln.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(100).unwrap();
     expected.locked_mut().add(800).unwrap();
 
     assert_eq!(result, Some(expected));
 
-    let result = contract.balance_of(alice(), token_id.clone());
+    let result = contract.balance_of(alice(), baln.name().to_string());
     assert_eq!(result, U128::from(0));
 
     let btp_message = &BtpMessage::new(
@@ -707,10 +722,10 @@ fn handle_failure_response_baln_coin_external_transfer() {
     testing_env!(context(bmc(), 0));
     contract.handle_btp_message(btp_message.try_into().unwrap());
 
-    let result = contract.balance_of(alice(), token_id.clone());
+    let result = contract.balance_of(alice(), baln.name().to_string());
     assert_eq!(result, U128::from(81));
 
-    let result = contract.account_balance(chuck(), token_id.clone());
+    let result = contract.account_balance(chuck(), baln.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(100).unwrap();
     expected.refundable_mut().add(719).unwrap();
@@ -768,9 +783,8 @@ fn reclaim_baln_coin() {
 
     let baln = <Coin>::new(BALN.to_owned());
     contract.register(baln.clone());
-    contract.register_coin_callback(baln.clone());
-
-    let token_id = contract.coin_id(baln.name().to_owned());
+    let coin_id = env::sha256(baln.name().to_owned().as_bytes());
+    contract.register_coin_callback(baln.clone(), coin_id.clone());
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -795,10 +809,14 @@ fn reclaim_baln_coin() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     contract.handle_btp_message(btp_message.try_into().unwrap());
-    contract.on_mint(899, token_id.clone(), baln.symbol().to_string(), chuck());
+    contract.on_mint(899, coin_id.clone(), baln.symbol().to_string(), chuck());
 
     testing_env!(context(chuck(), 0));
-    contract.transfer(token_id.clone(), destination.clone(), U128::from(800));
+    contract.transfer(
+        baln.name().to_string(),
+        destination.clone(),
+        U128::from(800),
+    );
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -818,9 +836,9 @@ fn reclaim_baln_coin() {
     contract.handle_btp_message(btp_message.try_into().unwrap());
 
     testing_env!(context(chuck(), 0));
-    contract.reclaim(token_id.clone(), U128::from(700));
+    contract.reclaim(baln.name().to_string(), U128::from(700));
 
-    let result = contract.account_balance(chuck(), token_id.clone());
+    let result = contract.account_balance(chuck(), baln.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(799).unwrap();
     expected.refundable_mut().add(19).unwrap();
@@ -862,7 +880,6 @@ fn external_transfer_higher_amount() {
 
     let w_near = <Coin>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name().to_owned());
 
     testing_env!(
         context(wnear(), 0),
@@ -874,11 +891,11 @@ fn external_transfer_higher_amount() {
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
     testing_env!(context(chuck(), 1000));
-    contract.transfer(token_id, destination, U128::from(1001));
+    contract.transfer(w_near.name().to_string(), destination, U128::from(1001));
 }
 
 #[test]
-#[should_panic(expected = "BSHRevertNotExistsToken")]
+#[should_panic(expected = "BSHRevertNotExistsToken: WNEAR")]
 fn external_transfer_unregistered_coin() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
@@ -908,9 +925,8 @@ fn external_transfer_unregistered_coin() {
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let token_id = contract.coin_id(w_near.name().to_owned());
     testing_env!(context(chuck(), 0));
-    contract.transfer(token_id, destination, U128::from(1001));
+    contract.transfer(w_near.name().to_string(), destination, U128::from(1001));
 }
 
 #[test]
@@ -947,7 +963,6 @@ fn external_transfer_nil_balance() {
     );
 
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name().to_owned());
 
     testing_env!(
         context(wnear(), 0),
@@ -959,7 +974,7 @@ fn external_transfer_nil_balance() {
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
     testing_env!(context(chuck(), 0));
-    contract.transfer(token_id, destination, U128::from(1001));
+    contract.transfer(w_near.name().to_string(), destination, U128::from(1001));
 }
 
 #[test]
@@ -995,7 +1010,7 @@ fn external_transfer_batch() {
         nativecoin.clone(),
     );
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name().to_owned());
+    let token_id = contract.coin_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -1007,9 +1022,13 @@ fn external_transfer_batch() {
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
     testing_env!(context(chuck(), 0));
-    contract.transfer_batch(vec![token_id.clone()], destination, vec![U128::from(999)]);
+    contract.transfer_batch(
+        vec![w_near.name().to_string()],
+        destination,
+        vec![U128::from(999)],
+    );
     // TODO: Add other tokens
-    let result = contract.account_balance(chuck(), token_id.clone());
+    let result = contract.account_balance(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
 
     expected.deposit_mut().add(1).unwrap();
@@ -1053,7 +1072,6 @@ fn external_transfer_batch_higher_amount() {
     );
     let w_near = <Coin>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name().to_owned());
 
     testing_env!(
         context(wnear(), 0),
@@ -1065,7 +1083,11 @@ fn external_transfer_batch_higher_amount() {
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
     testing_env!(context(chuck(), 0));
-    contract.transfer_batch(vec![token_id], destination, vec![U128::from(1001)]);
+    contract.transfer_batch(
+        vec![w_near.name().to_string()],
+        destination,
+        vec![U128::from(1001)],
+    );
 }
 
 #[test]
@@ -1100,9 +1122,7 @@ fn external_transfer_batch_unregistered_coin() {
         nativecoin.clone(),
     );
     let w_near = <Coin>::new(WNEAR.to_owned());
-    let token_id = contract.coin_id(w_near.name().to_owned());
     let baln = <Coin>::new(BALN.to_owned());
-    let baln_token_id = contract.coin_id(baln.name().to_owned());
     contract.register(w_near.clone());
 
     testing_env!(
@@ -1116,7 +1136,7 @@ fn external_transfer_batch_unregistered_coin() {
 
     testing_env!(context(chuck(), 0));
     contract.transfer_batch(
-        vec![token_id, baln_token_id],
+        vec![w_near.name().to_string(), baln.name().to_string()],
         destination,
         vec![U128::from(900), U128::from(1)],
     );
@@ -1166,10 +1186,8 @@ fn external_transfer_batch_nil_balance() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     contract.register(baln.clone());
-    contract.register_coin_callback(baln.clone());
-
-    let token_id = contract.coin_id(w_near.name().to_owned());
-    let baln_token_id = contract.coin_id(baln.name().to_owned());
+    let coin_id = env::sha256(baln.name().to_owned().as_bytes());
+    contract.register_coin_callback(baln.clone(), coin_id.clone());
 
     testing_env!(
         context(wnear(), 0),
@@ -1182,7 +1200,7 @@ fn external_transfer_batch_nil_balance() {
 
     testing_env!(context(chuck(), 0));
     contract.transfer_batch(
-        vec![token_id, baln_token_id],
+        vec![w_near.name().to_string(), baln.name().to_string()],
         destination,
         vec![U128::from(900), U128::from(1)],
     );

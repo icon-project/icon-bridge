@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/near/borsh-go"
+	"github.com/shopspring/decimal"
 	"math/big"
 	"strconv"
 	"strings"
-	"github.com/shopspring/decimal"
 )
 
 const (
@@ -248,14 +248,6 @@ type FunctionCallError struct {
 
 type AccountDoesNotExist struct {
 	AccountId AccountId `json:"account_id"`
-}
-
-type CallFunction struct {
-	RequestType  string    `json:"request_type"`
-	Finality     string    `json:"finality"`
-	AccountId    AccountId `json:"account_id"`
-	MethodName   string    `json:"method_name"`
-	ArgumentsB64 string    `json:"args_base64"`
 }
 
 type ExecutionOutcomeWithIdView struct {

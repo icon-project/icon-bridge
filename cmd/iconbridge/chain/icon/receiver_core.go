@@ -39,7 +39,7 @@ func (r *ReceiverCore) newVerifer(opts *VerifierOptions) (*Verifier, error) {
 	vr := Verifier{
 		next:               int64(opts.BlockHeight),
 		nextValidatorsHash: opts.ValidatorsHash,
-		validators: map[string][]common.HexBytes{
+		validators: map[string][]common.Address{
 			opts.ValidatorsHash.String(): validators,
 		},
 	}
@@ -76,7 +76,7 @@ func (r *ReceiverCore) syncVerifier(vr *Verifier, height int64) error {
 		Height         int64
 		Header         *BlockHeader
 		Votes          []byte
-		NextValidators []common.HexBytes
+		NextValidators []common.Address
 	}
 
 	type req struct {
@@ -189,10 +189,10 @@ func (r *ReceiverCore) ReceiveLoop(ctx context.Context, startHeight, startSeq ui
 
 	type res struct {
 		Height         int64
-		Hash           common.HexBytes
+		Hash           common.HexHash
 		Header         *BlockHeader
 		Votes          []byte
-		NextValidators []common.HexBytes
+		NextValidators []common.Address
 		Txrs           []*TxResult
 	}
 

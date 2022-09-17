@@ -23,9 +23,10 @@ import (
 
 const (
 	BlockInterval              = 3 * time.Second
-	BlockHeightPollInterval    = 60 * time.Second
+	BlockHeightPollInterval    = 15 * time.Second
+	BlockFinalityConfirmations = 10
+	// TODO: adapt BlockHeightPollInterval depending on the value of BlockInterval or BlockFinalityConfirmations to avoid drift
 	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
-	BlockConfirmationInterval  = 5
 	RPCCallRetry               = 5
 )
 
@@ -250,7 +251,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			r.log.WithFields(log.Fields{"error": err}).Error("receiveLoop: failed to GetBlockNumber")
 			return 0
 		}
-		return height - BlockConfirmationInterval
+		return height - BlockFinalityConfirmations
 	}
 	next, latest := opts.StartHeight, latestHeight()
 

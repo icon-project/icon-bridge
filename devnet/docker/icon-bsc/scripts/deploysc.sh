@@ -6,19 +6,20 @@ source config.sh
 source keystore.sh
 source rpc.sh
 
-
-deploysc() {
-    
-    echo "start..."
-    echo "check god keys..."
+setup_account() {
+      echo "check god keys..."
     if [ ! -f "${ICON_KEY_STORE}" ]; then
         ensure_key_store $ICON_KEY_STORE $ICON_SECRET
-        echo "Fund newly created wallet " $ICON_KEY_STORE
+        echo "Do not Panic..."
+        echo "Missing ICON God Wallet on the required path. One has been created "$ICON_KEY_STORE
+        echo "Fund this newly created wallet and rerun ./deploysc.sh again" 
         exit 0
     fi
     if [ ! -f "${BSC_KEY_STORE}" ]; then
         ensure_bsc_key_store $BSC_KEY_STORE $BSC_SECRET
-        echo "Fund newly created wallet " $BSC_KEY_STORE
+        echo "Do not Panic..."
+        echo "Missing BSC God Wallet on the required path. One has been created "$BSC_KEY_STORE
+        echo "Fund this newly created wallet and rerun ./deploysc.sh again " 
         exit 0
     fi
     export PRIVATE_KEY="[\""$(cat $BSC_KEY_STORE.priv)"\"]"
@@ -32,7 +33,17 @@ deploysc() {
     ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bts.wallet.json $CONFIG_DIR/keystore/bsc.bts.wallet.secret
     ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bmc.wallet.json $CONFIG_DIR/keystore/bsc.bmc.wallet.secret
     ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bmr.wallet.json $CONFIG_DIR/keystore/bsc.bmr.wallet.secret
+}
 
+deploysc() {
+    if [ ! -d $BUILD_DIR ]; then 
+      echo "Do not Panic..."
+      echo "Build Artifacts have not been created. Expected on path "$BUILD_DIR 
+      echo "Run make buildsc to do so. Check README.md for more"
+      exit 0
+    fi
+    echo "Start "
+    sleep 15
     echo "$GOLOOP_RPC_NID.icon" >$CONFIG_DIR/net.btp.icon #0x240fa7.icon
     mkdir -p $CONFIG_DIR/tx
 
@@ -152,7 +163,9 @@ deploysc() {
     generate_addresses_json >$CONFIG_DIR/addresses.json  
     generate_relay_config >$CONFIG_DIR/bmr.config.json
     wait_for_file $CONFIG_DIR/bmr.config.json
-    echo "Done deploying"
+    
+    echo "Smart contracts have been deployed "
+    echo "You can now run the relay with make runrelaysrc OR make runrelayimg"
 }
 
 wait_for_file() {
@@ -206,7 +219,7 @@ generate_relay_config() {
         --argfile dst_key_store "$CONFIG_DIR/keystore/icon.bmr.wallet.json" \
         --arg dst_key_store_cointype "icx" \
         --arg dst_key_password "$(cat $CONFIG_DIR/keystore/icon.bmr.wallet.secret)" \
-        --argjson dst_options '{"step_limit":13610920010, "tx_data_size_limit":8192,"balance_threshold":10000000000000000000}'
+        --argjson dst_options '{"step_limit":2500000000, "tx_data_size_limit":8192,"balance_threshold":"10000000000000000000"}'
     )" \
     --argjson i2b_relay "$(
       jq -n '
@@ -235,10 +248,12 @@ generate_relay_config() {
         --arg dst_key_store_cointype "evm" \
         --arg dst_key_password "$(cat $CONFIG_DIR/keystore/bsc.bmr.wallet.secret)" \
         --argjson dst_tx_data_size_limit 8192 \
-        --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":100000000000000000000,"boost_gas_price":1.0}'
+        --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":"100000000000000000000","boost_gas_price":1.0}'
     )"
 }
 
 #wait-for-it.sh $GOLOOP_RPC_ADMIN_URI
 # run provisioning
+echo "start..."
+setup_account
 deploysc

@@ -13,11 +13,11 @@ import (
 )
 
 type Receiver struct {
-	Clients     []*Client
-	Source      chain.BTPAddress
-	Destination chain.BTPAddress
-	Logger      log.Logger
-	Options     struct {
+	clients     []IClient
+	source      chain.BTPAddress
+	destination chain.BTPAddress
+	logger      log.Logger
+	options     struct {
 		SyncConcurrency uint `json:"syncConcurrency"`
 	}
 }
@@ -43,7 +43,7 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, options json.RawMessa
 }
 
 func newMockReceiver(source, destination chain.BTPAddress, client *Client, urls []string, _ json.RawMessage, logger log.Logger) (*Receiver, error) {
-	clients := make([]*Client, 0)
+	clients := make([]IClient, 0)
 	clients = append(clients, client)
 	receiver := &Receiver{
 		Clients:     clients,
@@ -71,7 +71,7 @@ func (r *Receiver) receiveBlocks(height uint64, source string, processBlockNotif
 			}
 		}
 		return nil
-	}, func() *Client {
+	}, func() IClient {
 		return r.client()
 	})
 }
@@ -122,8 +122,8 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 	return errCh, nil
 }
 
-func (r *Receiver) client() *Client {
-	return r.Clients[rand.Intn(len(r.Clients))]
+func (r *Receiver) client() IClient {
+	return r.clients[rand.Intn(len(r.clients))]
 }
 
 func (r *Receiver) StopReceivingBlocks() {
