@@ -75,22 +75,46 @@ impl BtpTokenService {
                 receiver,
                 assets,
             } => match env::promise_result(0) {
-                PromiseResult::Successful(_) => log!(
-                    "TransferStart({}, {}, {}, {:?})",
-                    sender,
-                    receiver,
-                    serial_no,
-                    assets
-                ),
+                PromiseResult::Successful(_) => {
+                    let mut assets_log: Vec<Value> = Vec::new();
+                    assets.iter().for_each(|asset| {
+                        assets_log.push(json!({
+                        "token_name": asset.name(),
+                        "amount": asset.amount().to_string(),
+                        "fee": asset.fees().to_string(),
+                        }))
+                    });
+                    let log = json!({
+                      "event": "TransferStart",
+                      "code": "0",
+                      "sender_address": sender,
+                      "serial_number": serial_no.to_string(),
+                      "receiver_address": receiver,
+                      "assets": assets_log
+                    });
+
+                    log!(near_sdk::serde_json::to_string(&log).unwrap())
+                }
                 PromiseResult::NotReady => log!("Not Ready"),
                 PromiseResult::Failed => {
-                    log!(
-                        "TransferFailed({}, {}, {}, {:?})",
-                        sender,
-                        receiver,
-                        serial_no,
-                        assets
-                    );
+                    let mut assets_log: Vec<Value> = Vec::new();
+                    assets.iter().for_each(|asset| {
+                        assets_log.push(json!({
+                        "token_name": asset.name(),
+                        "amount": asset.amount().to_string(),
+                        "fee": asset.fees().to_string(),
+                        }))
+                    });
+                    let log = json!({
+                      "event": "TransferStart",
+                      "code": "1",
+                      "sender_address": sender,
+                      "serial_number": serial_no.to_string(),
+                      "receiver_address": receiver,
+                      "assets" : assets_log
+                    });
+
+                    log!(near_sdk::serde_json::to_string(&log).unwrap());
                     self.rollback_external_transfer(&AccountId::from_str(sender).unwrap(), assets)
                 }
             },
@@ -119,6 +143,40 @@ impl BtpTokenService {
                     ref code,
                     ref message,
                 } => self.handle_response(btp_message.serial_no(), *code, &message),
+
+                TokenServiceType::RequestBlacklist {
+                    request_type,
+                    addresses,
+                    network,
+                } => {
+                    let mut non_valid_addresses: Vec<String> = Vec::new();
+                    let mut valid_addresses: Vec<AccountId> = Vec::new();
+                    addresses.into_iter().clone().for_each(|address| {
+                        match AccountId::try_from(address.clone()) {
+                            Ok(account_id) => valid_addresses.push(account_id),
+                            Err(_) => non_valid_addresses.push(address.to_string()),
+                        }
+                    });
+                    if !non_valid_addresses.is_empty() {
+                        return Err(BshError::InvalidAddress {
+                            message: non_valid_addresses.join(", "),
+                        });
+                    }
+                    match request_type {
+                        BlackListType::AddToBlacklist => {
+                            self.add_to_blacklist(valid_addresses);
+
+                            Ok(None)
+                        }
+                        BlackListType::RemoveFromBlacklist => {
+                            match self.remove_from_blacklist(valid_addresses) {
+                                Ok(_) => Ok(None),
+                                Err(err) => Err(err),
+                            }
+                        }
+                        BlackListType::UnhandledType => todo!(),
+                    }
+                }
 
                 TokenServiceType::UnknownType => {
                     log!(
@@ -196,13 +254,13 @@ impl BtpTokenService {
             }
             self.requests_mut().remove(*serial_no.get());
 
-            log!(
-                "TransferEnd({}, {}, {}, {:?})",
-                sender_id,
-                serial_no.get(),
-                code,
-                message
-            )
+            let log = json!({
+                "event": "TransferEnd",
+                "code": code.to_string(),
+                "serial_number": serial_no.get().to_string(),
+                "message": message,
+            });
+            log!(near_sdk::serde_json::to_string(&log).unwrap())
         }
         Ok(None)
     }

@@ -49,12 +49,13 @@ impl BtpTokenService {
     }
 
     #[payable]
-    pub fn withdraw(&mut self, coin_id: CoinId, amount: U128) {
+    pub fn withdraw(&mut self, coin_name: String, amount: U128) {
         // To Prevent Spam
         assert_one_yocto();
 
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
+        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
 
         self.assert_have_minimum_amount(amount);
         self.assert_have_sufficient_deposit(&account, &coin_id, amount, None);
@@ -101,11 +102,11 @@ impl BtpTokenService {
             .then(Promise::new(account.clone()).transfer(1));
     }
 
-    pub fn reclaim(&mut self, coin_id: CoinId, amount: U128) {
+    pub fn reclaim(&mut self, coin_name: String, amount: U128) {
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
         self.assert_have_minimum_amount(amount.into());
-        self.assert_coins_exists(&vec![coin_id.clone()]);
+        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
         self.assert_have_sufficient_refundable(&account, &coin_id, amount);
 
         let mut balance = self.balances.get(&account, &coin_id).unwrap();
@@ -115,8 +116,9 @@ impl BtpTokenService {
         self.balances.set(&account, &coin_id, balance);
     }
 
-    pub fn locked_balance_of(&self, owner_id: AccountId, coin_id: CoinId) -> U128 {
-        self.assert_coins_exists(&vec![coin_id.clone()]);
+    pub fn locked_balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
+
         let balance = self
             .balances
             .get(&owner_id, &coin_id)
@@ -124,8 +126,9 @@ impl BtpTokenService {
         balance.locked().into()
     }
 
-    pub fn refundable_balance_of(&self, owner_id: AccountId, coin_id: CoinId) -> U128 {
-        self.assert_coins_exists(&vec![coin_id.clone()]);
+    pub fn refundable_balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
+
         let balance = self
             .balances
             .get(&owner_id, &coin_id)
@@ -134,12 +137,18 @@ impl BtpTokenService {
     }
 
     #[cfg(feature = "testable")]
-    pub fn account_balance(&self, owner_id: AccountId, coin_id: CoinId) -> Option<AccountBalance> {
+    pub fn account_balance(
+        &self,
+        owner_id: AccountId,
+        coin_name: String,
+    ) -> Option<AccountBalance> {
+        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
         self.balances.get(&owner_id, &coin_id)
     }
 
-    pub fn balance_of(&self, owner_id: AccountId, coin_id: CoinId) -> U128 {
-        self.assert_coins_exists(&vec![coin_id.clone()]);
+    pub fn balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
+        
         let balance = self
             .balances
             .get(&owner_id, &coin_id)
@@ -160,22 +169,34 @@ impl BtpTokenService {
                 let mut balance = self.balances.get(&account, &coin_id).unwrap();
                 balance.deposit_mut().sub(amount).unwrap();
                 self.balances.set(&account.clone(), &coin_id, balance);
+                let log = json!(
+                {
 
-                log!(
-                    "[Withdrawn] Amount : {} by {}  {}",
-                    amount,
-                    account,
-                    coin_symbol
-                );
+                    "event": "Withdraw",
+                    "code": "0",
+                    "by": account,
+                    "amount": amount.to_string(),
+                    "token_name": coin_symbol
+
+                });
+                log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
-            PromiseResult::NotReady => log!("Not Ready"),
+            PromiseResult::NotReady => {
+                log!("Not Ready")
+            }
             PromiseResult::Failed => {
-                log!(
-                    "[Withdraw Failed] Amount : {} by {}  {}",
-                    amount,
-                    account,
-                    coin_symbol
-                );
+                println!("{}", amount.to_string());
+                let log = json!(
+                {
+
+                    "event": "Withdraw",
+                    "code": "1",
+                    "by": account,
+                    "amount": amount.to_string(),
+                    "token_name": coin_symbol
+
+                });
+                log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
         }
     }
