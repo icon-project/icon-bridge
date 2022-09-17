@@ -2944,8 +2944,8 @@ var TransferBatchBiDirection Script = Script{
 		}
 
 		if len(coinNames) == 0 {
-			errs = UnsupportedCoinArgs // fmt.Errorf(" Should specify at least one coinName, got zero")
-			ts.logger.Debug(errs)
+			errs = UnsupportedCoinArgs //
+			ts.logger.Debug(fmt.Errorf(" Should specify at least one coinName, got zero"))
 			return
 		}
 		src, tmpOk := ts.clsPerChain[srcChain]
@@ -2961,13 +2961,13 @@ var TransferBatchBiDirection Script = Script{
 			return
 		}
 		if len(coinNames) == 1 && coinNames[0] == src.NativeCoin() {
-			errs = fmt.Errorf("A single src.NativeCoin %v has been used", coinNames[0])
-			ts.logger.Error(errs)
+			errs = UnsupportedCoinArgs //
+			ts.logger.Error(fmt.Errorf("A single src.NativeCoin %v has been used", coinNames[0]))
 			return
 		}
 		if len(coinNames) == 1 && coinNames[0] == dst.NativeCoin() {
-			errs = fmt.Errorf("A single dst.NativeCoin %v has been used", coinNames[0])
-			ts.logger.Error(errs)
+			errs = UnsupportedCoinArgs //
+			ts.logger.Error(fmt.Errorf("A single dst.NativeCoin %v has been used", coinNames[0]))
 			return
 		}
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)
@@ -3112,7 +3112,7 @@ var TransferBatchBiDirection Script = Script{
 			return
 		}
 		ts.logger.Debug("transferHashOnSrc ", transferHashOnSrc)
-		if err := ts.ValidateTransactionResultAndEvents(ctx, srcChain, transferHashOnSrc, coinNames, srcAddr, dstAddr, tokenAmountBeforeFeeChargeOnSrc); err != nil {
+		if _, err := ts.ValidateTransactionResult(ctx, srcChain, transferHashOnSrc); err != nil {
 			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
 			ts.logger.Error(errs)
 			return
@@ -3324,7 +3324,7 @@ var TransferBatchBiDirection Script = Script{
 			return
 		}
 		ts.logger.Debug("transferHashOnDst ", transferHashOnDst)
-		if err := ts.ValidateTransactionResultAndEvents(ctx, dstChain, transferHashOnDst, coinNames, dstAddr, srcAddr, tokenAmountBeforeFeeChargeOnDst); err != nil {
+		if _, err := ts.ValidateTransactionResult(ctx, dstChain, transferHashOnDst); err != nil {
 			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
 			ts.logger.Error(errs)
 			return

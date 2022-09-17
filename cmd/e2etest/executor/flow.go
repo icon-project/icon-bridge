@@ -35,8 +35,7 @@ type aggReq struct {
 }
 
 var transferScripts = []*Script{
-	&TransferUniDirection,
-	&TransferBiDirection,
+	&TransferBatchBiDirection,
 }
 
 var configScripts = []*ConfigureScript{
@@ -180,12 +179,12 @@ func (ex *executor) checkWhetherFeeAddsUp(confResponse []*configureReq, transRes
 		}
 	}
 	totalCalculatedFeePerCoin := map[string]*big.Int{}
+	for coinName := range initAggFee {
+		totalCalculatedFeePerCoin[coinName] = big.NewInt(0)
+	}
 	for _, pkts := range packets {
 		for _, pkt := range pkts {
 			for coinName, pktAmt := range pkt.feePerCoin {
-				if _, ok := totalCalculatedFeePerCoin[coinName]; !ok {
-					totalCalculatedFeePerCoin[coinName] = big.NewInt(0)
-				}
 				totalCalculatedFeePerCoin[coinName].Add(totalCalculatedFeePerCoin[coinName], pktAmt) // add charged fee to cumulativeTxnFee
 			}
 		}
@@ -226,7 +225,7 @@ func (ex *executor) checkWhetherFeeAddsUp(confResponse []*configureReq, transRes
 
 func (ex *executor) showErrorMessage(confResponse []*configureReq, transResponse []*transferReq) {
 	nonIgnoreErrorCount := 0
-	for _, t := range transResponse {
+	for _, t := range confResponse {
 		if t.msg.err == nil {
 			continue
 		}

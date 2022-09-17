@@ -54,7 +54,7 @@ func (gen *pointGenerator) batchPointGenerator(pts []*transferPoint) []*transfer
 			},
 		})
 
-		pts = append(pts, &transferPoint{
+		/*pts = append(pts, &transferPoint{
 			SrcChain: chains[pair[0]],
 			DstChain: chains[pair[1]],
 			CoinNames: []string{
@@ -78,7 +78,7 @@ func (gen *pointGenerator) batchPointGenerator(pts []*transferPoint) []*transfer
 				big.NewInt(1),
 				big.NewInt(2),
 			},
-		})
+		})*/
 
 		pts = append(pts, &transferPoint{
 			SrcChain: chains[pair[0]],

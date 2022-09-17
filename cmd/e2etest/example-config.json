@@ -78,7 +78,7 @@
                 "TransferTokenIntraChainGasLimit":300000,
                 "ApproveTokenInterChainGasLimit":800000,
                 "TransferCoinInterChainGasLimit":2500000,
-                "TransferBatchCoinInterChainGasLimit":2000000,
+                "TransferBatchCoinInterChainGasLimit":4000000,
                 "DefaultGasLimit":5000000
             }
         }, 
