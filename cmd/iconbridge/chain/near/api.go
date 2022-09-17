@@ -34,6 +34,14 @@ func (api *api) BroadcastTxAsync(param interface{}) (response types.CryptoHash, 
 	return response, nil
 }
 
+func (api *api) CallFunction(param interface{}) (response types.CallFunctionResponse, err error) {
+	if _, err := api.Do("query", param, &response); err != nil {
+		return types.CallFunctionResponse{}, err
+	}
+
+	return response, nil
+}
+
 func (api *api) Changes(param interface{}) (response types.ContractStateChange, err error) {
 	if _, err := api.Do("EXPERIMENTAL_changes", param, &response); err != nil {
 		return types.ContractStateChange{}, err
@@ -50,9 +58,17 @@ func (api *api) LightClientProof(param interface{}) (response types.ReceiptProof
 	return response, nil
 }
 
-func (api *api) ViewAccount(param interface{}) (response types.Account, err error) {
-	if _, err := api.Do("query", param, &response); err != nil {
-		return types.Account{}, err
+func (api *api) Status(param interface{}) (response types.ChainStatus, err error) {
+	if _, err := api.Do("status", param, &response); err != nil {
+		return types.ChainStatus{}, err
+	}
+
+	return response, nil
+}
+
+func (api *api) Transaction(param interface{}) (response types.TransactionResult, err error) {
+	if _, err := api.Do("tx", param, &response); err != nil {
+		return types.TransactionResult{}, err
 	}
 
 	return response, nil
@@ -66,25 +82,9 @@ func (api *api) ViewAccessKey(param interface{}) (response types.AccessKeyRespon
 	return response, nil
 }
 
-func (api *api) CallFunction(param interface{}) (response types.CallFunctionResponse, err error) {
+func (api *api) ViewAccount(param interface{}) (response types.Account, err error) {
 	if _, err := api.Do("query", param, &response); err != nil {
-		return types.CallFunctionResponse{}, err
-	}
-
-	return response, nil
-}
-
-func (api *api) Status(param interface{}) (response types.ChainStatus, err error) {
-	if _, err := api.Do("status", param, &response); err != nil {
-		return types.ChainStatus{}, err
-	}
-
-	return response, nil
-}
-
-func (api *api) Transaction(param interface{}) (response types.TransactionResult, err error) {
-	if _, err := api.Do("tx", param, &response); err != nil {
-		return types.TransactionResult{}, err
+		return types.Account{}, err
 	}
 
 	return response, nil

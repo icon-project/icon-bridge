@@ -36,13 +36,13 @@ type IApi interface {
 	Block(param interface{}) (response types.Block, err error)
 	BroadcastTxCommit(param interface{}) (response types.TransactionResult, err error)
 	BroadcastTxAsync(param interface{}) (response types.CryptoHash, err error)
+	CallFunction(param interface{}) (response types.CallFunctionResponse, err error)
 	Changes(param interface{}) (response types.ContractStateChange, err error)
 	LightClientProof(param interface{}) (response types.ReceiptProof, err error)
-	ViewAccount(param interface{}) (response types.Account, err error)
-	ViewAccessKey(param interface{}) (response types.AccessKeyResponse, err error)
-	CallFunction(param interface{}) (response types.CallFunctionResponse, err error)
 	Status(param interface{}) (response types.ChainStatus, err error)
 	Transaction(param interface{}) (response types.TransactionResult, err error)
+	ViewAccessKey(param interface{}) (response types.AccessKeyResponse, err error)
+	ViewAccount(param interface{}) (response types.Account, err error)
 }
 
 type IClient interface {
