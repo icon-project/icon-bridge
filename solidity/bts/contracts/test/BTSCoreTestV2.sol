@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.8.0;
 pragma abicoder v2;
-import "../BTSCore.sol";
+import "../BTSCoreV1.sol";
 
-contract BTSCoreV2 is BTSCore {
+contract BTSCoreTestV2 is BTSCoreV1 {
     using String for string;
     using SafeMathUpgradeable for uint256;
 
@@ -55,11 +55,11 @@ contract BTSCoreV2 is BTSCore {
     }
 
     //  @notice This is just an example to show how to add more function in upgrading a contract
-    function clearAggregationFee() external {
-        for (uint256 i = 0; i < coinsName.length; i++) {
-            delete aggregationFee[coinsName[i]];
-        }
-    }
+//    function clearAggregationFee() external {
+//        for (uint256 i = 0; i < coinsName.length; i++) {
+//            delete aggregationFee[coinsName[i]];
+//        }
+//    }
 
     //  @notice This is just an example to show how to add more function in upgrading a contract
     function clearBTSPeripherySetting() external {

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 ######################################## javascore service methods - start ######################################
 source utils.sh
 source rpc.sh
