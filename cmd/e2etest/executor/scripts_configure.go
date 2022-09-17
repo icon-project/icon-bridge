@@ -278,8 +278,8 @@ func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context,
 			},
 		})
 		ts.logger.Debug("msg err ", msg.err)
-		if msg.err != nil && (msg.err.Error() == ExternalContextCancelled.Error() || msg.err.Error() != NilEventReceived.Error()) {
-			return
+		if msg.err != nil && (msg.err.Error() == ExternalContextCancelled.Error() || msg.err.Error() == NilEventReceived.Error()) {
+			return // end of program, return without doing anything
 		} else {
 			if len(resMap) == 0 {
 				saveCb(msg)
