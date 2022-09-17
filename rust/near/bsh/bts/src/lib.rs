@@ -62,7 +62,7 @@ pub struct BtpTokenService {
     bmc: AccountId,
     name: String,
     blacklisted_accounts: BlackListedAccounts,
-    tokenlimits: TokenLimits,
+    token_limits: TokenLimits,
     coin_ids: CoinIds,
 
     #[cfg(feature = "testable")]
@@ -107,7 +107,7 @@ impl BtpTokenService {
             #[cfg(feature = "testable")]
             message: LazyOption::new(b"message".to_vec(), None),
             registered_coins: RegisteredCoins::new(),
-            tokenlimits: TokenLimits::new(),
+            token_limits: TokenLimits::new(),
             coin_ids,
         }
     }

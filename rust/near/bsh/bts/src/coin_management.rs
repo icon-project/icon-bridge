@@ -263,7 +263,7 @@ impl BtpTokenService {
                 }
 
                 for (index, coin_name) in valid_coins.iter().enumerate() {
-                    self.tokenlimits.add(coin_name, &token_limits[index])
+                    self.token_limits.add(coin_name, &token_limits[index])
                 }
                 return Ok(());
             }
@@ -273,7 +273,7 @@ impl BtpTokenService {
 
     #[cfg(feature = "testable")]
     pub fn get_token_limit(&self) -> &TokenLimits {
-        &self.tokenlimits
+        &self.token_limits
     }
 
     pub fn coin_id(&self, coin_name: &str) -> Result<CoinId, BshError> {
