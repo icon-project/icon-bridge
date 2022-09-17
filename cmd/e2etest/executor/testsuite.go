@@ -537,13 +537,6 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, stopCtx context.Co
 			if ev == nil {
 				return NilEventReceived
 			}
-			if cb, ok := cbPerEvent[ev.msg.EventType]; ok {
-				if cb != nil {
-					if err := cb(ev); err != nil {
-						return err
-					}
-				}
-			}
 			if ev.msg.EventType == chain.FeeGatheringRequest {
 				if err = src.WatchForFeeGatheringTransferStart(ts.id, feeAggBTPAddress); err != nil {
 					err = errors.Wrapf(err, "WatchForFeeGatheringTransferStart %v", err)
@@ -599,6 +592,13 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, stopCtx context.Co
 				err = errors.Wrapf(err, "Unexpected EventType %v", ev.msg)
 				ts.logger.Error(err)
 				return
+			}
+			if cb, ok := cbPerEvent[ev.msg.EventType]; ok {
+				if cb != nil {
+					if err := cb(ev); err != nil {
+						return err
+					}
+				}
 			}
 		}
 
