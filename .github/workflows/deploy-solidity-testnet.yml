@@ -3,7 +3,23 @@ name: 'Deploy Solidity BMC/BTS to BSC Testnet'
 on:
   workflow_dispatch:
   workflow_call:
-
+    secrets:
+      AWS_S3_BUCKET:
+        required: true
+      AWS_REGION:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      BSC_PRIVATE_KEY:
+        required: true
+      BSC_RPC_URI:
+        required: true
+      BSC_NID:
+        required: true
+      BSC_BMC_NET:
+        required: true
 jobs:
   deploy-bmc-solidity:
     name: deploy solidity BMC to BSC Testnet
@@ -15,6 +31,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
       - name: yarn install(BMC)
         working-directory: ./solidity/bmc
         run: yarn install
@@ -24,21 +47,49 @@ jobs:
         shell: bash
         timeout-minutes: 5
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
         run: |
           truffle compile --all
-          PRIVATE_KEY="$PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
           truffle migrate --network bsc --compile-none
           jq -r '.networks[] | .address' build/contracts/BMCPeriphery.json > bsc-addr-bmcperiphery.txt
+          jq -r '.networks[] | .address' build/contracts/BMCManagement.json > bsc-addr-bmcmanagement.txt
+
+      - name: BSC blockHeight
+        working-directory: ./solidity/bmc
+        shell: bash
+        timeout-minutes: 5
+        env:
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+        run: |
+          blockHeight=$(curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' --data-raw '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[], "id": 1}' | jq -r .result)
+          echo $blockHeight | xargs printf "%d" > bsc.chain.height
+
+          parentHash=$(curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' --data-raw "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBlockByNumber\",\"params\":[\"$blockHeight\", false], \"id\": 1}" | jq -r .result.parentHash)
+          echo $parentHash > bsc.chain.parentHash
+
+
+      - name: Sync chain files
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        run: |
+          aws s3 mv ./solidity/bmc/bsc.chain.height s3://$AWS_S3_BUCKET/bsc.chain.height
+          aws s3 mv ./solidity/bmc/bsc.chain.parentHash s3://$AWS_S3_BUCKET/bsc.chain.parentHash
 
       - uses: actions/upload-artifact@v3
         with:
           name: bsc-addr-bmcperiphery
           path: |
             ./solidity/bmc/bsc-addr-bmcperiphery.txt
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: bsc-addr-bmcmanagement
+          path: |
+            ./solidity/bmc/bsc-addr-bmcmanagement.txt
 
       - uses: actions/upload-artifact@v3
         with:
@@ -72,14 +123,14 @@ jobs:
         shell: bash
         timeout-minutes: 5
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
         run: |
           truffle compile --all
           cp .env.actions .env
-          PRIVATE_KEY="$PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
           BMC_PERIPHERY_ADDRESS=$(cat bsc-addr-bmcperiphery.txt) \
           truffle migrate --compile-none --network bsc --f 1 --to 1 && \
           sleep 5 && \
@@ -101,6 +152,24 @@ jobs:
           path: |
             ./solidity/bts/bsc-addr-btscore.txt
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Sync bts build files
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        run: |
+          aws s3 sync ./solidity/bts/build s3://$AWS_S3_BUCKET/bts/build
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: bts-build
+          path: |
+            ./solidity/bts/build
   register-bts-bmc:
     needs: [deploy-bmc-solidity,deploy-bts-solidity]
     name: Register BTSPeriphery contract as a service in BMC
@@ -115,6 +184,12 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: bsc-addr-bmcperiphery
+          path: |
+            ./solidity/bts/
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: bsc-addr-bmcmanagement
           path: |
             ./solidity/bts/
 
@@ -136,18 +211,24 @@ jobs:
           path: |
             ./solidity/bmc/build/
 
+      - uses: actions/download-artifact@v3
+        with:
+          name: bts-build
+          path: |
+            ./solidity/bts/build/
+
       - name: Registering BTSPeriphery contract as a service in BMC.
         shell: bash
         timeout-minutes: 5
         env:
-          PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
           BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
           BSC_NID: ${{ secrets.BSC_NID }}
           BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
         working-directory: ./solidity/bmc
         run: |
           yarn install
-          PRIVATE_KEY="$PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
           truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bmc.js --method addService --name "bts" --addr $(cat ./bsc-addr-btsperiphery.txt) | tee addService-bsc.txt
 
       - name: Configure AWS credentials
@@ -162,6 +243,11 @@ jobs:
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
         run: |
           aws s3 mv ./solidity/bts/bsc-addr-bmcperiphery.txt s3://$AWS_S3_BUCKET/bsc-addr-bmcperiphery.txt
+          aws s3 mv ./solidity/bts/bsc-addr-bmcmanagement.txt s3://$AWS_S3_BUCKET/bsc-addr-bmcmanagement.txt
+
           aws s3 mv ./solidity/bts/bsc-addr-btscore.txt s3://$AWS_S3_BUCKET/bsc-addr-btscore.txt
           aws s3 mv ./solidity/bmc/bsc-addr-btsperiphery.txt s3://$AWS_S3_BUCKET/bsc-addr-btsperiphery.txt
           aws s3 mv ./solidity/bmc/addService-bsc.txt s3://$AWS_S3_BUCKET/addService-bsc.txt
+
+          aws s3 sync ./solidity/bmc/build s3://$AWS_S3_BUCKET/build
+          aws s3 sync ./solidity/bts/build s3://$AWS_S3_BUCKET/bts/build

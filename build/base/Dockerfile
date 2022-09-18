@@ -9,13 +9,12 @@ ENV GOLOOP_VERSION v1.2.11
 ENV ETHKEY_VERSION v1.10.21
 ENV TRUFFLE_VERSION 5.5.5
 
-RUN apk add git bash openjdk11 jq aws-cli
+RUN apk add git bash openjdk11 jq aws-cli curl openssl python3 && ln -sf python3 /usr/bin/python
 
 RUN apk -U add --no-cache curl; \
     curl https://downloads.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip > gradle.zip; \
     unzip gradle.zip; \
-    rm gradle.zip; \
-    apk del curl;
+    rm gradle.zip;
 ENV PATH "$PATH:/gradle-${GRADLE_VERSION}/bin/"
 
 RUN echo "installing go" && \
