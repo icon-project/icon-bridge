@@ -25,6 +25,13 @@ const (
 	defaultGetTxTimeout  = 15 * time.Second
 )
 
+type SenderConfig struct {
+	source      chain.BTPAddress
+	destination chain.BTPAddress
+	options     json.RawMessage
+	wallet      wallet.Wallet
+}
+
 type Sender struct {
 	clients     []IClient
 	source      chain.BTPAddress
@@ -36,39 +43,34 @@ type Sender struct {
 	}
 }
 
-func NewSender(source, destination chain.BTPAddress, urls []string, wallet wallet.Wallet, options json.RawMessage, logger log.Logger) (chain.Sender, error) {
-	if len(urls) == 0 {
-		return nil, fmt.Errorf("empty urls: %v", urls)
-	}
-
-	sender := &Sender{
-		clients:     NewClients(urls, logger),
-		source:      source,
-		destination: destination,
-		wallet:      wallet,
-		logger:      logger,
-	}
-
-	if err := json.Unmarshal(options, &sender.options); err != nil {
-		logger.Panicf("fail to unmarshal options:%#v err:%+v", options, err)
+func senderFactory(source, destination chain.BTPAddress, urls []string, wallet wallet.Wallet, options json.RawMessage, logger log.Logger) (chain.Sender, error) {
+	clients, err := newClients(urls, logger)
+	if err != nil {
 		return nil, err
 	}
 
-	return sender, nil
+	return NewSender(SenderConfig{source, destination, options, wallet}, logger, clients...)
 }
 
-func newMockSender(source, destination chain.BTPAddress, client *Client, wallet wallet.Wallet, _ map[string]interface{}, logger log.Logger) (*Sender, error) {
-	clients := make([]IClient, 0)
-	clients = append(clients, client)
-	sender := &Sender{
-		clients:     clients,
-		source:      source,
-		destination: destination,
-		wallet:      wallet,
-		logger:      logger,
+func NewSender(config SenderConfig, logger log.Logger, clients ...IClient) (*Sender, error) {
+	if len(clients) == 0 {
+		return nil, fmt.Errorf("nil clients")
 	}
 
-	return sender, nil
+	s := &Sender{
+		clients: clients,
+		wallet:  config.wallet,
+		logger:  logger,
+		source: config.source,
+		destination: config.destination,
+	}
+
+	if err := json.Unmarshal(config.options, &s.options); err != nil && config.options != nil {
+		logger.Panicf("fail to unmarshal options:%#v err:%+v", config.options, err)
+		return nil, err
+	}
+
+	return s, nil
 }
 
 func (s *Sender) client() IClient {
