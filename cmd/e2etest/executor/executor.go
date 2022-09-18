@@ -155,7 +155,7 @@ func (ex *executor) Subscribe(ctx context.Context) {
 					ex.log.Errorf("Got interface of type %T; Expected errorType", value)
 					break
 				}
-				if dst := ex.getChan(res.ID); dst != nil {
+				if dst := ex.getChan(res.PID); dst != nil {
 					dst <- &evt{chainType: chains[chosen], msg: res}
 				}
 			} else if chosen >= lenCls && chosen < 2*len(cases) {

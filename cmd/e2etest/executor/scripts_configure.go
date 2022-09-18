@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
+	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/common/errors"
@@ -134,6 +136,13 @@ var ConfigureTokenLimit ConfigureScript = ConfigureScript{
 					if !ok {
 						return fmt.Errorf("Expected *chain.TokenLimitResponseEvent. Got %T", ev.msg.EventLog)
 					}
+					// txnRec.eventTsRecords = append(txnRec.eventTsRecords, &eventTs{
+					// 	ChainName:     ts.FullConfigAPIChain(),
+					// 	Sn:            resEvt.Sn,
+					// 	EventType:     ev.msg.EventType,
+					// 	BlockNumber:   ev.msg.BlockNumber,
+					// 	TransactionID: ev.msg.TransactionID,
+					// })
 					if resEvt.Code != 0 {
 						return fmt.Errorf("Expected Code 0; Got Sn %v Code %v Msg %v", resEvt.Sn, resEvt.Code, resEvt.Msg)
 					}
@@ -179,29 +188,8 @@ func getAccumulatedFees(ts *testSuite) (feePerChain map[chain.ChainType]map[stri
 	return
 }
 
-/*
-
-The following commented code is a PoC on use-cases surrounding fee-aggregation.
-It includes logic to watch for Fee-Aggregation requests and successful transfers
-Current shortcoming includes a parameter(like nonce, timestamp) of a transaction
-that can help determine the chronology of events.
-The time order of events (not determined by SerialNo) is necessary for complete
-implementation. The code section can be reused or referenced later when neessary
-
-func (ex *executor) startBackgroundJob(ctx context.Context, ts *testSuite, cb func(txn *txnMsg)) (context.CancelFunc, func(), error) {
-
-	newCtx, newCancel := context.WithCancel(context.Background())
-	waitForPendingMsg, err := watchFeeGatheringInBackground(ctx, newCtx, ts, cb, 90)
-	if err != nil {
-		fmt.Println("Got Error ", err)
-		newCancel()
-		return nil, nil, err
-	}
-	return newCancel, waitForPendingMsg, nil
-}
-
-func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context, ts *testSuite, saveCb func(txn *txnMsg), feeGatheringInterval uint64) (waitForPendingMsg func(), errs error) {
-	// msg := &txnMsg{
+func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context, ts *testSuite, saveCb func(txn *txnErrPlusRecord), feeGatheringInterval uint64) (waitForPendingMsg func(), errs error) {
+	// msg := &txnErrPlusRecord{
 	// 	res: &txnRecord{
 	// 		feeRecords: []*feeRecord{},
 	// 		addresses:  map[chain.ChainType][]keypair{},
@@ -247,7 +235,7 @@ func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context,
 		ts.logger.Error(errs)
 		return
 	}
-	resMap := sync.Map{} // map[*big.Int]*txnMsg{}
+	resMap := sync.Map{} // map[*big.Int]*txnErrPlusRecord{}
 
 	go func() {
 		err := ts.WaitForFeeGathering(ctx, stopCtx, responseChains[0], map[chain.EventLogType]func(event *evt) error{
@@ -259,7 +247,7 @@ func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context,
 				if !ok {
 					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
 				}
-				msgNew := &txnMsg{
+				msgNew := &txnErrPlusRecord{
 					res: &txnRecord{
 						feeRecords: []*feeRecord{{
 							ChainName: responseChains[0],
@@ -287,13 +275,13 @@ func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context,
 				if !ok {
 					return fmt.Errorf("EndEvt.Sn %v does not exist on map ", endEvt.Sn)
 				}
-				txnmsg, ok := tmp.(*txnMsg)
+				tmpTxnRec, ok := tmp.(*txnErrPlusRecord)
 				if !ok {
-					return fmt.Errorf("Expected type *txnMsg on syncMap Got %T", tmp)
+					return fmt.Errorf("Expected type *txnErrPlusRecord on syncMap Got %T", tmp)
 				}
 				if endEvt.Code.String() != "0" { // remove fee saved if it was unsuccessful response
 					ts.logger.Warnf("Received Event Code %v on fee aggregation event", endEvt.Code)
-					txnmsg = &txnMsg{
+					tmpTxnRec = &txnErrPlusRecord{
 						res: &txnRecord{
 							feeRecords: []*feeRecord{{
 								ChainName: responseChains[0],
@@ -304,7 +292,7 @@ func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context,
 					}
 				}
 				// Save non-erroneous response
-				saveCb(txnmsg)
+				saveCb(tmpTxnRec)
 				resMap.Delete(endEvt.Sn.String())
 				return nil
 			},
@@ -315,7 +303,7 @@ func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context,
 		resMapCounter := 0
 		resMap.Range(func(k interface{}, tmp interface{}) bool {
 			resMapCounter++
-			if msg, ok := tmp.(*txnMsg); ok {
+			if msg, ok := tmp.(*txnErrPlusRecord); ok {
 				msg.err = err
 				saveCb(msg)
 			}
@@ -323,7 +311,7 @@ func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context,
 			return true
 		})
 		if resMapCounter == 0 && err != nil {
-			saveCb(&txnMsg{err: err})
+			saveCb(&txnErrPlusRecord{err: err})
 			return
 		}
 	}()
@@ -355,197 +343,3 @@ func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context,
 	}
 	return
 }
-
-
-func (ts *testSuite) WaitForFeeGathering(ctx context.Context, stopCtx context.Context, chainName chain.ChainType, cbPerEvent map[chain.EventLogType]func(event *evt) error) (err error) {
-	fCfg, err := ts.GetFullConfigAPI()
-	if err != nil {
-		err = errors.Wrapf(err, "GetFullConfigAPI %v", err)
-		ts.logger.Error(err)
-		return
-	}
-	src, dst, err := ts.GetChainPair(chainName, ts.FullConfigAPIChain())
-	if err != nil {
-		err = errors.Wrapf(err, "GetChainPair %v", err)
-		ts.logger.Error(err)
-		return
-	}
-	srcCfg, ok := ts.cfgPerChain[chainName]
-	if !ok {
-		err = errors.Wrapf(err, "Config %v not found", chainName)
-		ts.logger.Error(err)
-		return
-	}
-	feeAggBTPAddress := dst.GetBTPAddress(ts.feeAggregatorAddress)
-	if err = fCfg.WatchForFeeGatheringRequest(ts.id, feeAggBTPAddress); err != nil {
-		err = errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
-		ts.logger.Error(err)
-		return
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			ts.logger.Debug("ctxDone")
-			return ExternalContextCancelled
-		case <-stopCtx.Done():
-			ts.logger.Debug("StopCtxDone ")
-			return nil // stop processing, safely exit, donot return error
-		case ev := <-ts.subChan:
-			if ev == nil {
-				return NilEventReceived
-			}
-			if ev.msg.EventType == chain.FeeGatheringRequest {
-				if err = src.WatchForFeeGatheringTransferStart(ts.id, feeAggBTPAddress); err != nil {
-					err = errors.Wrapf(err, "WatchForFeeGatheringTransferStart %v", err)
-					ts.logger.Error(err)
-					return
-				}
-			} else if ev.msg.EventType == chain.TransferStart {
-				if ev.msg.EventLog == nil {
-					err = errors.New("Got nil value for TransferStart event")
-					ts.logger.Error(err)
-					return
-				}
-				startEvt, ok := ev.msg.EventLog.(*chain.TransferStartEvent)
-				if !ok {
-					return fmt.Errorf("Expected *chain.TransferStartEvent. Got %T", ev.msg.EventLog)
-				}
-				if startEvt.From != srcCfg.ContractAddresses[chain.BTS] {
-					return fmt.Errorf("Expected Same. Got Different startEvtFrom %v cfg.BTSCore %v", startEvt.From, srcCfg.ContractAddresses[chain.BTS])
-				}
-				if startEvt.To != feeAggBTPAddress {
-					return fmt.Errorf("Expected Same. Got Different startEvtTo %v feeAggBTPAddress %v", startEvt.To, feeAggBTPAddress)
-				}
-				if len(startEvt.Assets) > 0 {
-					if err = src.WatchForTransferEnd(ts.id, startEvt.Sn.Int64()); err != nil {
-						err = errors.Wrapf(err, "watchForTransferEnd %v", err)
-						ts.logger.Error(err)
-						return
-					}
-				} else {
-					if err = fCfg.WatchForFeeGatheringRequest(ts.id, feeAggBTPAddress); err != nil {
-						err = errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
-						ts.logger.Error(err)
-						return
-					}
-				}
-			} else if ev.msg.EventType == chain.TransferEnd {
-				if ev.msg.EventLog == nil {
-					err = errors.New("Got nil value for TransferEnd event")
-					ts.logger.Error(err)
-					return
-				}
-				endEvt, ok := ev.msg.EventLog.(*chain.TransferEndEvent)
-				if !ok {
-					return fmt.Errorf("Expected *chain.TransferEndEvent. Got %T", ev.msg.EventLog)
-				}
-				ts.logger.Debug("Fee Gathering EndEvt.Code ", endEvt)
-				if err = fCfg.WatchForFeeGatheringRequest(ts.id, feeAggBTPAddress); err != nil {
-					err = errors.Wrapf(err, "WatchForFeeGatheringRequest %v", err)
-					ts.logger.Error(err)
-					return
-				}
-			} else {
-				err = errors.Wrapf(err, "Unexpected EventType %v", ev.msg)
-				ts.logger.Error(err)
-				return
-			}
-			if cb, ok := cbPerEvent[ev.msg.EventType]; ok {
-				if cb != nil {
-					if err := cb(ev); err != nil {
-						return err
-					}
-				}
-			}
-		}
-
-	}
-	return nil
-}
-
-
-func (ex *executor) RunFlowTest(ctx context.Context) error {
-	// Generator
-	tg := pointGenerator{
-		cfgPerChain:  ex.cfgPerChain,
-		maxBatchSize: nil,
-		transferFilter: func(tp []*transferPoint) []*transferPoint {
-			ntp := []*transferPoint{}
-			for _, v := range tp {
-				if true {
-					ntp = append(ntp, v)
-				}
-			}
-			return ntp
-		},
-		configFilter: nil,
-	}
-
-	cpts, err := tg.GenerateConfigPoints()
-	if err != nil {
-		return errors.Wrapf(err, "GenerateConfigPoints %v", err)
-	}
-
-	ts, err := ex.getTestSuite()
-	if err != nil {
-		return errors.Wrapf(err, "getTestSuite %v", err)
-	}
-	defer ex.removeChan(ts.id)
-
-	bgJobRecords := []*txnMsg{}
-	tmu := sync.Mutex{}
-	extractRecords := func() (ret []*txnMsg) {
-		tmu.Lock()
-		defer tmu.Unlock()
-		ret = []*txnMsg{}
-		for _, v := range bgJobRecords {
-			ret = append(ret, v)
-		}
-		bgJobRecords = []*txnMsg{}
-		return
-	}
-
-	appendToRecords := func(rec *txnMsg) {
-		tmu.Lock()
-		defer tmu.Unlock()
-		fmt.Printf("Append to records %+v %+v", rec.res, rec.err)
-		bgJobRecords = append(bgJobRecords, rec)
-	}
-
-	stopJob, waitForPendingBGMsg, err := ex.startBackgroundJob(ctx, ts, appendToRecords)
-	if err != nil {
-		return err
-	}
-	defer stopJob()
-
-	for _, cpt := range cpts {
-		extractRecords() //clean bgJobRecords
-		initFeeAccumulatedPerChain, err := ex.getFeeAccumulatedPerChain()
-		if err != nil {
-			return errors.Wrapf(err, "getFeeAccumulatedPerChain %v", err)
-		}
-		initAggregatedFees, err := ex.getAggregatedFees()
-		if err != nil {
-			return errors.Wrapf(err, "getAggregatedFees %v", err)
-		}
-		confResponse, err := ex.processConfigurePoint(ctx, cpt)
-		if err != nil {
-			return errors.Wrapf(err, "processConfigurePoint %v", err)
-		}
-		tpts, err := tg.GenerateTransferPoints(cpt)
-		if err != nil {
-			return errors.Wrapf(err, "GenerateTransferPoints %v", err)
-		}
-		transResponse, err := ex.processTransferPoints(ctx, tpts)
-		if err != nil {
-			return errors.Wrapf(err, "processTransferPoints %v", err)
-		}
-		waitForPendingBGMsg()
-		bgResponse := extractRecords()
-		ex.postProcessBatch(confResponse, transResponse, &aggReq{id: ts.id, msgs: bgResponse}, initFeeAccumulatedPerChain, initAggregatedFees)
-	}
-	stopJob()
-	return nil
-}
-*/

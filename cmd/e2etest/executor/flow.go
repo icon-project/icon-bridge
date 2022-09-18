@@ -4,13 +4,19 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/common/errors"
 )
 
-type txnMsg struct {
+type aggReq struct {
+	id   uint64
+	msgs []*txnErrPlusRecord
+}
+
+type txnErrPlusRecord struct {
 	res *txnRecord
 	err error
 }
@@ -18,24 +24,20 @@ type txnMsg struct {
 type transferReq struct {
 	scr *Script
 	pt  *transferPoint
-	msg *txnMsg
+	msg *txnErrPlusRecord
 	id  uint64
 }
 
 type configureReq struct {
 	scr *ConfigureScript
 	pt  *configPoint
-	msg *txnMsg
+	msg *txnErrPlusRecord
 	id  uint64
 }
 
-type aggReq struct {
-	id   uint64
-	msgs []*txnMsg
-}
-
 var transferScripts = []*Script{
-	&TransferBatchBiDirection,
+	&TransferUniDirection,
+	&TransferBiDirection,
 }
 
 var configScripts = []*ConfigureScript{
@@ -58,7 +60,7 @@ func (ex *executor) RunFlowTest(ctx context.Context) error {
 		transferFilter: func(tp []*transferPoint) []*transferPoint {
 			ntp := []*transferPoint{}
 			for _, v := range tp {
-				if true {
+				if len(v.CoinNames) == 1 {
 					ntp = append(ntp, v)
 				}
 			}
@@ -77,6 +79,32 @@ func (ex *executor) RunFlowTest(ctx context.Context) error {
 		return errors.Wrapf(err, "getTestSuite %v", err)
 	}
 	defer ex.removeChan(ts.id)
+
+	bgJobRecords := []*txnErrPlusRecord{}
+	tmu := sync.Mutex{}
+	extractRecords := func() (ret []*txnErrPlusRecord) {
+		tmu.Lock()
+		defer tmu.Unlock()
+		ret = []*txnErrPlusRecord{}
+		for _, v := range bgJobRecords {
+			ret = append(ret, v)
+		}
+		bgJobRecords = []*txnErrPlusRecord{}
+		return
+	}
+
+	appendToRecords := func(rec *txnErrPlusRecord) {
+		tmu.Lock()
+		defer tmu.Unlock()
+		fmt.Printf("Append to records %+v %+v", rec.res, rec.err)
+		bgJobRecords = append(bgJobRecords, rec)
+	}
+
+	stopJob, waitForPendingBGMsg, err := ex.startBackgroundJob(ctx, ts, appendToRecords)
+	if err != nil {
+		return err
+	}
+	defer stopJob()
 
 	for _, cpt := range cpts {
 		initFeeAccumulatedPerChain, err := ex.getFeeAccumulatedPerChain()
@@ -99,20 +127,24 @@ func (ex *executor) RunFlowTest(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrapf(err, "processTransferPoints %v", err)
 		}
-		ex.postProcessBatch(confResponse, transResponse, initFeeAccumulatedPerChain, initAggregatedFees)
+		waitForPendingBGMsg()
+		bgResponse := extractRecords()
+
+		ex.postProcessBatch(confResponse, transResponse, initFeeAccumulatedPerChain, initAggregatedFees, &aggReq{msgs: bgResponse, id: ts.id})
 	}
+	stopJob()
 	return nil
 }
 
-func (ex *executor) postProcessBatch(confResponse []*configureReq, transResponse []*transferReq, initFeePerChain map[chain.ChainType]map[string]*big.Int, initAggFee map[string]*big.Int) {
+func (ex *executor) postProcessBatch(confResponse []*configureReq, transResponse []*transferReq, initFeePerChain map[chain.ChainType]map[string]*big.Int, initAggFee map[string]*big.Int, bgRecords *aggReq) {
 	ex.refundGodWithLeftOverAmounts(confResponse, transResponse)
 	ex.showErrorMessage(confResponse, transResponse)
-	if err := ex.checkWhetherFeeAddsUp(confResponse, transResponse, initFeePerChain, initAggFee); err != nil {
+	if err := ex.checkWhetherFeeAddsUp(confResponse, transResponse, initFeePerChain, initAggFee, bgRecords); err != nil {
 		ex.log.Error("checkWhetherFeeAddsUp %v", err)
 	}
 }
 
-func (ex *executor) checkWhetherFeeAddsUp(confResponse []*configureReq, transResponse []*transferReq, initAccumulatedFeePerChain map[chain.ChainType]map[string]*big.Int, initAggFee map[string]*big.Int) (err error) {
+func (ex *executor) checkWhetherFeeAddsUp(confResponse []*configureReq, transResponse []*transferReq, initAccumulatedFeePerChain map[chain.ChainType]map[string]*big.Int, initAggFee map[string]*big.Int, aggRequest *aggReq) (err error) {
 	finalAccumulatedFeePerChain, err := ex.getFeeAccumulatedPerChain()
 	if err != nil {
 		return errors.Wrapf(err, "getFeeAccumulatedPerChain %v", err)
@@ -121,6 +153,7 @@ func (ex *executor) checkWhetherFeeAddsUp(confResponse []*configureReq, transRes
 	if err != nil {
 		return errors.Wrapf(err, "getAggregatedFees %v", err)
 	}
+	packets := prepareFeePacket(confResponse, transResponse, aggRequest)
 	fmt.Println("finalAccumulatedFeePerChain")
 	for chain, feePerCoin := range finalAccumulatedFeePerChain {
 		fmt.Printf("Chain %v \n", chain)
@@ -143,52 +176,78 @@ func (ex *executor) checkWhetherFeeAddsUp(confResponse []*configureReq, transRes
 	for coin, amt := range finalAggregatedFee {
 		fmt.Printf("%v %v \n", coin, amt)
 	}
-	type feePacket struct {
-		isFeeAgg   bool
-		sn         uint64
-		feePerCoin map[string]*big.Int
-		id         uint16
-		err        error
-	}
-	packets := map[chain.ChainType][]*feePacket{}
-	for _, c := range confResponse {
-		if c.msg.res == nil {
-			continue
-		}
-		for _, cf := range c.msg.res.feeRecords {
-			packets[cf.ChainName] = append(packets[cf.ChainName], &feePacket{sn: cf.Sn.Uint64(), id: uint16(c.id), err: c.msg.err, feePerCoin: cf.Fee})
-		}
-	}
-	for _, c := range transResponse {
-		if c.msg.res == nil {
-			continue
-		}
-		for _, cf := range c.msg.res.feeRecords { // if c.err != nil, then it's probably on the last cf, TODO: handle it properly
-			packets[cf.ChainName] = append(packets[cf.ChainName], &feePacket{sn: cf.Sn.Uint64(), id: uint16(c.id), err: c.msg.err, feePerCoin: cf.Fee})
-		}
-	}
 
-	fmt.Println("Packets")
-	for chain, pkts := range packets {
-		fmt.Printf("Chain %v \n", chain)
-		for _, pkt := range pkts {
-			fmt.Printf("head %v %v %v %v \n", pkt.sn, pkt.isFeeAgg, pkt.id, pkt.err)
-			for coin, amt := range pkt.feePerCoin {
-				fmt.Printf("%v %v \n", coin, amt)
-			}
-		}
-	}
 	totalCalculatedFeePerCoin := map[string]*big.Int{}
-	for coinName := range initAggFee {
-		totalCalculatedFeePerCoin[coinName] = big.NewInt(0)
-	}
 	for _, pkts := range packets {
 		for _, pkt := range pkts {
 			for coinName, pktAmt := range pkt.feePerCoin {
-				totalCalculatedFeePerCoin[coinName].Add(totalCalculatedFeePerCoin[coinName], pktAmt) // add charged fee to cumulativeTxnFee
+				_, ok := totalCalculatedFeePerCoin[coinName]
+				if !ok {
+					totalCalculatedFeePerCoin[coinName] = big.NewInt(0)
+				}
+				if !pkt.isFeeAgg {
+					totalCalculatedFeePerCoin[coinName].Add(totalCalculatedFeePerCoin[coinName], pktAmt)
+					continue
+				}
 			}
 		}
 	}
+	/*
+		for chainName, pkts := range packets {
+			sort.SliceStable(pkts, func(i, j int) bool {
+				return pkts[i].sn < pkts[j].sn
+			})
+			initAccFeePerCoin, ok := initAccumulatedFeePerChain[chainName]
+			if !ok {
+				return fmt.Errorf("initAccumulatedFeePerChain does not include fee for chain %v", chainName)
+			}
+			finalAccFeePerCoin, ok := finalAccumulatedFeePerChain[chainName]
+			if !ok {
+				return fmt.Errorf("finalAccumulatedFeePerChain does not include fee for chain %v", chainName)
+			}
+			cumulativeCalculatedFeePerCoin := map[string]*big.Int{}
+			subTractedAmountPerCoin := map[string]*big.Int{}
+			for k := range initAccFeePerCoin {
+				cumulativeCalculatedFeePerCoin[k] = big.NewInt(0)
+			}
+			for _, pkt := range pkts {
+				fmt.Printf("head %v %v %v %v \n", pkt.sn, pkt.isFeeAgg, pkt.pid, pkt.err)
+				for coinName, pktAmt := range pkt.feePerCoin {
+					fmt.Printf("%v %v \n", coinName, pktAmt)
+					cumulativeCalculatedFee, ok := cumulativeCalculatedFeePerCoin[coinName]
+					if !ok {
+						return fmt.Errorf("cumulativeCalculatedFeePerChainPerCoin does not include fee for coin %v on chain %v", coinName, chainName)
+					}
+					if !pkt.isFeeAgg {
+						cumulativeCalculatedFee.Add(cumulativeCalculatedFee, pktAmt)
+						continue
+					}
+					if _, ok := subTractedAmountPerCoin[coinName]; !ok {
+						subTractedAmountPerCoin[coinName] = big.NewInt(0)
+					}
+					if pkt.err == nil {
+						if pktAmt.Cmp((&big.Int{}).Sub((&big.Int{}).Add(cumulativeCalculatedFee, initAccFeePerCoin[coinName]), subTractedAmountPerCoin[coinName])) != 0 {
+							return fmt.Errorf("Expected same. Got Different Sn %v Chain %v Coin %v cumulativeCalculatedFee  %v initAccFeePerCoin %v, AggTxFee %v SumAggTxFee %v", pkt.sn, chainName, coinName, cumulativeCalculatedFee, initAccFeePerCoin[coinName], pktAmt, subTractedAmountPerCoin[coinName])
+						}
+						subTractedAmountPerCoin[coinName].Add(subTractedAmountPerCoin[coinName], pktAmt)
+					} else {
+						// TODO
+					}
+				}
+			}
+			for coin, value := range subTractedAmountPerCoin {
+				if finalAccFeePerCoin[coin].Cmp((&big.Int{}).Sub((&big.Int{}).Add(cumulativeCalculatedFeePerCoin[coin], initAccFeePerCoin[coin]), value)) != 0 {
+					return fmt.Errorf("Expected same. Got Different Chain %v Coin %v finalAcc  %v AggTxFee %v SumAggTxFee %v", chainName, coin, finalAccFeePerCoin[coin], initAccFeePerCoin[coin], cumulativeCalculatedFeePerCoin[coin])
+				}
+			}
+			for coin, cFee := range cumulativeCalculatedFeePerCoin {
+				if _, ok := totalCalculatedFeePerCoin[coin]; !ok {
+					totalCalculatedFeePerCoin[coin] = big.NewInt(0)
+				}
+				totalCalculatedFeePerCoin[coin] = (&big.Int{}).Add(totalCalculatedFeePerCoin[coin], cFee)
+			}
+		}
+	*/
 	totalInitialAccumulatedFeePerCoin := map[string]*big.Int{}
 	totalFinalAccumulatedFeePerCoin := map[string]*big.Int{}
 	for _, fpc := range initAccumulatedFeePerChain {
@@ -219,6 +278,7 @@ func (ex *executor) checkWhetherFeeAddsUp(confResponse []*configureReq, transRes
 			return fmt.Errorf("Expected Same got different. Coin %v initAggFee %v initAccFee %v calculatedFee %v finalAggFee %v finalAccFee %v", coin, iAggFee, iAccFee, diff, fAggFee, fAccFee)
 		}
 	}
+
 	fmt.Println("Done with feeagg checks")
 	return
 }
@@ -266,7 +326,7 @@ func (ex *executor) refundGodWithLeftOverAmounts(confResponse []*configureReq, t
 func (ex *executor) processConfigurePoint(ctx context.Context, pt *configPoint) (totalResponse []*configureReq, errs error) {
 	totalResponse = []*configureReq{}
 	for _, script := range configScripts {
-		q := &configureReq{scr: script, pt: pt, msg: &txnMsg{}}
+		q := &configureReq{scr: script, pt: pt, msg: &txnErrPlusRecord{}}
 		ts, err := ex.getTestSuite()
 		if err != nil {
 			q.msg.err = err
@@ -317,7 +377,7 @@ func (ex *executor) processTransferPoints(ctx context.Context, tpts []*transferP
 						time.Sleep(time.Millisecond * 100)
 						rqch <- q
 					}()
-					q.msg = &txnMsg{}
+					q.msg = &txnErrPlusRecord{}
 					if q.scr.Callback == nil {
 						q.msg.err = errors.New("Callback nil")
 						return
@@ -329,7 +389,7 @@ func (ex *executor) processTransferPoints(ctx context.Context, tpts []*transferP
 					defer ex.removeChan(ts.id)
 					q.id = ts.id
 					ts.logger.Debugf("%v %v %v %v %v \n", q.id, q.scr.Name, q.pt.SrcChain, q.pt.DstChain, q.pt.CoinNames)
-					q.msg.res, q.msg.err = q.scr.Callback(ctx, q.pt.SrcChain, q.pt.DstChain, q.pt.CoinNames, ts)
+					q.msg.res, q.msg.err = q.scr.Callback(ctx, q.pt, ts)
 				}(q)
 
 			}
@@ -410,6 +470,55 @@ func (ex *executor) getAggregatedFees() (aggregatedAmountPerCoin map[string]*big
 			return
 		}
 		aggregatedAmountPerCoin[cd.Name] = bal.UserBalance
+	}
+	return
+}
+
+func (ex *executor) startBackgroundJob(ctx context.Context, ts *testSuite, cb func(txn *txnErrPlusRecord)) (context.CancelFunc, func(), error) {
+	newCtx, newCancel := context.WithCancel(context.Background())
+	waitForPendingMsg, err := watchFeeGatheringInBackground(ctx, newCtx, ts, cb, 90)
+	if err != nil {
+		fmt.Println("Got Error ", err)
+		newCancel()
+		return nil, nil, err
+	}
+	return newCancel, waitForPendingMsg, nil
+}
+
+type feePacket struct {
+	isFeeAgg   bool
+	sn         uint64
+	feePerCoin map[string]*big.Int
+	pid        uint64
+	err        error
+}
+
+func prepareFeePacket(confResponse []*configureReq, transResponse []*transferReq, aggRequest *aggReq) (packets map[chain.ChainType][]*feePacket) {
+	packets = map[chain.ChainType][]*feePacket{}
+	for _, c := range confResponse {
+		if c.msg.res == nil {
+			continue
+		}
+		for _, cf := range c.msg.res.feeRecords {
+			packets[cf.ChainName] = append(packets[cf.ChainName], &feePacket{sn: cf.Sn.Uint64(), pid: c.id, err: c.msg.err, feePerCoin: cf.Fee})
+		}
+	}
+	for _, c := range transResponse {
+		if c.msg.res == nil {
+			continue
+		}
+		for _, cf := range c.msg.res.feeRecords { // if c.err != nil, then it's probably on the last cf, TODO: handle it properly
+			packets[cf.ChainName] = append(packets[cf.ChainName], &feePacket{sn: cf.Sn.Uint64(), pid: c.id, err: c.msg.err, feePerCoin: cf.Fee})
+		}
+	}
+
+	for _, c := range aggRequest.msgs {
+		if c.res == nil {
+			continue
+		}
+		for _, cf := range c.res.feeRecords {
+			packets[cf.ChainName] = append(packets[cf.ChainName], &feePacket{isFeeAgg: true, sn: cf.Sn.Uint64(), pid: aggRequest.id, err: c.err, feePerCoin: cf.Fee})
+		}
 	}
 	return
 }

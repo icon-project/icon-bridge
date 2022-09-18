@@ -59,7 +59,7 @@ func (f *finder) watchFor(eventType chain.EventLogType, id uint64, data interfac
 
 func (f *finder) Match(elinfo *chain.EventLogInfo) bool {
 	if matchedIndex, matchedIDs := f.lookupCache(elinfo); matchedIndex >= 0 {
-		elinfo.ID = matchedIDs
+		elinfo.PID = matchedIDs
 		f.removeFromFromRunCache(matchedIndex)
 		return true
 	}

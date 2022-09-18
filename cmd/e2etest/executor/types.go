@@ -13,7 +13,7 @@ type evt struct {
 	chainType chain.ChainType
 }
 
-type callBackFunc func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (txnRec *txnRecord, err error)
+type callBackFunc func(ctx context.Context, tp *transferPoint, ts *testSuite) (txnRec *txnRecord, err error)
 
 type Script struct {
 	Name        string
@@ -44,6 +44,14 @@ type feeRecord struct {
 	ChainName chain.ChainType
 	Sn        *big.Int
 	Fee       map[string]*big.Int
+}
+
+type eventTs struct {
+	ChainName     chain.ChainType
+	Sn            *big.Int
+	EventType     chain.EventLogType
+	BlockNumber   uint64
+	TransactionID uint64
 }
 
 type pointGenerator struct {

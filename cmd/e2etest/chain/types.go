@@ -192,7 +192,7 @@ type CoinDetails struct {
 }
 
 type EventLogInfo struct {
-	ID              uint64
+	PID             uint64
 	ContractAddress string
 	EventType       EventLogType
 	EventLog        interface{}
