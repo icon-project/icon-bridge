@@ -8,106 +8,151 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 )
 
-func (gen *pointGenerator) singlePointGenerator(pts []*transferPoint) []*transferPoint {
+type pointGenerator struct {
+	cfgPerChain    map[chain.ChainType]*chain.Config
+	clsPerChain    map[chain.ChainType]chain.ChainAPI
+	maxBatchSize   *int
+	transferFilter func([]*transferPoint) []*transferPoint
+	configFilter   func([]*configPoint) []*configPoint
+}
+
+type transferPoint struct {
+	SrcChain  chain.ChainType
+	DstChain  chain.ChainType
+	CoinNames []string
+	Amounts   []*big.Int
+}
+
+type configPoint struct {
+	chainName   chain.ChainType
+	TokenLimits map[string]*big.Int
+	Fee         map[string][2]*big.Int
+}
+
+type tmpCfg struct {
+	numerator *big.Int
+	baseFee   *big.Int
+	limit     *big.Int
+}
+
+func (gen *pointGenerator) singlePointGenerator(pts []*transferPoint, cfgPerCoinPerChain map[chain.ChainType]map[string]*tmpCfg) []*transferPoint {
 	chains := make([]chain.ChainType, 0)
 	for k := range gen.cfgPerChain {
 		chains = append(chains, k)
 	}
-	for _, coinDetail := range gen.cfgPerChain[chains[0]].CoinDetails {
-		pts = append(pts, &transferPoint{SrcChain: chains[0], DstChain: chains[1], CoinNames: []string{coinDetail.Name}, Amounts: []*big.Int{big.NewInt(1)}})
+	srcChain := chains[0]
+	dstChain := chains[1]
+	for coinName, cfg := range cfgPerCoinPerChain[srcChain] {
+		pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{
+			gen.getAmountBeforeFeeCharge(srcChain, coinName, cfg.baseFee, cfg.numerator, big.NewInt(1)),
+		}})
+		pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{
+			gen.getAmountBeforeFeeCharge(srcChain, coinName, cfg.baseFee, cfg.numerator, big.NewInt(-1)),
+		}})
+		pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{
+			gen.getAmountBeforeFeeCharge(srcChain, coinName, cfg.baseFee, cfg.numerator, big.NewInt(0)),
+		}})
+		pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{(&big.Int{}).Add(cfg.limit, big.NewInt(1))}})
+		pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{(&big.Int{}).Add(cfg.limit, big.NewInt(0))}})
+		pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{(&big.Int{}).Add(cfg.limit, big.NewInt(-1))}})
 	}
-	for _, coinDetail := range gen.cfgPerChain[chains[1]].CoinDetails {
-		pts = append(pts, &transferPoint{SrcChain: chains[1], DstChain: chains[0], CoinNames: []string{coinDetail.Name}, Amounts: []*big.Int{big.NewInt(1)}})
+	srcChain = chains[1]
+	dstChain = chains[0]
+	for coinName, cfg := range cfgPerCoinPerChain[srcChain] {
+		pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{
+			gen.getAmountBeforeFeeCharge(srcChain, coinName, cfg.baseFee, cfg.numerator, big.NewInt(1)),
+		}})
+		pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{
+			gen.getAmountBeforeFeeCharge(srcChain, coinName, cfg.baseFee, cfg.numerator, big.NewInt(-1)),
+		}})
+		pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{
+			gen.getAmountBeforeFeeCharge(srcChain, coinName, cfg.baseFee, cfg.numerator, big.NewInt(0)),
+		}})
+		//pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{(&big.Int{}).Add(cfg.limit, big.NewInt(1))}})
+		//pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{(&big.Int{}).Add(cfg.limit, big.NewInt(0))}})
+		//pts = append(pts, &transferPoint{SrcChain: srcChain, DstChain: dstChain, CoinNames: []string{coinName}, Amounts: []*big.Int{(&big.Int{}).Add(cfg.limit, big.NewInt(-1))}})
 	}
 	return pts
 }
 
-func (gen *pointGenerator) batchPointGenerator(pts []*transferPoint) []*transferPoint {
+func (gen *pointGenerator) batchPointGenerator(pts []*transferPoint, cfgPerCoinPerChain map[chain.ChainType]map[string]*tmpCfg) []*transferPoint {
 	chains := make([]chain.ChainType, 0)
 	for k := range gen.cfgPerChain {
 		chains = append(chains, k)
 	}
 	for _, pair := range [][2]int{{0, 1}, {1, 0}} {
-		pts = append(pts, &transferPoint{
-			SrcChain: chains[pair[0]],
-			DstChain: chains[pair[1]],
+		chainA := chains[pair[0]]
+		chainB := chains[pair[1]]
+		tp := &transferPoint{
+			SrcChain: chainA,
+			DstChain: chainB,
 			CoinNames: []string{
-				gen.cfgPerChain[chains[pair[0]]].NativeCoin,
-				gen.cfgPerChain[chains[pair[0]]].NativeTokens[rand.Intn(len(gen.cfgPerChain[chains[pair[0]]].NativeTokens))],
+				gen.cfgPerChain[chainA].NativeCoin,
+				gen.cfgPerChain[chainA].NativeTokens[rand.Intn(len(gen.cfgPerChain[chainA].NativeTokens))],
 			},
-			Amounts: []*big.Int{
-				big.NewInt(1),
-				big.NewInt(2),
+		}
+		for _, c := range tp.CoinNames {
+			tp.Amounts = append(tp.Amounts, gen.getAmountBeforeFeeCharge(chainA, c, cfgPerCoinPerChain[chainA][c].baseFee, cfgPerCoinPerChain[chainA][c].numerator, big.NewInt(1)))
+		}
+		pts = append(pts, tp)
+
+		tp = &transferPoint{
+			SrcChain: chainA,
+			DstChain: chainB,
+			CoinNames: []string{
+				gen.cfgPerChain[chainA].NativeCoin,
+				gen.cfgPerChain[chainA].WrappedCoins[rand.Intn(len(gen.cfgPerChain[chainA].WrappedCoins))],
 			},
-		})
+		}
+		for _, c := range tp.CoinNames {
+			tp.Amounts = append(tp.Amounts, gen.getAmountBeforeFeeCharge(chainA, c, cfgPerCoinPerChain[chainA][c].baseFee, cfgPerCoinPerChain[chainA][c].numerator, big.NewInt(1)))
+		}
+		pts = append(pts, tp)
 
 		pts = append(pts, &transferPoint{
-			SrcChain: chains[pair[0]],
-			DstChain: chains[pair[1]],
+			SrcChain: chainA,
+			DstChain: chainB,
 			CoinNames: []string{
-				gen.cfgPerChain[chains[pair[0]]].NativeCoin,
-				gen.cfgPerChain[chains[pair[0]]].WrappedCoins[rand.Intn(len(gen.cfgPerChain[chains[pair[0]]].WrappedCoins))],
-			},
-			Amounts: []*big.Int{
-				big.NewInt(1),
-				big.NewInt(2),
+				gen.cfgPerChain[chainA].NativeTokens[rand.Intn(len(gen.cfgPerChain[chainA].NativeTokens))],
+				gen.cfgPerChain[chainA].WrappedCoins[rand.Intn(len(gen.cfgPerChain[chainA].WrappedCoins))],
 			},
 		})
-
-		/*pts = append(pts, &transferPoint{
-			SrcChain: chains[pair[0]],
-			DstChain: chains[pair[1]],
-			CoinNames: []string{
-				gen.cfgPerChain[chains[pair[0]]].NativeTokens[rand.Intn(len(gen.cfgPerChain[chains[pair[0]]].NativeTokens))],
-				gen.cfgPerChain[chains[pair[0]]].NativeTokens[rand.Intn(len(gen.cfgPerChain[chains[pair[0]]].NativeTokens))],
-			},
-			Amounts: []*big.Int{
-				big.NewInt(1),
-				big.NewInt(2),
-			},
-		})
-
-		pts = append(pts, &transferPoint{
-			SrcChain: chains[pair[0]],
-			DstChain: chains[pair[1]],
-			CoinNames: []string{
-				gen.cfgPerChain[chains[pair[0]]].WrappedCoins[rand.Intn(len(gen.cfgPerChain[chains[pair[0]]].WrappedCoins))],
-				gen.cfgPerChain[chains[pair[0]]].WrappedCoins[rand.Intn(len(gen.cfgPerChain[chains[pair[0]]].WrappedCoins))],
-			},
-			Amounts: []*big.Int{
-				big.NewInt(1),
-				big.NewInt(2),
-			},
-		})*/
-
-		pts = append(pts, &transferPoint{
-			SrcChain: chains[pair[0]],
-			DstChain: chains[pair[1]],
-			CoinNames: []string{
-				gen.cfgPerChain[chains[pair[0]]].NativeTokens[rand.Intn(len(gen.cfgPerChain[chains[pair[0]]].NativeTokens))],
-				gen.cfgPerChain[chains[pair[0]]].WrappedCoins[rand.Intn(len(gen.cfgPerChain[chains[pair[0]]].WrappedCoins))],
-			},
-			Amounts: []*big.Int{
-				big.NewInt(1),
-				big.NewInt(2),
-			},
-		})
+		for _, c := range tp.CoinNames {
+			tp.Amounts = append(tp.Amounts, gen.getAmountBeforeFeeCharge(chainA, c, cfgPerCoinPerChain[chainA][c].baseFee, cfgPerCoinPerChain[chainA][c].numerator, big.NewInt(1)))
+		}
+		pts = append(pts, tp)
 	}
 	return pts
 }
 
-func (gen *pointGenerator) GenerateTransferPoints(cpt *configPoint) (pts []*transferPoint, err error) {
+func (gen *pointGenerator) GenerateTransferPoints() (pts []*transferPoint, errs error) {
 	if len(gen.cfgPerChain) != 2 {
-		err = fmt.Errorf("Expected a pair of chains. Got %v", len(gen.cfgPerChain))
+		errs = fmt.Errorf("Expected a pair of chains. Got %v", len(gen.cfgPerChain))
 		return
 	}
+	cfgPerCoinPerChain := map[chain.ChainType]map[string]*tmpCfg{}
+	for chain, cl := range gen.clsPerChain {
+		cfgPerCoinPerChain[chain] = map[string]*tmpCfg{}
+		for _, cd := range gen.cfgPerChain[chain].CoinDetails {
+			fNum, fBase, err := cl.GetFeeRatio(cd.Name)
+			if err != nil {
+				err = fmt.Errorf("GetFeeRatio %v", err)
+				return
+			}
+			limit, err := cl.GetTokenLimit(cd.Name)
+			if err != nil {
+				err = fmt.Errorf("GetTokenLimit %v", err)
+			}
+			cfgPerCoinPerChain[chain][cd.Name] = &tmpCfg{numerator: fNum, baseFee: fBase, limit: limit}
+		}
+	}
+
 	pts = []*transferPoint{}
-	pts = gen.singlePointGenerator(pts)
-	pts = gen.batchPointGenerator(pts)
+	pts = gen.singlePointGenerator(pts, cfgPerCoinPerChain)
+	pts = gen.batchPointGenerator(pts, cfgPerCoinPerChain)
 	if gen.transferFilter != nil {
 		pts = gen.transferFilter(pts)
 	}
-
 	arrLen := len(pts)
 	for i := 0; i < arrLen; i++ {
 		a := rand.Intn(arrLen)
@@ -127,108 +172,13 @@ func (gen *pointGenerator) GenerateTransferPoints(cpt *configPoint) (pts []*tran
 	return
 }
 
-func (gen *pointGenerator) tokenLimitsGenerator(pts []*configPoint) {
-	chains := make([]chain.ChainType, 0)
-	for k := range gen.cfgPerChain {
-		chains = append(chains, k)
-	}
-	zero := big.NewInt(0)
-	one := big.NewInt(1)
-	maxUint256, _ := (&big.Int{}).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
-	maxUint256MinusOne, _ := (&big.Int{}).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639934", 10)
-	batch := []*big.Int{zero, one, maxUint256, maxUint256MinusOne}
-	for _, chain := range chains {
-		chainNativeCoin := gen.cfgPerChain[chain].NativeCoin
-		chainNativeTokens := gen.cfgPerChain[chain].NativeTokens
-		if zeroNativeBeforeFee, err := gen.getAmountBeforeFeeCharge(chain, chainNativeCoin, big.NewInt(0)); err != nil {
-			batch = append(batch, zeroNativeBeforeFee)
-		}
-		if oneNativeBeforeFee, err := gen.getAmountBeforeFeeCharge(chain, chainNativeCoin, big.NewInt(1)); err != nil {
-			batch = append(batch, oneNativeBeforeFee)
-		}
-		if zeroTokenBeforeFee, err := gen.getAmountBeforeFeeCharge(chain, chainNativeTokens[rand.Intn(len(chainNativeTokens))], big.NewInt(1)); err != nil {
-			batch = append(batch, zeroTokenBeforeFee)
-		}
-		if oneTokenBeforeFee, err := gen.getAmountBeforeFeeCharge(chain, chainNativeTokens[rand.Intn(len(chainNativeTokens))], big.NewInt(1)); err != nil {
-			batch = append(batch, oneTokenBeforeFee)
-		}
-		for _, amt := range []*big.Int{zero, one, maxUint256, maxUint256MinusOne} {
-			pts = append(pts, &configPoint{
-				chainName: chain,
-				TokenLimits: map[string]*big.Int{
-					chainNativeCoin: (&big.Int{}).Set(amt),
-				},
-			})
-			pts = append(pts, &configPoint{
-				chainName: chain,
-				TokenLimits: map[string]*big.Int{
-					chainNativeTokens[rand.Intn(len(chainNativeTokens))]: (&big.Int{}).Set(amt),
-				},
-			})
-			pts = append(pts, &configPoint{
-				chainName: chain,
-				TokenLimits: map[string]*big.Int{
-					chainNativeTokens[rand.Intn(len(chainNativeTokens))]: (&big.Int{}).Set(amt),
-					chainNativeTokens[rand.Intn(len(chainNativeTokens))]: (&big.Int{}).Set(amt),
-				},
-			})
-			pts = append(pts, &configPoint{
-				chainName: chain,
-				TokenLimits: map[string]*big.Int{
-					chainNativeCoin: (&big.Int{}).Set(amt),
-					chainNativeTokens[rand.Intn(len(chainNativeTokens))]: (&big.Int{}).Set(amt),
-				},
-			})
-			// pts = append(pts, &configPoint{
-			// 	TokenLimits: map[string]*big.Int{
-			// 		"apple": (&big.Int{}).Set(amt),
-			// 		"ball":  (&big.Int{}).Set(amt),
-			// 	},
-			// })
-		}
-	}
-
-}
-
-func (gen *pointGenerator) feeGenerator(pts []*configPoint) {
-
-}
-
 func (gen *pointGenerator) GenerateConfigPoints() (pts []*configPoint, err error) {
-	// if len(gen.cfgPerChain) != 2 {
-	// 	err = fmt.Errorf("Expected a pair of chains. Got %v", len(gen.cfgPerChain))
-	// 	return
-	// }
-	// pts = []*configPoint{}
-	// gen.tokenLimitsGenerator(pts)
-	// gen.feeGenerator(pts)
-	// if gen.transferFilter != nil {
-	// 	pts = gen.configFilter(pts)
-	// }
-
-	// arrLen := len(pts)
-	// for i := 0; i < arrLen; i++ {
-	// 	a := rand.Intn(arrLen)
-	// 	b := rand.Intn(arrLen)
-	// 	tmp := pts[a]
-	// 	pts[a] = pts[b]
-	// 	pts[b] = tmp
-	// }
-
-	// if gen.maxBatchSize != nil && len(pts) > *gen.maxBatchSize {
-	// 	truncPts := make([]*configPoint, *gen.maxBatchSize)
-	// 	for i := 0; i < *gen.maxBatchSize; i++ {
-	// 		truncPts[i] = pts[i]
-	// 	}
-	// 	return truncPts, nil
-	// }
-	// return
 	pts = []*configPoint{
 		{
 			chainName: chain.ICON,
 			TokenLimits: map[string]*big.Int{
 				"btp-0x2.icon-ICX":  big.NewInt(9000000000000000000),
-				"btp-0x2.icon-BUSD": big.NewInt(7000000000000000000),
+				"btp-0x2.icon-BUSD": big.NewInt(9000000000000000000),
 			},
 			Fee: map[string][2]*big.Int{
 				"btp-0x2.icon-ICX": {
@@ -239,11 +189,26 @@ func (gen *pointGenerator) GenerateConfigPoints() (pts []*configPoint, err error
 				},
 			},
 		},
+		{
+			chainName: chain.ICON,
+			TokenLimits: map[string]*big.Int{
+				"btp-0x2.icon-sICX": big.NewInt(9000000000000000000),
+				"btp-0x2.icon-BNB":  big.NewInt(9000000000000000000),
+			},
+			Fee: map[string][2]*big.Int{
+				"btp-0x2.icon-sICX": {
+					big.NewInt(100), big.NewInt(3900000000000000000),
+				},
+				"btp-0x61.bsc-BNB": {
+					big.NewInt(100), big.NewInt(5000000000000000),
+				},
+			},
+		},
 	}
 	return
 }
 
-func (ts *pointGenerator) getAmountBeforeFeeCharge(chainName chain.ChainType, coinName string, outputBalance *big.Int) (*big.Int, error) {
+func (ts *pointGenerator) getAmountBeforeFeeCharge(chainName chain.ChainType, coinName string, fixedFee, feeNumerator, outputBalance *big.Int) *big.Int {
 	/*
 		What is the input amount that we must have so that the net transferrable amount
 		after fee charged on chainName is equal to outputBalance for coinName ?
@@ -253,16 +218,9 @@ func (ts *pointGenerator) getAmountBeforeFeeCharge(chainName chain.ChainType, co
 		inputBalance = (outputBalance + fixed) * deniminator / (denominator - numerator)
 
 	*/
-	coinDetails := ts.cfgPerChain[chainName].CoinDetails
-	for i := 0; i < len(coinDetails); i++ {
-		if coinDetails[i].Name == coinName {
-			fixedFee, _ := (&big.Int{}).SetString(coinDetails[i].FixedFee, 10)
-			bplusf := (&big.Int{}).Add(outputBalance, fixedFee)
-			bplusf.Mul(bplusf, big.NewInt(DENOMINATOR))
-			dminusn := new(big.Int).Sub(big.NewInt(DENOMINATOR), big.NewInt(int64(coinDetails[i].FeeNumerator)))
-			bplusf.Div(bplusf, dminusn)
-			return bplusf, nil
-		}
-	}
-	return nil, fmt.Errorf("Coin %v Not Found in coinDetails", coinName)
+	bplusf := (&big.Int{}).Add(outputBalance, fixedFee)
+	bplusf.Mul(bplusf, big.NewInt(DENOMINATOR))
+	dminusn := new(big.Int).Sub(big.NewInt(DENOMINATOR), feeNumerator)
+	bplusf.Div(bplusf, dminusn)
+	return bplusf
 }

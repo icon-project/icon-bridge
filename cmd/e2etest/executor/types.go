@@ -54,26 +54,6 @@ type eventTs struct {
 	TransactionID uint64
 }
 
-type pointGenerator struct {
-	cfgPerChain    map[chain.ChainType]*chain.Config
-	maxBatchSize   *int
-	transferFilter func([]*transferPoint) []*transferPoint
-	configFilter   func([]*configPoint) []*configPoint
-}
-
-type transferPoint struct {
-	SrcChain  chain.ChainType
-	DstChain  chain.ChainType
-	CoinNames []string
-	Amounts   []*big.Int
-}
-
-type configPoint struct {
-	chainName   chain.ChainType
-	TokenLimits map[string]*big.Int
-	Fee         map[string][2]*big.Int
-}
-
 var (
 	ZeroEvents               = errors.New("Got zero event logs, expected at least one")
 	StatusCodeZero           = errors.New("Got status code zero(failed)")

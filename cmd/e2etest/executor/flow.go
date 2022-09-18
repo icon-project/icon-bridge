@@ -54,13 +54,15 @@ var ignoreableErrorMap = map[string]*struct{}{
 
 func (ex *executor) RunFlowTest(ctx context.Context) error {
 	// Generator
+	batchSize := 10
 	tg := pointGenerator{
 		cfgPerChain:  ex.cfgPerChain,
-		maxBatchSize: nil,
+		clsPerChain:  ex.clientsPerChain,
+		maxBatchSize: &batchSize,
 		transferFilter: func(tp []*transferPoint) []*transferPoint {
 			ntp := []*transferPoint{}
 			for _, v := range tp {
-				if len(v.CoinNames) == 1 {
+				if true {
 					ntp = append(ntp, v)
 				}
 			}
@@ -119,7 +121,7 @@ func (ex *executor) RunFlowTest(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrapf(err, "processConfigurePoint %v", err)
 		}
-		tpts, err := tg.GenerateTransferPoints(cpt)
+		tpts, err := tg.GenerateTransferPoints()
 		if err != nil {
 			return errors.Wrapf(err, "GenerateTransferPoints %v", err)
 		}
@@ -154,28 +156,6 @@ func (ex *executor) checkWhetherFeeAddsUp(confResponse []*configureReq, transRes
 		return errors.Wrapf(err, "getAggregatedFees %v", err)
 	}
 	packets := prepareFeePacket(confResponse, transResponse, aggRequest)
-	fmt.Println("finalAccumulatedFeePerChain")
-	for chain, feePerCoin := range finalAccumulatedFeePerChain {
-		fmt.Printf("Chain %v \n", chain)
-		for coin, fee := range feePerCoin {
-			fmt.Printf("%v %v \n", coin, fee)
-		}
-	}
-	fmt.Println("initialAccumulatedFeePerChain")
-	for chain, feePerCoin := range initAccumulatedFeePerChain {
-		fmt.Printf("Chain %v \n", chain)
-		for coin, fee := range feePerCoin {
-			fmt.Printf("%v %v \n", coin, fee)
-		}
-	}
-	fmt.Println("initFeeAggregation")
-	for coin, amt := range initAggFee {
-		fmt.Printf("%v %v \n", coin, amt)
-	}
-	fmt.Println("finalAggregation")
-	for coin, amt := range finalAggregatedFee {
-		fmt.Printf("%v %v \n", coin, amt)
-	}
 
 	totalCalculatedFeePerCoin := map[string]*big.Int{}
 	for _, pkts := range packets {
@@ -271,6 +251,10 @@ func (ex *executor) checkWhetherFeeAddsUp(confResponse []*configureReq, transRes
 		iAccFee := totalInitialAccumulatedFeePerCoin[coin]
 		fAccFee := totalFinalAccumulatedFeePerCoin[coin]
 		diff := totalCalculatedFeePerCoin[coin]
+		if iAccFee == nil || iAggFee == nil || fAccFee == nil || fAggFee == nil || diff == nil {
+			ex.log.Debug(fmt.Errorf("Got nil. Coin %v initAggFee %v initAccFee %v calculatedFee %v finalAggFee %v finalAccFee %v", coin, iAggFee, iAccFee, diff, fAggFee, fAccFee))
+			continue
+		}
 		tmpA := (&big.Int{}).Add(iAggFee, iAccFee)
 		tmpA = tmpA.Add(tmpA, diff)
 		tmpB := (&big.Int{}).Add(fAccFee, fAggFee)
@@ -292,7 +276,7 @@ func (ex *executor) showErrorMessage(confResponse []*configureReq, transResponse
 		errs := t.msg.err
 		if _, ignore := ignoreableErrorMap[errs.Error()]; !ignore {
 			nonIgnoreErrorCount++
-			ex.log.Errorf("ERROR: SNo %v, PID %v, Type Transfer, Function %v, Input %+v", nonIgnoreErrorCount, t.id, t.scr.Name, t.pt)
+			ex.log.Errorf("ERROR: SNo %v, PID %v, Type Transfer, Function %v, Input %+v Err %+v", nonIgnoreErrorCount, t.id, t.scr.Name, t.pt, errs)
 		}
 	}
 	for _, t := range transResponse {
@@ -302,7 +286,7 @@ func (ex *executor) showErrorMessage(confResponse []*configureReq, transResponse
 		errs := t.msg.err
 		if _, ignore := ignoreableErrorMap[errs.Error()]; !ignore {
 			nonIgnoreErrorCount++
-			ex.log.Errorf("ERROR: SNo %v, PID %v, Type Configuration, Function %v, Input %+v", nonIgnoreErrorCount, t.id, t.scr.Name, t.pt)
+			ex.log.Errorf("ERROR: SNo %v, PID %v, Type Configuration, Function %v, Input %+v Err %+v", nonIgnoreErrorCount, t.id, t.scr.Name, t.pt, errs)
 		}
 	}
 }
