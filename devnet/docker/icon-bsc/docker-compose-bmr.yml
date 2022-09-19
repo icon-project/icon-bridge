@@ -1,6 +1,5 @@
 version: '3.3'
 services:
-
   bmr:
     image: localnets:5000/bmr:latest
     container_name: bmr
@@ -8,11 +7,9 @@ services:
     restart: unless-stopped
     # ports:
     #   - 6060:6060 # golang pprof
-    entrypoint: ["/bin/bash", "-c"]
-    command:
-    - |
-      echo '$bmr_config_json' >/config.json
-      /bin/iconbridge -config /config.json
-    environment:
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    entrypoint: ["/bin/iconbridge", "-config", "/config.json"]
+    volumes:
+      - ${PWD}/bmr.config.json:/config.json
+        #environment:
+            #AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+            #AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}

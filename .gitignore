@@ -1,4 +1,5 @@
 .?*
+!.github
 !.dockerignore
 __pycache__
 **/.DS_Store
@@ -7,7 +8,7 @@ build/
 bin/
 **/*/node_modules/
 abigenBindings/
-_ixh/
+_ixh*/
 hmny_wallets/
 tmp/
 docker-compose/logs
@@ -16,3 +17,6 @@ docker-compose/logs
 **/**.profraw
 **/lcov.info
 rust/**/coverage
+
+devnet/docker/icon-bsc/local/
+devnet/docker/icon-bsc/data/

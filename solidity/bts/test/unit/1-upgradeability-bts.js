@@ -1,5 +1,5 @@
-const BTSCoreV1 = artifacts.require("BTSCoreV1");
-const BTSCoreV2 = artifacts.require("BTSCoreV2");
+const BTSCoreTestV1 = artifacts.require("BTSCoreTestV1");
+const BTSCoreTestV2 = artifacts.require("BTSCoreTestV2");
 const BTSPeriphery = artifacts.require("BTSPeriphery");
 const BMC = artifacts.require("MockBMC");
 const {assert} = require("chai");
@@ -13,8 +13,8 @@ contract("BTSCore Unit Tests - After Upgrading Contract", (accounts) => {
     let _fee = 10;
     let _fixed_fee = 500000;
     before(async () => {
-        bts_coreV1 = await deployProxy(BTSCoreV1, [_native, _fee, _fixed_fee]);
-        bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreV2);
+        bts_coreV1 = await deployProxy(BTSCoreTestV1, [_native, _fee, _fixed_fee]);
+        bts_coreV2 = await upgradeProxy(bts_coreV1.address, BTSCoreTestV2);
 
         bts_periphery = await BTSPeriphery.new();
 

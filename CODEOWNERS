@@ -1,0 +1,23 @@
+# global owners: used as fallback if nobody owns the code
+* @CyrusVorwald-ICON @bbist @pragyanshrestha-ibriz
+
+# solidity
+/solidity/ @sdpisreddevil @izyak
+
+# javascore
+/javascore/ @izyak @sdpisreddevil
+
+# golang
+/cmd/ @manishbista28 @andrii-kl
+
+# golang: iconbridge
+/cmd/iconbridge/ @manishbista28 @andrii-kl
+
+# golang: e2etest
+/cmd/e2etest/ @manishbista28
+
+# docs
+/doc/ @pragyanshrestha-ibriz
+
+# devops
+.github/ @dwdraju

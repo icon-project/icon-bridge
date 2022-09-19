@@ -1,6 +1,5 @@
-#!/bin/sh
+#!/bin/bash
 set -e
-
 source provision.sh
 
 if [ "$ICONBRIDGE_OFFSET" != "" ] && [ -f "$ICONBRIDGE_OFFSET" ]; then

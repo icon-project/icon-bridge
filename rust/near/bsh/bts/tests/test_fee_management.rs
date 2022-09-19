@@ -60,12 +60,15 @@ fn handle_fee_gathering() {
         nativecoin.clone(),
     );
     testing_env!(context(chuck(), 1000));
-    let coin_id = contract.coin_id(nativecoin.name().to_owned());
 
     contract.deposit();
-    contract.transfer(coin_id, destination.clone(), U128::from(999));
+    contract.transfer(
+        nativecoin.name().to_string(),
+        destination.clone(),
+        U128::from(999),
+    );
 
-    let result = contract.account_balance(chuck(), contract.coin_id(nativecoin.name().to_owned()));
+    let result = contract.account_balance(chuck(), nativecoin.name().to_string());
     let mut expected = AccountBalance::default();
 
     expected.deposit_mut().add(1).unwrap();
@@ -74,7 +77,7 @@ fn handle_fee_gathering() {
 
     assert_eq!(result, Some(expected));
 
-    let result = contract.balance_of(alice(), contract.coin_id(nativecoin.name().to_owned()));
+    let result = contract.balance_of(alice(), nativecoin.name().to_string());
     assert_eq!(result, U128::from(0));
 
     let btp_message = &BtpMessage::new(
@@ -94,10 +97,10 @@ fn handle_fee_gathering() {
     testing_env!(context(bmc(), 0));
     contract.handle_btp_message(btp_message.try_into().unwrap());
 
-    let result = contract.balance_of(alice(), contract.coin_id(nativecoin.name().to_owned()));
+    let result = contract.balance_of(alice(), nativecoin.name().to_string());
     assert_eq!(result, U128::from(999));
 
-    let result = contract.account_balance(chuck(), contract.coin_id(nativecoin.name().to_owned()));
+    let result = contract.account_balance(chuck(), nativecoin.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(1).unwrap();
 
@@ -129,6 +132,6 @@ fn handle_fee_gathering() {
         }]
     );
 
-    let result = contract.balance_of(alice(), contract.coin_id(nativecoin.name().to_owned()));
+    let result = contract.balance_of(alice(), nativecoin.name().to_string());
     assert_eq!(result, U128::from(899));
 }

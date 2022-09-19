@@ -1,9 +1,9 @@
 package near
 
 import (
-	"testing"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestNearClient(t *testing.T) {
@@ -11,9 +11,8 @@ func TestNearClient(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api: &mockApi,
+						api: testData.MockApi,
 					}
 
 					input, Ok := (testData.Input).(string)

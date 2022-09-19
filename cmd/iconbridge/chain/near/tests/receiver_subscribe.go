@@ -31,17 +31,19 @@ func init() {
 				Source:      chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
 				Destination: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
 			},
-			MockStorage: func() mock.Storage {
+			MockApi: func() *mock.MockApi {
 				blockByHeightMap, blockByHashMap := mock.LoadBlockFromFile([]string{"377825", "377826", "377827", "377828", "377829", "377830", "377831"})
-				latestBlockHeight := mock.Response{
-					Reponse: 377832,
-				}
+				
+				mockApi := mock.NewMockApi(mock.Storage{
+					BlockByHeightMap: blockByHeightMap,
+					BlockByHashMap:   blockByHashMap,
+				})
 
-				return mock.Storage{
-					BlockByHeightMap:  blockByHeightMap,
-					BlockByHashMap:    blockByHashMap,
-					LatestBlockHeight: latestBlockHeight,
-				}
+				mockApi.On("Block", mock.MockParam).Return(mockApi.BlockFactory())
+				mockApi.On("Changes", mock.MockParam).Return(mockApi.ChangesFactory())
+				mockApi.On("Status", mock.MockParam).Return(mockApi.StatusFactory())
+				
+				return mockApi
 			}(),
 			Expected: struct {
 				Success interface{}
