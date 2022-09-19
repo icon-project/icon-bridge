@@ -16,6 +16,8 @@ const (
 type ContractName string
 
 const (
+	BMC          ContractName = "BMC"
+	BMCPeriphery ContractName = "BMCPeriphery"
 	BTS          ContractName = "BTS"
 	BTSPeriphery ContractName = "BTSPeriphery"
 )
@@ -23,9 +25,16 @@ const (
 type EventLogType string
 
 const (
-	TransferStart    EventLogType = "TransferStart"
-	TransferReceived EventLogType = "TransferReceived"
-	TransferEnd      EventLogType = "TransferEnd"
+	TransferStart              EventLogType = "TransferStart"
+	TransferReceived           EventLogType = "TransferReceived"
+	TransferEnd                EventLogType = "TransferEnd"
+	AddToBlacklistRequest      EventLogType = "AddToBlacklistRequest"
+	RemoveFromBlacklistRequest EventLogType = "RemoveFromBlacklistRequest"
+	BlacklistResponse          EventLogType = "BlacklistResponse"
+	TokenLimitRequest          EventLogType = "TokenLimitRequest"
+	TokenLimitResponse         EventLogType = "TokenLimitResponse"
+	FeeGatheringRequest        EventLogType = "FeeGatheringRequest"
+	Message                    EventLogType = "Message"
 )
 
 type CoinBalance struct {
@@ -33,28 +42,8 @@ type CoinBalance struct {
 	LockedBalance     *big.Int
 	RefundableBalance *big.Int
 	UserBalance       *big.Int
+	TotalBalance      *big.Int // held by BTS + by itself
 }
-
-type ContractCallMethodName string
-
-const (
-	CheckTransferRestrictions ContractCallMethodName = "CheckTransferRestrictions" // net, coinName, addr, amount => isRestricted
-	IsUserBlackListed         ContractCallMethodName = "IsUserBlackListed"         // net, addr => isBlackListed
-	GetTokenLimit             ContractCallMethodName = "GetTokenLimit"             // coin => limitAmount
-	IsOwner                   ContractCallMethodName = "IsOwner"
-	GetTokenLimitStatus       ContractCallMethodName = "GetTokenLimitStatus"
-	GetBlackListedUsers       ContractCallMethodName = "GetBlackListedUsers"
-)
-
-type ContractTransactMethodName string
-
-const (
-	SetTokenLimit          ContractTransactMethodName = "SetTokenLimit"
-	AddBlackListAddress    ContractTransactMethodName = "AddBlackListAddress"
-	RemoveBlackListAddress ContractTransactMethodName = "RemoveBlackListAddress"
-	AddRestriction         ContractTransactMethodName = "AddRestriction"
-	DisableRestrictions    ContractTransactMethodName = "DisableRestrictions"
-)
 
 func (cb *CoinBalance) String() string {
 	return "Usable " + cb.UsableBalance.String() +
@@ -68,6 +57,7 @@ type SrcAPI interface {
 	WaitForTxnResult(ctx context.Context, hash string) (txnr *TxnResult, err error)
 	WatchForTransferStart(requestID uint64, seq int64) error
 	WatchForTransferEnd(ID uint64, seq int64) error
+	WatchForFeeGatheringTransferStart(ID uint64, addr string) error
 	Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
@@ -75,18 +65,48 @@ type SrcAPI interface {
 	NativeCoin() string
 	NativeTokens() []string
 	GetBTPAddress(addr string) string
-	GetNetwork() string
-
-	CallBTS(method ContractCallMethodName, args []interface{}) (response interface{}, err error)
-	TransactWithBTS(ownerKey string, method ContractTransactMethodName, args []interface{}) (txnHash string, err error)
+	ChargedGasFee(txnHash string) (*big.Int, error)
+	SuggestGasPrice() *big.Int
 }
 
 type DstAPI interface {
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	WatchForTransferReceived(requestID uint64, seq int64) error
 	GetBTPAddress(addr string) string
-	NativeTokens() []string
-	GetNetwork() string
+}
+
+type FullConfigAPI interface {
+	SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*big.Int) (txnHash string, err error)
+	AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
+	RemoveBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
+	ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error)
+	GetTokenLimitStatus(net, coinName string) (response bool, err error)
+	GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error)
+	SetFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error)
+	GetFeeGatheringTerm() (interval uint64, err error)
+
+	WatchForAddToBlacklistRequest(ID uint64, seq int64) error
+	WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error
+	WatchForSetTokenLmitRequest(ID uint64, seq int64) error
+	GetConfigRequestEvent(evtType EventLogType, hash string) (*EventLogInfo, error)
+	WatchForFeeGatheringRequest(ID uint64, addr string) error
+
+	IsUserBlackListed(net, addr string) (response bool, err error)
+	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
+	IsBTSOwner(addr string) (response bool, err error)
+	// Watch For TokenLimitStart, TokenLimitEnd
+}
+
+type StandardConfigAPI interface {
+	IsUserBlackListed(net, addr string) (response bool, err error)
+	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
+	IsBTSOwner(addr string) (response bool, err error)
+	SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error)
+	GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error)
+	GetAccumulatedFees() (map[string]*big.Int, error)
+
+	WatchForBlacklistResponse(ID uint64, seq int64) error
+	WatchForSetTokenLmitResponse(ID uint64, seq int64) error
 }
 
 type TxnResult struct {
@@ -96,10 +116,14 @@ type TxnResult struct {
 }
 
 type ChainAPI interface {
+	// Subscription
 	Subscribe(ctx context.Context) (sinkChan chan *EventLogInfo, errChan chan error, err error)
+
+	// Account
 	GetKeyPairs(num int) ([][2]string, error)
 	GetKeyPairFromKeystore(keystoreFile, secretFile string) (string, string, error)
 
+	// Transfer
 	TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error)
 	Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error)
 	WaitForTxnResult(ctx context.Context, hash string) (txnr *TxnResult, err error)
@@ -110,31 +134,57 @@ type ChainAPI interface {
 	GetCoinBalance(coinName string, addr string) (*CoinBalance, error)
 	Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error)
 
+	// Query
 	NativeCoin() string
 	NativeTokens() []string
 	GetBTPAddress(addr string) string
-	GetNetwork() string
+	ChargedGasFee(txnHash string) (*big.Int, error)
+	SuggestGasPrice() *big.Int
 
-	CallBTS(method ContractCallMethodName, args []interface{}) (response interface{}, err error)
-	TransactWithBTS(ownerKey string, method ContractTransactMethodName, args []interface{}) (txnHash string, err error)
+	// Configure
+	SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*big.Int) (txnHash string, err error)
+	AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
+	RemoveBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error)
+	ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error)
+	GetTokenLimitStatus(net, coinName string) (response bool, err error)
+	GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error)
+	SetFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error)
+	GetFeeGatheringTerm() (interval uint64, err error)
+
+	WatchForAddToBlacklistRequest(ID uint64, seq int64) error
+	WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error
+	WatchForBlacklistResponse(ID uint64, seq int64) error
+	WatchForSetTokenLmitRequest(ID uint64, seq int64) error
+	WatchForSetTokenLmitResponse(ID uint64, seq int64) error
+	GetConfigRequestEvent(evtType EventLogType, hash string) (*EventLogInfo, error)
+	WatchForFeeGatheringRequest(ID uint64, addr string) error
+	WatchForFeeGatheringTransferStart(ID uint64, addr string) error
+
+	IsUserBlackListed(net, addr string) (response bool, err error)
+	GetTokenLimit(coinName string) (tokenLimit *big.Int, err error)
+	IsBTSOwner(addr string) (response bool, err error)
+	SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error)
+	GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error)
+	GetAccumulatedFees() (map[string]*big.Int, error)
 }
 
 type Config struct {
-	Name                   ChainType               `json:"name"`
-	URL                    string                  `json:"url"`
-	ContractAddresses      map[ContractName]string `json:"contract_addresses"`
-	NativeCoin             string                  `json:"native_coin"`
-	NativeTokens           []string                `json:"native_tokens"`
-	WrappedCoins           []string                `json:"wrapped_coins"`
-	GodWalletKeystorePath  string                  `json:"god_wallet_keystore_path"`
-	GodWalletSecretPath    string                  `json:"god_wallet_secret_path"`
-	DemoWalletKeystorePath string                  `json:"demo_wallet_keystore_path"`
-	NetworkID              string                  `json:"network_id"`
-	GasLimit               int64                   `json:"gas_limit"`
+	Name                  ChainType               `json:"name"`
+	URL                   string                  `json:"url"`
+	ContractAddresses     map[ContractName]string `json:"contract_addresses"`
+	NativeCoin            string                  `json:"native_coin"`
+	NativeTokens          []string                `json:"native_tokens"`
+	WrappedCoins          []string                `json:"wrapped_coins"`
+	GodWalletKeystorePath string                  `json:"god_wallet_keystore_path"`
+	GodWalletSecretPath   string                  `json:"god_wallet_secret_path"`
+	BTSOwnerKeystorePath  string                  `json:"bts_owner_keystore_path"`
+	BTSOwnerSecretPath    string                  `json:"bts_owner_secret_path"`
+	NetworkID             string                  `json:"network_id"`
+	GasLimit              map[GasLimitType]uint64 `json:"gas_limit"`
 }
 
 type EventLogInfo struct {
-	IDs             []uint64
+	PID             uint64
 	ContractAddress string
 	EventType       EventLogType
 	EventLog        interface{}
@@ -160,14 +210,54 @@ type AssetTransferDetails struct {
 	Fee   *big.Int
 }
 
-// type AssetDetails struct {
-// 	Name  string
-// 	Value *big.Int
-// }
-
 type TransferEndEvent struct {
 	From     string
 	Sn       *big.Int
 	Code     *big.Int
 	Response string
 }
+
+type BlacklistResponseEvent struct {
+	Sn   *big.Int
+	Code int64
+	Msg  string
+}
+
+type TokenLimitResponseEvent struct {
+	Sn   *big.Int
+	Code int64
+	Msg  string
+}
+
+type AddToBlacklistRequestEvent struct {
+	Sn    *big.Int
+	Net   string
+	Addrs []string
+}
+
+type RemoveFromBlacklistRequestEvent struct {
+	Sn    *big.Int
+	Net   string
+	Addrs []string
+}
+type TokenLimitRequestEvent struct {
+	Sn          *big.Int
+	TokenLimits []*big.Int
+	CoinNames   []string
+}
+
+type FeeGatheringRequestEvent struct {
+	FeeAggregator string
+	Services      []string
+}
+
+type GasLimitType string
+
+const (
+	TransferNativeCoinIntraChainGasLimit GasLimitType = "TransferNativeCoinIntraChainGasLimit"
+	TransferTokenIntraChainGasLimit      GasLimitType = "TransferTokenIntraChainGasLimit"
+	ApproveTokenInterChainGasLimit       GasLimitType = "ApproveTokenInterChainGasLimit"
+	TransferCoinInterChainGasLimit       GasLimitType = "TransferCoinInterChainGasLimit"
+	TransferBatchCoinInterChainGasLimit  GasLimitType = "TransferBatchCoinInterChainGasLimit"
+	DefaultGasLimit                      GasLimitType = "DefaultGasLimit"
+)

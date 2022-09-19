@@ -13,7 +13,7 @@ type evt struct {
 	chainType chain.ChainType
 }
 
-type callBackFunc func(ctx context.Context, srcChain, dstChain chain.ChainType, coinNames []string, ts *testSuite) (*txnRecord, error)
+type callBackFunc func(ctx context.Context, tp *transferPoint, ts *testSuite) (txnRec *txnRecord, err error)
 
 type Script struct {
 	Name        string
@@ -22,29 +22,54 @@ type Script struct {
 	Callback    callBackFunc
 }
 
+type configureCallBack func(ctx context.Context, conf *configPoint, ts *testSuite) (txnRec *txnRecord, err error)
+type ConfigureScript struct {
+	Name        string
+	Type        string
+	Description string
+	Callback    configureCallBack
+}
+
 type keypair struct {
 	PrivKey string
 	PubKey  string
 }
 
-type fee struct {
-	fixed       *big.Int
-	numerator   *big.Int
-	denominator *big.Int
+type txnRecord struct {
+	feeRecords []*feeRecord
+	addresses  map[chain.ChainType][]keypair
 }
 
-type txnRecord struct {
-	msg        string
-	startEvent *chain.TransferStartEvent
-	endEvent   *chain.TransferEndEvent
+type feeRecord struct {
+	ChainName chain.ChainType
+	Sn        *big.Int
+	Fee       map[string]*big.Int
+}
+
+type eventTs struct {
+	ChainName     chain.ChainType
+	Sn            *big.Int
+	EventType     chain.EventLogType
+	BlockNumber   uint64
+	TransactionID uint64
 }
 
 var (
-	ZeroEvents     = errors.New("Got zero event logs, expected at least one")
-	StatusCodeZero = errors.New("Got status code zero(failed)")
+	ZeroEvents               = errors.New("Got zero event logs, expected at least one")
+	StatusCodeZero           = errors.New("Got status code zero(failed)")
+	ExternalContextCancelled = errors.New("External Context Cancelled")
+	NilEventReceived         = errors.New("Nil Event Received")
+	InsufficientNativeToken  = errors.New("Insufficient Native Token")
+	InsufficientWrappedCoin  = errors.New("Insufficient Wrapped Coin")
+	InsufficientUnknownCoin  = errors.New("Insufficient Unknown Coin")
+	UnsupportedCoinArgs      = errors.New("Unsupported Coin Args")
+	IgnoreableError          = errors.New("Ignoreable Error")
 )
 
 type Config struct {
-	Env    string          `json:"env"`
-	Chains []*chain.Config `json:"chains"`
+	LogLevel             string          `json:"log_level"`
+	Chains               []*chain.Config `json:"chains"`
+	FeeAggregatorAddress string          `json:"fee_aggregator"`
 }
+
+// common

@@ -31,6 +31,7 @@ type api struct {
 	par       *parser
 	fd        *finder
 	requester *requestAPI
+	cfg       *chain.Config
 }
 
 func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
@@ -45,6 +46,10 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	btsIconAddr, ok := cfg.ContractAddresses[chain.BTS]
 	if !ok {
 		return nil, errors.New("cfg.ConftractAddresses does not include chain.BTS")
+	}
+	bmcIconAddr, ok := cfg.ContractAddresses[chain.BMC]
+	if !ok {
+		return nil, errors.New("cfg.ConftractAddresses does not include chain.BMC")
 	}
 
 	evtReq := icon.BlockRequest{
@@ -62,6 +67,11 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 			{
 				Addr:      icon.Address(btsIconAddr),
 				Signature: "TransferEnd(Address,int,int,bytes)",
+				Indexed:   []*string{},
+			},
+			{
+				Addr:      icon.Address(bmcIconAddr),
+				Signature: "Message(str,int,bytes)",
 				Indexed:   []*string{},
 			},
 		},
@@ -100,18 +110,17 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 		// defer close(_errCh)
 		err := a.ReceiveLoop(ctx, height, 0, func(txnLogs []*icon.TxResult) error {
 			for _, txnLog := range txnLogs {
-				a.Log.Info("height ", txnLog.BlockHeight)
 				for _, el := range txnLog.EventLogs {
 					res, evtType, err := a.par.Parse(&el)
 					if err != nil {
-						a.Log.Debug(errors.Wrap(err, "Parse "))
+						//a.Log.Trace(errors.Wrapf(err, "Parseth %v", err))
 						err = nil
 						continue
 					}
 					nel := &chain.EventLogInfo{ContractAddress: common.NewAddress(el.Addr).String(), EventType: evtType, EventLog: res}
 
-					a.Log.Infof("IFirst %+v", nel)
-					a.Log.Infof("ISecond %+v", nel.EventLog)
+					a.Log.Debugf("IFirst %+v", nel)
+					a.Log.Debugf("ISecond %+v", nel.EventLog)
 					if a.fd.Match(nel) { //el.IDs is updated by match if matched
 						//a.Log.Infof("Matched %+v", el)
 						a.sinkChan <- nel
@@ -239,6 +248,168 @@ func (a *api) WatchForTransferEnd(id uint64, seq int64) error {
 	return a.fd.watchFor(chain.TransferEnd, id, seq)
 }
 
+func (a *api) WatchForAddToBlacklistRequest(ID uint64, seq int64) error {
+	return a.fd.watchFor(chain.AddToBlacklistRequest, ID, seq)
+}
+func (a *api) WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error {
+	return a.fd.watchFor(chain.RemoveFromBlacklistRequest, ID, seq)
+}
+
+func (a *api) WatchForSetTokenLmitRequest(ID uint64, seq int64) error {
+	return a.fd.watchFor(chain.TokenLimitRequest, ID, seq)
+}
+
+func (a *api) WatchForFeeGatheringRequest(ID uint64, addr string) error {
+	return a.fd.watchFor(chain.FeeGatheringRequest, ID, addr)
+}
+
+func (a *api) WatchForFeeGatheringTransferStart(ID uint64, addr string) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) WatchForBlacklistResponse(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) WatchForSetTokenLmitResponse(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error) {
+	return a.requester.setFeeRatio(ownerKey, coinName, feeNumerator, fixedFee)
+}
+
+func (a *api) GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error) {
+	return a.requester.getFeeRatio(coinName)
+}
+
+func (a *api) GetAccumulatedFees() (map[string]*big.Int, error) {
+	return a.requester.getAccumulatedFees()
+}
+
+func (a *api) SetFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error) {
+	return a.requester.setFeeGatheringTerm(ownerKey, interval)
+}
+
+func (a *api) GetFeeGatheringTerm() (interval uint64, err error) {
+	return a.requester.getFeeGatheringTerm()
+}
+
+func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*chain.EventLogInfo, error) {
+	txRes, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
+	if err != nil {
+		return nil, errors.Wrapf(err, "GetTransactionResult %v", err)
+	}
+	if txRes.Status != icon.NewHexInt(1) {
+		return nil, errors.Wrapf(err, "Expected Status Code 1. Got %v", txRes.Status)
+	}
+
+	for _, log := range txRes.EventLogs {
+		tmpRes, eventType, err := a.par.ParseTxn(&TxnEventLog{Addr: log.Addr, Indexed: log.Indexed, Data: log.Data})
+		if eventType != evtType {
+			continue
+		}
+		if err != nil {
+			return nil, errors.Wrapf(err, "ParseTxn(%v) %v", eventType, err)
+		}
+		if eventType == chain.AddToBlacklistRequest {
+			res, ok := tmpRes.(*chain.AddToBlacklistRequestEvent)
+			if !ok {
+				return nil, fmt.Errorf("Expected *chain.AddToBlacklistRequestEvent; Got %T", tmpRes)
+			}
+			return &chain.EventLogInfo{ContractAddress: string(log.Addr), EventType: eventType, EventLog: res}, nil
+		} else if eventType == chain.RemoveFromBlacklistRequest {
+			res, ok := tmpRes.(*chain.RemoveFromBlacklistRequestEvent)
+			if !ok {
+				return nil, fmt.Errorf("Expected *chain.RemoveFromBlacklistRequestEvent; Got %T", tmpRes)
+			}
+			return &chain.EventLogInfo{ContractAddress: string(log.Addr), EventType: eventType, EventLog: res}, nil
+		} else if eventType == chain.TokenLimitRequest {
+			res, ok := tmpRes.(*chain.TokenLimitRequestEvent)
+			if !ok {
+				return nil, fmt.Errorf("Expected *chain.TokenLimitRequestEvent; Got %T", tmpRes)
+			}
+			return &chain.EventLogInfo{ContractAddress: string(log.Addr), EventType: eventType, EventLog: res}, nil
+		}
+	}
+	return nil, fmt.Errorf("Unable to find %v; NumEventLogs %v", evtType, len(txRes.EventLogs))
+}
+
+func (a *api) GetAddToBlacklistRequestEvent(hash string) (*chain.AddToBlacklistRequestEvent, error) {
+	txRes, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
+	if err != nil {
+		return nil, errors.Wrapf(err, "GetTransactionResult %v", err)
+	}
+	if txRes.Status != icon.NewHexInt(0) {
+		return nil, errors.Wrapf(err, "Expected Status Code 0. Got %v", txRes.Status)
+	}
+	for _, log := range txRes.EventLogs {
+		tmpRes, eventType, err := a.par.ParseTxn(&TxnEventLog{Addr: log.Addr, Indexed: log.Indexed, Data: log.Data})
+		if eventType != chain.AddToBlacklistRequest {
+			continue
+		}
+		if err != nil {
+			return nil, errors.Wrapf(err, "ParseTxn(%v) %v", eventType, err)
+		}
+		res, ok := tmpRes.(*chain.AddToBlacklistRequestEvent)
+		if !ok {
+			return nil, fmt.Errorf("Expected *chain.AddToBlacklistRequestEvent; Got %T", tmpRes)
+		}
+		return res, nil
+	}
+	return nil, fmt.Errorf("Unable to find *chain.AddToBlacklistRequestEvent; NumEventLogs %v", len(txRes.EventLogs))
+}
+
+func (a *api) GetRemoveFromBlacklistRequestEvent(hash string) (*chain.RemoveFromBlacklistRequestEvent, error) {
+	txRes, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
+	if err != nil {
+		return nil, errors.Wrapf(err, "GetTransactionResult %v", err)
+	}
+	if txRes.Status != icon.NewHexInt(0) {
+		return nil, errors.Wrapf(err, "Expected Status Code 0. Got %v", txRes.Status)
+	}
+	for _, log := range txRes.EventLogs {
+		tmpRes, eventType, err := a.par.ParseTxn(&TxnEventLog{Addr: log.Addr, Indexed: log.Indexed, Data: log.Data})
+		if eventType != chain.RemoveFromBlacklistRequest {
+			continue
+		}
+		if err != nil {
+			return nil, errors.Wrapf(err, "ParseTxn(%v) %v", eventType, err)
+		}
+		res, ok := tmpRes.(*chain.RemoveFromBlacklistRequestEvent)
+		if !ok {
+			return nil, fmt.Errorf("Expected *chain.RemoveFromBlacklistRequestEvent; Got %T", tmpRes)
+		}
+		return res, nil
+	}
+	return nil, fmt.Errorf("Unable to find *chain.RemoveFromBlacklistRequestEvent; NumEventLogs %v", len(txRes.EventLogs))
+}
+
+func (a *api) GetTokenLimitRequestEvent(hash string) (*chain.TokenLimitRequestEvent, error) {
+	txRes, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
+	if err != nil {
+		return nil, errors.Wrapf(err, "GetTransactionResult %v", err)
+	}
+	if txRes.Status != icon.NewHexInt(0) {
+		return nil, errors.Wrapf(err, "Expected Status Code 0. Got %v", txRes.Status)
+	}
+	for _, log := range txRes.EventLogs {
+		tmpRes, eventType, err := a.par.ParseTxn(&TxnEventLog{Addr: log.Addr, Indexed: log.Indexed, Data: log.Data})
+		if eventType != chain.TokenLimitRequest {
+			continue
+		}
+		if err != nil {
+			return nil, errors.Wrapf(err, "ParseTxn(%v) %v", eventType, err)
+		}
+		res, ok := tmpRes.(*chain.TokenLimitRequestEvent)
+		if !ok {
+			return nil, fmt.Errorf("Expected *chain.TokenLimitRequestEvent; Got %T", tmpRes)
+		}
+		return res, nil
+	}
+	return nil, fmt.Errorf("Unable to find *chain.TokenLimitRequestEvent; NumEventLogs %v", len(txRes.EventLogs))
+}
+
 func (a *api) GetKeyPairs(num int) ([][2]string, error) {
 	var err error
 	res := make([][2]string, num)
@@ -286,6 +457,18 @@ func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv stri
 	return
 }
 
-func (a *api) GetNetwork() string {
-	return a.requester.networkID + ".icon"
+func (a *api) ChargedGasFee(txnHash string) (*big.Int, error) {
+	txr, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(txnHash)})
+	if err != nil {
+		return nil, errors.Wrapf(err, "TransactionByHash %v", err)
+	}
+	gasUsed, err := txr.StepUsed.BigInt()
+	if err != nil {
+		return nil, errors.Wrapf(err, "BigInt Conversion %v", err)
+	}
+	return (&big.Int{}).Mul(big.NewInt(12500000000), gasUsed), nil
+}
+
+func (a *api) SuggestGasPrice() *big.Int {
+	return big.NewInt(12500000000)
 }
