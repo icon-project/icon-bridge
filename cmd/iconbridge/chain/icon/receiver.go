@@ -252,7 +252,14 @@ func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 			})
 			for _, r := range sres {
 				if vr.Next() == r.Height {
-					err := vr.Update(r.Header, r.NextValidators)
+					ok, err := vr.Verify(r.Header, r.Votes)
+					if err != nil {
+						return errors.Wrapf(err, "syncVerifier: Verify: height=%d, error=%v", r.Height, err)
+					}
+					if !ok {
+						return fmt.Errorf("syncVerifier: invalid header: height=%d", r.Height)
+					}
+					err = vr.Update(r.Header, r.NextValidators)
 					if err != nil {
 						return errors.Wrapf(err, "syncVerifier: Update: %v", err)
 					}
