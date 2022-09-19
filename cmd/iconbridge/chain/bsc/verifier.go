@@ -1,12 +1,10 @@
 package bsc
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"math/big"
 	"sync"
-	"time"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -124,13 +122,13 @@ func (vr *Verifier) Verify(header *types.Header, nextHeader *types.Header, recei
 	if nextHeader.Number.Cmp((&big.Int{}).Add(header.Number, big1)) != 0 {
 		return fmt.Errorf("Different height between successive header: Prev %v New %v", header.Number, nextHeader.Number)
 	}
-	if !bytes.Equal(header.Hash().Bytes(), nextHeader.ParentHash.Bytes()) {
+	if header.Hash() != nextHeader.ParentHash {
 		return fmt.Errorf("Different hash between successive header: (%v): Prev %v New %v", header.Number, header.Hash(), nextHeader.ParentHash)
 	}
 	if vr.Next().Cmp(header.Number) != 0 {
 		return fmt.Errorf("Unexpected height: Got %v Expected %v", header.Number, vr.Next())
 	}
-	if !bytes.Equal(header.ParentHash.Bytes(), vr.ParentHash().Bytes()) {
+	if header.ParentHash != vr.ParentHash() {
 		return fmt.Errorf("Unexpected Hash(%v): Got %v Expected %v", header.Number, header.ParentHash, vr.ParentHash())
 	}
 
@@ -154,13 +152,17 @@ func (vr *Verifier) Verify(header *types.Header, nextHeader *types.Header, recei
 func (vr *Verifier) Update(header *types.Header) (err error) {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
-	vr.parentHash = header.Hash()
-	vr.next.Add(header.Number, big1)
 	if header.Number.Uint64()%defaultEpochLength != 0 {
 		return nil
 	}
 	// update validators if epoch block
-	vr.validators, err = getValidatorMapFromHex(header.Extra)
+	validatorMap, err := getValidatorMapFromHex(header.Extra)
+	if err != nil {
+		return fmt.Errorf("getValidatorMapFromHex %v", err)
+	}
+	vr.parentHash = header.Hash()
+	vr.next.Add(header.Number, big1)
+	vr.validators = validatorMap
 	return
 }
 
@@ -184,9 +186,9 @@ func (vr *Verifier) verifyHeader(header *types.Header) error {
 	number := header.Number.Uint64()
 
 	// Don't waste time checking blocks from the future
-	if header.Time > uint64(time.Now().Unix()) {
-		return consensus.ErrFutureBlock
-	}
+	// if header.Time > uint64(time.Now().Unix()) {
+	// 	return consensus.ErrFutureBlock
+	// }
 	// Check that the extra-data contains the vanity, validators and signature.
 	if len(header.Extra) < extraVanity {
 		return errMissingVanity

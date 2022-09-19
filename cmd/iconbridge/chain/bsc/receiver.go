@@ -110,7 +110,7 @@ func (r *receiver) newVerifier(opts *VerifierOptions) (vr *Verifier, err error) 
 		err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
 		return nil, err
 	}
-	if !bytes.Equal(header.ParentHash.Bytes(), vr.parentHash.Bytes()) {
+	if header.ParentHash != vr.parentHash {
 		return nil, fmt.Errorf("Unexpected Hash(%v): Got %v Expected %v", opts.BlockHeight, header.ParentHash.Hex(), vr.parentHash.Hex())
 	}
 
@@ -301,7 +301,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			for ; bn != nil; next++ {
 				if lbn != nil {
 					if bn.Height.Cmp(lbn.Height) == 0 {
-						if !bytes.Equal(bn.Header.ParentHash.Bytes(), lbn.Header.ParentHash.Bytes()) {
+						if bn.Header.ParentHash != lbn.Header.ParentHash {
 							r.log.WithFields(log.Fields{"lbnParentHash": lbn.Header.ParentHash, "bnParentHash": bn.Header.ParentHash}).Error("verification failed on retry ")
 							break
 						}
