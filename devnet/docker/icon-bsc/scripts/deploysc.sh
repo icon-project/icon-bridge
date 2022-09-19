@@ -5,6 +5,7 @@ set -e
 source config.sh
 source keystore.sh
 source rpc.sh
+source generate_e2e_config.sh
 
 setup_account() {
       echo "check god keys..."
@@ -162,6 +163,7 @@ deploysc() {
 
     generate_addresses_json >$CONFIG_DIR/addresses.json  
     generate_relay_config >$CONFIG_DIR/bmr.config.json
+    generate_e2e_config >$CONFIG_DIR/e2e.config.json
     wait_for_file $CONFIG_DIR/bmr.config.json
     
     echo "Smart contracts have been deployed "
