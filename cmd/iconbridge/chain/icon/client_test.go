@@ -11,6 +11,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func NewTestClient() *Client {
+	uri := "https://ctz.solidwallet.io/api/v3"
+	l := log.New().WithFields(log.Fields{"uri": uri})
+	return NewClient(uri, l)
+}
+
 func TestContextCancel(t *testing.T) {
 	urls := []string{
 		"https://ctz.solidwallet.io/api/v3/icon_dex",
@@ -67,3 +73,35 @@ func TestContextCancel(t *testing.T) {
 	}
 	time.Sleep(time.Second * 15)
 }
+
+// func TestGetHeaderByHeight(t *testing.T) {
+// 	cl := NewTestClient()
+
+// 	var height int64 = 50000000
+
+// 	enc := json.NewEncoder(os.Stdout)
+// 	enc.SetIndent("", "  ")
+
+// 	h, err := cl.getBlockHeaderByHeight(height)
+// 	require.NoError(t, err)
+// 	enc.Encode(h)
+
+// 	vals, err := cl.getValidatorsByHash(h.NextValidatorsHash)
+// 	require.NoError(t, err)
+
+// 	fmt.Println(common.HexBytes(h.NextValidatorsHash))
+// 	enc.Encode(vals)
+
+// 	h, err = cl.getBlockHeaderByHeight(height + 1)
+// 	require.NoError(t, err)
+// 	enc.Encode(h)
+
+// 	vl, err := cl.getCommitVoteListByHeight(h.Height)
+// 	require.NoError(t, err)
+// 	enc.Encode(vl)
+
+// 	p := &BlockHeightParam{Height: NewHexInt(h.Height)}
+// 	votes, err := cl.GetVotesByHeight(p)
+// 	require.NoError(t, err)
+// 	fmt.Println(common.HexBytes(votes))
+// }

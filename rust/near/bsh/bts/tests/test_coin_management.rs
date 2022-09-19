@@ -55,7 +55,8 @@ fn register_token() {
     );
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    contract.register_coin_callback(icx_coin.clone());
+    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    contract.register_coin_callback(icx_coin.clone(), coin_id);
 
     let result = contract.coins();
     let expected = to_value(vec![
@@ -94,7 +95,8 @@ fn register_existing_token() {
     );
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    contract.register_coin_callback(icx_coin.clone());
+    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    contract.register_coin_callback(icx_coin.clone(), coin_id);
     contract.register(icx_coin.clone());
 }
 
@@ -119,7 +121,8 @@ fn register_token_permission() {
     testing_env!(context(chuck(), 0));
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    contract.register_coin_callback(icx_coin.clone());
+    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    contract.register_coin_callback(icx_coin.clone(), coin_id);
 }
 
 #[test]
@@ -133,15 +136,13 @@ fn get_registered_coin_id() {
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let coin_id = contract.coin_id("NEAR".to_string());
+    let coin_id = contract.coin_id("NEAR").unwrap();
     let expected = env::sha256(nativecoin.name().as_bytes());
     assert_eq!(coin_id, expected)
 }
 
 #[test]
-#[should_panic(
-    expected = "BSHRevertNotExistsToken: [38, 6b, d, cf, f4, cf, 7b, f0, f7, 91, 97, 88, ec, 8f, f2, d6, 98, e5, 32, 16, 2a, e4, 5, 3d, 32, 3b, 8d, 4f, e0, bd, ae, 94]"
-)]
+#[should_panic(expected = "BSHRevertNotExistsToken: ICON")]
 fn get_non_exist_coin_id() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
     testing_env!(context(alice(), 0));
@@ -152,7 +153,10 @@ fn get_non_exist_coin_id() {
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let coin_id = contract.coin_id("ICON".to_string());
+    let coin_id = contract
+        .coin_id("ICON")
+        .map_err(|err| format!("{}", err))
+        .unwrap();
 }
 
 #[test]
@@ -180,7 +184,7 @@ fn set_token_limit() {
 
 #[test]
 #[cfg(feature = "testable")]
-fn udapte_token_limit() {
+fn update_token_limit() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
@@ -200,4 +204,31 @@ fn udapte_token_limit() {
 
     let tokenlimits = contract.get_token_limit().get("NEAR").unwrap();
     assert_eq!(tokenlimits, &10000000000000000000003_u128)
+}
+
+#[test]
+fn query_token_metadata() {
+    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    testing_env!(
+        context(alice(), 0),
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        vec![PromiseResult::Successful(vec![1_u8])]
+    );
+    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let mut contract = BtpTokenService::new(
+        "nativecoin".to_string(),
+        bmc(),
+        "0x1.near".into(),
+        nativecoin.clone(),
+    );
+    let icx_coin = <Coin>::new(ICON_COIN.to_owned());
+    contract.register(icx_coin.clone());
+    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    contract.register_coin_callback(icx_coin.clone(), coin_id);
+
+    let result = contract.coin(icx_coin.name().to_string());
+
+    assert_eq!(icx_coin, result);
 }

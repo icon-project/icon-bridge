@@ -46,7 +46,7 @@ func TestMedianGasPrice(t *testing.T) {
 	cls, _, err := newClients([]string{url}, BSC_BMC_PERIPHERY, log.New())
 	require.NoError(t, err)
 
-	_, _, err = cls[0].GetMedianGasPriceForBlock()
+	_, _, err = cls[0].GetMedianGasPriceForBlock(context.Background())
 	require.NoError(t, err)
 }
 
@@ -61,7 +61,7 @@ func TestFilterLogs(t *testing.T) {
 	if recv == nil {
 		t.Fatal(errors.New("Receiver is nil"))
 	}
-	exists, err := recv.hasBTPMessage(context.TODO(), big.NewInt(BlockHeight))
+	exists, err := recv.hasBTPMessage(context.Background(), big.NewInt(BlockHeight))
 	require.NoError(t, err)
 	if !exists {
 		require.NoError(t, errors.New("Expected true"))

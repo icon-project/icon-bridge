@@ -17,6 +17,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/codec"
+	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
 )
@@ -63,10 +64,10 @@ func NewSender(
 }
 
 type senderOptions struct {
-	GasLimit         uint64  `json:"gas_limit"`
-	BoostGasPrice    float64 `json:"boost_gas_price"`
-	TxDataSizeLimit  uint64  `json:"tx_data_size_limit"`
-	BalanceThreshold big.Int `json:"balance_threshold"`
+	GasLimit         uint64         `json:"gas_limit"`
+	BoostGasPrice    float64        `json:"boost_gas_price"`
+	TxDataSizeLimit  uint64         `json:"tx_data_size_limit"`
+	BalanceThreshold intconv.BigInt `json:"balance_threshold"`
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
@@ -183,7 +184,7 @@ func (s *sender) Segment(
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
 	cl, _ := s.jointClient()
 	bal, err := cl.GetBalance(ctx, s.w.Address())
-	return bal, &s.opts.BalanceThreshold, err
+	return bal, &s.opts.BalanceThreshold.Int, err
 
 }
 

@@ -1,0 +1,26 @@
+version: "3.8"  # optional since v1.27.0
+services:
+  goloop:
+    container_name: goloop
+    build:
+      context: ../goloop
+      args:
+        ICONBRIDGE_VERSION: latest
+        GOLOOP_IMAGE: iconloop/goloop-icon:latest
+    ports:
+      - "9080:9080"
+    volumes:
+      - ./local/artifacts:/goloop/config
+      # - ./local:/goloop/data
+    environment:
+      - GOLOOP_NODE_DIR=/goloop/data/goloop
+      - GOLOOP_LOG_WRITER_FILENAME=/goloop/data/log/goloop.log
+
+  binancesmartchain:
+    container_name: binancesmartchain
+    image: bsc-node:latest
+    ports:
+      - "8545:8545"
+      - "8546:8546"
+    volumes:
+      - ./data/bsc/node1:/bsc/node1
