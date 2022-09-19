@@ -6,8 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sync"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+	ethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -121,4 +125,33 @@ func TestReceiver_GetReceiptProofs(t *testing.T) {
 			header.ReceiptHash, receiptsRoot)
 		require.NoError(t, err)
 	}
+}
+
+func TestVerify(t *testing.T) {
+	height := uint64(22169979)
+	blockHash, err := hexutil.Decode("0x489b5865c1b015fa03177c30a4286533f02d2086c3db5f751180519f872fc37f")
+	require.NoError(t, err)
+	validatorData, err := hexutil.Decode("0xd98301010b846765746889676f312e31362e3130856c696e75780000de3b3a04049153b8dae0a232ac90d20c78f1a5d1de7b7dc51284214b9b9c85549ab3d2b972df0deef66ac2c935552c16704d214347f29fa77f77da6d75d7c7526d6247501b822fd4eaa76fcb64baea360279497f96c5d20b2a975c050e4220be276ace4892f4b41a980a75ecd1309ea12fa2ed87a8744fbfc9b863d5a2959d3f95eae5dc7d70144ce1b73b403b7eb6e0b71b214cb885500844365e95cd9942c7276e7fd833329df8450664d5960414752117d15811254efed1fb30e82660f82ce03df6536cc69315173fea12f202c1c1d0d165d5efb87dc2882d1602fdd3c1a11a03c86e01")
+	require.NoError(t, err)
+	opts := VerifierOptions{
+		BlockHeight:   height,
+		BlockHash:     blockHash,
+		ValidatorData: validatorData,
+	}
+	vr := &Verifier{
+		mu:         sync.RWMutex{},
+		next:       big.NewInt(int64(opts.BlockHeight)),
+		parentHash: common.BytesToHash(opts.BlockHash),
+		validators: map[ethCommon.Address]bool{},
+		chainID:    big.NewInt(97),
+	}
+	vr.validators, err = getValidatorMapFromHex(opts.ValidatorData)
+	require.NoError(t, err)
+	cl := newTestClient(t, BSC_BMC_PERIPHERY)
+	header, err := cl.GetHeaderByHeight(big.NewInt(int64(opts.BlockHeight)))
+	require.NoError(t, err)
+	newHeader, err := cl.GetHeaderByHeight(big.NewInt(int64(opts.BlockHeight + 1)))
+	require.NoError(t, err)
+	err = vr.Verify(header, newHeader, nil)
+	require.NoError(t, err)
 }
