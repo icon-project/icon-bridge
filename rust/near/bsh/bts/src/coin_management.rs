@@ -237,6 +237,16 @@ impl BtpTokenService {
         );
 
         self.balances.add(&env::current_account_id(), &coin_id);
+        let log = json!(
+        {
+
+            "event": "Register",
+            "code": "0",
+            "token_name": coin.name(),
+            "token_name": coin.symbol()
+
+        });
+        log!(near_sdk::serde_json::to_string(&log).unwrap());
     }
 
     pub fn set_token_limit(
