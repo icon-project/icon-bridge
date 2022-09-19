@@ -9,11 +9,6 @@ eth_parentHash() {
   curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' \
     --data-raw "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBlockByNumber\",\"params\":[\"$1\", false], \"id\": 1}" | jq -r .result.parentHash
 }
-eth_validatorData() {
-  local height=$(expr $1 - $1 % 200)
-  curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' \
-    --data-raw "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBlockByNumber\",\"params\":[\"$height\", false], \"id\": 1}" | jq -r .result.extraData
-}
 
 deploy_solidity_bmc() {
   cd $CONTRACTS_DIR/solidity/bmc
@@ -24,7 +19,6 @@ deploy_solidity_bmc() {
     local blockHeight=$(eth_blocknumber)
     echo $blockHeight | xargs printf "%d" > $CONFIG_DIR/bsc.chain.height
     eth_parentHash $blockHeight > $CONFIG_DIR/bsc.chain.parentHash
-    eth_validatorData $blockHeight > $CONFIG_DIR/bsc.chain.validatorData
     set +e
     local status="retry"
     for i in $(seq 1 20); do
