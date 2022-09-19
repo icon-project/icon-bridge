@@ -12,62 +12,6 @@
             "native_coin":"btp-0x2.icon-ICX",
             "native_tokens":["btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"],
             "wrapped_coins":["btp-0x61.bsc-BNB", "btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH"],
-            "coin_details":[
-                {
-                    "name":"btp-0x2.icon-ICX",
-                    "fixed_fee" : "4300000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x2.icon-sICX",
-                    "fixed_fee" : "3900000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x2.icon-bnUSD",
-                    "fixed_fee" : "1500000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x61.bsc-BNB",
-                    "fixed_fee" : "5000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x61.bsc-BUSD",
-                    "fixed_fee" : "1500000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x61.bsc-USDT",
-                    "fixed_fee" : "1500000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x61.bsc-BTCB",
-                    "fixed_fee" : "62500000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x61.bsc-ETH",
-                    "fixed_fee" : "750000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x61.bsc-USDC",
-                    "fixed_fee" : "1500000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                }
-            ],
             "god_wallet_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
             "god_wallet_secret_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
             "bts_owner_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
@@ -93,62 +37,6 @@
             "native_coin":"btp-0x61.bsc-BNB",
             "native_tokens":["btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH"],
             "wrapped_coins":["btp-0x2.icon-ICX", "btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"],
-            "coin_details":[
-                {
-                    "name":"btp-0x61.bsc-BNB",
-                    "fixed_fee" : "5000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x61.bsc-BUSD",
-                    "fixed_fee" : "1500000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x61.bsc-USDT",
-                    "fixed_fee" : "1500000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x61.bsc-BTCB",
-                    "fixed_fee" : "62500000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x61.bsc-ETH",
-                    "fixed_fee" : "750000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x61.bsc-USDC",
-                    "fixed_fee" : "1500000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x2.icon-ICX",
-                    "fixed_fee" : "4300000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x2.icon-sICX",
-                    "fixed_fee" : "3900000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                },
-                {
-                    "name":"btp-0x2.icon-bnUSD",
-                    "fixed_fee" : "1500000000000000000",
-                    "fee_numerator":100,
-                    "decimals":18
-                }
-            ],
             "god_wallet_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
             "god_wallet_secret_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
             "bts_owner_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",

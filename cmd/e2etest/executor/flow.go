@@ -447,13 +447,13 @@ func (ex *executor) getAggregatedFees() (aggregatedAmountPerCoin map[string]*big
 		errs = fmt.Errorf("Expected chain %v not found in cfgPerChain", ts.FullConfigAPIChain())
 		return
 	}
-	for _, cd := range cfg.CoinDetails {
-		bal, err := cl.GetCoinBalance(cd.Name, cl.GetBTPAddress(ts.feeAggregatorAddress))
+	for _, coinName := range append(append(cfg.NativeTokens, cfg.NativeCoin), cfg.WrappedCoins...) {
+		bal, err := cl.GetCoinBalance(coinName, cl.GetBTPAddress(ts.feeAggregatorAddress))
 		if err != nil {
 			errs = fmt.Errorf("GetCoinBalance %v", err)
 			return
 		}
-		aggregatedAmountPerCoin[cd.Name] = bal.UserBalance
+		aggregatedAmountPerCoin[coinName] = bal.UserBalance
 	}
 	return
 }

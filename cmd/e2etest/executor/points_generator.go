@@ -133,17 +133,18 @@ func (gen *pointGenerator) GenerateTransferPoints() (pts []*transferPoint, errs 
 	cfgPerCoinPerChain := map[chain.ChainType]map[string]*tmpCfg{}
 	for chain, cl := range gen.clsPerChain {
 		cfgPerCoinPerChain[chain] = map[string]*tmpCfg{}
-		for _, cd := range gen.cfgPerChain[chain].CoinDetails {
-			fNum, fBase, err := cl.GetFeeRatio(cd.Name)
+		cfg := gen.cfgPerChain[chain]
+		for _, coinName := range append(append(cfg.NativeTokens, cfg.NativeCoin), cfg.WrappedCoins...) {
+			fNum, fBase, err := cl.GetFeeRatio(coinName)
 			if err != nil {
 				err = fmt.Errorf("GetFeeRatio %v", err)
 				return
 			}
-			limit, err := cl.GetTokenLimit(cd.Name)
+			limit, err := cl.GetTokenLimit(coinName)
 			if err != nil {
 				err = fmt.Errorf("GetTokenLimit %v", err)
 			}
-			cfgPerCoinPerChain[chain][cd.Name] = &tmpCfg{numerator: fNum, baseFee: fBase, limit: limit}
+			cfgPerCoinPerChain[chain][coinName] = &tmpCfg{numerator: fNum, baseFee: fBase, limit: limit}
 		}
 	}
 

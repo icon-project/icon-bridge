@@ -26,20 +26,11 @@ import (
 	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
-const (
-	TransferNativeIntraChainGasLimit = 25000  // 21K
-	TransferTokenIntraChainGasLimit  = 60000  // 54K
-	ApproveTokenGasLimit             = 50000  // 46K
-	TransferInterChainGasLimit       = 700000 // 54K
-	TransferBatchInterChainGasLimit  = 900000 // 768K
-	DefaultGasLimit                  = 5000000
-)
-
 type requestAPI struct {
 	contractNameToAddress map[chain.ContractName]string
 	networkID             string
 	ethCl                 *ethclient.Client
-	gasLimit              uint64
+	gasLimits             map[chain.GasLimitType]uint64
 	nativeCoin            string
 	nativeTokens          []string
 	btsc                  *btscore.Btscore
@@ -73,17 +64,30 @@ func newRequestAPI(cfg *chain.Config) (*requestAPI, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "NewBtscore")
 	}
+	defaultMapForDifferentGasLimits := map[chain.GasLimitType]uint64{
+		chain.TransferNativeCoinIntraChainGasLimit: 25000,
+		chain.TransferTokenIntraChainGasLimit:      60000,
+		chain.ApproveTokenInterChainGasLimit:       50000,
+		chain.TransferCoinInterChainGasLimit:       700000,
+		chain.TransferBatchCoinInterChainGasLimit:  900000,
+		chain.DefaultGasLimit:                      5000000,
+	}
 	req := &requestAPI{
 		contractNameToAddress: cfg.ContractAddresses,
 		networkID:             strings.Split(cfg.NetworkID, ".")[0],
 		ethCl:                 cleth,
 		btsc:                  btscore,
 		btsp:                  btsp,
-		gasLimit:              uint64(DefaultGasLimit),
+		gasLimits:             cfg.GasLimit,
 		nativeCoin:            cfg.NativeCoin,
 		nativeTokens:          cfg.NativeTokens,
 	}
 	req.ercPerCoin, err = req.getCoinAddresses(append(cfg.NativeTokens, cfg.WrappedCoins...))
+	for k, v := range defaultMapForDifferentGasLimits {
+		if _, ok := req.gasLimits[k]; !ok {
+			req.gasLimits[k] = v
+		}
+	}
 	return req, err
 }
 
@@ -185,7 +189,7 @@ func (r *requestAPI) getTransactionRequest(senderKey string) (*bind.TransactOpts
 	if err != nil {
 		return nil, errors.Wrap(err, "SuggestGasPrice ")
 	}
-	txo.GasLimit = r.gasLimit // max gas limit
+	txo.GasLimit = r.gasLimits[chain.DefaultGasLimit] // max gas limit
 	return txo, nil
 }
 
@@ -247,7 +251,7 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 		err = errors.Wrap(err, "ChainID ")
 		return
 	}
-	tx := types.NewTransaction(nonce, common.HexToAddress(recepientAddress), amount, TransferNativeIntraChainGasLimit, gasPrice, []byte{})
+	tx := types.NewTransaction(nonce, common.HexToAddress(recepientAddress), amount, r.gasLimits[chain.TransferNativeCoinIntraChainGasLimit], gasPrice, []byte{})
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), senderPrivKey)
 	if err != nil {
 		err = errors.Wrap(err, "SignTx ")
@@ -275,7 +279,7 @@ func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string,
 		return
 	}
 	txo.Context = context.Background()
-	txo.GasLimit = TransferTokenIntraChainGasLimit
+	txo.GasLimit = r.gasLimits[chain.TransferTokenIntraChainGasLimit]
 	txn, err := erc.Transfer(txo, common.HexToAddress(recepientAddress), amount)
 	if err != nil {
 		err = errors.Wrap(err, "hrc.Transfer ")
@@ -300,7 +304,7 @@ func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress
 	}
 	txo.Value = amount
 	txo.Context = context.Background()
-	txo.GasLimit = TransferInterChainGasLimit
+	txo.GasLimit = r.gasLimits[chain.TransferCoinInterChainGasLimit]
 	txn, err := r.btsc.TransferNativeCoin(txo, recepientAddress)
 	if err != nil {
 		err = errors.Wrap(err, "btsc.TransferNativeCoin ")
@@ -322,7 +326,7 @@ func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepi
 		return
 	}
 	txo.Context = context.Background()
-	txo.GasLimit = TransferInterChainGasLimit
+	txo.GasLimit = r.gasLimits[chain.TransferCoinInterChainGasLimit]
 	txn, err := r.btsc.Transfer(txo, coinName, amount, recepientAddress)
 	if err != nil {
 		err = errors.Wrap(err, "btsc.Transfer ")
@@ -342,7 +346,7 @@ func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddre
 		return
 	}
 	txo.Context = context.Background()
-	txo.GasLimit = TransferBatchInterChainGasLimit
+	txo.GasLimit = r.gasLimits[chain.TransferBatchCoinInterChainGasLimit]
 	filterNames := []string{}
 	filterAmounts := []*big.Int{}
 	for i := 0; i < len(amounts); i++ {
@@ -381,7 +385,7 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount *big.Int) (a
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
-	txo.GasLimit = ApproveTokenGasLimit
+	txo.GasLimit = r.gasLimits[chain.ApproveTokenInterChainGasLimit]
 	btscaddr, ok := r.contractNameToAddress[chain.BTS]
 	if !ok {
 		err = fmt.Errorf("contractNameToAddress doesn't include %v ", chain.BTS)
@@ -403,7 +407,6 @@ func (r *requestAPI) setFeeRatio(ownerKey string, coinName string, feeNumerator,
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
-	txo.GasLimit = DefaultGasLimit
 	txo.Context = context.Background()
 	txn, err := r.btsc.SetFeeRatio(txo, coinName, feeNumerator, fixedFee)
 	if err != nil {

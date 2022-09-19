@@ -29,26 +29,26 @@ const (
 	DefaultGetTransactionResultPollingInterval = 1500 * time.Millisecond //1.5sec
 )
 
-const (
-	TransferNativeIntraChainStepLimit = 150000  // 100K
-	TransferTokenIntraChainStepLimit  = 300000  // 236K
-	ApproveTokenStepLimit             = 800000  // 685K
-	TransferInterChainStepLimit       = 2500000 // 1514K
-	TransferBatchInterChainStepLimit  = 4000000 // 1838K
-	DefaultGasLimit                   = 5000000
-)
-
 type requestAPI struct {
 	contractNameToAddress map[chain.ContractName]string
 	networkID             string
 	cl                    *icon.Client
-	stepLimit             int64
 	nativeCoin            string
 	wrappedCoinsAddr      map[string]string
 	nativeTokensAddr      map[string]string
+	gasLimits             map[chain.GasLimitType]uint64
 }
 
 func newRequestAPI(cl *icon.Client, cfg *chain.Config) (req *requestAPI, err error) {
+	var defaultMapForDifferentGasLimits = map[chain.GasLimitType]uint64{
+		chain.TransferNativeCoinIntraChainGasLimit: 150000,
+		chain.TransferTokenIntraChainGasLimit:      300000,
+		chain.ApproveTokenInterChainGasLimit:       800000,
+		chain.TransferCoinInterChainGasLimit:       2500000,
+		chain.TransferBatchCoinInterChainGasLimit:  4000000,
+		chain.DefaultGasLimit:                      5000000,
+	}
+
 	if !strings.Contains(cfg.NetworkID, ".icon") {
 		return nil, fmt.Errorf("Expected cfg.NetwrkID=0xnid.icon Got %v", cfg.NetworkID)
 	}
@@ -56,10 +56,15 @@ func newRequestAPI(cl *icon.Client, cfg *chain.Config) (req *requestAPI, err err
 		networkID:             strings.Split(cfg.NetworkID, ".")[0],
 		contractNameToAddress: cfg.ContractAddresses,
 		cl:                    cl,
-		stepLimit:             DefaultGasLimit,
 		nativeCoin:            cfg.NativeCoin,
+		gasLimits:             cfg.GasLimit,
 	}
 	req.nativeTokensAddr, req.wrappedCoinsAddr, err = req.getCoinAddresses(cfg.NativeTokens, cfg.WrappedCoins)
+	for k, v := range defaultMapForDifferentGasLimits {
+		if _, ok := req.gasLimits[k]; !ok {
+			req.gasLimits[k] = v
+		}
+	}
 	return req, err
 }
 
@@ -137,7 +142,7 @@ func (r *requestAPI) transferIntraChain(coinName, senderKey, recepientAddress st
 
 func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount *big.Int, caddr string) (txHash string, err error) {
 	args := map[string]interface{}{"_to": recepientAddress, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(senderKey, caddr, big.NewInt(0), args, "transfer", TransferTokenIntraChainStepLimit)
+	return r.transactWithContract(senderKey, caddr, big.NewInt(0), args, "transfer", int64(r.gasLimits[chain.TransferTokenIntraChainGasLimit]))
 }
 
 func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount *big.Int) (txHash string, err error) {
@@ -152,7 +157,7 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 		ToAddress:   icon.Address(recepientAddress),
 		Value:       icon.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
 		FromAddress: icon.Address(senderWallet.Address().String()),
-		StepLimit:   icon.NewHexInt(TransferNativeIntraChainStepLimit),
+		StepLimit:   icon.NewHexInt(int64(r.gasLimits[chain.TransferNativeCoinIntraChainGasLimit])),
 		Timestamp:   icon.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
 		NetworkID:   icon.HexInt(r.networkID),
 	}
@@ -195,7 +200,7 @@ func (r *requestAPI) transferNativeCrossChain(senderKey, recepientAddress string
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	return r.transactWithContract(senderKey, caddr, amount, args, "transferNativeCoin", TransferInterChainStepLimit)
+	return r.transactWithContract(senderKey, caddr, amount, args, "transferNativeCoin", int64(r.gasLimits[chain.TransferCoinInterChainGasLimit]))
 }
 
 func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddress string, amount *big.Int) (string, error) {
@@ -204,7 +209,7 @@ func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddr
 	if !ok {
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
-	return r.transactWithContract(senderKey, btsaddr, big.NewInt(0), args, "transfer", TransferInterChainStepLimit)
+	return r.transactWithContract(senderKey, btsaddr, big.NewInt(0), args, "transfer", int64(r.gasLimits[chain.TransferCoinInterChainGasLimit]))
 }
 
 func (r *requestAPI) approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
@@ -227,7 +232,7 @@ func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, am
 		return
 	}
 	approveArgs := map[string]interface{}{"spender": btsaddr, "amount": intconv.FormatBigInt(amount)}
-	approveTxnHash, err = r.transactWithContract(ownerKey, coinAddress, big.NewInt(0), approveArgs, "approve", ApproveTokenStepLimit)
+	approveTxnHash, err = r.transactWithContract(ownerKey, coinAddress, big.NewInt(0), approveArgs, "approve", int64(r.gasLimits[chain.ApproveTokenInterChainGasLimit]))
 	if err != nil {
 		err = errors.Wrapf(err, "transactWithContract %v", coinAddress)
 		return
@@ -241,7 +246,7 @@ func (r *requestAPI) approveToken(coinName, senderKey string, amount *big.Int, c
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 	arg1 := map[string]interface{}{"_to": btsAddr, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(senderKey, caddr, big.NewInt(0), arg1, "transfer", ApproveTokenStepLimit)
+	return r.transactWithContract(senderKey, caddr, big.NewInt(0), arg1, "transfer", int64(r.gasLimits[chain.ApproveTokenInterChainGasLimit]))
 }
 
 func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
@@ -266,7 +271,7 @@ func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddre
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 
-	txnHash, err = r.transactWithContract(senderKey, btsaddr, nativeAmount, args, "transferBatch", TransferBatchInterChainStepLimit)
+	txnHash, err = r.transactWithContract(senderKey, btsaddr, nativeAmount, args, "transferBatch", int64(r.gasLimits[chain.TransferBatchCoinInterChainGasLimit]))
 	return
 }
 
@@ -479,7 +484,7 @@ func (r *requestAPI) reclaim(coinName string, ownerKey string, amount *big.Int) 
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 	arg1 := map[string]interface{}{"_coinName": coinName, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), arg1, "reclaim", r.stepLimit)
+	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), arg1, "reclaim", int64(r.gasLimits[chain.DefaultGasLimit]))
 }
 
 // Configure API
@@ -493,7 +498,7 @@ func (a *api) SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*
 	for i, v := range tokenLimits {
 		strTokenLimits[i] = intconv.FormatBigInt(v)
 	}
-	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_coinNames": coinNames, "_tokenLimits": strTokenLimits}, "setTokenLimit", a.requester.stepLimit)
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_coinNames": coinNames, "_tokenLimits": strTokenLimits}, "setTokenLimit", int64(a.requester.gasLimits[chain.DefaultGasLimit]))
 }
 
 func (a *api) AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error) {
@@ -502,7 +507,7 @@ func (a *api) AddBlackListAddress(ownerKey string, net string, addrs []string) (
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": net, "_addresses": addrs}, "addBlacklistAddress", a.requester.stepLimit)
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": net, "_addresses": addrs}, "addBlacklistAddress", int64(a.requester.gasLimits[chain.DefaultGasLimit]))
 }
 
 func (a *api) RemoveBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error) {
@@ -511,7 +516,7 @@ func (a *api) RemoveBlackListAddress(ownerKey string, net string, addrs []string
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": net, "_addresses": addrs}, "removeBlacklistAddress", a.requester.stepLimit)
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": net, "_addresses": addrs}, "removeBlacklistAddress", int64(a.requester.gasLimits[chain.DefaultGasLimit]))
 }
 
 func (a *api) ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error) {
@@ -521,9 +526,9 @@ func (a *api) ChangeRestriction(ownerKey string, enable bool) (txnHash string, e
 		return
 	}
 	if enable {
-		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "addRestriction", a.requester.stepLimit)
+		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "addRestriction", int64(a.requester.gasLimits[chain.DefaultGasLimit]))
 	}
-	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "disableRestrictions", a.requester.stepLimit)
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "disableRestrictions", int64(a.requester.gasLimits[chain.DefaultGasLimit]))
 }
 
 func (r *requestAPI) setFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error) {
@@ -532,7 +537,7 @@ func (r *requestAPI) setFeeGatheringTerm(ownerKey string, interval uint64) (hash
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BMC)
 		return
 	}
-	return r.transactWithContract(ownerKey, bmcAddr, big.NewInt(0), map[string]interface{}{"_value": hexutil.EncodeUint64(interval)}, "setFeeGatheringTerm", DefaultGasLimit)
+	return r.transactWithContract(ownerKey, bmcAddr, big.NewInt(0), map[string]interface{}{"_value": hexutil.EncodeUint64(interval)}, "setFeeGatheringTerm", int64(r.gasLimits[chain.DefaultGasLimit]))
 }
 
 func (r *requestAPI) getFeeGatheringTerm() (interval uint64, err error) {
@@ -562,7 +567,7 @@ func (r *requestAPI) setFeeRatio(ownerKey string, coinName string, feeNumerator,
 	}
 	_feeNumerator := intconv.FormatBigInt(feeNumerator)
 	_fixedFee := intconv.FormatBigInt(fixedFee)
-	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_name": coinName, "_feeNumerator": _feeNumerator, "_fixedFee": _fixedFee}, "setFeeRatio", DefaultGasLimit)
+	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_name": coinName, "_feeNumerator": _feeNumerator, "_fixedFee": _fixedFee}, "setFeeRatio", int64(r.gasLimits[chain.DefaultGasLimit]))
 }
 
 func (r *requestAPI) getAccumulatedFees() (ret map[string]*big.Int, err error) {

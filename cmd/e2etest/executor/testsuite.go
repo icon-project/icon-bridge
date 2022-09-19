@@ -121,18 +121,15 @@ func (ts *testSuite) getAmountBeforeFeeCharge(chainName chain.ChainType, coinNam
 		inputBalance = (outputBalance + fixed) * deniminator / (denominator - numerator)
 
 	*/
-	coinDetails := ts.cfgPerChain[chainName].CoinDetails
-	for i := 0; i < len(coinDetails); i++ {
-		if coinDetails[i].Name == coinName {
-			fixedFee, _ := (&big.Int{}).SetString(coinDetails[i].FixedFee, 10)
-			bplusf := (&big.Int{}).Add(outputBalance, fixedFee)
-			bplusf.Mul(bplusf, big.NewInt(DENOMINATOR))
-			dminusn := new(big.Int).Sub(big.NewInt(DENOMINATOR), big.NewInt(int64(coinDetails[i].FeeNumerator)))
-			bplusf.Div(bplusf, dminusn)
-			return bplusf, nil
-		}
+	fNum, fixedFee, err := ts.clsPerChain[chainName].GetFeeRatio(coinName)
+	if err != nil {
+		return nil, fmt.Errorf("GetFeeRatio %v", err)
 	}
-	return nil, fmt.Errorf("Coin %v Not Found in coinDetails", coinName)
+	bplusf := (&big.Int{}).Add(outputBalance, fixedFee)
+	bplusf.Mul(bplusf, big.NewInt(DENOMINATOR))
+	dminusn := new(big.Int).Sub(big.NewInt(DENOMINATOR), fNum)
+	bplusf.Div(bplusf, dminusn)
+	return bplusf, nil
 }
 
 func (ts *testSuite) GetKeyPairs(chainName chain.ChainType) (key, addr string, err error) {

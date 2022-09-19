@@ -175,20 +175,12 @@ type Config struct {
 	NativeCoin            string                  `json:"native_coin"`
 	NativeTokens          []string                `json:"native_tokens"`
 	WrappedCoins          []string                `json:"wrapped_coins"`
-	CoinDetails           []CoinDetails           `json:"coin_details"`
 	GodWalletKeystorePath string                  `json:"god_wallet_keystore_path"`
 	GodWalletSecretPath   string                  `json:"god_wallet_secret_path"`
 	BTSOwnerKeystorePath  string                  `json:"bts_owner_keystore_path"`
 	BTSOwnerSecretPath    string                  `json:"bts_owner_secret_path"`
 	NetworkID             string                  `json:"network_id"`
 	GasLimit              map[GasLimitType]uint64 `json:"gas_limit"`
-}
-
-type CoinDetails struct {
-	Name         string `json:"name"`
-	FixedFee     string `json:"fixed_fee"`
-	FeeNumerator uint   `json:"fee_numerator"`
-	Decimals     uint   `json:"decimals"`
 }
 
 type EventLogInfo struct {
