@@ -51,6 +51,7 @@ NEAR_ENV=testnet near view <BTS> refundable_balance_of '{"account_id": "<ACCOUNT
 #### Locked Balance
 **Method** 
 - locked_balance_of
+
 | Parameters | Type | Info |
 |:---------|:--------|:--------|
 | account_id | string | should be a valid account id |
@@ -74,6 +75,7 @@ NEAR_ENV=testnet near call <BTS> deposit --amount <AMOUNT in NEAR> --accountId <
 #### Deposit Cross-Chain Native Coin to BTS
 **Method** 
 - ft_transfer_call
+
 | Parameters | Type | Info |
 |:---------|:--------|:--------|
 | receiver_id | string | should be a valid account id |
@@ -88,6 +90,7 @@ NEAR_ENV=testnet near call <NEP141 Contract> ft_transfer_call '{"receiver_id": "
 ### Withdraw
 **Method** 
 - withdraw
+
 | Parameters | Type | Info |
 |:---------|:--------|:--------|
 | coin_name | string |  |
@@ -101,6 +104,7 @@ NEAR_ENV=testnet near call <BTS> withdraw '{"coin_name": "<COIN NAME>", "amount"
 ### Transfer
 **Method** 
 - transfer
+
 | Parameters | Type | Info |
 |:---------|:--------|:--------|
 | coin_name | string |  |
