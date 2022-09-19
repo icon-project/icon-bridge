@@ -191,15 +191,15 @@ impl BtpTokenService {
         Ok(())
     }
     pub fn ensure_value_within_limit(&self, coin_name: &str, value: &u128) -> bool {
-        match self.ensure_coin_exists(coin_name) {
-            true => match self.tokenlimits.get(coin_name) {
+        match self.ensure_coin_exists(&coin_name.to_string()) {
+            true => match self.token_limits.get(coin_name) {
                 Some(limit) => {
                     if limit > value {
                         return false;
                     }
                     true
                 }
-                None => false,
+                None => true,
             },
             false => return false,
         }
