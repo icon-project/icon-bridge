@@ -4,13 +4,13 @@
               "uri": "https://lisbon.net.solidwallet.io/api/v3/icon_dex",
               "network_id": "0x2",
               "btp_network_id": "0x2.icon",
-              "block_height": 11273956
+              "block_height": 11273953
          },
          "bsc": {
               "uri": "https://data-seed-prebsc-1-s1.binance.org:8545",
               "network_id": "0x61",
               "btp_network_id": "0x61.bsc",
-              "block_height": 21985585
+              "block_height": 21985565
          }
     },
     "contracts": {
