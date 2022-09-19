@@ -46,6 +46,7 @@ type IApi interface {
 }
 
 type IClient interface {
+	Api() IApi
 	CloseMonitor()
 	GetBalance(types.AccountId) (*big.Int, error)
 	GetBlockByHash(types.CryptoHash) (types.Block, error)
@@ -62,6 +63,10 @@ type IClient interface {
 
 func (c *Client) CloseMonitor() {
 	c.isMonitorClosed = true
+}
+
+func (c *Client) Api() IApi {
+	return c.api
 }
 
 func (c *Client) GetBalance(accountId types.AccountId) (balance *big.Int, err error) {
@@ -367,7 +372,7 @@ func NewClient(endpoint string, logger log.Logger) (IClient, error) {
 		logger:          logger,
 		isMonitorClosed: false,
 		api: &api{
-			host:   url.Host,
+			host: url.Host,
 			Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: transport}, url.String()),
 		},
 	}, nil
