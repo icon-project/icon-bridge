@@ -1,4 +1,5 @@
 .?*
+!.github
 !.dockerignore
 __pycache__
 **/.DS_Store
@@ -7,6 +8,8 @@ build/
 bin/
 **/*/node_modules/
 abigenBindings/
-_ixh/
+_ixh*/
 hmny_wallets/
 tmp/
+devnet/docker/icon-bsc/local/
+devnet/docker/icon-bsc/data/

@@ -47,7 +47,7 @@ module.exports = {
             },
         },
     },
-    plugins: ["truffle-plugin-verify", "@chainsafe/truffle-plugin-abigen"],
+    plugins: ["truffle-plugin-verify", "@chainsafe/truffle-plugin-abigen","solidity-coverage"],
     api_keys: {
         bscscan: process.env.BSC_SCAN_API_KEY,
     },

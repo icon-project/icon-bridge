@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #BUILD_DIR=$(echo "$(cd "$(dirname "../../../../../")"; pwd)"/build)
 BASE_DIR=$(echo "$(cd "$(dirname "../../")"; pwd)")
 BUILD_DIR=$BASE_DIR/build
