@@ -116,22 +116,22 @@ impl BtpTokenService {
         self.balances.set(&account, &coin_id, balance);
     }
 
-    pub fn locked_balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+    pub fn locked_balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
         let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
 
         let balance = self
             .balances
-            .get(&owner_id, &coin_id)
+            .get(&account_id, &coin_id)
             .expect(format!("{}", BshError::AccountNotExist).as_str());
         balance.locked().into()
     }
 
-    pub fn refundable_balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+    pub fn refundable_balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
         let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
 
         let balance = self
             .balances
-            .get(&owner_id, &coin_id)
+            .get(&account_id, &coin_id)
             .expect(format!("{}", BshError::AccountNotExist).as_str());
         balance.refundable().into()
     }
@@ -146,12 +146,12 @@ impl BtpTokenService {
         self.balances.get(&owner_id, &coin_id)
     }
 
-    pub fn balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+    pub fn balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
         let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
         
         let balance = self
             .balances
-            .get(&owner_id, &coin_id)
+            .get(&account_id, &coin_id)
             .expect(format!("{}", BshError::AccountNotExist).as_str());
         balance.deposit().into()
     }
