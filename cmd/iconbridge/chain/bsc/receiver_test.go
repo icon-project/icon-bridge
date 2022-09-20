@@ -15,8 +15,10 @@ import (
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/mocks"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,7 +40,7 @@ func newTestReceiver(t *testing.T, src, dst chain.BTPAddress) chain.Receiver {
 	return receiver
 }
 
-func newTestClient(t *testing.T, bmcAddr string) *Client {
+func newTestClient(t *testing.T, bmcAddr string) IClient {
 	url := "https://data-seed-prebsc-1-s1.binance.org:8545"
 	cls, _, err := newClients([]string{url}, bmcAddr, log.New())
 	require.NoError(t, err)
@@ -154,4 +156,12 @@ func TestVerify(t *testing.T) {
 	require.NoError(t, err)
 	err = vr.Verify(header, newHeader, nil)
 	require.NoError(t, err)
+}
+
+func TestReceiver_newVerifier_NoValidators(t *testing.T) {
+	cl := new(mocks.IClient)
+	cl.On("GetBalance", mock.Anything, mock.Anything).Return(big.NewInt(1), errors.New("hex_addrs "))
+	res, err := cl.GetBalance(context.TODO(), "hex_addr")
+	fmt.Println(err)
+	fmt.Println(res)
 }

@@ -90,6 +90,14 @@ type Verifier struct {
 	validators map[ethCommon.Address]bool
 }
 
+type IVerifier interface {
+	Next() *big.Int
+	Verify(header *types.Header, nextHeader *types.Header, receipts ethTypes.Receipts) error
+	Update(header *types.Header) (err error)
+	ParentHash() ethCommon.Hash
+	IsValidator(addr ethCommon.Address) bool
+}
+
 func (vr *Verifier) Next() *big.Int {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
