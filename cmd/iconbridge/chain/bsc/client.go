@@ -6,7 +6,6 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	bscTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/types"
@@ -15,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/icon-project/icon-bridge/common/log"
-	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
 func newClients(urls []string, bmc string, l log.Logger) (cls []IClient, bmcs []*BMC, err error) {
@@ -186,18 +184,6 @@ func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.I
 	gasPrice = txnS.GasPrice()
 	gasHeight = header.Number
 	return
-}
-
-func (c *Client) NewTransactOpts(w bscTypes.Wallet) (*bind.TransactOpts, error) {
-	txo, err := bind.NewKeyedTransactorWithChainID(w.(*wallet.EvmWallet).Skey, c.chainID)
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
-	defer cancel()
-	txo.GasPrice, _ = c.eth.SuggestGasPrice(ctx)
-	txo.GasLimit = uint64(DefaultGasLimit)
-	return txo, nil
 }
 
 func (c *Client) GetChainID() *big.Int {
