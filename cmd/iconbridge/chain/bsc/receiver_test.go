@@ -15,10 +15,8 @@ import (
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/mocks"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -158,10 +156,32 @@ func TestVerify(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestReceiver_newVerifier_NoValidators(t *testing.T) {
-	cl := new(mocks.IClient)
-	cl.On("GetBalance", mock.Anything, mock.Anything).Return(big.NewInt(1), errors.New("hex_addrs "))
-	res, err := cl.GetBalance(context.TODO(), "hex_addr")
-	fmt.Println(err)
-	fmt.Println(res)
+func TestReceiver_MockReceiverOptions_Unmarshal(t *testing.T) {
+	var opts ReceiverOptions
+	jsonReceiverOptions := `{"syncConcurrency":100,"verifier":{"blockHeight":22169979,"parentHash":"0x489b5865c1b015fa03177c30a4286533f02d2086c3db5f751180519f872fc37f", "validatorData":"0xd98301010b846765746889676f312e31362e3130856c696e75780000de3b3a04049153b8dae0a232ac90d20c78f1a5d1de7b7dc51284214b9b9c85549ab3d2b972df0deef66ac2c935552c16704d214347f29fa77f77da6d75d7c7526d6247501b822fd4eaa76fcb64baea360279497f96c5d20b2a975c050e4220be276ace4892f4b41a980a75ecd1309ea12fa2ed87a8744fbfc9b863d5a2959d3f95eae5dc7d70144ce1b73b403b7eb6e0b71b214cb885500844365e95cd9942c7276e7fd833329df8450664d5960414752117d15811254efed1fb30e82660f82ce03df6536cc69315173fea12f202c1c1d0d165d5efb87dc2882d1602fdd3c1a11a03c86e01"}}`
+
+	json.Unmarshal([]byte(jsonReceiverOptions), &opts)
+	require.NotNil(t, opts)
+	require.NotNil(t, opts.Verifier)
+	require.NotNil(t, opts.SyncConcurrency)
+	require.EqualValues(t, 100, opts.SyncConcurrency)
+	require.NotNil(t, opts.Verifier.BlockHeight)
+	require.EqualValues(t, 22169979, opts.Verifier.BlockHeight)
+	require.NotNil(t, opts.Verifier.BlockHash)
+	require.EqualValues(t, "0x489b5865c1b015fa03177c30a4286533f02d2086c3db5f751180519f872fc37f", opts.Verifier.BlockHash.String())
+	require.NotNil(t, opts.Verifier.ValidatorData)
+	require.EqualValues(t, "0xd98301010b846765746889676f312e31362e3130856c696e75780000de3b3a04049153b8dae0a232ac90d20c78f1a5d1de7b7dc51284214b9b9c85549ab3d2b972df0deef66ac2c935552c16704d214347f29fa77f77da6d75d7c7526d6247501b822fd4eaa76fcb64baea360279497f96c5d20b2a975c050e4220be276ace4892f4b41a980a75ecd1309ea12fa2ed87a8744fbfc9b863d5a2959d3f95eae5dc7d70144ce1b73b403b7eb6e0b71b214cb885500844365e95cd9942c7276e7fd833329df8450664d5960414752117d15811254efed1fb30e82660f82ce03df6536cc69315173fea12f202c1c1d0d165d5efb87dc2882d1602fdd3c1a11a03c86e01", opts.Verifier.ValidatorData.String())
+
+	// Verifier should be nil if not passed
+	var empty_opts ReceiverOptions
+	jsonReceiverOptions = `{"syncConcurrency":100}`
+	json.Unmarshal([]byte(jsonReceiverOptions), &empty_opts)
+	require.NotNil(t, empty_opts)
+	require.Nil(t, empty_opts.Verifier)
+	require.NotNil(t, empty_opts.SyncConcurrency)
+	require.EqualValues(t, 100, empty_opts.SyncConcurrency)
+}
+
+func TestReceiver_MockNewVerifier(t *testing.T) {
+
 }
