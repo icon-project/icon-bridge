@@ -274,12 +274,7 @@ impl BtpTokenService {
             });
         }
 
-        let restrictions = self.check_for_transfer_restriction(&receiver_id, assets);
-        if restrictions.is_err() {
-            return Err(BshError::Reverted {
-                message: format!("Restrictions {}", restrictions.unwrap_err()),
-            });
-        }
+        self.check_for_transfer_restriction(&receiver_id, assets)?;
 
         coins.iter().for_each(|(index, coin_id, coin)| {
             if coin.network() != &self.network {
@@ -378,23 +373,13 @@ impl BtpTokenService {
         user: &AccountId,
         assets: &Vec<TransferableAsset>,
     ) -> Result<(), BshError> {
-        match self.ensure_user_not_blacklisted(user) {
-            Ok(()) => {
-                let mut invalid_assets: Vec<&TransferableAsset> = Vec::new();
-                assets.into_iter().for_each(|asset| {
-                    match self.ensure_value_within_limit(&asset.name(), &asset.amount()) {
-                        true => {}
-                        false => {
-                            invalid_assets.push(asset);
-                        }
-                    }
-                });
-                if !invalid_assets.is_empty() {
-                    return Err(BshError::LimitExceed);
-                }
-                Ok(())
-            }
-            Err(err) => return Err(err),
-        }
+        self.ensure_user_not_blacklisted(user)?;
+
+        assets
+            .iter()
+            .map(|asset| self.ensure_value_within_limit(&asset.name(), &asset.amount()))
+            .collect::<Result<(), BshError>>()?;
+
+        Ok(())
     }
 }
