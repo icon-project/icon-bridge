@@ -3,6 +3,10 @@ package icon
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"strings"
+	"testing"
+
 	ethc "github.com/ethereum/go-ethereum/common"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -10,9 +14,6 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/stretchr/testify/mock"
-	"net/http"
-	"strings"
-	"testing"
 
 	vlcodec "github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
@@ -234,15 +235,14 @@ func TestReceiver_SyncVerifier_HeightNextAreEql(t *testing.T) {
 	require.NoError(t, err)
 }
 
-
-func TestReceiver_validateRequests_RetryTimes_NotFoundBlockHeader(t *testing.T) {
-	retryTimes  := 3
+func TestReceiver_handleVerifierBlockRequests_RetryTimes_NotFoundBlockHeader(t *testing.T) {
+	retryTimes := 3
 
 	verifier := &Verifier{
 		next: 100,
 	}
-	requestCh := make(chan *request, 1)
-	requestCh <- &request{height: 100, retry: retryTimes}
+	requestCh := make(chan *verifierBlockRequest, 1)
+	requestCh <- &verifierBlockRequest{height: 100, retry: retryTimes}
 
 	clientMock := new(mocks.ClientMock)
 	errMessage := "BlockHeader not found"
@@ -250,7 +250,7 @@ func TestReceiver_validateRequests_RetryTimes_NotFoundBlockHeader(t *testing.T) 
 	// setup expectations
 	clientMock.On("GetBlockHeaderByHeight", mock.Anything).Return(nil, errors.New(errMessage)).Times(retryTimes)
 
-	responseCh := validateRequests(requestCh, clientMock, verifier, log.New())
+	responseCh := handleVerifierBlockRequests(requestCh, clientMock, verifier, log.New())
 
 	require.NotNil(t, responseCh)
 	response := responseCh[0]
@@ -259,17 +259,17 @@ func TestReceiver_validateRequests_RetryTimes_NotFoundBlockHeader(t *testing.T) 
 	require.Error(t, response.err)
 	require.True(t, strings.Contains(response.err.Error(), errMessage))
 	clientMock.AssertExpectations(t)
-	clientMock.AssertNumberOfCalls(t,"GetBlockHeaderByHeight", retryTimes)
+	clientMock.AssertNumberOfCalls(t, "GetBlockHeaderByHeight", retryTimes)
 }
 
-func TestReceiver_validateRequests_RetryTimes_NotFoundVotes(t *testing.T) {
-	retryTimes  := 1
+func TestReceiver_handleVerifierBlockRequests_RetryTimes_NotFoundVotes(t *testing.T) {
+	retryTimes := 1
 
 	verifier := &Verifier{
 		next: 100,
 	}
-	requestCh := make(chan *request, 1)
-	requestCh <- &request{height: 100, retry: retryTimes}
+	requestCh := make(chan *verifierBlockRequest, 1)
+	requestCh <- &verifierBlockRequest{height: 100, retry: retryTimes}
 
 	clientMock := new(mocks.ClientMock)
 	errMessage := "Votes not found"
@@ -278,7 +278,7 @@ func TestReceiver_validateRequests_RetryTimes_NotFoundVotes(t *testing.T) {
 	clientMock.On("GetBlockHeaderByHeight", mock.Anything).Return(nil, nil).Times(retryTimes)
 	clientMock.On("GetVotesByHeight", mock.Anything).Return(nil, errors.New(errMessage)).Times(retryTimes)
 
-	responseCh := validateRequests(requestCh, clientMock, verifier, log.New())
+	responseCh := handleVerifierBlockRequests(requestCh, clientMock, verifier, log.New())
 
 	require.NotNil(t, responseCh)
 	response := responseCh[0]
@@ -286,18 +286,18 @@ func TestReceiver_validateRequests_RetryTimes_NotFoundVotes(t *testing.T) {
 	require.Error(t, response.err)
 	require.True(t, strings.Contains(response.err.Error(), errMessage))
 	clientMock.AssertExpectations(t)
-	clientMock.AssertNumberOfCalls(t,"GetVotesByHeight", retryTimes)
+	clientMock.AssertNumberOfCalls(t, "GetVotesByHeight", retryTimes)
 }
 
-func TestReceiver_validateRequests_RetryTimes_NotFoundValidators(t *testing.T) {
-	retryTimes  := 2
+func TestReceiver_handleVerifierBlockRequests_RetryTimes_NotFoundValidators(t *testing.T) {
+	retryTimes := 2
 	errMessage := "Validators not found"
 	blockHeader := &types.BlockHeader{
 		NextValidatorsHash: common.HexHash(ethc.Hex2Bytes("34d4ab43f7351fab97f93bc72d2e02c823b08a7c469c5da6ef01ccdd91f881f4")),
 	}
 
-	requestCh := make(chan *request, 1)
-	requestCh <- &request{height: 100, retry: retryTimes}
+	requestCh := make(chan *verifierBlockRequest, 1)
+	requestCh <- &verifierBlockRequest{height: 100, retry: retryTimes}
 
 	// setup expectations
 	verifier := new(mocks.VerifierMock)
@@ -308,8 +308,7 @@ func TestReceiver_validateRequests_RetryTimes_NotFoundValidators(t *testing.T) {
 	clientMock.On("GetVotesByHeight", mock.Anything).Return(nil, nil).Times(retryTimes)
 	clientMock.On("GetValidatorsByHash", mock.Anything).Return(nil, errors.New(errMessage)).Times(retryTimes)
 
-
-	responseCh := validateRequests(requestCh, clientMock, verifier, log.New())
+	responseCh := handleVerifierBlockRequests(requestCh, clientMock, verifier, log.New())
 
 	require.NotNil(t, responseCh)
 	response := responseCh[0]
@@ -317,7 +316,7 @@ func TestReceiver_validateRequests_RetryTimes_NotFoundValidators(t *testing.T) {
 	require.Error(t, response.err)
 	require.True(t, strings.Contains(response.err.Error(), errMessage))
 	clientMock.AssertExpectations(t)
-	clientMock.AssertNumberOfCalls(t,"GetValidatorsByHash", retryTimes)
+	clientMock.AssertNumberOfCalls(t, "GetValidatorsByHash", retryTimes)
 }
 
 func TestReceiver_receiveLoop_CantCreateNewVerifier(t *testing.T) {
@@ -342,30 +341,29 @@ func TestReceiver_receiveLoop_CantCreateNewVerifier(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), errMessage))
 	clientMock.AssertExpectations(t)
-	clientMock.AssertNumberOfCalls(t,"GetValidatorsByHash", 1)
+	clientMock.AssertNumberOfCalls(t, "GetValidatorsByHash", 1)
 }
-
 
 func TestReceiver_receiveLoop_processBlockResult_VerifyFalse(t *testing.T) {
 	vrMock := new(mocks.VerifierMock)
 	vrMock.On("Verify", mock.Anything, mock.Anything).Return(false, nil)
 
-	blockResponse := receiverResponse{
+	blockResponse := btpBlockResponse{
 		Height: 100,
- 	}
+	}
 	var next int64 = 110
-	 var reconnectCallCounter = 0
+	var reconnectCallCounter = 0
 
 	var reconnect = func() {
 		reconnectCallCounter++
 	}
 
-	err := processBlockResult(&blockResponse, vrMock, &next, reconnect, nil,nil, log.New())
+	err := handleBTPBlockResponse(&blockResponse, vrMock, &next, reconnect, nil, nil, log.New())
 
 	require.NoError(t, err)
 	require.EqualValues(t, 1, reconnectCallCounter)
 	vrMock.AssertExpectations(t)
-	vrMock.AssertNumberOfCalls(t,"Verify", 1)
+	vrMock.AssertNumberOfCalls(t, "Verify", 1)
 }
 
 func TestReceiver_receiveLoop_processBlockResult_VerifyFalse_2(t *testing.T) {
@@ -373,7 +371,7 @@ func TestReceiver_receiveLoop_processBlockResult_VerifyFalse_2(t *testing.T) {
 	errMessage := "error NoValidators"
 	vrMock.On("Verify", mock.Anything, mock.Anything).Return(false, errors.New(errMessage))
 
-	blockResponse := receiverResponse{
+	blockResponse := btpBlockResponse{
 		Height: 100,
 	}
 	var reconnectCallCounter = 0
@@ -382,12 +380,12 @@ func TestReceiver_receiveLoop_processBlockResult_VerifyFalse_2(t *testing.T) {
 		reconnectCallCounter++
 	}
 
-	err := processBlockResult(&blockResponse, vrMock, &next, reconnect, nil,nil, log.New())
+	err := handleBTPBlockResponse(&blockResponse, vrMock, &next, reconnect, nil, nil, log.New())
 
 	require.NoError(t, err)
 	require.EqualValues(t, 1, reconnectCallCounter)
 	vrMock.AssertExpectations(t)
-	vrMock.AssertNumberOfCalls(t,"Verify", 1)
+	vrMock.AssertNumberOfCalls(t, "Verify", 1)
 }
 
 func TestReceiver_receiveLoop_processBlockResult_UpdateFalse(t *testing.T) {
@@ -396,7 +394,7 @@ func TestReceiver_receiveLoop_processBlockResult_UpdateFalse(t *testing.T) {
 	vrMock.On("Verify", mock.Anything, mock.Anything).Return(true, nil)
 	vrMock.On("Update", mock.Anything, mock.Anything).Return(errors.New(errMessage))
 
-	blockResponse := receiverResponse{
+	blockResponse := btpBlockResponse{
 		Height: 100,
 	}
 	var next int64 = 110
@@ -406,38 +404,38 @@ func TestReceiver_receiveLoop_processBlockResult_UpdateFalse(t *testing.T) {
 		reconnectCallCounter++
 	}
 
-	err := processBlockResult(&blockResponse, vrMock, &next, reconnect, nil,nil, log.New())
+	err := handleBTPBlockResponse(&blockResponse, vrMock, &next, reconnect, nil, nil, log.New())
 
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), errMessage))
 	vrMock.AssertExpectations(t)
-	vrMock.AssertNumberOfCalls(t,"Verify", 1)
-	vrMock.AssertNumberOfCalls(t,"Update", 1)
+	vrMock.AssertNumberOfCalls(t, "Verify", 1)
+	vrMock.AssertNumberOfCalls(t, "Update", 1)
 }
 
 func TestReceiver_receiveLoop_processBlockResult_countNext(t *testing.T) {
-	blockResponse := receiverResponse{
+	blockResponse := btpBlockResponse{
 		Height: 100,
 	}
 	var next int64 = 110
 	var callBackMock = func(rs []*chain.Receipt) error {
 		return nil
 	}
-	blockResultCh := make(chan *receiverResponse, 3)
+	blockResultCh := make(chan *btpBlockResponse, 3)
 
-	blockResponse2 := receiverResponse{
+	blockResponse2 := btpBlockResponse{
 		Height: 101,
 	}
 	blockResultCh <- &blockResponse2
 
-	err := processBlockResult(&blockResponse, nil, &next, nil, callBackMock, blockResultCh, log.New())
+	err := handleBTPBlockResponse(&blockResponse, nil, &next, nil, callBackMock, blockResultCh, log.New())
 
 	require.NoError(t, err)
 	require.EqualValues(t, 112, next)
 }
 
 func TestReceiver_receiveLoop_processBlockResult_callbackError(t *testing.T) {
-	blockResponse := receiverResponse{
+	blockResponse := btpBlockResponse{
 		Height: 100,
 	}
 	errMessage := "Callback error"
@@ -449,23 +447,23 @@ func TestReceiver_receiveLoop_processBlockResult_callbackError(t *testing.T) {
 		return errors.New(errMessage)
 	}
 
-	err := processBlockResult(&blockResponse, nil, &next, nil, callBack,nil, log.New())
+	err := handleBTPBlockResponse(&blockResponse, nil, &next, nil, callBack, nil, log.New())
 
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), errMessage))
 	require.EqualValues(t, 1, callBackCallCounter)
 }
 
-func TestReceiver_requestProcessor_invalidHash(t *testing.T) {
-	blockResponse := receiverRequest{
+func TestReceiver_handleBTPBlockRequest_invalidHash(t *testing.T) {
+	blockResponse := btpBlockRequest{
 		height: 1000,
-		hash:types.HexBytes("Invalid_Hash"),
+		hash:   types.HexBytes("Invalid_Hash"),
 	}
 
-	requestCh := make(chan *receiverRequest, 1)
+	requestCh := make(chan *btpBlockRequest, 1)
 	eventLogRawFilter := eventLogRawFilter{}
 
-	requestProcessor(&blockResponse, requestCh, nil, nil, eventLogRawFilter, log.New())
+	handleBTPBlockRequest(&blockResponse, requestCh, nil, nil, eventLogRawFilter, log.New())
 
 	requestResult := <-requestCh
 	require.Error(t, blockResponse.err)
@@ -474,10 +472,10 @@ func TestReceiver_requestProcessor_invalidHash(t *testing.T) {
 	require.True(t, strings.Contains(requestResult.err.Error(), "invalid hash"))
 }
 
-func TestReceiver_requestProcessor_blockHeaderNotFound(t *testing.T) {
-	blockResponse := receiverRequest{
+func TestReceiver_handleBTPBlockRequest_blockHeaderNotFound(t *testing.T) {
+	blockResponse := btpBlockRequest{
 		height: 1000,
-		hash:types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
+		hash:   types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
 	}
 
 	clientMock := new(mocks.ClientMock)
@@ -485,10 +483,9 @@ func TestReceiver_requestProcessor_blockHeaderNotFound(t *testing.T) {
 	// setup expectations
 	clientMock.On("GetBlockHeaderByHeight", mock.Anything).Return(nil, errors.New(errMessage)).Times(1)
 
-
-	requestCh := make(chan *receiverRequest, 1)
+	requestCh := make(chan *btpBlockRequest, 1)
 	eventLogRawFilter := eventLogRawFilter{}
-	requestProcessor(&blockResponse, requestCh, nil, clientMock, eventLogRawFilter, log.New())
+	handleBTPBlockRequest(&blockResponse, requestCh, nil, clientMock, eventLogRawFilter, log.New())
 
 	requestResult := <-requestCh
 	require.Error(t, blockResponse.err)
@@ -497,10 +494,10 @@ func TestReceiver_requestProcessor_blockHeaderNotFound(t *testing.T) {
 	require.True(t, strings.Contains(requestResult.err.Error(), errMessage))
 }
 
-func TestReceiver_requestProcessor_votesNotFound(t *testing.T) {
-	blockResponse := receiverRequest{
+func TestReceiver_handleBTPBlockRequest_votesNotFound(t *testing.T) {
+	blockResponse := btpBlockRequest{
 		height: 1000,
-		hash:types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
+		hash:   types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
 	}
 
 	vrMock := new(mocks.VerifierMock)
@@ -510,10 +507,9 @@ func TestReceiver_requestProcessor_votesNotFound(t *testing.T) {
 	clientMock.On("GetBlockHeaderByHeight", mock.Anything).Return(nil, nil).Times(1)
 	clientMock.On("GetVotesByHeight", mock.Anything).Return(nil, errors.New(errMessage)).Times(1)
 
-
-	requestCh := make(chan *receiverRequest, 1)
+	requestCh := make(chan *btpBlockRequest, 1)
 	eventLogRawFilter := eventLogRawFilter{}
-	requestProcessor(&blockResponse, requestCh, vrMock, clientMock, eventLogRawFilter, log.New())
+	handleBTPBlockRequest(&blockResponse, requestCh, vrMock, clientMock, eventLogRawFilter, log.New())
 
 	requestResult := <-requestCh
 	require.Error(t, blockResponse.err)
@@ -522,10 +518,10 @@ func TestReceiver_requestProcessor_votesNotFound(t *testing.T) {
 	require.True(t, strings.Contains(requestResult.err.Error(), errMessage))
 }
 
-func TestReceiver_requestProcessor_validatorsNotFound(t *testing.T) {
-	blockResponse := &receiverRequest{
+func TestReceiver_handleBTPBlockRequest_validatorsNotFound(t *testing.T) {
+	blockResponse := &btpBlockRequest{
 		height: 1000,
-		hash:types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
+		hash:   types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
 	}
 	blockHeader := &types.BlockHeader{
 		Height: 1000,
@@ -541,10 +537,9 @@ func TestReceiver_requestProcessor_validatorsNotFound(t *testing.T) {
 	clientMock.On("GetValidatorsByHash", mock.Anything).Return(nil, errors.New(errMessage)).Times(1)
 	vrMock.On("Validators", mock.Anything).Return([]common.Address{})
 
-
-	requestCh := make(chan *receiverRequest, 1)
+	requestCh := make(chan *btpBlockRequest, 1)
 	eventLogRawFilter := eventLogRawFilter{}
-	requestProcessor(blockResponse, requestCh, vrMock, clientMock, eventLogRawFilter, log.New())
+	handleBTPBlockRequest(blockResponse, requestCh, vrMock, clientMock, eventLogRawFilter, log.New())
 
 	requestResult := <-requestCh
 	require.Error(t, blockResponse.err)
@@ -553,12 +548,12 @@ func TestReceiver_requestProcessor_validatorsNotFound(t *testing.T) {
 	require.True(t, strings.Contains(requestResult.err.Error(), errMessage))
 }
 
-func TestReceiver_requestProcessor_HeaderUnmarshalError(t *testing.T) {
-	blockResponse := receiverRequest{
-		height: 1000,
+func TestReceiver_handleBTPBlockRequest_HeaderUnmarshalError(t *testing.T) {
+	blockResponse := btpBlockRequest{
+		height:  1000,
 		indexes: [][]types.HexInt{{types.NewHexInt(125)}},
-		events: [][][]types.HexInt{{{types.NewHexInt(125)}}},
-		hash:types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
+		events:  [][][]types.HexInt{{{types.NewHexInt(125)}}},
+		hash:    types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
 	}
 	blockHeader := &types.BlockHeader{
 		Height: 1000,
@@ -568,10 +563,10 @@ func TestReceiver_requestProcessor_HeaderUnmarshalError(t *testing.T) {
 	// setup expectations
 	clientMock.On("GetBlockHeaderByHeight", mock.Anything).Return(blockHeader, nil).Times(1)
 
-	requestCh := make(chan *receiverRequest, 1)
+	requestCh := make(chan *btpBlockRequest, 1)
 	eventLogRawFilter := eventLogRawFilter{}
 
-	requestProcessor(&blockResponse, requestCh, nil, clientMock, eventLogRawFilter, log.New())
+	handleBTPBlockRequest(&blockResponse, requestCh, nil, clientMock, eventLogRawFilter, log.New())
 
 	requestResult := <-requestCh
 	require.Error(t, blockResponse.err)
@@ -580,12 +575,12 @@ func TestReceiver_requestProcessor_HeaderUnmarshalError(t *testing.T) {
 	require.True(t, strings.Contains(requestResult.err.Error(), "BlockHeaderResult.UnmarshalFromBytes"))
 }
 
-func TestReceiver_requestProcessor_ProofForEventsNotFound(t *testing.T) {
-	blockResponse := receiverRequest{
-		height: 1000,
+func TestReceiver_handleBTPBlockRequest_ProofForEventsNotFound(t *testing.T) {
+	blockResponse := btpBlockRequest{
+		height:  1000,
 		indexes: [][]types.HexInt{{types.NewHexInt(125)}},
-		events: [][][]types.HexInt{{{types.NewHexInt(125)}}},
-		hash:types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
+		events:  [][][]types.HexInt{{{types.NewHexInt(125)}}},
+		hash:    types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
 	}
 
 	errMessage := "ProofForEvents not found"
@@ -594,11 +589,10 @@ func TestReceiver_requestProcessor_ProofForEventsNotFound(t *testing.T) {
 	clientMock.On("GetBlockHeaderByHeight", mock.Anything).Return(getSampleHeader(), nil).Times(1)
 	clientMock.On("GetProofForEvents", mock.Anything).Return(nil, errors.New(errMessage)).Times(1)
 
-	requestCh := make(chan *receiverRequest, 1)
+	requestCh := make(chan *btpBlockRequest, 1)
 	eventLogRawFilter := eventLogRawFilter{}
 
-
-	requestProcessor(&blockResponse, requestCh, nil, clientMock, eventLogRawFilter, log.New())
+	handleBTPBlockRequest(&blockResponse, requestCh, nil, clientMock, eventLogRawFilter, log.New())
 
 	requestResult := <-requestCh
 	require.Error(t, blockResponse.err)
@@ -607,12 +601,12 @@ func TestReceiver_requestProcessor_ProofForEventsNotFound(t *testing.T) {
 	require.True(t, strings.Contains(requestResult.err.Error(), errMessage))
 }
 
-func TestReceiver_requestProcessor_ProofsError(t *testing.T) {
-	blockResponse := receiverRequest{
-		height: 1000,
+func TestReceiver_handleBTPBlockRequest_ProofsError(t *testing.T) {
+	blockResponse := btpBlockRequest{
+		height:  1000,
 		indexes: [][]types.HexInt{{types.NewHexInt(125)}},
-		events: [][][]types.HexInt{{{types.NewHexInt(125)}}},
-		hash:types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
+		events:  [][][]types.HexInt{{{types.NewHexInt(125)}}},
+		hash:    types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
 	}
 
 	clientMock := new(mocks.ClientMock)
@@ -620,11 +614,10 @@ func TestReceiver_requestProcessor_ProofsError(t *testing.T) {
 	clientMock.On("GetBlockHeaderByHeight", mock.Anything).Return(getSampleHeader(), nil).Times(1)
 	clientMock.On("GetProofForEvents", mock.Anything).Return(nil, nil).Times(1)
 
-	requestCh := make(chan *receiverRequest, 1)
+	requestCh := make(chan *btpBlockRequest, 1)
 	eventLogRawFilter := eventLogRawFilter{}
 
-
-	requestProcessor(&blockResponse, requestCh, nil, clientMock, eventLogRawFilter, log.New())
+	handleBTPBlockRequest(&blockResponse, requestCh, nil, clientMock, eventLogRawFilter, log.New())
 
 	requestResult := <-requestCh
 	require.Error(t, blockResponse.err)
@@ -634,13 +627,13 @@ func TestReceiver_requestProcessor_ProofsError(t *testing.T) {
 	require.True(t, strings.Contains(requestResult.err.Error(), errMessage))
 }
 
-func TestReceiver_requestProcessor_MPTProveError(t *testing.T) {
-    events := [][][]types.HexInt{{{types.NewHexInt(125)}}, {{types.NewHexInt(125)}}}
-	blockResponse := receiverRequest{
-		height: 1000,
+func TestReceiver_handleBTPBlockRequest_MPTProveError(t *testing.T) {
+	events := [][][]types.HexInt{{{types.NewHexInt(125)}}, {{types.NewHexInt(125)}}}
+	blockResponse := btpBlockRequest{
+		height:  1000,
 		indexes: [][]types.HexInt{{types.NewHexInt(125)}},
-		events: events,
-		hash:types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
+		events:  events,
+		hash:    types.HexBytes("0xb10fc0dce4c066322dbca49cf76f162026ee5b632da2cb1e060503c398729a4b"),
 	}
 
 	clientMock := new(mocks.ClientMock)
@@ -649,11 +642,10 @@ func TestReceiver_requestProcessor_MPTProveError(t *testing.T) {
 	proofs := [][][]byte{{{}}, {{}}}
 	clientMock.On("GetProofForEvents", mock.Anything).Return(proofs, nil).Times(1)
 
-	requestCh := make(chan *receiverRequest, 1)
+	requestCh := make(chan *btpBlockRequest, 1)
 	eventLogRawFilter := eventLogRawFilter{}
 
-
-	requestProcessor(&blockResponse, requestCh, nil, clientMock, eventLogRawFilter, log.New())
+	handleBTPBlockRequest(&blockResponse, requestCh, nil, clientMock, eventLogRawFilter, log.New())
 
 	requestResult := <-requestCh
 	require.Error(t, blockResponse.err)
@@ -662,12 +654,3 @@ func TestReceiver_requestProcessor_MPTProveError(t *testing.T) {
 	require.NotNil(t, requestResult)
 	require.True(t, strings.Contains(requestResult.err.Error(), errMessage))
 }
-
-
-
-
-
-
-
-
-
