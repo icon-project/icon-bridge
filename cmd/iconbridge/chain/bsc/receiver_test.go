@@ -15,6 +15,7 @@ import (
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/mocks"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -156,7 +157,7 @@ func TestVerify(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestReceiver_MockReceiverOptions_Unmarshal(t *testing.T) {
+func TestReceiver_MockReceiverOptions_UnmarshalWithVerifier(t *testing.T) {
 	var opts ReceiverOptions
 	jsonReceiverOptions := `{"syncConcurrency":100,"verifier":{"blockHeight":22169979,"parentHash":"0x489b5865c1b015fa03177c30a4286533f02d2086c3db5f751180519f872fc37f", "validatorData":"0xd98301010b846765746889676f312e31362e3130856c696e75780000de3b3a04049153b8dae0a232ac90d20c78f1a5d1de7b7dc51284214b9b9c85549ab3d2b972df0deef66ac2c935552c16704d214347f29fa77f77da6d75d7c7526d6247501b822fd4eaa76fcb64baea360279497f96c5d20b2a975c050e4220be276ace4892f4b41a980a75ecd1309ea12fa2ed87a8744fbfc9b863d5a2959d3f95eae5dc7d70144ce1b73b403b7eb6e0b71b214cb885500844365e95cd9942c7276e7fd833329df8450664d5960414752117d15811254efed1fb30e82660f82ce03df6536cc69315173fea12f202c1c1d0d165d5efb87dc2882d1602fdd3c1a11a03c86e01"}}`
 
@@ -171,10 +172,12 @@ func TestReceiver_MockReceiverOptions_Unmarshal(t *testing.T) {
 	require.EqualValues(t, "0x489b5865c1b015fa03177c30a4286533f02d2086c3db5f751180519f872fc37f", opts.Verifier.BlockHash.String())
 	require.NotNil(t, opts.Verifier.ValidatorData)
 	require.EqualValues(t, "0xd98301010b846765746889676f312e31362e3130856c696e75780000de3b3a04049153b8dae0a232ac90d20c78f1a5d1de7b7dc51284214b9b9c85549ab3d2b972df0deef66ac2c935552c16704d214347f29fa77f77da6d75d7c7526d6247501b822fd4eaa76fcb64baea360279497f96c5d20b2a975c050e4220be276ace4892f4b41a980a75ecd1309ea12fa2ed87a8744fbfc9b863d5a2959d3f95eae5dc7d70144ce1b73b403b7eb6e0b71b214cb885500844365e95cd9942c7276e7fd833329df8450664d5960414752117d15811254efed1fb30e82660f82ce03df6536cc69315173fea12f202c1c1d0d165d5efb87dc2882d1602fdd3c1a11a03c86e01", opts.Verifier.ValidatorData.String())
+}
 
+func TestReceiver_MockReceiverOptions_UnmarshalWithoutVerifier(t *testing.T) {
 	// Verifier should be nil if not passed
 	var empty_opts ReceiverOptions
-	jsonReceiverOptions = `{"syncConcurrency":100}`
+	jsonReceiverOptions := `{"syncConcurrency":100}`
 	json.Unmarshal([]byte(jsonReceiverOptions), &empty_opts)
 	require.NotNil(t, empty_opts)
 	require.Nil(t, empty_opts.Verifier)
@@ -183,5 +186,46 @@ func TestReceiver_MockReceiverOptions_Unmarshal(t *testing.T) {
 }
 
 func TestReceiver_MockNewVerifier(t *testing.T) {
+	// verifier options
+	height := int64(22169979)
+	blockHash, err := hexutil.Decode("0x489b5865c1b015fa03177c30a4286533f02d2086c3db5f751180519f872fc37f")
+	require.NoError(t, err)
+	validatorData, err := hexutil.Decode("0xd98301010b846765746889676f312e31362e3130856c696e75780000de3b3a04049153b8dae0a232ac90d20c78f1a5d1de7b7dc51284214b9b9c85549ab3d2b972df0deef66ac2c935552c16704d214347f29fa77f77da6d75d7c7526d6247501b822fd4eaa76fcb64baea360279497f96c5d20b2a975c050e4220be276ace4892f4b41a980a75ecd1309ea12fa2ed87a8744fbfc9b863d5a2959d3f95eae5dc7d70144ce1b73b403b7eb6e0b71b214cb885500844365e95cd9942c7276e7fd833329df8450664d5960414752117d15811254efed1fb30e82660f82ce03df6536cc69315173fea12f202c1c1d0d165d5efb87dc2882d1602fdd3c1a11a03c86e01")
+	require.NoError(t, err)
+	opts := &VerifierOptions{
+		BlockHeight:   uint64(height),
+		BlockHash:     blockHash,
+		ValidatorData: validatorData,
+	}
+	validatorMap := map[ethCommon.Address]bool{
+		ethCommon.HexToAddress("0x049153b8DAe0a232Ac90D20C78f1a5D1dE7B7dc5"): true,
+		ethCommon.HexToAddress("0x1284214b9b9c85549aB3D2b972df0dEEf66aC2c9"): true,
+		ethCommon.HexToAddress("0x35552c16704d214347f29Fa77f77DA6d75d7C752"): true,
+		ethCommon.HexToAddress("0x6d6247501b822FD4Eaa76FCB64bAEa360279497f"): true,
+		ethCommon.HexToAddress("0x96C5D20b2a975c050e4220BE276ACe4892f4b41A"): true,
+		ethCommon.HexToAddress("0x980A75eCd1309eA12fa2ED87A8744fBfc9b863D5"): true,
+		ethCommon.HexToAddress("0xA2959D3F95eAe5dC7D70144Ce1b73b403b7EB6E0"): true,
+		ethCommon.HexToAddress("0xB71b214Cb885500844365E95CD9942C7276E7fD8"): true,
+	}
 
+	// mock client
+	cl := new(mocks.IClient)
+	cl.On("GetChainID").Return(big.NewInt(97))
+	cl.On("GetHeaderByHeight", big.NewInt(height)).Return(&ethTypes.Header{ParentHash: ethCommon.BytesToHash(blockHash)}, nil)
+	cl.On("GetHeaderByHeight", big.NewInt(height-height%int64(defaultEpochLength))).Return(&ethTypes.Header{Extra: validatorData}, nil)
+
+	rx := &receiver{
+		cls: []IClient{cl},
+	}
+	vr, err := rx.newVerifier(opts)
+	require.NoError(t, err)
+
+	require.NotNil(t, vr)
+	require.Nil(t, err)
+	require.Equal(t, vr.Next().Cmp(big.NewInt(int64(opts.BlockHeight))), 0)
+	require.Equal(t, vr.ParentHash().String(), opts.BlockHash.String())
+	for k := range validatorMap {
+		require.Equal(t, vr.IsValidator(k), true)
+	}
+	require.Equal(t, vr.IsValidator(ethCommon.HexToAddress("abc")), false)
 }
