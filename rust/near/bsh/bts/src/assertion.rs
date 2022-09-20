@@ -149,33 +149,35 @@ impl BtpTokenService {
         require!(coin.is_none(), format!("{}", BshError::TokenExist))
     }
 
-    pub fn assert_coins_exists(&self, coin_ids: &Vec<CoinId>) {
-        let mut unregistered_coins: Vec<CoinId> = vec![];
-        coin_ids.iter().for_each(|coin_id| {
-            if !self.coins.contains(&coin_id) {
-                unregistered_coins.push(coin_id.to_owned())
-            }
-        });
-
-        require!(
-            unregistered_coins.len() == 0,
-            format!(
-                "{}",
-                BshError::TokenNotExist {
-                    message: unregistered_coins
-                        .iter()
-                        .map(|coin_id| format!("{:x?}", coin_id))
-                        .collect::<Vec<String>>()
-                        .join(", "),
-                }
-            ),
-        );
-    }
-
     pub fn assert_coin_registered(&self, coin_account: &AccountId) {
         require!(
             self.registered_coins.contains(coin_account),
             format!("{}", BshError::TokenNotRegistered)
         )
+    }
+
+    pub fn ensure_user_blacklisted(&self, user: &AccountId) -> Result<(), BshError> {
+        if !self.blacklisted_accounts.contains(user) {
+            return Err(BshError::UserNotBlacklisted);
+        }
+        Ok(())
+    }
+
+    pub fn ensure_length_matches(
+        &self,
+        coin_names: &Vec<String>,
+        token_limits: &Vec<u128>,
+    ) -> Result<(), BshError> {
+        if coin_names.len() != token_limits.len() {
+            return Err(BshError::InvalidParams);
+        }
+        Ok(())
+    }
+
+    pub fn ensure_coin_exists(&self, coin_name: &String) -> bool {
+        match self.coin_ids.get(coin_name) {
+            Some(coin) => true,
+            None => false,
+        }
     }
 }

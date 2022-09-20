@@ -19,9 +19,8 @@ func TestNearSender(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api: &mockApi,
+						api: testData.MockApi,
 					}
 
 					links, Ok := (testData.Input).([]chain.BTPAddress)
@@ -50,21 +49,24 @@ func TestNearSender(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api:    &mockApi,
+						api:    testData.MockApi,
 						logger: log.New(),
 					}
 
-					links, Ok := (testData.Input).([]chain.BTPAddress)
+					input, Ok := (testData.Input).(struct {
+						PrivateKey  string
+						Source      chain.BTPAddress
+						Destination chain.BTPAddress
+					})
 					assert.True(f, Ok)
 
-					privateKeyBytes := base58.Decode("22yx6AjQgG1jGuAmPuEwLnVKFnuq5LU23dbU3JBZodKxrJ8dmmqpDZKtRSfiU4F8UQmv1RiZSrjWhQMQC3ye7M1J")
+					privateKeyBytes := base58.Decode(input.PrivateKey)
 					privateKey := ed25519.PrivateKey(privateKeyBytes)
 					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
 
 					assert.NoError(f, err)
-					sender, err := newMockSender(links[1], links[0], client, nearWallet, nil, log.New())
+					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, nil, log.New())
 					assert.Nil(f, err)
 
 					relayTx, err := sender.newRelayTransaction(context.Background(), "", []byte{})
@@ -91,21 +93,24 @@ func TestNearSender(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api:    &mockApi,
+						api:    testData.MockApi,
 						logger: log.New(),
 					}
 
-					links, Ok := (testData.Input).([]chain.BTPAddress)
+					input, Ok := (testData.Input).(struct {
+						PrivateKey  string
+						Source      chain.BTPAddress
+						Destination chain.BTPAddress
+					})
 					assert.True(f, Ok)
 
-					privateKeyBytes := base58.Decode("22yx6AjQgG1jGuAmPuEwLnVKFnuq5LU23dbU3JBZodKxrJ8dmmqpDZKtRSfiU4F8UQmv1RiZSrjWhQMQC3ye7M1J")
+					privateKeyBytes := base58.Decode(input.PrivateKey)
 					privateKey := ed25519.PrivateKey(privateKeyBytes)
 					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
 
 					assert.NoError(f, err)
-					sender, err := newMockSender(links[1], links[0], client, nearWallet, nil, log.New())
+					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, nil, log.New())
 					assert.Nil(f, err)
 
 					relayTx, err := sender.newRelayTransaction(context.Background(), "", []byte{})
@@ -135,9 +140,8 @@ func TestNearSender(t *testing.T) {
 		t.Run(test.Description(), func(f *testing.T) {
 			for _, testData := range test.TestDatas() {
 				f.Run(testData.Description, func(f *testing.T) {
-					mockApi := NewMockApi(testData.MockStorage)
 					client := &Client{
-						api:    &mockApi,
+						api:    testData.MockApi,
 						logger: log.New(),
 					}
 

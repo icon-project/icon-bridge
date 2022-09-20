@@ -6,8 +6,8 @@ type ChainStatus struct {
 }
 
 type ChainSyncInfo struct {
-	LatestBlockHash   string `json:"latest_block_hash"`
-	LatestBlockHeight int64  `json:"latest_block_height"`
-	LatestBlockTime   string `json:"latest_block_time"`
-	Syncing           bool   `json:"syncing"`
+	LatestBlockHash   CryptoHash `json:"latest_block_hash"`
+	LatestBlockHeight int64      `json:"latest_block_height"`
+	LatestBlockTime   string     `json:"latest_block_time"`
+	Syncing           bool       `json:"syncing"`
 }

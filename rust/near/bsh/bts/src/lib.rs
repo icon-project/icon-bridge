@@ -1,14 +1,15 @@
 use btp_common::btp_address::Address;
 use btp_common::errors::BshError;
 use libraries::types::{
-    Account, AccountBalance, AccumulatedAssetFees, AssetId, BTPAddress, TransferableAsset,
+    Account, AccountBalance, AccumulatedAssetFees, AssetId, BTPAddress, CoinIds, TransferableAsset,
     WrappedNativeCoin,
 };
 use libraries::{
-    types::messages::BtpMessage, types::messages::SerializedMessage,
-    types::messages::TokenServiceMessage, types::messages::TokenServiceType, types::Asset,
-    types::AssetFees, types::AssetMetadata, types::Assets, types::Balances, types::Math,
-    types::Network, types::Owners, types::Requests, types::StorageBalances,
+    types::messages::BlackListType, types::messages::BtpMessage,
+    types::messages::SerializedMessage, types::messages::TokenServiceMessage,
+    types::messages::TokenServiceType, types::Asset, types::AssetFees, types::AssetMetadata,
+    types::Assets, types::Balances, types::BlackListedAccounts, types::Math, types::Network,
+    types::Owners, types::Requests, types::StorageBalances, types::TokenLimits,
 };
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LazyOption;
@@ -21,13 +22,14 @@ use near_sdk::{
     json_types::{Base64VecU8, U128},
     log, near_bindgen, require, Gas, PanicOnDefault, Promise, PromiseResult,
 };
-
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 mod external;
 use external::*;
 mod accounting;
 mod assertion;
+mod blacklist_management;
 mod coin_management;
 mod estimate;
 mod fee_management;
@@ -35,6 +37,7 @@ mod messaging;
 mod owner_management;
 mod transfer;
 mod types;
+mod upgrade;
 mod util;
 pub use types::RegisteredCoins;
 pub type CoinFees = AssetFees;
@@ -47,7 +50,7 @@ pub static FEE_DENOMINATOR: u128 = 10_u128.pow(4);
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
-pub struct BtpTokenService {
+pub struct BtpTokenServiceV0_9 {
     native_coin_name: String,
     network: Network,
     owners: Owners,
@@ -67,6 +70,29 @@ pub struct BtpTokenService {
 }
 
 #[near_bindgen]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
+pub struct BtpTokenService {
+    native_coin_name: String,
+    network: Network,
+    owners: Owners,
+    coins: Coins,
+    balances: Balances,
+    storage_balances: StorageBalances,
+    coin_fees: CoinFees,
+    requests: Requests,
+    serial_no: i128,
+    bmc: AccountId,
+    name: String,
+    blacklisted_accounts: BlackListedAccounts,
+    token_limits: TokenLimits,
+    coin_ids: CoinIds,
+    registered_coins: RegisteredCoins,
+
+    #[cfg(feature = "testable")]
+    pub message: LazyOption<Base64VecU8>,
+}
+
+#[near_bindgen]
 impl BtpTokenService {
     #[init]
     pub fn new(service_name: String, bmc: AccountId, network: String, native_coin: Coin) -> Self {
@@ -80,9 +106,11 @@ impl BtpTokenService {
 
         balances.add(&env::current_account_id(), &native_coin_id);
         coins.add(&native_coin_id, &native_coin);
-
+        let blacklisted_accounts = BlackListedAccounts::new();
         let mut coin_fees = CoinFees::new();
         coin_fees.add(&native_coin_id);
+        let mut coin_ids = CoinIds::new();
+        coin_ids.add(native_coin.name(), &native_coin_id);
         Self {
             native_coin_name: native_coin.name().to_owned(),
             network,
@@ -95,10 +123,13 @@ impl BtpTokenService {
             requests: Requests::new(),
             bmc,
             name: service_name,
+            blacklisted_accounts,
+            registered_coins: RegisteredCoins::new(),
+            token_limits: TokenLimits::new(),
+            coin_ids,
 
             #[cfg(feature = "testable")]
             message: LazyOption::new(b"message".to_vec(), None),
-            registered_coins: RegisteredCoins::new(),
         }
     }
 
@@ -108,16 +139,6 @@ impl BtpTokenService {
 
     fn name(&self) -> &String {
         &self.name
-    }
-
-    #[cfg(feature = "testable")]
-    pub fn serial_no(&self) -> i128 {
-        self.serial_no
-    }
-
-    #[cfg(not(feature = "testable"))]
-    fn serial_no(&self) -> i128 {
-        self.serial_no
     }
 
     fn requests(&self) -> &Requests {
@@ -131,5 +152,11 @@ impl BtpTokenService {
     fn process_deposit(&mut self, amount: u128, balance: &mut AccountBalance) {
         let storage_cost = 0;
         balance.deposit_mut().add(amount - storage_cost).unwrap();
+    }
+}
+
+impl BtpTokenService {
+    pub fn serial_no(&self) -> i128 {
+        self.serial_no
     }
 }

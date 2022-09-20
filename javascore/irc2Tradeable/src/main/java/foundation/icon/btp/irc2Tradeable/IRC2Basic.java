@@ -40,9 +40,9 @@ public abstract class IRC2Basic implements IRC2 {
             this.name.set(ensureNotEmpty(_name));
             this.symbol.set(ensureNotEmpty(_symbol));
 
-            // decimals must be larger than 0 and less than 21
+            // decimals must be larger than 0 and less than 77
             Context.require(_decimals >= 0, "decimals needs to be positive");
-            Context.require(_decimals <= 24, "decimals needs to be equal or lower than 21");
+            Context.require(_decimals <= 77, "decimals needs to be equal or lower than 77");
             this.decimals.set(BigInteger.valueOf(_decimals));
         }
     }

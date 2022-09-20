@@ -1,0 +1,381 @@
+name: 'Link Token and Register Coin'
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      AWS_S3_BUCKET:
+        required: true
+      AWS_REGION:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      GOLOOP_RPC_KEY_STORE_B64:
+        required: true
+      GOLOOP_RPC_URI:
+        required: true
+      GOLOOP_RPC_KEY_PASSWORD:
+        required: true
+      BSC_PRIVATE_KEY:
+        required: true
+      BSC_RPC_URI:
+        required: true
+      BSC_NID:
+        required: true
+      BSC_BMC_NET:
+        required: true
+jobs:
+  deploy-token-javascore:
+    name: deploy token javascore
+    runs-on: ubuntu-latest
+    container:
+      image: iconbridge/build
+      options: --user 1001
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Sync tx-icon-bts-bmc for further steps
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc-addr-bmcperiphery.txt javascore/bsc-addr-bmcperiphery.txt
+          aws s3 cp s3://$AWS_S3_BUCKET/icon-addr-bmc javascore/icon-addr-bmc
+          aws s3 cp s3://$AWS_S3_BUCKET/icon-addr-bts javascore/icon-addr-bts
+          aws s3 cp s3://$AWS_S3_BUCKET/icon.addr.sICX javascore/icon.addr.sICX
+
+          BMC_ADDRESS=$(cat javascore/bsc-addr-bmcperiphery.txt)
+          echo btp://$BSC_BMC_NET/"${BMC_ADDRESS}" >javascore/bsc.addr.bmcbtp
+          aws s3 cp javascore/bsc.addr.bmcbtp s3://$AWS_S3_BUCKET/bsc.addr.bmcbtp
+
+          echo "btp://0x2.icon/$(cat javascore/icon-addr-bmc)" >solidity/bmc/icon.addr.bmcbtp
+          aws s3 cp solidity/bmc/icon.addr.bmcbtp s3://$AWS_S3_BUCKET/icon.addr.bmcbtp
+
+          aws s3 sync s3://$AWS_S3_BUCKET/build solidity/bmc/build/
+          aws s3 sync s3://$AWS_S3_BUCKET/bts/build solidity/bts/build/
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc-addr-btsperiphery.txt solidity/bmc/bsc-addr-btsperiphery.txt
+
+      - name: Retrieve the secret and decode it to a file
+        working-directory: ./javascore
+        env:
+          GOLOOP_RPC_KEY_STORE_B64: ${{ secrets.GOLOOP_RPC_KEY_STORE_B64 }}
+        run: |
+          echo $GOLOOP_RPC_KEY_STORE_B64 | base64 -d > key.json
+
+      - name: configure_javascore_register_native_token
+        working-directory: ./javascore
+        shell: bash
+        timeout-minutes: 1
+        env:
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          GOLOOP_RPC_KEY_PASSWORD: ${{ secrets.GOLOOP_RPC_KEY_PASSWORD }}
+          GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+        run: |
+          #decimal2Hex 18 100 3900000000000000000
+          addr=$(cat ./icon.addr.sICX)
+          goloop rpc sendtx call --to $(cat icon-addr-bts) \
+                --method register \
+                --param _name="btp-0x2.icon-sICX" \
+                --param _symbol="sICX" \
+                --param _decimals="0x12" \
+                --param _feeNumerator=0x64 \
+                --param _fixedFee=0x361f955640060000 --nid 0x2 --step_limit 3000000000 --key_store=./key.json | jq -r . >register.coin.sICX
+          sleep 5
+          goloop rpc --uri $GOLOOP_RPC_URI txresult $(cat register.coin.sICX)
+
+      - name: configure_javascore_register_wrapped_coin
+        working-directory: ./javascore
+        shell: bash
+        timeout-minutes: 1
+        env:
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          GOLOOP_RPC_KEY_PASSWORD: ${{ secrets.GOLOOP_RPC_KEY_PASSWORD }}
+          GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+        run: |
+          #decimal2Hex 18 100 3900000000000000000
+          # addr=$(cat ./icon.addr.sICX)
+          goloop rpc sendtx call --to $(cat icon-addr-bts) \
+                --method register \
+                --param _name="btp-0x61.bsc-BNB" \
+                --param _symbol="BNB" \
+                --param _decimals="0x12" \
+                --param _feeNumerator=0x64 \
+                --param _fixedFee=0x361f955640060000 --nid 0x2 --step_limit 3000000000 --key_store=./key.json | jq -r . >register.coin.BNB
+          sleep 5
+          goloop rpc --uri $GOLOOP_RPC_URI txresult $(cat register.coin.BNB)
+
+      - name: configure_javascore_addLink
+        working-directory: ./javascore
+        shell: bash
+        timeout-minutes: 1
+        env:
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          GOLOOP_RPC_KEY_PASSWORD: ${{ secrets.GOLOOP_RPC_KEY_PASSWORD }}
+          GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+        run: |
+          goloop rpc sendtx call --to $(cat icon-addr-bmc) --method addLink --param _link=$(cat bsc.addr.bmcbtp) --key_store=./key.json --nid 0x2 --step_limit 3000000000| jq -r . >addLink.icon
+          cat addLink.icon
+          sleep 5
+          goloop rpc --uri $GOLOOP_RPC_URI txresult $(cat addLink.icon)
+
+      - name: configure_javascore_setLinkHeight
+        working-directory: ./javascore
+        shell: bash
+        timeout-minutes: 1
+        env:
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          GOLOOP_RPC_KEY_PASSWORD: ${{ secrets.GOLOOP_RPC_KEY_PASSWORD }}
+          GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+        run: |
+          eth_blocknumber=$(curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' --data-raw '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[], "id": 1}' | jq -r .result)
+
+          goloop rpc sendtx call --to $(cat icon-addr-bmc) --method setLinkRxHeight --param _link=$(cat bsc.addr.bmcbtp) --param _height=$eth_blocknumber --key_store=./key.json --nid 0x2 --step_limit 3000000000| jq -r . >setLinkRxHeight.icon
+          # goloop rpc --uri $GOLOOP_RPC_URI txresult $(cat setLinkRxHeight.icon)
+
+      - name: configure_bmc_javascore_addRelay
+        working-directory: ./javascore
+        shell: bash
+        timeout-minutes: 1
+        env:
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          GOLOOP_RPC_KEY_PASSWORD: ${{ secrets.GOLOOP_RPC_KEY_PASSWORD }}
+          GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+        run: |
+          icon_bmr_owner=$(cat ./key.json | jq -r .address)
+
+          goloop rpc sendtx call --to $(cat icon-addr-bmc) --method addRelay --param _link=$(cat bsc.addr.bmcbtp) --param _addr=$icon_bmr_owner --key_store=./key.json --nid 0x2 --step_limit 3000000000 | jq -r . >addRelay.icon
+          cat addRelay.icon
+          sleep 5
+          goloop rpc --uri $GOLOOP_RPC_URI txresult $(cat addRelay.icon)
+
+      - name: get_btp_icon_coinId
+        shell: bash
+        working-directory: ./javascore
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+          GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+        run: |
+          goloop rpc call --to $(cat ./icon-addr-bts) --method coinId --param _coinName="btp-0x2.icon-sICX" | jq -r . > icon.coinId.sICX
+          cat icon.coinId.sICX
+          cp icon.coinId.sICX icon.addr.coin.sICX
+
+      - name: get_btp_icon_coinId_wrapped
+        shell: bash
+        working-directory: ./javascore
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+          GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+        run: |
+          goloop rpc call --to $(cat ./icon-addr-bts) --method coinId --param _coinName="btp-0x61.bsc-BNB" | jq -r . > icon.coinId.BNB
+          cat icon.coinId.BNB
+          cp icon.coinId.BNB icon.addr.coin.BNB
+
+      - name: Sync tx-icon-bts-bmc for further steps
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          aws s3 cp  javascore/icon.addr.coin.sICX s3://$AWS_S3_BUCKET/icon.addr.coin.sICX
+          aws s3 cp javascore/icon.addr.coin.BNB s3://$AWS_S3_BUCKET/icon.addr.coin.BNB
+
+  deploy-solidity-token:
+    name: deploy token solidity
+    needs: [deploy-token-javascore]
+    runs-on: ubuntu-latest
+    container:
+      image: iconbridge/build
+      options: --user 1001
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Sync tx-icon-bts-bmc for further steps
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          aws s3 sync s3://$AWS_S3_BUCKET/build solidity/bmc/build/
+          aws s3 sync s3://$AWS_S3_BUCKET/bts/build solidity/bts/build/
+          aws s3 cp s3://$AWS_S3_BUCKET/bsc-addr-btsperiphery.txt solidity/bmc/bsc-addr-btsperiphery.txt
+          aws s3 cp s3://$AWS_S3_BUCKET/icon.addr.bmcbtp solidity/bmc/icon.addr.bmcbtp
+      - name: add_icon_link
+        shell: bash
+        working-directory: solidity/bmc
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          yarn install
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
+          truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bmc.js --method addLink --link $(cat icon.addr.bmcbtp) --blockInterval 3000 --maxAggregation 2 --delayLimit 3
+
+      - name: set_link_height
+        shell: bash
+        working-directory: solidity/bmc
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+          GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+        run: |
+          icon_block_height=$(goloop rpc lastblock | jq -r .height)
+          echo $icon_block_height > icon.chain.height
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
+          truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bmc.js --method setLinkRxHeight --link $(cat icon.addr.bmcbtp) --height $(cat icon.chain.height)
+
+      - name: Sync tx-icon-bts-bmc for further steps
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          aws s3 cp solidity/bmc/icon.chain.height s3://$AWS_S3_BUCKET/icon.chain.height
+
+      - name: add_icon_relay
+        shell: bash
+        working-directory: solidity/bmc
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+          GOLOOP_RPC_URI: ${{ secrets.GOLOOP_RPC_URI }}
+        run: |
+          #BSC_RELAY_USER=$(cat ../../javascore/key.json | jq -r .address)
+          BSC_RELAY_USER="57a1623ab7c22fb2593f1a5381a92afeb618e1ac"
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" BSC_RPC_URI="$BSC_RPC_URI" BSC_NID="$BSC_NID" BMC_BTP_NET="$BSC_BMC_NET" \
+          truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bmc.js --method addRelay --link $(cat icon.addr.bmcbtp) --addr "0x${BSC_RELAY_USER}"
+
+      - name: configure_solidity_add_bmc_owner
+        shell: bash
+        working-directory: solidity/bmc
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          # yarn install
+          BSC_BMC_USER="57a1623ab7c22fb2593f1a5381a92afeb618e1ac"
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" \
+          truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bmc.js --method isOwner --addr "0x${BSC_BMC_USER}"
+
+      - name: configure_solidity_set_fee_ratio
+        shell: bash
+        working-directory: solidity/bts
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          yarn install
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" \
+          truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bts.js --method setFeeRatio --name "btp-0x61.bsc-BNB" --feeNumerator 100 --fixedFee 5000000000000000
+
+      - name: configure_solidity_add_bts_owner
+        shell: bash
+        working-directory: solidity/bts
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          # yarn install
+          BSC_BTS_USER="57a1623ab7c22fb2593f1a5381a92afeb618e1ac"
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" \
+          truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bts.js --method addOwner --addr "0x${BSC_BTS_USER}"
+
+      - name: bsc_register_native_token
+        shell: bash
+        working-directory: solidity/bts
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          # yarn install
+          addr="0x119344c4354AcD401Ffb7Ed58e2B03fBA6759a87"
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" \
+          truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bts.js --method register --name "btp-0x61.bsc-BUSD" --symbol "BUSD" --decimals "18" --addr $addr --feeNumerator "100" --fixedFee "1500000000000000000"
+
+      - name: bsc_register_wrapped_coin
+        shell: bash
+        working-directory: solidity/bts
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          # yarn install
+          addr="57a1623ab7c22fb2593f1a5381a92afeb618e1ac"
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" \
+          truffle exec --network bsc ../../devnet/docker/icon-bsc/scripts/bts.js --method register --name "btp-0x2.icon-ICX" --symbol "ICX" --decimals "18" --addr "0x0000000000000000000000000000000000000000" --feeNumerator "100" --fixedFee "4300000000000000000"
+
+      - name: get_coinID_BUSD
+        shell: bash
+        working-directory: solidity/bts
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          # yarn install
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" \
+          tx=$(truffle exec --network bsc  ../../devnet/docker/icon-bsc/scripts/bts.js --method coinId --coinName  btp-0x61.bsc-BUSD)
+          coinId=$(echo "$tx" | grep "coinId:" | sed -e "s/^coinId: //")
+          echo "$coinId" > bsc.addr.coin.BUSD
+          cat bsc.addr.coin.BUSD
+
+      - name: get_coinID_ICX
+        shell: bash
+        working-directory: solidity/bts
+        env:
+          BSC_PRIVATE_KEY: ${{ secrets.BSC_PRIVATE_KEY }}
+          BSC_RPC_URI: ${{ secrets.BSC_RPC_URI }}
+          BSC_NID: ${{ secrets.BSC_NID }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          # yarn install
+          PRIVATE_KEY="$BSC_PRIVATE_KEY" \
+          tx=$(truffle exec --network bsc  ../../devnet/docker/icon-bsc/scripts/bts.js --method coinId --coinName  "btp-0x2.icon-ICX")
+          coinId=$(echo "$tx" | grep "coinId:" | sed -e "s/^coinId: //")
+          echo "$coinId" > bsc.addr.coin.ICX
+          cat bsc.addr.coin.ICX
+
+      - name: Sync tx-icon-bts-bmc for further steps
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          BSC_BMC_NET: ${{ secrets.BSC_BMC_NET }}
+        run: |
+          aws s3 cp solidity/bts/bsc.addr.coin.BUSD s3://$AWS_S3_BUCKET/bsc.addr.coin.BUSD
+          aws s3 cp solidity/bts/bsc.addr.coin.ICX s3://$AWS_S3_BUCKET/bsc.addr.coin.ICX

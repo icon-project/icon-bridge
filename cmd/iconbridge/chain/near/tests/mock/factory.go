@@ -36,7 +36,7 @@ func loadFiles(files []string, directory string) [][]byte {
 func validateDirectory(directory string) {
 	_, err := ioutil.ReadDir(directory)
 	if err != nil {
-		panic(fmt.Errorf("error [LoadBlock]: %v", err))
+		panic(fmt.Errorf("error [ValidateDirectory]: %v", err))
 	}
 }
 
@@ -68,26 +68,20 @@ func LoadBlockFromFile(names []string) (map[int64]Response, map[string]Response)
 	return blockByHeightMap, blockByHashMap
 }
 
-func LoadNonceFromFile(names []string) map[string]Response {
-	sectionDir := mockDataPath + "/nonce"
+func LoadAccessKeyFromFile(names []string) map[string]Response {
+	sectionDir := mockDataPath + "/access_key"
 	validateDirectory(sectionDir)
 
-	var nonceMap = map[string]Response{}
+	var accessKeyMap = map[string]Response{}
 
 	for index, buffer := range loadFiles(names, sectionDir) {
-		var nonce types.NonceResponse
-
-		err := json.Unmarshal(buffer, &nonce)
-		if err != nil {
-			panic(fmt.Errorf("error [LoadBlock][ParseJson]: %v", err))
-		}
-		nonceMap[names[index]] = Response{
-			Reponse: nonce.Nonce,
+		accessKeyMap[names[index]] = Response{
+			Reponse: buffer,
 			Error:   nil,
 		}
 	}
 
-	return nonceMap
+	return accessKeyMap
 }
 
 func LoadAccountsFromFile(accounts []string) map[string]Response {
@@ -97,14 +91,8 @@ func LoadAccountsFromFile(accounts []string) map[string]Response {
 	var accountMap = map[string]Response{}
 
 	for index, buffer := range loadFiles(accounts, sectionDir) {
-		var account types.Account
-
-		err := json.Unmarshal(buffer, &account)
-		if err != nil {
-			panic(fmt.Errorf("error [LoadAccount][ParseJson]: %v", err))
-		}
 		accountMap[accounts[index]] = Response{
-			Reponse: account,
+			Reponse: buffer,
 			Error:   nil,
 		}
 	}
@@ -134,27 +122,6 @@ func LoadBmcStatusFromFile(names []string) map[string]Response {
 	return bmcStatusMap
 }
 
-func LoadBmvStatusFromFile(names []string) map[string]Response {
-	sectionDir := mockDataPath + "/contractsdata/bmv"
-	validateDirectory(sectionDir)
-
-	var bmvStatusMap = map[string]Response{}
-
-	for index, buffer := range loadFiles(names, sectionDir) {
-		var bmvstatus types.BmvStatus
-		err := json.Unmarshal(buffer, &bmvstatus)
-		if err != nil {
-			panic(fmt.Errorf("error [LoadBlock][ParseJson]: %v", err))
-		}
-
-		bmvStatusMap[names[index]] = Response{
-			Reponse: buffer,
-			Error:   nil,
-		}
-	}
-	return bmvStatusMap
-}
-
 func LoadEventsFromFile(names []string) map[int64]Response {
 	sectionDir := mockDataPath + "/events"
 	validateDirectory(sectionDir)
@@ -165,12 +132,12 @@ func LoadEventsFromFile(names []string) map[int64]Response {
 
 		err := json.Unmarshal(buffer, &contractStateChange)
 		if err != nil {
-			panic(fmt.Errorf("error [LoadBlock][ParseJson]: %v", err))
+			panic(fmt.Errorf("error [LoadEvents][ParseJson]: %v", err))
 		}
 
 		blockHeight, err := strconv.Atoi(names[index])
 		if err != nil {
-			panic(fmt.Errorf("error [LoadBlock][ParseJson]: %v", err))
+			panic(fmt.Errorf("error [LoadEvents][ParseBlockHeight]: %v", err))
 		}
 		getEventsMap[int64(blockHeight)] = Response{
 			Reponse: buffer,
@@ -189,7 +156,7 @@ func LoadReceiptsFromFile(names []string) map[string]Response {
 
 		err := json.Unmarshal(buffer, &receiptProofs)
 		if err != nil {
-			panic(fmt.Errorf("error [LoadBlock][ParseJson]: %v", err))
+			panic(fmt.Errorf("error [LoadReceipts][ParseJson]: %v", err))
 		}
 
 		receiptProofMap[names[index]] = Response{
@@ -240,4 +207,26 @@ func LoadLightClientBlocksFromFile(names []string) map[string]Response {
 		}
 	}
 	return LightClientBlockMap
+}
+
+func LoadChainStatusFromFile(blocks []string) Response {
+	sectionDir := mockDataPath + "/status"
+	validateDirectory(sectionDir)
+
+	var LatestChainStatus = Response{}
+	for _, buffer := range loadFiles(blocks, sectionDir) {
+		var ChainStatus types.ChainStatus
+
+		err := json.Unmarshal(buffer, &ChainStatus)
+		if err != nil {
+			panic(fmt.Errorf("error [LoadChainStatus][ParseJson]: %v", err))
+		}
+
+		LatestChainStatus = Response{
+			Reponse: buffer,
+			Error:   nil,
+		}
+	}
+
+	return LatestChainStatus
 }

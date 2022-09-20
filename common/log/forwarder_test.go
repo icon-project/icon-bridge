@@ -6,34 +6,34 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestForwarder(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
-	args := []struct {
-		vendor string
-		addr   string
-	}{
-		{HookVendorFluentd, "tcp://ci.arch.iconloop.com:24224"},
-		{HookVendorLogstash, "tcp://ci.arch.iconloop.com:5045"},
-	}
-	c := &ForwarderConfig{
-		Level: "info",
-	}
-	for _, arg := range args {
-		t.Run(arg.vendor, func(t *testing.T) {
-			c.Vendor = arg.vendor
-			c.Address = arg.addr
-			err := AddForwarder(c)
-			assert.NoError(t, err, "error on AddForwarder", c)
-			GlobalLogger().Println("TestForwarder", c.Vendor, time.Now())
-		})
-	}
-}
+//TODO Not a unit test, mock functionality
+//func TestForwarder(t *testing.T) {
+//	if testing.Short() {
+//		t.Skip("skipping test in short mode.")
+//	}
+//
+//	args := []struct {
+//		vendor string
+//		addr   string
+//	}{
+//		{HookVendorFluentd, "tcp://ci.arch.iconloop.com:24224"},
+//		{HookVendorLogstash, "tcp://ci.arch.iconloop.com:5045"},
+//	}
+//	c := &ForwarderConfig{
+//		Level: "info",
+//	}
+//	for _, arg := range args {
+//		t.Run(arg.vendor, func(t *testing.T) {
+//			c.Vendor = arg.vendor
+//			c.Address = arg.addr
+//			err := AddForwarder(c)
+//			assert.NoError(t, err, "error on AddForwarder", c)
+//			GlobalLogger().Println("TestForwarder", c.Vendor, time.Now())
+//		})
+//	}
+//}
 
 func TestSlackHook(t *testing.T) {
 	const URL = "https://hooks.slack.com/services/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"

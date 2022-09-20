@@ -852,4 +852,40 @@ public class BTSTest extends AbstractBTPTokenService {
         assertEquals(null, score.call("coinId", "DUM"));
 
     }
+
+
+    @Test
+    @Order(20)
+    public void transferBatchNativecoinTokenLimit() {
+        tokenLimitBTPMessage();
+        score.invoke(owner, "setTokenLimit",  new String[]{ICON}, new BigInteger[]{BigInteger.valueOf(1000)});
+        assertEquals(BigInteger.valueOf(1000), score.call("getTokenLimit", ICON));
+
+        String destination = generateBTPAddress("0x1.bsc", ETH_ADDR);
+        Account token1 = Account.newScoreAccount(50);
+        Account token2 = Account.newScoreAccount(51);
+
+        register("Token1", token1.getAddress());
+        register("Token2", token2.getAddress());
+
+        score.invoke(token1,"tokenFallback", nonOwner.getAddress(), BigInteger.valueOf(50), "0".getBytes());
+        score.invoke(token2,"tokenFallback", nonOwner.getAddress(), BigInteger.valueOf(50), "0".getBytes());
+        Verification transferFromMock = () -> Context.call(eq(Boolean.class), any(), eq("transferFrom"),
+                eq(nonOwner.getAddress()), eq(score.getAddress()), eq(BigInteger.valueOf(10)), any());
+        contextMock.when(transferFromMock).thenReturn(true);
+
+        // transferBatch 2 tokens, try to transfer ICX above 1000 should fail
+        contextMock.when(sendICX()).thenReturn(BigInteger.valueOf(1001));
+        String[] coinNames = new String[]{"Token1", "Token2"};
+        BigInteger[] values = new BigInteger[]{ BigInteger.valueOf(50),  BigInteger.valueOf(50)};
+
+        sendBTPMessageMock();
+        Executable call = () -> score.invoke(nonOwner, "transferBatch", coinNames, values, destination);
+        expectErrorMessage(call, "Transfer amount exceeds the transaction limit");
+
+        // 999 transfer should be successful
+        contextMock.when(sendICX()).thenReturn(BigInteger.valueOf(999));
+        score.invoke(nonOwner, "transferBatch", coinNames, values, destination);
+
+    }
 }

@@ -1,0 +1,364 @@
+{
+    "chain_id": "testnet",
+    "latest_protocol_version": 56,
+    "node_key": null,
+    "protocol_version": 56,
+    "rpc_addr": "0.0.0.0:4040",
+    "sync_info": {
+        "earliest_block_hash": "FWJ9kR6KFWoyMoNjpLXXGHeuiy7tEY6GmoFeCA5yuc6b",
+        "earliest_block_height": 42376888,
+        "earliest_block_time": "2020-07-31T03:39:42.911378Z",
+        "epoch_id": "85pkJkFvHtqjkwTRAeu9kz4RXg2kJSZj1oc7UAtS6dr5",
+        "epoch_start_height": 99963122,
+        "latest_block_hash": "CE3NVJbb5tStSPXNhuNEJc1UkHbuGdeL9UBFFcBrxHx3",
+        "latest_block_height": 377832,
+        "latest_block_time": "2022-09-12T06:39:36.637866480Z",
+        "latest_state_root": "3Xee355aQfunXZqQ2VKmhLAEjBkeHxzxYd2EycLxMYuT",
+        "syncing": false
+    },
+    "uptime_sec": 928122,
+    "validator_account_id": null,
+    "validators": [
+        {
+            "account_id": "node0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "node3",
+            "is_slashed": false
+        },
+        {
+            "account_id": "node2",
+            "is_slashed": false
+        },
+        {
+            "account_id": "node1",
+            "is_slashed": false
+        },
+        {
+            "account_id": "aurora.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "legends.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "masternode24.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "01node.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "p2p.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "nodeasy.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "chorusone.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "tribe-pool.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "foundryusa.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "sweden.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "chorus-one.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "ni.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "cryptogarik.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "pathrocknetwork.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "stakely_v2.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "everstake.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "freshtest.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "stakesstone.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "leadnode.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "dsrvlabs.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "al3c5.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "grassets.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "baziliknear.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "shurik.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "chelovek_iz_naroda.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "basilisk-stake.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "tayang.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "zetsi.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "infiniteloop.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "ou812.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "bflame.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "blazenet.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "dimasik.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "prophet.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "stingray.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "g2.pool.devnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "kiln.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "spectrum.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "dysprosium-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "idtcn3.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "tin-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "neodymium-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "beryllium-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "barium-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "vanadium-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "gadolinium-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "rhodium-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "ruthenium-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "bromine-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "gettingnear.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "chlorine-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "xenon-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "thulium-chunk.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "azetsi.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "pinpin.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "wackazong.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "guardia.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "alxvoy.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "redhead.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "domanodes.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "sergo.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "twintest1.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "tandemk.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "pero_val.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "leadnode-shard.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "cryptobtcbuyer.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "pandateam.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "meduza.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "adel0515.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "qibaocenter.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "gruberx.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "nodebull.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "makil.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "mlnear.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "p2pstaking.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "cunum.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "lastnode.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "omnistake_v5.factory01.littlefarm.testnet",
+            "is_slashed": false
+        },
+        {
+            "account_id": "jstaking.pool.f863973.m0",
+            "is_slashed": false
+        },
+        {
+            "account_id": "cryptolions.pool.f863973.m0",
+            "is_slashed": false
+        }
+    ],
+    "version": {
+        "build": "1.29.0-rc.2",
+        "rustc_version": "1.62.1",
+        "version": "1.29.0-rc.2"
+    }
+}
