@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/ethereum/go-ethereum/common"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -17,7 +19,9 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/mocks"
+	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
@@ -288,4 +292,42 @@ func TestReceiver_MockVerifyAndUpdate_CorrectHeader(t *testing.T) {
 		require.Equal(t, vr.IsValidator(k), true)
 	}
 	require.Equal(t, vr.IsValidator(ethCommon.HexToAddress("abc")), false)
+}
+
+func TestSender_NewObj(t *testing.T) {
+	//senderOpts := `{"gas_limit": 24000000,"tx_data_size_limit": 8192,"balance_threshold": "100000000000000000000","boost_gas_price": 1}`
+	thres := intconv.BigInt{}
+	thres.SetString("100000000000000000000", 10)
+	sopts := senderOptions{
+		GasLimit:         24000000,
+		TxDataSizeLimit:  8192,
+		BalanceThreshold: thres,
+		BoostGasPrice:    1,
+	}
+	raw, err := json.Marshal(sopts)
+	privKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	url := "https://data-seed-prebsc-1-s1.binance.org:8545"
+	s, err := NewSender(
+		chain.BTPAddress(BSC_BMC_PERIPHERY),
+		chain.BTPAddress(ICON_BMC),
+		[]string{url}, &wallet.EvmWallet{Skey: privKey, Pkey: &privKey.PublicKey},
+		raw,
+		log.New(),
+	)
+	balance, threshold, err := s.Balance(context.TODO())
+	require.NoError(t, err)
+	require.Equal(t, balance.Cmp(big.NewInt(0)), 0)
+	require.Equal(t, threshold.String(), thres.String())
+
+	msg := &chain.Message{
+		From: "SourceName",
+		Receipts: []*chain.Receipt{{
+			Index:  0,
+			Height: 1,
+			Events: []*chain.Event{},
+		}},
+	}
+	_, _, err = s.Segment(context.TODO(), msg)
+	require.NoError(t, err)
 }
