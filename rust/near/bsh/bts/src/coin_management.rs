@@ -243,7 +243,7 @@ impl BtpTokenService {
             "event": "Register",
             "code": "0",
             "token_name": coin.name(),
-            "token_name": coin.symbol()
+            "token_account": coin.metadata().uri()
 
         });
         log!(near_sdk::serde_json::to_string(&log).unwrap());
