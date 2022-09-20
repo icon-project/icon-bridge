@@ -13,10 +13,11 @@ go_library(
         "common.go",
         "contract_state_change.go",
         "header.go",
-        "nonce.go",
+        "access_key.go",
         "receipt_proof.go",
         "transaction.go",
-        "account.go"
+        "account.go",
+        "call_function.go"
     ],
     importpath = "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types",
     visibility = ["//visibility:public"],
