@@ -42,13 +42,13 @@
 * Description
     - Add owners to owner list
 * Params
-    - _addr: address (address of owner)
+    - _owner: address (address of owner)
 
 #### removeOwner
 * Description
     - Remove address from owner list
 * Params
-    - _addr: address (address of owner to remove)
+    - _owner: address (address of owner to remove)
 
 ### Contract guarded methods
 
@@ -143,7 +143,7 @@
 * Description
     - Check if an address if a BTS owner
 * Params
-    - _addr: address (user address)
+    - _owner: address (user address)
 * Returns
     - Boolean
     ```json
@@ -194,7 +194,7 @@
 * Description
     - Get fixed fee and fee numerator for a coin
 * Params
-    - _name: string (coinname)
+    - _coinName: string (coinname)
 * Returns 
     - Mapping of fixedFee and feeNumerator as keys and respective values
     ```json
