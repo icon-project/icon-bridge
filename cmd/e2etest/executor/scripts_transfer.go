@@ -371,11 +371,11 @@ var TransferUniDirection Script = Script{
 		// Fund source side with the required tokens
 		// These tokens should be something a newly deployed god address can have
 		if errs = ts.Fund(srcChain, srcAddr, tokenAmountBeforeFeeChargeOnSrc, coinName); errs != nil {
-			ts.logger.Error(errs)
+			ts.logger.Debug(errs)
 			return
 		}
 		if errs = ts.Fund(srcChain, srcAddr, gasFeeOnSrc, src.NativeCoin()); errs != nil {
-			ts.logger.Error(errs)
+			ts.logger.Debug(errs)
 			return
 		}
 
@@ -1500,9 +1500,8 @@ var TransferWithoutApprove Script = Script{
 			return
 		}
 		if coinName == src.NativeCoin() {
-			ts.logger.Warnf("Expected non-native coin; Got native coin %v", src.NativeCoin())
-			errs = nil // not returning an error here
-			ts.logger.Error(errs)
+			ts.logger.Debugf("Expected non-native coin; Got native coin %v", src.NativeCoin())
+			errs = UnsupportedCoinArgs // not returning an error here
 			return
 		}
 		// Account

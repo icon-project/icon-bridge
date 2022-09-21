@@ -19,24 +19,26 @@ var (
 )
 
 type executor struct {
-	log                  log.Logger
-	godKeysPerChain      map[chain.ChainType]keypair
-	cfgPerChain          map[chain.ChainType]*chain.Config
-	clientsPerChain      map[chain.ChainType]chain.ChainAPI
-	sinkChanPerID        map[uint64]chan *evt
-	syncChanMtx          sync.RWMutex
-	feeAggregatorAddress string
+	log                        log.Logger
+	godKeysPerChain            map[chain.ChainType]keypair
+	cfgPerChain                map[chain.ChainType]*chain.Config
+	clientsPerChain            map[chain.ChainType]chain.ChainAPI
+	sinkChanPerID              map[uint64]chan *evt
+	syncChanMtx                sync.RWMutex
+	feeAggregatorAddress       string
+	enableExperimentalFeatures bool
 }
 
 func New(l log.Logger, cfg *Config) (ex *executor, err error) {
 	ex = &executor{
-		log:                  l,
-		cfgPerChain:          make(map[chain.ChainType]*chain.Config),
-		godKeysPerChain:      make(map[chain.ChainType]keypair),
-		clientsPerChain:      make(map[chain.ChainType]chain.ChainAPI),
-		sinkChanPerID:        make(map[uint64]chan *evt),
-		syncChanMtx:          sync.RWMutex{},
-		feeAggregatorAddress: cfg.FeeAggregatorAddress,
+		log:                        l,
+		cfgPerChain:                make(map[chain.ChainType]*chain.Config),
+		godKeysPerChain:            make(map[chain.ChainType]keypair),
+		clientsPerChain:            make(map[chain.ChainType]chain.ChainAPI),
+		sinkChanPerID:              make(map[uint64]chan *evt),
+		syncChanMtx:                sync.RWMutex{},
+		feeAggregatorAddress:       cfg.FeeAggregatorAddress,
+		enableExperimentalFeatures: cfg.EnableExperimentalFeatures,
 	}
 	for _, chainCfg := range cfg.Chains {
 		apiFunc, ok := APICallerFunc[chainCfg.Name]
@@ -50,7 +52,7 @@ func New(l log.Logger, cfg *Config) (ex *executor, err error) {
 		ex.cfgPerChain[chainCfg.Name] = chainCfg
 		ex.clientsPerChain[chainCfg.Name], err = apiFunc(l, chainCfg)
 		if err != nil {
-			err = errors.Wrap(err, "NewApi ")
+			err = errors.Wrapf(err, "NewApi %v", err)
 			return nil, err
 		}
 		if priv, pub, err := ex.clientsPerChain[chainCfg.Name].GetKeyPairFromKeystore(chainCfg.GodWalletKeystorePath, chainCfg.GodWalletSecretPath); err != nil {

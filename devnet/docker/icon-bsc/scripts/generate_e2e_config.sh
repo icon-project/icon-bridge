@@ -5,8 +5,11 @@ source utils.sh
 
 generate_e2e_config() {
     jq -n '
+    .log_level = "debug" |
+    .console_level = "info" |
+    .log_writer.filename = "_ixh_e2e.log" |
     .fee_aggregator = $fee_aggregator |
-    .log_level = "info" |
+    .enable_experimental_features = false |
     .chains = [ $icon_config, $bsc_config ]' \
     --arg fee_aggregator "$(cat $CONFIG_DIR/keystore/icon.fa.wallet.json | jq -r .address)" \
     --argjson icon_config "$(
