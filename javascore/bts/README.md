@@ -1,5 +1,5 @@
 # BTP Token Service (BTS)
-
+BTP Token Service is a service handler smart contract which handles token transfer operations. It handles nativecoin transfer, IRC2 token transfer as well as IRC2Tradable token transfer cross chain. IRC2 Tradable is equivalent to ERC20 on solidity which includes approval/allowance. The javascore BTS has the following methods and eventlogs.
 ## External Methods
 
 ### Owner guarded methods
