@@ -210,8 +210,12 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 						errChan <- fmt.Errorf("invalid event seq")
 					}
 
-					nel := &chain.EventLogInfo{ContractAddress: event.Next.ContractAddress(), EventType: chain.EventLogType(event.Next.Type()),
-						EventLog: event.Next.BlockChain()}
+					nel := &chain.EventLogInfo{
+						IDs:             []uint64{},
+						ContractAddress: event.Next.ContractAddress(),
+						EventType:       chain.EventLogType(event.Next.Type()),
+						EventLog:        event.Next.BlockChain(),
+					}
 					sinkChan <- nel
 				}
 			}
