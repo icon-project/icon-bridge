@@ -22,7 +22,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"io"
 	"math/big"
 	"net/http"
@@ -31,6 +30,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
@@ -228,7 +229,7 @@ func (c *Client) WaitForResults(ctx context.Context, thp *types.TransactionHashP
 				switch re := err.(type) {
 				case *jsonrpc.Error:
 					switch re.Code {
-					case types.JsonrpcErrorCodePending, types.JsonrpcErrorCodeNotFound:
+					case types.JsonrpcErrorCodePending, types.JsonrpcErrorCodeNotFound, types.JsonrpcErrorCodeExecuting:
 						continue
 					}
 				}
