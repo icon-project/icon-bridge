@@ -203,6 +203,7 @@ generate_relay_config() {
             .src.endpoint = [ $src_endpoint ] |
             .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
             .src.options.verifier.parentHash = $src_options_verifier_parentHash |
+            .src.options.verifier.validatorData = $src_options_verifier_validatorData |
             .src.options.syncConcurrency = 100 |
             .src.offset = $src_offset |
             .dst.address = $dst_address |
@@ -216,6 +217,7 @@ generate_relay_config() {
         --argjson src_offset "$(cat $CONFIG_DIR/bsc.chain.height)" \
         --argjson src_options_verifier_blockHeight "$(cat $CONFIG_DIR/bsc.chain.height)" \
         --arg src_options_verifier_parentHash "$(cat $CONFIG_DIR/bsc.chain.parentHash)" \
+        --arg src_options_verifier_validatorData "$(cat $CONFIG_DIR/bsc.chain.validatorData)" \
         --arg dst_address "$(cat $CONFIG_DIR/icon.addr.bmcbtp)" \
         --arg dst_endpoint "$ICON_ENDPOINT" \
         --argfile dst_key_store "$CONFIG_DIR/keystore/icon.bmr.wallet.json" \
