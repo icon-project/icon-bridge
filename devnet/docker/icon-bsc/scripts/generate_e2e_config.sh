@@ -27,7 +27,7 @@ generate_e2e_config() {
             --argjson contract_addresses "$(
                 jq -n '
                 .BTS = $bts_address | 
-                .BMC = $bts_address' \
+                .BMC = $bmc_address' \
                  --arg bts_address "$(cat $CONFIG_DIR/icon.addr.bts)" \
                  --arg bmc_address "$(cat $CONFIG_DIR/icon.addr.bmc)" \
             )" \
