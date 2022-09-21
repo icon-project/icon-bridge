@@ -3,6 +3,7 @@ package bsc
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -121,8 +122,9 @@ func (r *receiver) newVerifier(opts *VerifierOptions) (vri IVerifier, err error)
 		err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
 		return nil, err
 	}
+
 	if !bytes.Equal(header.Extra, opts.ValidatorData) {
-		return nil, fmt.Errorf("Unexpected ValidatorData(%v): Got %v Expected %v", roundedHeight, header.Extra, opts.ValidatorData)
+		return nil, fmt.Errorf("Unexpected ValidatorData(%v): Got %v Expected %v", roundedHeight, hex.EncodeToString(header.Extra), opts.ValidatorData)
 	}
 	vr.validators, err = getValidatorMapFromHex(opts.ValidatorData)
 	if err != nil {
