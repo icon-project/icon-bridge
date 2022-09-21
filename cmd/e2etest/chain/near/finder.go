@@ -77,7 +77,7 @@ func (f *finder) addToRunCache(r *runnable) {
 var transferStartCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
 	elog, ok := (elInfo.EventLog).(*chain.TransferStartEvent)
 	if !ok {
-		return false, fmt.Errorf("Unexpected Type. Gor %T. Expected *TransferStartEvent", elInfo.EventLog)
+		return false, fmt.Errorf("unexpected Type. Gor %T. Expected *TransferStartEvent", elInfo.EventLog)
 	}
 	if elInfo.EventType == chain.TransferStart &&
 		elInfo.ContractAddress == args.contractAddress &&
@@ -90,7 +90,7 @@ var transferStartCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (
 var transferReceivedCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
 	elog, ok := (elInfo.EventLog).(*chain.TransferReceivedEvent)
 	if !ok {
-		return false, fmt.Errorf("Unexpected Type. Gor %T. Expected *TransferReceivedEvent", elInfo.EventLog)
+		return false, fmt.Errorf("unexpected Type. Gor %T. Expected *TransferReceivedEvent", elInfo.EventLog)
 	}
 	if elInfo.EventType == chain.TransferReceived &&
 		elInfo.ContractAddress == args.contractAddress &&
@@ -103,7 +103,7 @@ var transferReceivedCB callBackFunc = func(args args, elInfo *chain.EventLogInfo
 var transferEndCB callBackFunc = func(args args, elInfo *chain.EventLogInfo) (bool, error) {
 	elog, ok := (elInfo.EventLog).(*chain.TransferEndEvent)
 	if !ok {
-		return false, fmt.Errorf("Unexpected Type. Gor %T. Expected *TransferEndEvent", elInfo.EventLog)
+		return false, fmt.Errorf("unexpected Type. Gor %T. Expected *TransferEndEvent", elInfo.EventLog)
 	}
 	if elInfo.EventType == chain.TransferEnd &&
 		elInfo.ContractAddress == args.contractAddress &&

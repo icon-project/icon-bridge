@@ -86,8 +86,6 @@ func TestTransferIntraChain(t *testing.T) {
 			t.Logf("Balance %v", val)
 		}
 	}
-
-	return
 }
 
 func getNewApi() (chain.ChainAPI, error) {
