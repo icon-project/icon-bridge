@@ -13,7 +13,7 @@ setup_account() {
         ensure_key_store $ICON_KEY_STORE $ICON_SECRET
         echo "Do not Panic..."
         echo "Missing ICON God Wallet on the required path. One has been created "$ICON_KEY_STORE
-        echo "Fund this newly created wallet and rerun ./deploysc.sh again" 
+        echo "Fund this newly created wallet and rerun the same command again" 
         exit 0
     fi
     if [ ! -f "${BSC_KEY_STORE}" ]; then
