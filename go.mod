@@ -8,7 +8,7 @@ require (
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/bshuster-repo/logrus-logstash-hook v0.4.1
 	github.com/btcsuite/btcutil v1.0.2
-	github.com/dgraph-io/badger v1.6.1
+	github.com/dgraph-io/badger v1.6.2
 	github.com/ethereum/go-ethereum v1.10.25
 	github.com/evalphobia/logrus_fluent v0.5.4
 	github.com/gofrs/uuid v4.2.0+incompatible
