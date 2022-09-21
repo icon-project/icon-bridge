@@ -6,17 +6,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"net/http"
+	"net/url"
+	"strconv"
+	"time"
+
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/near/borsh-go"
 	"github.com/reactivex/rxgo/v2"
-	"math/big"
-	"net/http"
-	"net/url"
-	"strconv"
-	"time"
 )
 
 const BmcContractMessageStateKey = "bWVzc2FnZQ=="
@@ -381,7 +382,9 @@ func newClients(urls []string, logger log.Logger) []IClient {
 }
 
 func (c *Client) SendTransaction(payload string) (*types.CryptoHash, error) {
-	txId, err := c.api.BroadcastTxAsync(payload)
+	param := []string{payload} 
+
+	txId, err := c.api.BroadcastTxAsync(param)
 	if err != nil {
 		return nil, err
 	}
