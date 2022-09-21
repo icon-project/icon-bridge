@@ -95,7 +95,7 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 						lastHeight+1, v.Height.Uint64())
 				}
 				if len(v.Logs) > 0 {
-					a.log.Info("Height %v", v.Height)
+					a.log.Debugf("Height %v", v.Height)
 					for _, txnLog := range v.Logs {
 						res, evtType, err := a.par.Parse(&txnLog)
 						if err != nil {
@@ -366,11 +366,11 @@ func (a *api) SuggestGasPrice() (gasPrice *big.Int) {
 	gasPrice = gasPrice.Div(gasPrice, big.NewInt(100))
 	suggested, err := a.Cls[0].SuggestGasPrice(ctx)
 	if err != nil && suggested.Cmp(gasPrice) > 0 {
-		fmt.Println("Using Suggested ", suggested, " instead of calculated ", gasPrice)
+		a.log.Debug("Using Suggested ", suggested, " instead of calculated ", gasPrice)
 		gasPrice = suggested
 	}
 	if gasPrice.Int64() == 0 {
-		fmt.Println("Calculated Gas Price was zero++++++++")
+		a.log.Debug("Calculated Gas Price was zero++++++++")
 		return big.NewInt(20000000000)
 	}
 	return

@@ -28,6 +28,9 @@ buildrelayimg:
 runrelayimg:
 	./build.sh runrelayimg
 
+rune2etests:
+	./build.sh rune2etests
+
 stoprelayimg:
 	./build.sh stoprelayimg	
 

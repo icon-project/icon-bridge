@@ -45,6 +45,7 @@ var transferScripts = []*Script{
 	&TransferLessThanFee,
 	&TransferToZeroAddress,
 	&TransferToUnknownNetwork,
+	&TransferWithoutApprove,
 }
 
 var configScripts = []*ConfigureScript{
@@ -59,9 +60,15 @@ var ignoreableErrorMap = map[string]*struct{}{
 	IgnoreableError.Error():         nil,
 }
 
-func (ex *executor) RunFlowTest(ctx context.Context) error {
+func (ex *executor) RunFlowTest(ctx context.Context, maxTasks int) error {
 	// Generator
-	batchSize := 10
+	ex.log.Info("Start FlowTest ", maxTasks)
+	batchSize := 10 // if unspecified, run 10 transfer tasks
+	if maxTasks > 0 && maxTasks < 50 {
+		batchSize = maxTasks
+	} else if maxTasks > 50 {
+		batchSize = 50
+	}
 	tg := pointGenerator{
 		cfgPerChain:  ex.cfgPerChain,
 		clsPerChain:  ex.clientsPerChain,
@@ -105,7 +112,6 @@ func (ex *executor) RunFlowTest(ctx context.Context) error {
 	appendToRecords := func(rec *txnErrPlusRecord) {
 		tmu.Lock()
 		defer tmu.Unlock()
-		fmt.Printf("Append to records %+v %+v", rec.res, rec.err)
 		bgJobRecords = append(bgJobRecords, rec)
 	}
 
@@ -115,7 +121,9 @@ func (ex *executor) RunFlowTest(ctx context.Context) error {
 	}
 	defer stopJob()
 
-	for _, cpt := range cpts {
+	ex.log.Info("Number of Batch to Process: ", len(cpts))
+	for cpti, cpt := range cpts {
+		ex.log.Info("Processing Batch ", cpti+1)
 		initFeeAccumulatedPerChain, err := ex.getFeeAccumulatedPerChain()
 		if err != nil {
 			return errors.Wrapf(err, "getFeeAccumulatedPerChain %v", err)
@@ -124,6 +132,7 @@ func (ex *executor) RunFlowTest(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrapf(err, "getAggregatedFees %v", err)
 		}
+		ex.log.Info("Setting up Configuration for this batch ", cpti+1)
 		confResponse, err := ex.processConfigurePoint(ctx, cpt)
 		if err != nil {
 			return errors.Wrapf(err, "processConfigurePoint %v", err)
@@ -132,24 +141,29 @@ func (ex *executor) RunFlowTest(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrapf(err, "GenerateTransferPoints %v", err)
 		}
+		ex.log.Infof("Number of Tasks in current batch: %v. Processing...\n", len(tpts))
 		transResponse, err := ex.processTransferPoints(ctx, tpts)
 		if err != nil {
 			return errors.Wrapf(err, "processTransferPoints %v", err)
 		}
+		ex.log.Info("Processed all tasks in current batch")
 		waitForPendingBGMsg()
 		bgResponse := extractRecords()
-
+		ex.log.Info("Post Process current batch")
 		ex.postProcessBatch(confResponse, transResponse, initFeeAccumulatedPerChain, initAggregatedFees, &aggReq{msgs: bgResponse, id: ts.id})
 	}
-	stopJob()
+	ex.log.Info("Completed Flow Test")
 	return nil
 }
 
 func (ex *executor) postProcessBatch(confResponse []*configureReq, transResponse []*transferReq, initFeePerChain map[chain.ChainType]map[string]*big.Int, initAggFee map[string]*big.Int, bgRecords *aggReq) {
 	ex.refundGodWithLeftOverAmounts(confResponse, transResponse)
 	ex.showErrorMessage(confResponse, transResponse)
-	if err := ex.checkWhetherFeeAddsUp(confResponse, transResponse, initFeePerChain, initAggFee, bgRecords); err != nil {
-		ex.log.Error("checkWhetherFeeAddsUp %v", err)
+	if ex.enableExperimentalFeatures {
+		ex.log.Info("Using Experimental Feature")
+		if err := ex.checkWhetherFeeAddsUp(confResponse, transResponse, initFeePerChain, initAggFee, bgRecords); err != nil {
+			ex.log.Error("checkWhetherFeeAddsUp %v", err)
+		}
 	}
 }
 
@@ -269,12 +283,11 @@ func (ex *executor) checkWhetherFeeAddsUp(confResponse []*configureReq, transRes
 			return fmt.Errorf("Expected Same got different. Coin %v initAggFee %v initAccFee %v calculatedFee %v finalAggFee %v finalAccFee %v", coin, iAggFee, iAccFee, diff, fAggFee, fAccFee)
 		}
 	}
-
-	fmt.Println("Done with feeagg checks")
 	return
 }
 
 func (ex *executor) showErrorMessage(confResponse []*configureReq, transResponse []*transferReq) {
+	ex.log.Info("Showing Error Message If Any")
 	nonIgnoreErrorCount := 0
 	for _, t := range confResponse {
 		if t.msg.err == nil {
@@ -299,6 +312,7 @@ func (ex *executor) showErrorMessage(confResponse []*configureReq, transResponse
 }
 
 func (ex *executor) refundGodWithLeftOverAmounts(confResponse []*configureReq, transResponse []*transferReq) {
+	ex.log.Info("Reclaiming leftover native coins if any")
 	for _, c := range confResponse {
 		if c.msg.err != nil || c.msg.res == nil {
 			continue
@@ -332,6 +346,10 @@ func (ex *executor) processConfigurePoint(ctx context.Context, pt *configPoint) 
 }
 
 func (ex *executor) processTransferPoints(ctx context.Context, tpts []*transferPoint) (totalResponse []*transferReq, err error) {
+	numDivisions := len(tpts) / 5
+	if numDivisions == 0 {
+		numDivisions = 1
+	}
 	requests := make([]*transferReq, len(transferScripts)*len(tpts))
 	tmpi := 0
 	for _, tpt := range tpts {
@@ -358,6 +376,9 @@ func (ex *executor) processTransferPoints(ctx context.Context, tpts []*transferP
 			switch {
 			case q.msg != nil:
 				sres = append(sres, q)
+				if (len(sres)+len(totalResponse))%numDivisions == 0 {
+					ex.log.Infof("Status: Processed Tasks %v out of %v \n", len(totalResponse)+len(sres), len(requests))
+				}
 				if len(sres) == cap(sres) {
 					close(rqch)
 				}
@@ -469,9 +490,8 @@ func (ex *executor) startBackgroundJob(ctx context.Context, ts *testSuite, cb fu
 	newCtx, newCancel := context.WithCancel(context.Background())
 	waitForPendingMsg, err := watchFeeGatheringInBackground(ctx, newCtx, ts, cb, 90)
 	if err != nil {
-		fmt.Println("Got Error ", err)
 		newCancel()
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "watchFeeGatheringInBackground %v", err)
 	}
 	return newCancel, waitForPendingMsg, nil
 }

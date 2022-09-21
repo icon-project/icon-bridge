@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"flag"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/executor"
@@ -15,25 +17,39 @@ import (
 )
 
 func main() {
-	l := log.New()
-	log.SetGlobalLogger(l)
-	cfg, err := loadConfig("./example-config.json")
+	var cfgFile string
+	var maxTasks int
+	flag.StringVar(&cfgFile, "config", "", "e2e.config.json file")
+	flag.IntVar(&maxTasks, "maxTasks", 0, "maximum number of tasks to run")
+	flag.Parse()
+	cfg, err := executor.LoadConfig(cfgFile)
 	if err != nil {
 		log.Error(errors.Wrap(err, "loadConfig "))
 		return
 	}
-	if lv, err := log.ParseLevel(cfg.LogLevel); err != nil {
-		log.Panicf("Invalid log_level=%s", cfg.LogLevel)
-	} else {
-		l.SetConsoleLevel(lv)
-	}
-
+	l := executor.SetLogger(cfg)
+	l.Info("Initializing service")
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	defer func() {
+		signal.Stop(sigCh)
 		cancel()
 	}()
 
+	go func() {
+		select {
+		case <-sigCh: // first signal, cancel context
+			cancel()
+		case <-ctx.Done():
+		}
+		<-sigCh // second signal, hard exit
+		os.Exit(2)
+	}()
+
+	l.Info("Running Service")
 	ex, err := executor.New(l, cfg)
 	if err != nil {
 		log.Error(errors.Wrap(err, "executor.New "))
@@ -41,25 +57,10 @@ func main() {
 	}
 	ex.Subscribe(ctx)
 	time.Sleep(5) // wait for subscription to start
-	log.Info("Starting Flow Test ....")
-	err = ex.RunFlowTest(ctx)
+	err = ex.RunFlowTest(ctx, maxTasks)
 	if err != nil {
-		log.Errorf("%+v", err)
+		log.Errorf("Error Executing Flow Test %+v", err)
 	}
-	cancel()
 	time.Sleep(time.Second * 2)
-	log.Warn("Exit...")
-}
-
-func loadConfig(file string) (*executor.Config, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, errors.Wrapf(err, "os.Open file %v", file)
-	}
-	cfg := &executor.Config{}
-	err = json.NewDecoder(f).Decode(cfg)
-	if err != nil {
-		return nil, errors.Wrapf(err, "json.Decode file %v", file)
-	}
-	return cfg, nil
+	log.Warn("Exiting Service...")
 }

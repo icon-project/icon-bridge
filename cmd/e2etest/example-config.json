@@ -1,6 +1,11 @@
 {
-  "fee_aggregator": "hx251eb3348ff5873e2dd2d9c5e65e000781bfabbf",
   "log_level": "debug",
+  "console_level": "info",
+  "log_writer": {
+    "filename": "_ixh_e2e.log"
+  },
+  "fee_aggregator": "hx251eb3348ff5873e2dd2d9c5e65e000781bfabbf",
+  "enable_experimental_features": false,
   "chains": [
     {
       "name": "ICON",
@@ -22,10 +27,10 @@
         "btp-0x61.bsc-BTCB",
         "btp-0x61.bsc-ETH"
       ],
-      "god_wallet_keystore_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
-      "god_wallet_secret_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
-      "bts_owner_keystore_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
-      "bts_owner_secret_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
+      "god_wallet_keystore_path": "../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
+      "god_wallet_secret_path": "../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
+      "bts_owner_keystore_path": "../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
+      "bts_owner_secret_path": "../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
       "network_id": "0x2.icon",
       "gas_limit": {
         "TransferNativeCoinIntraChainGasLimit": 150000,
@@ -57,10 +62,10 @@
         "btp-0x2.icon-sICX",
         "btp-0x2.icon-bnUSD"
       ],
-      "god_wallet_keystore_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
-      "god_wallet_secret_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
-      "bts_owner_keystore_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
-      "bts_owner_secret_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
+      "god_wallet_keystore_path": "../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
+      "god_wallet_secret_path": "../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
+      "bts_owner_keystore_path": "../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
+      "bts_owner_secret_path": "../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
       "network_id": "0x61.bsc",
       "gas_limit": {
         "TransferNativeCoinIntraChainGasLimit": 25000,
