@@ -7,15 +7,17 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
+	"strconv"
 	"strings"
 
 	gocommon "github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"
+	common "github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near"
-	"github.com/icon-project/icon-bridge/common"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 
+	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
@@ -34,15 +36,19 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	if len(cfg.URL) == 0 {
 		return nil, errors.New("Expected URL for chain NEAR. Got ")
 	} else if cfg.Name != chain.NEAR {
-		return nil, fmt.Errorf("Expected cfg.Name=NEAR Got %v", cfg.Name)
+		return nil, fmt.Errorf("expected cfg.Name=NEAR Got %v", cfg.Name)
 	}
-	Clients := near.NewClients([]string{cfg.URL}, l)
+	Clients, err := near.NewClient(cfg.URL, l)
+	if err != nil {
+		fmt.Println(err)
+	}
+	Receiver, err := near.NewReceiver(near.ReceiverConfig{}, l, Clients)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	recvr := &api{
-		receiver: &near.Receiver{
-			Clients: Clients,
-			Logger:  l,
-		},
+		receiver: Receiver,
 		sinkChan: make(chan *chain.EventLogInfo),
 		errChan:  make(chan error),
 		fd:       NewFinder(l, cfg.ContractAddresses),
@@ -51,8 +57,8 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "NewParser ")
 	}
-	client := Clients[rand.Intn(len(Clients))]
-	recvr.requester, err = newRequestAPI(client, cfg)
+	fmt.Println(Clients)
+	recvr.requester, err = newRequestAPI(Clients, cfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "newRequestAPI %v", err)
 	}
@@ -92,12 +98,13 @@ func (a *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	if !strings.Contains(addr, "btp://") {
 		return nil, errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
-	if !strings.Contains(addr, ".icon") {
+	if !strings.Contains(addr, ".near") {
 		return nil, fmt.Errorf("Address should be BTP address of account in native chain. Got %v", addr)
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
 	return a.requester.getCoinBalance(coinName, address)
+
 }
 
 // GetKeyPairFromKeystore implements chain.ChainAPI
@@ -174,53 +181,94 @@ func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHas
 	return
 }
 
-// func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
-// 	return nil, nil, nil
-// }
-
 // Subscribe implements chain.ChainAPI
 func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
-	height, err := a.requester.cl.CallLatestBlockHeight()
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "GetLastBlock ")
-	}
-	//height := uint64(blk.Height)
-	a.receiver.Logger.Infof("Subscribe Start Height %v", height)
-	// _errCh := make(chan error)
+	var opts common.SubscribeOptions
+	opts.Seq++
+
 	go func() {
-		// defer close(_errCh)
-		err := a.ReceiveLoop(ctx, height, 0, func(txnLogs []*near.TxResult) error {
-			for _, txnLog := range txnLogs {
-				a.receiver.Logger.Info("height ", txnLog.BlockHeight)
-				for _, el := range txnLog.EventLogs {
-					res, evtType, err := a.par.Parse(&el)
-					if err != nil {
-						a.receiver.Logger.Debug(errors.Wrap(err, "Parse "))
-						err = nil
-						continue
+		defer close(errChan)
+
+		if err := a.receiver.ReceiveBlocks(opts.Height, "", func(blockNotification *types.BlockNotification) {
+			log.WithFields(log.Fields{"height": blockNotification.Block().Height()}).Debug("block notification")
+			receipts := blockNotification.Receipts()
+
+			for _, receipt := range receipts {
+				events := receipt.Events[:0]
+				for _, event := range receipt.Events {
+					switch {
+
+					case event.Sequence == opts.Seq:
+						events = append(events, event)
+						opts.Seq++
+
+					case event.Sequence > opts.Seq:
+						log.WithFields(log.Fields{
+							"seq": log.Fields{"got": event.Sequence, "expected": opts.Seq},
+						}).Error("invalid event seq")
+
+						errChan <- fmt.Errorf("invalid event seq")
 					}
 
-					a.receiver.Logger.Infof("IFirst %+v", nel)
-					a.receiver.Logger.Infof("ISecond %+v", nel.EventLog)
-					if a.fd.Match(nel) { //el.IDs is updated by match if matched
-						//a.Log.Infof("Matched %+v", el)
-						a.sinkChan <- nel
-					}
+					nel := &chain.EventLogInfo{ContractAddress: event.Next.ContractAddress(), EventType: chain.EventLogType(event.Next.Type()),
+						EventLog: event.Next.BlockChain()}
+					sinkChan <- nel
 				}
 			}
-			return nil
-		})
-		if err != nil {
-			a.receiver.Logger.Errorf("receiveLoop terminated: %v", err)
-			a.errChan <- err
+		}); err != nil {
+			errChan <- err
 		}
 	}()
-	return a.sinkChan, a.errChan, nil
+
+	return sinkChan, errChan, nil
 }
 
 // TransactWithBTS implements chain.ChainAPI
-func (*api) TransactWithBTS(ownerKey string, method chain.ContractTransactMethodName, args []interface{}) (txnHash string, err error) {
-	return "", nil
+func (a *api) TransactWithBTS(ownerKey string, method chain.ContractTransactMethodName, args []interface{}) (txnHash string, err error) {
+	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	if args == nil {
+		err = errors.New("Got nil args")
+		return
+	}
+	if method == chain.AddBlackListAddress {
+		if len(args) != 2 {
+			return "", fmt.Errorf("expected 2 args _net, _addresses. Got %v", len(args))
+		}
+		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": args[0], "_addresses": args[1]}, "addBlacklistAddress")
+	} else if method == chain.RemoveBlackListAddress {
+		if len(args) != 2 {
+			return "", fmt.Errorf("expected 2 args _net, _addresses. Got %v", len(args))
+		}
+		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": args[0], "_addresses": args[1]}, "removeBlacklistAddress")
+	} else if method == chain.AddRestriction {
+		if len(args) != 0 {
+			return "", fmt.Errorf("expected 0 args. Got %v", len(args))
+		}
+		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "addRestriction")
+	} else if method == chain.DisableRestrictions {
+		if len(args) != 0 {
+			return "", fmt.Errorf("expected 0 args. Got %v", len(args))
+		}
+		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "disableRestrictions")
+	} else if method == chain.SetTokenLimit {
+		if len(args) != 2 {
+			return "", fmt.Errorf("expected 2 args for _coinNames, _tokenLimits. Got %v", len(args))
+		}
+		resArr, ok := args[1].([]*big.Int)
+		if !ok {
+			return "", fmt.Errorf("expected second arg _tokenLimits field of type []interface{}; Got %T", args[1])
+		}
+		_tokenLimits := make([]string, len(resArr))
+		for i := 0; i < len(resArr); i++ {
+			_tokenLimits[i] = intconv.FormatBigInt(resArr[i])
+		}
+		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_coinNames": args[0], "_tokenLimits": _tokenLimits}, "setTokenLimit")
+	}
+	return "", fmt.Errorf("method %v not supported", method)
 }
 
 // Transfer implements chain.ChainAPI
@@ -254,7 +302,7 @@ func (a *api) TransferBatch(coinNames []string, senderKey, recepientAddress stri
 		recepientAddress = splts[len(splts)-1]
 	}
 	if within {
-		err = fmt.Errorf("Batch Transfers are supported for inter chain transfers only")
+		err = fmt.Errorf("batch Transfers are supported for inter chain transfers only")
 	} else {
 		txnHash, err = a.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts)
 	}
@@ -263,23 +311,15 @@ func (a *api) TransferBatch(coinNames []string, senderKey, recepientAddress stri
 
 // WaitForTxnResult implements chain.ChainAPI
 func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
-	txRes, err := a.requester.cl.CallgetTransactionResult("transaction ID", "sender") // need to update and verify
+	var iapi near.IApi
+	txRes, err := iapi.Transaction(hash) // need to update and verify
 	if err != nil {
 		return nil, errors.Wrapf(err, "waitForResults(%v)", hash)
 	}
 
 	plogs := []*chain.EventLogInfo{}
-	for _, v := range txRes.EventLogs {
-		decodedLog, eventType, err := a.par.ParseTxn(&TxnEventLog{Addr: icon.Address(v.Addr), Indexed: v.Indexed, Data: v.Data})
-		if err != nil {
-			a.receiver.Logger.Trace(errors.Wrapf(err, "waitForResults.Parse %v", err))
-			err = nil
-			continue
-			//return nil, nil, err
-		}
-		plogs = append(plogs, &chain.EventLogInfo{ContractAddress: string(v.Addr), EventType: eventType, EventLog: decodedLog})
-	}
-	statusCode, err := txRes.Status.Value()
+	plogs = append(plogs, &chain.EventLogInfo{ContractAddress: string(txRes.Transaction.ReceiverId), EventType: "", EventLog: txRes.TransactionOutcome.Outcome.Logs})
+	statusCode, err := strconv.Atoi(txRes.Status.SuccessValue)
 	if err != nil {
 		return nil, errors.Wrapf(err, "GetStatusCode err=%v", err)
 	}
