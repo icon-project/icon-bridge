@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/haltingstate/secp256k1-go"
@@ -16,7 +15,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common"
@@ -212,52 +210,6 @@ func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, am
 	return
 }
 
-func (r *requestAPI) transactWithContract(senderKey string, contractAddress string,
-	amount *big.Int, args map[string]interface{}, method string) (txHash string, err error) {
-	var senderWallet module.Wallet
-	senderWallet, err = GetWalletFromPrivKey(senderKey)
-	if err != nil {
-		err = errors.Wrap(err, "GetWalletFromPrivKey ")
-		return
-	}
-	publicKey := types.PublicKey {
-		KeyType: ,
-		Data : 
-	}
-	accountID := ""
-	nonce, _ := r.cl.GetNonce(publicKey, accountID)
-	param := types.Transaction{
-		SignerId:   accountID,
-		PublicKey:  publicKey,
-		Nonce:      int(nonce),
-		ReceiverId: accountID,
-		BlockHash:  "CryptoHash",
-		// Actions  :  []Action,
-		Signature: "Signature",
-		Txid:      "CryptoHash",
-	}
-	argMap := map[string]interface{}{}
-	argMap["method"] = method
-	argMap["params"] = args
-	param.Data = argMap
-
-	if err = SignTransactionParam(senderWallet, &param); err != nil {
-		err = errors.Wrap(err, "SignTransactionParam ")
-		return
-	}
-	txH, err := r.cl.SendTransaction(&param)
-	if err != nil {
-		err = errors.Wrap(err, "SendTransaction ")
-		return
-	}
-	txBytes, err := txH.Value()
-	if err != nil {
-		err = errors.Wrap(err, "HexBytes.Value() ")
-		return
-	}
-	txHash = hexutil.Encode(txBytes[:])
-	return
-}
 
 func SignTransactionParam(wallet module.Wallet, param *icon.TransactionParam) error {
 	js, err := json.Marshal(param)

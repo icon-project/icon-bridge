@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
-	"math/rand"
 	"os"
 	"strings"
 
@@ -200,7 +199,6 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 						err = nil
 						continue
 					}
-					nel := &chain.EventLogInfo{ContractAddress: common.NewAddress(el.Addr).String(), EventType: evtType, EventLog: res}
 
 					a.receiver.Logger.Infof("IFirst %+v", nel)
 					a.receiver.Logger.Infof("ISecond %+v", nel.EventLog)
