@@ -1,55 +1,75 @@
 {
-    "fee_aggregator":"hxc9b1d86544a7cb84339d91fbd5f1c97a34839dfe",
-    "log_level": "debug",
-    "chains":[
-        {
-            "name":"ICON",
-            "url":"https://lisbon.net.solidwallet.io/api/v3/icon_dex",
-            "contract_addresses": {
-                "BMC":  "cx3f562d203e73519e6fe63e282f59a533109ed8b9",
-                "BTS":  "cxb1e4d2381361f5a2000cbf90e3b868db02d3044e"
-            },
-            "native_coin":"btp-0x2.icon-ICX",
-            "native_tokens":["btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"],
-            "wrapped_coins":["btp-0x61.bsc-BNB", "btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH"],
-            "god_wallet_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
-            "god_wallet_secret_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
-            "bts_owner_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
-            "bts_owner_secret_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
-            "network_id":"0x2.icon",
-            "gas_limit":{
-                "TransferNativeCoinIntraChainGasLimit":150000,
-                "TransferTokenIntraChainGasLimit":300000,
-                "ApproveTokenInterChainGasLimit":800000,
-                "TransferCoinInterChainGasLimit":2500000,
-                "TransferBatchCoinInterChainGasLimit":4000000,
-                "DefaultGasLimit":5000000
-            }
-        }, 
-        {
-            "name":"BSC", 
-            "url":"https://data-seed-prebsc-1-s1.binance.org:8545",
-            "contract_addresses": {
-                "BTS":      "0xb319825645c90ad8De3881c1ec45fC76e46C3080",
-                "BTSPeriphery": "0x0f0CaF4BE74A1fBB09E5FBc8E9BbBbb7b279598D",
-                "BMCPeriphery":"0x04576539eB7C9f811a4f436ca84Fe2B47D60E4C8"
-            },
-            "native_coin":"btp-0x61.bsc-BNB",
-            "native_tokens":["btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH"],
-            "wrapped_coins":["btp-0x2.icon-ICX", "btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"],
-            "god_wallet_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
-            "god_wallet_secret_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
-            "bts_owner_keystore_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
-            "bts_owner_secret_path":"../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
-            "network_id":"0x61.bsc",
-            "gas_limit":{
-                "TransferNativeCoinIntraChainGasLimit":25000,
-                "TransferTokenIntraChainGasLimit":60000,
-                "ApproveTokenInterChainGasLimit":50000,
-                "TransferCoinInterChainGasLimit":700000,
-                "TransferBatchCoinInterChainGasLimit":900000,
-                "DefaultGasLimit":5000000
-            }
-        }
-    ]
+  "fee_aggregator": "hx251eb3348ff5873e2dd2d9c5e65e000781bfabbf",
+  "log_level": "debug",
+  "chains": [
+    {
+      "name": "ICON",
+      "url": "https://lisbon.net.solidwallet.io/api/v3/icon_dex",
+      "contract_addresses": {
+        "BTS": "cxcbf71f5d90a8dc6c586d0a6939bef4e8c95c263d",
+        "BMC": "cxfa5b7b8d71bf6355bf230ff22e1d4777a630c7ec"
+      },
+      "native_coin": "btp-0x2.icon-ICX",
+      "native_tokens": [
+        "btp-0x2.icon-sICX",
+        "btp-0x2.icon-bnUSD"
+      ],
+      "wrapped_coins": [
+        "btp-0x61.bsc-BNB",
+        "btp-0x61.bsc-BUSD",
+        "btp-0x61.bsc-USDT",
+        "btp-0x61.bsc-USDC",
+        "btp-0x61.bsc-BTCB",
+        "btp-0x61.bsc-ETH"
+      ],
+      "god_wallet_keystore_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
+      "god_wallet_secret_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
+      "bts_owner_keystore_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json",
+      "bts_owner_secret_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret",
+      "network_id": "0x2.icon",
+      "gas_limit": {
+        "TransferNativeCoinIntraChainGasLimit": 150000,
+        "TransferTokenIntraChainGasLimit": 300000,
+        "ApproveTokenInterChainGasLimit": 800000,
+        "TransferCoinInterChainGasLimit": 2500000,
+        "TransferBatchCoinInterChainGasLimit": 4000000,
+        "DefaultGasLimit": 5000000
+      }
+    },
+    {
+      "name": "BSC",
+      "url": "https://data-seed-prebsc-1-s1.binance.org:8545",
+      "contract_addresses": {
+        "BTS": "0x623709077ee5d18ccFE81f23299Bd74CC45d8438",
+        "BTSPeriphery": "0xa1442c90120A891c3de9793caC70968Cab113234",
+        "BMCPeriphery": "0xACBA72f72a56A15dBBFFFD638999Fd80A89A19Cf"
+      },
+      "native_coin": "btp-0x61.bsc-BNB",
+      "native_tokens": [
+        "btp-0x61.bsc-BUSD",
+        "btp-0x61.bsc-USDT",
+        "btp-0x61.bsc-USDC",
+        "btp-0x61.bsc-BTCB",
+        "btp-0x61.bsc-ETH"
+      ],
+      "wrapped_coins": [
+        "btp-0x2.icon-ICX",
+        "btp-0x2.icon-sICX",
+        "btp-0x2.icon-bnUSD"
+      ],
+      "god_wallet_keystore_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
+      "god_wallet_secret_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
+      "bts_owner_keystore_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.json",
+      "bts_owner_secret_path": "../../../devnet/docker/icon-bsc/_ixh/keystore/bsc.god.wallet.secret",
+      "network_id": "0x61.bsc",
+      "gas_limit": {
+        "TransferNativeCoinIntraChainGasLimit": 25000,
+        "TransferTokenIntraChainGasLimit": 60000,
+        "ApproveTokenInterChainGasLimit": 50000,
+        "TransferCoinInterChainGasLimit": 700000,
+        "TransferBatchCoinInterChainGasLimit": 900000,
+        "DefaultGasLimit": 5000000
+      }
+    }
+  ]
 }

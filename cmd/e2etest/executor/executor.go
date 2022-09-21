@@ -50,7 +50,7 @@ func New(l log.Logger, cfg *Config) (ex *executor, err error) {
 		ex.cfgPerChain[chainCfg.Name] = chainCfg
 		ex.clientsPerChain[chainCfg.Name], err = apiFunc(l, chainCfg)
 		if err != nil {
-			err = errors.Wrap(err, "NewApi ")
+			err = errors.Wrapf(err, "NewApi %v", err)
 			return nil, err
 		}
 		if priv, pub, err := ex.clientsPerChain[chainCfg.Name].GetKeyPairFromKeystore(chainCfg.GodWalletKeystorePath, chainCfg.GodWalletSecretPath); err != nil {

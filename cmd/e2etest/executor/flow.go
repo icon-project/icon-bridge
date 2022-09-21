@@ -38,6 +38,13 @@ type configureReq struct {
 var transferScripts = []*Script{
 	&TransferUniDirection,
 	&TransferBiDirection,
+	&TransferBatchBiDirection,
+	&TransferFromBlackListedSrcAddress,
+	&TransferToBlackListedDstAddress,
+	&TransferEqualToFee,
+	&TransferLessThanFee,
+	&TransferToZeroAddress,
+	&TransferToUnknownNetwork,
 }
 
 var configScripts = []*ConfigureScript{
