@@ -178,7 +178,7 @@ func (a *api) NativeTokens() []string {
 // Reclaim implements chain.ChainAPI
 func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
 	txnHash, err = a.requester.reclaim(coinName, ownerKey, amount)
-	return
+	return txnHash, err
 }
 
 // Subscribe implements chain.ChainAPI
