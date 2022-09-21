@@ -90,6 +90,14 @@ type Verifier struct {
 	validators map[ethCommon.Address]bool
 }
 
+type IVerifier interface {
+	Next() *big.Int
+	Verify(header *types.Header, nextHeader *types.Header, receipts ethTypes.Receipts) error
+	Update(header *types.Header) (err error)
+	ParentHash() ethCommon.Hash
+	IsValidator(addr ethCommon.Address) bool
+}
+
 func (vr *Verifier) Next() *big.Int {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
@@ -152,17 +160,16 @@ func (vr *Verifier) Verify(header *types.Header, nextHeader *types.Header, recei
 func (vr *Verifier) Update(header *types.Header) (err error) {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
-	if header.Number.Uint64()%defaultEpochLength != 0 {
-		return nil
-	}
-	// update validators if epoch block
-	validatorMap, err := getValidatorMapFromHex(header.Extra)
-	if err != nil {
-		return fmt.Errorf("getValidatorMapFromHex %v", err)
+	if header.Number.Uint64()%defaultEpochLength == 0 {
+		newValidators, err := getValidatorMapFromHex(header.Extra)
+		if err != nil {
+			return errors.Wrapf(err, "getValidatorMapFromHex %v", err)
+		}
+		// update validators only if epoch block and no error encountered
+		vr.validators = newValidators
 	}
 	vr.parentHash = header.Hash()
 	vr.next.Add(header.Number, big1)
-	vr.validators = validatorMap
 	return
 }
 

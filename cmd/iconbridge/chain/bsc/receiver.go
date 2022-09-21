@@ -3,6 +3,7 @@ package bsc
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -76,11 +77,11 @@ type receiver struct {
 	src  chain.BTPAddress
 	dst  chain.BTPAddress
 	opts ReceiverOptions
-	cls  []*Client
+	cls  []IClient
 	bmcs []*BMC
 }
 
-func (r *receiver) client() *Client {
+func (r *receiver) client() IClient {
 	randInt := rand.Intn(len(r.cls))
 	return r.cls[randInt]
 }
@@ -95,13 +96,13 @@ type BnOptions struct {
 	Concurrency uint64
 }
 
-func (r *receiver) newVerifier(opts *VerifierOptions) (vr *Verifier, err error) {
-	vr = &Verifier{
+func (r *receiver) newVerifier(opts *VerifierOptions) (vri IVerifier, err error) {
+	vr := &Verifier{
 		mu:         sync.RWMutex{},
 		next:       big.NewInt(int64(opts.BlockHeight)),
 		parentHash: common.HexToHash(opts.BlockHash.String()),
 		validators: map[ethCommon.Address]bool{},
-		chainID:    r.client().chainID,
+		chainID:    r.client().GetChainID(),
 	}
 
 	// cross check input parent hash
@@ -121,8 +122,9 @@ func (r *receiver) newVerifier(opts *VerifierOptions) (vr *Verifier, err error) 
 		err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
 		return nil, err
 	}
+
 	if !bytes.Equal(header.Extra, opts.ValidatorData) {
-		return nil, fmt.Errorf("Unexpected ValidatorData(%v): Got %v Expected %v", roundedHeight, header.Extra, opts.ValidatorData)
+		return nil, fmt.Errorf("Unexpected ValidatorData(%v): Got %v Expected %v", roundedHeight, hex.EncodeToString(header.Extra), opts.ValidatorData)
 	}
 	vr.validators, err = getValidatorMapFromHex(opts.ValidatorData)
 	if err != nil {
@@ -131,7 +133,7 @@ func (r *receiver) newVerifier(opts *VerifierOptions) (vr *Verifier, err error) 
 	return vr, nil
 }
 
-func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
+func (r *receiver) syncVerifier(vr IVerifier, height int64) error {
 	if height == vr.Next().Int64() {
 		return nil
 	}
@@ -246,7 +248,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		return errors.New("receiveLoop: invalid options: <nil>")
 	}
 
-	var vr *Verifier
+	var vr IVerifier
 	if r.opts.Verifier != nil {
 		vr, err = r.newVerifier(r.opts.Verifier)
 		if err != nil {
@@ -448,7 +450,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 func (r *receiver) hasBTPMessage(ctx context.Context, height *big.Int) (bool, error) {
 	ctxNew, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 	defer cancel()
-	logs, err := r.client().eth.FilterLogs(ctxNew, ethereum.FilterQuery{
+	logs, err := r.client().GetEthClient().FilterLogs(ctxNew, ethereum.FilterQuery{
 		FromBlock: height,
 		ToBlock:   height,
 		Addresses: []ethCommon.Address{ethCommon.HexToAddress(r.src.ContractAddress())},
