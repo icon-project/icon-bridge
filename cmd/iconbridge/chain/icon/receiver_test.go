@@ -40,10 +40,8 @@ func TestReceiver(t *testing.T) {
 	l := log.New()
 	log.SetGlobalLogger(l)
 
-	client := NewClient(srcEndpoint[0], l)
-
 	// log.AddForwarder(&log.ForwarderConfig{Vendor: log.HookVendorSlack, Address: "https://hooks.slack.com/services/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", Level: "info"})
-	recv, err := NewReceiver(chain.BTPAddress(srcAddress), chain.BTPAddress(dstAddress), client, rawOpts, l)
+	recv, err := NewReceiver(chain.BTPAddress(srcAddress), chain.BTPAddress(dstAddress), srcEndpoint, rawOpts, l)
 	if err != nil {
 		panic(err)
 	}

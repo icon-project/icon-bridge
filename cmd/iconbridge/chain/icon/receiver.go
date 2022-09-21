@@ -103,7 +103,8 @@ type btpBlockRequest struct {
 	response *btpBlockResponse
 }
 
-func NewReceiver(src, dst chain.BTPAddress, client IClient, rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error) {
+func NewReceiver(src, dst chain.BTPAddress,
+	urls []string, rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error) {
 	var recvOpts ReceiverOptions
 	if err := json.Unmarshal(rawOpts, &recvOpts); err != nil {
 		return nil, errors.Wrapf(err, "recvOpts.Unmarshal: %v", err)
@@ -128,6 +129,11 @@ func NewReceiver(src, dst chain.BTPAddress, client IClient, rawOpts json.RawMess
 		recvOpts.SyncConcurrency = 1
 	} else if recvOpts.SyncConcurrency > MonitorBlockMaxConcurrency {
 		recvOpts.SyncConcurrency = MonitorBlockMaxConcurrency
+	}
+
+	var client IClient
+	if len(urls) > 0 {
+		client = NewClient(urls[0], l)
 	}
 
 	recvr := &Receiver{
