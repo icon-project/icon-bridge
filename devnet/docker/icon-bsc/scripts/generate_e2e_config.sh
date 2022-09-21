@@ -13,7 +13,7 @@ generate_e2e_config() {
         jq -n '
             .name = "ICON" |
             .url = $url |
-            .contract_address = $contract_addresses |
+            .contract_addresses = $contract_addresses |
             .native_coin = $native_coin |
             .native_tokens = $native_tokens | 
             .wrapped_coins = $wrapped_coins |
@@ -27,7 +27,7 @@ generate_e2e_config() {
             --argjson contract_addresses "$(
                 jq -n '
                 .BTS = $bts_address | 
-                .BMC = $bts_address' \
+                .BMC = $bmc_address' \
                  --arg bts_address "$(cat $CONFIG_DIR/icon.addr.bts)" \
                  --arg bmc_address "$(cat $CONFIG_DIR/icon.addr.bmc)" \
             )" \
@@ -56,7 +56,7 @@ generate_e2e_config() {
         jq -n '
             .name = "BSC" |
             .url = $url |
-            .contract_address = $contract_addresses |
+            .contract_addresses = $contract_addresses |
             .native_coin = $native_coin |
             .native_tokens = $native_tokens | 
             .wrapped_coins = $wrapped_coins |
