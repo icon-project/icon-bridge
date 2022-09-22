@@ -259,8 +259,8 @@ func TestReceiver_MockNewVerifier(t *testing.T) {
 	// mock client
 	cl := new(mocks.IClient)
 	cl.On("GetChainID").Return(big.NewInt(97))
-	cl.On("GetHeaderByHeight", big.NewInt(height)).Return(&ethTypes.Header{ParentHash: ethCommon.BytesToHash(blockHash)}, nil)
-	cl.On("GetHeaderByHeight", big.NewInt(height-height%int64(defaultEpochLength))).Return(&ethTypes.Header{Extra: validatorData}, nil)
+	cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(height)).Return(&ethTypes.Header{ParentHash: ethCommon.BytesToHash(blockHash)}, nil)
+	cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(height-height%int64(defaultEpochLength))).Return(&ethTypes.Header{Extra: validatorData}, nil)
 
 	rx := &receiver{
 		cls: []IClient{cl},
@@ -323,10 +323,10 @@ func TestReceiver_MockVerifyAndUpdate_CorrectHeader(t *testing.T) {
 	// Client
 	cl := new(mocks.IClient)
 	cl.On("GetChainID").Return(big.NewInt(97))
-	cl.On("GetHeaderByHeight", big.NewInt(height)).Return(header, nil)
-	cl.On("GetHeaderByHeight", big.NewInt(height+1)).Return(nextHeader, nil)
-	cl.On("GetHeaderByHeight", big.NewInt(height+2)).Return(next2Header, nil)
-	cl.On("GetHeaderByHeight", big.NewInt(height-height%int64(defaultEpochLength))).Return(&ethTypes.Header{Extra: validatorData}, nil)
+	cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(height)).Return(header, nil)
+	cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(height+1)).Return(nextHeader, nil)
+	cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(height+2)).Return(next2Header, nil)
+	cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(height-height%int64(defaultEpochLength))).Return(&ethTypes.Header{Extra: validatorData}, nil)
 
 	rx := &receiver{
 		cls: []IClient{cl},
@@ -399,10 +399,10 @@ func TestReceiver_MockSyncVerifier(t *testing.T) {
 	// Client
 	cl := new(mocks.IClient)
 	cl.On("GetChainID").Return(big.NewInt(97))
-	cl.On("GetHeaderByHeight", big.NewInt(height)).Return(header, nil)
-	cl.On("GetHeaderByHeight", big.NewInt(height+1)).Return(nextHeader, nil)
-	cl.On("GetHeaderByHeight", big.NewInt(height+2)).Return(next2Header, nil)
-	cl.On("GetHeaderByHeight", big.NewInt(height-height%int64(defaultEpochLength))).Return(&ethTypes.Header{Extra: validatorData}, nil)
+	cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(height)).Return(header, nil)
+	cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(height+1)).Return(nextHeader, nil)
+	cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(height+2)).Return(next2Header, nil)
+	cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(height-height%int64(defaultEpochLength))).Return(&ethTypes.Header{Extra: validatorData}, nil)
 
 	rx := &receiver{
 		cls: []IClient{cl},
@@ -480,7 +480,7 @@ func Test_MockReceiveLoop(t *testing.T) {
 	cl.On("GetBlockReceipts", mock.Anything).Return(ethTypes.Receipts{&ethTypes.Receipt{}, &ethTypes.Receipt{}}, nil)
 	for height := 23033451; height <= 23033455; height++ {
 		h := getHeaderFromStr(t, blocks[int64(height)])
-		cl.On("GetHeaderByHeight", big.NewInt(int64(height))).Return(h, nil)
+		cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(int64(height))).Return(h, nil)
 		if _, ok := blockHasBTPMessage[height]; ok {
 			cl.On("FilterLogs", mock.Anything, ethereum.FilterQuery{FromBlock: big.NewInt(int64(height)), ToBlock: big.NewInt(int64(height)), Addresses: []ethCommon.Address{ethCommon.HexToAddress(ctrAddr)}}).Return([]ethTypes.Log{{Address: ethCommon.HexToAddress(ctrAddr), BlockNumber: uint64(height)}}, nil)
 		} else {
@@ -488,7 +488,7 @@ func Test_MockReceiveLoop(t *testing.T) {
 		}
 		continue
 	}
-	cl.On("GetHeaderByHeight", mock.Anything).Return(&ethTypes.Header{}, nil)
+	cl.On("GetHeaderByHeight", mock.Anything, mock.Anything).Return(&ethTypes.Header{}, nil)
 	rx := &receiver{
 		cls: []IClient{cl},
 		log: log.New(),
@@ -630,7 +630,6 @@ func TestSender_MockSegment(t *testing.T) {
 	tx, _, err := s.Segment(context.Background(), msg)
 	require.NoError(t, err)
 	err = tx.Send(context.TODO())
-	fmt.Println(err.Error())
 	require.Equal(t, err.Error(), "not implemented")
 }
 
@@ -645,7 +644,7 @@ func TestClient_MockMedianGasPrice(t *testing.T) {
 	err = json.Unmarshal(medianTxnBytes, txn)
 	require.NoError(t, err)
 
-	cl.On("GetHeaderByHeight", mock.Anything, mock.Anything)
+	cl.On("GetHeaderByHeight", mock.Anything, mock.Anything, mock.Anything)
 	h := getHeaderFromStr(t, blocks[int64(23033400)])
 	cl.On("TransactionCount", mock.Anything, h.Hash()).Return(uint(txnCount), nil)
 	cl.On("TransactionInBlock", mock.Anything, h.Hash(), uint(txnCount/2)).Return(txn, nil)
