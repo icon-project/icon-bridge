@@ -398,7 +398,9 @@ func newClients(urls []string, logger log.Logger) ([]IClient, error) {
 }
 
 func (c *Client) SendTransaction(payload string) (*types.CryptoHash, error) {
-	txId, err := c.api.BroadcastTxAsync(payload)
+	param := []string{payload}
+	
+	txId, err := c.api.BroadcastTxAsync(param)
 	if err != nil {
 		return nil, err
 	}
