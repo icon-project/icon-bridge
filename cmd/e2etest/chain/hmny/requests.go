@@ -27,9 +27,9 @@ import (
 	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
-// const (
-// 	DefaultGasLimit = 80000000
-// )
+const (
+	DefaultGasLimit = 80000000
+)
 
 type requestAPI struct {
 	contractNameToAddress map[chain.ContractName]string
@@ -66,7 +66,7 @@ func newRequestAPI(cfg *chain.Config) (*requestAPI, error) {
 		networkID:             strings.Split(cfg.NetworkID, ".")[0],
 		ethCl:                 cleth,
 		btsc:                  btscore,
-		gasLimit:              uint64(cfg.GasLimit),
+		gasLimit:              uint64(DefaultGasLimit),
 		nativeCoin:            cfg.NativeCoin,
 		nativeTokens:          cfg.NativeTokens,
 	}

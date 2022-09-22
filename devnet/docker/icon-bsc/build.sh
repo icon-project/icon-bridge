@@ -223,6 +223,16 @@ run_relay_from_source() {
     go run . -config $relayConfigPath
 }
 
+run_e2e_tests() {
+    local e2eConfigPath=${PWD}/_ixh/e2e.config.json
+    if [ ! -f $e2eConfigPath ]; then
+        echo "e2e config does not exist on path "$e2eConfigPath
+        exit 0
+    fi
+    cd ../../../cmd/e2etest/
+    go run . -config $e2eConfigPath
+}
+
 stop_relay_img() {
     docker-compose -f docker-compose-bmr.yml down
 }
@@ -258,6 +268,8 @@ elif [ $1 == "deploysclocalnet" ]; then
     deploy_smart_contracts_on_localnet
 elif [ $1 == "runrelaysrc" ]; then 
     run_relay_from_source
+elif [ $1 == "rune2etests" ]; then 
+    run_e2e_tests
 elif [ $1 == "cleanartifacts" ]; then 
     clean_deployment_artifacts
 elif [ $1 == "buildrelayimg" ]; then 
