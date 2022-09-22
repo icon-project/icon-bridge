@@ -21,7 +21,6 @@ import (
 	"github.com/icon-project/icon-bridge/common/crypto"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/intconv"
-	"github.com/icon-project/icon-bridge/common/jsonrpc"
 )
 
 type requestAPI struct {
@@ -168,8 +167,7 @@ func (r *requestAPI) callContract(contractAddress string, args map[string]interf
 	}
 
 	var res types.CallFunctionResponse
-	var a jsonrpc.Client
-	_, err = a.Do("query", param, &res)
+	res, err = r.cl.Api().CallFunction(param)
 	if err != nil {
 		return nil, errors.Wrap(err, "Call ")
 	}
