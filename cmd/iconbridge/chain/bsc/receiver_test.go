@@ -499,7 +499,7 @@ func Test_MockReceiveLoop(t *testing.T) {
 		},
 		src: bmcAddr,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	err := rx.receiveLoop(ctx, &BnOptions{StartHeight: 23033451, Concurrency: 1},
 		func(v *BlockNotification) error {
@@ -517,6 +517,66 @@ func Test_MockReceiveLoop(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
+}
+
+func Test_MockSubscribe(t *testing.T) {
+	blockHasBTPMessage := map[int]bool{23033451: true, 23033453: true, 23033455: true}
+	bmcAddr := chain.BTPAddress("btp://0x61.bsc/0xACBA72f72a56A15dBBFFFD638999Fd80A89A19Cf")
+	ctrAddr := bmcAddr.ContractAddress()
+
+	cl := new(mocks.IClient)
+	cl.On("GetBlockNumber").Return(uint64(23033455+BlockFinalityConfirmations), nil)
+
+	for height := 23033451; height <= 23033455; height++ {
+		h := getHeaderFromStr(t, blocks[int64(height)])
+		cl.On("GetHeaderByHeight", mock.Anything, big.NewInt(int64(height))).Return(h, nil)
+		if _, ok := blockHasBTPMessage[height]; ok {
+			cl.On("FilterLogs", mock.Anything, ethereum.FilterQuery{FromBlock: big.NewInt(int64(height)), ToBlock: big.NewInt(int64(height)), Addresses: []ethCommon.Address{ethCommon.HexToAddress(ctrAddr)}}).Return([]ethTypes.Log{{Address: ethCommon.HexToAddress(ctrAddr), BlockNumber: uint64(height)}}, nil)
+			cl.On("GetBlockReceipts", h.Hash()).Return(ethTypes.Receipts{&ethTypes.Receipt{Logs: []*ethTypes.Log{{Address: ethCommon.HexToAddress(ctrAddr), BlockNumber: uint64(height)}}}}, nil)
+		} else {
+			cl.On("FilterLogs", mock.Anything, ethereum.FilterQuery{FromBlock: big.NewInt(int64(height)), ToBlock: big.NewInt(int64(height)), Addresses: []ethCommon.Address{ethCommon.HexToAddress(ctrAddr)}}).Return([]ethTypes.Log{}, nil)
+			cl.On("GetBlockReceipts", h.Hash()).Return(ethTypes.Receipts{&ethTypes.Receipt{Logs: []*ethTypes.Log{}}}, nil)
+		}
+		continue
+	}
+	cl.On("GetHeaderByHeight", mock.Anything, mock.Anything).Return(&ethTypes.Header{}, nil)
+	cl.On("ParseMessage", mock.Anything).Return(&bmcperiphery.BmcperipheryMessage{Next: bmcAddr.ContractAddress(), Seq: big.NewInt(1), Msg: []byte{}}, nil)
+	rx := &receiver{
+		cls: []IClient{cl},
+		log: log.New(),
+		opts: ReceiverOptions{
+			SyncConcurrency: 1,
+		},
+		src: bmcAddr,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	msgCh := make(chan *chain.Message)
+	errChan, err := rx.Subscribe(ctx, msgCh, chain.SubscribeOptions{Seq: 0, Height: 23033451})
+	require.NoError(t, err)
+	counter := 0
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case err := <-errChan:
+			require.NoError(t, err)
+			return
+		case msg := <-msgCh:
+			for _, r := range msg.Receipts {
+				if _, ok := blockHasBTPMessage[int(r.Height)]; !ok {
+					require.NoError(t, fmt.Errorf("Unexpected Height has BTP Message %v", r.Height))
+					return
+				}
+				counter++
+			}
+			counter++
+			if counter == len(blockHasBTPMessage) {
+				return
+			}
+		}
+	}
+
 }
 
 func getHeaderFromStr(t *testing.T, headerStr string) *ethTypes.Header {
