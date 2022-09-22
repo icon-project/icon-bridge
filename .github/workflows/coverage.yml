@@ -18,24 +18,24 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Javascore BMC coverage
-      working-directory: ./javascore/bmc
-      run: |
-        gradle test
-    - name: Javascore BTS coverage
-      working-directory: ./javascore/bts
-      run: |
-        gradle test
+    # - name: Javascore BMC coverage
+    #   working-directory: ./javascore/bmc
+    #   run: |
+    #     gradle test
+    # - name: Javascore BTS coverage
+    #   working-directory: ./javascore/bts
+    #   run: |
+    #     gradle test
 
-    - name: GO test chain/icon
-      working-directory: ./cmd/iconbridge/chain/icon
-      run: |
-        go test -race -covermode=atomic -coverprofile=coverage.out || exit 0
+    # - name: GO test chain/icon
+    #   working-directory: ./cmd/iconbridge/chain/icon
+    #   run: |
+    #     go test -race -covermode=atomic -coverprofile=coverage.out || exit 0
 
-    - name: GO test cmd/iconbridge
-      working-directory: ./cmd/iconbridge
-      run: |
-        go test ./... -race -covermode=atomic -coverprofile=coverage.out || exit 0
+    # - name: GO test cmd/iconbridge
+    #   working-directory: ./cmd/iconbridge
+    #   run: |
+    #     go test ./... -race -covermode=atomic -coverprofile=coverage.out || exit 0
 
     - name: Solidity BTS coverage
       working-directory: ./solidity/bts
@@ -44,12 +44,12 @@ jobs:
         cp .env.example .env
         truffle run coverage || exit 0 # Bug on truffle to compile while running coverage and it fails, so exit 0
 
-    - name: Solidity BMC coverage
-      working-directory: ./solidity/bmc
-      run: |
-        yarn install
-        PRIVATE_KEY=$PRIVATE_KEY BSC_RPC_URI=$BSC_RPC_URI BSC_NID=$BSC_NID BMC_BTP_NET=$BSC_BMC_NET BSC_NID=97 \
-        truffle run coverage || exit 0
+    # - name: Solidity BMC coverage
+    #   working-directory: ./solidity/bmc
+    #   run: |
+    #     yarn install
+    #     PRIVATE_KEY=$PRIVATE_KEY BSC_RPC_URI=$BSC_RPC_URI BSC_NID=$BSC_NID BMC_BTP_NET=$BSC_BMC_NET BSC_NID=97 \
+    #     truffle run coverage || exit 0
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
