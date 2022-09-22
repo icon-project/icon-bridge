@@ -90,7 +90,7 @@ type BnOptions struct {
 	Concurrency uint64
 }
 
-func (r *receiver) newVerifier(opts *VerifierOptions) (vri IVerifier, err error) {
+func (r *receiver) newVerifier(ctx context.Context, opts *VerifierOptions) (vri IVerifier, err error) {
 	vr := &Verifier{
 		mu:         sync.RWMutex{},
 		next:       big.NewInt(int64(opts.BlockHeight)),
@@ -100,7 +100,7 @@ func (r *receiver) newVerifier(opts *VerifierOptions) (vri IVerifier, err error)
 	}
 
 	// cross check input parent hash
-	header, err := r.client().GetHeaderByHeight(big.NewInt(int64(opts.BlockHeight)))
+	header, err := r.client().GetHeaderByHeight(ctx, big.NewInt(int64(opts.BlockHeight)))
 	if err != nil {
 		err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
 		return nil, err
@@ -111,7 +111,7 @@ func (r *receiver) newVerifier(opts *VerifierOptions) (vri IVerifier, err error)
 
 	// cross check input validator data
 	roundedHeight := big.NewInt(int64(opts.BlockHeight - opts.BlockHeight%defaultEpochLength))
-	header, err = r.client().GetHeaderByHeight(roundedHeight)
+	header, err = r.client().GetHeaderByHeight(ctx, roundedHeight)
 	if err != nil {
 		err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
 		return nil, err
@@ -127,7 +127,7 @@ func (r *receiver) newVerifier(opts *VerifierOptions) (vri IVerifier, err error)
 	return vr, nil
 }
 
-func (r *receiver) syncVerifier(vr IVerifier, height int64) error {
+func (r *receiver) syncVerifier(ctx context.Context, vr IVerifier, height int64) error {
 	if height == vr.Next().Int64() {
 		return nil
 	}
@@ -188,7 +188,7 @@ func (r *receiver) syncVerifier(vr IVerifier, height int64) error {
 						q.res = &res{}
 					}
 					q.res.Height = q.height
-					q.res.Header, q.err = r.client().GetHeaderByHeight(big.NewInt(q.height))
+					q.res.Header, q.err = r.client().GetHeaderByHeight(ctx, big.NewInt(q.height))
 					if q.err != nil {
 						q.err = errors.Wrapf(q.err, "syncVerifier: getBlockHeader: %v", q.err)
 						return
@@ -244,11 +244,11 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 
 	var vr IVerifier
 	if r.opts.Verifier != nil {
-		vr, err = r.newVerifier(r.opts.Verifier)
+		vr, err = r.newVerifier(ctx, r.opts.Verifier)
 		if err != nil {
 			return err
 		}
-		err = r.syncVerifier(vr, int64(opts.StartHeight))
+		err = r.syncVerifier(ctx, vr, int64(opts.StartHeight))
 		if err != nil {
 			return errors.Wrapf(err, "receiveLoop: syncVerifier: %v", err)
 		}
@@ -388,7 +388,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						q.v.Height = (&big.Int{}).SetUint64(q.h)
 
 						if q.v.Header == nil {
-							header, err := r.client().GetHeaderByHeight(q.v.Height)
+							header, err := r.client().GetHeaderByHeight(ctx, q.v.Height)
 							if err != nil {
 								q.err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
 								return

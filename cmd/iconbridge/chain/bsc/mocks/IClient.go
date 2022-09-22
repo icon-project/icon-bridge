@@ -180,13 +180,13 @@ func (_m *IClient) GetChainID() *big.Int {
 	return r0
 }
 
-// GetHeaderByHeight provides a mock function with given fields: height
-func (_m *IClient) GetHeaderByHeight(height *big.Int) (*types.Header, error) {
-	ret := _m.Called(height)
+// GetHeaderByHeight provides a mock function with given fields: ctx, height
+func (_m *IClient) GetHeaderByHeight(ctx context.Context, height *big.Int) (*types.Header, error) {
+	ret := _m.Called(ctx, height)
 
 	var r0 *types.Header
-	if rf, ok := ret.Get(0).(func(*big.Int) *types.Header); ok {
-		r0 = rf(height)
+	if rf, ok := ret.Get(0).(func(context.Context, *big.Int) *types.Header); ok {
+		r0 = rf(ctx, height)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.Header)
@@ -194,8 +194,8 @@ func (_m *IClient) GetHeaderByHeight(height *big.Int) (*types.Header, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(*big.Int) error); ok {
-		r1 = rf(height)
+	if rf, ok := ret.Get(1).(func(context.Context, *big.Int) error); ok {
+		r1 = rf(ctx, height)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -390,6 +390,50 @@ func (_m *IClient) TransactionByHash(ctx context.Context, blockHash common.Hash)
 	}
 
 	return r0, r1, r2
+}
+
+// TransactionCount provides a mock function with given fields: ctx, blockHash
+func (_m *IClient) TransactionCount(ctx context.Context, blockHash common.Hash) (uint, error) {
+	ret := _m.Called(ctx, blockHash)
+
+	var r0 uint
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash) uint); ok {
+		r0 = rf(ctx, blockHash)
+	} else {
+		r0 = ret.Get(0).(uint)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, common.Hash) error); ok {
+		r1 = rf(ctx, blockHash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// TransactionInBlock provides a mock function with given fields: ctx, blockHash, index
+func (_m *IClient) TransactionInBlock(ctx context.Context, blockHash common.Hash, index uint) (*types.Transaction, error) {
+	ret := _m.Called(ctx, blockHash, index)
+
+	var r0 *types.Transaction
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash, uint) *types.Transaction); ok {
+		r0 = rf(ctx, blockHash, index)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Transaction)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, common.Hash, uint) error); ok {
+		r1 = rf(ctx, blockHash, index)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // TransactionReceipt provides a mock function with given fields: ctx, txHash

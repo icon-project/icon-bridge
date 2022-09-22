@@ -265,7 +265,7 @@ func TestReceiver_MockNewVerifier(t *testing.T) {
 	rx := &receiver{
 		cls: []IClient{cl},
 	}
-	vr, err := rx.newVerifier(opts)
+	vr, err := rx.newVerifier(context.Background(), opts)
 	require.NoError(t, err)
 
 	require.NotNil(t, vr)
@@ -331,7 +331,7 @@ func TestReceiver_MockVerifyAndUpdate_CorrectHeader(t *testing.T) {
 	rx := &receiver{
 		cls: []IClient{cl},
 	}
-	vr, err := rx.newVerifier(opts)
+	vr, err := rx.newVerifier(context.Background(), opts)
 
 	err = vr.Verify(header, nextHeader, nil)
 	require.NoError(t, err)
@@ -412,8 +412,8 @@ func TestReceiver_MockSyncVerifier(t *testing.T) {
 			Verifier:        opts,
 		},
 	}
-	vr, err := rx.newVerifier(opts)
-	err = rx.syncVerifier(vr, next2Header.Number.Int64())
+	vr, err := rx.newVerifier(context.Background(), opts)
+	err = rx.syncVerifier(context.Background(), vr, next2Header.Number.Int64())
 	require.NoError(t, err)
 	require.NoError(t, err)
 	require.Equal(t, vr.ParentHash().String(), nextHeader.Hash().String())
@@ -632,4 +632,25 @@ func TestSender_MockSegment(t *testing.T) {
 	err = tx.Send(context.TODO())
 	fmt.Println(err.Error())
 	require.Equal(t, err.Error(), "not implemented")
+}
+
+func TestClient_MockMedianGasPrice(t *testing.T) {
+	cl := new(mocks.IClient)
+	txnCount := 12
+	medianTxnStr := "7b2274797065223a22307830222c226e6f6e6365223a22307838336231222c226761735072696365223a223078323534306265343030222c226d61785072696f72697479466565506572476173223a6e756c6c2c226d6178466565506572476173223a6e756c6c2c22676173223a22307839323336222c2276616c7565223a22307830222c22696e707574223a223078663761333038303630303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303162633831653864383430222c2276223a2230786536222c2272223a22307832303539323338643365396438663635383030393461633836353364326563363734366335346166623337613566336236623634623130663265376566356137222c2273223a22307831616333303834366335353665346534376465323664633538373962613266343331633432373635626364636363616139653538643036333265323031613837222c22746f223a22307834363534646566386564613866666331363036323031373734663235376338356166313663616332222c2268617368223a22307864666531363736633564306333333832613566306431326639393332626230633433346465363163366638383332643838386366643762303636323832373934227d"
+	//gasPrice := big.NewInt(10000000000)
+	medianTxnBytes, err := hex.DecodeString(medianTxnStr)
+	require.NoError(t, err)
+	txn := new(ethTypes.Transaction)
+	err = json.Unmarshal(medianTxnBytes, txn)
+	require.NoError(t, err)
+
+	cl.On("GetHeaderByHeight", mock.Anything, mock.Anything)
+	h := getHeaderFromStr(t, blocks[int64(23033400)])
+	cl.On("TransactionCount", mock.Anything, h.Hash()).Return(uint(txnCount), nil)
+	cl.On("TransactionInBlock", mock.Anything, h.Hash(), uint(txnCount/2)).Return(txn, nil)
+	// retPrice, retHeight, err := cl.GetMedianGasPriceForBlock(context.Background())
+	// require.NoError(t, err)
+	// require.Equal(t, retPrice.Cmp(gasPrice), 0)
+	// require.Equal(t, retHeight.Cmp(h.Number), 0)
 }

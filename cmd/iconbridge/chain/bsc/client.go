@@ -61,7 +61,7 @@ type IClient interface {
 	GetBalance(ctx context.Context, hexAddr string) (*big.Int, error)
 	GetBlockNumber() (uint64, error)
 	GetBlockByHash(hash common.Hash) (*bscTypes.Block, error)
-	GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error)
+	GetHeaderByHeight(ctx context.Context, height *big.Int) (*ethTypes.Header, error)
 	GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error)
 	GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error)
 	GetChainID() *big.Int
@@ -73,6 +73,8 @@ type IClient interface {
 	TransactionByHash(ctx context.Context, blockHash common.Hash) (tx *ethTypes.Transaction, isPending bool, err error)
 	CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*ethTypes.Receipt, error)
+	TransactionCount(ctx context.Context, blockHash common.Hash) (uint, error)
+	TransactionInBlock(ctx context.Context, blockHash common.Hash, index uint) (*ethTypes.Transaction, error)
 
 	// bmcClient
 	ParseMessage(log ethTypes.Log) (*bmcperiphery.BmcperipheryMessage, error)
@@ -98,6 +100,14 @@ func (cl *Client) GetBMCClient() *bmcperiphery.Bmcperiphery {
 
 func (cl *Client) ParseMessage(log ethTypes.Log) (*bmcperiphery.BmcperipheryMessage, error) {
 	return cl.bmc.ParseMessage(log)
+}
+
+func (cl *Client) TransactionCount(ctx context.Context, blockHash common.Hash) (uint, error) {
+	return cl.eth.TransactionCount(ctx, blockHash)
+}
+
+func (cl *Client) TransactionInBlock(ctx context.Context, blockHash common.Hash, index uint) (*ethTypes.Transaction, error) {
+	return cl.eth.TransactionInBlock(ctx, blockHash, index)
 }
 
 func (cl *Client) TransactionByHash(ctx context.Context, blockHash common.Hash) (tx *ethTypes.Transaction, isPending bool, err error) {
@@ -148,8 +158,8 @@ func (cl *Client) GetBlockByHash(hash common.Hash) (*bscTypes.Block, error) {
 	return &hb, nil
 }
 
-func (cl *Client) GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+func (cl *Client) GetHeaderByHeight(ctx context.Context, height *big.Int) (*ethTypes.Header, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 	defer cancel()
 	return cl.eth.HeaderByNumber(ctx, height)
 }
@@ -197,7 +207,7 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error) 
 				if q.v == nil {
 					q.v = &ethTypes.Receipt{}
 				}
-				q.v, err = cl.eth.TransactionReceipt(ctx, common.HexToHash(q.txh))
+				q.v, err = cl.TransactionReceipt(ctx, common.HexToHash(q.txh))
 				if q.err != nil {
 					q.err = errors.Wrapf(q.err, "getTranasctionReceipt: %v", q.err)
 				}
@@ -215,13 +225,13 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error) 
 
 func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error) {
 	gasPrice = big.NewInt(0)
-	header, err := c.eth.HeaderByNumber(ctx, nil)
+	header, err := c.GetHeaderByHeight(ctx, nil)
 	if err != nil {
 		err = errors.Wrapf(err, "GetHeaderByNumber(height:latest) Err: %v", err)
 		return
 	}
 	height := header.Number
-	txnCount, err := c.eth.TransactionCount(ctx, header.Hash())
+	txnCount, err := c.TransactionCount(ctx, header.Hash())
 	if err != nil {
 		err = errors.Wrapf(err, "GetTransactionCount(height:%v, headerHash: %v) Err: %v", height, header.Hash(), err)
 		return
@@ -232,10 +242,11 @@ func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.I
 	// if err != nil {
 	// 	return nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, 0, err)
 	// }
-	txnS, err := c.eth.TransactionInBlock(ctx, header.Hash(), uint(math.Floor(float64(txnCount)/2)))
+	txnS, err := c.TransactionInBlock(ctx, header.Hash(), uint(math.Floor(float64(txnCount)/2)))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, txnCount-1, err)
 	}
+
 	gasPrice = txnS.GasPrice()
 	gasHeight = header.Number
 	return
