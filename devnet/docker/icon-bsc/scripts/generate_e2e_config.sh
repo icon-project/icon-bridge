@@ -43,8 +43,8 @@ generate_e2e_config() {
                 )"\
             --arg god_wallet_keystore_path $(echo $CONFIG_DIR/keystore/icon.god.wallet.json) \
             --arg god_wallet_secret_path $(echo $CONFIG_DIR/keystore/icon.god.wallet.secret) \
-            --arg bts_owner_keystore_path $(echo $CONFIG_DIR/keystore/icon.bts.wallet.json) \
-            --arg bts_owner_secret_path $(echo $CONFIG_DIR/keystore/icon.bts.wallet.secret) \
+            --arg bts_owner_keystore_path $(echo $CONFIG_DIR/keystore/icon.god.wallet.json) \
+            --arg bts_owner_secret_path $(echo $CONFIG_DIR/keystore/icon.god.wallet.secret) \
             --arg network_id $ICON_BMC_NET \
             --argjson gas_limit '{
                 "TransferNativeCoinIntraChainGasLimit":150000,
@@ -88,8 +88,8 @@ generate_e2e_config() {
                 )"\
             --arg god_wallet_keystore_path $(echo $CONFIG_DIR/keystore/bsc.god.wallet.json) \
             --arg god_wallet_secret_path $(echo $CONFIG_DIR/keystore/bsc.god.wallet.secret) \
-            --arg bts_owner_keystore_path $(echo $CONFIG_DIR/keystore/bsc.bts.wallet.json) \
-            --arg bts_owner_secret_path $(echo $CONFIG_DIR/keystore/bsc.bts.wallet.secret) \
+            --arg bts_owner_keystore_path $(echo $CONFIG_DIR/keystore/bsc.god.wallet.json) \
+            --arg bts_owner_secret_path $(echo $CONFIG_DIR/keystore/bsc.god.wallet.secret) \
             --arg network_id $BSC_BMC_NET \
             --argjson gas_limit '{
                 "TransferNativeCoinIntraChainGasLimit":25000,
