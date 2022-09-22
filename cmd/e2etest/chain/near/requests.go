@@ -33,6 +33,28 @@ type requestAPI struct {
 	nativeTokensAddr      map[string]string
 }
 
+type Metadata struct {
+	CoinMetadata CoinMetadata `json:"metadata,omitempty"`
+}
+
+type CoinMetadata struct {
+	Name         string `json:"name"`
+	Symbol       string `json:"symbol"`
+	Uri          string `json:"uri"`
+	Network      string `json:"network"`
+	FeeNumerator string `json:"fee_numerator"`
+	FixedFee     string `json:"fixed_fee"`
+	Extras       Extras `json:"extras"`
+}
+
+type Extras struct {
+	Spec          string      `json:"spec"`
+	Icon          interface{} `json:"icon,omitempty"`
+	Refrence      interface{} `json:"refrence,omitempty"`
+	ReferenceHash interface{} `json:"reference_hash,omitempty"`
+	Decimals      int64       `json:"decimals"`
+}
+
 type coinNames struct {
 	Name    string `json:"name"`
 	Symbol  string `json:"symbol"`
@@ -72,7 +94,6 @@ func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (toke
 
 	resArr := res.(types.CallFunctionResponse).Result
 	err = json.Unmarshal(resArr, &coin_names)
-	println(coin_names)
 	if err != nil {
 		err = fmt.Errorf("for method coinNames, Expected Type []interface{} Got %T", err)
 		return
@@ -85,6 +106,7 @@ func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (toke
 		}
 		coinNames = append(coinNames, c)
 	}
+	println(coinNames)
 	exists := func(arr []string, val string) bool {
 		for _, a := range arr {
 			if a == val {
@@ -112,22 +134,22 @@ func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (toke
 	getAddr := func(coin string) (coinId string, err error) {
 		var res interface{}
 
-		res, err = r.callContract(btsaddr, map[string]interface{}{"coin_name": coin}, "coin_id")
+		res, err = r.callContract(btsaddr, map[string]interface{}{"coin_name": coin}, "coin")
 		if err != nil {
-			err = errors.Wrap(err, "callContract coinId ")
+			err = errors.Wrap(err, "callContract coin ")
 			return
 		} else if res == nil {
-			err = fmt.Errorf("call to Method %v returned nil for _coinName=%v", "coinId", coin)
+			err = fmt.Errorf("call to Method %v returned nil for _coinName=%v", "coin", coin)
 			return
 		}
 		resArr := res.(types.CallFunctionResponse).Result
-		var coin_id []byte
-		err = json.Unmarshal(resArr, &coin_id)
+		var coin_metadata Metadata
+		err = json.Unmarshal(resArr, &coin_metadata)
 		if err != nil {
-			err = errors.Wrap(err, "callContract coinId ")
+			err = errors.Wrap(err, "callContract coin ")
 			return
 		}
-		coinId = base64.StdEncoding.EncodeToString(coin_id)
+		coinId = base64.StdEncoding.EncodeToString([]byte(coin_metadata.CoinMetadata.Uri))
 		if !ok {
 			err = fmt.Errorf("for method coinId, Expected Type string Got %T", res)
 			return

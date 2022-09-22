@@ -2,12 +2,14 @@ package near
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"testing"
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
@@ -26,18 +28,36 @@ const (
 )
 
 func TestGetCoinNames(t *testing.T) {
+	_, err := getNewApi()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+}
+
+func TestGetOwners(t *testing.T) {
 	api, err := getNewApi()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 		return
+	}
+	owner, err := api.CallBTS("get_owners", nil)
+	if err != nil {
+		t.Fatalf("%+v", err)
+		return
+	}
+	if data, ok := (owner).(types.CallFunctionResponse); ok {
+		var r []string
+		err = json.Unmarshal(data.Result, &r)
+		fmt.Println(data.BlockHash)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(r)
+
+		// assert.Equal(t, 1, 0)
 	}
 
-	res, err := api.CallBTS("coins", nil)
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	fmt.Println(res)
 }
 
 func TestIsUserBlackListed(t *testing.T) {
