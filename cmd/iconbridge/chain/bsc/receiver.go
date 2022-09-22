@@ -52,7 +52,7 @@ func NewReceiver(
 		r.opts.SyncConcurrency = MonitorBlockMaxConcurrency
 	}
 
-	r.cls, r.bmcs, err = newClients(urls, src.ContractAddress(), r.log)
+	r.cls, err = newClients(urls, src.ContractAddress(), r.log)
 	if err != nil {
 		return nil, err
 	}
@@ -78,17 +78,11 @@ type receiver struct {
 	dst  chain.BTPAddress
 	opts ReceiverOptions
 	cls  []IClient
-	bmcs []*BMC
 }
 
 func (r *receiver) client() IClient {
 	randInt := rand.Intn(len(r.cls))
 	return r.cls[randInt]
-}
-
-func (r *receiver) bmcClient() *BMC {
-	randInt := rand.Intn(len(r.cls))
-	return r.bmcs[randInt]
 }
 
 type BnOptions struct {
@@ -284,6 +278,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 	// last unverified block notification
 	var lbn *BlockNotification
 	// start monitor loop
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -349,7 +344,6 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				err   error
 				retry int
 			}
-
 			qch := make(chan *bnq, cap(bnch))
 			for i := next; i < latest &&
 				len(qch) < cap(qch); i++ {
@@ -402,7 +396,6 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 							q.v.Header = header
 							q.v.Hash = q.v.Header.Hash()
 						}
-
 						if q.v.Header.GasUsed > 0 {
 							if q.v.HasBTPMessage == nil {
 								hasBTPMessage, err := r.hasBTPMessage(ctx, q.v.Height)
@@ -450,7 +443,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 func (r *receiver) hasBTPMessage(ctx context.Context, height *big.Int) (bool, error) {
 	ctxNew, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 	defer cancel()
-	logs, err := r.client().GetEthClient().FilterLogs(ctxNew, ethereum.FilterQuery{
+	logs, err := r.client().FilterLogs(ctxNew, ethereum.FilterQuery{
 		FromBlock: height,
 		ToBlock:   height,
 		Addresses: []ethCommon.Address{ethCommon.HexToAddress(r.src.ContractAddress())},
@@ -531,7 +524,7 @@ func (r *receiver) getRelayReceipts(v *BlockNotification) []*chain.Receipt {
 			if !bytes.Equal(log.Address.Bytes(), sc.Bytes()) {
 				continue
 			}
-			msg, err := r.bmcClient().ParseMessage(ethTypes.Log{
+			msg, err := r.client().ParseMessage(ethTypes.Log{
 				Data: log.Data, Topics: log.Topics,
 			})
 			if err == nil {
