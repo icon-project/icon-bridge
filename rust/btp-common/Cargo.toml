@@ -1,0 +1,12 @@
+[package]
+name = "btp-common"
+version = "0.1.0"
+authors = ["Icon Foundation<foo@icon.foundation>"]
+edition = "2018"
+
+[dependencies]
+serde = {version = "1.0", features = ["derive"]}
+
+[[test]]
+name = "test_btp_address"
+path = "tests/test_btp_address.rs"

@@ -84,7 +84,7 @@ dist-py-bmv: $(PYSCORE_DIST_DIR)/bmv
 	cd $(PYSCORE_DIST_DIR)/bmv ; \
 	echo '{"version": "0.0.1","main_module": "bmv.icon.icon","main_score": "BTPMessageVerifier"}' > package.json ; \
 	zip -r -v $(PYSCORE_DIST_DIR)/bmv.zip bmv lib package.json -x *__pycache__* -x *tests*
-
+	
 dist-py-irc2: $(PYSCORE_DIST_DIR)/token_bsh
 	cd $(PYSCORE_DIST_DIR)/token_bsh ; \
 	echo '{"version": "0.0.1","main_module": "token_bsh.token_bsh","main_score": "TokenBSH"}' > package.json ; \
@@ -132,6 +132,16 @@ iconbridge-image: iconbridge-linux
 	BUILD_TAGS="$(GOBUILD_TAGS)" \
 	DIST_DIR="$(BUILD_ROOT)/build/contracts" \
 	$(BUILD_ROOT)/docker/iconbridge/build.sh $(ICONBRIDGE_IMAGE) $(BUILD_ROOT) $(ICONBRIDGE_DOCKER_DIR)
+
+iconbridge-debug: iconbridge-linux dist-py
+	@ echo "[#] Building image $(ICONBRIDGE_IMAGE) for $(GL_VERSION)"
+	@ rm -rf $(ICONBRIDGE_DOCKER_DIR)
+	@ \
+	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
+	BIN_VERSION=$(GL_VERSION) \
+	BUILD_TAGS="$(GOBUILD_TAGS)" \
+	DIST_DIR="$(PYSCORE_DIST_DIR)" \
+	$(BUILD_ROOT)/docker/iconbridge/build-debug.sh $(ICONBRIDGE_IMAGE) $(BUILD_ROOT) $(ICONBRIDGE_DOCKER_DIR)
 
 .PHONY: test
 

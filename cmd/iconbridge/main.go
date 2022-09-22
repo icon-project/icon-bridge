@@ -20,6 +20,7 @@ import (
 	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc"
 	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/hmny"
 	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"
+	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near"
 )
 
 var (
