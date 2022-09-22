@@ -178,6 +178,14 @@ impl BtpTokenService {
             }
         }
     }
+
+    pub fn coin(&self, coin_name: String) -> Asset<FungibleToken> {
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
+        self.coins.get(&coin_id).unwrap()
+    }
 }
 
 impl BtpTokenService {
@@ -283,13 +291,5 @@ impl BtpTokenService {
             .ok_or(BshError::TokenNotExist {
                 message: coin_name.to_string(),
             })
-    }
-
-    pub fn coin(&self, coin_name: String) -> Asset<FungibleToken> {
-        let coin_id = self
-            .coin_id(&coin_name)
-            .map_err(|err| format!("{}", err))
-            .unwrap();
-        self.coins.get(&coin_id).unwrap()
     }
 }
