@@ -7,8 +7,8 @@ pub trait BtpTokenService {
         &mut self,
         account: AccountId,
         amount: u128,
+        coin_name: String,
         coin_id: AssetId,
-        coin_symbol: String,
     );
 
     fn on_mint(
