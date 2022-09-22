@@ -54,6 +54,7 @@ type Client struct {
 	eth     *ethclient.Client
 	chainID *big.Int
 	bmc     *bmcperiphery.Bmcperiphery
+	mock    IClient
 }
 
 type IClient interface {
@@ -165,7 +166,11 @@ func (cl *Client) GetHeaderByHeight(ctx context.Context, height *big.Int) (*ethT
 }
 
 func (cl *Client) GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error) {
-	hb, err := cl.GetBlockByHash(hash)
+	c := IClient(cl)
+	if cl.mock != nil {
+		c = cl.mock
+	}
+	hb, err := c.GetBlockByHash(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +212,7 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error) 
 				if q.v == nil {
 					q.v = &ethTypes.Receipt{}
 				}
-				q.v, err = cl.TransactionReceipt(ctx, common.HexToHash(q.txh))
+				q.v, err = c.TransactionReceipt(ctx, common.HexToHash(q.txh))
 				if q.err != nil {
 					q.err = errors.Wrapf(q.err, "getTranasctionReceipt: %v", q.err)
 				}
@@ -223,7 +228,11 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error) 
 	return receipts, nil
 }
 
-func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error) {
+func (cl *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error) {
+	c := IClient(cl)
+	if cl.mock != nil {
+		c = cl.mock
+	}
 	gasPrice = big.NewInt(0)
 	header, err := c.GetHeaderByHeight(ctx, nil)
 	if err != nil {
