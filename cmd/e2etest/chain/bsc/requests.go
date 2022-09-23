@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -36,6 +37,8 @@ type requestAPI struct {
 	btsc                  *btscore.Btscore
 	btsp                  *btsperi.Btsperiphery
 	ercPerCoin            map[string]*erc20tradeable.Erc20tradable
+	nonceMap              map[string]uint64
+	nonceMapMutex         sync.Mutex
 }
 
 func newRequestAPI(cfg *chain.Config) (*requestAPI, error) {
@@ -81,6 +84,8 @@ func newRequestAPI(cfg *chain.Config) (*requestAPI, error) {
 		gasLimits:             cfg.GasLimit,
 		nativeCoin:            cfg.NativeCoin,
 		nativeTokens:          cfg.NativeTokens,
+		nonceMap:              make(map[string]uint64),
+		nonceMapMutex:         sync.Mutex{},
 	}
 	req.ercPerCoin, err = req.getCoinAddresses(append(cfg.NativeTokens, cfg.WrappedCoins...))
 	for k, v := range defaultMapForDifferentGasLimits {
@@ -223,61 +228,80 @@ func (r *requestAPI) waitForResults(ctx context.Context, txHash common.Hash) (tx
 	}
 }
 
-func (r *requestAPI) transferIntraChain(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
+func (r *requestAPI) transferIntraChain(coinName, senderKey, recepientAddress string, amount *big.Int, nonce *uint64) (txnHash string, retnonce uint64, err error) {
 	if coinName == r.nativeCoin {
-		return r.transferNativeIntraChain(senderKey, recepientAddress, amount)
+		return r.transferNativeIntraChain(senderKey, recepientAddress, amount, nonce)
 	}
-	return r.transferTokenIntraChain(senderKey, recepientAddress, amount, coinName)
+	return r.transferTokenIntraChain(senderKey, recepientAddress, amount, coinName, nonce)
 }
 
-func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
+func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount *big.Int, nonce *uint64) (txnHash string, retnonce uint64, err error) {
 	senderWallet, senderPrivKey, err := GetWalletFromPrivKey(senderKey)
 	if err != nil {
-		err = errors.Wrap(err, "GetWalletFromPrivKey ")
-		return
-	}
-	nonce, err := r.ethCl.PendingNonceAt(context.Background(), common.HexToAddress(senderWallet.Address()))
-	if err != nil {
-		err = errors.Wrap(err, "PendingNonceAt ")
+		err = errors.Wrapf(err, "GetWalletFromPrivKey %v", err)
 		return
 	}
 	gasPrice, err := r.ethCl.SuggestGasPrice(context.Background())
 	if err != nil {
-		err = errors.Wrap(err, "SuggestGasPrice ")
+		err = errors.Wrapf(err, "SuggestGasPrice %v", err)
 		return
 	}
 	chainID, err := r.ethCl.ChainID(context.Background())
 	if err != nil {
-		err = errors.Wrap(err, "ChainID ")
+		err = errors.Wrapf(err, "ChainID %v", err)
 		return
 	}
-	tx := types.NewTransaction(nonce, common.HexToAddress(recepientAddress), amount, r.gasLimits[chain.TransferNativeCoinIntraChainGasLimit], gasPrice, []byte{})
+	if nonce == nil {
+		a, errs := r.ethCl.PendingNonceAt(context.Background(), common.HexToAddress(senderWallet.Address()))
+		if errs != nil {
+			err = errors.Wrapf(errs, "PendingNonceAt %v", errs)
+			return
+		}
+		nonce = &a
+	}
+	retnonce = *nonce
+	tx := types.NewTransaction(retnonce, common.HexToAddress(recepientAddress), amount, r.gasLimits[chain.TransferNativeCoinIntraChainGasLimit], gasPrice, []byte{})
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), senderPrivKey)
 	if err != nil {
-		err = errors.Wrap(err, "SignTx ")
+		err = errors.Wrapf(err, "SignTx %v", err)
 		return
 	}
 
 	if err = r.ethCl.SendTransaction(context.TODO(), signedTx); err != nil {
-		err = errors.Wrap(err, "SendNativeTransaction ")
+		err = errors.Wrapf(err, "SendNativeTransaction %v", err)
 		return
 	}
 	txnHash = signedTx.Hash().String()
 	return
 }
 
-func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount *big.Int, coinName string) (txnHash string, err error) {
+func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount *big.Int, coinName string, nonce *uint64) (txnHash string, retnonce uint64, err error) {
 	erc, ok := r.ercPerCoin[coinName]
 	if !ok {
 		err = fmt.Errorf("coin %v not registered", coinName)
 		return
 	}
-
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
+	if nonce == nil {
+		senderWallet, _, errs := GetWalletFromPrivKey(senderKey)
+		if errs != nil {
+			err = errors.Wrapf(errs, "GetWalletFromPrivKey %v", errs)
+			return
+		}
+		a, errs := r.ethCl.PendingNonceAt(context.Background(), common.HexToAddress(senderWallet.Address()))
+		if errs != nil {
+			err = errors.Wrap(errs, "PendingNonceAt ")
+			return
+		}
+		nonce = &a
+	}
+	retnonce = *nonce
+
+	txo.Nonce = big.NewInt(int64(retnonce))
 	txo.Context = context.Background()
 	txo.GasLimit = r.gasLimits[chain.TransferTokenIntraChainGasLimit]
 	txn, err := erc.Transfer(txo, common.HexToAddress(recepientAddress), amount)
@@ -289,19 +313,34 @@ func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string,
 	return
 }
 
-func (r *requestAPI) transferInterChain(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
+func (r *requestAPI) transferInterChain(coinName, senderKey, recepientAddress string, amount *big.Int, nonce *uint64) (txnHash string, retnonce uint64, err error) {
 	if coinName == r.nativeCoin {
-		return r.transferNativeCrossChain(senderKey, recepientAddress, amount)
+		return r.transferNativeCrossChain(senderKey, recepientAddress, amount, nonce)
 	}
-	return r.transferTokensCrossChain(coinName, senderKey, recepientAddress, amount)
+	return r.transferTokensCrossChain(coinName, senderKey, recepientAddress, amount, nonce)
 }
 
-func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress string, amount *big.Int) (txnHash string, err error) {
+func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress string, amount *big.Int, nonce *uint64) (txnHash string, retnonce uint64, err error) {
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
+	if nonce == nil {
+		senderWallet, _, errs := GetWalletFromPrivKey(senderKey)
+		if errs != nil {
+			err = errors.Wrapf(errs, "GetWalletFromPrivKey %v", errs)
+			return
+		}
+		a, errs := r.ethCl.PendingNonceAt(context.Background(), common.HexToAddress(senderWallet.Address()))
+		if errs != nil {
+			err = errors.Wrapf(errs, "PendingNonceAt %v", errs)
+			return
+		}
+		nonce = &a
+	}
+	retnonce = *nonce
+	txo.Nonce = big.NewInt(int64(retnonce))
 	txo.Value = amount
 	txo.Context = context.Background()
 	txo.GasLimit = r.gasLimits[chain.TransferCoinInterChainGasLimit]
@@ -314,7 +353,7 @@ func (r *requestAPI) transferNativeCrossChain(senderKey string, recepientAddress
 	return
 }
 
-func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
+func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepientAddress string, amount *big.Int, nonce *uint64) (txnHash string, retnonce uint64, err error) {
 	_, ok := r.ercPerCoin[coinName]
 	if !ok {
 		err = fmt.Errorf("coin %v not registered", coinName)
@@ -325,6 +364,21 @@ func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepi
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
+	if nonce == nil {
+		senderWallet, _, errs := GetWalletFromPrivKey(senderKey)
+		if errs != nil {
+			err = errors.Wrapf(errs, "GetWalletFromPrivKey %v", errs)
+			return
+		}
+		a, errs := r.ethCl.PendingNonceAt(context.Background(), common.HexToAddress(senderWallet.Address()))
+		if errs != nil {
+			err = errors.Wrapf(errs, "PendingNonceAt %v", errs)
+			return
+		}
+		nonce = &a
+	}
+	retnonce = *nonce
+	txo.Nonce = big.NewInt(int64(retnonce))
 	txo.Context = context.Background()
 	txo.GasLimit = r.gasLimits[chain.TransferCoinInterChainGasLimit]
 	txn, err := r.btsc.Transfer(txo, coinName, amount, recepientAddress)
@@ -336,15 +390,31 @@ func (r *requestAPI) transferTokensCrossChain(coinName string, senderKey, recepi
 	return
 }
 
-func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
+func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int, nonce *uint64) (txnHash string, retnonce uint64, err error) {
 	if len(amounts) != len(coinNames) {
-		return "", fmt.Errorf("Amount and CoinNames len should be same; Got %v and %v", len(amounts), len(coinNames))
+		err = fmt.Errorf("Amount and CoinNames len should be same; Got %v and %v", len(amounts), len(coinNames))
+		return
 	}
 	txo, err := r.getTransactionRequest(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "getTransactionRequest ")
 		return
 	}
+	if nonce == nil {
+		senderWallet, _, errs := GetWalletFromPrivKey(senderKey)
+		if errs != nil {
+			err = errors.Wrapf(errs, "GetWalletFromPrivKey %v", errs)
+			return
+		}
+		a, errs := r.ethCl.PendingNonceAt(context.Background(), common.HexToAddress(senderWallet.Address()))
+		if errs != nil {
+			err = errors.Wrapf(errs, "PendingNonceAt %v", errs)
+			return
+		}
+		nonce = &a
+	}
+	retnonce = *nonce
+	txo.Nonce = big.NewInt(int64(retnonce))
 	txo.Context = context.Background()
 	txo.GasLimit = r.gasLimits[chain.TransferBatchCoinInterChainGasLimit]
 	filterNames := []string{}
@@ -394,7 +464,7 @@ func (r *requestAPI) approveCoin(coinName, senderKey string, amount *big.Int) (a
 	txo.Context = context.Background()
 	approveTxn, err := erc.Approve(txo, common.HexToAddress(btscaddr), amount)
 	if err != nil {
-		err = errors.Wrap(err, "erc.Approve ")
+		err = errors.Wrapf(err, "erc.Approve %v", err)
 		return
 	}
 	approveTxnHash = approveTxn.Hash().String()
