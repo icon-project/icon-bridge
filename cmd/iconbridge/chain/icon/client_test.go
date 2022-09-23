@@ -3,6 +3,7 @@ package icon
 import (
 	"context"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"testing"
 	"time"
 
@@ -29,13 +30,13 @@ func TestContextCancel(t *testing.T) {
 	height, seq := 0x306d1ac, 0
 
 	dstAddr := "btp://0x63564c40.hmny/0xa69712a3813d0505bbD55AeD3fd8471Bc2f722DD"
-	blockReq := &BlockRequest{
-		EventFilters: []*EventFilter{{
-			Addr:      Address("cx997849d3920d338ed81800833fbb270c785e743d"),
+	blockReq := &types.BlockRequest{
+		EventFilters: []*types.EventFilter{{
+			Addr:      types.Address("cx997849d3920d338ed81800833fbb270c785e743d"),
 			Signature: EventSignature,
 			Indexed:   []*string{&dstAddr},
 		}},
-		Height: NewHexInt(int64(height)),
+		Height: types.NewHexInt(int64(height)),
 	}
 
 	for i, url := range urls {
@@ -46,7 +47,7 @@ func TestContextCancel(t *testing.T) {
 
 			h, s := height, seq
 			err := cl.MonitorBlock(ctx, blockReq,
-				func(conn *websocket.Conn, v *BlockNotification) error {
+				func(conn *websocket.Conn, v *types.BlockNotification) error {
 					_h, _ := v.Height.Int()
 					if _h != h {
 						err := fmt.Errorf("invalid block height: %d, expected: %d", _h, h+1)
@@ -75,33 +76,33 @@ func TestContextCancel(t *testing.T) {
 }
 
 // func TestGetHeaderByHeight(t *testing.T) {
-// 	cl := NewTestClient()
+// 	Client := NewTestClient()
 
 // 	var height int64 = 50000000
 
 // 	enc := json.NewEncoder(os.Stdout)
 // 	enc.SetIndent("", "  ")
 
-// 	h, err := cl.getBlockHeaderByHeight(height)
+// 	h, err := Client.GetBlockHeaderByHeight(height)
 // 	require.NoError(t, err)
 // 	enc.Encode(h)
 
-// 	vals, err := cl.getValidatorsByHash(h.NextValidatorsHash)
+// 	vals, err := Client.GetValidatorsByHash(h.NextValidatorsHash)
 // 	require.NoError(t, err)
 
 // 	fmt.Println(common.HexBytes(h.NextValidatorsHash))
 // 	enc.Encode(vals)
 
-// 	h, err = cl.getBlockHeaderByHeight(height + 1)
+// 	h, err = Client.GetBlockHeaderByHeight(height + 1)
 // 	require.NoError(t, err)
 // 	enc.Encode(h)
 
-// 	vl, err := cl.getCommitVoteListByHeight(h.Height)
+// 	vl, err := Client.GetCommitVoteListByHeight(h.Height)
 // 	require.NoError(t, err)
 // 	enc.Encode(vl)
 
 // 	p := &BlockHeightParam{Height: NewHexInt(h.Height)}
-// 	votes, err := cl.GetVotesByHeight(p)
+// 	votes, err := Client.GetVotesByHeight(p)
 // 	require.NoError(t, err)
 // 	fmt.Println(common.HexBytes(votes))
 // }

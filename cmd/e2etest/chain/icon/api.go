@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -52,25 +53,25 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 		return nil, errors.New("cfg.ConftractAddresses does not include chain.BMC")
 	}
 
-	evtReq := icon.BlockRequest{
-		EventFilters: []*icon.EventFilter{
+	evtReq := types.BlockRequest{
+		EventFilters: []*types.EventFilter{
 			{
-				Addr:      icon.Address(btsIconAddr),
+				Addr:      types.Address(btsIconAddr),
 				Signature: "TransferStart(Address,str,int,bytes)",
 				Indexed:   []*string{},
 			},
 			{
-				Addr:      icon.Address(btsIconAddr),
+				Addr:      types.Address(btsIconAddr),
 				Signature: "TransferReceived(str,Address,int,bytes)",
 				Indexed:   []*string{},
 			},
 			{
-				Addr:      icon.Address(btsIconAddr),
+				Addr:      types.Address(btsIconAddr),
 				Signature: "TransferEnd(Address,int,int,bytes)",
 				Indexed:   []*string{},
 			},
 			{
-				Addr:      icon.Address(bmcIconAddr),
+				Addr:      types.Address(bmcIconAddr),
 				Signature: "Message(str,int,bytes)",
 				Indexed:   []*string{},
 			},
@@ -186,14 +187,14 @@ func (a *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 }
 
 func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
-	_, txRes, err := a.Cl.WaitForResults(ctx, &icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
+	_, txRes, err := a.Cl.WaitForResults(ctx, &types.TransactionHashParam{Hash: types.HexBytes(hash)})
 	if err != nil {
 		return nil, errors.Wrapf(err, "waitForResults(%v)", hash)
 	}
 
 	plogs := []*chain.EventLogInfo{}
 	for _, v := range txRes.EventLogs {
-		decodedLog, eventType, err := a.par.ParseTxn(&TxnEventLog{Addr: icon.Address(v.Addr), Indexed: v.Indexed, Data: v.Data})
+		decodedLog, eventType, err := a.par.ParseTxn(&TxnEventLog{Addr: types.Address(v.Addr), Indexed: v.Indexed, Data: v.Data})
 		if err != nil {
 			a.Log.Trace(errors.Wrapf(err, "waitForResults.Parse %v", err))
 			err = nil
@@ -296,11 +297,11 @@ func (a *api) GetFeeGatheringTerm() (interval uint64, err error) {
 }
 
 func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*chain.EventLogInfo, error) {
-	txRes, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
+	txRes, err := a.Cl.GetTransactionResult(&types.TransactionHashParam{Hash: types.HexBytes(hash)})
 	if err != nil {
 		return nil, errors.Wrapf(err, "GetTransactionResult %v", err)
 	}
-	if txRes.Status != icon.NewHexInt(1) {
+	if txRes.Status != types.NewHexInt(1) {
 		return nil, errors.Wrapf(err, "Expected Status Code 1. Got %v", txRes.Status)
 	}
 
@@ -336,11 +337,11 @@ func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*c
 }
 
 func (a *api) GetAddToBlacklistRequestEvent(hash string) (*chain.AddToBlacklistRequestEvent, error) {
-	txRes, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
+	txRes, err := a.Cl.GetTransactionResult(&types.TransactionHashParam{Hash: types.HexBytes(hash)})
 	if err != nil {
 		return nil, errors.Wrapf(err, "GetTransactionResult %v", err)
 	}
-	if txRes.Status != icon.NewHexInt(0) {
+	if txRes.Status != types.NewHexInt(0) {
 		return nil, errors.Wrapf(err, "Expected Status Code 0. Got %v", txRes.Status)
 	}
 	for _, log := range txRes.EventLogs {
@@ -361,11 +362,11 @@ func (a *api) GetAddToBlacklistRequestEvent(hash string) (*chain.AddToBlacklistR
 }
 
 func (a *api) GetRemoveFromBlacklistRequestEvent(hash string) (*chain.RemoveFromBlacklistRequestEvent, error) {
-	txRes, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
+	txRes, err := a.Cl.GetTransactionResult(&types.TransactionHashParam{Hash: types.HexBytes(hash)})
 	if err != nil {
 		return nil, errors.Wrapf(err, "GetTransactionResult %v", err)
 	}
-	if txRes.Status != icon.NewHexInt(0) {
+	if txRes.Status != types.NewHexInt(0) {
 		return nil, errors.Wrapf(err, "Expected Status Code 0. Got %v", txRes.Status)
 	}
 	for _, log := range txRes.EventLogs {
@@ -386,11 +387,11 @@ func (a *api) GetRemoveFromBlacklistRequestEvent(hash string) (*chain.RemoveFrom
 }
 
 func (a *api) GetTokenLimitRequestEvent(hash string) (*chain.TokenLimitRequestEvent, error) {
-	txRes, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(hash)})
+	txRes, err := a.Cl.GetTransactionResult(&types.TransactionHashParam{Hash: types.HexBytes(hash)})
 	if err != nil {
 		return nil, errors.Wrapf(err, "GetTransactionResult %v", err)
 	}
-	if txRes.Status != icon.NewHexInt(0) {
+	if txRes.Status != types.NewHexInt(0) {
 		return nil, errors.Wrapf(err, "Expected Status Code 0. Got %v", txRes.Status)
 	}
 	for _, log := range txRes.EventLogs {
@@ -458,7 +459,7 @@ func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv stri
 }
 
 func (a *api) ChargedGasFee(txnHash string) (*big.Int, error) {
-	txr, err := a.Cl.GetTransactionResult(&icon.TransactionHashParam{Hash: icon.HexBytes(txnHash)})
+	txr, err := a.Cl.GetTransactionResult(&types.TransactionHashParam{Hash: types.HexBytes(txnHash)})
 	if err != nil {
 		return nil, errors.Wrapf(err, "TransactionByHash %v", err)
 	}
