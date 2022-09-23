@@ -229,6 +229,9 @@ func (ts *testSuite) ValidateTransactionResult(ctx context.Context, chainName ch
 }
 
 func (ts *testSuite) WaitForConfigResponse(ctx context.Context, reqEvent, responseEvent chain.EventLogType, responseChainName chain.ChainType, reqHash string, cbPerEvent map[chain.EventLogType]func(event *evt) error) (err error) {
+	if cbPerEvent == nil {
+		return fmt.Errorf("Callback is nil")
+	}
 	if responseChainName == ts.FullConfigAPIChain() {
 		return nil
 	}
@@ -295,7 +298,6 @@ func (ts *testSuite) WaitForConfigResponse(ctx context.Context, reqEvent, respon
 			return
 		}
 	}
-
 	// Listen to result from watchEvents
 	newCtx := context.Background()
 	timedContext, timedContextCancel := context.WithTimeout(newCtx, time.Second*180)
@@ -314,6 +316,9 @@ func (ts *testSuite) WaitForConfigResponse(ctx context.Context, reqEvent, respon
 			ts.logger.Error(err)
 			return
 		case ev := <-ts.subChan:
+			if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+				return NilEventReceived
+			}
 			if cb, ok := cbPerEvent[ev.msg.EventType]; ok && ev.msg.EventType == responseEvent {
 				if cb != nil {
 					if err = cb(ev); err != nil {
@@ -398,6 +403,9 @@ func (ts *testSuite) ValidateTransactionResultAndEvents(ctx context.Context, cha
 }
 
 func (ts *testSuite) WaitForTransferEvents(ctx context.Context, srcChainName, dstChainName chain.ChainType, hash string, cbPerEvent map[chain.EventLogType]func(event *evt) error) (err error) {
+	if cbPerEvent == nil {
+		return fmt.Errorf("Callback is nil")
+	}
 	res, err := ts.ValidateTransactionResult(ctx, srcChainName, hash)
 	if err != nil {
 		return
@@ -478,6 +486,9 @@ func (ts *testSuite) WaitForTransferEvents(ctx context.Context, srcChainName, ds
 			ts.logger.Error(err)
 			return
 		case ev := <-ts.subChan:
+			if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
+				return NilEventReceived
+			}
 			if cb, ok := cbPerEvent[ev.msg.EventType]; ok {
 				numExpectedEvents--
 				if cb != nil {
@@ -497,6 +508,9 @@ func (ts *testSuite) WaitForTransferEvents(ctx context.Context, srcChainName, ds
 }
 
 func (ts *testSuite) WaitForFeeGathering(ctx context.Context, stopCtx context.Context, chainName chain.ChainType, cbPerEvent map[chain.EventLogType]func(event *evt) error) (err error) {
+	if cbPerEvent == nil {
+		return fmt.Errorf("Callback is nil")
+	}
 	fCfg, err := ts.GetFullConfigAPI()
 	if err != nil {
 		err = errors.Wrapf(err, "GetFullConfigAPI %v", err)
@@ -531,7 +545,7 @@ func (ts *testSuite) WaitForFeeGathering(ctx context.Context, stopCtx context.Co
 			ts.logger.Debug("StopCtxDone ")
 			return nil // stop processing, safely exit, donot return error
 		case ev := <-ts.subChan:
-			if ev == nil {
+			if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
 				return NilEventReceived
 			}
 			if ev.msg.EventType == chain.FeeGatheringRequest {

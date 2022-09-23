@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -35,6 +36,7 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	}
 	r := &api{
 		log:      l,
+		mu:       sync.Mutex{},
 		fd:       NewFinder(l, cfg.ContractAddresses),
 		sinkChan: make(chan *chain.EventLogInfo),
 		errChan:  make(chan error),
@@ -69,6 +71,7 @@ type api struct {
 	fd        *finder
 	sinkChan  chan *chain.EventLogInfo
 	errChan   chan error
+	mu        sync.Mutex
 }
 
 func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
@@ -145,20 +148,50 @@ func (a *api) Transfer(coinName, senderKey, recepientAddress string, amount *big
 		splts := strings.Split(recepientAddress, "/")
 		recepientAddress = splts[len(splts)-1]
 	}
+	var nonce uint64
 	if within {
-		txnHash, err = a.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
+		txnHash, nonce, err = a.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount, nil)
 		if err != nil && strings.Contains(err.Error(), "replacement transaction underpriced") {
-			time.Sleep(time.Duration(rand.Intn(30) + 2))
-			txnHash, err = a.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
+			for i := 0; i < 10; i++ {
+				time.Sleep(time.Millisecond * time.Duration(100*rand.Intn(5))) // wait random times and retry
+				newNonce := a.requester.getNonce(senderKey, nonce)
+				txnHash, nonce, err = a.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount, &newNonce)
+				if err != nil && strings.Contains(err.Error(), "replacement transaction underpriced") {
+					err = errors.Wrapf(err, "Retry %v Nonce %v Err %v", i, nonce, err)
+					continue
+				}
+				break
+			}
 		}
 	} else {
-		txnHash, err = a.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
+		txnHash, nonce, err = a.requester.transferInterChain(coinName, senderKey, recepientAddress, amount, nil)
 		if err != nil && strings.Contains(err.Error(), "replacement transaction underpriced") {
-			time.Sleep(time.Duration(rand.Intn(30) + 2))
-			txnHash, err = a.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
+			for i := 0; i < 10; i++ {
+				time.Sleep(time.Millisecond * time.Duration(100*rand.Intn(5))) // wait random times and retry
+				newNonce := a.requester.getNonce(senderKey, nonce)
+				txnHash, nonce, err = a.requester.transferInterChain(coinName, senderKey, recepientAddress, amount, &newNonce)
+				if err != nil && strings.Contains(err.Error(), "replacement transaction underpriced") {
+					err = errors.Wrapf(err, "Retry %v Nonce %v Err %v", i, nonce, err)
+					continue
+				}
+				break
+			}
 		}
 	}
 	return
+}
+
+func (r *requestAPI) getNonce(addr string, input uint64) uint64 {
+	r.nonceMapMutex.Lock()
+	defer r.nonceMapMutex.Unlock()
+	existing, ok := r.nonceMap[addr]
+	if !ok || (ok && input > existing) {
+		r.nonceMap[addr] = input + 1
+		return input + 1
+	}
+	// ok && input < existing
+	r.nonceMap[addr] = existing + 1
+	return existing + 1
 }
 
 func (a *api) TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
@@ -174,7 +207,20 @@ func (a *api) TransferBatch(coinNames []string, senderKey, recepientAddress stri
 	if within {
 		err = fmt.Errorf("Batch Transfers are supported for inter chain transfers only")
 	} else {
-		txnHash, err = a.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts)
+		var nonce uint64
+		txnHash, nonce, err = a.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts, nil)
+		if err != nil && strings.Contains(err.Error(), "replacement transaction underpriced") {
+			for i := 0; i < 10; i++ {
+				time.Sleep(time.Millisecond * time.Duration(100*rand.Intn(5))) // wait random times and retry
+				newNonce := a.requester.getNonce(senderKey, nonce)
+				txnHash, nonce, err = a.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts, &newNonce)
+				if err != nil && strings.Contains(err.Error(), "replacement transaction underpriced") {
+					err = errors.Wrapf(err, "Retry %v Nonce %v Err %v", i, nonce, err)
+					continue
+				}
+				break
+			}
+		}
 	}
 	return
 }
@@ -286,10 +332,12 @@ func (a *api) GetFeeGatheringTerm() (interval uint64, err error) {
 }
 
 func (a *api) GetKeyPairs(num int) ([][2]string, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	var err error
 	res := make([][2]string, num)
 	for i := 0; i < num; i++ {
-		res[i], err = generateKeyPair()
+		res[i], err = generateKeyPair() // crypto library is not thread safe, so mutex locked at start
 		if err != nil {
 			return nil, errors.Wrap(err, "generateKeyPair ")
 		}

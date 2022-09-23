@@ -174,12 +174,14 @@ func (gen *pointGenerator) GenerateTransferPoints() (pts []*transferPoint, errs 
 }
 
 func (gen *pointGenerator) GenerateConfigPoints() (pts []*configPoint, err error) {
+	highValue := new(big.Int)
+	highValue.SetString("11579208923731619542357098500868790785326998466564056403", 10)
 	pts = []*configPoint{
 		{
 			chainName: chain.ICON,
 			TokenLimits: map[string]*big.Int{
-				"btp-0x2.icon-ICX":  big.NewInt(9000000000000000000),
-				"btp-0x2.icon-BUSD": big.NewInt(9000000000000000000),
+				"btp-0x2.icon-ICX":  highValue,
+				"btp-0x2.icon-BUSD": highValue,
 			},
 			Fee: map[string][2]*big.Int{
 				"btp-0x2.icon-ICX": {
@@ -193,8 +195,8 @@ func (gen *pointGenerator) GenerateConfigPoints() (pts []*configPoint, err error
 		{
 			chainName: chain.ICON,
 			TokenLimits: map[string]*big.Int{
-				"btp-0x2.icon-sICX": big.NewInt(9000000000000000000),
-				"btp-0x2.icon-BNB":  big.NewInt(9000000000000000000),
+				"btp-0x2.icon-sICX": highValue,
+				"btp-0x2.icon-BNB":  highValue,
 			},
 			Fee: map[string][2]*big.Int{
 				"btp-0x2.icon-sICX": {

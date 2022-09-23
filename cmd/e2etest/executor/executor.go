@@ -69,7 +69,7 @@ func (ex *executor) getID() (uint64, error) {
 	defer ex.syncChanMtx.RUnlock()
 	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < 3; i++ { // Try 5 times to get a random number not already used
-		id := uint64(rand.Intn(100000)) // human readable range
+		id := uint64(rand.Intn(1000000)) // human readable range
 		if _, ok := ex.sinkChanPerID[id]; !ok {
 			return id, nil
 		}
