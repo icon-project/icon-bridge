@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "types",
+    srcs = [
+        "types.go",
+    ],
+    importpath = "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//common/intconv",
+        "//common/jsonrpc",
+        "@com_github_gorilla_websocket//:websocket",
+        "@com_github_icon_project_goloop//common:go_default_library",
+    ],
+)

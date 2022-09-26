@@ -1114,8 +1114,8 @@ def go_repositories():
     go_repository(
         name = "com_github_icon_project_goloop",
         importpath = "github.com/icon-project/goloop",
-        sum = "h1:OsGufEXxGqJA1TUv8uPeFa8wl0MiKOmHAjmqenw6apw=",
-        version = "v1.2.8",
+        sum = "h1:9IAZD/84Jo925dgvLisfu2G1qthoWXh/NMp4dDUfdNU=",
+        version = "v1.2.11",
     )
     go_repository(
         name = "com_github_inconshreveable_mousetrap",
