@@ -104,12 +104,7 @@ fn withdraw_native_coin() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    contract.on_withdraw(
-        chuck(),
-        999,
-        coin_id.clone(),
-        nativecoin.symbol().to_owned(),
-    );
+    contract.on_withdraw(chuck(), 999, nativecoin.name().to_string(), coin_id.clone());
 
     let result = contract.balance_of(chuck(), nativecoin.name().to_string());
     let mut expected = AccountBalance::default();

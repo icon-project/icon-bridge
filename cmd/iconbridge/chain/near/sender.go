@@ -88,33 +88,23 @@ func (s *Sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		Receipts: make([][]byte, 0),
 	}
 
-	var msgSize uint64
+	receipt := msg.Receipts[0]
 
-	newMsg = &chain.Message{
-		From:     msg.From,
-		Receipts: msg.Receipts,
+	rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events)
+	if err != nil {
+		return nil, nil, err
 	}
-	for i, receipt := range msg.Receipts {
-		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events)
-		if err != nil {
-			return nil, nil, err
-		}
-		rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
-			Index:  receipt.Index,
-			Height: receipt.Height,
-			Events: rlpEvents,
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-		newMsgSize := msgSize + uint64(len(rlpReceipt))
-		if newMsgSize > txMaxDataSize {
-			newMsg.Receipts = msg.Receipts[i:]
-			break
-		}
-		msgSize = newMsgSize
-		rm.Receipts = append(rm.Receipts, rlpReceipt)
+
+	rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
+		Index:  receipt.Index,
+		Height: receipt.Height,
+		Events: rlpEvents,
+	})
+	if err != nil {
+		return nil, nil, err
 	}
+
+	rm.Receipts = append(rm.Receipts, rlpReceipt)
 
 	message, err := codec.RLP.MarshalToBytes(rm)
 	if err != nil {
@@ -126,7 +116,10 @@ func (s *Sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		return nil, nil, err
 	}
 
-	return tx, newMsg, nil
+	return tx, &chain.Message{
+		From:     msg.From,
+		Receipts: msg.Receipts[1:],
+	}, nil
 }
 
 func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message []byte) (*RelayTransaction, error) {
