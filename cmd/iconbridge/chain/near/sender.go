@@ -12,6 +12,7 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/errors"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/common/chainutils"
 	"github.com/icon-project/icon-bridge/common/codec"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
@@ -94,61 +95,12 @@ func (s *Sender) Segment(
 		return nil, msg, nil
 	}
 
-	rm := &chain.RelayMessage{
-		Receipts: make([][]byte, 0),
+	relayMsg, newMsg, err := chainutils.SegmentByTxDataSize(msg, s.options.TxDataSizeLimit)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	var msgSize uint64
-
-	newMsg = &chain.Message{
-		From:     msg.From,
-		Receipts: msg.Receipts,
-	}
-
-rloop:
-	for i, receipt := range msg.Receipts {
-	eloop:
-		for j := range receipt.Events {
-			// try all events first
-			// if it exceeds limit, try again by removing last event
-			events := receipt.Events[:len(receipt.Events)-j]
-
-			rlpEvents, err := codec.RLP.MarshalToBytes(events)
-			if err != nil {
-				return nil, nil, err
-			}
-			rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
-				Index:  receipt.Index,
-				Height: receipt.Height,
-				Events: rlpEvents,
-			})
-			if err != nil {
-				return nil, nil, err
-			}
-
-			newMsgSize := msgSize + uint64(len(rlpReceipt))
-			if newMsgSize <= s.options.TxDataSizeLimit {
-
-				msgSize = newMsgSize
-				if len(events) == len(receipt.Events) { // all events added
-					newMsg.Receipts = msg.Receipts[i+1:]
-				} else { // save remaining events in this receipt
-					receipt.Events = receipt.Events[len(events):]
-					newMsg.Receipts = msg.Receipts[i:]
-				}
-				rm.Receipts = append(rm.Receipts, rlpReceipt)
-				break eloop
-
-			} else if len(events) == 1 {
-				// stop iterating over receipts when adding even a single event
-				// exceeds tx size limit
-				break rloop
-			}
-
-		}
-	}
-
-	message, err := codec.RLP.MarshalToBytes(rm)
+	message, err := codec.RLP.MarshalToBytes(relayMsg)
 	if err != nil {
 		return nil, nil, err
 	}
