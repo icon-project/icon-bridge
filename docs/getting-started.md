@@ -209,7 +209,7 @@ The steps for testnet/mainnet deployment can be listed as follows:
 
 
 ##  Dependencies:
-The following must be installed on your PC for piecewise deployment and testnet/mainnet deployment.
+The following must be installed on your PC for multi stepwise deployment and testnet/mainnet deployment.
 - Docker 
 - java 11 and gradle 6.7.1
 - goloop 
@@ -362,8 +362,8 @@ Deployment Involves the following steps:
 ## Deploying ICON_BRIDGE
  
 1. Deploy on local machine
-    - [Full Deployment](#deploy-on-local-machine)        (Useful for newcomers. All the steps done inside a docker container. )
-    - [Piecewise Deployment](#piecewise-deployment)    (Useful for developers. Steps run on docker + PC)
+    - [Single Step Deployment](#deploy-on-local-machine)        (Useful for newcomers. All the steps done inside a docker container. )
+    - [Multi Step Deployment](#multi-step-deployment)    (Useful for developers. Steps run on docker + PC)
 2. [Deploy on Mainnet/Testnet](#deploy-on-mainnettestnet)
 
 
@@ -373,7 +373,7 @@ Deployment Involves the following steps:
  
 * ###  Deploy on local machine
  
-    - #### Full Deployment 
+    - #### Single Step Deployment 
         ```sh 
         make cleanimglocal          # Clean Previous build & deployment artifacts if present
  
@@ -388,7 +388,7 @@ Deployment Involves the following steps:
  
 
  
-    - #### PieceWise Deployment
+    - #### Multi Step Deployment
     
         First, install required [dependencies](#dependencies)
 
