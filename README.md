@@ -1,81 +1,47 @@
 # Icon Bridge
+![release](https://img.shields.io/github/v/release/icon-project/icon-bridge)
 [![codecov](https://codecov.io/gh/icon-project/icon-bridge/branch/main/graph/badge.svg?token=YXV6EE5KB5)](https://codecov.io/gh/icon-project/icon-bridge)
-## Introduction
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![OpenSSF
+Scorecard](https://api.securityscorecards.dev/projects/github.com/icon-project/icon-bridge/badge)](https://api.securityscorecards.dev/projects/github.com/icon-project/icon-bridge)
 
-We need to build a usable centralized bridge for [BTP](doc/btp.md) Relay System which can deliver digital tokens between multiple chains.
+This repository contains the smart contracts source code and relay source code for Icon bridge. 
+## Project Overview
 
-Target chains
+Icon Bridge is a centralized bridge for Blockchain Transmission Protocol(BTP) Relay System which can be used to transfer tokens across multiple chains. Currently, it supports cross chain transfer from ICON and Binance Smart Chain (BSC).
 
-- ICON (goloop)
-- Polkadot parachain
-- Binance Smart Chain
-- Harmony One
+The main components of icon bridge are:
+* ### BTP Message Relay (BMR)
+    - It serves to relay BTP Message across connected chains and monitor BTP events
+* ### Contracts
+    * #### BTP Message Center (BMC)
+        - Receive BTP messages through transactions.
+        - Send BTP messages through events.
 
-Terminologies
+    * #### BTP Service Handler (BSH)
+        - Services that can be serviced by ICON-Bridge
+        - BTP Token Service (BTS) is a BSH that is responsible for token transfers cross chain.
+        - Currently, BTS is the only service handler for icon bridge
+        - Handle service messages related to the service.
+        - Send service messages through the BMC
 
-| Word            | Description                                                                                                                             |
-| :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
-| BTP             | Blockchain Transmission Protocol, [ICON BTP Standard](https://github.com/icon-project/IIPs/blob/master/IIPS/iip-25.md) defined by ICON. |
-| BTP Message     | A verified message which is delivered by the relay                                                                                      |
-| Service Message | A payload in a BTP message                                                                                                              |
-| Relay Message   | A message including BTPMessages with proofs for that, and other block update messages.                                                  |
-| NetworkAddress  | Network Type and Network ID <br/> _0x1.icon_ <br/> _0x1.icon_                                                                           |
-| ContractAddress | Addressing contract in the network <br/> _btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b_                                    |
 
-> BTP Standard
+## Getting Started
+[Terminologies](./docs/terminologies.md) used in ICON Bridge.
 
-### Components
+Getting started section can be found [here](./docs/getting-started.md). It contains information about folder structure of the repo, how to build ICON Bridge on local or testnet/mainnet and how to run the tests from scratch.
 
-- [BTP Message Center(BMC)](doc/bmv.md) - smart contract
+If you are a developer, check this out: [Developer guidelines](./docs/developer-guidelines.md)
 
-  - Receive BTP messages through transactions.
-  - Send BTP messages through events.
+If you want to contribute to this repository, read the [Contributor Guidelines](CONTRIBUTING.md) for more info. 
 
-- [BTP Service Handler(BSH)](doc/bsh.md) - smart contract
+The documentation for this project is in the [docs](./docs/) directory.
 
-  - Handle service messages related to the service.
-  - Send service messages through the BMC
+For the latest mainnet contract addresses, please check [Mainnet Contract Addresses](./docs/mainnet_deployment.json)
 
-- [BTP Message Relay(BMR)](doc/bmr.md) - external software
-  - Monitor BTP events
-  - Send BTP Relay Message
+For the testnet contract addresses, please check [Testnet Contract Addresses](./docs/testnet_deployment.json)
 
-### Blockchain specifics
 
-- [ICON](doc/icon.md)
+## RoadMap
 
-## BTP Project
-
-### Documents
-
-- [Build Guide](doc/build.md)
-- [Tutorial](doc/tutorial.md)
-- [iconbridge command line](doc/iconbridge_cli.md)
-- [Binance Smart Chain Guide](doc/bsc-guide.md)
-- [Harmony Guide](doc/hmny-guide.md)
-
-### Layout
-
-| Directory                            | Description                                                                                       |
-| :----------------------------------- | :------------------------------------------------------------------------------------------------ |
-| /cmd                                 | Root of implement of BMR                                                                          |
-| /cmd/iconbridge                       | Reference implement of BMR. only provide unidirectional relay. (golang)                           |
-| /cmd/iconbridge/relay                 | Implement of common logic of BMR, uses chain package                                              |
-| /cmd/iconbridge/chain                 | BMR module interface, common code, and chain specific packages                                    |
-| /cmd/iconbridge/chain/`<blockchain>`  | Implement of BMR module (`Sender`,`Receiver`), `<blockchain>` is name of blockchain               |
-| /common                              | Common code (golang)                                                                              |
-| /doc                                 | Documents                                                                                         |
-| /docker                              | Docker related resources                                                                          |
-| /`<env>`                             | Root of implement of BTP smart contracts, `<env>` is name of smart contract execution environment |
-| /`<env>`/bmc                         | Implement of BMC smart contract                                                                   |
-| /`<env>`/lib                         | Library for execution environment                                                                 |
-| /`<env>`/`<svc>`                     | Root of implement of BSH smart contract, `<svc>` is name of BTP service                           |
-| /`<env>`/token_bsh                   | Reference implement of BSH smart contract for Interchain-Token transfer service                   |
-| /`<env>`/token_bsh/sample/irc2_token | Implement of IRC-2.0 smart contract, example for support legacy smart contract                    |
-
-### BMR Modules
-
-| Directory                  | Description                       |
-| :------------------------- | :-------------------------------- |
-| /cmd/iconbridge/module/icon | BMR module for ICON blockchain    |
-| /cmd/iconbridge/module/hmny | BMR module for Harmony blockchain |
+## Contributors
