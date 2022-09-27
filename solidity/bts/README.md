@@ -1,3 +1,15 @@
+# BTP Token Service (BTS)
+
+BTP Token Service is a service handler smart contract which handles token transfer operations. It handles transfer of nativecoin and ERC20 tokens cross chain.
+The BTS Contract in solidity is split into 2 sub contracts, BTSCore and BTSPeriphery. This was done because of the size limitation for solidity contracts.
+
+* [BTSCore](BTSCore.md)
+    - This contract is used to handle coin transferring service
+* [BTSPeriphery](BTSPeriphery.md)
+    - This contract is used to handle communications among BTP Message Center (BMC) and BTSCore contract.
+    - It also maintains information about token limit and blacklist.
+
+
 ## Set up
 Node >= 10.x
 ```

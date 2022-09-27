@@ -69,30 +69,42 @@ Other commands:
 
 BMC:
 
-``` gradle bmc:deployToLocal -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain ```
+```sh
+gradle bmc:deployToLocal -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain
+```
 
 Deploying BMC.jar (replace with proper parameters):
 
-``` goloop rpc --uri http://btp.net.solidwallet.io/api/v3 sendtx deploy bmc-0.1.0.jar \
+```sh
+goloop rpc --uri http://btp.net.solidwallet.io/api/v3 sendtx deploy bmc-0.1.0.jar \
     --key_store keystore --key_password Admin@123 \
     --nid 0x42 --step_limit 13610920001 \
     --content_type application/zip \
-    --param _net="0x07.icon" ```
+    --param _net="0x07.icon" 
+```
 BTS:
 
-``` gradle bts:deployToLocal -DBMC_ADDRESS=<BMC_SCORE_ADDRESS> -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain ```
-
-``` goloop rpc --uri http://btp.net.solidwallet.io/api/v3 sendtx deploy ./bts/build/libs/bts-0.1.0.jar \
+```sh
+gradle bts:deployToLocal -DBMC_ADDRESS=<BMC_SCORE_ADDRESS> -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain 
+```
+Deploying BTS Contract:
+```sh
+goloop rpc --uri http://btp.net.solidwallet.io/api/v3 sendtx deploy ./bts/build/libs/bts-0.1.0.jar \
     --key_store ./keys/keystore.json --key_password gochain \
     --nid 0x42 --step_limit 13610920001 \
     --content_type application/zip \
-    --param _bmc=cx14579031817b2973f50b78bc1507e9c2d446e0f7 \
-    --param _net="0x07.icon" 
-    ```
+    --param _name="btp-0x7.icon-ICX" \ 
+    --param _decimals=18 \
+    --param _feeNumerator=0 \
+    --param _fixedFee=0 \
+    --param _serializedIRC2=$(xxd -p ./lib/irc2Tradeable-0.1.0-optimized.jar | tr -d '\n')
+```
 
 
 
-//@Deprecated (this module was moved in to the bts)
+#### @Deprecated (this module was moved in to the bts)
 BSH:
-``` gradle token-bsh:deployToLocal -DBMC_ADDRESS=<BMC_SCORE_ADDRESS> -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain ```
+```sh
+gradle token-bsh:deployToLocal -DBMC_ADDRESS=<BMC_SCORE_ADDRESS> -PkeystoreName=../keys/keystore_god.json -PkeystorePass=gochain
+```
 
