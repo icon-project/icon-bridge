@@ -1,7 +1,10 @@
 use crate::types::{asset::AssetMetadata, Asset, AssetId};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{LookupMap, UnorderedSet};
+use near_sdk::env;
 use near_sdk::serde::Serialize;
+use std::convert::TryInto;
+
 // use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Serialize, Hash)]
@@ -17,7 +20,6 @@ pub struct Assets<T: AssetMetadata> {
     list: UnorderedSet<AssetId>,
     metadata: Metadata<T>,
 }
-
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Metadata<T: AssetMetadata>(LookupMap<AssetId, Asset<T>>);
 
@@ -133,14 +135,24 @@ mod tests {
         );
 
         tokens.add(
-            &"ABC Asset".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             &<Asset<WrappedNativeCoin>>::new(native_coin.clone()),
         );
 
-        let result = tokens.contains(&"ABC Asset".to_string().as_bytes().to_vec());
+        let result = tokens.contains(
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
         assert_eq!(result, true);
 
-        let result = tokens.get(&"ABC Asset".to_string().as_bytes().to_vec());
+        let result = tokens.get(
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
         assert_eq!(result, Some(<Asset<WrappedNativeCoin>>::new(native_coin)));
     }
 
@@ -160,11 +172,15 @@ mod tests {
         );
 
         tokens.add(
-            &"ABC Asset".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             &<Asset<WrappedNativeCoin>>::new(native_coin.clone()),
         );
         tokens.add(
-            &"ABC Asset".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             &<Asset<WrappedNativeCoin>>::new(native_coin.clone()),
         );
         let result = tokens.to_vec();
@@ -193,15 +209,29 @@ mod tests {
         );
 
         tokens.add(
-            &"ABC Asset".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             &<Asset<WrappedNativeCoin>>::new(native_coin.clone()),
         );
 
-        tokens.remove(&"ABC Asset".to_string().as_bytes().to_vec());
-        let result = tokens.contains(&"ABC Asset".to_string().as_bytes().to_vec());
+        tokens.remove(
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
+        let result = tokens.contains(
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
         assert_eq!(result, false);
 
-        let result = tokens.get(&"ABC Asset".to_string().as_bytes().to_vec());
+        let result = tokens.get(
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
         assert_eq!(result, None);
     }
 
@@ -210,8 +240,16 @@ mod tests {
         let context = get_context(vec![], false);
         testing_env!(context);
         let mut tokens = <Assets<WrappedNativeCoin>>::new();
-        tokens.remove(&"ABC Asset".to_string().as_bytes().to_vec());
-        let result = tokens.contains(&"ABC Asset".to_string().as_bytes().to_vec());
+        tokens.remove(
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
+        let result = tokens.contains(
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
         assert_eq!(result, false);
     }
 
@@ -240,11 +278,15 @@ mod tests {
         );
 
         tokens.add(
-            &"ABC Asset".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             &<Asset<WrappedNativeCoin>>::new(native_coin_1),
         );
         tokens.add(
-            &"DEF Asset".to_string().as_bytes().to_vec(),
+            &env::sha256("DEF Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             &<Asset<WrappedNativeCoin>>::new(native_coin_2),
         );
         let tokens = tokens.to_vec();
@@ -280,7 +322,9 @@ mod tests {
             None,
         );
         tokens.add(
-            &"ABC Asset".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             &<Asset<WrappedNativeCoin>>::new(native_coin),
         );
         let tokens = serde_json::to_value(tokens.to_vec()).unwrap();

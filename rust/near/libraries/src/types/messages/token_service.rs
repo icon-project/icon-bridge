@@ -124,7 +124,7 @@ impl Encodable for TokenServiceMessage {
                 });
                 params.finalize_unbounded_list();
                 params.append(network);
-                stream.append::<u128>(&3).append(&params.out());
+                stream.append::<u128>(&4).append(&params.out());
             }
             _ => (),
         }

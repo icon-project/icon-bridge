@@ -2,6 +2,7 @@ use super::AssetId;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::env;
 use near_sdk::serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 use std::{collections::HashMap, hash::Hash};
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
@@ -20,7 +21,8 @@ impl CoinIds {
     }
 
     pub fn add(&mut self, coin_name: &str, coin_id: &Vec<u8>) {
-        self.0.insert(coin_name.to_string(), coin_id.to_vec());
+        self.0
+            .insert(coin_name.to_string(), coin_id.to_vec().try_into().unwrap());
     }
 
     pub fn remove(&mut self, coin_name: &str) {
@@ -60,7 +62,7 @@ impl CoinIds {
 mod tests {
     use super::*;
     use near_sdk::{env, testing_env, VMContext};
-    use std::collections::HashSet;
+    use std::{collections::HashSet, convert::TryInto};
 
     fn get_context(input: Vec<u8>, is_view: bool) -> VMContext {
         VMContext {
@@ -99,15 +101,17 @@ mod tests {
         let actual = vec![
             CoinProperty {
                 coin_name: "ICX".to_string(),
-                coin_id: env::sha256("ICX".as_bytes()),
+                coin_id: env::sha256("ICX".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
             },
             CoinProperty {
                 coin_name: "NEAR".to_string(),
-                coin_id: env::sha256("NEAR".as_bytes()),
+                coin_id: env::sha256("NEAR".as_bytes()).try_into().unwrap(),
             },
             CoinProperty {
                 coin_name: "sIcx".to_string(),
-                coin_id: env::sha256("sIcx".as_bytes()),
+                coin_id: env::sha256("sIcx".as_bytes()).try_into().unwrap(),
             },
         ];
         let actual: HashSet<_> = actual.into_iter().collect();
@@ -126,6 +130,6 @@ mod tests {
         });
 
         let coin_id = coin_store.get("sIcx").unwrap();
-        assert_eq!(coin_id, &env::sha256("sIcx".as_bytes()));
+        assert_eq!(coin_id, &env::sha256("sIcx".as_bytes()).as_slice());
     }
 }
