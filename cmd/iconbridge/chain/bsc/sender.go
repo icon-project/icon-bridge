@@ -173,27 +173,50 @@ func (s *sender) Segment(
 		From:     msg.From,
 		Receipts: msg.Receipts,
 	}
+
+rloop:
 	for i, receipt := range msg.Receipts {
-		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events)
-		if err != nil {
-			return nil, nil, err
+	eloop:
+		for j := range receipt.Events {
+			// try all events first
+			// if it exceeds limit, try again by removing last event
+			events := receipt.Events[:len(receipt.Events)-j]
+
+			rlpEvents, err := codec.RLP.MarshalToBytes(events)
+			if err != nil {
+				return nil, nil, err
+			}
+			rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
+				Index:  receipt.Index,
+				Height: receipt.Height,
+				Events: rlpEvents,
+			})
+			if err != nil {
+				return nil, nil, err
+			}
+
+			newMsgSize := msgSize + uint64(len(rlpReceipt))
+			if newMsgSize <= s.opts.TxDataSizeLimit {
+
+				msgSize = newMsgSize
+				if len(events) == len(receipt.Events) { // all events added
+					newMsg.Receipts = msg.Receipts[i+1:]
+				} else { // save remaining events in this receipt
+					receipt.Events = receipt.Events[len(events):]
+					newMsg.Receipts = msg.Receipts[i:]
+				}
+				rm.Receipts = append(rm.Receipts, rlpReceipt)
+				break eloop
+
+			} else if len(events) == 1 {
+				// stop iterating over receipts when adding even a single event
+				// exceeds tx size limit
+				break rloop
+			}
+
 		}
-		rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
-			Index:  receipt.Index,
-			Height: receipt.Height,
-			Events: rlpEvents,
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-		newMsgSize := msgSize + uint64(len(rlpReceipt))
-		if newMsgSize > s.opts.TxDataSizeLimit {
-			newMsg.Receipts = msg.Receipts[i:]
-			break
-		}
-		msgSize = newMsgSize
-		rm.Receipts = append(rm.Receipts, rlpReceipt)
 	}
+
 	message, err := codec.RLP.MarshalToBytes(rm)
 	if err != nil {
 		return nil, nil, err

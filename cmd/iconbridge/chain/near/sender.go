@@ -18,7 +18,9 @@ import (
 )
 
 const (
-	txMaxDataSize        = 64 * 1024
+	txMaxDataSize        = 4 * 1024
+	txOverheadScale      = 0.01 // base64 encoding overhead 0.36, rlp and other fields 0.01
+	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale)
 	functionCallMethod   = "handle_relay_message"
 	gas                  = uint64(300000000000000)
 	defaultSendTxTimeout = 15 * time.Second
@@ -32,6 +34,7 @@ type Sender struct {
 	wallet      Wallet
 	logger      log.Logger
 	options     struct {
+		TxDataSizeLimit  uint64       `json:"tx_data_size_limit"`
 		BalanceThreshold types.BigInt `json:"balance_threshold"`
 	}
 }
@@ -75,9 +78,16 @@ func (s *Sender) client() IClient {
 	return s.clients[rand.Intn(len(s.clients))]
 }
 
-func (s *Sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.RelayTx, newMsg *chain.Message, err error) {
+func (s *Sender) Segment(
+	ctx context.Context, msg *chain.Message,
+) (tx chain.RelayTx, newMsg *chain.Message, err error) {
 	if ctx.Err() != nil {
 		return nil, nil, ctx.Err()
+	}
+
+	if s.options.TxDataSizeLimit == 0 {
+		limit := defaultTxSizeLimit
+		s.options.TxDataSizeLimit = uint64(limit)
 	}
 
 	if len(msg.Receipts) == 0 {
@@ -88,23 +98,55 @@ func (s *Sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		Receipts: make([][]byte, 0),
 	}
 
-	receipt := msg.Receipts[0]
+	var msgSize uint64
 
-	rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events)
-	if err != nil {
-		return nil, nil, err
+	newMsg = &chain.Message{
+		From:     msg.From,
+		Receipts: msg.Receipts,
 	}
 
-	rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
-		Index:  receipt.Index,
-		Height: receipt.Height,
-		Events: rlpEvents,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
+rloop:
+	for i, receipt := range msg.Receipts {
+	eloop:
+		for j := range receipt.Events {
+			// try all events first
+			// if it exceeds limit, try again by removing last event
+			events := receipt.Events[:len(receipt.Events)-j]
 
-	rm.Receipts = append(rm.Receipts, rlpReceipt)
+			rlpEvents, err := codec.RLP.MarshalToBytes(events)
+			if err != nil {
+				return nil, nil, err
+			}
+			rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
+				Index:  receipt.Index,
+				Height: receipt.Height,
+				Events: rlpEvents,
+			})
+			if err != nil {
+				return nil, nil, err
+			}
+
+			newMsgSize := msgSize + uint64(len(rlpReceipt))
+			if newMsgSize <= s.options.TxDataSizeLimit {
+
+				msgSize = newMsgSize
+				if len(events) == len(receipt.Events) { // all events added
+					newMsg.Receipts = msg.Receipts[i+1:]
+				} else { // save remaining events in this receipt
+					receipt.Events = receipt.Events[len(events):]
+					newMsg.Receipts = msg.Receipts[i:]
+				}
+				rm.Receipts = append(rm.Receipts, rlpReceipt)
+				break eloop
+
+			} else if len(events) == 1 {
+				// stop iterating over receipts when adding even a single event
+				// exceeds tx size limit
+				break rloop
+			}
+
+		}
+	}
 
 	message, err := codec.RLP.MarshalToBytes(rm)
 	if err != nil {
@@ -116,12 +158,8 @@ func (s *Sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		return nil, nil, err
 	}
 
-	return tx, &chain.Message{
-		From:     msg.From,
-		Receipts: msg.Receipts[1:],
-	}, nil
+	return tx, newMsg, nil
 }
-
 func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message []byte) (*RelayTransaction, error) {
 	if nearWallet, Ok := (s.wallet).(*wallet.NearWallet); Ok {
 		accountId := nearWallet.Address()
