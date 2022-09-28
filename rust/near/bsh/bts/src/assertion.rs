@@ -158,7 +158,9 @@ impl BtpTokenService {
 
     pub fn ensure_user_blacklisted(&self, user: &AccountId) -> Result<(), BshError> {
         if !self.blacklisted_accounts.contains(user) {
-            return Err(BshError::UserNotBlacklisted);
+            return Err(BshError::NonBlacklistedUsers {
+                message: user.to_string(),
+            });
         }
         Ok(())
     }
@@ -179,5 +181,21 @@ impl BtpTokenService {
             Some(coin) => true,
             None => false,
         }
+    }
+    pub fn ensure_user_not_blacklisted(&self, user: &AccountId) -> Result<(), BshError> {
+        if self.blacklisted_accounts.contains(user) {
+            return Err(BshError::BlacklistedUsers {
+                message: user.to_string(),
+            });
+        }
+        Ok(())
+    }
+    pub fn ensure_value_within_limit(&self, coin_name: &str, value: &u128) -> Result<(), BshError> {
+        if let Some(token_limit) = self.token_limits.get(coin_name) {
+            if token_limit > value {
+                return Err(BshError::LimitExceed);
+            }
+        }
+        Ok(())
     }
 }
