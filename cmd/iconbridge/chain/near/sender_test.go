@@ -9,9 +9,11 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNearSender(t *testing.T) {
@@ -26,7 +28,7 @@ func TestNearSender(t *testing.T) {
 					links, Ok := (testData.Input).([]chain.BTPAddress)
 					assert.True(f, Ok)
 
-					sender, err := newMockSender(links[1], links[0], client, nil, nil, nil)
+					sender, err := newMockSender(links[1], links[0], client, nil, types.SenderOptions{}, nil)
 					assert.Nil(f, err)
 
 					status, err := sender.Status(context.Background())
@@ -66,7 +68,7 @@ func TestNearSender(t *testing.T) {
 					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
 
 					assert.NoError(f, err)
-					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, nil, log.New())
+					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, types.SenderOptions{}, log.New())
 					assert.Nil(f, err)
 
 					relayTx, err := sender.newRelayTransaction(context.Background(), "", []byte{})
@@ -110,7 +112,7 @@ func TestNearSender(t *testing.T) {
 					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
 
 					assert.NoError(f, err)
-					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, nil, log.New())
+					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, types.SenderOptions{}, log.New())
 					assert.Nil(f, err)
 
 					relayTx, err := sender.newRelayTransaction(context.Background(), "", []byte{})
@@ -157,7 +159,7 @@ func TestNearSender(t *testing.T) {
 					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
 
 					assert.NoError(f, err)
-					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, nil, log.New())
+					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, types.SenderOptions{}, log.New())
 					assert.Nil(f, err)
 
 					balance, _, err := sender.Balance(context.Background())
@@ -167,6 +169,51 @@ func TestNearSender(t *testing.T) {
 						expected, Ok := (testData.Expected.Success).(*big.Int)
 						assert.True(f, Ok)
 						assert.Equal(f, expected, balance)
+					} else {
+						assert.Error(f, err)
+					}
+				})
+			}
+		})
+	}
+
+	if test, err := tests.GetTest("SenderSegment", t); err == nil {
+		t.Run(test.Description(), func(f *testing.T) {
+			for _, testData := range test.TestDatas() {
+				f.Run(testData.Description, func(f *testing.T) {
+					client := &Client{
+						api:    testData.MockApi,
+						logger: log.New(),
+					}
+
+					input, Ok := (testData.Input).(struct {
+						PrivateKey  string
+						Source      chain.BTPAddress
+						Destination chain.BTPAddress
+						Message     *chain.Message
+						Options     types.SenderOptions
+					})
+					require.True(f, Ok)
+
+					privateKeyBytes := base58.Decode(input.PrivateKey)
+					privateKey := ed25519.PrivateKey(privateKeyBytes)
+					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
+
+					require.NoError(f, err)
+
+					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, input.Options, log.New())
+					require.NoError(f, err)
+
+					_, newMsg, err := sender.Segment(context.Background(), input.Message)
+					require.NoError(f, err)
+
+					if testData.Expected.Success != nil {
+						expected, Ok := (testData.Expected.Success).(struct {
+							NewMessage        *chain.Message
+						})
+						require.True(f, Ok)
+
+						assert.Equal(f, expected.NewMessage, newMsg)
 					} else {
 						assert.Error(f, err)
 					}
