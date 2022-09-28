@@ -1,9 +1,11 @@
 # Icon Bridge
 ![release](https://img.shields.io/github/v/release/icon-project/icon-bridge)
 [![codecov](https://codecov.io/gh/icon-project/icon-bridge/branch/main/graph/badge.svg?token=YXV6EE5KB5)](https://codecov.io/gh/icon-project/icon-bridge)
+
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![OpenSSF
 Scorecard](https://api.securityscorecards.dev/projects/github.com/icon-project/icon-bridge/badge)](https://api.securityscorecards.dev/projects/github.com/icon-project/icon-bridge)
+
 
 This repository contains the smart contracts source code and relay source code for Icon bridge. 
 ## Project Overview
@@ -17,6 +19,7 @@ The main components of icon bridge are:
     * #### BTP Message Center (BMC)
         - Receive BTP messages through transactions.
         - Send BTP messages through events.
+
 
     * #### BTP Service Handler (BSH)
         - Services that can be serviced by ICON-Bridge

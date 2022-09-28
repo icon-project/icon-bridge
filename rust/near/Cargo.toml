@@ -1,0 +1,47 @@
+[package]
+name = "near-btp"
+version = "0.1.0"
+authors = ["Icon Foundation<foo@icon.foundation>"]
+edition = "2018"
+
+[workspace]
+members = [
+    "bmc",
+    "bsh/bts",
+    "bsh/nep141",
+    "libraries",
+    "test-helper"
+]
+
+[features]
+integration-tests = []
+testable = []
+
+[dev-dependencies]
+libraries = { path = "./libraries" }
+test-helper = { path = "./test-helper" }
+lazy_static = "1.4.0"
+kitten = "^0.2.0"
+workspaces = "0.1.1"
+serde_json = "1.0.66"
+hex = "0.4.3"
+tokio = { version = "1.16.1", features = ["macros"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+overflow-checks = true
+# Tell `rustc` to optimize for small code size.
+opt-level = "z"
+debug = false
+panic = "abort"
+
+[patch."https://github.com/near/near-sdk-rs.git"]
+near-sdk = { git = "https://github.com/HugoByte/near-sdk-rs.git", rev = "b18b475" }
+near-contract-standards = { git = "https://github.com/HugoByte/near-sdk-rs.git", rev = "b18b475" }
+
+[patch."https://github.com/near/near-jsonrpc-client-rs"]
+near-jsonrpc-client = { branch = "fix/serde", git = "https://github.com/HugoByte/near-jsonrpc-client-rs", features = ["sandbox"] }
+
+[patch."crates-io"]
+workspaces = { git = "https://github.com/HugoByte/workspaces-rs.git", rev = "e91c125" }
