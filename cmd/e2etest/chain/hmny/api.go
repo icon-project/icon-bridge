@@ -69,31 +69,31 @@ type api struct {
 	requester *requestAPI
 }
 
-func (r *api) client() *hmny.Client {
-	return r.ReceiverCore.Cls[0]
+func (a *api) client() *hmny.Client {
+	return a.ReceiverCore.Cls[0]
 }
 
 // Options for a new block notifications channel
 
-func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
-	height, err := r.client().GetBlockNumber()
+func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
+	height, err := a.client().GetBlockNumber()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "GetBlockNumber ")
 	}
-	r.log.Infof("Subscribe Start Height %v", height)
+	a.log.Infof("Subscribe Start Height %v", height)
 	go func() {
 		lastHeight := height - 1
-		if err := r.ReceiverCore.ReceiveLoop(ctx,
+		if err := a.ReceiverCore.ReceiveLoop(ctx,
 			&hmny.BnOptions{
 				StartHeight: height,
 				Concurrency: monitorBlockMaxConcurrency,
 			},
 			func(v *hmny.BlockNotification) error {
 				if v.Height.Int64()%100 == 0 {
-					r.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
+					a.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
 				}
 				if v.Height.Uint64() != lastHeight+1 {
-					r.log.Errorf("expected v.Height == %d, got %d", lastHeight+1, v.Height.Uint64())
+					a.log.Errorf("expected v.Height == %d, got %d", lastHeight+1, v.Height.Uint64())
 					return fmt.Errorf(
 						"block notification: expected=%d, got=%d",
 						lastHeight+1, v.Height.Uint64())
@@ -101,18 +101,18 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 				if len(v.Receipts) > 0 {
 					for _, sev := range v.Receipts {
 						for _, txnLog := range sev.Logs {
-							res, evtType, err := r.par.Parse(txnLog)
+							res, evtType, err := a.par.Parse(txnLog)
 							if err != nil {
-								r.log.Trace(errors.Wrap(err, "Parse "))
+								a.log.Trace(errors.Wrap(err, "Parse "))
 								err = nil
 								continue
 							}
 							nel := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
 							//r.Log.Infof("HFirst %+v", nel)
 							//r.Log.Infof("HSecond %+v", nel.EventLog)
-							if r.fd.Match(nel) {
-								//r.log.Infof("Matched %+v", el)
-								r.sinkChan <- nel
+							if a.fd.Match(nel) {
+								//a.log.Infof("Matched %+v", el)
+								a.sinkChan <- nel
 							}
 						}
 					}
@@ -120,15 +120,15 @@ func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 				lastHeight++
 				return nil
 			}); err != nil {
-			r.log.Errorf("receiveLoop terminated: %+v", err)
-			r.errChan <- err
+			a.log.Errorf("receiveLoop terminated: %+v", err)
+			a.errChan <- err
 		}
 	}()
 
-	return r.sinkChan, r.errChan, nil
+	return a.sinkChan, a.errChan, nil
 }
 
-func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, error) {
+func (a *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, error) {
 	if !strings.Contains(addr, "btp://") {
 		return nil, errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -137,10 +137,10 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-	return r.requester.getCoinBalance(coinName, address)
+	return a.requester.getCoinBalance(coinName, address)
 }
 
-func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
+func (a *api) Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
 	if !strings.Contains(recepientAddress, "btp://") {
 		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -151,14 +151,14 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount *big
 		recepientAddress = splts[len(splts)-1]
 	}
 	if within {
-		txnHash, err = r.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
+		txnHash, err = a.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
 	} else {
-		txnHash, err = r.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
+		txnHash, err = a.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
 	}
 	return
 }
 
-func (r *api) TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
+func (a *api) TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
 	if !strings.Contains(recepientAddress, "btp:") {
 		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -171,13 +171,13 @@ func (r *api) TransferBatch(coinNames []string, senderKey, recepientAddress stri
 	if within {
 		err = fmt.Errorf("Batch Transfers are supported for inter chain transfers only")
 	} else {
-		txnHash, err = r.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts)
+		txnHash, err = a.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts)
 	}
 	return
 }
 
-func (r *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
-	txnHash, err = r.requester.approveCoin(coinName, ownerKey, amount)
+func (a *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
+	txnHash, err = a.requester.approveCoin(coinName, ownerKey, amount)
 	return
 }
 func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
@@ -185,16 +185,20 @@ func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHas
 	return
 }
 
-func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
-	txRes, err := r.requester.waitForResults(ctx, common.HexToHash(hash))
+func (a *api) GetAccumulatedFees() (map[string]*big.Int, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
+	txRes, err := a.requester.waitForResults(ctx, common.HexToHash(hash))
 	if err != nil {
 		return nil, errors.Wrap(err, "waitForResults ")
 	}
 	plogs := []*chain.EventLogInfo{}
 	for _, v := range txRes.Logs {
-		decodedLog, eventType, err := r.par.ParseEth(v)
+		decodedLog, eventType, err := a.par.ParseEth(v)
 		if err != nil {
-			r.log.Trace(errors.Wrap(err, "ParseEth "))
+			a.log.Trace(errors.Wrap(err, "ParseEth "))
 			err = nil
 			continue
 			//return nil, nil, err
@@ -204,32 +208,63 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 	return &chain.TxnResult{StatusCode: int(txRes.Status), ElInfo: plogs, Raw: txRes}, nil
 }
 
-func (r *api) GetBTPAddress(addr string) string {
-	fullAddr := "btp://" + r.requester.networkID + ".hmny/" + addr
+func (a *api) GetBTPAddress(addr string) string {
+	fullAddr := "btp://" + a.requester.networkID + ".hmny/" + addr
 	return fullAddr
 }
 
-func (r *api) NativeCoin() string {
-	return r.requester.nativeCoin
+func (a *api) NativeCoin() string {
+	return a.requester.nativeCoin
 }
 
-func (r *api) NativeTokens() []string {
-	return r.requester.nativeTokens
+func (a *api) NativeTokens() []string {
+	return a.requester.nativeTokens
 }
 
-func (r *api) WatchForTransferStart(id uint64, seq int64) error {
-	return r.fd.watchFor(chain.TransferStart, id, seq)
+func (a *api) WatchForTransferStart(id uint64, seq int64) error {
+	return a.fd.watchFor(chain.TransferStart, id, seq)
 }
 
-func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
-	return r.fd.watchFor(chain.TransferReceived, id, seq)
+func (a *api) WatchForTransferReceived(id uint64, seq int64) error {
+	return a.fd.watchFor(chain.TransferReceived, id, seq)
 }
 
-func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
-	return r.fd.watchFor(chain.TransferEnd, id, seq)
+func (a *api) WatchForTransferEnd(id uint64, seq int64) error {
+	return a.fd.watchFor(chain.TransferEnd, id, seq)
 }
 
-func (r *api) GetKeyPairFromKeystore(walFile string, password string) (privKey, pubKey string, err error) {
+func (a *api) WatchForAddToBlacklistRequest(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+func (a *api) WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) WatchForSetTokenLmitRequest(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) WatchForBlacklistResponse(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) WatchForSetTokenLmitResponse(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*chain.EventLogInfo, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (a *api) SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error) {
+	return "", errors.New("not implemented")
+}
+
+func (a *api) GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error) {
+	return nil, nil, errors.New("not implemented")
+}
+
+func (a *api) GetKeyPairFromKeystore(walFile string, password string) (privKey, pubKey string, err error) {
 	keyReader, err := os.Open(walFile)
 	if err != nil {
 		err = errors.Wrapf(err, "os.Open file %v", walFile)
@@ -253,7 +288,7 @@ func (r *api) GetKeyPairFromKeystore(walFile string, password string) (privKey, 
 	return
 }
 
-func (r *api) GetKeyPairs(num int) ([][2]string, error) {
+func (a *api) GetKeyPairs(num int) ([][2]string, error) {
 	var err error
 	res := make([][2]string, num)
 	for i := 0; i < num; i++ {
@@ -264,14 +299,62 @@ func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	}
 	return res, nil
 }
-func (a *api) GetNetwork() string {
-	return a.requester.networkID + ".hmny"
+
+func (a *api) SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*big.Int) (txnHash string, err error) {
+	return "", errors.New("not implemented")
+}
+func (a *api) AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error) {
+	return "", errors.New("not implemented")
 }
 
-func (a *api) CallBTS(method chain.ContractCallMethodName, args []interface{}) (response interface{}, err error) {
-	return nil, fmt.Errorf("method %v not supported", method)
+func (a *api) RemoveBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error) {
+	return "", errors.New("not implemented")
 }
 
-func (a *api) TransactWithBTS(ownerKey string, method chain.ContractTransactMethodName, args []interface{}) (txnHash string, err error) {
-	return "", fmt.Errorf("method %v not supported", method)
+func (a *api) ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error) {
+	return "", errors.New("not implemented")
+}
+
+func (a *api) IsUserBlackListed(net, addr string) (response bool, err error) {
+	return false, errors.New("not implemented")
+}
+
+func (a *api) GetTokenLimit(coinName string) (tokenLimit *big.Int, err error) {
+	return nil, errors.New("not implemented")
+}
+
+func (a *api) IsBTSOwner(addr string) (response bool, err error) {
+	return false, errors.New("not implemented")
+}
+
+func (a *api) GetTokenLimitStatus(net, coinName string) (response bool, err error) {
+	return false, errors.New("not implemented")
+}
+
+func (a *api) GetBlackListedUsers(net string, startCursor, endCursor int) (addrs []string, err error) {
+	return nil, errors.New("not implemented")
+}
+
+func (a *api) ChargedGasFee(txnHash string) (*big.Int, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (a *api) SuggestGasPrice() *big.Int {
+	return nil
+}
+
+func (a *api) SetFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error) {
+	return "", errors.New("not implemented")
+}
+
+func (a *api) GetFeeGatheringTerm() (interval uint64, err error) {
+	return 0, errors.New("not implemented")
+}
+
+func (a *api) WatchForFeeGatheringRequest(ID uint64, addr string) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) WatchForFeeGatheringTransferStart(ID uint64, addr string) error {
+	return errors.New("not implemented")
 }

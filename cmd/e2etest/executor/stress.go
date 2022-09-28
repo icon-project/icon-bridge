@@ -1,5 +1,6 @@
 package executor
 
+/*
 import (
 	"context"
 	"encoding/hex"
@@ -675,3 +676,4 @@ func compareChangedTokens(srcCl chain.ChainAPI, srcChangedTokens map[int][]int, 
 	}
 	return nil
 }
+*/

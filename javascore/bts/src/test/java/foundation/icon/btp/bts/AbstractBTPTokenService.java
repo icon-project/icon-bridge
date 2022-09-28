@@ -36,9 +36,10 @@ public class AbstractBTPTokenService extends TestBase {
     public String PARA = "PARA";
     public String ETH_ADDR = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
     public String SERVICE = "bts";
+    public String METACHAIN = "metachain";
     public static final BigInteger UINT_CAP = pow(BigInteger.TWO,256).subtract(BigInteger.ONE);
 
-    BTPAddress btpAddress1 = new BTPAddress("network","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
+    BTPAddress btpAddress1 = new BTPAddress(METACHAIN,"0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
     BTPAddress btpAddress2 = new BTPAddress("icon","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
     BTPAddress btpAddress3 = new BTPAddress("harmony","0x0E636c8cF214a9d702C5E4a6D8c020be217766D3");
     String[] links = new String[] {btpAddress1.toString(), btpAddress2.toString(), btpAddress3.toString()};
@@ -131,9 +132,27 @@ public class AbstractBTPTokenService extends TestBase {
         return message.toBytes();
     }
 
+    protected byte[] blacklistUnsuccessfulResponse() {
+        BlacklistResponse response = new BlacklistResponse();
+        response.setCode(BlacklistResponse.RC_ERR);
+        BTSMessage message = new BTSMessage();
+        message.setData(response.toBytes());
+        message.setServiceType(BTSMessage.BLACKLIST_MESSAGE);
+        return message.toBytes();
+    }
+
     protected byte[] blacklistRemoveSuccessfulResponse() {
         BlacklistResponse response = new BlacklistResponse();
         response.setCode(BlacklistResponse.RC_OK);
+        BTSMessage message = new BTSMessage();
+        message.setData(response.toBytes());
+        message.setServiceType(BTSMessage.BLACKLIST_MESSAGE);
+        return message.toBytes();
+    }
+
+    protected byte[] blacklistRemoveUnuccessfulResponse() {
+        BlacklistResponse response = new BlacklistResponse();
+        response.setCode(BlacklistResponse.RC_ERR);
         BTSMessage message = new BTSMessage();
         message.setData(response.toBytes());
         message.setServiceType(BTSMessage.BLACKLIST_MESSAGE);
@@ -178,7 +197,7 @@ public class AbstractBTPTokenService extends TestBase {
 
     public void register() {
         score.invoke(owner, "register",
-                TEST_TOKEN, "TTK", 18, BigInteger.ONE, BigInteger.ONE, irc2.getAddress());
+                TEST_TOKEN, "TTK", 18, BigInteger.ZERO, BigInteger.ONE, irc2.getAddress());
     }
 
     public void registerWrapped() {
@@ -187,7 +206,7 @@ public class AbstractBTPTokenService extends TestBase {
                 eq(PARA),eq(18));
         contextMock.when(deployWrappedToken).thenReturn(wrappedIRC2.getAddress());
 
-        score.invoke(owner, "register",PARA, PARA, 18, BigInteger.ZERO, BigInteger.ZERO,
+        score.invoke(owner, "register",PARA, PARA, 18, BigInteger.ZERO, BigInteger.TWO,
                 Address.fromString("cx0000000000000000000000000000000000000000"));
     }
 

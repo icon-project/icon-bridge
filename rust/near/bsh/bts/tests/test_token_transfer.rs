@@ -148,7 +148,7 @@ fn withdraw_wnear() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    contract.on_withdraw(chuck(), 999, token_id.clone(), w_near.symbol().to_owned());
+    contract.on_withdraw(chuck(), 999, w_near.name().to_string(), token_id.clone());
 
     let result = contract.balance_of(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
