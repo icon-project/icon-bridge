@@ -368,6 +368,7 @@ impl BtpTokenService {
 
         U128::from(0)
     }
+    
     fn check_for_transfer_restriction(
         &self,
         user: &AccountId,
