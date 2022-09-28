@@ -128,7 +128,7 @@ fn remove_non_blacklisted_user_from_blacklist() {
         Ok(()) => {}
         Err(err) => {
             assert_eq!(
-                BshError::BlacklistedUsers {
+                BshError::NonBlacklistedUsers {
                     message: carol().to_string()
                 },
                 err

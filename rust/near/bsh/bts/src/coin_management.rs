@@ -104,7 +104,8 @@ impl BtpTokenService {
                     "event": "Mint",
                     "code": "0",
                     "amount": amount.to_string(),
-                    "token_name": coin_name
+                    "token_name": coin_name,
+                    "token_account": env::signer_account_id().to_string()
 
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
@@ -121,7 +122,8 @@ impl BtpTokenService {
                     "event": "Mint",
                     "code": "1",
                     "amount": amount.to_string(),
-                    "token_name": coin_name
+                    "token_name": coin_name,
+                    "token_account": env::signer_account_id().to_string()
 
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
@@ -146,7 +148,8 @@ impl BtpTokenService {
                     "event": "Burn",
                     "code": "0",
                     "amount": amount.to_string(),
-                    "token_name": coin_name
+                    "token_name": coin_name,
+                    "token_account": env::signer_account_id().to_string()
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
@@ -158,7 +161,8 @@ impl BtpTokenService {
                     "event": "Burn",
                     "code": "1",
                     "amount": amount.to_string(),
-                    "token_name": coin_name
+                    "token_name": coin_name,
+                    "token_account": env::signer_account_id().to_string()
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
@@ -177,6 +181,14 @@ impl BtpTokenService {
                 log!("Failed to register the coin")
             }
         }
+    }
+
+    pub fn coin(&self, coin_name: String) -> Asset<FungibleToken> {
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
+        self.coins.get(&coin_id).unwrap()
     }
 }
 
@@ -237,6 +249,16 @@ impl BtpTokenService {
         );
 
         self.balances.add(&env::current_account_id(), &coin_id);
+        let log = json!(
+        {
+
+            "event": "Register",
+            "code": "0",
+            "token_name": coin.name(),
+            "token_account": coin.metadata().uri()
+
+        });
+        log!(near_sdk::serde_json::to_string(&log).unwrap());
     }
 
     pub fn set_token_limit(
@@ -283,13 +305,5 @@ impl BtpTokenService {
             .ok_or(BshError::TokenNotExist {
                 message: coin_name.to_string(),
             })
-    }
-
-    pub fn coin(&self, coin_name: String) -> Asset<FungibleToken> {
-        let coin_id = self
-            .coin_id(&coin_name)
-            .map_err(|err| format!("{}", err))
-            .unwrap();
-        self.coins.get(&coin_id).unwrap()
     }
 }

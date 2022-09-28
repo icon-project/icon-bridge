@@ -3,6 +3,7 @@ package icon
 import (
 	"context"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"sort"
 	"time"
 
@@ -13,26 +14,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-//  const (
-// 	 EventIndexSignature = 0
-// 	 EventIndexNext      = 1
-// 	 EventIndexSequence  = 2
-//  )
-
-//  const (
-// 	 SyncVerifierMaxConcurrency = 300 // 150
-// 	 MonitorBlockMaxConcurrency = 300
-//  )
 
 type ReceiverCore struct {
 	Log      log.Logger
 	Cl       *Client
 	Opts     ReceiverOptions
-	BlockReq BlockRequest
+	BlockReq types.BlockRequest
 }
 
-func (r *ReceiverCore) newVerifer(opts *VerifierOptions) (*Verifier, error) {
-	validators, err := r.Cl.getValidatorsByHash(opts.ValidatorsHash)
+func (r *ReceiverCore) newVerifer(opts *types.VerifierOptions) (*Verifier, error) {
+	validators, err := r.Cl.GetValidatorsByHash(opts.ValidatorsHash)
 	if err != nil {
 		return nil, err
 	}
@@ -43,12 +34,12 @@ func (r *ReceiverCore) newVerifer(opts *VerifierOptions) (*Verifier, error) {
 			opts.ValidatorsHash.String(): validators,
 		},
 	}
-	header, err := r.Cl.getBlockHeaderByHeight(int64(vr.next))
+	header, err := r.Cl.GetBlockHeaderByHeight(int64(vr.next))
 	if err != nil {
 		return nil, err
 	}
 	votes, err := r.Cl.GetVotesByHeight(
-		&BlockHeightParam{Height: NewHexInt(vr.next)})
+		&types.BlockHeightParam{Height: types.NewHexInt(vr.next)})
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +65,7 @@ func (r *ReceiverCore) syncVerifier(vr *Verifier, height int64) error {
 
 	type res struct {
 		Height         int64
-		Header         *BlockHeader
+		Header         *types.BlockHeader
 		Votes          []byte
 		NextValidators []common.Address
 	}
@@ -104,7 +95,7 @@ func (r *ReceiverCore) syncVerifier(vr *Verifier, height int64) error {
 					continue
 				}
 				r.Log.WithFields(log.Fields{
-					"height": q.height, "error": q.err.Error()}).Debug("syncVerifier: req error")
+					"height": q.height, "error": q.err.Error()}).Debug("syncVerifier: request error")
 				sres = append(sres, nil)
 				if len(sres) == cap(sres) {
 					close(rqch)
@@ -124,21 +115,21 @@ func (r *ReceiverCore) syncVerifier(vr *Verifier, height int64) error {
 						q.res = &res{}
 					}
 					q.res.Height = q.height
-					q.res.Header, q.err = r.Cl.getBlockHeaderByHeight(q.height)
+					q.res.Header, q.err = r.Cl.GetBlockHeaderByHeight(q.height)
 					if q.err != nil {
 						q.err = errors.Wrapf(q.err, "syncVerifier: getBlockHeader: %v", q.err)
 						return
 					}
 					q.res.Votes, q.err = r.Cl.GetVotesByHeight(
-						&BlockHeightParam{Height: NewHexInt(int64(q.height))})
+						&types.BlockHeightParam{Height: types.NewHexInt(int64(q.height))})
 					if q.err != nil {
 						q.err = errors.Wrapf(q.err, "syncVerifier: GetVotesByHeight: %v", q.err)
 						return
 					}
 					if len(vr.Validators(q.res.Header.NextValidatorsHash)) == 0 {
-						q.res.NextValidators, q.err = r.Cl.getValidatorsByHash(q.res.Header.NextValidatorsHash)
+						q.res.NextValidators, q.err = r.Cl.GetValidatorsByHash(q.res.Header.NextValidatorsHash)
 						if q.err != nil {
-							q.err = errors.Wrapf(q.err, "syncVerifier: getValidatorsByHash: %v", q.err)
+							q.err = errors.Wrapf(q.err, "syncVerifier: GetValidatorsByHash: %v", q.err)
 							return
 						}
 					}
@@ -177,7 +168,7 @@ func (r *ReceiverCore) ReceiveLoop(ctx context.Context, startHeight, startSeq ui
 
 	blockReq := r.BlockReq // copy
 
-	blockReq.Height = NewHexInt(int64(startHeight))
+	blockReq.Height = types.NewHexInt(int64(startHeight))
 
 	var vr *Verifier
 	if r.Opts.Verifier != nil {
@@ -190,16 +181,16 @@ func (r *ReceiverCore) ReceiveLoop(ctx context.Context, startHeight, startSeq ui
 	type res struct {
 		Height         int64
 		Hash           common.HexHash
-		Header         *BlockHeader
+		Header         *types.BlockHeader
 		Votes          []byte
 		NextValidators []common.Address
 		Txrs           []*TxResult
 	}
 
-	ech := make(chan error)                                           // error channel
-	rech := make(chan struct{}, 1)                                    // reconnect channel
-	bnch := make(chan *BlockNotification, MonitorBlockMaxConcurrency) // block notification channel
-	brch := make(chan *res, cap(bnch))                                // block result channel
+	ech := make(chan error)                                                 // error channel
+	rech := make(chan struct{}, 1)                                          // reconnect channel
+	bnch := make(chan *types.BlockNotification, MonitorBlockMaxConcurrency) // block notification channel
+	brch := make(chan *res, cap(bnch))                                      // block result channel
 
 	reconnect := func() {
 		select {
@@ -236,9 +227,9 @@ loop:
 			// start new monitor loop
 			go func(ctx context.Context, cancel context.CancelFunc) {
 				defer cancel()
-				blockReq.Height = NewHexInt(next)
+				blockReq.Height = types.NewHexInt(next)
 				err := r.Cl.MonitorBlock(ctx, &blockReq,
-					func(conn *websocket.Conn, v *BlockNotification) error {
+					func(conn *websocket.Conn, v *types.BlockNotification) error {
 						if !errors.Is(ctx.Err(), context.Canceled) {
 							bnch <- v
 						}
@@ -298,9 +289,9 @@ loop:
 
 				type req struct {
 					height  int64
-					hash    HexBytes
-					indexes [][]HexInt
-					events  [][][]HexInt
+					hash    types.HexBytes
+					indexes [][]types.HexInt
+					events  [][][]types.HexInt
 
 					retry int
 
@@ -342,7 +333,7 @@ loop:
 							qch <- q
 							continue
 						}
-						r.Log.WithFields(log.Fields{"height": q.height, "error": q.err}).Debug("receiveLoop: req error")
+						r.Log.WithFields(log.Fields{"height": q.height, "error": q.err}).Debug("receiveLoop: request error")
 						brs = append(brs, nil)
 						if len(brs) == cap(brs) {
 							close(qch)
@@ -371,7 +362,7 @@ loop:
 								return
 							}
 
-							q.res.Header, q.err = r.Cl.getBlockHeaderByHeight(q.height)
+							q.res.Header, q.err = r.Cl.GetBlockHeaderByHeight(q.height)
 							if q.err != nil {
 								q.err = errors.Wrapf(q.err, "getBlockHeader: %v", q.err)
 								return
@@ -379,15 +370,15 @@ loop:
 							// fetch votes, next validators only if verifier exists
 							if vr != nil {
 								q.res.Votes, q.err = r.Cl.GetVotesByHeight(
-									&BlockHeightParam{Height: NewHexInt(int64(q.height))})
+									&types.BlockHeightParam{Height: types.NewHexInt(int64(q.height))})
 								if q.err != nil {
 									q.err = errors.Wrapf(q.err, "GetVotesByHeight: %v", q.err)
 									return
 								}
 								if len(vr.Validators(q.res.Header.NextValidatorsHash)) == 0 {
-									q.res.NextValidators, q.err = r.Cl.getValidatorsByHash(q.res.Header.NextValidatorsHash)
+									q.res.NextValidators, q.err = r.Cl.GetValidatorsByHash(q.res.Header.NextValidatorsHash)
 									if q.err != nil {
-										q.err = errors.Wrapf(q.err, "getValidatorsByHash: %v", q.err)
+										q.err = errors.Wrapf(q.err, "GetValidatorsByHash: %v", q.err)
 										return
 									}
 								}
@@ -405,7 +396,7 @@ loop:
 								}
 								for id := 0; id < len(q.indexes); id++ {
 									for i, index := range q.indexes[id] {
-										p := &ProofEventsParam{
+										p := &types.ProofEventsParam{
 											Index:     index,
 											BlockHash: q.hash,
 											Events:    q.events[id][i],
@@ -441,8 +432,8 @@ loop:
 											q.err = errors.Wrapf(err, "Index value: %v", index)
 										}
 										result.EventLogs = result.EventLogs[:0]
-										result.TxIndex = NewHexInt(int64(idx))
-										result.BlockHeight = NewHexInt(int64(q.height))
+										result.TxIndex = types.NewHexInt(int64(idx))
+										result.BlockHeight = types.NewHexInt(int64(q.height))
 										for j := 0; j < len(p.Events); j++ {
 											serializedEventLog, err := mptProve(
 												p.Events[j], proofs[j+1], common.HexBytes(result.EventLogsHash))
@@ -450,7 +441,7 @@ loop:
 												q.err = errors.Wrapf(err, "event.MPTProve: %v", err)
 												return
 											}
-											var el EventLog
+											var el types.EventLog
 											_, err = codec.RLP.UnmarshalFromBytes(serializedEventLog, &el)
 											if err != nil {
 												q.err = errors.Wrapf(err, "event.UnmarshalFromBytes: %v", err)
