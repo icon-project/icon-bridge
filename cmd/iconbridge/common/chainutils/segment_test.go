@@ -41,67 +41,79 @@ func TestSegmentByTxDataSize(t *testing.T) {
 		with more events: 4 bytes each
 	*/
 
-	_, msg, err := SegmentByTxDataSize(getTestMsg(), 5)
+	srcMsg := getTestMsg()
+	_, msg, err := SegmentByTxDataSize(srcMsg, 5)
 	require.NoError(t, err)
 	require.EqualValues(t, 4, len(msg.Receipts))
 	require.EqualValues(t, 1, msg.Receipts[0].Height)
 	require.EqualValues(t, 2, len(msg.Receipts[0].Events))
 
-	_, msg, err = SegmentByTxDataSize(getTestMsg(), 9) // encode first receipt with 1 event
+	srcMsg = getTestMsg()
+	_, msg, err = SegmentByTxDataSize(srcMsg, 9) // encode first receipt with 1 event
+	require.NoError(t, err)
+	require.EqualValues(t, 4, len(msg.Receipts))
+	require.EqualValues(t, 1, msg.Receipts[0].Height)
+	require.EqualValues(t, 1, len(msg.Receipts[0].Events))
+	require.EqualValues(t, 2, len(srcMsg.Receipts[0].Events), "events in original receipt should not mutate")
+
+	srcMsg = getTestMsg()
+	_, msg, err = SegmentByTxDataSize(srcMsg, 12) // encode first receipt with 1 event
 	require.NoError(t, err)
 	require.EqualValues(t, 4, len(msg.Receipts))
 	require.EqualValues(t, 1, msg.Receipts[0].Height)
 	require.EqualValues(t, 1, len(msg.Receipts[0].Events))
 
-	_, msg, err = SegmentByTxDataSize(getTestMsg(), 12) // encode first receipt with 1 event
-	require.NoError(t, err)
-	require.EqualValues(t, 4, len(msg.Receipts))
-	require.EqualValues(t, 1, msg.Receipts[0].Height)
-	require.EqualValues(t, 1, len(msg.Receipts[0].Events))
-
-	_, msg, err = SegmentByTxDataSize(getTestMsg(), 15) // encode first receipt with 2 events
+	srcMsg = getTestMsg()
+	_, msg, err = SegmentByTxDataSize(srcMsg, 15) // encode first receipt with 2 events
 	require.NoError(t, err)
 	require.EqualValues(t, 3, len(msg.Receipts))
 	require.EqualValues(t, 6, msg.Receipts[0].Height)
 	require.EqualValues(t, 4, len(msg.Receipts[0].Events))
 
-	_, msg, err = SegmentByTxDataSize(getTestMsg(), 22) // encode first receipt with 2 events and second receipt with 1 event
+	srcMsg = getTestMsg()
+	_, msg, err = SegmentByTxDataSize(srcMsg, 22) // encode first receipt with 2 events and second receipt with 1 event
 	require.NoError(t, err)
 	require.EqualValues(t, 3, len(msg.Receipts))
 	require.EqualValues(t, 6, msg.Receipts[0].Height)
 	require.EqualValues(t, 3, len(msg.Receipts[0].Events))
 
-	_, msg, err = SegmentByTxDataSize(getTestMsg(), 35) // encode first receipt with 2 events and second receipt with 4 event
+	srcMsg = getTestMsg()
+	_, msg, err = SegmentByTxDataSize(srcMsg, 35) // encode first receipt with 2 events and second receipt with 4 event
 	require.NoError(t, err)
 	require.EqualValues(t, 2, len(msg.Receipts))
 	require.EqualValues(t, 7, msg.Receipts[0].Height)
 	require.EqualValues(t, 1, len(msg.Receipts[0].Events))
 
-	_, msg, err = SegmentByTxDataSize(getTestMsg(), 43) // encode first receipt with 2 events and second receipt with 4 events and third receipt with 1 event
+	srcMsg = getTestMsg()
+	_, msg, err = SegmentByTxDataSize(srcMsg, 43) // encode first receipt with 2 events and second receipt with 4 events and third receipt with 1 event
 	require.NoError(t, err)
 	require.EqualValues(t, 1, len(msg.Receipts))
 	require.EqualValues(t, 10, msg.Receipts[0].Height)
 	require.EqualValues(t, 3, len(msg.Receipts[0].Events))
 
-	_, msg, err = SegmentByTxDataSize(getTestMsg(), 52) // encode first receipt with 2 events and second receipt with 4 events and third receipt with 1 event
+	srcMsg = getTestMsg()
+	_, msg, err = SegmentByTxDataSize(srcMsg, 52) // encode first receipt with 2 events and second receipt with 4 events and third receipt with 1 event
 	require.NoError(t, err)
 	require.EqualValues(t, 1, len(msg.Receipts))
 	require.EqualValues(t, 10, msg.Receipts[0].Height)
 	require.EqualValues(t, 3, len(msg.Receipts[0].Events))
 
-	_, msg, err = SegmentByTxDataSize(getTestMsg(), 55) // encode first receipt with 2 events and second receipt with 4 events and third receipt with 1 event and fourth receipt with 1 event with message body
+	srcMsg = getTestMsg()
+	_, msg, err = SegmentByTxDataSize(srcMsg, 55) // encode first receipt with 2 events and second receipt with 4 events and third receipt with 1 event and fourth receipt with 1 event with message body
 	require.NoError(t, err)
 	require.EqualValues(t, 1, len(msg.Receipts))
 	require.EqualValues(t, 10, msg.Receipts[0].Height)
 	require.EqualValues(t, 2, len(msg.Receipts[0].Events))
 
-	_, msg, err = SegmentByTxDataSize(getTestMsg(), 60) // encode first receipt with 2 events and second receipt with 4 events and third receipt with 1 event and fourth receipt with 2 events with one with message body
+	srcMsg = getTestMsg()
+	_, msg, err = SegmentByTxDataSize(srcMsg, 60) // encode first receipt with 2 events and second receipt with 4 events and third receipt with 1 event and fourth receipt with 2 events with one with message body
 	require.NoError(t, err)
 	require.EqualValues(t, 1, len(msg.Receipts))
 	require.EqualValues(t, 10, msg.Receipts[0].Height)
 	require.EqualValues(t, 1, len(msg.Receipts[0].Events))
 
-	_, msg, err = SegmentByTxDataSize(getTestMsg(), 70) // encode all receipts
+	srcMsg = getTestMsg()
+	_, msg, err = SegmentByTxDataSize(srcMsg, 70) // encode all receipts
 	require.NoError(t, err)
 	require.EqualValues(t, 0, len(msg.Receipts))
 

@@ -47,8 +47,13 @@ rloop:
 				if len(events) == len(receipt.Events) { // all events added
 					newMsg.Receipts = msg.Receipts[i+1:]
 				} else { // save remaining events in this receipt
-					receipt.Events = receipt.Events[len(events):]
-					newMsg.Receipts = msg.Receipts[i:]
+					newMsg.Receipts = make([]*chain.Receipt, len(msg.Receipts[i:]))
+					copy(newMsg.Receipts, msg.Receipts[i:]) // make a copy to not mutate original receipt
+					newMsg.Receipts[0] = &chain.Receipt{
+						Index:  receipt.Index,
+						Height: receipt.Height,
+						Events: receipt.Events[len(events):],
+					}
 				}
 				relayMsg.Receipts = append(relayMsg.Receipts, rlpReceipt)
 				break eloop
