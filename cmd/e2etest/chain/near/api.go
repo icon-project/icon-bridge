@@ -315,8 +315,7 @@ func (a *api) TransferBatch(coinNames []string, senderKey, recepientAddress stri
 
 // WaitForTxnResult implements chain.ChainAPI
 func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
-	var iapi near.IApi
-	txRes, err := iapi.Transaction(hash) // need to update and verify
+	txRes, err := a.requester.cl.GetTransactionResult(types.NewCryptoHash(hash), types.AccountId(a.requester.contractNameToAddress[chain.BTS])) // need to update and verify
 	if err != nil {
 		return nil, errors.Wrapf(err, "waitForResults(%v)", hash)
 	}

@@ -1,12 +1,9 @@
 package near
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"testing"
-	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
@@ -73,39 +70,6 @@ func TestIsUserBlackListed(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Println("Res ", res)
-}
-
-func TestTransferIntraChain(t *testing.T) {
-	api, err := getNewApi()
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	amount := new(big.Int)
-	amount.SetString("10000000000000000000", 10)
-	srckey := TokenGodKey
-	dstaddr := DemoSrcAddr
-	for _, coinName := range []string{"ICX", "bnUSD"} { // need to change
-		txnHash, err := api.Transfer(coinName, srckey, dstaddr, amount)
-		if err != nil {
-			t.Fatal(err)
-		}
-		time.Sleep(time.Second * 3)
-		t.Logf("Transaction Hash %v", txnHash)
-		res, err := api.WaitForTxnResult(context.TODO(), txnHash)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("Receipt %+v", res)
-		for _, lin := range res.ElInfo {
-			t.Logf("Log %+v ", lin)
-		}
-		if val, err := api.GetCoinBalance(coinName, dstaddr); err != nil {
-			t.Fatal(err)
-		} else {
-			t.Logf("Balance %v", val)
-		}
-	}
 }
 
 func getNewApi() (chain.ChainAPI, error) {
