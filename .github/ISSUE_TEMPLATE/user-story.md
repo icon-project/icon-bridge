@@ -1,8 +1,8 @@
 ---
 name: User Story
 about: Describe a user story
-title: '<type>(<scope>): <subject>'
-labels: draft, story
+title: "<type>(<scope>): <subject>"
+labels: ''
 assignees: ''
 
 ---
@@ -14,6 +14,9 @@ A clear and concise description of the user and their need
 ## Story
 
 As a [persona], I want [goal] so that [reason]
+
+## Test Scenarios
+Link given/when/then test scenarios here
 
 ## Acceptance Criteria
 

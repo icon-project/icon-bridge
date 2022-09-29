@@ -5,11 +5,15 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"math/big"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	crypto "github.com/ethereum/go-ethereum/crypto"
@@ -41,6 +45,7 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 			BlockReq: ethereum.FilterQuery{
 				Addresses: []ethCommon.Address{
 					ethCommon.HexToAddress(cfg.ContractAddresses[chain.BTSPeriphery]),
+					ethCommon.HexToAddress(cfg.ContractAddresses[chain.BMCPeriphery]),
 				},
 			},
 		},
@@ -66,59 +71,59 @@ type api struct {
 	errChan   chan error
 }
 
-func (r *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
-	height, err := r.client().BlockNumber(ctx)
+func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
+	height, err := a.client().BlockNumber(ctx)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "GetBlockNumber ")
 	}
-	r.log.Infof("Subscribe Start Height %v", height)
+	a.log.Infof("Subscribe Start Height %v", height)
 	go func() {
 		lastHeight := height - 1
-		if err := r.ReceiverCore.ReceiveLoop(ctx,
+		if err := a.ReceiverCore.ReceiveLoop(ctx,
 			&BnOptions{
 				StartHeight: height,
 				Concurrency: monitorBlockMaxConcurrency,
 			},
 			func(v *BlockNotification) error {
 				if v.Height.Int64()%100 == 0 {
-					r.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
+					a.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
 				}
 				if v.Height.Uint64() != lastHeight+1 {
-					r.log.Errorf("expected v.Height == %d, got %d", lastHeight+1, v.Height.Uint64())
+					a.log.Errorf("expected v.Height == %d, got %d", lastHeight+1, v.Height.Uint64())
 					return fmt.Errorf(
 						"block notification: expected=%d, got=%d",
 						lastHeight+1, v.Height.Uint64())
 				}
 				if len(v.Logs) > 0 {
-					r.log.Info("Height %v", v.Height)
+					a.log.Debugf("Height %v", v.Height)
 					for _, txnLog := range v.Logs {
-						res, evtType, err := r.par.Parse(&txnLog)
+						res, evtType, err := a.par.Parse(&txnLog)
 						if err != nil {
-							r.log.Warn(errors.Wrap(err, "Parse "))
+							//a.log.Trace(errors.Wrap(err, "Parse "))
 							err = nil
 							continue
 						}
 						nel := &chain.EventLogInfo{ContractAddress: txnLog.Address.String(), EventType: evtType, EventLog: res}
-						r.Log.Infof("BFirst  %+v", nel)
-						r.Log.Infof("BSecond  %+v", nel.EventLog)
-						if r.fd.Match(nel) {
-							//r.log.Infof("Matched %+v", el)
-							r.sinkChan <- nel
+						a.log.Debugf("BFirst  %+v", nel)
+						a.log.Debugf("BSecond  %+v", nel.EventLog)
+						if a.fd.Match(nel) {
+							//a.log.Infof("Matched %+v", el)
+							a.sinkChan <- nel
 						}
 					}
 				}
 				lastHeight++
 				return nil
 			}); err != nil {
-			r.log.Errorf("receiveLoop terminated: %+v", err)
-			r.errChan <- err
+			a.log.Errorf("receiveLoop terminated: %+v", err)
+			a.errChan <- err
 		}
 	}()
 
-	return r.sinkChan, r.errChan, nil
+	return a.sinkChan, a.errChan, nil
 }
 
-func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, error) {
+func (a *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, error) {
 	if !strings.Contains(addr, "btp://") {
 		return nil, errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -127,10 +132,10 @@ func (r *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	}
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
-	return r.requester.getCoinBalance(coinName, address)
+	return a.requester.getCoinBalance(coinName, address)
 }
 
-func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
+func (a *api) Transfer(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
 	if !strings.Contains(recepientAddress, "btp:") {
 		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -141,14 +146,22 @@ func (r *api) Transfer(coinName, senderKey, recepientAddress string, amount *big
 		recepientAddress = splts[len(splts)-1]
 	}
 	if within {
-		txnHash, err = r.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
+		txnHash, err = a.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
+		if err != nil && strings.Contains(err.Error(), "replacement transaction underpriced") {
+			time.Sleep(time.Duration(rand.Intn(30) + 2))
+			txnHash, err = a.requester.transferIntraChain(coinName, senderKey, recepientAddress, amount)
+		}
 	} else {
-		txnHash, err = r.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
+		txnHash, err = a.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
+		if err != nil && strings.Contains(err.Error(), "replacement transaction underpriced") {
+			time.Sleep(time.Duration(rand.Intn(30) + 2))
+			txnHash, err = a.requester.transferInterChain(coinName, senderKey, recepientAddress, amount)
+		}
 	}
 	return
 }
 
-func (r *api) TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
+func (a *api) TransferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
 	if !strings.Contains(recepientAddress, "btp:") {
 		return "", errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
@@ -161,13 +174,13 @@ func (r *api) TransferBatch(coinNames []string, senderKey, recepientAddress stri
 	if within {
 		err = fmt.Errorf("Batch Transfers are supported for inter chain transfers only")
 	} else {
-		txnHash, err = r.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts)
+		txnHash, err = a.requester.transferBatch(coinNames, senderKey, recepientAddress, amounts)
 	}
 	return
 }
 
-func (r *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
-	txnHash, err = r.requester.approveCoin(coinName, ownerKey, amount)
+func (a *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
+	txnHash, err = a.requester.approveCoin(coinName, ownerKey, amount)
 	return
 }
 
@@ -176,16 +189,16 @@ func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHas
 	return
 }
 
-func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
-	txRes, err := r.requester.waitForResults(ctx, ethCommon.HexToHash(hash))
+func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
+	txRes, err := a.requester.waitForResults(ctx, ethCommon.HexToHash(hash))
 	if err != nil {
 		return nil, errors.Wrap(err, "waitForResults ")
 	}
 	plogs := []*chain.EventLogInfo{}
 	for _, v := range txRes.Logs {
-		decodedLog, eventType, err := r.par.Parse(v)
+		decodedLog, eventType, err := a.par.Parse(v)
 		if err != nil {
-			r.log.Trace(errors.Wrap(err, "ParseEth "))
+			a.log.Trace(errors.Wrap(err, "ParseEth "))
 			err = nil
 			continue
 			//return nil, nil, err
@@ -195,32 +208,84 @@ func (r *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 	return &chain.TxnResult{StatusCode: int(txRes.Status), ElInfo: plogs, Raw: txRes}, nil
 }
 
-func (r *api) GetBTPAddress(addr string) string {
-	fullAddr := "btp://" + r.requester.networkID + ".bsc/" + addr
+func (a *api) GetBTPAddress(addr string) string {
+	fullAddr := "btp://" + a.requester.networkID + ".bsc/" + addr
 	return fullAddr
 }
 
-func (r *api) NativeCoin() string {
-	return r.requester.nativeCoin
+func (a *api) NativeCoin() string {
+	return a.requester.nativeCoin
 }
 
-func (r *api) NativeTokens() []string {
-	return r.requester.nativeTokens
+func (a *api) NativeTokens() []string {
+	return a.requester.nativeTokens
 }
 
-func (r *api) WatchForTransferStart(id uint64, seq int64) error {
-	return r.fd.watchFor(chain.TransferStart, id, seq)
+func (a *api) WatchForTransferStart(id uint64, seq int64) error {
+	return a.fd.watchFor(chain.TransferStart, id, seq)
 }
 
-func (r *api) WatchForTransferReceived(id uint64, seq int64) error {
-	return r.fd.watchFor(chain.TransferReceived, id, seq)
+func (a *api) WatchForTransferReceived(id uint64, seq int64) error {
+	return a.fd.watchFor(chain.TransferReceived, id, seq)
 }
 
-func (r *api) WatchForTransferEnd(id uint64, seq int64) error {
-	return r.fd.watchFor(chain.TransferEnd, id, seq)
+func (a *api) WatchForTransferEnd(id uint64, seq int64) error {
+	return a.fd.watchFor(chain.TransferEnd, id, seq)
 }
 
-func (r *api) GetKeyPairs(num int) ([][2]string, error) {
+func (a *api) WatchForAddToBlacklistRequest(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+func (a *api) WatchForRemoveFromBlacklistRequest(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) WatchForSetTokenLmitRequest(ID uint64, seq int64) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) WatchForBlacklistResponse(ID uint64, seq int64) error {
+	return a.fd.watchFor(chain.BlacklistResponse, ID, seq)
+}
+
+func (a *api) WatchForSetTokenLmitResponse(ID uint64, seq int64) error {
+	return a.fd.watchFor(chain.TokenLimitResponse, ID, seq)
+}
+
+func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*chain.EventLogInfo, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (a *api) SetFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (string, error) {
+	return a.requester.setFeeRatio(ownerKey, coinName, feeNumerator, fixedFee)
+}
+
+func (a *api) GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big.Int, err error) {
+	res, err := a.requester.btsc.FeeRatio(&bind.CallOpts{Pending: false, Context: context.Background()}, coinName)
+	return res.FeeNumerator, res.FixedFee, err
+}
+
+func (a *api) GetAccumulatedFees() (map[string]*big.Int, error) {
+	res, err := a.requester.btsc.GetAccumulatedFees(&bind.CallOpts{Pending: false, Context: context.Background()})
+	if err != nil {
+		return nil, err
+	}
+	resMap := map[string]*big.Int{}
+	for _, v := range res {
+		resMap[v.CoinName] = v.Value
+	}
+	return resMap, nil
+}
+
+func (a *api) SetFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error) {
+	return "", errors.New("not implemented")
+}
+
+func (a *api) GetFeeGatheringTerm() (interval uint64, err error) {
+	return 0, errors.New("not implemented")
+}
+
+func (a *api) GetKeyPairs(num int) ([][2]string, error) {
 	var err error
 	res := make([][2]string, num)
 	for i := 0; i < num; i++ {
@@ -232,7 +297,7 @@ func (r *api) GetKeyPairs(num int) ([][2]string, error) {
 	return res, nil
 }
 
-func (r *api) GetKeyPairFromKeystore(keystoreFile string, secretFile string) (privKey, pubKey string, err error) {
+func (a *api) GetKeyPairFromKeystore(keystoreFile string, secretFile string) (privKey, pubKey string, err error) {
 	readFile := func(file string) (string, error) {
 		f, err := os.Open(file)
 		if err != nil {
@@ -269,6 +334,65 @@ func (r *api) GetKeyPairFromKeystore(keystoreFile string, secretFile string) (pr
 	return
 }
 
-func (a *api) GetNetwork() string {
-	return a.requester.networkID + ".bsc"
+func (a *api) SuggestGasPrice() (gasPrice *big.Int) {
+	ctx := context.TODO()
+	cleth := a.client()
+
+	gasPrice = big.NewInt(20000000000) // default Gas Price
+	header, err := cleth.HeaderByNumber(ctx, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "GetHeaderByNumber(height:latest) Err: %v", err)
+		return
+	}
+	height := header.Number
+	txnCount, err := cleth.TransactionCount(ctx, header.Hash())
+	if err != nil {
+		err = errors.Wrapf(err, "GetTransactionCount(height:%v, headerHash: %v) Err: %v", height, header.Hash(), err)
+		a.log.Error(err)
+		return
+	} else if err == nil && txnCount == 0 {
+		err = fmt.Errorf("TransactionCount is zero for height(%v, headerHash %v)", height, header.Hash())
+		a.log.Error(err)
+		return
+	}
+
+	txnS, err := cleth.TransactionInBlock(ctx, header.Hash(), uint(math.Floor(float64(txnCount)/2)))
+	if err != nil {
+		err = errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, txnCount-1, err)
+		a.log.Error(err)
+		return
+	}
+	gasPrice = (&big.Int{}).Mul(txnS.GasPrice(), big.NewInt(112))
+	gasPrice = gasPrice.Div(gasPrice, big.NewInt(100))
+	suggested, err := a.Cls[0].SuggestGasPrice(ctx)
+	if err != nil && suggested.Cmp(gasPrice) > 0 {
+		a.log.Debug("Using Suggested ", suggested, " instead of calculated ", gasPrice)
+		gasPrice = suggested
+	}
+	if gasPrice.Int64() == 0 {
+		a.log.Debug("Calculated Gas Price was zero++++++++")
+		return big.NewInt(20000000000)
+	}
+	return
+}
+
+func (a *api) ChargedGasFee(txnHash string) (*big.Int, error) {
+	txr, err := a.requester.ethCl.TransactionReceipt(context.Background(), ethCommon.HexToHash(txnHash))
+	if err != nil {
+		return nil, errors.Wrapf(err, "TransactionByHash %v", err)
+	}
+	txh, _, err := a.requester.ethCl.TransactionByHash(context.Background(), ethCommon.HexToHash(txnHash))
+	if err != nil {
+		return nil, errors.Wrapf(err, "TransactionByHash %v", err)
+	}
+	ret := (&big.Int{}).Mul(big.NewInt(int64(txr.GasUsed)), txh.GasPrice())
+	return ret, nil
+}
+
+func (a *api) WatchForFeeGatheringRequest(ID uint64, addr string) error {
+	return errors.New("not implemented")
+}
+
+func (a *api) WatchForFeeGatheringTransferStart(ID uint64, addr string) error {
+	return a.fd.watchFor(chain.TransferStart, ID, [2]string{a.fd.nameToAddrMap[chain.BTS], addr})
 }

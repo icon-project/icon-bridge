@@ -18,7 +18,7 @@ impl BtpTokenService {
                 Err(_) => non_blacklisted_user.push(user.to_string()),
             });
         if !non_blacklisted_user.is_empty() {
-            return Err(BshError::BlacklistedUsers {
+            return Err(BshError::NonBlacklistedUsers {
                 message: non_blacklisted_user.join(", "),
             });
         }

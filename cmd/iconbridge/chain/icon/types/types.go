@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-package icon
+package types
 
 import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
+	"github.com/icon-project/goloop/common"
 	"math/big"
 	"strconv"
 	"strings"
@@ -78,8 +80,7 @@ type BlockHeader struct {
 	PatchTransactionsHash  []byte
 	NormalTransactionsHash []byte
 	LogsBloom              []byte
-	Result                 []byte
-	serialized             []byte
+	Result     []byte
 }
 
 type EventLog struct {
@@ -137,9 +138,9 @@ type BMCRelayMethodParams struct {
 }
 
 type CallParam struct {
-	FromAddress Address     `json:"from" validate:"optional,t_addr_eoa"`
-	ToAddress   Address     `json:"to" validate:"required,t_addr_score"`
-	DataType    string      `json:"dataType" validate:"required,call"`
+	FromAddress Address `json:"from" validate:"optional,t_addr_eoa"`
+	ToAddress   Address `json:"to" validate:"required,t_addr_score"`
+	DataType    string  `json:"dataType" validate:"required,call"`
 	Data        interface{} `json:"data"`
 }
 type AddressParam struct {
@@ -192,8 +193,8 @@ type BlockRequest struct {
 }
 
 type EventFilter struct {
-	Addr      Address   `json:"addr,omitempty"`
-	Signature string    `json:"event"`
+	Addr      Address `json:"addr,omitempty"`
+	Signature string  `json:"event"`
 	Indexed   []*string `json:"indexed,omitempty"`
 	Data      []*string `json:"data,omitempty"`
 }
@@ -351,3 +352,46 @@ type Block struct {
 	} `json:"confirmed_transaction_list"`
 	//Signature              HexBytes  `json:"signature" validate:"optional,t_hash"`
 }
+
+
+type VerifierOptions struct {
+	BlockHeight    uint64         `json:"blockHeight"`
+	ValidatorsHash common.HexHash `json:"validatorsHash"`
+}
+
+type CommitVoteItem struct {
+	Timestamp int64
+	Signature common.Signature
+}
+
+type CommitVoteList struct {
+	Round          int32
+	BlockPartSetID *PartSetID
+	Items          []CommitVoteItem
+}
+
+type PartSetID struct {
+	Count uint16
+	Hash  []byte
+}
+
+type HR struct {
+	Height int64
+	Round  int32
+}
+
+type VoteBase struct {
+	HR
+	Type           VoteType
+	BlockID        []byte
+	BlockPartSetID PartSetID
+}
+
+type Vote struct {
+	VoteBase
+	Timestamp int64
+}
+
+type VoteType byte
+
+type WsReadCallback func(*websocket.Conn, interface{}) error
