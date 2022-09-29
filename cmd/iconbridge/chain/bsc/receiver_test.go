@@ -381,6 +381,7 @@ func TestReceiver_MockSyncVerifier(t *testing.T) {
 }
 
 func TestSender_NewObj(t *testing.T) {
+	return // skip test with real rpc endpoint
 	//senderOpts := `{"gas_limit": 24000000,"tx_data_size_limit": 8192,"balance_threshold": "100000000000000000000","boost_gas_price": 1}`
 	thres := intconv.BigInt{}
 	thres.SetString("100000000000000000000", 10)
