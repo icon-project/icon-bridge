@@ -65,6 +65,10 @@ public class AbstractBTPMessageCenterTest extends TestBase {
         return "btp://" + NETWORK + "/" + address.toString();
     }
 
+    public String getDestinationBTPAddress(String destination, String address) {
+        return "btp://" + destination + "/" + address;
+    }
+
     public void expectErrorMessage(Executable contractCall, String errorMessage) {
         AssertionError e = Assertions.assertThrows(AssertionError.class, contractCall);
         assertEquals(errorMessage, e.getMessage());
@@ -86,5 +90,17 @@ public class AbstractBTPMessageCenterTest extends TestBase {
 
     public void addLink(String link) {
         score.invoke(owner, "addLink", link);
+    }
+
+    public void addRelay(String link, Address addr) {
+        score.invoke(owner, "addRelay", link, addr);
+    }
+
+    void addService(String svc, Address addr) {
+        score.invoke(owner, "addService", svc, addr);
+    }
+
+    void addRoute(String dst, String link) {
+        score.invoke(owner, "addRoute", dst, link);
     }
 }
