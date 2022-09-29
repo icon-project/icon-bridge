@@ -34,10 +34,7 @@ type Sender struct {
 	destination chain.BTPAddress
 	wallet      Wallet
 	logger      log.Logger
-	options     struct {
-		TxDataSizeLimit  uint64       `json:"tx_data_size_limit"`
-		BalanceThreshold types.BigInt `json:"balance_threshold"`
-	}
+	options     types.SenderOptions
 }
 
 func NewSender(source, destination chain.BTPAddress, urls []string, wallet wallet.Wallet, options json.RawMessage, logger log.Logger) (chain.Sender, error) {
@@ -61,7 +58,7 @@ func NewSender(source, destination chain.BTPAddress, urls []string, wallet walle
 	return sender, nil
 }
 
-func newMockSender(source, destination chain.BTPAddress, client *Client, wallet wallet.Wallet, _ map[string]interface{}, logger log.Logger) (*Sender, error) {
+func newMockSender(source, destination chain.BTPAddress, client *Client, wallet wallet.Wallet, options types.SenderOptions, logger log.Logger) (*Sender, error) {
 	clients := make([]IClient, 0)
 	clients = append(clients, client)
 	sender := &Sender{
@@ -70,6 +67,7 @@ func newMockSender(source, destination chain.BTPAddress, client *Client, wallet 
 		destination: destination,
 		wallet:      wallet,
 		logger:      logger,
+		options:     options,
 	}
 
 	return sender, nil
@@ -112,6 +110,7 @@ func (s *Sender) Segment(
 
 	return tx, newMsg, nil
 }
+
 func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message []byte) (*RelayTransaction, error) {
 	if nearWallet, Ok := (s.wallet).(*wallet.NearWallet); Ok {
 		accountId := nearWallet.Address()
