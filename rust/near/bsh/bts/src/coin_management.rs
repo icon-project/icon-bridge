@@ -28,7 +28,7 @@ impl BtpTokenService {
                 );
             };
 
-            self.coin_ids.add(coin.name(), &coin_id);
+            self.coin_ids.add(coin.name(), coin_id);
             self.register_coin(coin);
         } else {
             let coin_metadata = coin.extras().clone().expect("Coin Metadata Missing");
@@ -173,7 +173,7 @@ impl BtpTokenService {
     pub fn register_coin_callback(&mut self, coin: Coin, coin_id: CoinId) {
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
-                self.coin_ids.add(coin.name(), &coin_id);
+                self.coin_ids.add(coin.name(), coin_id);
                 self.register_coin(coin)
             }
             PromiseResult::NotReady => log!("Not Ready"),
@@ -202,7 +202,7 @@ impl BtpTokenService {
         )
         .then(ext_self::on_mint(
             amount,
-            coin_id.to_vec(),
+            *coin_id,
             coin.symbol().to_string(),
             receiver_id,
             env::current_account_id(),

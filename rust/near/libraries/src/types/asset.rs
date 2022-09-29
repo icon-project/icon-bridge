@@ -4,6 +4,7 @@ use near_sdk::serde::{Deserialize, Serialize};
 
 use super::fungible_token::AssetMetadataExtras;
 pub type AssetId = [u8; 32];
+pub type OldAssetId = Vec<u8>;
 
 pub trait AssetMetadata {
     fn name(&self) -> &String;

@@ -110,7 +110,7 @@ impl BtpTokenService {
         let mut coin_fees = CoinFees::new();
         coin_fees.add(&native_coin_id);
         let mut coin_ids = CoinIds::new();
-        coin_ids.add(native_coin.name(), &native_coin_id);
+        coin_ids.add(native_coin.name(), native_coin_id);
         Self {
             native_coin_name: native_coin.name().to_owned(),
             network,

@@ -2,14 +2,13 @@ use super::*;
 
 #[near_bindgen]
 impl BtpTokenService {
-
     #[init(ignore_state)]
     #[private]
     pub fn migrate() -> Self {
         let old: BtpTokenServiceV0_9 = env::state_read().expect("failed to read the state");
         let mut coin_ids = CoinIds::new();
         let native_coin_id = Self::hash_coin_id(&old.native_coin_name);
-        coin_ids.add(&old.native_coin_name, &native_coin_id);
+        coin_ids.add(&old.native_coin_name, native_coin_id);
 
         Self {
             owners: old.owners,
@@ -29,7 +28,7 @@ impl BtpTokenService {
             token_limits: TokenLimits::new(),
 
             #[cfg(feature = "testable")]
-            message: old.message
+            message: old.message,
         }
-    } 
+    }
 }
