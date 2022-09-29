@@ -22,7 +22,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
+import com.iconloop.score.test.Account;
 import foundation.icon.btp.lib.BMCStatus;
+import foundation.icon.btp.lib.BTPAddress;
 import java.math.BigInteger;
 import java.util.Map;
 import org.bouncycastle.util.encoders.Hex;
@@ -341,6 +343,41 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         assertEquals(bond, properties.getRelayerMinBond());
     }
 
+    @Test
+    void messageEventLogContents() {
+
+        Account bts = sm.createAccount();
+        String DESTINATION_NETWORK = "0x38.bmc";
+        String DESTINATION_BMC = "0x034AaDE86BF402F023Aa17E5725fABC4ab9E9798";
+        String to = getDestinationBTPAddress(DESTINATION_NETWORK, DESTINATION_BMC);
+        String svc = "bts";
+        BigInteger sn = BigInteger.ONE;
+        byte[] msg = "Message Received From BTS".getBytes();
+
+        // before registering BTS to BMC
+        assertThrows(AssertionError.class, () -> score.invoke(owner, "sendMessage", to, svc, sn, msg ));
+
+        addLink(to);
+        addRoute(DESTINATION_NETWORK, to);
+        addService(svc, bts.getAddress());
+
+        assertThrows(AssertionError.class, () -> score.invoke(owner, "sendMessage", to, svc, sn, msg));
+        assertThrows(AssertionError.class, () -> score.invoke(bts, "sendMessage", to, svc, BigInteger.ONE.negate(), msg));
+
+        score.invoke(bts, "sendMessage", DESTINATION_NETWORK, svc, sn, msg);
+
+        BTPAddress source = new BTPAddress(NETWORK, score.getAddress().toString());
+        BTPAddress destination = new BTPAddress(DESTINATION_NETWORK, DESTINATION_BMC);
+
+        BTPMessage message = new BTPMessage();
+        message.setSrc(source);
+        message.setDst(destination);
+        message.setSvc(svc);
+        message.setSn(sn);
+        message.setPayload(msg);
+
+        verify(scoreSpy).Message(to, BigInteger.TWO, message.toBytes());
+    }
 
     @Test
     public void bmcDecodeMessage() {
