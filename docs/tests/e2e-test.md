@@ -71,6 +71,6 @@ Each of these scripts runs checks to ensure that the change in amount held in di
 - checking the correct amount increase or decrease in wallets
 
 ## Adding custom scripts
-Please read the [design document](https://github.com/icon-project/icon-bridge/discussions/141) to get an understanding on how the e2etest module is designed. You may find default scripts on path `iconbridge/cmd/e2etest/executor/scripts*.go`
+Please read the [design document](../adr/e2e.md) to get an understanding on how the e2etest module is designed. You may find default scripts on path `iconbridge/cmd/e2etest/executor/scripts*.go`
 Please go through them to get an idea on how the scripts can be written.
 
