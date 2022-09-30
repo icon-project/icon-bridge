@@ -6,17 +6,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"net/http"
+	"net/url"
+	"strconv"
+	"time"
+
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/near/borsh-go"
 	"github.com/reactivex/rxgo/v2"
-	"math/big"
-	"net/http"
-	"net/url"
-	"strconv"
-	"time"
 )
 
 const BmcContractMessageStateKey = "bWVzc2FnZQ=="
@@ -59,6 +60,7 @@ type IClient interface {
 	Logger() log.Logger
 	MonitorBlocks(height uint64, source string, concurrency uint, callback func(rxgo.Observable) error, subClient func() IClient) error
 	SendTransaction(payload string) (*types.CryptoHash, error)
+	GetLatestBlockHeight() (int64, error)
 }
 
 func (c *Client) CloseMonitor() {
@@ -372,7 +374,7 @@ func NewClient(endpoint string, logger log.Logger) (IClient, error) {
 		logger:          logger,
 		isMonitorClosed: false,
 		api: &api{
-			host: url.Host,
+			host:   url.Host,
 			Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: transport}, url.String()),
 		},
 	}, nil
@@ -399,7 +401,7 @@ func newClients(urls []string, logger log.Logger) ([]IClient, error) {
 
 func (c *Client) SendTransaction(payload string) (*types.CryptoHash, error) {
 	param := []string{payload}
-	
+
 	txId, err := c.api.BroadcastTxAsync(param)
 	if err != nil {
 		return nil, err
