@@ -5,8 +5,6 @@ use near_sdk::env;
 use near_sdk::serde::Serialize;
 use std::convert::TryInto;
 
-// use std::collections::HashMap;
-
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Serialize, Hash)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AssetItem {

@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use crate::types::AssetId;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LookupMap;
+use near_sdk::collections::{self, LookupMap};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::AccountId;
 use near_sdk::Balance;
@@ -42,18 +44,18 @@ impl AccountBalance {
 }
 
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct Balances(LookupMap<(AccountId, AssetId), AccountBalance>);
+pub struct Balances(HashMap<(AccountId, AssetId), AccountBalance>);
 
 impl Balances {
     pub fn new() -> Self {
-        Self(LookupMap::new(b"balances".to_vec()))
+        Self(HashMap::new())
     }
 
     pub fn add(&mut self, account: &AccountId, asset_id: &AssetId) {
         if !self.contains(account, asset_id) {
             self.0.insert(
-                &(account.to_owned(), asset_id.to_owned()),
-                &AccountBalance::default(),
+                (account.to_owned(), asset_id.to_owned()),
+                AccountBalance::default(),
             );
         }
     }
@@ -64,7 +66,7 @@ impl Balances {
 
     pub fn get(&self, account: &AccountId, asset_id: &AssetId) -> Option<AccountBalance> {
         if let Some(balance) = self.0.get(&(account.to_owned(), asset_id.to_owned())) {
-            return Some(balance);
+            return Some(balance.to_owned());
         }
         None
     }
@@ -82,7 +84,29 @@ impl Balances {
         account_balance: AccountBalance,
     ) {
         self.0
-            .insert(&(account.to_owned(), asset_id.to_owned()), &account_balance);
+            .insert((account.to_owned(), asset_id.to_owned()), account_balance);
+    }
+
+    pub fn to_vec(&self) -> Vec<((AccountId, AssetId), AccountBalance)> {
+        if !self.0.is_empty() {
+            return self
+                .0
+                .clone()
+                .into_iter()
+                .map(|((accound_id, asset_id), account_balance)| {
+                    (
+                        (accound_id, asset_id),
+                        AccountBalance {
+                            deposit: account_balance.deposit(),
+                            refundable: account_balance.refundable(),
+                            locked: account_balance.locked(),
+                        },
+                    )
+                })
+                .collect();
+        }
+
+        vec![]
     }
 }
 

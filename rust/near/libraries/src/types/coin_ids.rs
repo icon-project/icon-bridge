@@ -56,7 +56,6 @@ impl CoinIds {
         vec![]
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
