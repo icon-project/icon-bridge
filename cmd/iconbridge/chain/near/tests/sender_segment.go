@@ -115,7 +115,7 @@ func init() {
 			},
 		},
 		{
-			Description: "Within 1 Event above Default Limit",
+			Description: "With 1 Event above Default Limit",
 			Input: struct {
 				PrivateKey  string
 				Source      chain.BTPAddress
@@ -162,8 +162,18 @@ func init() {
 					NewMessage *chain.Message
 				}{
 					NewMessage: &chain.Message{
-						From:     chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: []*chain.Receipt{},
+						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
+						Receipts: []*chain.Receipt{{
+							Index: uint64(0),
+							Events: []*chain.Event{
+								{
+									Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
+									Sequence: uint64(0),
+									Message:  make([]byte, 5000),
+								},
+							},
+							Height: uint64(1),
+						}},
 					},
 				},
 			},
@@ -253,7 +263,7 @@ func init() {
 								{
 									Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
 									Sequence: uint64(0),
-									Message:  make([]byte, 4000),
+									Message:  make([]byte, 3000),
 								},
 								{
 									Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
@@ -568,7 +578,6 @@ func init() {
 				},
 			},
 		},
-
 		{
 			Description: "Within Custom Limit",
 			Input: struct {
@@ -627,7 +636,7 @@ func init() {
 			},
 		},
 		{
-			Description: "Within 1 Event above Custom Limit",
+			Description: "With 1 Event above Custom Limit",
 			Input: struct {
 				PrivateKey  string
 				Source      chain.BTPAddress
@@ -677,8 +686,18 @@ func init() {
 					NewMessage *chain.Message
 				}{
 					NewMessage: &chain.Message{
-						From:     chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: []*chain.Receipt{},
+						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
+						Receipts: []*chain.Receipt{{
+							Index: uint64(0),
+							Events: []*chain.Event{
+								{
+									Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
+									Sequence: uint64(0),
+									Message:  make([]byte, 9000),
+								},
+							},
+							Height: uint64(1),
+						}},
 					},
 				},
 			},
@@ -770,7 +789,7 @@ func init() {
 								{
 									Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
 									Sequence: uint64(0),
-									Message:  make([]byte, 10000),
+									Message:  make([]byte, 7000),
 								},
 								{
 									Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),

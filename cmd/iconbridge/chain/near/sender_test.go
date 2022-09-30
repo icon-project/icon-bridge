@@ -209,7 +209,7 @@ func TestNearSender(t *testing.T) {
 
 					if testData.Expected.Success != nil {
 						expected, Ok := (testData.Expected.Success).(struct {
-							NewMessage        *chain.Message
+							NewMessage *chain.Message
 						})
 						require.True(f, Ok)
 
