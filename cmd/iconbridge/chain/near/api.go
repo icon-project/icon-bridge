@@ -50,6 +50,14 @@ func (api *api) Changes(param interface{}) (response types.ContractStateChange, 
 	return response, nil
 }
 
+func (api *api) Chunk(param interface{}) (response types.ChunkHeader, err error) {
+	if _, err := api.Do("chucnk", param, &response); err != nil {
+		return types.ChunkHeader{}, err
+	}
+
+	return response, nil
+}
+
 func (api *api) LightClientProof(param interface{}) (response types.ReceiptProof, err error) {
 	if _, err := api.Do("EXPERIMENTAL_light_client_proof", param, &response); err != nil {
 		return types.ReceiptProof{}, err

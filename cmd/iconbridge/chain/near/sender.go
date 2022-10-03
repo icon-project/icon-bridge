@@ -133,8 +133,6 @@ func (s *Sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 
 func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message []byte) (*RelayTransaction, error) {
 	if nearWallet, Ok := (s.wallet).(*wallet.NearWallet); Ok {
-		accountId := nearWallet.Address()
-
 		relayMessage := struct {
 			Source  string `json:"source"`
 			Message string `json:"message"`
@@ -158,32 +156,34 @@ func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message [
 				},
 			},
 		}
-
-		transaction := types.Transaction{
-			SignerId:   types.AccountId(accountId),
-			ReceiverId: types.AccountId(s.destination.ContractAddress()),
-			PublicKey:  types.NewPublicKeyFromED25519(*nearWallet.Pkey),
-			Actions:    actions,
-		}
-
-		return &RelayTransaction{
-			Source:      prev,
-			Message:     message,
-			Transaction: transaction,
-			client:      s.client(),
-			wallet:      nearWallet,
-		}, nil
+		
+		return NewRelayTransaction(ctx, nearWallet, s.destination.ContractAddress(), s.client(), actions), nil
 	}
+
 	return nil, fmt.Errorf("failed to cast wallet")
 }
 
 type RelayTransaction struct {
-	Source      string `json:"source"`
-	Message     []byte `json:"message"`
 	Transaction types.Transaction
 	client      IClient
 	wallet      *wallet.NearWallet
 	context     context.Context
+}
+
+func NewRelayTransaction(context context.Context, wallet *wallet.NearWallet, destination string, client IClient, actions []types.Action) *RelayTransaction {
+	transaction := types.Transaction{
+		SignerId:   types.AccountId(wallet.Address()),
+		ReceiverId: types.AccountId(destination),
+		PublicKey:  types.NewPublicKeyFromED25519(*wallet.Pkey),
+		Actions:    actions,
+	}
+
+	return &RelayTransaction{
+		Transaction: transaction,
+		client: client,
+		wallet: wallet,
+		context: context,
+	}
 }
 
 func (relayTx *RelayTransaction) ID() interface{} {
@@ -224,7 +224,7 @@ func (relayTx *RelayTransaction) Receipt(ctx context.Context) (blockHeight uint6
 }
 
 func (relayTx *RelayTransaction) Send(ctx context.Context) (err error) {
-	relayTx.client.Logger().WithFields(log.Fields{"prev": relayTx.Source}).Debug("handleRelayMessage: send tx")
+	relayTx.client.Logger().WithFields(log.Fields{"signer": relayTx.Transaction.SignerId}).Debug("prepare tx")
 	_ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeout)
 	defer cancel()
 
@@ -252,7 +252,7 @@ func (relayTx *RelayTransaction) Send(ctx context.Context) (err error) {
 	}
 
 	relayTx.Transaction.Txid = *txId
-	relayTx.client.Logger().WithFields(log.Fields{"tx": txId.Base58Encode()}).Debug("handleRelayMessage: tx sent")
+	relayTx.client.Logger().WithFields(log.Fields{"tx": txId.Base58Encode()}).Debug("tx sent")
 
 	return nil
 }

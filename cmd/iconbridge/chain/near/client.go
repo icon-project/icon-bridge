@@ -39,6 +39,7 @@ type IApi interface {
 	BroadcastTxAsync(param interface{}) (response types.CryptoHash, err error)
 	CallFunction(param interface{}) (response types.CallFunctionResponse, err error)
 	Changes(param interface{}) (response types.ContractStateChange, err error)
+	Chunk(param interface{}) (response types.ChunkHeader, err error)
 	LightClientProof(param interface{}) (response types.ReceiptProof, err error)
 	Status(param interface{}) (response types.ChainStatus, err error)
 	Transaction(param interface{}) (response types.TransactionResult, err error)
@@ -61,6 +62,8 @@ type IClient interface {
 	MonitorBlocks(height uint64, source string, concurrency uint, callback func(rxgo.Observable) error, subClient func() IClient) error
 	SendTransaction(payload string) (*types.CryptoHash, error)
 	GetLatestBlockHeight() (int64, error)
+	MonitorBlockHeight(offset int64) rxgo.Observable
+	IsMonitorClosed() bool
 }
 
 func (c *Client) CloseMonitor() {
@@ -292,6 +295,10 @@ func (c *Client) GetTransactionResult(transactionId types.CryptoHash, senderId t
 
 func (c *Client) Logger() log.Logger {
 	return c.logger
+}
+
+func (c *Client) IsMonitorClosed() bool {
+	return c.isMonitorClosed
 }
 
 func (c *Client) MonitorBlockHeight(offset int64) rxgo.Observable {

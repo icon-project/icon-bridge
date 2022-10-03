@@ -11,12 +11,11 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	gocommon "github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/wallet"
+	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	common "github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
+	"github.com/reactivex/rxgo/v2"
 
 	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/log"
@@ -24,7 +23,6 @@ import (
 )
 
 type api struct {
-	receiver  *near.Receiver
 	sinkChan  chan *chain.EventLogInfo
 	errChan   chan error
 	par       *parser
@@ -40,17 +38,12 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	} else if cfg.Name != chain.NEAR {
 		return nil, fmt.Errorf("expected cfg.Name=NEAR Got %v", cfg.Name)
 	}
-	Clients, err := near.NewClient(cfg.URL, l)
-	if err != nil {
-		fmt.Println(err)
-	}
-	Receiver, err := near.NewReceiver(near.ReceiverConfig{}, l, Clients) // Should we use receiver or receiver_core here?
+	Client, err := NewClient(cfg.URL, l)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	recvr := &api{
-		receiver: Receiver,
 		sinkChan: make(chan *chain.EventLogInfo),
 		errChan:  make(chan error),
 		fd:       NewFinder(l, cfg.ContractAddresses),
@@ -59,7 +52,7 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "NewParser ")
 	}
-	recvr.requester, err = newRequestAPI(Clients, cfg)
+	recvr.requester, err = newRequestAPI(Client, cfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "newRequestAPI %v", err)
 	}
@@ -68,13 +61,13 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 
 // Approve implements chain.ChainAPI
 func (a *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
-	txnHash, err = a.requester.approve(coinName, ownerKey, amount)
-	return
+	// Deposit
+	return "", nil
 }
 
 // GetBTPAddress implements chain.ChainAPI
 func (a *api) GetBTPAddress(addr string) string {
-	fullAddr := "btp://" + a.requester.networkID + ".near/" + addr
+	fullAddr := "btp://" + a.requester.networkID + "/" + addr
 	return fullAddr
 }
 
@@ -119,12 +112,18 @@ func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv stri
 		return
 	}
 
-	privKey, err := wallet.DecryptKeyStore([]byte(wal), []byte(secret))
+	privKey, err := wallet.DecryptNearKeyStore([]byte(wal), []byte(secret))
 	if err != nil {
 		err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
 	}
-	priv = hex.EncodeToString(privKey.Bytes())
-	pub = gocommon.NewAccountAddressFromPublicKey(privKey.PublicKey()).String()
+
+	w, err := wallet.NewNearwalletFromPrivateKey(privKey)
+	if err != nil {
+		err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
+	}
+
+	priv = hex.EncodeToString([]byte(*privKey))
+	pub = hex.EncodeToString(w.PublicKey())
 	return
 }
 
@@ -143,7 +142,7 @@ func (a *api) GetKeyPairs(num int) ([][2]string, error) {
 
 // GetNetwork implements chain.ChainAPI
 func (a *api) GetNetwork() string {
-	return a.requester.networkID + ".near"
+	return a.requester.networkID
 }
 
 // NativeCoin implements chain.ChainAPI
@@ -175,37 +174,36 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 
 	go func() {
 		defer close(errChan)
-
-		if err := a.receiver.ReceiveBlocks(uint64(height), a.cfg.GodWalletSecretPath, func(blockNotification *types.BlockNotification) { // is Source correct?
+		if err := a.receiveTransactions(uint64(height), func(blockNotification *BlockNotification) error {
 			log.WithFields(log.Fields{"height": blockNotification.Block().Height()}).Debug("block notification")
-			receipts := blockNotification.Receipts()
-
-			for _, receipt := range receipts {
-				events := receipt.Events[:0]
-				for _, event := range receipt.Events {
-					switch {
-
-					case event.Sequence == opts.Seq:
-						events = append(events, event)
-						opts.Seq++
-
-					case event.Sequence > opts.Seq:
-						log.WithFields(log.Fields{
-							"seq": log.Fields{"got": event.Sequence, "expected": opts.Seq},
-						}).Error("invalid event seq")
-
-						errChan <- fmt.Errorf("invalid event seq")
+			for _, tx := range blockNotification.transactions {
+				// filter out bmc, bsh
+				if tx.ReceiverId == types.AccountId(a.cfg.ContractAddresses[chain.BMC]) || tx.ReceiverId == types.AccountId(a.cfg.ContractAddresses[chain.BTS]) {
+					tx, err := a.requester.cl.GetTransactionResult(tx.Txid, tx.ReceiverId)
+					if err != nil {
+						return err
 					}
+					for _, outcome := range tx.ReceiptsOutcome {
+						for _, log := range outcome.Outcome.Logs {
+							res, evtType, err := a.par.Parse(log)
+							if err != nil {
+								err = nil
+								continue
+							}
 
-					nel := &chain.EventLogInfo{ // What is PID ?
-						ContractAddress: event.Next.ContractAddress(),
-						EventType:       chain.EventLogType(event.Next.Type()),
-						EventLog:        event.Next.BlockChain(),
+							nel := &chain.EventLogInfo{ContractAddress: string(tx.Transaction.ReceiverId), EventType: evtType, EventLog: res}
+							if a.fd.Match(nel) {
+								a.sinkChan <- nel
+							}
+						}
 					}
-					sinkChan <- nel
 				}
+
 			}
+
+			return nil
 		}); err != nil {
+			a.requester.cl.Logger().Errorf("receiveTransactions terminated: %v", err)
 			errChan <- err
 		}
 	}()
@@ -255,7 +253,7 @@ func (a *api) TransferBatch(coinNames []string, senderKey, recepientAddress stri
 func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResult, error) {
 	txRes, err := a.requester.cl.GetTransactionResult(types.NewCryptoHash(hash), types.AccountId(a.requester.contractNameToAddress[chain.BTS])) // need to update and verify
 	if err != nil {
-		return nil, errors.Wrapf(err, "waitForResults(%v)", hash)
+		return nil, errors.Wrapf(err, "WaitForTxnResult(%v)", hash)
 	}
 
 	plogs := []*chain.EventLogInfo{}
@@ -289,7 +287,7 @@ func (a *api) AddBlackListAddress(ownerKey string, net string, addrs []string) (
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": net, "_addresses": addrs}, "addBlacklistAddress", int64(a.requester.stepLimit[chain.DefaultGasLimit]))
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": net, "_addresses": addrs}, "addBlacklistAddress", int64(a.requester.gasLimit[chain.DefaultGasLimit]))
 }
 
 // ChangeRestriction implements chain.ChainAPI
@@ -300,9 +298,9 @@ func (a *api) ChangeRestriction(ownerKey string, enable bool) (txnHash string, e
 		return
 	}
 	if enable {
-		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "addRestriction", int64(a.requester.stepLimit[chain.DefaultGasLimit]))
+		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "addRestriction", int64(a.requester.gasLimit[chain.DefaultGasLimit]))
 	}
-	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "disableRestrictions", int64(a.requester.stepLimit[chain.DefaultGasLimit]))
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "disableRestrictions", int64(a.requester.gasLimit[chain.DefaultGasLimit]))
 }
 
 // ChargedGasFee implements chain.ChainAPI
@@ -570,7 +568,7 @@ func (a *api) RemoveBlackListAddress(ownerKey string, net string, addrs []string
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": net, "_addresses": addrs}, "removeBlacklistAddress", int64(a.requester.stepLimit[chain.DefaultGasLimit]))
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": net, "_addresses": addrs}, "removeBlacklistAddress", int64(a.requester.gasLimit[chain.DefaultGasLimit]))
 }
 
 // SetFeeGatheringTerm implements chain.ChainAPI
@@ -580,7 +578,7 @@ func (a *api) SetFeeGatheringTerm(ownerKey string, interval uint64) (hash string
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BMC)
 		return
 	}
-	return a.requester.transactWithContract(ownerKey, bmcAddr, big.NewInt(0), map[string]interface{}{"_value": hexutil.EncodeUint64(interval)}, "setFeeGatheringTerm", int64(a.requester.stepLimit[chain.DefaultGasLimit]))
+	return a.requester.transactWithContract(ownerKey, bmcAddr, big.NewInt(0), map[string]interface{}{"_value": hexutil.EncodeUint64(interval)}, "setFeeGatheringTerm", int64(a.requester.gasLimit[chain.DefaultGasLimit]))
 }
 
 // SetFeeRatio implements chain.ChainAPI
@@ -592,7 +590,7 @@ func (a *api) SetFeeRatio(ownerKey string, coinName string, feeNumerator *big.In
 	}
 	_feeNumerator := intconv.FormatBigInt(feeNumerator)
 	_fixedFee := intconv.FormatBigInt(fixedFee)
-	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_name": coinName, "_feeNumerator": _feeNumerator, "_fixedFee": _fixedFee}, "setFeeRatio", int64(a.requester.stepLimit[chain.DefaultGasLimit]))
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_name": coinName, "_feeNumerator": _feeNumerator, "_fixedFee": _fixedFee}, "setFeeRatio", int64(a.requester.gasLimit[chain.DefaultGasLimit]))
 }
 
 // SetTokenLimit implements chain.ChainAPI
@@ -606,7 +604,7 @@ func (a *api) SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*
 	for i, v := range tokenLimits {
 		strTokenLimits[i] = intconv.FormatBigInt(v)
 	}
-	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_coinNames": coinNames, "_tokenLimits": strTokenLimits}, "setTokenLimit", int64(a.requester.stepLimit[chain.DefaultGasLimit]))
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_coinNames": coinNames, "_tokenLimits": strTokenLimits}, "setTokenLimit", int64(a.requester.gasLimit[chain.DefaultGasLimit]))
 }
 
 // SuggestGasPrice implements chain.ChainAPI
@@ -647,4 +645,22 @@ func (a *api) WatchForSetTokenLmitRequest(ID uint64, seq int64) error {
 // WatchForSetTokenLmitResponse implements chain.ChainAPI
 func (*api) WatchForSetTokenLmitResponse(ID uint64, seq int64) error {
 	return errors.New("not implemented")
+}
+
+func (a *api) receiveTransactions(height uint64, processBlockNotification func(blockNotification *BlockNotification) error) error {
+	return a.requester.cl.MonitorTransactions(height, func(observable rxgo.Observable) error {
+		result := observable.Observe()
+		for item := range result {
+			if err := item.E; err != nil {
+				return err
+			}
+
+			bn, _ := item.V.(*BlockNotification)
+
+			if *bn.Block().Hash() != [32]byte{} {
+				return processBlockNotification(bn)
+			}
+		}
+		return nil
+	})
 }

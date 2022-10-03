@@ -7,27 +7,23 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-
+	"crypto/ed25519"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/haltingstate/secp256k1-go"
-	gocrypto "github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/common/wallet"
-	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common"
 	"github.com/icon-project/icon-bridge/common/crypto"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/intconv"
+	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
 type requestAPI struct {
 	contractNameToAddress map[chain.ContractName]string
 	networkID             string
-	cl                    near.IClient
-	stepLimit             map[chain.GasLimitType]uint64
+	cl                    *client
+	gasLimit              map[chain.GasLimitType]uint64
 	nativeCoin            string
 	wrappedCoinsAddr      map[string]string
 	nativeTokensAddr      map[string]string
@@ -61,31 +57,30 @@ type coinNames struct {
 	Network string `json:"network"`
 }
 
-func newRequestAPI(cl near.IClient, cfg *chain.Config) (req *requestAPI, err error) {
-	// var defaultMapForDifferentGasLimits = map[chain.GasLimitType]uint64{
-	// 	chain.TransferNativeCoinIntraChainGasLimit: 150000,
-	// 	chain.TransferTokenIntraChainGasLimit:      300000,
-	// 	chain.ApproveTokenInterChainGasLimit:       800000,
-	// 	chain.TransferCoinInterChainGasLimit:       2500000,
-	// 	chain.TransferBatchCoinInterChainGasLimit:  4000000,
-	// 	chain.DefaultGasLimit:                      5000000,
-	// }
+func newRequestAPI(cl *client, cfg *chain.Config) (req *requestAPI, err error) {
+	var defaultMapForDifferentGasLimits = map[chain.GasLimitType]uint64{
+		chain.DefaultGasLimit: 300000000000000,
+	}
+
 	if !strings.Contains(cfg.NetworkID, ".near") {
 		return nil, fmt.Errorf("expected cfg.NetwrkID=0xnid.near Got %v", cfg.NetworkID)
 	}
+
 	req = &requestAPI{
-		networkID:             strings.Split(cfg.NetworkID, ".")[0],
+		networkID:             cfg.NetworkID,
 		contractNameToAddress: cfg.ContractAddresses,
 		cl:                    cl,
-		stepLimit:             cfg.GasLimit,
+		gasLimit:              cfg.GasLimit,
 		nativeCoin:            cfg.NativeCoin,
 	}
+
 	req.nativeTokensAddr, req.wrappedCoinsAddr, err = req.getCoinAddresses(cfg.NativeTokens, cfg.WrappedCoins)
-	// for k, v := range defaultMapForDifferentGasLimits {
-	// 	if _, ok := req.stepLimit[k]; !ok {
-	// 		req.stepLimit[k] = v
-	// 	}
-	// }
+	for k, v := range defaultMapForDifferentGasLimits {
+		if _, ok := req.gasLimit[k]; !ok {
+			req.gasLimit[k] = v
+		}
+	}
+
 	return req, err
 }
 
@@ -203,82 +198,20 @@ func (r *requestAPI) callContract(contractAddress string, args map[string]interf
 	var res types.CallFunctionResponse
 	res, err = r.cl.Api().CallFunction(param)
 	if err != nil {
-		return nil, errors.Wrap(err, "Call ")
+		return nil, errors.Wrap(err, "Call")
 	}
 	return res, nil
 }
 
-func (r *requestAPI) approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
-	if addr, ok := r.nativeTokensAddr[coinName]; ok {
-		txnHash, err = r.approveToken(coinName, ownerKey, amount, addr)
-	} else if coinName == r.nativeCoin {
-		err = fmt.Errorf("native Coin %v does not need to be approved", coinName)
-	} else if addr, ok := r.wrappedCoinsAddr[coinName]; ok {
-		txnHash, err = r.approveCrossNativeCoin(coinName, ownerKey, amount, addr)
-	} else {
-		err = fmt.Errorf("coin %v not amongst registered coins", coinName)
-	}
-	return
-}
-
-func (r *requestAPI) approveToken(coinName, senderKey string, amount *big.Int, caddr string) (hash string, err error) {
-	btsAddr, ok := r.contractNameToAddress[chain.BTS]
-	if !ok {
-		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
-	}
-	arg1 := map[string]interface{}{"_to": btsAddr, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(senderKey, caddr, big.NewInt(0), arg1, "transfer", int64(r.stepLimit[chain.ApproveTokenInterChainGasLimit]))
-}
-
-func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, amount *big.Int, coinAddress string) (approveTxnHash string, err error) {
-	btsaddr, ok := r.contractNameToAddress[chain.BTS]
-	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
-		return
-	}
-	approveArgs := map[string]interface{}{"spender": btsaddr, "amount": intconv.FormatBigInt(amount)}
-	approveTxnHash, err = r.transactWithContract(ownerKey, coinAddress, big.NewInt(0), approveArgs, "approve", int64(r.stepLimit[chain.ApproveTokenInterChainGasLimit]))
-	if err != nil {
-		err = errors.Wrapf(err, "transactWithContract %v", coinAddress)
-		return
-	}
-	return
-}
-
-func SignTransactionParam(wallet module.Wallet, param *types.Transaction) error {
-	js, err := json.Marshal(param)
-	if err != nil {
-		return errors.Wrap(err, "jsonMarshal ")
-	}
-	var txSerializeExcludes = map[string]bool{"signature": true}
-	bs, err := transaction.SerializeJSON(js, nil, txSerializeExcludes)
-	if err != nil {
-		return errors.Wrap(err, "tx.SerializeJSON ")
-	}
-	bs = append([]byte("icx_sendTransaction."), bs...)
-	sig, err := wallet.Sign(gocrypto.SHA3Sum256(bs))
-	if err != nil {
-		return errors.Wrap(err, "wallet.Sign ")
-	}
-	var sign types.Signature
-	err = json.Unmarshal(sig, &sign)
-	if err != nil {
-		fmt.Println(err)
-	}
-	param.Signature = sign
-	return nil
-}
-
-func GetWalletFromPrivKey(privKey string) (module.Wallet, error) {
+func GetWalletFromPrivKey(privKey string) (*wallet.NearWallet, error) {
 	privBytes, err := hex.DecodeString(privKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "DecodeString ")
 	}
-	pKey, err := gocrypto.ParsePrivateKey(privBytes)
-	if err != nil {
-		return nil, errors.Wrap(err, "crypto.ParsePrivateKey ")
-	}
-	wal, err := wallet.NewFromPrivateKey(pKey)
+
+	pKey := ed25519.PrivateKey(privBytes)
+	
+	wal, err := wallet.NewNearwalletFromPrivateKey(&pKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "crypto.NewFromPrivateKey ")
 	}
@@ -367,7 +300,7 @@ func (r *requestAPI) reclaim(coinName string, ownerKey string, amount *big.Int) 
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 	arg1 := map[string]interface{}{"_coinName": coinName, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), arg1, "reclaim", int64(r.stepLimit[chain.ApproveTokenInterChainGasLimit]))
+	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), arg1, "reclaim", int64(r.gasLimit[chain.DefaultGasLimit]))
 }
 
 func (r *requestAPI) transferIntraChain(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
@@ -385,12 +318,11 @@ func (r *requestAPI) transferIntraChain(coinName, senderKey, recepientAddress st
 
 func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount *big.Int, caddr string) (txHash string, err error) {
 	args := map[string]interface{}{"_to": recepientAddress, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(senderKey, caddr, big.NewInt(0), args, "transfer", int64(r.stepLimit[chain.ApproveTokenInterChainGasLimit]))
+	return r.transactWithContract(senderKey, caddr, big.NewInt(0), args, "transfer", int64(r.gasLimit[chain.DefaultGasLimit]))
 }
 
 func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount *big.Int) (txHash string, err error) {
-	var senderWallet module.Wallet
-	senderWallet, err = GetWalletFromPrivKey(senderKey)
+	senderWallet, err := GetWalletFromPrivKey(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
