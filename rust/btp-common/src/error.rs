@@ -190,9 +190,10 @@ pub mod errors {
         TokenNotRegistered,
         LessThanZero,
         UserAlreadyBlacklisted,
-        UserNotBlacklisted,
         BlacklistedUsers { message: String },
+        NonBlacklistedUsers { message: String },
         InvalidParams,
+        LimitExceed,
     }
 
     impl Exception for BshError {
@@ -293,14 +294,17 @@ pub mod errors {
                 BshError::UserAlreadyBlacklisted => {
                     write!(f, "{}", "AlreadyBlacklisted")
                 }
-                BshError::UserNotBlacklisted => {
-                    write!(f, "{}", "NotBlacklisted")
-                }
-                BshError::BlacklistedUsers { message } => {
-                    write!(f, "{}{} for {}", label, "UsersBlacklisted", message)
+                BshError::NonBlacklistedUsers { message } => {
+                    write!(f, "{}{} for {}", label, "UsersNotBlacklisted", message)
                 }
                 BshError::InvalidParams => {
                     write!(f, "{}", "InvalidParams")
+                }
+                BshError::LimitExceed => {
+                    write!(f, "{}", "LimitExceed")
+                }
+                BshError::BlacklistedUsers { message } => {
+                    write!(f, "{}{} for {}", label, "UsersBlacklisted", message)
                 }
             }
         }
