@@ -1,16 +1,19 @@
 package near
 
 import (
+	"context"
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
-	"crypto/ed25519"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/haltingstate/secp256k1-go"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common"
 	"github.com/icon-project/icon-bridge/common/crypto"
@@ -210,7 +213,7 @@ func GetWalletFromPrivKey(privKey string) (*wallet.NearWallet, error) {
 	}
 
 	pKey := ed25519.PrivateKey(privBytes)
-	
+
 	wal, err := wallet.NewNearwalletFromPrivateKey(&pKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "crypto.NewFromPrivateKey ")
@@ -328,44 +331,21 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 		return
 	}
 
-	nonce, err := r.cl.GetNonce(types.NewPublicKeyFromED25519(senderWallet.PublicKey()), senderWallet.Address().String())
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	blockHash, err := r.cl.GetLatestBlockHash()
-	if err != nil {
-		fmt.Println(err)
-	}
 	actions := []types.Action{
 		{
 			Enum: 2,
 			FunctionCall: types.FunctionCall{
 				// MethodName: method,
 				// Args:    data,
-				Gas:     r.stepLimit[chain.DefaultGasLimit],
+				Gas:     r.gasLimit[chain.DefaultGasLimit],
 				Deposit: *big.NewInt(0),
 			},
 		},
 	}
-	param := types.Transaction{
-		SignerId:   types.AccountId(senderWallet.Address().ID()),
-		PublicKey:  types.NewPublicKeyFromED25519(senderWallet.PublicKey()),
-		Nonce:      int(nonce),
-		ReceiverId: types.AccountId(recepientAddress),
-		BlockHash:  blockHash,
-		Actions:    actions,
-		Txid:       blockHash,
-	}
-	if err = SignTransactionParam(senderWallet, &param); err != nil {
-		err = errors.Wrap(err, "SignTransactionParam ")
-		return
-	}
-	txH, err := r.cl.SendTransaction(param.Signature.Base58Encode())
-	if err != nil {
-		err = errors.Wrap(err, "SendTransaction ")
-		return
-	}
+
+	newRelay := near.NewRelayTransaction(context.Background(), senderWallet, recepientAddress, r.cl, actions)
+	newRelay.Send(context.Background())
+	txH := newRelay.ID().(types.CryptoHash)
 	txHash = hexutil.Encode(txH[:])
 	return
 }
@@ -392,7 +372,7 @@ func (r *requestAPI) transferNativeCrossChain(senderKey, recepientAddress string
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	return r.transactWithContract(senderKey, caddr, amount, args, "transferNativeCoin", int64(r.stepLimit[chain.ApproveTokenInterChainGasLimit]))
+	return r.transactWithContract(senderKey, caddr, amount, args, "transferNativeCoin", int64(r.gasLimit[chain.ApproveTokenInterChainGasLimit]))
 }
 
 func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddress string, amount *big.Int) (string, error) {
@@ -401,7 +381,7 @@ func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddr
 	if !ok {
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
-	return r.transactWithContract(senderKey, btsaddr, big.NewInt(0), args, "transfer", int64(r.stepLimit[chain.ApproveTokenInterChainGasLimit]))
+	return r.transactWithContract(senderKey, btsaddr, big.NewInt(0), args, "transfer", int64(r.gasLimit[chain.ApproveTokenInterChainGasLimit]))
 }
 
 func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
@@ -426,14 +406,14 @@ func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddre
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 
-	txnHash, err = r.transactWithContract(senderKey, btsaddr, nativeAmount, args, "transferBatch", int64(r.stepLimit[chain.ApproveTokenInterChainGasLimit]))
+	txnHash, err = r.transactWithContract(senderKey, btsaddr, nativeAmount, args, "transferBatch", int64(r.gasLimit[chain.ApproveTokenInterChainGasLimit]))
 	return
 }
 
 func (r *requestAPI) transactWithContract(senderKey string, contractAddress string,
-	amount *big.Int, args map[string]interface{}, method string, stepLimit int64) (txHash string, err error) {
-	var senderWallet module.Wallet
-	senderWallet, err = GetWalletFromPrivKey(senderKey)
+	amount *big.Int, args map[string]interface{}, method string, gasLimit int64) (txHash string, err error) {
+	// var senderWallet module.Wallet
+	senderWallet, err := GetWalletFromPrivKey(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
@@ -443,7 +423,7 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 		return "", err
 	}
 
-	nonce, err := r.cl.GetNonce(types.NewPublicKeyFromED25519(senderWallet.PublicKey()), senderWallet.Address().String())
+	nonce, err := r.cl.GetNonce(types.NewPublicKeyFromED25519(senderWallet.PublicKey()), senderWallet.Address())
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -457,13 +437,13 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 			FunctionCall: types.FunctionCall{
 				MethodName: method,
 				Args:       data,
-				Gas:        r.stepLimit[chain.DefaultGasLimit],
+				Gas:        r.gasLimit[chain.DefaultGasLimit],
 				Deposit:    *big.NewInt(0),
 			},
 		},
 	}
 	param := types.Transaction{
-		SignerId:   types.AccountId(senderWallet.Address().ID()),
+		SignerId:   types.AccountId(senderWallet.Address()),
 		PublicKey:  types.NewPublicKeyFromED25519(senderWallet.PublicKey()),
 		Nonce:      int(nonce),
 		ReceiverId: types.AccountId(contractAddress),
@@ -472,10 +452,10 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 		Txid:       blockHash,
 	}
 
-	if err = SignTransactionParam(senderWallet, &param); err != nil {
-		err = errors.Wrap(err, "SignTransactionParam ")
-		return
-	}
+	// if err = SignTransactionParam(senderWallet, &param); err != nil {
+	// 	err = errors.Wrap(err, "SignTransactionParam ")
+	// 	return
+	// }
 	txH, err := r.cl.SendTransaction(param.Signature.Base58Encode())
 	if err != nil {
 		err = errors.Wrap(err, "SendTransaction ")
@@ -500,13 +480,13 @@ func (r *requestAPI) getAccumulatedFees() (ret map[string]*big.Int, err error) {
 	}
 	resMap, ok := res.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("Expected type map[string]interface{} Got %T", res)
+		return nil, fmt.Errorf("expected type map[string]interface{} Got %T", res)
 	}
 	ret = map[string]*big.Int{}
 	for k, v := range resMap {
 		tmpStr, ok := v.(string)
 		if !ok {
-			return nil, fmt.Errorf("Expected type string Got %T", v)
+			return nil, fmt.Errorf("expected type string Got %T", v)
 		}
 		bal := new(big.Int)
 		bal.SetString(tmpStr[2:], 16)

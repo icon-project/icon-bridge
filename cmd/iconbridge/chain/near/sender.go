@@ -58,10 +58,10 @@ func NewSender(config SenderConfig, logger log.Logger, clients ...IClient) (*Sen
 	}
 
 	s := &Sender{
-		clients: clients,
-		wallet:  config.wallet,
-		logger:  logger,
-		source: config.source,
+		clients:     clients,
+		wallet:      config.wallet,
+		logger:      logger,
+		source:      config.source,
 		destination: config.destination,
 	}
 
@@ -156,7 +156,7 @@ func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message [
 				},
 			},
 		}
-		
+
 		return NewRelayTransaction(ctx, nearWallet, s.destination.ContractAddress(), s.client(), actions), nil
 	}
 
@@ -180,9 +180,9 @@ func NewRelayTransaction(context context.Context, wallet *wallet.NearWallet, des
 
 	return &RelayTransaction{
 		Transaction: transaction,
-		client: client,
-		wallet: wallet,
-		context: context,
+		client:      client,
+		wallet:      wallet,
+		context:     context,
 	}
 }
 

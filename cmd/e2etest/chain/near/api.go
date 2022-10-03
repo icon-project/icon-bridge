@@ -11,10 +11,10 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	common "github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
+	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/reactivex/rxgo/v2"
 
 	"github.com/icon-project/icon-bridge/common/intconv"
@@ -200,11 +200,23 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 				}
 
 			}
-
+			for _, receipt := range blockNotification.Receipts() {
+				for _, event := range receipt.Events {
+					res, evtType, err := a.par.ParseMessage(event.Message)
+					if err != nil {
+						err = nil
+						continue
+					}
+					nel := &chain.EventLogInfo{ContractAddress: a.cfg.ContractAddresses[chain.BMC], EventType: evtType, EventLog: res}
+					if a.fd.Match(nel) {
+						a.sinkChan <- nel
+					}
+				}
+			}
 			return nil
 		}); err != nil {
 			a.requester.cl.Logger().Errorf("receiveTransactions terminated: %v", err)
-			errChan <- err
+			a.errChan <- err
 		}
 	}()
 
@@ -357,40 +369,42 @@ func (a *api) GetConfigRequestEvent(evtType chain.EventLogType, hash string) (*c
 	if err != nil {
 		return nil, errors.Wrapf(err, "GetTransactionResult %v", err)
 	}
-	// // if txRes.Status != types.NewHexInt(1) {                                              // How do we check status in Near
-	// // 	return nil, errors.Wrapf(err, "Expected Status Code 1. Got %v", txRes.Status)
-	// // }
-
-	// for _, log := range txRes.ReceiptsOutcome {
-	// 	tmpRes, eventType, err := a.par.ParseTxn(&TxnEventLog{Addr: log.Addr, Indexed: log.Indexed, Data: log.Data})
-	// 	if eventType != evtType {
-	// 		continue
-	// 	}
-	// 	if err != nil {
-	// 		return nil, errors.Wrapf(err, "ParseTxn(%v) %v", eventType, err)
-	// 	}
-	// 	if eventType == chain.AddToBlacklistRequest {
-	// 		res, ok := tmpRes.(*chain.AddToBlacklistRequestEvent)
-	// 		if !ok {
-	// 			return nil, fmt.Errorf("Expected *chain.AddToBlacklistRequestEvent; Got %T", tmpRes)
-	// 		}
-	// 		return &chain.EventLogInfo{ContractAddress: string(log.Addr), EventType: eventType, EventLog: res}, nil
-	// 	} else if eventType == chain.RemoveFromBlacklistRequest {
-	// 		res, ok := tmpRes.(*chain.RemoveFromBlacklistRequestEvent)
-	// 		if !ok {
-	// 			return nil, fmt.Errorf("Expected *chain.RemoveFromBlacklistRequestEvent; Got %T", tmpRes)
-	// 		}
-	// 		return &chain.EventLogInfo{ContractAddress: string(log.Addr), EventType: eventType, EventLog: res}, nil
-	// 	} else if eventType == chain.TokenLimitRequest {
-	// 		res, ok := tmpRes.(*chain.TokenLimitRequestEvent)
-	// 		if !ok {
-	// 			return nil, fmt.Errorf("Expected *chain.TokenLimitRequestEvent; Got %T", tmpRes)
-	// 		}
-	// 		return &chain.EventLogInfo{ContractAddress: string(log.Addr), EventType: eventType, EventLog: res}, nil
-	// 	}
+	// if txRes.Status != types.NewHexInt(1) {                                              // How do we check status in Near
+	// 	return nil, errors.Wrapf(err, "Expected Status Code 1. Got %v", txRes.Status)
 	// }
 
-	return nil, fmt.Errorf("Unable to find %v; NumEventLogs %v", evtType, len(txRes.ReceiptsOutcome))
+	for _, outcome := range txRes.ReceiptsOutcome {
+		for _, log := range outcome.Outcome.Logs {
+			tmpRes, eventType, err := a.par.Parse(log)
+			if eventType != evtType {
+				continue
+			}
+			if err != nil {
+				return nil, errors.Wrapf(err, "ParseTxn(%v) %v", eventType, err)
+			}
+			if eventType == chain.AddToBlacklistRequest {
+				res, ok := tmpRes.(*chain.AddToBlacklistRequestEvent)
+				if !ok {
+					return nil, fmt.Errorf("expected *chain.AddToBlacklistRequestEvent; Got %T", tmpRes)
+				}
+				return &chain.EventLogInfo{ContractAddress: string(txRes.Transaction.ReceiverId), EventType: eventType, EventLog: res}, nil
+			} else if eventType == chain.RemoveFromBlacklistRequest {
+				res, ok := tmpRes.(*chain.RemoveFromBlacklistRequestEvent)
+				if !ok {
+					return nil, fmt.Errorf("expected *chain.RemoveFromBlacklistRequestEvent; Got %T", tmpRes)
+				}
+				return &chain.EventLogInfo{ContractAddress: string(txRes.Transaction.ReceiverId), EventType: eventType, EventLog: res}, nil
+			} else if eventType == chain.TokenLimitRequest {
+				res, ok := tmpRes.(*chain.TokenLimitRequestEvent)
+				if !ok {
+					return nil, fmt.Errorf("expected *chain.TokenLimitRequestEvent; Got %T", tmpRes)
+				}
+				return &chain.EventLogInfo{ContractAddress: string(txRes.Transaction.ReceiverId), EventType: eventType, EventLog: res}, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("unable to find %v; NumEventLogs %v", evtType, len(txRes.ReceiptsOutcome))
 }
 
 // GetFeeGatheringTerm implements chain.ChainAPI
@@ -408,7 +422,7 @@ func (a *api) GetFeeGatheringTerm() (interval uint64, err error) {
 	}
 	tmpStr, ok := res.(string)
 	if !ok {
-		return 0, fmt.Errorf("Expected type string Got %T", res)
+		return 0, fmt.Errorf("expected type string Got %T", res)
 	}
 	return hexutil.DecodeUint64(tmpStr)
 }
