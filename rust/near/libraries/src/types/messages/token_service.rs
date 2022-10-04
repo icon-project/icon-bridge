@@ -103,7 +103,7 @@ impl Encodable for TokenServiceMessage {
                 ref code,
                 ref message,
             } => {
-                let mut params = rlp::RlpStream::new_list(3);
+                let mut params = rlp::RlpStream::new_list(2);
                 params.append::<u128>(code).append::<String>(message);
                 stream.append::<u128>(&3).append(&params.out());
             }
@@ -111,7 +111,7 @@ impl Encodable for TokenServiceMessage {
                 ref code,
                 ref message,
             } => {
-                let mut params = rlp::RlpStream::new_list(3);
+                let mut params = rlp::RlpStream::new_list(2);
                 params.append::<u128>(code).append::<String>(message);
                 stream.append::<u128>(&4).append(&params.out());
             }
