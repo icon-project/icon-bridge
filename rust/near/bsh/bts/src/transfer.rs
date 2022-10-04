@@ -274,6 +274,8 @@ impl BtpTokenService {
             });
         }
 
+        self.check_for_transfer_restriction(&receiver_id, assets)?;
+
         coins.iter().for_each(|(index, coin_id, coin)| {
             if coin.network() != &self.network {
                 self.mint(
@@ -365,5 +367,20 @@ impl BtpTokenService {
         }
 
         U128::from(0)
+    }
+    
+    fn check_for_transfer_restriction(
+        &self,
+        user: &AccountId,
+        assets: &Vec<TransferableAsset>,
+    ) -> Result<(), BshError> {
+        self.ensure_user_not_blacklisted(user)?;
+
+        assets
+            .iter()
+            .map(|asset| self.ensure_value_within_limit(&asset.name(), &asset.amount()))
+            .collect::<Result<(), BshError>>()?;
+
+        Ok(())
     }
 }

@@ -301,7 +301,9 @@ fn handle_success_response_icx_coin_external_transfer() {
 
     let icx_coin = Coin::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(icx_coin.clone(), coin_id);
 
     let btp_message = &BtpMessage::new(
@@ -514,7 +516,9 @@ fn handle_failure_response_icx_coin_external_transfer() {
 
     let icx_coin = Coin::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(icx_coin.clone(), coin_id);
 
     let btp_message = &BtpMessage::new(
@@ -638,7 +642,9 @@ fn reclaim_icx_coin() {
 
     let icx_coin = Coin::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(icx_coin.clone(), coin_id);
 
     let btp_message = &BtpMessage::new(
@@ -774,7 +780,9 @@ fn external_transfer_nil_balance() {
     );
 
     contract.register(icx_coin.clone());
-    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(icx_coin.clone(), coin_id);
     testing_env!(context(chuck(), 1000));
 
@@ -896,7 +904,9 @@ fn external_transfer_batch_nil_balance() {
     );
 
     contract.register(icx_coin.clone());
-    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(icx_coin.clone(), coin_id);
     testing_env!(context(chuck(), 1000));
 
