@@ -165,18 +165,85 @@ impl BtpTokenService {
                     match request_type {
                         BlackListType::AddToBlacklist => {
                             self.add_to_blacklist(valid_addresses);
+                            let response =
+                                TokenServiceMessage::new(TokenServiceType::ResponseBlacklist {
+                                    code: 0,
+                                    message: "AddedToBlacklist".to_string(),
+                                });
+                            self.send_response(
+                                btp_message.serial_no(),
+                                btp_message.source(),
+                                response,
+                            );
 
                             Ok(None)
                         }
                         BlackListType::RemoveFromBlacklist => {
                             match self.remove_from_blacklist(valid_addresses) {
-                                Ok(_) => Ok(None),
-                                Err(err) => Err(err),
+                                Ok(()) => {
+                                    let response = TokenServiceMessage::new(
+                                        TokenServiceType::ResponseBlacklist {
+                                            code: 0,
+                                            message: "RemovedFromBlacklist".to_string(),
+                                        },
+                                    );
+
+                                    self.send_response(
+                                        btp_message.serial_no(),
+                                        btp_message.source(),
+                                        response,
+                                    );
+
+                                    Ok(None)
+                                }
+                                Err(err) => {
+                                    let response = TokenServiceMessage::new(
+                                        TokenServiceType::ResponseBlacklist {
+                                            code: 1,
+                                            message: err.to_string(),
+                                        },
+                                    );
+                                    self.send_response(
+                                        btp_message.serial_no(),
+                                        btp_message.source(),
+                                        response,
+                                    );
+
+                                    Ok(None)
+                                }
                             }
                         }
                         BlackListType::UnhandledType => todo!(),
                     }
                 }
+                TokenServiceType::RequestChangeTokenLimit {
+                    coin_names,
+                    token_limits,
+                    network,
+                } => match self.set_token_limit(coin_names.clone(), token_limits.clone()) {
+                    Ok(()) => {
+                        let response =
+                            TokenServiceMessage::new(TokenServiceType::ResponseChangeTokenLimit {
+                                code: 0,
+                                message: "ChangeTokenLimit".to_string(),
+                            });
+
+                        self.send_response(btp_message.serial_no(), btp_message.source(), response);
+
+                        Ok(None)
+                    }
+                    Err(err) => {
+                        let response =
+                            TokenServiceMessage::new(TokenServiceType::ResponseChangeTokenLimit {
+                                code: 1,
+                                message: err.to_string(),
+                            });
+
+                        self.send_response(btp_message.serial_no(), btp_message.source(), response);
+
+                        Ok(None)
+                    }
+                },
 
                 TokenServiceType::UnknownType => {
                     log!(
