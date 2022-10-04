@@ -73,7 +73,7 @@ fn handle_transfer_mint_registered_icx() {
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
     let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
-    contract.register_coin_callback(icx_coin.clone(), coin_id);
+    contract.register_coin_callback(icx_coin.clone(), coin_id.try_into().unwrap());
 
     let coin_id = contract.coin_id(icx_coin.name()).unwrap();
 
