@@ -73,7 +73,7 @@ func newRequestAPI(cl *client, cfg *chain.Config) (req *requestAPI, err error) {
 		networkID:             cfg.NetworkID,
 		contractNameToAddress: cfg.ContractAddresses,
 		cl:                    cl,
-		gasLimit:              cfg.GasLimit,
+		gasLimit:              defaultMapForDifferentGasLimits,
 		nativeCoin:            cfg.NativeCoin,
 	}
 
@@ -330,15 +330,21 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
 	}
+	data := map[string]interface{}{
+		"coin_name":   "btp-0x1.near-NEAR",
+		"destination": recepientAddress,
+		"amount":      amount,
+	}
+	args, err := json.Marshal(data)
 
 	actions := []types.Action{
 		{
 			Enum: 2,
 			FunctionCall: types.FunctionCall{
-				// MethodName: method,
-				// Args:    data,
-				Gas:     r.gasLimit[chain.DefaultGasLimit],
-				Deposit: *big.NewInt(0),
+				MethodName: "transfer",
+				Args:       args,
+				Gas:        r.gasLimit[chain.DefaultGasLimit],
+				Deposit:    *big.NewInt(0),
 			},
 		},
 	}
