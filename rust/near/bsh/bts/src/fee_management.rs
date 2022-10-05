@@ -48,13 +48,14 @@ impl BtpTokenService {
         self.coins.set(coin_id, &coin)
     }
 
-    pub fn calculate_coin_transfer_fee(
-        &self,
-        amount: U128,
-        coin: &Asset<WrappedNativeCoin>,
-    ) -> Result<u128, String> {
-        let mut fee = (u128::from(amount) * coin.metadata().fee_numerator()) / FEE_DENOMINATOR;
-        fee.add(coin.metadata().fixed_fee()).map(|fee| *fee)
+    pub fn get_fee(&self, coin_name: String, amount: U128) -> Result<U128, String> {
+        let coin_id = self
+        .coin_id(&coin_name)
+        .map_err(|err| format!("{}", err))
+        .unwrap();
+        let coin = self.coins.get(&coin_id).unwrap();
+
+        self.calculate_coin_transfer_fee(u128::from(amount), &coin).map(|e| U128(e))
     }
 }
 
@@ -83,5 +84,14 @@ impl BtpTokenService {
             .collect::<Vec<TransferableAsset>>();
 
         self.send_request(sender_id, fee_aggregator.clone(), assets);
+    }
+
+    pub fn calculate_coin_transfer_fee(
+        &self,
+        amount: u128,
+        coin: &Asset<WrappedNativeCoin>,
+    ) -> Result<u128, String> {
+        let mut fee = (amount * coin.metadata().fee_numerator()) / FEE_DENOMINATOR;
+        fee.add(coin.metadata().fixed_fee()).map(|fee| *fee)
     }
 }
