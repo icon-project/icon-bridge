@@ -21,3 +21,6 @@
 
 # devops
 .github/ @dwdraju
+
+#rust
+/rust/ @MuhammedIrfan
