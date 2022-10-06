@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/haltingstate/secp256k1-go"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
@@ -207,10 +208,7 @@ func (r *requestAPI) callContract(contractAddress string, args map[string]interf
 }
 
 func GetWalletFromPrivKey(privKey string) (*wallet.NearWallet, error) {
-	privBytes, err := hex.DecodeString(privKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "DecodeString ")
-	}
+	privBytes := base58.Decode(privKey)
 
 	pKey := ed25519.PrivateKey(privBytes)
 
