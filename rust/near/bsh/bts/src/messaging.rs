@@ -286,11 +286,7 @@ impl BtpTokenService {
                 assets,
             ),
         );
-        self.send_message(
-            serial_no,
-            destination.network_address().unwrap(),
-            message.into(),
-        );
+        self.send_message(serial_no, destination.network_address().unwrap(), message);
     }
 
     pub fn send_response(
@@ -302,7 +298,7 @@ impl BtpTokenService {
         self.send_message(
             *serial_no.get(),
             destination.network_address().unwrap(),
-            service_message.into(),
+            service_message,
         );
     }
 
@@ -336,19 +332,19 @@ impl BtpTokenService {
         &mut self,
         serial_no: i128,
         destination_network: String,
-        message: SerializedMessage,
+        message: TokenServiceMessage,
     ) {
         ext_bmc::send_service_message(
             serial_no,
             self.name.clone(),
             destination_network,
-            message.clone(),
+            message.clone().into(),
             self.bmc.clone(),
             estimate::NO_DEPOSIT,
             estimate::GAS_FOR_SEND_SERVICE_MESSAGE,
         )
         .then(ext_self::send_service_message_callback(
-            message.clone().try_into().unwrap(),
+            message.clone(),
             serial_no,
             env::current_account_id(),
             estimate::NO_DEPOSIT,
@@ -356,6 +352,9 @@ impl BtpTokenService {
         ));
 
         #[cfg(feature = "testable")]
-        self.message.set(&(message.data().clone().into()));
+        {
+            let service_message: SerializedMessage = message.into();
+            self.message.set(&(service_message.data().clone().into()));
+        }
     }
 }

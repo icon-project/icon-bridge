@@ -266,7 +266,6 @@ impl BtpTokenService {
         coin_names: Vec<String>,
         token_limits: Vec<u128>,
     ) -> Result<(), BshError> {
-        self.assert_have_permission();
         match self.ensure_length_matches(&coin_names, &token_limits) {
             Ok(()) => {
                 let mut invalid_coins: Vec<String> = Vec::new();
