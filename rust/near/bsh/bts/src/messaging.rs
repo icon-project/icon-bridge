@@ -170,6 +170,7 @@ impl BtpTokenService {
                                     code: 0,
                                     message: "AddedToBlacklist".to_string(),
                                 });
+                                
                             self.send_response(
                                 btp_message.serial_no(),
                                 btp_message.source(),
@@ -203,6 +204,7 @@ impl BtpTokenService {
                                             message: err.to_string(),
                                         },
                                     );
+                                    
                                     self.send_response(
                                         btp_message.serial_no(),
                                         btp_message.source(),
