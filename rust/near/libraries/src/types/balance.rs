@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use crate::types::AssetId;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LookupMap;
+use near_sdk::collections::{self, LookupMap};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::AccountId;
 use near_sdk::Balance;
@@ -42,18 +44,18 @@ impl AccountBalance {
 }
 
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct Balances(LookupMap<(AccountId, AssetId), AccountBalance>);
+pub struct Balances(HashMap<(AccountId, AssetId), AccountBalance>);
 
 impl Balances {
     pub fn new() -> Self {
-        Self(LookupMap::new(b"balances".to_vec()))
+        Self(HashMap::new())
     }
 
     pub fn add(&mut self, account: &AccountId, asset_id: &AssetId) {
         if !self.contains(account, asset_id) {
             self.0.insert(
-                &(account.to_owned(), asset_id.to_owned()),
-                &AccountBalance::default(),
+                (account.to_owned(), asset_id.to_owned()),
+                AccountBalance::default(),
             );
         }
     }
@@ -64,7 +66,7 @@ impl Balances {
 
     pub fn get(&self, account: &AccountId, asset_id: &AssetId) -> Option<AccountBalance> {
         if let Some(balance) = self.0.get(&(account.to_owned(), asset_id.to_owned())) {
-            return Some(balance);
+            return Some(balance.to_owned());
         }
         None
     }
@@ -82,7 +84,29 @@ impl Balances {
         account_balance: AccountBalance,
     ) {
         self.0
-            .insert(&(account.to_owned(), asset_id.to_owned()), &account_balance);
+            .insert((account.to_owned(), asset_id.to_owned()), account_balance);
+    }
+
+    pub fn to_vec(&self) -> Vec<((AccountId, AssetId), AccountBalance)> {
+        if !self.0.is_empty() {
+            return self
+                .0
+                .clone()
+                .into_iter()
+                .map(|((accound_id, asset_id), account_balance)| {
+                    (
+                        (accound_id, asset_id),
+                        AccountBalance {
+                            deposit: account_balance.deposit(),
+                            refundable: account_balance.refundable(),
+                            locked: account_balance.locked(),
+                        },
+                    )
+                })
+                .collect();
+        }
+
+        vec![]
     }
 }
 
@@ -90,8 +114,9 @@ impl Balances {
 mod tests {
     use super::*;
     use crate::types::Math;
-    use near_sdk::AccountId;
+    use near_sdk::{env, AccountId};
     use near_sdk::{testing_env, VMContext};
+    use std::convert::TryInto;
     use std::vec;
 
     fn get_context(input: Vec<u8>, is_view: bool) -> VMContext {
@@ -123,8 +148,18 @@ mod tests {
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
             .unwrap();
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
-        let result = balances.contains(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
+        let result = balances.contains(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
         assert_eq!(result, true);
     }
 
@@ -137,22 +172,44 @@ mod tests {
             .parse::<AccountId>()
             .unwrap();
 
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
 
         let mut account_balance = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
         account_balance.deposit_mut().add(1000).unwrap();
 
         balances.set(
             &account,
-            &"ABC Token".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             account_balance,
         );
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
 
         let result = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
         assert_eq!(result.deposit(), 1000);
     }
@@ -166,10 +223,25 @@ mod tests {
             .parse::<AccountId>()
             .unwrap();
 
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
-        balances.remove(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
+        balances.remove(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
 
-        let result = balances.contains(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        let result = balances.contains(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
         assert_eq!(result, false);
     }
 
@@ -182,9 +254,19 @@ mod tests {
             .parse::<AccountId>()
             .unwrap();
 
-        balances.remove(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.remove(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
 
-        let result = balances.contains(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        let result = balances.contains(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
         assert_eq!(result, false);
     }
 
@@ -197,21 +279,38 @@ mod tests {
             .parse::<AccountId>()
             .unwrap();
 
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
 
         let mut account_balance = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
         account_balance.deposit_mut().add(1000).unwrap();
 
         balances.set(
             &account,
-            &"ABC Token".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             account_balance,
         );
 
         let result = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
         assert_eq!(result.deposit(), 1000);
     }
@@ -224,21 +323,38 @@ mod tests {
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
             .unwrap();
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
 
         let mut account_balance = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
         account_balance.deposit_mut().add(1000).unwrap();
 
         balances.set(
             &account,
-            &"ABC Token".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             account_balance,
         );
 
         let result = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
         assert_eq!(result.deposit(), 1000);
     }
@@ -251,10 +367,20 @@ mod tests {
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
             .unwrap();
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
 
         let mut account_balance = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
         account_balance.deposit_mut().add(u128::MAX).unwrap();
 
@@ -272,9 +398,19 @@ mod tests {
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
             .unwrap();
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
         let mut account_balance = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         assert_eq!(
@@ -291,22 +427,39 @@ mod tests {
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
             .unwrap();
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
 
         let mut account_balance = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         account_balance.locked_mut().add(1000).unwrap();
 
         balances.set(
             &account,
-            &"ABC Token".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             account_balance,
         );
 
         let result = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         assert_eq!(result.locked(), 1000);
@@ -321,40 +474,69 @@ mod tests {
             .parse::<AccountId>()
             .unwrap();
 
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
 
         let mut account_balance = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         account_balance.locked_mut().add(1000).unwrap();
 
         balances.set(
             &account,
-            &"ABC Token".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             account_balance,
         );
 
         let result = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         assert_eq!(result.locked(), 1000);
 
         let mut account_balance = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         account_balance.locked_mut().sub(1).unwrap();
 
         balances.set(
             &account,
-            &"ABC Token".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             account_balance,
         );
 
         let result = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         assert_eq!(result.locked(), 999);
@@ -368,22 +550,39 @@ mod tests {
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
             .unwrap();
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
 
         let mut account_balance = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         account_balance.refundable_mut().add(1000).unwrap();
 
         balances.set(
             &account,
-            &"ABC Token".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             account_balance,
         );
 
         let result = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         assert_eq!(result.refundable(), 1000);
@@ -398,40 +597,69 @@ mod tests {
             .parse::<AccountId>()
             .unwrap();
 
-        balances.add(&account, &"ABC Token".to_string().as_bytes().to_vec());
+        balances.add(
+            &account,
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
+        );
 
         let mut account_balance = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         account_balance.refundable_mut().add(1000).unwrap();
 
         balances.set(
             &account,
-            &"ABC Token".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             account_balance,
         );
 
         let result = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         assert_eq!(result.refundable(), 1000);
 
         let mut account_balance = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         account_balance.refundable_mut().sub(1).unwrap();
 
         balances.set(
             &account,
-            &"ABC Token".to_string().as_bytes().to_vec(),
+            &env::sha256("ABC Asset".to_string().as_bytes())
+                .try_into()
+                .unwrap(),
             account_balance,
         );
 
         let result = balances
-            .get(&account, &"ABC Token".to_string().as_bytes().to_vec())
+            .get(
+                &account,
+                &env::sha256("ABC Asset".to_string().as_bytes())
+                    .try_into()
+                    .unwrap(),
+            )
             .unwrap();
 
         assert_eq!(result.refundable(), 999);

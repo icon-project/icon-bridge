@@ -1,10 +1,9 @@
+use crate::types::btp_address::Network;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
-use crate::types::btp_address::Network;
 
 use super::fungible_token::AssetMetadataExtras;
-
-pub type AssetId = Vec<u8>;
+pub type AssetId = [u8; 32];
 
 pub trait AssetMetadata {
     fn name(&self) -> &String;
@@ -21,14 +20,12 @@ pub trait AssetMetadata {
 #[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize, Debug, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Asset<T: AssetMetadata> {
-    pub metadata: T
+    pub metadata: T,
 }
 
-impl<T: AssetMetadata> Asset<T>  {
+impl<T: AssetMetadata> Asset<T> {
     pub fn new(asset: T) -> Self {
-        Self {
-            metadata: asset
-        }
+        Self { metadata: asset }
     }
 
     pub fn name(&self) -> &String {
@@ -42,7 +39,7 @@ impl<T: AssetMetadata> Asset<T>  {
     pub fn symbol(&self) -> &String {
         self.metadata.symbol()
     }
-    
+
     pub fn metadata(&self) -> &T {
         &self.metadata
     }
@@ -51,8 +48,7 @@ impl<T: AssetMetadata> Asset<T>  {
         &mut self.metadata
     }
 
-    pub fn extras(&self) -> &Option<AssetMetadataExtras>{
+    pub fn extras(&self) -> &Option<AssetMetadataExtras> {
         &self.metadata.extras()
     }
 }
-
