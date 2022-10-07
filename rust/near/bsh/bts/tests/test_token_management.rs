@@ -1,10 +1,13 @@
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 
 use bts::{BtpTokenService, Coin};
 use near_sdk::{env, serde_json::to_value, testing_env, AccountId, PromiseResult, VMContext};
 pub mod accounts;
 use accounts::*;
-use libraries::types::{Asset, AssetItem, WrappedNativeCoin};
+use libraries::types::{
+    messages::{BtpMessage, SerializedMessage},
+    Asset, AssetItem, WrappedNativeCoin,
+};
 mod token;
 use token::*;
 
