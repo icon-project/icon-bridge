@@ -11,7 +11,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
-	common "github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/reactivex/rxgo/v2"
@@ -166,9 +165,6 @@ func (a *api) Reclaim(coinName string, ownerKey string, amount *big.Int) (txnHas
 
 // Subscribe implements chain.ChainAPI
 func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo, errChan chan error, err error) {
-	var opts common.SubscribeOptions
-	opts.Seq++
-
 	height, _ := a.requester.cl.GetLatestBlockHeight()
 
 	go func() {
