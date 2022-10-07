@@ -164,8 +164,8 @@ macro_rules! impl_encodable_for_u {
 					if v == 0 {
 						vec![0]
 					} else {
-						let mut buffer: Vec<u8> = vec![0_u8; 9];
-						for i in (0..=8).rev() {
+						let mut buffer: Vec<u8> = vec![0_u8; 16];
+						for i in (0..=15).rev() {
 							let b: u8 = (v & 0xff) as u8;
 							buffer[i] = b;
 							v = v >> 8;
