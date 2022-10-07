@@ -1,6 +1,8 @@
 package near
 
 import (
+	"context"
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -8,12 +10,9 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/haltingstate/secp256k1-go"
-	gocrypto "github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/common/wallet"
-	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
@@ -21,13 +20,14 @@ import (
 	"github.com/icon-project/icon-bridge/common/crypto"
 	"github.com/icon-project/icon-bridge/common/errors"
 	"github.com/icon-project/icon-bridge/common/intconv"
+	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
 type requestAPI struct {
 	contractNameToAddress map[chain.ContractName]string
 	networkID             string
-	cl                    near.IClient
-	stepLimit             int64
+	cl                    *client
+	gasLimit              map[chain.GasLimitType]uint64
 	nativeCoin            string
 	wrappedCoinsAddr      map[string]string
 	nativeTokensAddr      map[string]string
@@ -61,18 +61,30 @@ type coinNames struct {
 	Network string `json:"network"`
 }
 
-func newRequestAPI(cl near.IClient, cfg *chain.Config) (req *requestAPI, err error) {
+func newRequestAPI(cl *client, cfg *chain.Config) (req *requestAPI, err error) {
+	var defaultMapForDifferentGasLimits = map[chain.GasLimitType]uint64{
+		chain.DefaultGasLimit: 300000000000000,
+	}
+
 	if !strings.Contains(cfg.NetworkID, ".near") {
 		return nil, fmt.Errorf("expected cfg.NetwrkID=0xnid.near Got %v", cfg.NetworkID)
 	}
+
 	req = &requestAPI{
-		networkID:             strings.Split(cfg.NetworkID, ".")[0],
+		networkID:             cfg.NetworkID,
 		contractNameToAddress: cfg.ContractAddresses,
 		cl:                    cl,
-		stepLimit:             cfg.GasLimit,
+		gasLimit:              defaultMapForDifferentGasLimits,
 		nativeCoin:            cfg.NativeCoin,
 	}
+
 	req.nativeTokensAddr, req.wrappedCoinsAddr, err = req.getCoinAddresses(cfg.NativeTokens, cfg.WrappedCoins)
+	for k, v := range defaultMapForDifferentGasLimits {
+		if _, ok := req.gasLimit[k]; !ok {
+			req.gasLimit[k] = v
+		}
+	}
+
 	return req, err
 }
 
@@ -106,7 +118,6 @@ func (r *requestAPI) getCoinAddresses(nativeTokens, wrappedCoins []string) (toke
 		}
 		coinNames = append(coinNames, c)
 	}
-	println(coinNames)
 	exists := func(arr []string, val string) bool {
 		for _, a := range arr {
 			if a == val {
@@ -191,82 +202,17 @@ func (r *requestAPI) callContract(contractAddress string, args map[string]interf
 	var res types.CallFunctionResponse
 	res, err = r.cl.Api().CallFunction(param)
 	if err != nil {
-		return nil, errors.Wrap(err, "Call ")
+		return nil, errors.Wrap(err, "Call")
 	}
 	return res, nil
 }
 
-func (r *requestAPI) approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
-	if addr, ok := r.nativeTokensAddr[coinName]; ok {
-		txnHash, err = r.approveToken(coinName, ownerKey, amount, addr)
-	} else if coinName == r.nativeCoin {
-		err = fmt.Errorf("native Coin %v does not need to be approved", coinName)
-	} else if addr, ok := r.wrappedCoinsAddr[coinName]; ok {
-		txnHash, err = r.approveCrossNativeCoin(coinName, ownerKey, amount, addr)
-	} else {
-		err = fmt.Errorf("coin %v not amongst registered coins", coinName)
-	}
-	return
-}
+func GetWalletFromPrivKey(privKey string) (*wallet.NearWallet, error) {
+	privBytes := base58.Decode(privKey)
 
-func (r *requestAPI) approveToken(coinName, senderKey string, amount *big.Int, caddr string) (hash string, err error) {
-	btsAddr, ok := r.contractNameToAddress[chain.BTS]
-	if !ok {
-		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
-	}
-	arg1 := map[string]interface{}{"_to": btsAddr, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(senderKey, caddr, big.NewInt(0), arg1, "transfer")
-}
+	pKey := ed25519.PrivateKey(privBytes)
 
-func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, amount *big.Int, coinAddress string) (approveTxnHash string, err error) {
-	btsaddr, ok := r.contractNameToAddress[chain.BTS]
-	if !ok {
-		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
-		return
-	}
-	approveArgs := map[string]interface{}{"spender": btsaddr, "amount": intconv.FormatBigInt(amount)}
-	approveTxnHash, err = r.transactWithContract(ownerKey, coinAddress, big.NewInt(0), approveArgs, "approve")
-	if err != nil {
-		err = errors.Wrapf(err, "transactWithContract %v", coinAddress)
-		return
-	}
-	return
-}
-
-func SignTransactionParam(wallet module.Wallet, param *types.Transaction) error {
-	js, err := json.Marshal(param)
-	if err != nil {
-		return errors.Wrap(err, "jsonMarshal ")
-	}
-	var txSerializeExcludes = map[string]bool{"signature": true}
-	bs, err := transaction.SerializeJSON(js, nil, txSerializeExcludes)
-	if err != nil {
-		return errors.Wrap(err, "tx.SerializeJSON ")
-	}
-	bs = append([]byte("icx_sendTransaction."), bs...)
-	sig, err := wallet.Sign(gocrypto.SHA3Sum256(bs))
-	if err != nil {
-		return errors.Wrap(err, "wallet.Sign ")
-	}
-	var sign types.Signature
-	err = json.Unmarshal(sig, &sign)
-	if err != nil {
-		fmt.Println(err)
-	}
-	param.Signature = sign
-	return nil
-}
-
-func GetWalletFromPrivKey(privKey string) (module.Wallet, error) {
-	privBytes, err := hex.DecodeString(privKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "DecodeString ")
-	}
-	pKey, err := gocrypto.ParsePrivateKey(privBytes)
-	if err != nil {
-		return nil, errors.Wrap(err, "crypto.ParsePrivateKey ")
-	}
-	wal, err := wallet.NewFromPrivateKey(pKey)
+	wal, err := wallet.NewNearwalletFromPrivateKey(&pKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "crypto.NewFromPrivateKey ")
 	}
@@ -355,7 +301,7 @@ func (r *requestAPI) reclaim(coinName string, ownerKey string, amount *big.Int) 
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 	arg1 := map[string]interface{}{"_coinName": coinName, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), arg1, "reclaim")
+	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), arg1, "reclaim", int64(r.gasLimit[chain.DefaultGasLimit]))
 }
 
 func (r *requestAPI) transferIntraChain(coinName, senderKey, recepientAddress string, amount *big.Int) (txnHash string, err error) {
@@ -373,55 +319,37 @@ func (r *requestAPI) transferIntraChain(coinName, senderKey, recepientAddress st
 
 func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount *big.Int, caddr string) (txHash string, err error) {
 	args := map[string]interface{}{"_to": recepientAddress, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(senderKey, caddr, big.NewInt(0), args, "transfer")
+	return r.transactWithContract(senderKey, caddr, big.NewInt(0), args, "transfer", int64(r.gasLimit[chain.DefaultGasLimit]))
 }
 
 func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount *big.Int) (txHash string, err error) {
-	var senderWallet module.Wallet
-	senderWallet, err = GetWalletFromPrivKey(senderKey)
+	senderWallet, err := GetWalletFromPrivKey(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
 	}
-
-	nonce, err := r.cl.GetNonce(types.NewPublicKeyFromED25519(senderWallet.PublicKey()), senderWallet.Address().String())
-	if err != nil {
-		fmt.Println(err)
+	data := map[string]interface{}{
+		"coin_name":   "btp-0x1.near-NEAR",
+		"destination": recepientAddress,
+		"amount":      amount.String(),
 	}
+	args, err := json.Marshal(data)
 
-	blockHash, err := r.cl.GetLatestBlockHash()
-	if err != nil {
-		fmt.Println(err)
-	}
 	actions := []types.Action{
 		{
 			Enum: 2,
 			FunctionCall: types.FunctionCall{
-				// MethodName: method,
-				// Args:    data,
-				Gas:     uint64(r.stepLimit),
-				Deposit: *big.NewInt(0),
+				MethodName: "transfer",
+				Args:       args,
+				Gas:        r.gasLimit[chain.DefaultGasLimit],
+				Deposit:    *big.NewInt(0),
 			},
 		},
 	}
-	param := types.Transaction{
-		SignerId:   types.AccountId(senderWallet.Address().ID()),
-		PublicKey:  types.NewPublicKeyFromED25519(senderWallet.PublicKey()),
-		Nonce:      int(nonce),
-		ReceiverId: types.AccountId(recepientAddress),
-		BlockHash:  blockHash,
-		Actions:    actions,
-		Txid:       blockHash,
-	}
-	if err = SignTransactionParam(senderWallet, &param); err != nil {
-		err = errors.Wrap(err, "SignTransactionParam ")
-		return
-	}
-	txH, err := r.cl.SendTransaction(param.Signature.Base58Encode())
-	if err != nil {
-		err = errors.Wrap(err, "SendTransaction ")
-		return
-	}
+
+	newRelay := near.NewRelayTransaction(context.Background(), senderWallet, recepientAddress, r.cl, actions)
+	newRelay.Send(context.Background())
+	txH := newRelay.ID().(types.CryptoHash)
 	txHash = hexutil.Encode(txH[:])
 	return
 }
@@ -448,7 +376,7 @@ func (r *requestAPI) transferNativeCrossChain(senderKey, recepientAddress string
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	return r.transactWithContract(senderKey, caddr, amount, args, "transferNativeCoin")
+	return r.transactWithContract(senderKey, caddr, amount, args, "transferNativeCoin", int64(r.gasLimit[chain.ApproveTokenInterChainGasLimit]))
 }
 
 func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddress string, amount *big.Int) (string, error) {
@@ -457,7 +385,7 @@ func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddr
 	if !ok {
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
-	return r.transactWithContract(senderKey, btsaddr, big.NewInt(0), args, "transfer")
+	return r.transactWithContract(senderKey, btsaddr, big.NewInt(0), args, "transfer", int64(r.gasLimit[chain.ApproveTokenInterChainGasLimit]))
 }
 
 func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
@@ -482,62 +410,71 @@ func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddre
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 
-	txnHash, err = r.transactWithContract(senderKey, btsaddr, nativeAmount, args, "transferBatch")
+	txnHash, err = r.transactWithContract(senderKey, btsaddr, nativeAmount, args, "transferBatch", int64(r.gasLimit[chain.ApproveTokenInterChainGasLimit]))
 	return
 }
 
 func (r *requestAPI) transactWithContract(senderKey string, contractAddress string,
-	amount *big.Int, args map[string]interface{}, method string) (txHash string, err error) {
-	var senderWallet module.Wallet
-	senderWallet, err = GetWalletFromPrivKey(senderKey)
+	amount *big.Int, args map[string]interface{}, method string, gasLimit int64) (txHash string, err error) {
+	// var senderWallet module.Wallet
+	senderWallet, err := GetWalletFromPrivKey(senderKey)
 	if err != nil {
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
 	}
-	data, err := json.Marshal(args)
-	if err != nil {
-		return "", err
+	dstAddr := args["_to"]
+	data := map[string]interface{}{
+		"coin_name":   "btp-0x1.near-NEAR",
+		"destination": dstAddr,
+		"amount":      amount.String(),
 	}
+	args1, err := json.Marshal(data)
 
-	nonce, err := r.cl.GetNonce(types.NewPublicKeyFromED25519(senderWallet.PublicKey()), senderWallet.Address().String())
-	if err != nil {
-		fmt.Println(err)
-	}
-	blockHash, err := r.cl.GetLatestBlockHash()
-	if err != nil {
-		fmt.Println(err)
-	}
 	actions := []types.Action{
 		{
 			Enum: 2,
 			FunctionCall: types.FunctionCall{
-				MethodName: method,
-				Args:       data,
-				Gas:        uint64(r.stepLimit),
+				MethodName: "transfer",
+				Args:       args1,
+				Gas:        r.gasLimit[chain.DefaultGasLimit],
 				Deposit:    *big.NewInt(0),
 			},
 		},
 	}
-	param := types.Transaction{
-		SignerId:   types.AccountId(senderWallet.Address().ID()),
-		PublicKey:  types.NewPublicKeyFromED25519(senderWallet.PublicKey()),
-		Nonce:      int(nonce),
-		ReceiverId: types.AccountId(contractAddress),
-		BlockHash:  blockHash,
-		Actions:    actions,
-		Txid:       blockHash,
-	}
 
-	if err = SignTransactionParam(senderWallet, &param); err != nil {
-		err = errors.Wrap(err, "SignTransactionParam ")
+	newRelay := near.NewRelayTransaction(context.Background(), senderWallet, contractAddress, r.cl, actions)
+	newRelay.Send(context.Background())
+	txH := newRelay.ID().(types.CryptoHash)
+	txHash = txH.Base58Encode()
+	return
+
+}
+
+func (r *requestAPI) getAccumulatedFees() (ret map[string]*big.Int, err error) {
+	btsAddr, ok := r.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	txH, err := r.cl.SendTransaction(param.Signature.Base58Encode())
+	res, err := r.callContract(btsAddr, map[string]interface{}{}, "accumulated_fees")
 	if err != nil {
-		err = errors.Wrap(err, "SendTransaction ")
-		return
+		return nil, errors.Wrap(err, "callContract getAccumulatedFees ")
+	} else if res == nil {
+		return nil, errors.New("callContract getAccumulatedFees returned nil value ")
 	}
-
-	txHash = hexutil.Encode(txH[:])
+	resMap, ok := res.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("expected type map[string]interface{} Got %T", res)
+	}
+	ret = map[string]*big.Int{}
+	for k, v := range resMap {
+		tmpStr, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("expected type string Got %T", v)
+		}
+		bal := new(big.Int)
+		bal.SetString(tmpStr[2:], 16)
+		ret[k] = bal
+	}
 	return
 }

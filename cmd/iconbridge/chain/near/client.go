@@ -6,17 +6,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"net/http"
+	"net/url"
+	"strconv"
+	"time"
+
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/near/borsh-go"
 	"github.com/reactivex/rxgo/v2"
-	"math/big"
-	"net/http"
-	"net/url"
-	"strconv"
-	"time"
 )
 
 const BmcContractMessageStateKey = "bWVzc2FnZQ=="
@@ -38,6 +39,7 @@ type IApi interface {
 	BroadcastTxAsync(param interface{}) (response types.CryptoHash, err error)
 	CallFunction(param interface{}) (response types.CallFunctionResponse, err error)
 	Changes(param interface{}) (response types.ContractStateChange, err error)
+	Chunk(param interface{}) (response types.ChunkHeader, err error)
 	LightClientProof(param interface{}) (response types.ReceiptProof, err error)
 	Status(param interface{}) (response types.ChainStatus, err error)
 	Transaction(param interface{}) (response types.TransactionResult, err error)
@@ -59,6 +61,9 @@ type IClient interface {
 	Logger() log.Logger
 	MonitorBlocks(height uint64, source string, concurrency uint, callback func(rxgo.Observable) error, subClient func() IClient) error
 	SendTransaction(payload string) (*types.CryptoHash, error)
+	GetLatestBlockHeight() (int64, error)
+	MonitorBlockHeight(offset int64) rxgo.Observable
+	IsMonitorClosed() bool
 }
 
 func (c *Client) CloseMonitor() {
@@ -292,6 +297,10 @@ func (c *Client) Logger() log.Logger {
 	return c.logger
 }
 
+func (c *Client) IsMonitorClosed() bool {
+	return c.isMonitorClosed
+}
+
 func (c *Client) MonitorBlockHeight(offset int64) rxgo.Observable {
 	channel := make(chan rxgo.Item)
 	go func(offset int64) {
@@ -372,7 +381,7 @@ func NewClient(endpoint string, logger log.Logger) (IClient, error) {
 		logger:          logger,
 		isMonitorClosed: false,
 		api: &api{
-			host: url.Host,
+			host:   url.Host,
 			Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: transport}, url.String()),
 		},
 	}, nil
@@ -399,7 +408,7 @@ func newClients(urls []string, logger log.Logger) ([]IClient, error) {
 
 func (c *Client) SendTransaction(payload string) (*types.CryptoHash, error) {
 	param := []string{payload}
-	
+
 	txId, err := c.api.BroadcastTxAsync(param)
 	if err != nil {
 		return nil, err
