@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use bts::{BtpTokenService, Coin};
 use near_sdk::{env, serde_json::to_value, testing_env, AccountId, PromiseResult, VMContext};
 pub mod accounts;
@@ -54,7 +56,9 @@ fn register_token() {
     );
     let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
-    let coin_id = env::sha256(baln.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(baln.clone(), coin_id);
 
     let result = contract.coins();
@@ -94,7 +98,9 @@ fn register_existing_token() {
     );
     let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
-    let coin_id = env::sha256(baln.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(baln.clone(), coin_id);
 
     contract.register(baln.clone());
@@ -118,9 +124,7 @@ fn register_token_permission() {
 }
 
 #[test]
-#[should_panic(
-    expected = "BSHRevertNotExistsToken: ICON"
-)]
+#[should_panic(expected = "BSHRevertNotExistsToken: ICON")]
 fn get_non_exist_token_id() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
     testing_env!(context(alice(), 0));
@@ -131,7 +135,10 @@ fn get_non_exist_token_id() {
         "0x1.near".into(),
         nativecoin,
     );
-    let coin_id = contract.coin_id("ICON").map_err(|err| format!("{}", err)).unwrap();
+    let coin_id = contract
+        .coin_id("ICON")
+        .map_err(|err| format!("{}", err))
+        .unwrap();
 }
 
 #[test]
@@ -153,10 +160,12 @@ fn get_registered_token_id() {
     );
     let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
-    let coin_id = env::sha256(baln.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(baln.clone(), coin_id);
 
     let token_id = contract.coin_id("BALN").unwrap();
-    let expected = env::sha256(baln.name().as_bytes());
+    let expected: [u8; 32] = env::sha256(baln.name().as_bytes()).try_into().unwrap();
     assert_eq!(token_id, expected)
 }
