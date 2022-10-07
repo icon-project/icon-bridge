@@ -28,6 +28,13 @@ const (
 	defaultGetTxTimeout  = 15 * time.Second
 )
 
+type SenderConfig struct {
+	source      chain.BTPAddress
+	destination chain.BTPAddress
+	options     types.SenderOptions
+	wallet      wallet.Wallet
+}
+
 type Sender struct {
 	clients     []IClient
 	source      chain.BTPAddress
@@ -37,40 +44,36 @@ type Sender struct {
 	options     types.SenderOptions
 }
 
-func NewSender(source, destination chain.BTPAddress, urls []string, wallet wallet.Wallet, options json.RawMessage, logger log.Logger) (chain.Sender, error) {
-	if len(urls) == 0 {
-		return nil, fmt.Errorf("empty urls: %v", urls)
-	}
-
-	sender := &Sender{
-		clients:     newClients(urls, logger),
-		source:      source,
-		destination: destination,
-		wallet:      wallet,
-		logger:      logger,
-	}
-
-	if err := json.Unmarshal(options, &sender.options); err != nil {
-		logger.Panicf("fail to unmarshal options:%#v err:%+v", options, err)
+func senderFactory(source, destination chain.BTPAddress, urls []string, wallet wallet.Wallet, opt json.RawMessage, logger log.Logger) (chain.Sender, error) {
+	var options types.SenderOptions
+	clients, err := newClients(urls, logger)
+	if err != nil {
 		return nil, err
 	}
 
-	return sender, nil
-}
-
-func newMockSender(source, destination chain.BTPAddress, client *Client, wallet wallet.Wallet, options types.SenderOptions, logger log.Logger) (*Sender, error) {
-	clients := make([]IClient, 0)
-	clients = append(clients, client)
-	sender := &Sender{
-		clients:     clients,
-		source:      source,
-		destination: destination,
-		wallet:      wallet,
-		logger:      logger,
-		options:     options,
+	if err := json.Unmarshal(opt, &options); err != nil {
+		logger.Panicf("fail to unmarshal options:%#v err:%+v", opt, err)
+		return nil, err
 	}
 
-	return sender, nil
+	return NewSender(SenderConfig{source, destination, options, wallet}, logger, clients...)
+}
+
+func NewSender(config SenderConfig, logger log.Logger, clients ...IClient) (*Sender, error) {
+	if len(clients) == 0 {
+		return nil, fmt.Errorf("nil clients")
+	}
+
+	s := &Sender{
+		clients:     clients,
+		wallet:      config.wallet,
+		logger:      logger,
+		source:      config.source,
+		destination: config.destination,
+		options:     config.options,
+	}
+
+	return s, nil
 }
 
 func (s *Sender) client() IClient {
@@ -113,8 +116,6 @@ func (s *Sender) Segment(
 
 func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message []byte) (*RelayTransaction, error) {
 	if nearWallet, Ok := (s.wallet).(*wallet.NearWallet); Ok {
-		accountId := nearWallet.Address()
-
 		relayMessage := struct {
 			Source  string `json:"source"`
 			Message string `json:"message"`
@@ -139,31 +140,33 @@ func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message [
 			},
 		}
 
-		transaction := types.Transaction{
-			SignerId:   types.AccountId(accountId),
-			ReceiverId: types.AccountId(s.destination.ContractAddress()),
-			PublicKey:  types.NewPublicKeyFromED25519(*nearWallet.Pkey),
-			Actions:    actions,
-		}
-
-		return &RelayTransaction{
-			Source:      prev,
-			Message:     message,
-			Transaction: transaction,
-			client:      s.client(),
-			wallet:      nearWallet,
-		}, nil
+		return NewRelayTransaction(ctx, nearWallet, s.destination.ContractAddress(), s.client(), actions), nil
 	}
+
 	return nil, fmt.Errorf("failed to cast wallet")
 }
 
 type RelayTransaction struct {
-	Source      string `json:"source"`
-	Message     []byte `json:"message"`
 	Transaction types.Transaction
 	client      IClient
 	wallet      *wallet.NearWallet
 	context     context.Context
+}
+
+func NewRelayTransaction(context context.Context, wallet *wallet.NearWallet, destination string, client IClient, actions []types.Action) *RelayTransaction {
+	transaction := types.Transaction{
+		SignerId:   types.AccountId(wallet.Address()),
+		ReceiverId: types.AccountId(destination),
+		PublicKey:  types.NewPublicKeyFromED25519(*wallet.Pkey),
+		Actions:    actions,
+	}
+
+	return &RelayTransaction{
+		Transaction: transaction,
+		client:      client,
+		wallet:      wallet,
+		context:     context,
+	}
 }
 
 func (relayTx *RelayTransaction) ID() interface{} {
@@ -204,7 +207,7 @@ func (relayTx *RelayTransaction) Receipt(ctx context.Context) (blockHeight uint6
 }
 
 func (relayTx *RelayTransaction) Send(ctx context.Context) (err error) {
-	relayTx.client.Logger().WithFields(log.Fields{"prev": relayTx.Source}).Debug("handleRelayMessage: send tx")
+	relayTx.client.Logger().WithFields(log.Fields{"signer": relayTx.Transaction.SignerId}).Debug("prepare tx")
 	_ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeout)
 	defer cancel()
 
@@ -232,7 +235,7 @@ func (relayTx *RelayTransaction) Send(ctx context.Context) (err error) {
 	}
 
 	relayTx.Transaction.Txid = *txId
-	relayTx.client.Logger().WithFields(log.Fields{"tx": txId.Base58Encode()}).Debug("handleRelayMessage: tx sent")
+	relayTx.client.Logger().WithFields(log.Fields{"tx": txId.Base58Encode()}).Debug("tx sent")
 
 	return nil
 }

@@ -25,10 +25,13 @@ func TestNearSender(t *testing.T) {
 						api: testData.MockApi,
 					}
 
-					links, Ok := (testData.Input).([]chain.BTPAddress)
+					input, Ok := (testData.Input).(struct {
+						Source      chain.BTPAddress
+						Destination chain.BTPAddress
+					})
 					assert.True(f, Ok)
 
-					sender, err := newMockSender(links[1], links[0], client, nil, types.SenderOptions{}, nil)
+					sender, err := NewSender(SenderConfig{source: input.Source, destination: input.Destination}, log.New(), client)
 					assert.Nil(f, err)
 
 					status, err := sender.Status(context.Background())
@@ -65,10 +68,10 @@ func TestNearSender(t *testing.T) {
 
 					privateKeyBytes := base58.Decode(input.PrivateKey)
 					privateKey := ed25519.PrivateKey(privateKeyBytes)
-					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
+					wallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
 
 					assert.NoError(f, err)
-					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, types.SenderOptions{}, log.New())
+					sender, err := NewSender(SenderConfig{source: input.Source, destination: input.Destination, wallet: wallet}, log.New(), client)
 					assert.Nil(f, err)
 
 					relayTx, err := sender.newRelayTransaction(context.Background(), "", []byte{})
@@ -109,10 +112,10 @@ func TestNearSender(t *testing.T) {
 
 					privateKeyBytes := base58.Decode(input.PrivateKey)
 					privateKey := ed25519.PrivateKey(privateKeyBytes)
-					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
+					wallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
 
 					assert.NoError(f, err)
-					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, types.SenderOptions{}, log.New())
+					sender, err := NewSender(SenderConfig{source: input.Source, destination: input.Destination, wallet: wallet}, log.New(), client)
 					assert.Nil(f, err)
 
 					relayTx, err := sender.newRelayTransaction(context.Background(), "", []byte{})
@@ -156,10 +159,10 @@ func TestNearSender(t *testing.T) {
 
 					privateKeyBytes := base58.Decode(input.PrivateKey)
 					privateKey := ed25519.PrivateKey(privateKeyBytes)
-					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
+					wallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
 
 					assert.NoError(f, err)
-					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, types.SenderOptions{}, log.New())
+					sender, err := NewSender(SenderConfig{source: input.Source, destination: input.Destination, wallet: wallet}, log.New(), client)
 					assert.Nil(f, err)
 
 					balance, _, err := sender.Balance(context.Background())
@@ -198,10 +201,9 @@ func TestNearSender(t *testing.T) {
 					privateKeyBytes := base58.Decode(input.PrivateKey)
 					privateKey := ed25519.PrivateKey(privateKeyBytes)
 					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
-
 					require.NoError(f, err)
 
-					sender, err := newMockSender(input.Source, input.Destination, client, nearWallet, input.Options, log.New())
+					sender, err := NewSender(SenderConfig{source: input.Source, destination: input.Destination, wallet: nearWallet, options: input.Options}, log.New(), client)
 					require.NoError(f, err)
 
 					_, newMsg, err := sender.Segment(context.Background(), input.Message)
