@@ -100,7 +100,6 @@ impl BtpTokenService {
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
                 let log = json!(
                 {
-
                     "event": "Mint",
                     "code": "0",
                     "amount": amount.to_string(),
@@ -118,7 +117,6 @@ impl BtpTokenService {
 
                 let log = json!(
                 {
-
                     "event": "Mint",
                     "code": "1",
                     "amount": amount.to_string(),
@@ -251,7 +249,6 @@ impl BtpTokenService {
         self.balances.add(&env::current_account_id(), &coin_id);
         let log = json!(
         {
-
             "event": "Register",
             "code": "0",
             "token_name": coin.name(),
