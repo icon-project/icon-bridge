@@ -101,6 +101,22 @@ NEAR_ENV=testnet near call <NEP141 Contract> ft_transfer_call '{"receiver_id": "
 NEAR_ENV=testnet near call <BTS> withdraw '{"coin_name": "<COIN NAME>", "amount":"<Amount in lowest Denomination>"}' --amount <1 yoctoNEAR in highest Denomination ie 0.000000000000000000000001> --gas 300000000000000 --accountId <ACCOUNT ID>
 ```
 
+### Fee
+
+#### Get Fee
+**Method** 
+- get_fee
+
+| Parameters | Type | Info |
+|:---------|:--------|:--------|
+| coin_name | string |  |
+| amount | string |  |
+
+**CLI Command** 
+```console
+NEAR_ENV=testnet near view <BTS> get_fee '{"coin_name": "<Coin Name>", "amount": "<Amount in lowest Denomination, For NEAR in yoctoNEAR ie 1 NEAR = 1^24 yoctoNEAR>"}'
+```
+
 ### Transfer
 **Method** 
 - transfer
@@ -121,8 +137,9 @@ NEAR_ENV=testnet near call <BTS> transfer '{"coin_name": "<Coin Name>", "destina
 
 ### Transfer NEAR to Cross-Chain 
 1. Deposit NEAR to BTS [here](#deposit-near-to-bts)
-2. Transfer [here](#transfer)
-3. Check locked balance for the transfered amount [here](#balance)
+2. Query Transfer Fee [here] (#get-fee)
+3. Transfer [here](#transfer)
+4. Check locked balance for the transfered amount [here](#balance)
 
 ### Receiving NEAR from Cross-Chain
 1. Check usable balance amount to withdraw [here](#balance)
@@ -134,8 +151,9 @@ NEAR_ENV=testnet near state <ACCOUNT ID>
 
 ### Transfer Cross-Chain Native Coins to Cross-Chain 
 1. Deposit Cross-Chain Native Coin to BTS [here](#deposit-cross-chain-native-coin-to-bts)
-2. Transfer [here](#transfer)
-3. Check locked Balance for the transfered amount [here](#locked-balance)
+2. Query Transfer Fee [here] (#get-fee)
+3. Transfer [here](#transfer)
+4. Check locked Balance for the transfered amount [here](#locked-balance)
 
 ### Receiving Cross-Chain from Cross-Chain
 1. Check usable balance amount to withdraw [here](#usable-balance)
