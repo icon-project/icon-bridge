@@ -266,14 +266,20 @@ func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 	if err != nil {
 		return nil, errors.Wrapf(err, "WaitForTxnResult(%v)", hash)
 	}
+	eventLogs := make([]*chain.EventLogInfo, 0)
+	for _, outcome := range txRes.ReceiptsOutcome {
+		for _, log := range outcome.Outcome.Logs {
+			res, evtType, err := a.par.Parse(log)
+			if err != nil {
+				err = nil
+				continue
+			}
+			eventLogs = append(eventLogs, &chain.EventLogInfo{ContractAddress: string(txRes.Transaction.ReceiverId), EventType: evtType, EventLog: res})
 
-	plogs := []*chain.EventLogInfo{}
-	plogs = append(plogs, &chain.EventLogInfo{ContractAddress: string(txRes.Transaction.ReceiverId), EventType: "", EventLog: txRes.TransactionOutcome.Outcome.Logs})
-	// statusCode, err := strconv.Atoi(txRes.Status.SuccessValue)  // Need to Implement statusCode
-	// if err != nil {
-	// 	return nil, errors.Wrapf(err, "GetStatusCode err=%v", err)
-	// }
-	return &chain.TxnResult{StatusCode: 200, ElInfo: plogs, Raw: txRes}, nil
+		}
+	}
+
+	return &chain.TxnResult{StatusCode: 200, ElInfo: eventLogs, Raw: txRes}, nil
 }
 
 // WatchForTransferEnd implements chain.ChainAPI
