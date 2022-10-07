@@ -51,7 +51,7 @@ func (api *api) Changes(param interface{}) (response types.ContractStateChange, 
 }
 
 func (api *api) Chunk(param interface{}) (response types.ChunkHeader, err error) {
-	if _, err := api.Do("chucnk", param, &response); err != nil {
+	if _, err := api.Do("chunk", param, &response); err != nil {
 		return types.ChunkHeader{}, err
 	}
 

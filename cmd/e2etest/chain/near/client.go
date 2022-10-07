@@ -50,7 +50,7 @@ func (c *client) fetchBlockTransactions(context context.Context, bn interface{})
 		for _, chunk := range bn.Block().Chunks {
 			chunk, err := c.getChunk(chunk.ChunkHash)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get chuck for block %v", bn.Offset())
+				return nil, fmt.Errorf("failed to get chunk for block %v", bn.Offset())
 			}
 
 			bn.AddTransactions(chunk.Transactions)
@@ -74,7 +74,7 @@ func (c *client) MonitorTransactions(height uint64, callback func(rxgo.Observabl
 			}
 
 			bn.SetBlock(block)
-			return bn, nil
+			return &bn, nil
 		}
 		return nil, fmt.Errorf("error casting offset to int64")
 	}, rxgo.WithPool(c.concurrency)).Map(c.fetchBlockTransactions,
@@ -93,7 +93,7 @@ func NewClient(url string, logger log.Logger) (*client, error) {
 		return nil, err
 	}
 	return &client{
-		IClient: c,
+		IClient:     c,
 		concurrency: 100,
 	}, nil
 }

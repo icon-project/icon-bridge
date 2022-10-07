@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -270,11 +269,11 @@ func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 
 	plogs := []*chain.EventLogInfo{}
 	plogs = append(plogs, &chain.EventLogInfo{ContractAddress: string(txRes.Transaction.ReceiverId), EventType: "", EventLog: txRes.TransactionOutcome.Outcome.Logs})
-	statusCode, err := strconv.Atoi(txRes.Status.SuccessValue)
-	if err != nil {
-		return nil, errors.Wrapf(err, "GetStatusCode err=%v", err)
-	}
-	return &chain.TxnResult{StatusCode: int(statusCode), ElInfo: plogs, Raw: txRes}, nil
+	// statusCode, err := strconv.Atoi(txRes.Status.SuccessValue)  // Need to Implement statusCode
+	// if err != nil {
+	// 	return nil, errors.Wrapf(err, "GetStatusCode err=%v", err)
+	// }
+	return &chain.TxnResult{StatusCode: 200, ElInfo: plogs, Raw: txRes}, nil
 }
 
 // WatchForTransferEnd implements chain.ChainAPI
@@ -341,7 +340,7 @@ func (a *api) GetBlackListedUsers(net string, startCursor int, endCursor int) (u
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_net": net, "_start": "0x0", "_end": "0x64"}, "getBlackListedUsers")
+	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_net": net, "_start": "0x0", "_end": "0x64"}, "get_blacklisted_user")
 	if err != nil {
 		return nil, err
 	} else if res == nil {
@@ -475,7 +474,8 @@ func (a *api) GetTokenLimit(coinName string) (tokenLimit *big.Int, err error) {
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_name": coinName}, "getTokenLimit")
+	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_name": coinName}, "get_token_limit")
+	res = res.(types.CallFunctionResponse).Result
 	if err != nil {
 		err = errors.Wrapf(err, "CallContract %v", err)
 		return
@@ -485,7 +485,7 @@ func (a *api) GetTokenLimit(coinName string) (tokenLimit *big.Int, err error) {
 	}
 	tmpStr, ok := res.(string)
 	if !ok {
-		err = fmt.Errorf("Expected type string Got %T", res)
+		err = fmt.Errorf("expected type string Got %T", res)
 		return
 	}
 	tokenLimit = new(big.Int)
@@ -677,4 +677,8 @@ func (a *api) receiveTransactions(height uint64, processBlockNotification func(b
 		}
 		return nil
 	})
+}
+
+func (a *api) StopSubscriptionMethod() {
+	a.requester.cl.CloseMonitor()
 }

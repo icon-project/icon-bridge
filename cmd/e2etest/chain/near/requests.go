@@ -331,7 +331,7 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 	data := map[string]interface{}{
 		"coin_name":   "btp-0x1.near-NEAR",
 		"destination": recepientAddress,
-		"amount":      amount,
+		"amount":      amount.String(),
 	}
 	args, err := json.Marshal(data)
 
@@ -422,52 +422,32 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
 	}
-	data, err := json.Marshal(args)
-	if err != nil {
-		return "", err
+	dstAddr := args["_to"]
+	data := map[string]interface{}{
+		"coin_name":   "btp-0x1.near-NEAR",
+		"destination": dstAddr,
+		"amount":      amount.String(),
 	}
+	args1, err := json.Marshal(data)
 
-	nonce, err := r.cl.GetNonce(types.NewPublicKeyFromED25519(senderWallet.PublicKey()), senderWallet.Address())
-	if err != nil {
-		fmt.Println(err)
-	}
-	blockHash, err := r.cl.GetLatestBlockHash()
-	if err != nil {
-		fmt.Println(err)
-	}
 	actions := []types.Action{
 		{
 			Enum: 2,
 			FunctionCall: types.FunctionCall{
-				MethodName: method,
-				Args:       data,
+				MethodName: "transfer",
+				Args:       args1,
 				Gas:        r.gasLimit[chain.DefaultGasLimit],
 				Deposit:    *big.NewInt(0),
 			},
 		},
 	}
-	param := types.Transaction{
-		SignerId:   types.AccountId(senderWallet.Address()),
-		PublicKey:  types.NewPublicKeyFromED25519(senderWallet.PublicKey()),
-		Nonce:      int(nonce),
-		ReceiverId: types.AccountId(contractAddress),
-		BlockHash:  blockHash,
-		Actions:    actions,
-		Txid:       blockHash,
-	}
 
-	// if err = SignTransactionParam(senderWallet, &param); err != nil {
-	// 	err = errors.Wrap(err, "SignTransactionParam ")
-	// 	return
-	// }
-	txH, err := r.cl.SendTransaction(param.Signature.Base58Encode())
-	if err != nil {
-		err = errors.Wrap(err, "SendTransaction ")
-		return
-	}
-
-	txHash = hexutil.Encode(txH[:])
+	newRelay := near.NewRelayTransaction(context.Background(), senderWallet, contractAddress, r.cl, actions)
+	newRelay.Send(context.Background())
+	txH := newRelay.ID().(types.CryptoHash)
+	txHash = txH.Base58Encode()
 	return
+
 }
 
 func (r *requestAPI) getAccumulatedFees() (ret map[string]*big.Int, err error) {
@@ -476,7 +456,7 @@ func (r *requestAPI) getAccumulatedFees() (ret map[string]*big.Int, err error) {
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	res, err := r.callContract(btsAddr, map[string]interface{}{}, "getAccumulatedFees")
+	res, err := r.callContract(btsAddr, map[string]interface{}{}, "accumulated_fees")
 	if err != nil {
 		return nil, errors.Wrap(err, "callContract getAccumulatedFees ")
 	} else if res == nil {

@@ -2,6 +2,7 @@ package near
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -36,77 +37,59 @@ func TestGetCoinNames(t *testing.T) {
 	// assert.Equal(t, 1, 0)
 }
 
-// func TestGetOwners(t *testing.T) {
-// 	api, err := getNewApi()
-// 	if err != nil {
-// 		t.Fatalf("%+v", err)
-// 		return
-// 	}
-// 	owner, err := api.CallBTS("get_owners", nil)
-// 	if err != nil {
-// 		t.Fatalf("%+v", err)
-// 		return
-// 	}
-// 	if data, ok := (owner).(types.CallFunctionResponse); ok {
-// 		var r []string
-// 		err = json.Unmarshal(data.Result, &r)
-// 		fmt.Println(data.BlockHash)
-// 		if err != nil {
-// 			log.Fatal(err)
-// 		}
-// 		fmt.Println(r)
-
-// 		// assert.Equal(t, 1, 0)
-// 	}
-
-// }
-
-// func TestIsUserBlackListed(t *testing.T) {
-// 	rpi, err := getNewApi()
-// 	if err != nil {
-// 		t.Fatalf("%+v", err)
-// 	}
-// 	res, err := rpi.CallBTS(chain.IsUserBlackListed, []interface{}{
-// 		"0x61.bsc",
-// 		GodDstAddr,
-// 	})
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	fmt.Println("Res ", res)
-// }
-
 func TestTransferIntraChain(t *testing.T) {
-	api, err := getNewApi()
+	_api, err := getNewApi()
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
 	amount := new(big.Int)
-	amount.SetString("1000", 10)
-	srckey := ""
+	amount.SetString("1000000000", 10)
+	privKey := "2TPaWkb7zjkF6PoHFtWcSG55Ckc3V9qPtbyww7HHzytwo5EEbkZAVeaUdwjxvpFLt6DhmSqZAmJAMdew1V5rk9fb"
+	srckey := "alice.testnet"
 	dstaddr := DemoDstAddr
+	btpaddr := _api.GetBTPAddress(srckey)
+
+	go func() {
+		if sinkChan, errChan, err := _api.Subscribe(context.Background()); err != nil {
+			panic(err)
+		} else {
+			for {
+				select {
+				case err := <-errChan:
+					panic(err)
+				case msg := <-sinkChan:
+					t.Logf("\nMessage %+v\n", msg)
+					_api.(*api).StopSubscriptionMethod()
+				}
+			}
+		}
+	}()
+
 	for _, coinName := range []string{"btp-0x1.near-NEAR"} {
-		txnHash, err := api.Transfer(coinName, srckey, dstaddr, amount)
+		txnHash, err := _api.Transfer(coinName, privKey, dstaddr, amount)
 		if err != nil {
 			t.Fatal(err)
 		}
 		time.Sleep(time.Second * 3)
 		t.Logf("Transaction Hash %v %v", coinName, txnHash)
-		res, err := api.WaitForTxnResult(context.TODO(), txnHash)
+
+		time.Sleep(time.Second * 3)
+		res, err := _api.WaitForTxnResult(context.TODO(), txnHash)
 		if err != nil {
-			t.Fatal(err)
+			t.Log(err)
 		}
-		t.Logf("Receipt %+v", res)
+		// t.Logf("Receipt %+v", res)
 		for _, lin := range res.ElInfo {
 			t.Logf("Log %+v ", lin)
 		}
-		if val, err := api.GetCoinBalance(coinName, dstaddr); err != nil {
+		if val, err := _api.GetCoinBalance(coinName, btpaddr); err != nil {
 			t.Fatal(err)
 		} else {
 			t.Logf("Balance %v", val)
 		}
 	}
+	// assert.Equal(t, 1, 0)
 }
 
 func TestGetCoinBalance(t *testing.T) {
@@ -130,6 +113,101 @@ func showBalance(addr string) error {
 		log.Infof("coin %v amount %v", coinName, res.String())
 	}
 	return nil
+}
+
+func TestReceiver(t *testing.T) {
+	recv, err := getNewApi()
+	if err != nil {
+		panic(err)
+	}
+	// recv.WatchForTransferStart(1, "ICX", 10)
+	// recv.WatchForTransferReceived(1, "TONE", 8)
+	// recv.WatchForTransferEnd(1, "ICX", 10)
+
+	go func() {
+		if sinkChan, errChan, err := recv.Subscribe(context.Background()); err != nil {
+			panic(err)
+		} else {
+			for {
+				select {
+				case err := <-errChan:
+					panic(err)
+				case msg := <-sinkChan:
+					t.Logf("\nMessage %+v\n", msg)
+					recv.(*api).StopSubscriptionMethod()
+				}
+			}
+		}
+	}()
+	time.Sleep(time.Second * 3000)
+}
+
+func TestGetKeyPair(t *testing.T) {
+	api, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	demoKeyPair, err := api.GetKeyPairs(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%+v ", demoKeyPair)
+	assert.Equal(t, 1, 0)
+}
+
+// Need to check GetBlackListedUsers method
+func TestGetBlackListedUsers(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	res, err := rpi.GetBlackListedUsers("0x61.bsc", 0, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("Res ", res)
+	assert.Equal(t, 1, 0)
+}
+
+// Same as GetBlackListedUsers, type conversion is not working
+func TestIsUserBlackListed(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	res, err := rpi.IsUserBlackListed("0x61.bsc", "0x94ACCD1f12cF6FF25Aaeb483605536918D7760b5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("Res ", res)
+}
+
+// Same as above type conversion is not working
+func TestGetAccumulatedFees(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	fees, err := rpi.GetAccumulatedFees()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	fmt.Println(fees)
+}
+
+// type conversion fails
+func TestGetTokenLimit(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	for _, coin := range []string{"btp-0x2.icon-bnUSD", "btp-0x2.icon-sICX", "btp-0x2.icon-ICX"} {
+		res, err := rpi.GetTokenLimit(coin)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("Res coin %v %v", coin, res)
+	}
 }
 
 func getNewApi() (chain.ChainAPI, error) {
