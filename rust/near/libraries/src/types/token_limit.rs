@@ -12,6 +12,15 @@ pub struct TokenLimit {
     token_limit: u128,
 }
 
+impl TokenLimit {
+    pub fn new(coin_name: String, token_limit: u128) -> Self {
+        TokenLimit {
+            coin_name,
+            token_limit,
+        }
+    }
+}
+
 impl TokenLimits {
     pub fn new() -> Self {
         let token_limit = HashMap::new();

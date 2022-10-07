@@ -165,18 +165,87 @@ impl BtpTokenService {
                     match request_type {
                         BlackListType::AddToBlacklist => {
                             self.add_to_blacklist(valid_addresses);
+                            let response =
+                                TokenServiceMessage::new(TokenServiceType::ResponseBlacklist {
+                                    code: 0,
+                                    message: "AddedToBlacklist".to_string(),
+                                });
+                                
+                            self.send_response(
+                                btp_message.serial_no(),
+                                btp_message.source(),
+                                response,
+                            );
 
                             Ok(None)
                         }
                         BlackListType::RemoveFromBlacklist => {
                             match self.remove_from_blacklist(valid_addresses) {
-                                Ok(_) => Ok(None),
-                                Err(err) => Err(err),
+                                Ok(()) => {
+                                    let response = TokenServiceMessage::new(
+                                        TokenServiceType::ResponseBlacklist {
+                                            code: 0,
+                                            message: "RemovedFromBlacklist".to_string(),
+                                        },
+                                    );
+
+                                    self.send_response(
+                                        btp_message.serial_no(),
+                                        btp_message.source(),
+                                        response,
+                                    );
+
+                                    Ok(None)
+                                }
+                                Err(err) => {
+                                    let response = TokenServiceMessage::new(
+                                        TokenServiceType::ResponseBlacklist {
+                                            code: 1,
+                                            message: err.to_string(),
+                                        },
+                                    );
+                                    
+                                    self.send_response(
+                                        btp_message.serial_no(),
+                                        btp_message.source(),
+                                        response,
+                                    );
+
+                                    Ok(None)
+                                }
                             }
                         }
                         BlackListType::UnhandledType => todo!(),
                     }
                 }
+                TokenServiceType::RequestChangeTokenLimit {
+                    coin_names,
+                    token_limits,
+                    network,
+                } => match self.set_token_limit(coin_names.clone(), token_limits.clone()) {
+                    Ok(()) => {
+                        let response =
+                            TokenServiceMessage::new(TokenServiceType::ResponseChangeTokenLimit {
+                                code: 0,
+                                message: "ChangeTokenLimit".to_string(),
+                            });
+
+                        self.send_response(btp_message.serial_no(), btp_message.source(), response);
+
+                        Ok(None)
+                    }
+                    Err(err) => {
+                        let response =
+                            TokenServiceMessage::new(TokenServiceType::ResponseChangeTokenLimit {
+                                code: 1,
+                                message: err.to_string(),
+                            });
+
+                        self.send_response(btp_message.serial_no(), btp_message.source(), response);
+
+                        Ok(None)
+                    }
+                },
 
                 TokenServiceType::UnknownType => {
                     log!(
@@ -219,11 +288,7 @@ impl BtpTokenService {
                 assets,
             ),
         );
-        self.send_message(
-            serial_no,
-            destination.network_address().unwrap(),
-            message.into(),
-        );
+        self.send_message(serial_no, destination.network_address().unwrap(), message);
     }
 
     pub fn send_response(
@@ -235,7 +300,7 @@ impl BtpTokenService {
         self.send_message(
             *serial_no.get(),
             destination.network_address().unwrap(),
-            service_message.into(),
+            service_message,
         );
     }
 
@@ -269,20 +334,20 @@ impl BtpTokenService {
         &mut self,
         serial_no: i128,
         destination_network: String,
-        message: SerializedMessage,
+        message: TokenServiceMessage,
     ) {
         ext_bmc::send_service_message(
             serial_no,
             self.name.clone(),
             destination_network.clone(),
-            message.clone(),
+            message.clone().into(),
             self.bmc.clone(),
             estimate::NO_DEPOSIT,
             estimate::GAS_FOR_SEND_SERVICE_MESSAGE,
         )
         .then(ext_self::send_service_message_callback(
             destination_network,
-            message.clone().try_into().unwrap(),
+            message.clone(),
             serial_no,
             env::current_account_id(),
             estimate::NO_DEPOSIT,
@@ -290,6 +355,9 @@ impl BtpTokenService {
         ));
 
         #[cfg(feature = "testable")]
-        self.message.set(&(message.data().clone().into()));
+        {
+            let service_message: SerializedMessage = message.into();
+            self.message.set(&(service_message.data().clone().into()));
+        }
     }
 }

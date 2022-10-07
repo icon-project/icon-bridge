@@ -182,6 +182,15 @@ func (s *Signature) UnmarshalJSON(p []byte) error {
 
 type BigInt big.Int
 
+func NewBigInt(bigInt string) BigInt {
+	dec, err := decimal.NewFromString(bigInt)
+	if err != nil {
+		return BigInt(big.Int{})
+	}
+
+	return BigInt(*dec.BigInt())
+} 
+
 func (b *BigInt) UnmarshalJSON(p []byte) error {
 	var bigInt string
 	err := json.Unmarshal(p, &bigInt)
