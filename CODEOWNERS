@@ -13,8 +13,14 @@
 # golang: iconbridge
 /cmd/iconbridge/ @manishbista28 @andrii-kl
 
+# golang: iconbridge near
+/cmd/iconbridge/chain/near/ @MuhammedIrfan
+
 # golang: e2etest
 /cmd/e2etest/ @manishbista28
+
+# golang: e2etest near
+/cmd/e2etest/chain/near/ @MuhammedIrfan
 
 # docs
 /docs/ @CyrusVorwald-ICON @pragyanshrestha-ibriz @MuhammedIrfan @andrii-kl
