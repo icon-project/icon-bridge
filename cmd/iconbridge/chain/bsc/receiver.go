@@ -98,11 +98,13 @@ type BnOptions struct {
 
 func (r *receiver) newVerifier(opts *VerifierOptions) (vri IVerifier, err error) {
 	vr := &Verifier{
-		mu:         sync.RWMutex{},
-		next:       big.NewInt(int64(opts.BlockHeight)),
-		parentHash: common.HexToHash(opts.BlockHash.String()),
-		validators: map[ethCommon.Address]bool{},
-		chainID:    r.client().GetChainID(),
+		mu:                         sync.RWMutex{},
+		next:                       big.NewInt(int64(opts.BlockHeight)),
+		parentHash:                 common.HexToHash(opts.BlockHash.String()),
+		validators:                 map[ethCommon.Address]bool{},
+		prevValidators:             map[ethCommon.Address]bool{},
+		useNewValidatorsFromHeight: big.NewInt(int64(opts.BlockHeight)),
+		chainID:                    r.client().GetChainID(),
 	}
 
 	// cross check input parent hash
