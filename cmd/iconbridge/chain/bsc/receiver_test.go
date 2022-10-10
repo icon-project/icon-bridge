@@ -145,11 +145,12 @@ func TestVerify(t *testing.T) {
 		ValidatorData: validatorData,
 	}
 	vr := &Verifier{
-		mu:         sync.RWMutex{},
-		next:       big.NewInt(int64(opts.BlockHeight)),
-		parentHash: common.BytesToHash(opts.BlockHash),
-		validators: map[ethCommon.Address]bool{},
-		chainID:    big.NewInt(97),
+		mu:                         sync.RWMutex{},
+		next:                       big.NewInt(int64(opts.BlockHeight)),
+		parentHash:                 common.BytesToHash(opts.BlockHash),
+		validators:                 map[ethCommon.Address]bool{},
+		chainID:                    big.NewInt(97),
+		useNewValidatorsFromHeight: big.NewInt(int64(opts.BlockHeight)),
 	}
 	vr.validators, err = getValidatorMapFromHex(opts.ValidatorData)
 	require.NoError(t, err)
