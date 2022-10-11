@@ -154,6 +154,8 @@ fn withdraw_native_coin_higher_amount() {
 #[test]
 #[cfg(feature = "testable")]
 fn external_transfer() {
+    use btp_common::btp_address::Address;
+
     let context = |account_id: AccountId, deposit: u128| {
         get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
     };
@@ -167,21 +169,42 @@ fn external_transfer() {
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    testing_env!(context(chuck(), 1000));
+
+    testing_env!(
+        context(chuck(), 10000000000000000000000000),
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        vec![PromiseResult::Successful(vec![1_u8])]
+    );
 
     contract.deposit();
+
     contract.transfer(
         nativecoin.name().to_string(),
         destination.clone(),
-        U128::from(999),
+        U128::from(9000000000000000000000000),
     );
+
+    let message = TokenServiceMessage::new(
+        TokenServiceType::RequestTokenTransfer {
+            sender: chuck().to_string(),
+            receiver: destination.account_id().to_string(),
+            assets: vec![TransferableAsset::new(
+                nativecoin.name().to_owned(),
+                8099999999999999999999999,
+                900000000000000000000001
+            )],
+        },
+    );
+
+    contract.send_service_message_callback(destination.network_address().unwrap(), message, 1);
 
     let result = contract.account_balance(chuck(), nativecoin.name().to_string());
     let mut expected = AccountBalance::default();
 
-    expected.deposit_mut().add(1).unwrap();
-    expected.locked_mut().add(900).unwrap();
-    expected.locked_mut().add(99).unwrap();
+    expected.deposit_mut().add(1000000000000000000000000).unwrap();
+    expected.locked_mut().add(9000000000000000000000000).unwrap();
 
     assert_eq!(result, Some(expected));
 
@@ -193,8 +216,8 @@ fn external_transfer() {
             destination.account_id().to_string(),
             vec![TransferableAsset::new(
                 nativecoin.name().to_owned(),
-                899,
-                100
+                8099999999999999999999999,
+                900000000000000000000001
             )]
         )
     )

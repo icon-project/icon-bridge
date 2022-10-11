@@ -55,6 +55,9 @@ rust_library(
         "src/types/wrapped_i128.rs",
         "src/types/wrapped_nativecoin.rs",
         "src/types/wrapper.rs",
+        "src/types/blacklist.rs",
+        "src/types/token_limit.rs",
+        "src/types/coin_ids.rs",
     ],
     deps = [
         "@rust//btp-common:btp_common",

@@ -11,7 +11,7 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 
 	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/bsc"
-	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny"
+	// _ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny"
 	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/icon"
 )
 

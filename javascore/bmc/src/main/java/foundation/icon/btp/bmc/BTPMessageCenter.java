@@ -113,6 +113,12 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         return btpAddr.toString();
     }
 
+    /**
+     * It registers the smart contract for the service.
+     * It's called by the owner/admin to manage the BTP network.
+     * @param _svc the name of the service
+     * @param _addr the address of the smart contract handling the service
+     */
     @External
     public void addService(String _svc, Address _addr) {
         requireOwnerAccess();
@@ -128,6 +134,11 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         services.put(_svc, _addr);
     }
 
+    /**
+     * It de-registers the smart contract for the service.
+     - It's called by the operator to manage the BTP network.
+     * @param _svc the name of the service
+     */
     @External
     public void removeService(String _svc) {
         requireOwnerAccess();
@@ -166,6 +177,15 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         links.put(link.getAddr(), link);
     }
 
+    /**
+     * If it generates the event related with the link, the relay shall
+     * handle the event to deliver BTP Message to the BMC.
+     * If the link is already registered, or its network is already
+     * registered then it fails.
+     * It initializes status information for the link.
+     * It's called by the operator to manage the BTP network.
+     * @param _link BTP Address of connected BMC
+     */
     @External
     public void addLink(String _link) {
         requireOwnerAccess();
@@ -198,6 +218,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         sendInternal(target, Internal.Init, initMsg.toBytes());
     }
 
+    /**
+     * @param _link Added Link
+     * @param _height Starting BlockHeight
+     */
     @External
     public void setLinkRxHeight(String _link, long _height) {
         requireOwnerAccess();
@@ -206,6 +230,11 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         putLink(link);
     }
 
+    /**
+     * It removes the link and status information.
+     * It's called by the operator to manage the BTP network.
+     * @param _link BTP Address of connected BMC
+     */
     @External
     public void removeLink(String _link) {
         requireOwnerAccess();
@@ -263,6 +292,9 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         return status;
     }
 
+    /**
+     * @return
+     */
     @External(readonly = true)
     public String[] getLinks() {
         List<BTPAddress> keySet = links.keySet();
@@ -274,6 +306,13 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         return links;
     }
 
+    /**
+     * Add route to the BMC.
+     * It may fail if there are more than one BMC for the network.
+     * It's called by the operator to manage the BTP network.
+     * @param _dst BTP Address of the destination BMC
+     * @param _link BTP Address of the next BMC for the destination
+     */
     @External
     public void addRoute(String _dst, String _link) {
         requireOwnerAccess();
@@ -285,6 +324,11 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         routes.put(_dst, target);
     }
 
+    /**
+     * Remove route to the BMC.
+     * It's called by the operator to manage the BTP network.
+     * @param _dst BTP Address of the destination BMC
+     */
     @External
     public void removeRoute(String _dst) {
         requireOwnerAccess();
@@ -338,6 +382,13 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         }
     }
 
+    /**
+     * It verify and decode RelayMessage with BMV, and dispatch BTP Messages
+     * to registered BSHs
+     * It's allowed to be called by registered Relay.
+     * @param _prev BTP Address of the BMC generates the message
+     * @param _msg base64 encoded string of serialized bytes of Relay Message
+     */
     @External
     public void handleRelayMessage(String _prev, String _msg) {
         BTPAddress prev = BTPAddress.valueOf(_prev);
@@ -624,6 +675,12 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         }
     }
 
+    /**
+     * @param _to BTP Address of destination BMC
+     * @param _svc Service that is to be handled
+     * @param _sn SN of that service
+     * @param _msg BSH Message in bytes to be picked up by relayer
+     */
     @External
     public void sendMessage(String _to, String _svc, BigInteger _sn, byte[] _msg) {
         Address addr = services.get(_svc);
@@ -772,6 +829,12 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         }
     }
 
+    /**
+     * Update the blockHeight, blockInterval and maxAggregation on given link
+     * @param _link           String (BTP Address of connected BMC)
+     * @param _block_interval Integer (Interval of block creation, milliseconds)
+     * @param _max_agg        Integer (Maximum aggregation of block update of a relay message)
+     */
     @External
     public void setLinkRotateTerm(String _link, int _block_interval, int _max_agg) {
         requireOwnerAccess();
@@ -796,6 +859,11 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         putLink(link);
     }
 
+    /**
+     * Update the `delayLimit` value on given link
+     * @param _link  String (BTP Address of connected BMC)
+     * @param _value Integer (Maximum delay at BTP Event relay, block count)
+     */
     @External
     public void setLinkDelayLimit(String _link, int _value) {
         requireOwnerAccess();
@@ -808,6 +876,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         putLink(link);
     }
 
+    /**
+     * @param _link     String (BTP Address of connected BMC)
+     * @param _value    Integer (Term of sending SACK message, block count)
+     */
     @External
     public void setLinkSackTerm(String _link, int _value) {
         requireOwnerAccess();
@@ -821,6 +893,11 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         putLink(link);
     }
 
+    /**
+     * Add relayer address on given link
+     * @param _link String (BTP Address of next BMC)
+     * @param _addr Address (the address of Relay)
+     */
     @External
     public void addRelay(String _link, Address _addr) {
         requireOwnerAccess();
@@ -836,6 +913,11 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         relays.put(_addr, relay);
     }
 
+    /**
+     * Remove relayer address on given link
+     * @param _link String (BTP Address of connected BMC)
+     * @param _addr Address (the address of Relay)
+     */
     @External
     public void removeRelay(String _link, Address _addr) {
         requireOwnerAccess();
@@ -858,6 +940,11 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         return -1;
     }
 
+    /**
+     * Any user can add a service candidate. Will be added as service later by owner if approved
+     * @param _svc  String (the name of the service)
+     * @param _addr Address (the address of the smart contract of that service)
+     */
     @External
     public void addServiceCandidate(String _svc, Address _addr) {
         if (getServiceCandidateIndex(_svc, _addr) >= 0) {
@@ -870,6 +957,11 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         serviceCandidates.add(sc);
     }
 
+    /**
+     * Remove a service from service candidate
+     * @param _svc  String (the name of the service)
+     * @param _addr Address (the address of the smart contract of that service)
+     */
     @External
     public void removeServiceCandidate(String _svc, Address _addr) {
         requireOwnerAccess();
@@ -900,6 +992,9 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         return ArrayUtil.toAddressArray(relays.keySet());
     }
 
+    /**
+     * Send accumulated fee to fee aggregator wallet
+     */
     @External
     public void sendFeeGathering() {
         requireOwnerAccess();
@@ -920,6 +1015,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         return properties.getFeeGatheringTerm();
     }
 
+    /**
+     * Set fee gathering block height
+     * @param _value Number of block heights at which fee is to be gathered from now
+     */
     @External
     public void setFeeGatheringTerm(long _value) {
         requireOwnerAccess();
@@ -938,6 +1037,9 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         return properties.getFeeAggregator();
     }
 
+    /**
+     * @param _addr Address of fee aggregator wallet on ICON
+     */
     @External
     public void setFeeAggregator(Address _addr) {
         requireOwnerAccess();
@@ -953,6 +1055,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         }
     }
 
+    /**
+     * Add _addr as owner
+     * @param _addr Admin/Owner address to access on BMC
+     */
     @External
     public void addOwner(Address _addr) {
         try {
@@ -964,6 +1070,12 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         }
     }
 
+    /**
+     * Remove _addr from owners list
+     * Only current owners can call this method
+     * Contract deployer cannot be removed as owner
+     * @param _addr Address to remove as owner
+     */
     @External
     public void removeOwner(Address _addr) {
         try {
@@ -986,6 +1098,12 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
     }
 
     /* Delegate RelayerManager */
+
+    /**
+     * Register a relayer by paying a specific fee
+     * Caller will be registered as relayer
+     * @param _desc String (description of Relayer)
+     */
     @Payable
     @External
     public void registerRelayer(String _desc) {
@@ -1033,12 +1151,21 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         relayers.setProperties(properties);
     }
 
+    /**
+     * Unregister existing relayer
+     * A registered relayer can unregister themselves
+     */
     @External
     public void unregisterRelayer() {
         Address _addr = Context.getCaller();
         removeRelayerAndRefund(_addr, _addr);
     }
 
+    /**
+     * Admin unregisters existing relayer
+     * @param _addr Address of the relayer
+     * @param _refund Address to send the bonded amount too
+     */
     @External
     public void removeRelayer(Address _addr, Address _refund) {
         requireOwnerAccess();
@@ -1050,6 +1177,9 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         return relayers.toMapWithKeyToString();
     }
 
+    /**
+     * Distribute relayer s reward to each relayer of registered services
+     */
     @External
     public void distributeRelayerReward() {
         logger.println("distributeRelayerReward");
@@ -1122,6 +1252,9 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         logger.println("fallback", "value:", Context.getValue());
     }
 
+    /**
+     * Claim the distributed relayer rewards from relayer address
+     */
     @External
     public void claimRelayerReward() {
         Address addr = Context.getCaller();
@@ -1147,6 +1280,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         return properties.getRelayerMinBond();
     }
 
+    /**
+     *  Set Minimum relayer bond while registering as relayer
+     * @param _value Integer Value to be set as Minimum Bond as a Relayer
+     */
     @External
     public void setRelayerMinBond(BigInteger _value) {
         requireOwnerAccess();
@@ -1164,6 +1301,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         return properties.getRelayerTerm();
     }
 
+    /**
+     * Set fee feeCollecting BlockHeight
+     * @param _value Long Block Height
+     */
     @External
     public void setRelayerTerm(long _value) {
         requireOwnerAccess();
@@ -1181,6 +1322,9 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         return properties.getRelayerRewardRank();
     }
 
+    /**
+     * @param _value
+     */
     @External
     public void setRelayerRewardRank(int _value) {
         requireOwnerAccess();
@@ -1192,6 +1336,10 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         relayers.setProperties(properties);
     }
 
+    /**
+     * Set block height at which reward is to be distributed
+     * @param _height Long Block height for next reward distribution
+     */
     @External
     public void setNextRewardDistribution(long _height) {
         requireOwnerAccess();

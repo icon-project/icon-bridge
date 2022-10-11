@@ -39,6 +39,7 @@ type IApi interface {
 	BroadcastTxAsync(param interface{}) (response types.CryptoHash, err error)
 	CallFunction(param interface{}) (response types.CallFunctionResponse, err error)
 	Changes(param interface{}) (response types.ContractStateChange, err error)
+	Chunk(param interface{}) (response types.ChunkHeader, err error)
 	LightClientProof(param interface{}) (response types.ReceiptProof, err error)
 	Status(param interface{}) (response types.ChainStatus, err error)
 	Transaction(param interface{}) (response types.TransactionResult, err error)
@@ -47,6 +48,7 @@ type IApi interface {
 }
 
 type IClient interface {
+	Api() IApi
 	CloseMonitor()
 	GetBalance(types.AccountId) (*big.Int, error)
 	GetBlockByHash(types.CryptoHash) (types.Block, error)
@@ -59,10 +61,17 @@ type IClient interface {
 	Logger() log.Logger
 	MonitorBlocks(height uint64, source string, concurrency uint, callback func(rxgo.Observable) error, subClient func() IClient) error
 	SendTransaction(payload string) (*types.CryptoHash, error)
+	GetLatestBlockHeight() (int64, error)
+	MonitorBlockHeight(offset int64) rxgo.Observable
+	IsMonitorClosed() bool
 }
 
 func (c *Client) CloseMonitor() {
 	c.isMonitorClosed = true
+}
+
+func (c *Client) Api() IApi {
+	return c.api
 }
 
 func (c *Client) GetBalance(accountId types.AccountId) (balance *big.Int, err error) {
@@ -288,6 +297,10 @@ func (c *Client) Logger() log.Logger {
 	return c.logger
 }
 
+func (c *Client) IsMonitorClosed() bool {
+	return c.isMonitorClosed
+}
+
 func (c *Client) MonitorBlockHeight(offset int64) rxgo.Observable {
 	channel := make(chan rxgo.Item)
 	go func(offset int64) {
@@ -357,32 +370,44 @@ func (c *Client) MonitorBlocks(height uint64, source string, concurrency uint, c
 	}))
 }
 
-func newClients(urls []string, logger log.Logger) []IClient {
+func NewClient(endpoint string, logger log.Logger) (IClient, error) {
 	transport := &http.Transport{MaxIdleConnsPerHost: 1000}
+	url, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid url: %v, err: %v", endpoint, err)
+	}
+
+	return &Client{
+		logger:          logger,
+		isMonitorClosed: false,
+		api: &api{
+			host:   url.Host,
+			Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: transport}, url.String()),
+		},
+	}, nil
+}
+
+func newClients(urls []string, logger log.Logger) ([]IClient, error) {
+	if len(urls) == 0 {
+		return nil, fmt.Errorf("empty urls: %v", urls)
+	}
+
 	clients := make([]IClient, 0)
 
-	for _, _url := range urls {
-		url, err := url.Parse(_url)
+	for _, url := range urls {
+		client, err := NewClient(url, logger)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
-		client := &Client{
-			logger:          logger,
-			isMonitorClosed: false,
-			api: &api{
-				host:   url.Host,
-				Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: transport}, url.String()),
-			},
-		}
 		clients = append(clients, client)
 	}
 
-	return clients
+	return clients, nil
 }
 
 func (c *Client) SendTransaction(payload string) (*types.CryptoHash, error) {
-	param := []string{payload} 
+	param := []string{payload}
 
 	txId, err := c.api.BroadcastTxAsync(param)
 	if err != nil {

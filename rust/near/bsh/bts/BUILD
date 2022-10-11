@@ -15,6 +15,7 @@ rust_shared_library(
         "src/types/registered_coins.rs",
         "src/accounting.rs",
         "src/assertion.rs",
+        "src/blacklist_management.rs",
         "src/coin_management.rs",
         "src/estimate.rs",
         "src/fee_management.rs",
