@@ -31,30 +31,35 @@ impl BtpTokenService {
         self.transfer_fees(&fee_aggregator);
     }
 
-    pub fn set_fee_ratio(&mut self, coin_id: &CoinId, fee_numerator: U128, fixed_fee: U128) {
+    pub fn set_fee_ratio(&mut self, coin_name: String, fee_numerator: U128, fixed_fee: U128) {
         self.assert_have_permission();
         self.assert_valid_fee_ratio(fee_numerator.into(), fixed_fee.into());
+
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
 
         let mut coin = self.coins.get(&coin_id).unwrap();
         coin.metadata_mut()
             .fee_numerator_mut()
-            .add(fee_numerator.into())
-            .unwrap();
+            .clone_from(&fee_numerator.into());
         coin.metadata_mut()
             .fixed_fee_mut()
-            .add(fixed_fee.into())
-            .unwrap();
+            .clone_from(&fixed_fee.into());
 
-        self.coins.set(coin_id, &coin)
+        self.coins.set(&coin_id, &coin)
     }
 
-    pub fn calculate_coin_transfer_fee(
-        &self,
-        amount: U128,
-        coin: &Asset<WrappedNativeCoin>,
-    ) -> Result<u128, String> {
-        let mut fee = (u128::from(amount) * coin.metadata().fee_numerator()) / FEE_DENOMINATOR;
-        fee.add(coin.metadata().fixed_fee()).map(|fee| *fee)
+    pub fn get_fee(&self, coin_name: String, amount: U128) -> Result<U128, String> {
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
+        let coin = self.coins.get(&coin_id).unwrap();
+
+        self.calculate_coin_transfer_fee(u128::from(amount), &coin)
+            .map(|e| U128(e))
     }
 }
 
@@ -83,5 +88,14 @@ impl BtpTokenService {
             .collect::<Vec<TransferableAsset>>();
 
         self.send_request(sender_id, fee_aggregator.clone(), assets);
+    }
+
+    pub fn calculate_coin_transfer_fee(
+        &self,
+        amount: u128,
+        coin: &Asset<WrappedNativeCoin>,
+    ) -> Result<u128, String> {
+        let mut fee = (amount * coin.metadata().fee_numerator()) / FEE_DENOMINATOR;
+        fee.add(coin.metadata().fixed_fee()).map(|fee| *fee)
     }
 }

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.function.Executable;
 import org.mockito.MockedStatic;
+import org.mockito.MockedStatic.Verification;
 import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -35,6 +36,8 @@ public class AbstractBTPMessageCenterTest extends TestBase {
     @BeforeAll
     protected static void init() {
         contextMock = Mockito.mockStatic(Context.class, Mockito.CALLS_REAL_METHODS);
+        long CURRENT_TIMESTAMP = System.currentTimeMillis() / 1_000L;
+        sm.getBlock().increase(CURRENT_TIMESTAMP / 2);
     }
 
     @BeforeEach
@@ -48,6 +51,10 @@ public class AbstractBTPMessageCenterTest extends TestBase {
         BTPMessageCenter instance = (BTPMessageCenter) score.getInstance();
         scoreSpy = spy(instance);
         score.setInstance(scoreSpy);
+    }
+
+    public long getCurrentBlockHeight() {
+        return sm.getBlock().getHeight();
     }
 
     public String getBTPAddress(String address) {
@@ -65,6 +72,20 @@ public class AbstractBTPMessageCenterTest extends TestBase {
     public void expectErrorMessage(Executable contractCall, String errorMessage) {
         AssertionError e = Assertions.assertThrows(AssertionError.class, contractCall);
         assertEquals(errorMessage, e.getMessage());
+    }
+
+    public Verification mockICXSent() {
+        Verification sendICX = () -> Context.getValue();
+        return sendICX;
+    }
+    public Verification mockICXBalance(Address addr) {
+        Verification icxBalance = () -> Context.getBalance(addr);
+        return icxBalance;
+    }
+
+    public Verification mockBlockHeight() {
+        Verification blockHeight = () -> Context.getBlockHeight();
+        return blockHeight;
     }
 
     public void addLink(String link) {
