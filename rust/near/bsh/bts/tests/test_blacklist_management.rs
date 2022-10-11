@@ -196,7 +196,7 @@ fn handle_btp_message_to_change_token_limit() {
     testing_env!(context(bmc(), 0));
     contract.handle_btp_message(message);
 
-    let token_limits = contract.get_token_limit().to_vec();
+    let token_limits = contract.get_token_limits().to_vec();
 
     assert_eq!(
         token_limits,

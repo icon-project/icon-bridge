@@ -171,7 +171,6 @@ fn get_non_exist_coin_id() {
 }
 
 #[test]
-#[cfg(feature = "testable")]
 fn set_token_limit() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
     testing_env!(context(alice(), 0));
@@ -185,16 +184,12 @@ fn set_token_limit() {
     let coins = vec!["NEAR".to_string()];
     let limits = vec![10000000000000000000000_u128];
     contract.set_token_limit(coins, limits).unwrap();
-    let tokenlimits = contract.get_token_limit();
+    let tokenlimits = contract.get_token_limit("NEAR".to_string());
 
-    assert_eq!(
-        tokenlimits.get("NEAR").unwrap(),
-        &10000000000000000000000_u128
-    )
+    assert_eq!(tokenlimits, 10000000000000000000000_u128)
 }
 
 #[test]
-#[cfg(feature = "testable")]
 fn update_token_limit() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
     testing_env!(context(alice(), 0));
@@ -213,8 +208,8 @@ fn update_token_limit() {
     let limits = vec![10000000000000000000003_u128];
     contract.set_token_limit(coins, limits).unwrap();
 
-    let tokenlimits = contract.get_token_limit().get("NEAR").unwrap();
-    assert_eq!(tokenlimits, &10000000000000000000003_u128)
+    let tokenlimits = contract.get_token_limit("NEAR".to_string());
+    assert_eq!(tokenlimits, 10000000000000000000003_u128)
 }
 
 #[test]
