@@ -47,9 +47,10 @@ genrule(
     name = "deploy_bmc",
     srcs = [
         "@near//bmc:bmc_wasm",
+        "@near//:network_address",
     ],
     outs = ["deploy_bmc.out"],
-    cmd = "$(execpath :near_binary) deploy $$(cat $(location @near//cli:encode_public_key_bmc)) --nodeUrl $$(cat $(locations @near//:node_url)) --wasmFile $(locations @near//bmc:bmc_wasm) --accountId $$(cat $(location @near//cli:encode_public_key_bmc)) --initFunction \"new\" --initArgs '{\"network\": \"0x1.near\", \"block_interval\": 3000}'> $@",
+    cmd = "$(execpath :near_binary) deploy $$(cat $(location @near//cli:encode_public_key_bmc)) --nodeUrl $$(cat $(locations @near//:node_url)) --wasmFile $(locations @near//bmc:bmc_wasm) --accountId $$(cat $(location @near//cli:encode_public_key_bmc)) --initFunction \"new\" --initArgs '{\"network\": \"$$(cat $(location @near//:network_address))\", \"block_interval\": 3000}'> $@",
     executable = True,
     local = True,
     tools = [
@@ -64,9 +65,10 @@ genrule(
     name = "deploy_bts",
     srcs = [
         "@near//bsh/bts:bts_wasm",
+        "@near//:network_address",
     ],
     outs = ["deploy_natvie_coin_bsh.out"],
-    cmd = """$(execpath :near_binary) deploy $$(cat $(location @near//cli:create_sub_account_bts)) --nodeUrl $$(cat $(locations @near//:node_url)) --wasmFile $(locations @near//bsh/bts:bts_wasm) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --initFunction \"new\" --initArgs  \\'\\{\\"service_name\\":\\"bts\\"\\,\\"bmc\\":\\"$$(cat $(location @near//cli:encode_public_key_bmc))\\"\\,\\"network\\":\\"0x1.near\\"\\,\\"native_coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"btp-0x1.near-NEAR\\"\\,\\"symbol\\":\\"NEAR\\"\\,\\"uri\\":null\\,\\"network\\":\\"0x1.near\\"\\,\\"fee_numerator\\":\\"0\\"\\,\\"fixed_fee\\":\\"0\\"\\,\\"extras\\":null\\}\\}\\}\\' > $@""",
+    cmd = """$(execpath :near_binary) deploy $$(cat $(location @near//cli:create_sub_account_bts)) --nodeUrl $$(cat $(locations @near//:node_url)) --wasmFile $(locations @near//bsh/bts:bts_wasm) --accountId $$(cat $(location @near//cli:create_sub_account_bts)) --initFunction \"new\" --initArgs  \\'\\{\\"service_name\\":\\"bts\\"\\,\\"bmc\\":\\"$$(cat $(location @near//cli:encode_public_key_bmc))\\"\\,\\"network\\":\\"$$(cat $(location @near//:network_address))\\"\\,\\"native_coin\\":\\{\\"metadata\\":\\{\\"name\\":\\"btp-$$(cat $(location @near//:network_address))-NEAR\\"\\,\\"symbol\\":\\"NEAR\\"\\,\\"uri\\":null\\,\\"network\\":\\"$$(cat $(location @near//:network_address))\\"\\,\\"fee_numerator\\":\\"50\\"\\,\\"fixed_fee\\":\\"155000000000000000000000\\"\\,\\"extras\\":null\\}\\}\\}\\' > $@""",
     executable = True,
     local = True,
     tools = [
@@ -242,10 +244,11 @@ genrule(
         "@near//cli:create_account_alice",
         "@icon//cli:register_wrapped_coin_bts",
         "@icon//:network_address",
+        "@near//:network_address",
     ],
     outs = ["send_near_to_icon.out"],
     cmd = """
-    params="'"$$(jq -rc <<<{} '.coin_id=[ 247, 184, 188,  27, 185,  62, 246, 213,  77, 228, 101, 193, 206, 130, 171, 233,  39, 148, 195, 217, 177, 33, 141, 212,  41, 223,  44, 241, 83, 209,  37, 217 ] | .destination=$$destination | .amount=$$amount' --arg destination "btp://$$(cat $(location @icon//:network_address))/$$(cat $(location @icon//cli:get_wallet_bob_keystore))" --arg amount 100000000000000000000000)"'"
+    params="'"$$(jq -rc <<<{} '.coin_name=btp-$$(cat $(location @near//:network_address))-NEAR | .destination=$$destination | .amount=$$amount' --arg destination "btp://$$(cat $(location @icon//:network_address))/$$(cat $(location @icon//cli:get_wallet_bob_keystore))" --arg amount 100000000000000000000000)"'"
     $(execpath :near_binary) call $$(cat $(location @near//cli:create_sub_account_bts)) transfer $$params --accountId $$(cat $(location @near//cli:encode_public_key_alice)) --nodeUrl $$(cat $(locations @near//:node_url))  --gas 300000000000000 >$@
     """,
     executable = True,

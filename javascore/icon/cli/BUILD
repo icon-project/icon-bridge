@@ -249,7 +249,7 @@ genrule(
     ],
     outs = ["register_wrapped_coin_bts.out"],
     cmd = """
-        $(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx call --to $$(cat $(location get_score_address_bts)) --method register --param _decimals="0x18" --param _feeNumerator="0x0" --param _fixedFee="0x11c37937e08000" --param _name="btp-$$(cat $(location @near//:network_address))-NEAR" --param _symbol="NEAR" --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . >$@
+        $(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx call --to $$(cat $(location get_score_address_bts)) --method register --param _decimals="0x18" --param _feeNumerator="0x32" --param _fixedFee="0x20d2911c36cdcae00000" --param _name="btp-$$(cat $(location @near//:network_address))-NEAR" --param _symbol="NEAR" --key_store $$(cat $(location @icon//:goloop_config_dir))/keystore.json --key_secret $$(cat $(location @icon//:goloop_config_dir))/keysecret --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001  | jq -r . >$@
     """,
     executable = True,
     local = True,
@@ -271,11 +271,12 @@ genrule(
         "@near//cli:encode_public_key_alice",
         "@near//cli:register_wrapped_coin_bts",
         ":create_keystore_bob",
-        ":get_wallet_bob_keystore"
+        ":get_wallet_bob_keystore",
+        "@near//:network_address"
     ],
     outs = ["send_icx_to_near.out"],
     cmd = """
-        $(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx call --to $$(cat $(location get_score_address_bts)) --method transferNativeCoin  --param _to=\"btp://0x1.near/$$(cat $(location @near//cli:encode_public_key_alice))\"  --value 0x$$(printf '%x' 100000000000000000000000) --key_store $(location :create_keystore_bob) --key_password $$(cat $(location @icon//cli:keysecret)) --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001 >$@
+        $(execpath @com_github_icon_project_goloop//cmd/goloop:goloop) rpc --uri $$(cat $(location @icon//:node_url)) sendtx call --to $$(cat $(location get_score_address_bts)) --method transferNativeCoin  --param _to=\"btp://$$(cat $(location @near//:network_address))/$$(cat $(location @near//cli:encode_public_key_alice))\"  --value 0x$$(printf '%x' 100000000000000000000000) --key_store $(location :create_keystore_bob) --key_password $$(cat $(location @icon//cli:keysecret)) --nid \"$$(cat $(location @icon//:network_id))\" --step_limit 13610920001 >$@
     """,
     executable = True,
     local = True,

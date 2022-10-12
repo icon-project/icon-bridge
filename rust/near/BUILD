@@ -86,7 +86,7 @@ genrule(
 genrule(
     name = "network_address",
     outs = ["network_address.out"],
-    cmd = "echo \"0x1.near\" > $@",
+    cmd = "echo \"0x2.near\" > $@",
     executable = True,
     local = True,
 )
