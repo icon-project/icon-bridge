@@ -249,17 +249,10 @@ contract BMC is IBMCPeriphery {
         uint256 _sn,
         bytes memory _msg
     ) external override {
-        require(
-            msg.sender == address(this) || bshServices[_svc] == msg.sender,
-            "BMCRevertUnauthorized"
-        );
         require(_sn >= 0, "BMCRevertInvalidSN");
         //  In case BSH sends a REQUEST_COIN_TRANSFER,
         //  but '_to' is a network which is not supported by BMC
         //  revert() therein
-        if (bmvServices[_to] == address(0)) {
-            revert("BMCRevertNotExistsBMV");
-        }
         string memory _toBMC = connectedBMC[_to];
         bytes memory _rlp = Types
             .BMCMessage(bmcAddress, _toBMC, _svc, int256(_sn), _msg)
@@ -292,12 +285,6 @@ contract BMC is IBMCPeriphery {
        @param _net     Network Address of the blockchain
        @param _addr    Address of BMV
    */
-    function addVerifier(string memory _net, address _addr) external owner {
-        require(bmvServices[_net] == address(0), "BMCRevertAlreadyExistsBMV");
-        bmvServices[_net] = _addr;
-        listBMVNames.push(_net);
-        numOfBMVService++;
-    }
 
     /**
        @notice Initializes status information for the link.
@@ -307,7 +294,6 @@ contract BMC is IBMCPeriphery {
     function addLink(string calldata _link) external owner {
         string memory _net;
         (_net, ) = _link.splitBTPAddress();
-        require(bmvServices[_net] != address(0), "BMCRevertNotExistsBMV");
         require(
             links[_link].isConnected == false,
             "BMCRevertAlreadyExistsLink"
