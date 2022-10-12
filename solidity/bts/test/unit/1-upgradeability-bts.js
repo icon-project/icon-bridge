@@ -1,5 +1,5 @@
-const BTSCoreTestV1 = artifacts.require("BTSCoreTestV1");
-const BTSCoreTestV2 = artifacts.require("BTSCoreTestV2");
+const BTSCoreTestV1 = artifacts.require("BTSCore");
+const BTSCoreTestV2 = artifacts.require("MockBTSCore");
 const BTSPeriphery = artifacts.require("BTSPeriphery");
 const BMC = artifacts.require("MockBMC");
 const {assert} = require("chai");
