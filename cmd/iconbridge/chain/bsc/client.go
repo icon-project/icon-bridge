@@ -59,6 +59,7 @@ type IClient interface {
 	GetBlockByHash(hash common.Hash) (*bscTypes.Block, error)
 	GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error)
 	GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error)
+	GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts, error)
 	GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error)
 	GetChainID() *big.Int
 	GetEthClient() *ethclient.Client
@@ -184,6 +185,70 @@ func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.I
 	gasPrice = txnS.GasPrice()
 	gasHeight = header.Number
 	return
+}
+
+func (cl *Client) GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	hb, err := cl.eth.BlockByNumber(ctx, height)
+	if err != nil {
+		return nil, err
+	}
+	if hb.GasUsed() == 0 || len(hb.Transactions()) == 0 {
+		return nil, nil
+	}
+	txhs := []string{}
+	for _, v := range hb.Transactions() {
+		txhs = append(txhs, v.Hash().String())
+	}
+	// fetch all txn receipts concurrently
+	type rcq struct {
+		txh   string
+		v     *ethTypes.Receipt
+		err   error
+		retry int
+	}
+	qch := make(chan *rcq, len(txhs))
+	for _, txh := range txhs {
+		qch <- &rcq{txh, nil, nil, RPCCallRetry}
+	}
+	rmap := make(map[string]*ethTypes.Receipt)
+	for q := range qch {
+		switch {
+		case q.err != nil:
+			if q.retry == 0 {
+				return nil, q.err
+			}
+			q.retry--
+			q.err = nil
+			qch <- q
+		case q.v != nil:
+			rmap[q.txh] = q.v
+			if len(rmap) == cap(qch) {
+				close(qch)
+			}
+		default:
+			go func(q *rcq) {
+				defer func() { qch <- q }()
+				ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+				defer cancel()
+				if q.v == nil {
+					q.v = &ethTypes.Receipt{}
+				}
+				q.v, err = cl.eth.TransactionReceipt(ctx, common.HexToHash(q.txh))
+				if q.err != nil {
+					q.err = errors.Wrapf(q.err, "getTranasctionReceipt: %v", q.err)
+				}
+			}(q)
+		}
+	}
+	receipts := make(ethTypes.Receipts, 0, len(txhs))
+	for _, txh := range txhs {
+		if r, ok := rmap[txh]; ok {
+			receipts = append(receipts, r)
+		}
+	}
+	return receipts, nil
 }
 
 func (c *Client) GetChainID() *big.Int {

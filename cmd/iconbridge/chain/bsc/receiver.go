@@ -416,7 +416,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 								return
 							}
 							// TODO optimize retry of GetBlockReceipts()
-							q.v.Receipts, q.err = r.client().GetBlockReceipts(q.v.Hash)
+							q.v.Receipts, q.err = r.client().GetBlockReceiptsFromHeight(q.v.Height)
 							if q.err != nil {
 								q.err = errors.Wrapf(q.err, "GetBlockReceipts: %v", q.err)
 								return

@@ -115,6 +115,29 @@ func (_m *IClient) GetBlockReceipts(hash common.Hash) (coretypes.Receipts, error
 	return r0, r1
 }
 
+// GetBlockReceiptsFromHeight provides a mock function with given fields: height
+func (_m *IClient) GetBlockReceiptsFromHeight(height *big.Int) (coretypes.Receipts, error) {
+	ret := _m.Called(height)
+
+	var r0 coretypes.Receipts
+	if rf, ok := ret.Get(0).(func(*big.Int) coretypes.Receipts); ok {
+		r0 = rf(height)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(coretypes.Receipts)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*big.Int) error); ok {
+		r1 = rf(height)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetChainID provides a mock function with given fields:
 func (_m *IClient) GetChainID() *big.Int {
 	ret := _m.Called()
