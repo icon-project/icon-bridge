@@ -100,7 +100,6 @@ impl BtpTokenService {
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
                 let log = json!(
                 {
-
                     "event": "Mint",
                     "code": "0",
                     "amount": amount.to_string(),
@@ -118,7 +117,6 @@ impl BtpTokenService {
 
                 let log = json!(
                 {
-
                     "event": "Mint",
                     "code": "1",
                     "amount": amount.to_string(),
@@ -190,6 +188,14 @@ impl BtpTokenService {
             .unwrap();
         self.coins.get(&coin_id).unwrap()
     }
+
+    pub fn get_token_limits(&self) -> &TokenLimits {
+        &self.token_limits
+    }
+
+    pub fn get_token_limit(&self, coin_name: String) -> u128 {
+        *self.token_limits.get(&coin_name).unwrap()
+    }
 }
 
 impl BtpTokenService {
@@ -251,7 +257,6 @@ impl BtpTokenService {
         self.balances.add(&env::current_account_id(), &coin_id);
         let log = json!(
         {
-
             "event": "Register",
             "code": "0",
             "token_name": coin.name(),
@@ -290,11 +295,6 @@ impl BtpTokenService {
             }
             Err(err) => return Err(err),
         }
-    }
-
-    #[cfg(feature = "testable")]
-    pub fn get_token_limit(&self) -> &TokenLimits {
-        &self.token_limits
     }
 
     pub fn coin_id(&self, coin_name: &str) -> Result<CoinId, BshError> {

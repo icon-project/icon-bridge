@@ -21,5 +21,5 @@ pub trait BtpTokenService {
 
     fn on_burn(&mut self, amount: u128, coin_id: AssetId, coin_symbol: String);
 
-    fn send_service_message_callback(&mut self, message: TokenServiceMessage, serial_no: i128);
+    fn send_service_message_callback(&mut self, destination_network: String, message: TokenServiceMessage, serial_no: i128);
 }
