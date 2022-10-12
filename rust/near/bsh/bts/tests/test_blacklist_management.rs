@@ -195,7 +195,7 @@ fn handle_btp_message_to_change_token_limit() {
 #[test]
 fn is_user_blacklisted() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
