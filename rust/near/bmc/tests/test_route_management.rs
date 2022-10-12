@@ -1,5 +1,8 @@
 use bmc::BtpMessageCenter;
-use near_sdk::{serde_json::json, testing_env, AccountId, VMContext};
+use near_sdk::{
+    env,
+    serde_json::json, test_utils::VMContextBuilder, testing_env, AccountId, Gas, VMContext,
+};
 
 pub mod accounts;
 use accounts::*;
@@ -9,24 +12,13 @@ use libraries::types::{
 };
 
 fn get_context(input: Vec<u8>, is_view: bool, signer_account_id: AccountId) -> VMContext {
-    VMContext {
-        current_account_id: alice().to_string(),
-        signer_account_id: signer_account_id.to_string(),
-        signer_account_pk: vec![0, 1, 2],
-        predecessor_account_id: signer_account_id.to_string(),
-        input,
-        block_index: 0,
-        block_timestamp: 0,
-        account_balance: 0,
-        account_locked_balance: 0,
-        storage_usage: 0,
-        attached_deposit: 0,
-        prepaid_gas: 10u64.pow(18),
-        random_seed: vec![0, 1, 2],
-        is_view,
-        output_data_receivers: vec![],
-        epoch_height: 19,
-    }
+    VMContextBuilder::new()
+        .current_account_id(alice())
+        .is_view(is_view)
+        .signer_account_id(signer_account_id.clone())
+        .predecessor_account_id(signer_account_id)
+        .prepaid_gas(Gas(10u64.pow(18)))
+        .build()
 }
 
 #[test]
@@ -38,7 +30,7 @@ fn add_route_new_route() {
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination =
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    
+
     contract.add_link(link.clone());
 
     contract.add_route(destination.clone(), link.clone());
@@ -64,7 +56,7 @@ fn add_route_existing_route() {
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination =
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    
+
     contract.add_link(link.clone());
     contract.add_route(destination.clone(), link.clone());
     contract.add_route(destination.clone(), link.clone());
@@ -108,7 +100,7 @@ fn remove_route() {
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination_2 =
         BTPAddress::new("btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    
+
     contract.add_link(link.clone());
     contract.add_route(destination_1.clone(), link.clone());
     contract.add_route(destination_2.clone(), link.clone());
@@ -136,7 +128,7 @@ fn remove_route_non_existing_route() {
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination_2 =
         BTPAddress::new("btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    
+
     contract.add_link(link.clone());
     contract.add_route(destination_1.clone(), link.clone());
     contract.remove_route(destination_2.clone());
@@ -152,7 +144,7 @@ fn remove_route_permission() {
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination =
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    
+
     contract.add_link(link.clone());
     contract.add_route(destination.clone(), link.clone());
     testing_env!(context(chuck()));
@@ -170,7 +162,7 @@ fn get_routes() {
         BTPAddress::new("btp://0x1.bsc/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let destination_2 =
         BTPAddress::new("btp://0x1.pra/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-  
+
     contract.add_link(link.clone());
     contract.add_route(destination_1.clone(), link.clone());
     contract.add_route(destination_2.clone(), link.clone());
@@ -207,7 +199,7 @@ fn resolve_route_link() {
     let mut contract = BtpMessageCenter::new("0x1.near".into(), 1500);
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-  
+
     contract.add_link(link.clone());
 
     let result = contract.resolve_route_pub(link.clone());
@@ -222,7 +214,7 @@ fn resolve_route_link_reachable() {
     let mut contract = BtpMessageCenter::new("0x1.near".into(), 1500);
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-  
+
     contract.add_link(link.clone());
 
     let bmc_service_message = BmcServiceMessage::new(BmcServiceType::Init {
@@ -233,7 +225,10 @@ fn resolve_route_link_reachable() {
     });
     let btp_message = <BtpMessage<SerializedMessage>>::new(
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string()),
-        BTPAddress::new("btp://0x1.near/88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4".to_string()),
+        BTPAddress::new(
+            "btp://0x1.near/88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
+                .to_string(),
+        ),
         "bmc".to_string(),
         WrappedI128::new(1),
         <Vec<u8>>::from(bmc_service_message.clone()),

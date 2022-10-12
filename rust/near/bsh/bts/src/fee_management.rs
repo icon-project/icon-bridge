@@ -51,6 +51,7 @@ impl BtpTokenService {
         self.coins.set(&coin_id, &coin)
     }
 
+    #[handle_result]
     pub fn get_fee(&self, coin_name: String, amount: U128) -> Result<U128, String> {
         let coin_id = self
             .coin_id(&coin_name)

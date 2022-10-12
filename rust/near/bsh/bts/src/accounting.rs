@@ -69,23 +69,17 @@ impl BtpTokenService {
         let coin = self.coins.get(&coin_id).unwrap();
 
         let transfer_promise = if coin.network() != &self.network {
-            ext_nep141::ft_transfer_with_storage_check(
+            ext_nep141::ext(coin.metadata().uri().to_owned().unwrap()).ft_transfer_with_storage_check(
                 account.clone(),
                 amount,
                 None,
-                coin.metadata().uri().to_owned().unwrap(),
-                estimate::NO_DEPOSIT,
-                estimate::GAS_FOR_FT_TRANSFER_CALL,
             )
         } else {
             if let Some(uri) = coin.metadata().uri_deref() {
-                ext_ft::ft_transfer(
+                ext_ft::ext(uri).ft_transfer(
                     account.clone(),
                     U128::from(amount),
                     None,
-                    uri,
-                    estimate::ONE_YOCTO,
-                    estimate::GAS_FOR_FT_TRANSFER_CALL,
                 )
             } else {
                 Promise::new(account.clone()).transfer(amount)
@@ -93,14 +87,11 @@ impl BtpTokenService {
         };
 
         transfer_promise
-            .then(ext_self::on_withdraw(
+            .then(Self::ext(env::current_account_id()).on_withdraw(
                 account.clone(),
                 amount,
                 coin_name,
                 coin_id,
-                env::current_account_id(),
-                estimate::NO_DEPOSIT,
-                estimate::GAS_FOR_FT_TRANSFER_CALL,
             ))
             .then(Promise::new(account.clone()).transfer(1));
     }
