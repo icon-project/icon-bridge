@@ -188,6 +188,14 @@ impl BtpTokenService {
             .unwrap();
         self.coins.get(&coin_id).unwrap()
     }
+
+    pub fn get_token_limits(&self) -> &TokenLimits {
+        &self.token_limits
+    }
+
+    pub fn get_token_limit(&self, coin_name: String) -> u128 {
+        *self.token_limits.get(&coin_name).unwrap()
+    }
 }
 
 impl BtpTokenService {
@@ -275,11 +283,6 @@ impl BtpTokenService {
             }
             Err(err) => return Err(err),
         }
-    }
-
-    #[cfg(feature = "testable")]
-    pub fn get_token_limit(&self) -> &TokenLimits {
-        &self.token_limits
     }
 
     pub fn coin_id(&self, coin_name: &str) -> Result<CoinId, BshError> {

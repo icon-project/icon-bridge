@@ -22,13 +22,17 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
+import com.iconloop.score.test.Account;
 import foundation.icon.btp.lib.BMCStatus;
+import foundation.icon.btp.lib.BTPAddress;
 import java.math.BigInteger;
 import java.util.Map;
 import org.bouncycastle.util.encoders.Hex;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic.Verification;
 import score.Address;
+import score.Context;
 
 class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
 
@@ -341,6 +345,125 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         assertEquals(bond, properties.getRelayerMinBond());
     }
 
+    @Test
+    void messageEventLogContents() {
+
+        Account bts = sm.createAccount();
+        String DESTINATION_NETWORK = "0x38.bmc";
+        String DESTINATION_BMC = "0x034AaDE86BF402F023Aa17E5725fABC4ab9E9798";
+        String to = getDestinationBTPAddress(DESTINATION_NETWORK, DESTINATION_BMC);
+        String svc = "bts";
+        BigInteger sn = BigInteger.ONE;
+        byte[] msg = "Message Received From BTS".getBytes();
+
+        // before registering BTS to BMC
+        assertThrows(AssertionError.class, () -> score.invoke(owner, "sendMessage", to, svc, sn, msg ));
+
+        addLink(to);
+        addRoute(DESTINATION_NETWORK, to);
+        addService(svc, bts.getAddress());
+
+        assertThrows(AssertionError.class, () -> score.invoke(owner, "sendMessage", to, svc, sn, msg));
+        assertThrows(AssertionError.class, () -> score.invoke(bts, "sendMessage", to, svc, BigInteger.ONE.negate(), msg));
+
+        score.invoke(bts, "sendMessage", DESTINATION_NETWORK, svc, sn, msg);
+
+        BTPAddress source = new BTPAddress(NETWORK, score.getAddress().toString());
+        BTPAddress destination = new BTPAddress(DESTINATION_NETWORK, DESTINATION_BMC);
+
+        BTPMessage message = new BTPMessage();
+        message.setSrc(source);
+        message.setDst(destination);
+        message.setSvc(svc);
+        message.setSn(sn);
+        message.setPayload(msg);
+
+        verify(scoreSpy).Message(to, BigInteger.TWO, message.toBytes());
+    }
+    
+    @Test
+    public void addRelayer() {
+        Account alice = sm.createAccount(10);
+        contextMock.when(mockICXSent()).thenReturn(BigInteger.valueOf(0));
+        Executable call = () -> score.invoke(alice, "registerRelayer", "Hey, I want to be a relayer");
+        expectErrorMessage(call, "require bond at least 1 icx");
+
+
+        contextMock.when(mockICXSent()).thenReturn(BigInteger.valueOf(50));
+        score.invoke(alice, "registerRelayer", "Hey, I want to be a relayer");
+
+        call = () -> score.invoke(alice, "registerRelayer", "Hey, I want to be a relayer");
+        expectErrorMessage(call, "already registered relayer");
+
+        score.invoke(owner, "setRelayerMinBond", BigInteger.valueOf(100));
+
+        Account bob = sm.createAccount(1000);
+        contextMock.when(mockICXSent()).thenReturn(BigInteger.valueOf(90));
+        call = () -> score.invoke(bob, "registerRelayer", "Hey, I want to be a relayer");
+        expectErrorMessage(call, "require bond at least 100 icx");
+
+        contextMock.when(mockICXSent()).thenReturn(BigInteger.valueOf(200));
+        score.invoke(bob, "registerRelayer", "Hey, I want to be a relayer too");
+
+        call = () -> score.invoke(alice, "claimRelayerReward");
+        expectErrorMessage(call, "reward is not remained");
+
+        // mocks for distributeRelayerReward
+        contextMock.when(mockBlockHeight()).thenReturn(getCurrentBlockHeight()+43200L);
+        contextMock.when(mockICXBalance(score.getAddress())).thenReturn(BigInteger.valueOf(10000));
+        score.invoke(owner, "setNextRewardDistribution", 43200L);
+        score.invoke(owner, "distributeRelayerReward");
+
+        /*
+         * Total ICX balance: 10000
+         * Bond             : 50 + 200 = 250
+         * Amount for reward: 10000 - 250 = 9750
+         * Alice reward     : 50 / 250 * 9750 = 1950
+         * Bob reward       : 200 / 250 * 9750 = 7800
+         */
+
+        Map<String, Relayer> relayers = (Map<String, Relayer>) score.call("getRelayers");
+
+        assertEquals(alice.getAddress(), relayers.get(alice.getAddress().toString()).getAddr());
+        assertEquals(BigInteger.valueOf(50), relayers.get(alice.getAddress().toString()).getBond());
+        assertEquals(BigInteger.valueOf(1950), relayers.get(alice.getAddress().toString()).getReward());
+
+        assertEquals(bob.getAddress(), relayers.get(bob.getAddress().toString()).getAddr());
+        assertEquals(BigInteger.valueOf(200), relayers.get(bob.getAddress().toString()).getBond());
+        assertEquals(BigInteger.valueOf(7800), relayers.get(bob.getAddress().toString()).getReward());
+
+        Verification sendICXToUser = () -> Context.transfer(alice.getAddress(), BigInteger.valueOf(1950));
+        contextMock.when(sendICXToUser).then(invocation -> null);
+        score.invoke(alice, "claimRelayerReward");
+
+        sendICXToUser = () -> Context.transfer(alice.getAddress(), BigInteger.valueOf(50));
+        contextMock.when(sendICXToUser).then(invocationOnMock -> null);
+        score.invoke(alice, "unregisterRelayer");
+        relayers = (Map<String, Relayer>) score.call("getRelayers");
+        assertEquals(null, relayers.get(alice.getAddress().toString()));
+
+        call = () -> score.invoke(alice, "unregisterRelayer");
+        expectErrorMessage(call, "not found registered relayer");
+
+        call = () -> score.invoke(alice, "claimRelayerReward");
+        expectErrorMessage(call, "not found registered relayer");
+
+        call = () -> score.invoke(alice, "removeRelayer", bob.getAddress(), alice.getAddress());
+        expectErrorMessage(call, REQUIRE_OWNER_ACCESS);
+
+        // 200 is the bond
+        sendICXToUser = () -> Context.transfer(bob.getAddress(), BigInteger.valueOf(200));
+        contextMock.when(sendICXToUser).then(invocationOnMock -> null);
+
+        // 7800 is the reward
+        sendICXToUser = () -> Context.transfer(bob.getAddress(), BigInteger.valueOf(7800));
+        contextMock.when(sendICXToUser).then(invocationOnMock -> null);
+
+        score.invoke(owner, "removeRelayer", bob.getAddress(), bob.getAddress());
+
+        relayers = (Map<String, Relayer>) score.call("getRelayers");
+        assertEquals(null, relayers.get(bob.getAddress().toString()));
+    }
 
     @Test
     public void bmcDecodeMessage() {
