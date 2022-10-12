@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"math/big"
 	"net/url"
 	"strconv"
@@ -89,7 +90,7 @@ type sender struct {
 	cl   *Client
 }
 
-func hexInt2Uint64(hi HexInt) uint64 {
+func hexInt2Uint64(hi types.HexInt) uint64 {
 	v, _ := hi.Value()
 	return uint64(v)
 }
@@ -100,18 +101,18 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	p := &CallParam{
-		FromAddress: Address(s.w.Address()),
-		ToAddress:   Address(s.dst.ContractAddress()),
+	p := &types.CallParam{
+		FromAddress: types.Address(s.w.Address()),
+		ToAddress:   types.Address(s.dst.ContractAddress()),
 		DataType:    "call",
-		Data: CallData{
-			Method: BMCGetStatusMethod,
-			Params: BMCStatusParams{
+		Data: types.CallData{
+			Method: types.BMCGetStatusMethod,
+			Params: types.BMCStatusParams{
 				Target: s.src.String(),
 			},
 		},
 	}
-	bs := &BMCStatus{}
+	bs := &types.BMCStatus{}
 	err := mapError(s.cl.Call(p, bs))
 	if err != nil {
 		return nil, err
@@ -193,28 +194,28 @@ func (s *sender) Segment(
 }
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
-	bal, err := s.cl.GetBalance(&AddressParam{Address: Address(s.w.Address())})
+	bal, err := s.cl.GetBalance(&types.AddressParam{Address: types.Address(s.w.Address())})
 	return bal, &s.opts.BalanceThreshold.Int, err
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*relayTx, error) {
-	txParam := &TransactionParam{
-		Version:     NewHexInt(JsonrpcApiVersion),
-		FromAddress: Address(s.w.Address()),
-		ToAddress:   Address(s.dst.ContractAddress()),
-		NetworkID:   HexInt(s.dst.NetworkID()),
-		StepLimit:   NewHexInt(int64(defaultStepLimit)),
+	txParam := &types.TransactionParam{
+		Version:     types.NewHexInt(types.JsonrpcApiVersion),
+		FromAddress: types.Address(s.w.Address()),
+		ToAddress:   types.Address(s.dst.ContractAddress()),
+		NetworkID:   types.HexInt(s.dst.NetworkID()),
+		StepLimit:   types.NewHexInt(int64(defaultStepLimit)),
 		DataType:    "call",
-		Data: CallData{
-			Method: BMCRelayMethod,
-			Params: BMCRelayMethodParams{
+		Data: types.CallData{
+			Method: types.BMCRelayMethod,
+			Params: types.BMCRelayMethodParams{
 				Prev:     prev,
 				Messages: base64.URLEncoding.EncodeToString(message),
 			},
 		},
 	}
 	if s.opts.StepLimit > 0 {
-		txParam.StepLimit = NewHexInt(int64(s.opts.StepLimit))
+		txParam.StepLimit = types.NewHexInt(int64(s.opts.StepLimit))
 	}
 	return &relayTx{
 		Prev:    prev,
@@ -229,8 +230,8 @@ type relayTx struct {
 	Prev    string `json:"_prev"`
 	Message []byte `json:"_msg"`
 
-	txParam     *TransactionParam
-	txHashParam *TransactionHashParam
+	txParam     *types.TransactionParam
+	txHashParam *types.TransactionHashParam
 	cl          *Client
 	w           wallet.Wallet
 }
@@ -260,8 +261,8 @@ SignLoop:
 			}
 			txh, err := tx.cl.SendTransaction(tx.txParam)
 			if txh != nil {
-				tx.txHashParam = &TransactionHashParam{*txh}
-				// tx.cl.log.WithFields(log.Fields{
+				tx.txHashParam = &types.TransactionHashParam{*txh}
+				// tx.Client.log.WithFields(log.Fields{
 				// 	"txh": tx.txHashParam.Hash,
 				// 	"msg": common.HexBytes(tx.Message)}).Debug("handleRelayMessage: tx sent")
 				txBytes, _ := json.Marshal(tx.txParam)
@@ -275,15 +276,15 @@ SignLoop:
 					"error": err}).Debug("handleRelayMessage: send tx")
 				if je, ok := err.(*jsonrpc.Error); ok {
 					switch je.Code {
-					case JsonrpcErrorCodeTxPoolOverflow:
+					case types.JsonrpcErrorCodeTxPoolOverflow:
 						<-time.After(defaultRelayReSendInterval)
 						continue SendLoop
-					case JsonrpcErrorCodeSystem:
+					case types.JsonrpcErrorCodeSystem:
 						if subEc, err := strconv.ParseInt(je.Message[1:5], 0, 32); err == nil {
 							switch subEc {
-							case DuplicateTransactionError:
+							case types.DuplicateTransactionError:
 								return nil
-							case ExpiredTransactionError:
+							case types.ExpiredTransactionError:
 								continue SignLoop
 							}
 						}
@@ -310,7 +311,7 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockHeight uint64, err error) 
 		if err != nil {
 			if je, ok := err.(*jsonrpc.Error); ok {
 				switch je.Code {
-				case JsonrpcErrorCodePending, JsonrpcErrorCodeExecuting:
+				case types.JsonrpcErrorCodePending, types.JsonrpcErrorCodeExecuting:
 					time.Sleep(defaultGetRelayResultInterval)
 					continue
 				}
@@ -330,21 +331,21 @@ func mapError(err error) error {
 		case *jsonrpc.Error:
 			//fmt.Printf("jrResp.Error:%+v", re)
 			switch re.Code {
-			case JsonrpcErrorCodeTxPoolOverflow:
+			case types.JsonrpcErrorCodeTxPoolOverflow:
 				return ErrSendFailByOverflow
-			case JsonrpcErrorCodeSystem:
+			case types.JsonrpcErrorCodeSystem:
 				if subEc, err := strconv.ParseInt(re.Message[1:5], 0, 32); err == nil {
 					//TODO return JsonRPC Error
 					switch subEc {
-					case ExpiredTransactionError:
+					case types.ExpiredTransactionError:
 						return ErrSendFailByExpired
-					case FutureTransactionError:
+					case types.FutureTransactionError:
 						return ErrSendFailByFuture
-					case TransactionPoolOverflowError:
+					case types.TransactionPoolOverflowError:
 						return ErrSendFailByOverflow
 					}
 				}
-			case JsonrpcErrorCodePending, JsonrpcErrorCodeExecuting:
+			case types.JsonrpcErrorCodePending, types.JsonrpcErrorCodeExecuting:
 				return ErrGetResultFailByPending
 			}
 		case *common.HttpError:
@@ -360,15 +361,15 @@ func mapError(err error) error {
 	return err
 }
 
-func mapErrorWithTransactionResult(txr *TransactionResult, err error) error {
+func mapErrorWithTransactionResult(txr *types.TransactionResult, err error) error {
 	err = mapError(err)
-	if err == nil && txr != nil && txr.Status != ResultStatusSuccess {
+	if err == nil && txr != nil && txr.Status != types.ResultStatusSuccess {
 		fc, _ := txr.Failure.CodeValue.Value()
-		if fc < ResultStatusFailureCodeRevert || fc > ResultStatusFailureCodeEnd {
+		if fc < types.ResultStatusFailureCodeRevert || fc > types.ResultStatusFailureCodeEnd {
 			err = fmt.Errorf("failure with code:%s, message:%s",
 				txr.Failure.CodeValue, txr.Failure.MessageValue)
 		} else {
-			err = NewRevertError(int(fc - ResultStatusFailureCodeRevert))
+			err = NewRevertError(int(fc - types.ResultStatusFailureCodeRevert))
 		}
 	}
 	return err
