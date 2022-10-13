@@ -59,7 +59,6 @@ type IClient interface {
 	GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error)
 	//GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error)
 	GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts, error)
-	GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error)
 	GetChainID() *big.Int
 	GetEthClient() *ethclient.Client
 	Log() log.Logger
