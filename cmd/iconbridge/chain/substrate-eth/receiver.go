@@ -1,4 +1,4 @@
-package snow
+package substrate_eth
 
 import (
 	"bytes"

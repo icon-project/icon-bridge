@@ -1,4 +1,4 @@
-package snow
+package substrate_eth
 
 import "github.com/icon-project/icon-bridge/cmd/iconbridge/relay"
 

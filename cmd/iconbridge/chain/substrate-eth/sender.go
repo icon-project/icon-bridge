@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package snow
+package substrate_eth
 
 import (
 	"context"
@@ -29,7 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	snowTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/snow/types"
+	snowTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/types"
 	"github.com/icon-project/icon-bridge/common/codec"
 	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/log"

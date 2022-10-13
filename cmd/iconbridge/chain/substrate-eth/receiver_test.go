@@ -1,4 +1,4 @@
-package snow
+package substrate_eth
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/snow/mocks"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/mocks"
 	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
