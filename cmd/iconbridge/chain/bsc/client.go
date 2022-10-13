@@ -3,7 +3,6 @@ package bsc
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/big"
 
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
@@ -59,7 +58,6 @@ type IClient interface {
 	GetBlockByHash(hash common.Hash) (*bscTypes.Block, error)
 	GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error)
 	GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error)
-	GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error)
 	GetChainID() *big.Int
 	GetEthClient() *ethclient.Client
 	Log() log.Logger
@@ -156,34 +154,6 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error) 
 		}
 	}
 	return receipts, nil
-}
-
-func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error) {
-	gasPrice = big.NewInt(0)
-	header, err := c.eth.HeaderByNumber(ctx, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "GetHeaderByNumber(height:latest) Err: %v", err)
-		return
-	}
-	height := header.Number
-	txnCount, err := c.eth.TransactionCount(ctx, header.Hash())
-	if err != nil {
-		err = errors.Wrapf(err, "GetTransactionCount(height:%v, headerHash: %v) Err: %v", height, header.Hash(), err)
-		return
-	} else if err == nil && txnCount == 0 {
-		return nil, nil, fmt.Errorf("TransactionCount is zero for height(%v, headerHash %v)", height, header.Hash())
-	}
-	// txnF, err := c.eth.TransactionInBlock(ctx, header.Hash(), 0)
-	// if err != nil {
-	// 	return nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, 0, err)
-	// }
-	txnS, err := c.eth.TransactionInBlock(ctx, header.Hash(), uint(math.Floor(float64(txnCount)/2)))
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "GetTransactionInBlock(headerHash: %v, height: %v Index: %v) Err: %v", header.Hash(), height, txnCount-1, err)
-	}
-	gasPrice = txnS.GasPrice()
-	gasHeight = header.Number
-	return
 }
 
 func (c *Client) GetChainID() *big.Int {

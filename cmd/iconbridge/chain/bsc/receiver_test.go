@@ -51,14 +51,6 @@ func newTestClient(t *testing.T, bmcAddr string) IClient {
 	return cls[0]
 }
 
-func TestMedianGasPrice(t *testing.T) {
-	url := "https://data-seed-prebsc-1-s1.binance.org:8545"
-	cls, _, err := newClients([]string{url}, BSC_BMC_PERIPHERY, log.New())
-	require.NoError(t, err)
-
-	_, _, err = cls[0].GetMedianGasPriceForBlock(context.Background())
-	require.NoError(t, err)
-}
 
 func TestFilterLogs(t *testing.T) {
 	var src, dst chain.BTPAddress

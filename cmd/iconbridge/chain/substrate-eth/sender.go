@@ -198,20 +198,8 @@ func (s *sender) Segment(
 	if err != nil {
 		return nil, nil, err
 	}
-	cl, _ := s.jointClient()
-	gasPrice, gasHeight, err := cl.GetMedianGasPriceForBlock(ctx)
-	if err != nil || gasPrice.Int64() == 0 {
-		s.log.Infof("GetMedianGasPriceForBlock(%v) Msg: %v. Using default value for gas price \n", gasHeight.String(), err)
-		gasPrice = s.prevGasPrice
-	} else {
-		s.prevGasPrice = gasPrice
-		s.log.Infof("GetMedianGasPriceForBlock(%v) price: %v \n", gasHeight.String(), gasPrice.String())
-	}
-	boostedGasPrice, _ := (&big.Float{}).Mul(
-		(&big.Float{}).SetInt64(gasPrice.Int64()),
-		(&big.Float{}).SetFloat64(s.opts.BoostGasPrice),
-	).Int(nil)
-	tx, err = s.newRelayTx(ctx, msg.From.String(), message, boostedGasPrice)
+
+	tx, err = s.newRelayTx(ctx, msg.From.String(), message)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -225,7 +213,7 @@ func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err 
 	return bal, &s.opts.BalanceThreshold.Int, err
 }
 
-func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, gasPrice *big.Int) (*relayTx, error) {
+func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*relayTx, error) {
 	client, bmcClient := s.jointClient()
 
 	newTransactOpts := func(w snowTypes.Wallet) (*bind.TransactOpts, error) {
@@ -235,7 +223,20 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, ga
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 		defer cancel()
-		txo.GasPrice, _ = client.GetEthClient().SuggestGasPrice(ctx)
+
+		gasPrice, err := client.GetEthClient().SuggestGasPrice(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if s.opts.BoostGasPrice > 1 {
+			gasPrice, _ = (&big.Float{}).Mul(
+				(&big.Float{}).SetInt64(gasPrice.Int64()),
+				(&big.Float{}).SetFloat64(s.opts.BoostGasPrice),
+			).Int(nil)
+		}
+
+		txo.GasPrice = gasPrice
 		txo.GasLimit = uint64(DefaultGasLimit)
 		return txo, nil
 	}
@@ -248,7 +249,7 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, ga
 	if s.opts.GasLimit > 0 {
 		txOpts.GasLimit = s.opts.GasLimit
 	}
-	txOpts.GasPrice = gasPrice
+
 	return &relayTx{
 		Prev:    prev,
 		Message: message, // base64.URLEncoding.EncodeToString(rlpCrm),
