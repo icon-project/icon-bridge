@@ -1,4 +1,4 @@
-package bsc
+package snow
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
-	bscTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/types"
 	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -20,13 +19,13 @@ func newClients(urls []string, bmc string, l log.Logger) (cls []IClient, bmcs []
 	for _, url := range urls {
 		clrpc, err := rpc.Dial(url)
 		if err != nil {
-			l.Errorf("failed to create bsc rpc client: url=%v, %v", url, err)
+			l.Errorf("failed to create snow rpc client: url=%v, %v", url, err)
 			return nil, nil, err
 		}
 		cleth := ethclient.NewClient(clrpc)
 		clbmc, err := NewBMC(common.HexToAddress(bmc), cleth)
 		if err != nil {
-			l.Errorf("failed to create bmc binding to bsc ethclient: url=%v, %v", url, err)
+			l.Errorf("failed to create bmc binding to snow ethclient: url=%v, %v", url, err)
 			return nil, nil, err
 		}
 		bmcs = append(bmcs, clbmc)
@@ -56,9 +55,10 @@ type Client struct {
 type IClient interface {
 	GetBalance(ctx context.Context, hexAddr string) (*big.Int, error)
 	GetBlockNumber() (uint64, error)
-	GetBlockByHash(hash common.Hash) (*bscTypes.Block, error)
+	//GetBlockByHash(hash common.Hash) (*snowTypes.Block, error)
 	GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error)
-	GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error)
+	//GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error)
+	GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts, error)
 	GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error)
 	GetChainID() *big.Int
 	GetEthClient() *ethclient.Client
@@ -82,6 +82,7 @@ func (cl *Client) GetBlockNumber() (uint64, error) {
 	return bn, nil
 }
 
+/*
 func (cl *Client) GetBlockByHash(hash common.Hash) (*bscTypes.Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
@@ -92,6 +93,7 @@ func (cl *Client) GetBlockByHash(hash common.Hash) (*bscTypes.Block, error) {
 	}
 	return &hb, nil
 }
+*/
 
 func (cl *Client) GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
@@ -99,6 +101,7 @@ func (cl *Client) GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error) {
 	return cl.eth.HeaderByNumber(ctx, height)
 }
 
+/*
 func (cl *Client) GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error) {
 	hb, err := cl.GetBlockByHash(hash)
 	if err != nil {
@@ -157,7 +160,7 @@ func (cl *Client) GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error) 
 	}
 	return receipts, nil
 }
-
+*/
 func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error) {
 	gasPrice = big.NewInt(0)
 	header, err := c.eth.HeaderByNumber(ctx, nil)
@@ -184,6 +187,70 @@ func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.I
 	gasPrice = txnS.GasPrice()
 	gasHeight = header.Number
 	return
+}
+
+func (cl *Client) GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	defer cancel()
+	hb, err := cl.eth.BlockByNumber(ctx, height)
+	if err != nil {
+		return nil, err
+	}
+	if hb.GasUsed() == 0 || len(hb.Transactions()) == 0 {
+		return nil, nil
+	}
+	txhs := []string{}
+	for _, v := range hb.Transactions() {
+		txhs = append(txhs, v.Hash().String())
+	}
+	// fetch all txn receipts concurrently
+	type rcq struct {
+		txh   string
+		v     *ethTypes.Receipt
+		err   error
+		retry int
+	}
+	qch := make(chan *rcq, len(txhs))
+	for _, txh := range txhs {
+		qch <- &rcq{txh, nil, nil, RPCCallRetry}
+	}
+	rmap := make(map[string]*ethTypes.Receipt)
+	for q := range qch {
+		switch {
+		case q.err != nil:
+			if q.retry == 0 {
+				return nil, q.err
+			}
+			q.retry--
+			q.err = nil
+			qch <- q
+		case q.v != nil:
+			rmap[q.txh] = q.v
+			if len(rmap) == cap(qch) {
+				close(qch)
+			}
+		default:
+			go func(q *rcq) {
+				defer func() { qch <- q }()
+				ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+				defer cancel()
+				if q.v == nil {
+					q.v = &ethTypes.Receipt{}
+				}
+				q.v, err = cl.eth.TransactionReceipt(ctx, common.HexToHash(q.txh))
+				if q.err != nil {
+					q.err = errors.Wrapf(q.err, "getTranasctionReceipt: %v", q.err)
+				}
+			}(q)
+		}
+	}
+	receipts := make(ethTypes.Receipts, 0, len(txhs))
+	for _, txh := range txhs {
+		if r, ok := rmap[txh]; ok {
+			receipts = append(receipts, r)
+		}
+	}
+	return receipts, nil
 }
 
 func (c *Client) GetChainID() *big.Int {
