@@ -28,6 +28,7 @@ public class AbstractBTPMessageCenterTest extends TestBase {
     public BTPMessageCenter scoreSpy;
     public String NETWORK = "0x1.icon";
     public String BTS = "bts";
+    public Address BMC_SCORE = Address.fromString("cx0000000000000000000000000000000000000004");
     public Account BTSScore = sm.createAccount();
 
     public String REQUIRE_OWNER_ACCESS = "require owner access";
@@ -46,6 +47,7 @@ public class AbstractBTPMessageCenterTest extends TestBase {
         owner = sm.createAccount(100);
         nonOwner = sm.createAccount(100);
 
+        contextMock.when(() -> Context.getAddress()).thenReturn(BMC_SCORE);
         score = sm.deploy(owner, BTPMessageCenter.class, NETWORK);
 
         BTPMessageCenter instance = (BTPMessageCenter) score.getInstance();

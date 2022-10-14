@@ -44,7 +44,7 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
 
     @Test
     void getBTPAddress() {
-        assertEquals(getBTPAddress(score.getAddress()), score.call("getBtpAddress"));
+        assertEquals(getBTPAddress(BMC_SCORE), score.call("getBtpAddress"));
     }
 
     @Test
@@ -373,8 +373,8 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         expectErrorMessage(call, "reward is not remained");
 
         // mocks for distributeRelayerReward
-        contextMock.when(mockBlockHeight()).thenReturn(getCurrentBlockHeight()+43200L);
-        contextMock.when(mockICXBalance(score.getAddress())).thenReturn(BigInteger.valueOf(10000));
+        contextMock.when(mockBlockHeight()).thenReturn(getCurrentBlockHeight() + 43200L);
+        contextMock.when(mockICXBalance(BMC_SCORE)).thenReturn(BigInteger.valueOf(10000));
         score.invoke(owner, "setNextRewardDistribution", 43200L);
         score.invoke(owner, "distributeRelayerReward");
 
@@ -451,8 +451,7 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         assertThrows(AssertionError.class, () -> score.invoke(bts, "sendMessage", to, svc, BigInteger.ONE.negate(), msg));
 
         score.invoke(bts, "sendMessage", DESTINATION_NETWORK, svc, sn, msg);
-
-        BTPAddress source = new BTPAddress(NETWORK, score.getAddress().toString());
+        BTPAddress source = new BTPAddress(NETWORK, BMC_SCORE.toString());
         BTPAddress destination = new BTPAddress(DESTINATION_NETWORK, DESTINATION_BMC);
 
         BTPMessage message = new BTPMessage();
