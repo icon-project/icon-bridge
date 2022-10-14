@@ -371,7 +371,7 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
 
         score.invoke(bts, "sendMessage", DESTINATION_NETWORK, svc, sn, msg);
 
-        BTPAddress source = new BTPAddress(NETWORK, score.getAddress().toString());
+        BTPAddress source = new BTPAddress(NETWORK, BMC_SCORE.toString());
         BTPAddress destination = new BTPAddress(DESTINATION_NETWORK, DESTINATION_BMC);
 
         BTPMessage message = new BTPMessage();
