@@ -632,6 +632,45 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         String err2 = "-PD47rjs-OpVuOL44PjeuDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDQCuKD4nrg9YnRwOi8vMHgyMjguYXJjdGljLzB4MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMbg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0h2NhbmRpY2WB9pnYAJZBZGQgdG8gYmxhY2tsaXN0IGVycm9yhAFK_nM=";
         score.invoke(relay, "handleRelayMessage", prevLink, err2);
     }
+
+    @Test
+    public void ownerTests() {
+        String expectedErrorMessage = "caller is not owner";
+        Account user1 = sm.createAccount(10);
+        Account user2 = sm.createAccount(10);
+
+        // Non-Owner tries to add a new Owner
+        Executable call = () -> score.invoke(nonOwner, "addOwner", owner.getAddress());
+        expectErrorMessage(call, expectedErrorMessage);
+
+        // owner tries to add themselves
+        call = () -> score.invoke(owner, "addOwner", owner.getAddress());
+        expectErrorMessage(call, "given address is score owner");
+
+        // Current Owner adds a new Owner
+        score.invoke(owner, "addOwner", user1.getAddress());
+        assertEquals(true, score.call("isOwner", user1.getAddress()));
+        Address[] owners = (Address[]) score.call("getOwners");
+        assertEquals(owner.getAddress(), owners[0]);
+        assertEquals(user1.getAddress(), owners[1]);
+
+        // newly added owner tries to add owner
+        score.invoke(user1, "addOwner", user2.getAddress());
+        assertEquals(true, score.call("isOwner", user2.getAddress()));
+
+        //Current Owner removes another Owner
+        score.invoke(user2, "removeOwner", user1.getAddress());
+        assertEquals(false, score.call("isOwner", user1.getAddress()));
+
+        // owner tries to add itself again
+        call = () -> score.invoke(user2, "addOwner", user2.getAddress());
+        expectErrorMessage(call, "already exists owner");
+
+        // The last Owner removes him/herself
+        score.invoke(user2, "removeOwner", user2.getAddress());
+        assertEquals(false, score.call("isOwner", user2.getAddress()));
+    }
+
     public void bmcDecodeMessage() {
 //        String str = "0xf8a9b8406274703a2f2f307836333536346334302e686d6e792f307861363937313261333831336430353035626244353541654433666438343731426332663732324444b8396274703a2f2f3078312e69636f6e2f6378393937383439643339323064333338656438313830303833336662623237306337383565373433649a576f6e6465726c616e64546f6b656e53616c655365727669636589008963dd8c2c5e000086c50283c20100";
 //        String str = "0xf8a9b8406274703a2f2f307836333536346334302e686d6e792f307861363937313261333831336430353035626244353541654433666438343731426332663732324444b8396274703a2f2f3078312e69636f6e2f6378393937383439643339323064333338656438313830303833336662623237306337383565373433649a576f6e6465726c616e64546f6b656e53616c655365727669636589ff769c2273d3a2000086c50283c20100";
