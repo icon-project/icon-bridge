@@ -28,12 +28,17 @@ import foundation.icon.btp.lib.BTPAddress;
 import java.math.BigInteger;
 import java.util.Map;
 import org.bouncycastle.util.encoders.Hex;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic.Verification;
 import score.Address;
 import score.Context;
 
+@TestMethodOrder(OrderAnnotation.class)
 class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
 
 
@@ -346,6 +351,7 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
     }
 
     @Test
+    @Order(1)
     public void addRelayer() {
         Account alice = sm.createAccount(10);
         contextMock.when(mockICXSent()).thenReturn(BigInteger.valueOf(0));
@@ -526,6 +532,105 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         contextMock.when(mock_handleBTPMessage).thenReturn(null);
 
         score.invoke(relay, "handleRelayMessage", prevLink, validBTPMessage);
+    }
+
+    @Test
+    @Order(2)
+    public void initService() {
+        String prevLink = getDestinationBTPAddress("0x228.arctic", "0x1111111111111111111111111111111111111111");
+        Account relay = registerRelayer();
+
+        addLink(prevLink);
+        score.invoke(owner, "addRelay", prevLink, relay.getAddress());
+
+        /**
+         * Internal init
+         * sn = 1
+         * 0x38.bsc is reachable through 0x228.arctic
+         * initMessage contains 0x38.bsc as payload
+         */
+        String initMessage = "-QEh-QEeuQEb-QEYVbkBD_kBDPkBCbg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0AbjL-Mm4PWJ0cDovLzB4MjI4LmFyY3RpYy8weDExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTG4OWJ0cDovLzB4MS5pY29uL2N4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwNINibWMBuEj4RoRJbml0uD_4Pfg7uDlidHA6Ly8weDM4LmJzYy8weGExNDQyYzkwMTIwQTg5MWMzZGU5NzkzY2FDNzA5NjhDYWIxMTMyMzWEAUr-cw==";
+        score.invoke(relay, "handleRelayMessage", prevLink, initMessage);
+        score.invoke(owner, "addService", BTS, BTSScore.getAddress());
+
+        score.invoke(BTSScore, "sendMessage", "0x38.bsc", BTS, BigInteger.valueOf(2), new byte[0]);
+        verify(scoreSpy).Message(eq(prevLink), eq(BigInteger.TWO), any());
+
+        String invalidInitMessage = "-QEf-QEcuQEZ-QEWVbkBDfkBCvkBB7g5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0ArjJ-Me4O2J0cDovLzB4MjI4LmF2YXgvMHgxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExuDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDSDYm1jAbhI-EaESW5pdLg_-D34O7g5YnRwOi8vMHgzOC5ic2MvMHhhMTQ0MmM5MDEyMEE4OTFjM2RlOTc5M2NhQzcwOTY4Q2FiMTEzMjM1hAFK_nM=";
+        Executable call = () -> score.invoke(relay, "handleRelayMessage", prevLink, invalidInitMessage);
+        expectErrorMessageIn(call, "internal message not allowed from ");
+
+        // not supported internal type, only rewards distributed
+        String invalidType = "-QEg-QEduQEa-QEXVbkBDvkBC_kBCLg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0ArjK-Mi4O2J0cDovLzB4MjI4LmF2YXgvMHgxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExuDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDSDYm1jAbhJ-EeFVGlyZWS4P_g9-Du4OWJ0cDovLzB4MzguYnNjLzB4YTE0NDJjOTAxMjBBODkxYzNkZTk3OTNjYUM3MDk2OENhYjExMzIzNYQBSv5z";
+        score.invoke(relay, "handleRelayMessage", prevLink, invalidType);
+    }
+
+    @Test
+    @Order(2)
+    public void linkUnlink() {
+        String prevLink = getDestinationBTPAddress("0x228.avax", "0x1111111111111111111111111111111111111111");
+        Account relay = registerRelayer();
+
+        addLink(prevLink);
+        score.invoke(owner, "addRelay", prevLink, relay.getAddress());
+
+        String linkMessage = "-QEd-QEauQEX-QEUVbkBC_kBCPkBBbg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0AbjH-MW4O2J0cDovLzB4MjI4LmF2YXgvMHgxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExuDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDSDYm1jAbhG-ESETGlua7g9-Du4OWJ0cDovLzB4MzguYnNjLzB4YTE0NDJjOTAxMjBBODkxYzNkZTk3OTNjYUM3MDk2OENhYjExMzIzNYQBSv5z";
+        score.invoke(relay, "handleRelayMessage", prevLink, linkMessage);
+        score.invoke(owner, "addService", BTS, BTSScore.getAddress());
+
+        // link : reachable
+        score.invoke(BTSScore, "sendMessage", "0x38.bsc", BTS, BigInteger.valueOf(2), new byte[0]);
+        verify(scoreSpy).Message(eq(prevLink), eq(BigInteger.TWO), any());
+
+        // unlink : reachable
+        String unlinkMessage = "-QEf-QEcuQEZ-QEWVbkBDfkBCvkBB7g5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0ArjJ-Me4O2J0cDovLzB4MjI4LmF2YXgvMHgxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExuDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDSDYm1jAbhI-EaGVW5saW5ruD34O7g5YnRwOi8vMHgzOC5ic2MvMHhhMTQ0MmM5MDEyMEE4OTFjM2RlOTc5M2NhQzcwOTY4Q2FiMTEzMjM1hAFK_nM=";
+        score.invoke(relay, "handleRelayMessage", prevLink, unlinkMessage);
+
+        // unreachable exception
+        assertThrows(AssertionError.class,
+                () -> score.invoke(BTSScore, "sendMessage", "0x38.bsc", BTS, BigInteger.TEN, new byte[0]));
+    }
+
+    @Test
+    @Order(2)
+    public void feeGatheringMessage() {
+        String prevLink = getDestinationBTPAddress("0x228.arctic", "0x1111111111111111111111111111111111111111");
+        Account relay = registerRelayer();
+
+        addLink(prevLink);
+        score.invoke(owner, "addRelay", prevLink, relay.getAddress());
+        score.invoke(owner, "addService", BTS, BTSScore.getAddress());
+        String feeMessage;
+        contextMock.when(() -> Context.call(eq(BTSScore.getAddress()), eq("handleFeeGathering"), any())).thenReturn(null);
+
+        feeMessage = "-QEw-QEtuQEq-QEnVbkBHvkBG_kBGLg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0Abja-Ni4PWJ0cDovLzB4MjI4LmFyY3RpYy8weDExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTG4OWJ0cDovLzB4MS5pY29uL2N4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwNINibWMBuFf4VYxGZWVHYXRoZXJpbme4RvhEuD1idHA6Ly8weDIyOC5hcmN0aWMvMHhhMTQ0MmM5MDEyMEE4OTFjM2RlOTc5M2NhQzcwOTY4Q2FiMTEzMjM1xINidHOEAUr-cw==";
+        score.invoke(relay, "handleRelayMessage", prevLink, feeMessage);
+
+        // not allowed GatherFeeMessage from random chain
+        String invalidMessage = "-QEs-QEpuQEm-QEjVbkBGvkBF_kBFLg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0ArjW-NS4PWJ0cDovLzB4MjI4LmFyY3RpYy8weDExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTG4OWJ0cDovLzB4MS5pY29uL2N4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwNINibWMBuFP4UYxGZWVHYXRoZXJpbme4QvhAuDlidHA6Ly8weDM4LmJzYy8weGExNDQyYzkwMTIwQTg5MWMzZGU5NzkzY2FDNzA5NjhDYWIxMTMyMzXEg2J0c4QBSv5z";
+        score.invoke(relay, "handleRelayMessage", prevLink, invalidMessage);
+    }
+
+    @Test
+    @Order(2)
+    public void handleErrorMessage() {
+        String prevLink = getDestinationBTPAddress("0x228.arctic", "0x1111111111111111111111111111111111111111");
+        Account relay = registerRelayer();
+
+        addLink(prevLink);
+        score.invoke(owner, "addRelay", prevLink, relay.getAddress());
+        score.invoke(owner, "addService", "candice", BTSScore.getAddress());
+
+        String err = "-PD47rjs-OpVuOL44PjeuDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDQBuKD4nrg9YnRwOi8vMHgyMjguYXJjdGljLzB4MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMbg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0h2NhbmRpY2WB9pnYAJZBZGQgdG8gYmxhY2tsaXN0IGVycm9yhAFK_nM=";
+        score.invoke(relay, "handleRelayMessage", prevLink, err);
+        verify(scoreSpy).ErrorOnBTPError(eq("candice"), eq(BigInteger.TEN), eq(-1L), eq(null) ,eq(-1L), any());
+
+        contextMock.when(() ->
+                Context.call(eq(BTSScore.getAddress()), eq("handleBTPError"), any()
+                )).thenReturn(null);
+
+        String err2 = "-PD47rjs-OpVuOL44PjeuDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDQCuKD4nrg9YnRwOi8vMHgyMjguYXJjdGljLzB4MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMbg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0h2NhbmRpY2WB9pnYAJZBZGQgdG8gYmxhY2tsaXN0IGVycm9yhAFK_nM=";
+        score.invoke(relay, "handleRelayMessage", prevLink, err2);
     }
     public void bmcDecodeMessage() {
 //        String str = "0xf8a9b8406274703a2f2f307836333536346334302e686d6e792f307861363937313261333831336430353035626244353541654433666438343731426332663732324444b8396274703a2f2f3078312e69636f6e2f6378393937383439643339323064333338656438313830303833336662623237306337383565373433649a576f6e6465726c616e64546f6b656e53616c655365727669636589008963dd8c2c5e000086c50283c20100";
