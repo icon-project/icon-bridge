@@ -360,14 +360,15 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         byte[] msg = "Message Received From BTS".getBytes();
 
         // before registering BTS to BMC
-        assertThrows(AssertionError.class, () -> score.invoke(owner, "sendMessage", to, svc, sn, msg ));
+        assertThrows(AssertionError.class, () -> score.invoke(owner, "sendMessage", to, svc, sn, msg));
 
         addLink(to);
         addRoute(DESTINATION_NETWORK, to);
         addService(svc, bts.getAddress());
 
         assertThrows(AssertionError.class, () -> score.invoke(owner, "sendMessage", to, svc, sn, msg));
-        assertThrows(AssertionError.class, () -> score.invoke(bts, "sendMessage", to, svc, BigInteger.ONE.negate(), msg));
+        assertThrows(AssertionError.class,
+                () -> score.invoke(bts, "sendMessage", to, svc, BigInteger.ONE.negate(), msg));
 
         score.invoke(bts, "sendMessage", DESTINATION_NETWORK, svc, sn, msg);
 
@@ -383,7 +384,7 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
 
         verify(scoreSpy).Message(to, BigInteger.TWO, message.toBytes());
     }
-    
+
     @Test
     @Order(1)
     public void addRelayer() {
@@ -599,7 +600,8 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         score.invoke(owner, "addRelay", prevLink, relay.getAddress());
         score.invoke(owner, "addService", BTS, BTSScore.getAddress());
         String feeMessage;
-        contextMock.when(() -> Context.call(eq(BTSScore.getAddress()), eq("handleFeeGathering"), any())).thenReturn(null);
+        contextMock.when(() -> Context.call(eq(BTSScore.getAddress()), eq("handleFeeGathering"), any()))
+                .thenReturn(null);
 
         feeMessage = "-QEw-QEtuQEq-QEnVbkBHvkBG_kBGLg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0Abja-Ni4PWJ0cDovLzB4MjI4LmFyY3RpYy8weDExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTG4OWJ0cDovLzB4MS5pY29uL2N4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwNINibWMBuFf4VYxGZWVHYXRoZXJpbme4RvhEuD1idHA6Ly8weDIyOC5hcmN0aWMvMHhhMTQ0MmM5MDEyMEE4OTFjM2RlOTc5M2NhQzcwOTY4Q2FiMTEzMjM1xINidHOEAUr-cw==";
         score.invoke(relay, "handleRelayMessage", prevLink, feeMessage);
@@ -621,7 +623,7 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
 
         String err = "-PD47rjs-OpVuOL44PjeuDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDQBuKD4nrg9YnRwOi8vMHgyMjguYXJjdGljLzB4MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMbg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0h2NhbmRpY2WB9pnYAJZBZGQgdG8gYmxhY2tsaXN0IGVycm9yhAFK_nM=";
         score.invoke(relay, "handleRelayMessage", prevLink, err);
-        verify(scoreSpy).ErrorOnBTPError(eq("candice"), eq(BigInteger.TEN), eq(-1L), eq(null) ,eq(-1L), any());
+        verify(scoreSpy).ErrorOnBTPError(eq("candice"), eq(BigInteger.TEN), eq(-1L), eq(null), eq(-1L), any());
 
         contextMock.when(() ->
                 Context.call(eq(BTSScore.getAddress()), eq("handleBTPError"), any()
@@ -667,6 +669,33 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         // The last Owner removes him/herself
         score.invoke(user2, "removeOwner", user2.getAddress());
         assertEquals(false, score.call("isOwner", user2.getAddress()));
+    }
+
+    @Test
+    public void sendFeeGathering() {
+        Executable call = () -> score.invoke(nonOwner, "sendFeeGathering");
+        expectErrorMessage(call, REQUIRE_OWNER_ACCESS);
+
+        call = () -> score.invoke(owner, "sendFeeGathering");
+        expectErrorMessage(call, "services is empty");
+
+        score.invoke(owner, "addService", BTS, BTSScore.getAddress());
+
+        call = () -> score.invoke(owner, "sendFeeGathering");
+        expectErrorMessage(call, "feeAggregator is null");
+
+        score.invoke(owner, "setFeeAggregator", owner.getAddress());
+
+        // not handled case, handleGatherFee fail to service.handleFeeGathering Exception
+        score.invoke(owner, "sendFeeGathering");
+
+        // mock handleFeeGathering of service handler
+        contextMock.when(() -> Context.call(eq(BTSScore.getAddress()), eq("handleFeeGathering"), any()))
+                .thenReturn(null);
+        // successful sendFeeGathering
+        score.invoke(owner, "sendFeeGathering");
+
+
     }
 
     @Test
