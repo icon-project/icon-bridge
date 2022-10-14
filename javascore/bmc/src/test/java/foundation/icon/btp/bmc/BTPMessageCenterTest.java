@@ -309,7 +309,6 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         score.invoke(owner, SET_RELAYER_MIN_BOND, bond);
         assertEquals(bond, score.call("getRelayerMinBond"));
 
-
         String SET_RELAYER_TERM = "setRelayerTerm";
         long term = 100L;
 
@@ -334,7 +333,6 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         score.invoke(owner, SET_RELAYER_REWARD_RANK, rank);
         assertEquals(rank, score.call("getRelayerRewardRank"));
 
-
         String SET_NEXT_REWARD_DISTRIBUTION = "setNextRewardDistribution";
         long height = 1000000000L;
 
@@ -357,7 +355,6 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         contextMock.when(mockICXSent()).thenReturn(BigInteger.valueOf(0));
         Executable call = () -> score.invoke(alice, "registerRelayer", "Hey, I want to be a relayer");
         expectErrorMessage(call, "require bond at least 1 icx");
-
 
         contextMock.when(mockICXSent()).thenReturn(BigInteger.valueOf(50));
         score.invoke(alice, "registerRelayer", "Hey, I want to be a relayer");
@@ -447,14 +444,15 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         byte[] msg = "Message Received From BTS".getBytes();
 
         // before registering BTS to BMC
-        assertThrows(AssertionError.class, () -> score.invoke(owner, "sendMessage", to, svc, sn, msg ));
+        assertThrows(AssertionError.class, () -> score.invoke(owner, "sendMessage", to, svc, sn, msg));
 
         addLink(to);
         addRoute(DESTINATION_NETWORK, to);
         addService(svc, bts.getAddress());
 
         assertThrows(AssertionError.class, () -> score.invoke(owner, "sendMessage", to, svc, sn, msg));
-        assertThrows(AssertionError.class, () -> score.invoke(bts, "sendMessage", to, svc, BigInteger.ONE.negate(), msg));
+        assertThrows(AssertionError.class,
+                () -> score.invoke(bts, "sendMessage", to, svc, BigInteger.ONE.negate(), msg));
 
         score.invoke(bts, "sendMessage", DESTINATION_NETWORK, svc, sn, msg);
         BTPAddress source = new BTPAddress(NETWORK, BMC_SCORE.toString());
@@ -671,6 +669,8 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         assertEquals(false, score.call("isOwner", user2.getAddress()));
     }
 
+
+    @Test
     public void bmcDecodeMessage() {
 //        String str = "0xf8a9b8406274703a2f2f307836333536346334302e686d6e792f307861363937313261333831336430353035626244353541654433666438343731426332663732324444b8396274703a2f2f3078312e69636f6e2f6378393937383439643339323064333338656438313830303833336662623237306337383565373433649a576f6e6465726c616e64546f6b656e53616c655365727669636589008963dd8c2c5e000086c50283c20100";
 //        String str = "0xf8a9b8406274703a2f2f307836333536346334302e686d6e792f307861363937313261333831336430353035626244353541654433666438343731426332663732324444b8396274703a2f2f3078312e69636f6e2f6378393937383439643339323064333338656438313830303833336662623237306337383565373433649a576f6e6465726c616e64546f6b656e53616c655365727669636589ff769c2273d3a2000086c50283c20100";
