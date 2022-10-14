@@ -465,6 +465,68 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
     }
 
     @Test
+    @DisplayName("For external service: BSH")
+    public void handleRelayMessage() {
+
+        String prevLink = getDestinationBTPAddress("0x38.bsc", "0xa1442c90120A891c3de9793caC70968Cab113234");
+        Account relay = registerRelayer();
+
+        addLink(prevLink);
+
+        Executable call = () -> score.invoke(owner, "handleRelayMessage", prevLink, "message");
+        expectErrorMessage(call, "relay not registered: " + owner.getAddress());
+
+        score.invoke(owner, "addRelay", prevLink, relay.getAddress());
+
+        call = () -> score.invoke(relay, "handleRelayMessage", prevLink, "@@@");
+        expectErrorMessageIn(call, "failed to decode base64 relay message");
+
+        /*
+         * nextBMC  : btp://0x1.icon/cx23a91ee3dd290486a9113a6a42429825d813de53
+         * sn       : 90
+         */
+        String str = "-QFN-QFKuQFH-QFEVbkBO_kBOPkBNbg5YnRwOi8vMHgxLmljb24vY3gyM2E5MWVlM2RkMjkwNDg2YTkxMTNhNmE0MjQyOTgyNWQ4MTNkZTUzWrj3-PW4OWJ0cDovLzB4MzguYnNjLzB4MDM0QWFERTg2QkY0MDJGMDIzQWExN0U1NzI1ZkFCQzRhYjlFOTc5OLg5YnRwOi8vMHgxLmljb24vY3gyM2E5MWVlM2RkMjkwNDg2YTkxMTNhNmE0MjQyOTgyNWQ4MTNkZTUzg2J0cy-4ePh2ALhz-HGqMHg3QTQzNDFBZjQ5OTU4ODQ1NDZCY2Y3ZTA5ZUI5OGJlRDNlRDI2RDI4qmh4OTM3NTE3YWMwNDJkMGExNGYwOWQ0Njc3ZDMwMmJiMjExMTg0YWM1ZtrZkWJ0cC0weDM4LmJzYy1CVENChjjX6kxoAIQBSv5z";
+        call = () -> score.invoke(relay, "handleRelayMessage", prevLink, str);
+        expectErrorMessageIn(call, "Invalid Next BMC");
+
+        /*
+         * nextBMC  : btp://0x1.icon/cx0000000000000000000000000000000000000004
+         *
+         */
+        String validBMCBase64 = "-QFN-QFKuQFH-QFEVbkBO_kBOPkBNbg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0Abj3-PW4OWJ0cDovLzB4MzguYnNjLzB4MDM0QWFERTg2QkY0MDJGMDIzQWExN0U1NzI1ZkFCQzRhYjlFOTc5OLg5YnRwOi8vMHgxLmljb24vY3gyM2E5MWVlM2RkMjkwNDg2YTkxMTNhNmE0MjQyOTgyNWQ4MTNkZTUzg2J0cy-4ePh2ALhz-HGqMHg3QTQzNDFBZjQ5OTU4ODQ1NDZCY2Y3ZTA5ZUI5OGJlRDNlRDI2RDI4qmh4OTM3NTE3YWMwNDJkMGExNGYwOWQ0Njc3ZDMwMmJiMjExMTg0YWM1ZtrZkWJ0cC0weDM4LmJzYy1CVENChjjX6kxoAIQBSv5z";
+        score.invoke(relay, "handleRelayMessage", prevLink, validBMCBase64);
+
+        // valid next bmc, but sequence ev.getSeq() = 5, when rxSeq is currently 1.
+        String invalidSeq = "-QFN-QFKuQFH-QFEVbkBO_kBOPkBNbg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0Bbj3-PW4OWJ0cDovLzB4MzguYnNjLzB4MDM0QWFERTg2QkY0MDJGMDIzQWExN0U1NzI1ZkFCQzRhYjlFOTc5OLg5YnRwOi8vMHgxLmljb24vY3gyM2E5MWVlM2RkMjkwNDg2YTkxMTNhNmE0MjQyOTgyNWQ4MTNkZTUzg2J0cy-4ePh2ALhz-HGqMHg3QTQzNDFBZjQ5OTU4ODQ1NDZCY2Y3ZTA5ZUI5OGJlRDNlRDI2RDI4qmh4OTM3NTE3YWMwNDJkMGExNGYwOWQ0Njc3ZDMwMmJiMjExMTg0YWM1ZtrZkWJ0cC0weDM4LmJzYy1CVENChjjX6kxoAIQBSv5z";
+        assertThrows(AssertionError.class, () -> score.invoke(relay, "handleRelayMessage", prevLink, invalidSeq));
+
+        // valid next bmc, valid sequence, but message is not for icon
+        String invalidBTPMessage = "-QFc-QFZuQFW-QFTVbkBSvkBR_kBRLg5YnRwOi8vMHgxLmljb24vY3gwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0ArkBBfj1uDlidHA6Ly8weDM4LmJzYy8weDAzNEFhREU4NkJGNDAyRjAyM0FhMTdFNTcyNWZBQkM0YWI5RTk3OTi4OWJ0cDovLzB4MS5pY29uL2N4MjNhOTFlZTNkZDI5MDQ4NmE5MTEzYTZhNDI0Mjk4MjVkODEzZGU1M4NidHMvuHj4dgC4c_hxqjB4N0E0MzQxQWY0OTk1ODg0NTQ2QmNmN2UwOWVCOThiZUQzZUQyNkQyOKpoeDkzNzUxN2FjMDQyqqqqqqqqqqqqqqqqqqpkMGExNGYwOWQ0Njc3ZDMwMmJiMjExMTg0YWM1ZtrZkWJ0cC0weDM4LmJzYy1CVENChjjX6kxoAIQBSv5z";
+        score.invoke(relay, "handleRelayMessage", prevLink, invalidBTPMessage);
+        verify(scoreSpy).Message(eq(prevLink), eq(BigInteger.valueOf(3)), any());
+
+        // message for ICON chain itself
+        String validBTPMessage = "-ND4zrjM-MpVuML4wPi-uDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDQDuID4frg5YnRwOi8vMHgzOC5ic2MvMHhhMTQ0MmM5MDEyMEE4OTFjM2RlOTc5M2NhQzcwOTY4Q2FiMTEzMjM0uDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDSDYnRzAYIweIQBSv5z";
+
+        // BTS Service not added, so sendError (BTPException e), fail to get service
+        score.invoke(relay, "handleRelayMessage", prevLink, validBTPMessage);
+        verify(scoreSpy).Message(eq(prevLink), eq(BigInteger.valueOf(4)), any());
+
+        // add bts service
+        addService("bts", Address.fromString("cxcef70e92b89f2d8191a0582de966280358713c32"));
+
+        // handleBTPMessage not mocked, so sendError (Exception e), IllegalStateException
+        validBTPMessage = "-ND4zrjM-MpVuML4wPi-uDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDQEuID4frg5YnRwOi8vMHgzOC5ic2MvMHhhMTQ0MmM5MDEyMEE4OTFjM2RlOTc5M2NhQzcwOTY4Q2FiMTEzMjM0uDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDSDYnRzAYIweIQBSv5z";
+        score.invoke(relay, "handleRelayMessage", prevLink, validBTPMessage);
+        verify(scoreSpy).Message(eq(prevLink), eq(BigInteger.valueOf(5)), any());
+
+        // mock handleBTPMessage
+        validBTPMessage = "-ND4zrjM-MpVuML4wPi-uDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDQFuID4frg5YnRwOi8vMHgzOC5ic2MvMHhhMTQ0MmM5MDEyMEE4OTFjM2RlOTc5M2NhQzcwOTY4Q2FiMTEzMjM0uDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDSDYnRzAYIweIQBSv5z";
+        Verification mock_handleBTPMessage = () -> Context.call(any(), eq("handleBTPMessage"), any(Object.class));
+        contextMock.when(mock_handleBTPMessage).thenReturn(null);
+
+        score.invoke(relay, "handleRelayMessage", prevLink, validBTPMessage);
+    }
     public void bmcDecodeMessage() {
 //        String str = "0xf8a9b8406274703a2f2f307836333536346334302e686d6e792f307861363937313261333831336430353035626244353541654433666438343731426332663732324444b8396274703a2f2f3078312e69636f6e2f6378393937383439643339323064333338656438313830303833336662623237306337383565373433649a576f6e6465726c616e64546f6b656e53616c655365727669636589008963dd8c2c5e000086c50283c20100";
 //        String str = "0xf8a9b8406274703a2f2f307836333536346334302e686d6e792f307861363937313261333831336430353035626244353541654433666438343731426332663732324444b8396274703a2f2f3078312e69636f6e2f6378393937383439643339323064333338656438313830303833336662623237306337383565373433649a576f6e6465726c616e64546f6b656e53616c655365727669636589ff769c2273d3a2000086c50283c20100";
