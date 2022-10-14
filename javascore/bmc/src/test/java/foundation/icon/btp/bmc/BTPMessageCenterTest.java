@@ -682,4 +682,34 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         System.out.println(btpMsg);
         System.out.println(btpMsg.getSn());
     }
+
+    @Test
+    public void generateBTPMessage() {
+
+        FeeGatheringMessage feem = new FeeGatheringMessage();
+        BTPAddress addr = new BTPAddress("0x228.arctic", "0xa1442c90120A891c3de9793caC70968Cab113235");
+        feem.setFa(addr);
+        feem.setSvcs(new String[]{"bts"});
+
+        BMCMessage bmcm = new BMCMessage();
+        bmcm.setType("FeeGathering");
+        bmcm.setPayload(feem.toBytes());
+
+//        ErrorMessage em = new ErrorMessage();
+//        em.setCode(0L);
+//        em.setMsg("Add to blacklist error");
+
+        BTPAddress d = new BTPAddress("0x1.icon", "cx0000000000000000000000000000000000000004");
+        BTPAddress s = new BTPAddress("0x228.arctic", "0x1111111111111111111111111111111111111111");
+
+        BTPMessage m = new BTPMessage();
+        m.setSrc(s);
+        m.setDst(d);
+        m.setSn(BigInteger.valueOf(10).negate());
+        m.setSvc("bts");
+        m.setPayload(feem.toBytes());
+        byte[] byt = m.toBytes();
+        String aa = Hex.toHexString(byt);
+        System.out.println(aa);
+    }
 }
