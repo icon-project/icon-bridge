@@ -81,7 +81,7 @@ public class AbstractBTPMessageCenterTest extends TestBase {
         AssertionError e = Assertions.assertThrows(AssertionError.class, contractCall);
         assert e.getMessage().contains(errorMessage);
     }
-
+    
     public Verification mockICXSent() {
         Verification sendICX = () -> Context.getValue();
         return sendICX;
@@ -99,6 +99,7 @@ public class AbstractBTPMessageCenterTest extends TestBase {
     public void addLink(String link) {
         score.invoke(owner, "addLink", link);
     }
+    
     public void addRelay(String link, Address addr) {
         score.invoke(owner, "addRelay", link, addr);
     }
@@ -109,7 +110,7 @@ public class AbstractBTPMessageCenterTest extends TestBase {
         score.invoke(relay, "registerRelayer", "Hey, I want to be a relayer");
         return relay;
     }
-
+    
     void addService(String svc, Address addr) {
         score.invoke(owner, "addService", svc, addr);
     }

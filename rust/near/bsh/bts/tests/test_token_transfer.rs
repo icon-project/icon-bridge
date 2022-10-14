@@ -89,7 +89,7 @@ fn deposit_wnear() {
     let result = contract.balance_of(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(100).unwrap();
-    assert_eq!(result, U128::from(expected.deposit()))
+    assert_eq!(result, U128::from(expected.deposit()));
 }
 
 #[test]
