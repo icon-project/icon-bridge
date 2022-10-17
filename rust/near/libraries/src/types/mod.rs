@@ -57,4 +57,6 @@ pub use blacklist::BlackListedAccounts;
 mod token_limit;
 pub use token_limit::{TokenLimit, TokenLimits};
 mod coin_ids;
+mod btp_errors;
+pub use btp_errors::BTPError;
 pub use coin_ids::{CoinIds, CoinProperty};

@@ -1,5 +1,5 @@
 use crate::types::messages::{BtpMessage, SerializedMessage};
-use crate::types::{BTPAddress, Message};
+use crate::types::{BTPAddress, BTPError, Message};
 use near_sdk::json_types::{Base64VecU8, U128};
 use near_sdk::serde_json::from_str;
 use near_sdk::{
@@ -13,7 +13,7 @@ use std::convert::TryInto;
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct BmcEvent {
     message: LazyOption<String>,
-    error: LazyOption<Error>,
+    error: LazyOption<String>,
 }
 
 impl BmcEvent {
@@ -41,7 +41,25 @@ impl BmcEvent {
         );
     }
 
-    pub fn amend_error(&mut self) {}
+    pub fn amend_error(
+        &mut self,
+        service: String,
+        sequence: U128,
+        code: U128,
+        message: String,
+        btp_error_code: U128,
+        btp_error_message: String,
+    ) {
+        self.error.set(&to_value(BTPError::new(
+            service,
+            sequence,
+            code,
+            message,
+            btp_error_code,
+            btp_error_message,
+        )).unwrap().to_string()
+        );
+    }
 
     pub fn get_message(&self) -> Result<BtpMessage<SerializedMessage>, String> {
         let message: Message =
@@ -55,15 +73,4 @@ impl BmcEvent {
     }
 
     pub fn get_error(&self) {}
-}
-
-#[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize)]
-#[serde(crate = "near_sdk::serde")]
-pub struct Error {
-    service: String,
-    sequence: U128,
-    code: U128,
-    message: String,
-    btp_error_code: U128,
-    btp_error_message: String,
 }
