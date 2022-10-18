@@ -13,6 +13,7 @@ import (
 	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/bsc"
 	// _ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/hmny"
 	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/icon"
+	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/snow"
 )
 
 func TestExecutor(t *testing.T) {
