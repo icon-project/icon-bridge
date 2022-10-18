@@ -19,7 +19,7 @@ require (
 	github.com/hugobyte/keygen v0.1.0
 	github.com/icon-project/goloop v1.2.11
 	github.com/jroimartin/gocui v0.4.0
-	github.com/labstack/echo/v4 v4.6.1
+	github.com/labstack/echo/v4 v4.9.0
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/near/borsh-go v0.3.1
 	github.com/pkg/errors v0.9.1
