@@ -142,38 +142,6 @@ func (_m *IClient) GetHeaderByHeight(height *big.Int) (*types.Header, error) {
 	return r0, r1
 }
 
-// GetMedianGasPriceForBlock provides a mock function with given fields: ctx
-func (_m *IClient) GetMedianGasPriceForBlock(ctx context.Context) (*big.Int, *big.Int, error) {
-	ret := _m.Called(ctx)
-
-	var r0 *big.Int
-	if rf, ok := ret.Get(0).(func(context.Context) *big.Int); ok {
-		r0 = rf(ctx)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*big.Int)
-		}
-	}
-
-	var r1 *big.Int
-	if rf, ok := ret.Get(1).(func(context.Context) *big.Int); ok {
-		r1 = rf(ctx)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*big.Int)
-		}
-	}
-
-	var r2 error
-	if rf, ok := ret.Get(2).(func(context.Context) error); ok {
-		r2 = rf(ctx)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
-}
-
 // Log provides a mock function with given fields:
 func (_m *IClient) Log() log.Logger {
 	ret := _m.Called()
