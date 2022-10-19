@@ -83,11 +83,13 @@ type VerifierOptions struct {
 // next points to height whose parentHash is expected
 // parentHash of height h is got from next-1's hash
 type Verifier struct {
-	chainID    *big.Int
-	mu         sync.RWMutex
-	next       *big.Int
-	parentHash ethCommon.Hash
-	validators map[ethCommon.Address]bool
+	chainID                    *big.Int
+	mu                         sync.RWMutex
+	next                       *big.Int
+	parentHash                 ethCommon.Hash
+	validators                 map[ethCommon.Address]bool
+	prevValidators             map[ethCommon.Address]bool
+	useNewValidatorsFromHeight *big.Int
 }
 
 type IVerifier interface {
@@ -95,7 +97,7 @@ type IVerifier interface {
 	Verify(header *types.Header, nextHeader *types.Header, receipts ethTypes.Receipts) error
 	Update(header *types.Header) (err error)
 	ParentHash() ethCommon.Hash
-	IsValidator(addr ethCommon.Address) bool
+	IsValidator(addr ethCommon.Address, curHeight *big.Int) bool
 }
 
 func (vr *Verifier) Next() *big.Int {
@@ -116,10 +118,16 @@ func (vr *Verifier) ParentHash() ethCommon.Hash {
 	return ethCommon.BytesToHash(vr.parentHash.Bytes())
 }
 
-func (vr *Verifier) IsValidator(addr ethCommon.Address) bool {
+func (vr *Verifier) IsValidator(addr ethCommon.Address, curHeight *big.Int) bool {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
-	_, exists := vr.validators[addr]
+	exists := false
+	if curHeight.Cmp(vr.useNewValidatorsFromHeight) >= 0 {
+		_, exists = vr.validators[addr]
+	} else {
+		_, exists = vr.prevValidators[addr]
+	}
+
 	return exists
 }
 
@@ -166,7 +174,9 @@ func (vr *Verifier) Update(header *types.Header) (err error) {
 			return errors.Wrapf(err, "getValidatorMapFromHex %v", err)
 		}
 		// update validators only if epoch block and no error encountered
+		vr.prevValidators = vr.validators
 		vr.validators = newValidators
+		vr.useNewValidatorsFromHeight = (&big.Int{}).Add(header.Number, big.NewInt(1+int64(len(vr.prevValidators)/2)))
 	}
 	vr.parentHash = header.Hash()
 	vr.next.Add(header.Number, big1)
@@ -277,7 +287,7 @@ func (vr *Verifier) verifySeal(header *types.Header, chainID *big.Int) error {
 		return errCoinBaseMisMatch
 	}
 
-	if ok := vr.IsValidator(signer); !ok {
+	if ok := vr.IsValidator(signer, header.Number); !ok {
 		return errUnauthorizedValidator
 	}
 	// TODO: check if signer is a recent Validator; avoid recent validators for spam protection
