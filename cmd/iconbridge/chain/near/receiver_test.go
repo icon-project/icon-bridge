@@ -74,24 +74,22 @@ func TestNearReceiver(t *testing.T) {
 
 					receiver, err := NewReceiver(ReceiverConfig{source: input.Source, destination: input.Destination}, log.New(), client)
 					require.Nil(f, err)
+					srcMsgCh := make(chan *chain.Message)
+					deadline, _ := f.Deadline()
+					ctx, cancel := context.WithDeadline(context.Background(), deadline)
+					defer cancel()
+					errCh, err := receiver.Subscribe(ctx,
+						srcMsgCh,
+						chain.SubscribeOptions{
+							Seq:    input.Seq,
+							Height: input.Offset,
+						})
 
 					if testData.Expected.Success != nil {
-						srcMsgCh := make(chan *chain.Message)
-
-						deadline, _ := f.Deadline()
-						ctx, cancel := context.WithDeadline(context.Background(), deadline)
-						defer cancel()
-						_, err := receiver.Subscribe(ctx,
-							srcMsgCh,
-							chain.SubscribeOptions{
-								Seq:    input.Seq,
-								Height: input.Offset,
-							})
-
 						assert.True(f, testData.Expected.Success.(func(chan *chain.Message) bool)(srcMsgCh))
 						assert.Nil(f, err)
 					} else {
-						assert.Error(f, err)
+						assert.True(f, testData.Expected.Fail.(func(chan *chain.Message, <-chan error, error) bool)(srcMsgCh, errCh, err))
 					}
 				})
 			}
