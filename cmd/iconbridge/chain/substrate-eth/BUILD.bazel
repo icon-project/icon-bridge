@@ -1,0 +1,45 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "substrate-eth",
+    srcs = [
+        "bmc_abigen.go",
+        "client.go",
+        "receiver.go",
+        "register_relay.go",
+        "sender.go",
+        "type.go",
+        "verifier.go"
+    ],
+    importpath = "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//cmd/iconbridge/chain",
+        "//cmd/iconbridge/chain/substrate-eth/types",
+        "//cmd/iconbridge/relay",
+        "//common",
+        "//common/intconv",
+        "//common/codec",
+        "//common/jsonrpc",
+        "//common/log",
+        "//common/wallet",
+        "@com_github_btcsuite_btcutil//base58:go_default_library",
+        "@com_github_near_borsh_go//:go_default_library",
+        "@com_github_reactivex_rxgo_v2//:rxgo",
+        "@com_github_ethereum_go_ethereum//accounts/abi:go_default_library",
+        "@com_github_ethereum_go_ethereum//accounts/abi/bind:go_default_library",
+        "@com_github_ethereum_go_ethereum//common:go_default_library",
+        "@com_github_ethereum_go_ethereum//core/types:go_default_library",
+        "@com_github_ethereum_go_ethereum//:go_default_library",
+        "@com_github_ethereum_go_ethereum//rpc:go_default_library",
+        "@com_github_ethereum_go_ethereum//event:go_default_library",
+        "@com_github_ethereum_go_ethereum//crypto:go_default_library",
+        "@com_github_ethereum_go_ethereum//rlp:go_default_library",
+        "@com_github_ethereum_go_ethereum//trie:go_default_library",
+        "@com_github_ethereum_go_ethereum//consensus:go_default_library",
+        "@com_github_ethereum_go_ethereum//ethclient:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+        "@org_golang_x_crypto//sha3:go_default_library"
+        
+    ],
+)

@@ -15,6 +15,7 @@ import (
 	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/bsc"
 	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/icon"
 	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/near"
+	_ "github.com/icon-project/icon-bridge/cmd/e2etest/chain/snow"
 )
 
 func main() {

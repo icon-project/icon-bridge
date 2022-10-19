@@ -34,8 +34,6 @@ The main components of icon bridge are:
 
 Getting started section can be found [here](./docs/getting-started.md). It contains information about folder structure of the repo, how to build ICON Bridge on local or testnet/mainnet and how to run the tests from scratch.
 
-If you are a developer, check this out: [Developer guidelines](./docs/developer-guidelines.md)
-
 If you want to contribute to this repository, read the [Contributor Guidelines](CONTRIBUTING.md) for more info. 
 
 The documentation for this project is in the [docs](./docs/) directory.

@@ -22,6 +22,7 @@ go_library(
         "//cmd/iconbridge/stat",
         "//common/config",
         "//common/log",
+        "//cmd/iconbridge/chain/substrate-eth"
     ],
 )
 
