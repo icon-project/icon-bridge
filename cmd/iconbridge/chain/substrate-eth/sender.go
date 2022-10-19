@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package bsc
+package substrate_eth
 
 import (
 	"context"
@@ -29,9 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/common/chainutils"
-
-	bscTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/types"
+	snowTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/types"
 	"github.com/icon-project/icon-bridge/common/codec"
 	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/log"
@@ -89,12 +87,13 @@ type sender struct {
 	dst          chain.BTPAddress
 	opts         senderOptions
 	cls          []IClient
+	bmcs         []*BMC
 	prevGasPrice *big.Int
 }
 
-func (s *sender) client() IClient {
+func (s *sender) jointClient() (IClient, *BMC) {
 	randInt := rand.Intn(len(s.cls))
-	return s.cls[randInt]
+	return s.cls[randInt], s.bmcs[randInt]
 }
 
 func NewSender(
@@ -121,7 +120,7 @@ func NewSender(
 	if s.opts.BoostGasPrice > maxGasPriceBoost {
 		s.opts.BoostGasPrice = maxGasPriceBoost
 	}
-	s.cls, err = newClients(urls, dst.ContractAddress(), s.log)
+	s.cls, s.bmcs, err = newClients(urls, dst.ContractAddress(), s.log)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +133,8 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	status, err := s.client().GetStatus(&bind.CallOpts{Context: ctx}, s.src.String())
+	_, bmcCl := s.jointClient()
+	status, err := bmcCl.GetStatus(&bind.CallOpts{Context: ctx}, s.src.String())
 	if err != nil {
 		s.log.Error("GetStatus", "err", err)
 		return nil, err
@@ -163,28 +163,43 @@ func (s *sender) Segment(
 		return nil, msg, nil
 	}
 
-	relayMsg, newMsg, err := chainutils.SegmentByTxDataSize(msg, s.opts.TxDataSizeLimit)
+	rm := &chain.RelayMessage{
+		Receipts: make([][]byte, 0),
+	}
+
+	var msgSize uint64
+
+	newMsg = &chain.Message{
+		From:     msg.From,
+		Receipts: msg.Receipts,
+	}
+	for i, receipt := range msg.Receipts {
+		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events)
+		if err != nil {
+			return nil, nil, err
+		}
+		rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
+			Index:  receipt.Index,
+			Height: receipt.Height,
+			Events: rlpEvents,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		newMsgSize := msgSize + uint64(len(rlpReceipt))
+		if newMsgSize > s.opts.TxDataSizeLimit {
+			newMsg.Receipts = msg.Receipts[i:]
+			break
+		}
+		msgSize = newMsgSize
+		rm.Receipts = append(rm.Receipts, rlpReceipt)
+	}
+	message, err := codec.RLP.MarshalToBytes(rm)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	message, err := codec.RLP.MarshalToBytes(relayMsg)
-	if err != nil {
-		return nil, nil, err
-	}
-	gasPrice, gasHeight, err := s.client().GetMedianGasPriceForBlock(ctx)
-	if err != nil || gasPrice.Int64() == 0 {
-		s.log.Infof("GetMedianGasPriceForBlock(%v) Msg: %v. Using default value for gas price \n", gasHeight.String(), err)
-		gasPrice = s.prevGasPrice
-	} else {
-		s.prevGasPrice = gasPrice
-		s.log.Infof("GetMedianGasPriceForBlock(%v) price: %v \n", gasHeight.String(), gasPrice.String())
-	}
-	boostedGasPrice, _ := (&big.Float{}).Mul(
-		(&big.Float{}).SetInt64(gasPrice.Int64()),
-		(&big.Float{}).SetFloat64(s.opts.BoostGasPrice),
-	).Int(nil)
-	tx, err = s.newRelayTx(ctx, msg.From.String(), message, boostedGasPrice)
+	tx, err = s.newRelayTx(ctx, msg.From.String(), message)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -193,21 +208,35 @@ func (s *sender) Segment(
 }
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
-	bal, err := s.client().GetBalance(ctx, s.w.Address())
+	cl, _ := s.jointClient()
+	bal, err := cl.GetBalance(ctx, s.w.Address())
 	return bal, &s.opts.BalanceThreshold.Int, err
 }
 
-func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, gasPrice *big.Int) (*relayTx, error) {
-	client := s.client()
+func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*relayTx, error) {
+	client, bmcClient := s.jointClient()
 
-	newTransactOpts := func(w bscTypes.Wallet) (*bind.TransactOpts, error) {
+	newTransactOpts := func(w snowTypes.Wallet) (*bind.TransactOpts, error) {
 		txo, err := bind.NewKeyedTransactorWithChainID(w.(*wallet.EvmWallet).Skey, client.GetChainID())
 		if err != nil {
 			return nil, err
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 		defer cancel()
-		txo.GasPrice, _ = client.SuggestGasPrice(ctx)
+
+		gasPrice, err := client.GetEthClient().SuggestGasPrice(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if s.opts.BoostGasPrice > 1 {
+			gasPrice, _ = (&big.Float{}).Mul(
+				(&big.Float{}).SetInt64(gasPrice.Int64()),
+				(&big.Float{}).SetFloat64(s.opts.BoostGasPrice),
+			).Int(nil)
+		}
+
+		txo.GasPrice = gasPrice
 		txo.GasLimit = uint64(DefaultGasLimit)
 		return txo, nil
 	}
@@ -220,12 +249,13 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, ga
 	if s.opts.GasLimit > 0 {
 		txOpts.GasLimit = s.opts.GasLimit
 	}
-	txOpts.GasPrice = gasPrice
+
 	return &relayTx{
 		Prev:    prev,
 		Message: message, // base64.URLEncoding.EncodeToString(rlpCrm),
 		opts:    txOpts,
 		cl:      client,
+		bmcCl:   bmcClient,
 	}, nil
 }
 
@@ -236,6 +266,7 @@ type relayTx struct {
 	opts      *bind.TransactOpts
 	pendingTx *ethtypes.Transaction
 	cl        IClient
+	bmcCl     *BMC
 }
 
 func (tx *relayTx) ID() interface{} {
@@ -253,7 +284,7 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	defer cancel()
 	txOpts := *tx.opts
 	txOpts.Context = _ctx
-	nonce, err := tx.cl.NonceAt(ctx, txOpts.From, nil)
+	nonce, err := tx.cl.GetEthClient().NonceAt(ctx, txOpts.From, nil)
 	if err != nil {
 		return err
 	}
@@ -265,7 +296,7 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 				"tx": string(txBytes)}).Debug("handleRelayMessage: tx sent")
 		}
 	}()
-	tx.pendingTx, err = tx.cl.HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
+	tx.pendingTx, err = tx.bmcCl.HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
 	if err != nil {
 		tx.cl.Log().WithFields(log.Fields{
 			"error": err}).Debug("handleRelayMessage: send tx")
@@ -289,14 +320,14 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) 
 		time.Sleep(time.Second)
 		_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 		defer cancel()
-		_, isPending, err = tx.cl.TransactionByHash(_ctx, tx.pendingTx.Hash())
+		_, isPending, err = tx.cl.GetEthClient().TransactionByHash(_ctx, tx.pendingTx.Hash())
 	}
 	if err != nil {
 		return 0, err
 	}
 	_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 	defer cancel()
-	txr, err := tx.cl.TransactionReceipt(_ctx, tx.pendingTx.Hash())
+	txr, err := tx.cl.GetEthClient().TransactionReceipt(_ctx, tx.pendingTx.Hash())
 	if err != nil {
 		return 0, err
 	}
@@ -314,7 +345,7 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) 
 
 		_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 		defer cancel()
-		data, err := tx.cl.CallContract(_ctx, callMsg, txr.BlockNumber)
+		data, err := tx.cl.GetEthClient().CallContract(_ctx, callMsg, txr.BlockNumber)
 		if err != nil {
 			return 0, err
 		}

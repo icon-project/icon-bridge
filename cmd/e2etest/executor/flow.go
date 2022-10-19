@@ -39,8 +39,8 @@ var transferScripts = []*Script{
 	&TransferUniDirection,
 	&TransferBiDirection,
 	&TransferBatchBiDirection,
-	&TransferFromBlackListedSrcAddress,
 	&TransferToBlackListedDstAddress,
+	&TransferFromBlackListedSrcAddress,
 	&TransferEqualToFee,
 	&TransferLessThanFee,
 	&TransferToZeroAddress,
@@ -296,7 +296,7 @@ func (ex *executor) showErrorMessage(confResponse []*configureReq, transResponse
 		errs := t.msg.err
 		if _, ignore := ignoreableErrorMap[errs.Error()]; !ignore {
 			nonIgnoreErrorCount++
-			ex.log.Errorf("ERROR: SNo %v, PID %v, Type Transfer, Function %v, Input %+v Err %+v", nonIgnoreErrorCount, t.id, t.scr.Name, t.pt, errs)
+			ex.log.Errorf("ERROR: SNo %v, PID %v, Type Configuration, Function %v, Input %+v Err %+v", nonIgnoreErrorCount, t.id, t.scr.Name, t.pt, errs)
 		}
 	}
 	for _, t := range transResponse {
@@ -306,7 +306,7 @@ func (ex *executor) showErrorMessage(confResponse []*configureReq, transResponse
 		errs := t.msg.err
 		if _, ignore := ignoreableErrorMap[errs.Error()]; !ignore {
 			nonIgnoreErrorCount++
-			ex.log.Errorf("ERROR: SNo %v, PID %v, Type Configuration, Function %v, Input %+v Err %+v", nonIgnoreErrorCount, t.id, t.scr.Name, t.pt, errs)
+			ex.log.Errorf("ERROR: SNo %v, PID %v, Type Transfer, Function %v, Input %+v Err %+v", nonIgnoreErrorCount, t.id, t.scr.Name, t.pt, errs)
 		}
 	}
 }
@@ -346,7 +346,7 @@ func (ex *executor) processConfigurePoint(ctx context.Context, pt *configPoint) 
 }
 
 func (ex *executor) processTransferPoints(ctx context.Context, tpts []*transferPoint) (totalResponse []*transferReq, err error) {
-	numDivisions := len(tpts) / 5
+	numDivisions := (len(transferScripts) * len(tpts)) / 10
 	if numDivisions == 0 {
 		numDivisions = 1
 	}
