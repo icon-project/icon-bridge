@@ -2,7 +2,10 @@ use bts::BtpTokenService;
 use near_sdk::{
     env, json_types::U128, serde_json::to_value, testing_env, AccountId, PromiseResult, VMContext,
 };
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryInto,
+};
 pub mod accounts;
 use accounts::*;
 use libraries::types::{AccountBalance, Asset, AssetItem, Math, TokenLimits, WrappedNativeCoin};
@@ -55,7 +58,9 @@ fn register_token() {
     );
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(icx_coin.clone(), coin_id);
 
     let result = contract.coins();
@@ -95,7 +100,9 @@ fn register_existing_token() {
     );
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(icx_coin.clone(), coin_id);
     contract.register(icx_coin.clone());
 }
@@ -121,7 +128,9 @@ fn register_token_permission() {
     testing_env!(context(chuck(), 0));
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(icx_coin.clone(), coin_id);
 }
 
@@ -137,7 +146,9 @@ fn get_registered_coin_id() {
         nativecoin.clone(),
     );
     let coin_id = contract.coin_id("NEAR").unwrap();
-    let expected = env::sha256(nativecoin.name().as_bytes());
+    let expected: [u8; 32] = env::sha256(nativecoin.name().as_bytes())
+        .try_into()
+        .unwrap();
     assert_eq!(coin_id, expected)
 }
 
@@ -160,7 +171,6 @@ fn get_non_exist_coin_id() {
 }
 
 #[test]
-#[cfg(feature = "testable")]
 fn set_token_limit() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
     testing_env!(context(alice(), 0));
@@ -174,16 +184,12 @@ fn set_token_limit() {
     let coins = vec!["NEAR".to_string()];
     let limits = vec![10000000000000000000000_u128];
     contract.set_token_limit(coins, limits).unwrap();
-    let tokenlimits = contract.get_token_limit();
+    let token_limits = contract.get_token_limit("NEAR".to_string());
 
-    assert_eq!(
-        tokenlimits.get("NEAR").unwrap(),
-        &10000000000000000000000_u128
-    )
+    assert_eq!(token_limits, 10000000000000000000000_u128)
 }
 
 #[test]
-#[cfg(feature = "testable")]
 fn update_token_limit() {
     let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
     testing_env!(context(alice(), 0));
@@ -202,8 +208,8 @@ fn update_token_limit() {
     let limits = vec![10000000000000000000003_u128];
     contract.set_token_limit(coins, limits).unwrap();
 
-    let tokenlimits = contract.get_token_limit().get("NEAR").unwrap();
-    assert_eq!(tokenlimits, &10000000000000000000003_u128)
+    let token_limits = contract.get_token_limit("NEAR".to_string());
+    assert_eq!(token_limits, 10000000000000000000003_u128)
 }
 
 #[test]
@@ -225,7 +231,9 @@ fn query_token_metadata() {
     );
     let icx_coin = <Coin>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(icx_coin.clone(), coin_id);
 
     let result = contract.coin(icx_coin.name().to_string());

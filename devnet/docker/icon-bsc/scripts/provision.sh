@@ -5,6 +5,7 @@ set -e
 source env.variables.sh
 source keystore.sh
 source rpc.sh
+source generate_e2e_config.sh
 
 provision() {
   echo "start provisioning..."
@@ -148,6 +149,7 @@ deploysc() {
 
     generate_addresses_json >$CONFIG_DIR/addresses.json  
     generate_relay_config >$CONFIG_DIR/bmr.config.json
+    generate_e2e_config >$CONFIG_DIR/e2e.config.json
     wait_for_file $CONFIG_DIR/bmr.config.json
     echo "Done deploying"
 }
@@ -185,6 +187,7 @@ generate_relay_config() {
             .src.endpoint = [ $src_endpoint ] |
             .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
             .src.options.verifier.parentHash = $src_options_verifier_parentHash |
+            .src.options.verifier.validatorData = $src_options_verifier_validatorData |
             .src.options.syncConcurrency = 100 |
             .src.offset = $src_offset |
             .dst.address = $dst_address |
@@ -198,6 +201,7 @@ generate_relay_config() {
         --argjson src_offset "$(cat $CONFIG_DIR/bsc.chain.height)" \
         --argjson src_options_verifier_blockHeight "$(cat $CONFIG_DIR/bsc.chain.height)" \
         --arg src_options_verifier_parentHash "$(cat $CONFIG_DIR/bsc.chain.parentHash)" \
+        --arg src_options_verifier_validatorData "$(cat $CONFIG_DIR/bsc.chain.validatorData)" \
         --arg dst_address "$(cat $CONFIG_DIR/icon.addr.bmcbtp)" \
         --arg dst_endpoint "$ICON_ENDPOINT" \
         --argfile dst_key_store "$ICON_KEY_STORE" \
@@ -235,8 +239,6 @@ generate_relay_config() {
         --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":"100000000000000000000","boost_gas_price":1.0}'
     )"
 }
-
-
 
 # run provisioning
 provision

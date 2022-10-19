@@ -5,6 +5,7 @@ set -e
 source config.sh
 source keystore.sh
 source rpc.sh
+source generate_e2e_config.sh
 
 setup_account() {
       echo "check god keys..."
@@ -12,7 +13,7 @@ setup_account() {
         ensure_key_store $ICON_KEY_STORE $ICON_SECRET
         echo "Do not Panic..."
         echo "Missing ICON God Wallet on the required path. One has been created "$ICON_KEY_STORE
-        echo "Fund this newly created wallet and rerun ./deploysc.sh again" 
+        echo "Fund this newly created wallet and rerun the same command again" 
         exit 0
     fi
     if [ ! -f "${BSC_KEY_STORE}" ]; then
@@ -162,6 +163,7 @@ deploysc() {
 
     generate_addresses_json >$CONFIG_DIR/addresses.json  
     generate_relay_config >$CONFIG_DIR/bmr.config.json
+    generate_e2e_config >$CONFIG_DIR/e2e.config.json
     wait_for_file $CONFIG_DIR/bmr.config.json
     
     echo "Smart contracts have been deployed "
@@ -201,6 +203,7 @@ generate_relay_config() {
             .src.endpoint = [ $src_endpoint ] |
             .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
             .src.options.verifier.parentHash = $src_options_verifier_parentHash |
+            .src.options.verifier.validatorData = $src_options_verifier_validatorData |
             .src.options.syncConcurrency = 100 |
             .src.offset = $src_offset |
             .dst.address = $dst_address |
@@ -214,6 +217,7 @@ generate_relay_config() {
         --argjson src_offset "$(cat $CONFIG_DIR/bsc.chain.height)" \
         --argjson src_options_verifier_blockHeight "$(cat $CONFIG_DIR/bsc.chain.height)" \
         --arg src_options_verifier_parentHash "$(cat $CONFIG_DIR/bsc.chain.parentHash)" \
+        --arg src_options_verifier_validatorData "$(cat $CONFIG_DIR/bsc.chain.validatorData)" \
         --arg dst_address "$(cat $CONFIG_DIR/icon.addr.bmcbtp)" \
         --arg dst_endpoint "$ICON_ENDPOINT" \
         --argfile dst_key_store "$CONFIG_DIR/keystore/icon.bmr.wallet.json" \

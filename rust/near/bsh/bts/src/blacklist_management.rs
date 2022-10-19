@@ -1,5 +1,16 @@
 use super::*;
 
+#[near_bindgen]
+impl BtpTokenService {
+    pub fn get_blacklisted_users(&self) -> Vec<AccountId> {
+        self.blacklisted_accounts.to_vec()
+    }
+
+    pub fn is_user_black_listed(&self, user: AccountId) -> bool {
+        self.blacklisted_accounts.contains(&user)
+    }
+}
+
 impl BtpTokenService {
     pub fn add_to_blacklist(&mut self, users: Vec<AccountId>) {
         users
@@ -18,14 +29,10 @@ impl BtpTokenService {
                 Err(_) => non_blacklisted_user.push(user.to_string()),
             });
         if !non_blacklisted_user.is_empty() {
-            return Err(BshError::BlacklistedUsers {
+            return Err(BshError::NonBlacklistedUsers {
                 message: non_blacklisted_user.join(", "),
             });
         }
         Ok(())
-    }
-
-    pub fn get_blacklisted_user(&self) -> Vec<AccountId> {
-        self.blacklisted_accounts.to_vec()
     }
 }

@@ -1,8 +1,17 @@
-use std::{collections::HashSet, iter::FromIterator, result, str::FromStr};
+use std::{
+    collections::HashSet,
+    convert::{TryFrom, TryInto},
+    iter::FromIterator,
+    result,
+    str::FromStr,
+};
 
 use btp_common::errors::BshError;
 use bts::{BtpTokenService, Coin};
-use libraries::types::BTPAddress;
+use libraries::types::{
+    messages::{BtpMessage, SerializedMessage},
+    BTPAddress,
+};
 use near_sdk::{
     env, serde_json::to_value, test_utils::test_env::alice, testing_env, AccountId, PromiseResult,
     VMContext,
@@ -57,7 +66,7 @@ fn add_user_to_blacklist() {
     let users = vec![chuck(), charlie()];
 
     contract.add_to_blacklist(users);
-    let users = contract.get_blacklisted_user();
+    let users = contract.get_blacklisted_users();
     let result: HashSet<_> = users.iter().collect();
     let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
     let expected: HashSet<_> = expected_users.iter().collect();
@@ -81,7 +90,7 @@ fn remove_blacklisted_user_from_blacklist() {
     let users = vec![chuck().clone(), charlie().clone()];
 
     contract.add_to_blacklist(users.clone());
-    let users = contract.get_blacklisted_user();
+    let users = contract.get_blacklisted_users();
     let result: HashSet<_> = users.iter().collect();
     let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
     let expected: HashSet<_> = expected_users.iter().collect();
@@ -91,7 +100,7 @@ fn remove_blacklisted_user_from_blacklist() {
     let result = contract.remove_from_blacklist(users.clone());
     match result {
         Ok(()) => {
-            let result = contract.get_blacklisted_user().contains(&chuck());
+            let result = contract.get_blacklisted_users().contains(&chuck());
 
             assert_eq!(false, result)
         }
@@ -116,7 +125,7 @@ fn remove_non_blacklisted_user_from_blacklist() {
     let users = vec![chuck().clone(), charlie().clone()];
 
     contract.add_to_blacklist(users.clone());
-    let users = contract.get_blacklisted_user();
+    let users = contract.get_blacklisted_users();
     let result: HashSet<_> = users.iter().collect();
     let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
     let expected: HashSet<_> = expected_users.iter().collect();
@@ -128,11 +137,95 @@ fn remove_non_blacklisted_user_from_blacklist() {
         Ok(()) => {}
         Err(err) => {
             assert_eq!(
-                BshError::BlacklistedUsers {
+                BshError::NonBlacklistedUsers {
                     message: carol().to_string()
                 },
                 err
             )
         }
     }
+}
+
+#[test]
+
+fn handle_btp_message_to_add_user_to_blacklist() {
+    let context = |account_id: AccountId, deposit: u128| {
+        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+    };
+    testing_env!(context(alice(), 0));
+    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let mut contract = BtpTokenService::new(
+        "bts".to_string(),
+        bmc(),
+        "0x1.near".into(),
+        nativecoin.clone(),
+    );
+
+    let message: BtpMessage<SerializedMessage> = BtpMessage::try_from("-K-4OWJ0cDovLzB4Mi5pY29uL2N4NjE5M2U2OTI3NzIzZWNiMzJkYWNiMGExMjVhOTg2NjMzNzY4N2IwM7hPYnRwOi8vMHgxLm5lYXIvN2ZlN2VkMGY4YjI2MTdmYjRlMTA4NWY3YzQzYTM0OWFjZDNmMzMwMGVlYTZiODgxODc2NDZhNDU4ZWNhYzIwY4NidHMIndwDmtkAzo1hbGljZS50ZXN0bmV0iDB4MS5uZWFy".to_string()).unwrap();
+
+    testing_env!(context(bmc(), 0));
+    contract.handle_btp_message(message);
+
+    let blacklisted_user = contract.get_blacklisted_users();
+
+    assert_eq!(
+        blacklisted_user,
+        vec![AccountId::from_str("alice.testnet").unwrap()]
+    )
+}
+
+#[test]
+#[cfg(feature = "testable")]
+fn handle_btp_message_to_change_token_limit() {
+    use libraries::types::TokenLimit;
+
+    let context = |account_id: AccountId, deposit: u128| {
+        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+    };
+    testing_env!(context(alice(), 0));
+    let nativecoin = <Coin>::new(NEAR_NATIVE_COIN.to_owned());
+    let mut contract = BtpTokenService::new(
+        "bts".to_string(),
+        bmc(),
+        "0x1.near".into(),
+        nativecoin.clone(),
+    );
+
+    let message: BtpMessage<SerializedMessage> = BtpMessage::try_from("-L64OWJ0cDovLzB4Mi5pY29uL2N4NjE5M2U2OTI3NzIzZWNiMzJkYWNiMGExMjVhOTg2NjMzNzY4N2IwM7hPYnRwOi8vMHgxLm5lYXIvN2ZlN2VkMGY4YjI2MTdmYjRlMTA4NWY3YzQzYTM0OWFjZDNmMzMwMGVlYTZiODgxODc2NDZhNDU4ZWNhYzIwY4NidHMKrOsEqejSkWJ0cC0weDEubmVhci1ORUFSy4oCHhngybqyQAAAiDB4MS5uZWFy".to_string()).unwrap();
+
+    testing_env!(context(bmc(), 0));
+    contract.handle_btp_message(message);
+
+    let token_limits = contract.get_token_limits().to_vec();
+
+    assert_eq!(
+        token_limits,
+        vec![TokenLimit::new(
+            "btp-0x1.near-NEAR".to_string(),
+            10000000000000000000000
+        )]
+    )
+}
+
+#[test]
+fn is_user_blacklisted() {
+    let context = |account_id: AccountId, deposit: u128| {
+        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+    };
+    testing_env!(context(alice(), 0));
+    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let mut contract = BtpTokenService::new(
+        "nativecoin".to_string(),
+        bmc(),
+        "0x1.near".into(),
+        nativecoin.clone(),
+    );
+
+    let users = vec![chuck(), charlie()];
+
+    contract.add_to_blacklist(users);
+
+    let is_user_blacklisted = contract.is_user_black_listed(charlie());
+
+    assert_eq!(true, is_user_blacklisted)
 }

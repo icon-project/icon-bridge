@@ -30,6 +30,14 @@ pub enum TokenServiceType {
         token_limits: Vec<u128>,
         network: String,
     },
+    ResponseBlacklist {
+        code: u128,
+        message: String,
+    },
+    ResponseChangeTokenLimit {
+        code: u128,
+        message: String,
+    },
     UnknownType,
     UnhandledType,
 }
@@ -91,40 +99,21 @@ impl Encodable for TokenServiceMessage {
                 params.append::<u128>(code).append::<String>(message);
                 stream.append::<u128>(&2).append(&params.out());
             }
-            &TokenServiceType::RequestBlacklist {
-                ref request_type,
-                ref addresses,
-                ref network,
+            &TokenServiceType::ResponseBlacklist {
+                ref code,
+                ref message,
             } => {
-                let mut params = rlp::RlpStream::new_list(3);
-                params.append(request_type);
-                params.begin_unbounded_list();
-                addresses.iter().for_each(|address| {
-                    params.append(address);
-                });
-                params.finalize_unbounded_list();
-
-                params.append(network);
+                let mut params = rlp::RlpStream::new_list(2);
+                params.append::<u128>(code).append::<String>(message);
                 stream.append::<u128>(&3).append(&params.out());
             }
-            &TokenServiceType::RequestChangeTokenLimit {
-                ref coin_names,
-                ref token_limits,
-                ref network,
+            &TokenServiceType::ResponseChangeTokenLimit {
+                ref code,
+                ref message,
             } => {
-                let mut params = rlp::RlpStream::new_list(3);
-                params.begin_unbounded_list();
-                coin_names.iter().for_each(|coin_name| {
-                    params.append(coin_name);
-                });
-                params.finalize_unbounded_list();
-                params.begin_unbounded_list();
-                token_limits.iter().for_each(|toke_limit| {
-                    params.append(toke_limit);
-                });
-                params.finalize_unbounded_list();
-                params.append(network);
-                stream.append::<u128>(&3).append(&params.out());
+                let mut params = rlp::RlpStream::new_list(2);
+                params.append::<u128>(code).append::<String>(message);
+                stream.append::<u128>(&4).append(&params.out());
             }
             _ => (),
         }

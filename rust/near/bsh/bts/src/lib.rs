@@ -37,7 +37,6 @@ mod messaging;
 mod owner_management;
 mod transfer;
 mod types;
-mod upgrade;
 mod util;
 pub use types::RegisteredCoins;
 pub type CoinFees = AssetFees;
@@ -47,27 +46,6 @@ pub type Coins = Assets<WrappedNativeCoin>;
 
 pub static NEP141_CONTRACT: &'static [u8] = include_bytes!("../res/NEP141_CONTRACT.wasm");
 pub static FEE_DENOMINATOR: u128 = 10_u128.pow(4);
-
-#[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
-pub struct BtpTokenServiceV0_9 {
-    native_coin_name: String,
-    network: Network,
-    owners: Owners,
-    coins: Coins,
-    balances: Balances,
-    storage_balances: StorageBalances,
-    coin_fees: CoinFees,
-    requests: Requests,
-    serial_no: i128,
-    bmc: AccountId,
-    name: String,
-
-    #[cfg(feature = "testable")]
-    pub message: LazyOption<Base64VecU8>,
-
-    registered_coins: RegisteredCoins,
-}
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -110,7 +88,7 @@ impl BtpTokenService {
         let mut coin_fees = CoinFees::new();
         coin_fees.add(&native_coin_id);
         let mut coin_ids = CoinIds::new();
-        coin_ids.add(native_coin.name(), &native_coin_id);
+        coin_ids.add(native_coin.name(), native_coin_id);
         Self {
             native_coin_name: native_coin.name().to_owned(),
             network,
