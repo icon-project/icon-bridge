@@ -1,0 +1,70 @@
+{
+  "log_level": "debug",
+  "console_level": "info",
+  "log_writer": {
+    "filename": "_ixh_e2e.log"
+  },
+  "fee_aggregator": "hx251eb3348ff5873e2dd2d9c5e65e000781bfabbf",
+  "enable_experimental_features": false,
+  "chains": [
+    {
+      "name": "ICON",
+      "url": "https://lisbon.net.solidwallet.io/api/v3/icon_dex",
+      "contract_addresses": {
+        "BTS": "cxcbf71f5d90a8dc6c586d0a6939bef4e8c95c263d",
+        "BMC": "cxfa5b7b8d71bf6355bf230ff22e1d4777a630c7ec"
+      },
+      "native_coin": "btp-0x2.icon-ICX",
+      "native_tokens": [
+        "btp-0x2.icon-sICX",
+        "btp-0x2.icon-bnUSD"
+      ],
+      "wrapped_coins": [
+        "btp-0x61.bsc-BNB",
+        "btp-0x61.bsc-BUSD",
+        "btp-0x61.bsc-USDT",
+        "btp-0x61.bsc-USDC",
+        "btp-0x61.bsc-BTCB",
+        "btp-0x61.bsc-ETH"
+      ],
+      "god_wallet_keystore_path": "../path/icon.keystore.json",
+      "god_wallet_secret_path": "../path/icon.god.wallet.secret",
+      "bts_owner_keystore_path": "../path/icon.keystore.json",
+      "bts_owner_secret_path": "../path/icon.god.wallet.secret",
+      "network_id": "0x2.icon",
+      "gas_limit": {
+        "TransferNativeCoinIntraChainGasLimit": 150000,
+        "TransferTokenIntraChainGasLimit": 300000,
+        "ApproveTokenInterChainGasLimit": 800000,
+        "TransferCoinInterChainGasLimit": 2500000,
+        "TransferBatchCoinInterChainGasLimit": 4000000,
+        "DefaultGasLimit": 5000000
+      }
+    },
+    {
+      "name": "NEAR",
+      "url": "https://rpc.testnet.near.org",
+      "contract_addresses": {
+        "BTS": "bts.iconbridge-6.testnet"
+      },
+      "native_coin": "btp-0x2.near-NEAR",
+      "native_tokens": [],
+      "wrapped_coins": [
+        "btp-0x7.icon-ICX"
+      ],
+      "god_wallet_keystore_path": "../path/near_master_key.json",
+      "god_wallet_secret_path": "../path/icon.god.wallet.secret",
+      "bts_owner_keystore_path": "../path/near_master_key.json",
+      "bts_owner_secret_path": "../path/icon.god.wallet.secret",
+      "network_id": "0x2.near",
+      "gas_limit": {
+        "TransferNativeCoinIntraChainGasLimit": 25000,
+        "TransferTokenIntraChainGasLimit": 60000,
+        "ApproveTokenInterChainGasLimit": 50000,
+        "TransferCoinInterChainGasLimit": 700000,
+        "TransferBatchCoinInterChainGasLimit": 900000,
+        "DefaultGasLimit": 5000000
+      }
+    }
+  ]
+}
