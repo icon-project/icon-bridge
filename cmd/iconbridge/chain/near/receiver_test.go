@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNearReceiver(t *testing.T) {
@@ -26,17 +27,17 @@ func TestNearReceiver(t *testing.T) {
 						Source      chain.BTPAddress
 						Destination chain.BTPAddress
 					})
-					assert.True(f, Ok)
+					require.True(f, Ok)
 
 					receiver, err := NewReceiver(ReceiverConfig{source: input.Source, destination: input.Destination}, log.New(), client)
-					assert.Nil(f, err)
+					require.Nil(f, err)
 
 					if testData.Expected.Success != nil {
 						expected, Ok := (testData.Expected.Success).(struct {
 							Hash   string
 							Height uint64
 						})
-						assert.True(f, Ok)
+						require.True(f, Ok)
 
 						err = receiver.ReceiveBlocks(input.Offset, input.Source.ContractAddress(), func(blockNotification *types.BlockNotification) {
 							if expected.Height == uint64(blockNotification.Offset()) {
@@ -64,21 +65,17 @@ func TestNearReceiver(t *testing.T) {
 					}
 
 					input, Ok := (testData.Input).(struct {
+						Seq         uint64
 						Offset      uint64
 						Source      chain.BTPAddress
 						Destination chain.BTPAddress
 					})
-					assert.True(f, Ok)
+					require.True(f, Ok)
 
 					receiver, err := NewReceiver(ReceiverConfig{source: input.Source, destination: input.Destination}, log.New(), client)
-					assert.Nil(f, err)
+					require.Nil(f, err)
 
 					if testData.Expected.Success != nil {
-						expected, Ok := (testData.Expected.Success).(struct {
-							From chain.BTPAddress
-						})
-						assert.True(f, Ok)
-
 						srcMsgCh := make(chan *chain.Message)
 
 						deadline, _ := f.Deadline()
@@ -87,16 +84,11 @@ func TestNearReceiver(t *testing.T) {
 						_, err := receiver.Subscribe(ctx,
 							srcMsgCh,
 							chain.SubscribeOptions{
-								Seq:    1,
+								Seq:    input.Seq,
 								Height: input.Offset,
 							})
 
-						for msg := range srcMsgCh {
-							f.Log(msg)
-							assert.Equal(f, msg.From, expected.From)
-							break
-						}
-
+						assert.True(f, testData.Expected.Success.(func(chan *chain.Message) bool)(srcMsgCh))
 						assert.Nil(f, err)
 					} else {
 						assert.Error(f, err)

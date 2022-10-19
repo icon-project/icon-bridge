@@ -87,13 +87,11 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		if err := r.ReceiveBlocks(opts.Height, r.source.ContractAddress(), func(blockNotification *types.BlockNotification) {
 			r.logger.WithFields(log.Fields{"height": blockNotification.Block().Height()}).Debug("block notification")
 			receipts := make([]*chain.Receipt, 0)
-			
+
 			for _, receipt := range blockNotification.Receipts() {
 				events := receipt.Events[:0]
 				for _, event := range receipt.Events {
-					fmt.Println(event.Next)
 					switch {
-
 					case event.Sequence == opts.Seq && event.Next == r.destination:
 						events = append(events, event)
 						opts.Seq++
