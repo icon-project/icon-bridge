@@ -26,8 +26,8 @@
 
 | Parameters | Type | Info |
 |:---------|:--------|:--------|
-| account_id | string | should be a valid account id |
-| coin_name | string |  |
+| account_id | string | Valid near account id |
+| coin_name | string | Name of coin  |
 
 **CLI Command** 
 ```console
@@ -40,8 +40,8 @@ NEAR_ENV=testnet near view <BTS> balance_of '{"account_id": "<ACCOUNT ID>", "coi
 
 | Parameters | Type | Info |
 |:---------|:--------|:--------|
-| account_id | string | should be a valid account id |
-| coin_name | string |  |
+| account_id | string | Valid near account id |
+| coin_name | string | Name of coin  |
 
 **CLI Command** 
 ```console
@@ -54,8 +54,8 @@ NEAR_ENV=testnet near view <BTS> refundable_balance_of '{"account_id": "<ACCOUNT
 
 | Parameters | Type | Info |
 |:---------|:--------|:--------|
-| account_id | string | should be a valid account id |
-| coin_name | string |  |
+| account_id | string | Valid near account id |
+| coin_name | string | Name of coin |
 
 **CLI Command** 
 ```console
@@ -78,8 +78,8 @@ NEAR_ENV=testnet near call <BTS> deposit --amount <AMOUNT in NEAR> --accountId <
 
 | Parameters | Type | Info |
 |:---------|:--------|:--------|
-| receiver_id | string | should be a valid account id |
-| amount | string |  |
+| receiver_id | string | Valid near account id |
+| amount | string | Amount to deposit |
 | msg | string |  |
 
 **CLI Command** 
@@ -93,8 +93,8 @@ NEAR_ENV=testnet near call <NEP141 Contract> ft_transfer_call '{"receiver_id": "
 
 | Parameters | Type | Info |
 |:---------|:--------|:--------|
-| coin_name | string |  |
-| amount | string |  |
+| coin_name | string | Name of coin to withdraw  |
+| amount | string | Amount to withdraw |
 
 **CLI Command** 
 ```console
@@ -109,8 +109,8 @@ NEAR_ENV=testnet near call <BTS> withdraw '{"coin_name": "<COIN NAME>", "amount"
 
 | Parameters | Type | Info |
 |:---------|:--------|:--------|
-| coin_name | string |  |
-| amount | string |  |
+| coin_name | string | Name of coin to transfer  |
+| amount | string | Amount to transfer |
 
 **CLI Command** 
 ```console
@@ -123,9 +123,9 @@ NEAR_ENV=testnet near view <BTS> get_fee '{"coin_name": "<Coin Name>", "amount":
 
 | Parameters | Type | Info |
 |:---------|:--------|:--------|
-| coin_name | string |  |
-| destination | string | valid btp address |
-| amount | string |  |
+| coin_name | string | Name of coin to transfer  |
+| destination | string | BTP Address of destination |
+| amount | string | Amount to transfer |
 
 **CLI Command** 
 ```console
