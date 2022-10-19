@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/log"
@@ -42,9 +43,9 @@ func NewReceiver(config ReceiverConfig, logger log.Logger, clients ...IClient) (
 	}
 
 	r := &Receiver{
-		clients: clients,
-		logger:  logger,
-		source: config.source,
+		clients:     clients,
+		logger:      logger,
+		source:      config.source,
 		destination: config.destination,
 	}
 
@@ -102,6 +103,7 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 						}).Error("invalid event seq")
 
 						_errCh <- fmt.Errorf("invalid event seq")
+						return
 					}
 
 					receipt.Events = events
@@ -123,7 +125,7 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		}
 	}()
 
-	return errCh, nil
+	return _errCh, nil
 }
 
 func (r *Receiver) client() IClient {

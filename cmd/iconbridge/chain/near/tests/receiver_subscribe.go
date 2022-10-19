@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"errors"
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -275,7 +274,7 @@ func init() {
 							select {
 							case <-srcMsg:
 							case err := <-output:
-								if errors.Is(err, errors.New("invalid event seq")) {
+								if err.Error() == "invalid event seq" {
 									result = true
 								}
 							}
