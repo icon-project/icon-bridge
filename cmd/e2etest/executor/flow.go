@@ -36,16 +36,17 @@ type configureReq struct {
 }
 
 var transferScripts = []*Script{
+	//&TransferUniDirectionNear,
 	&TransferUniDirection,
-	&TransferBiDirection,
-	&TransferBatchBiDirection,
-	&TransferToBlackListedDstAddress,
-	&TransferFromBlackListedSrcAddress,
-	&TransferEqualToFee,
-	&TransferLessThanFee,
-	&TransferToZeroAddress,
-	&TransferToUnknownNetwork,
-	&TransferWithoutApprove,
+	// &TransferBiDirection,
+	// &TransferBatchBiDirection,
+	// &TransferFromBlackListedSrcAddress,
+	// &TransferToBlackListedDstAddress,
+	// &TransferEqualToFee,
+	// &TransferLessThanFee,
+	// &TransferToZeroAddress,
+	// &TransferToUnknownNetwork,
+	// &TransferWithoutApprove,
 }
 
 var configScripts = []*ConfigureScript{

@@ -15,15 +15,15 @@ import (
 const (
 	RPC_URI      = "https://rpc.testnet.near.org"
 	TokenGodKey  = ""
-	TokenGodAddr = "btp://0x2.icon/hx23552e15bfe0cf3d8166b809b344329c2e20feaa"
+	TokenGodAddr = "btp://0x7.icon/hx23552e15bfe0cf3d8166b809b344329c2e20feaa"
 	GodKey       = ""
-	GodAddr      = "btp://0x2.icon/hx077ada6dd02f63b02650c5861f9f41166e45d9f1"
+	GodAddr      = "btp://0x7.icon/hx077ada6dd02f63b02650c5861f9f41166e45d9f1"
 	DemoSrcKey   = ""
-	DemoSrcAddr  = "btp://0x1.near/alice.testnet"
-	DemoDstAddr  = "btp://0x2.icon/hx96f2c7524c0557f8b56d461205443367cb731e83"
-	GodDstAddr   = "btp://0x1.near/e072b70f2caa18b9e8e795ce970ec48f67368055d489f14174b779594dd6a5aa"
+	DemoSrcAddr  = "btp://0x2.near/alice.testnet"
+	DemoDstAddr  = "btp://0x7.icon/hx96f2c7524c0557f8b56d461205443367cb731e83"
+	GodDstAddr   = "btp://0x2.near/e072b70f2caa18b9e8e795ce970ec48f67368055d489f14174b779594dd6a5aa"
 	NID          = "0x1.near"
-	BtsOwner     = "btp://0x1.near/bts.iconbridge.testnet"
+	BtsOwner     = "btp://0x2.near/bts.iconbridge-6.testnet"
 )
 
 func TestGetCoinNames(t *testing.T) {
@@ -34,7 +34,7 @@ func TestGetCoinNames(t *testing.T) {
 	}
 	i := api.NativeCoin()
 	t.Log(i)
-	// assert.Equal(t, 1, 0)
+	//assert.Equal(t, 1, 0)
 }
 
 func TestTransferIntraChain(t *testing.T) {
@@ -66,7 +66,7 @@ func TestTransferIntraChain(t *testing.T) {
 		}
 	}()
 
-	for _, coinName := range []string{"btp-0x1.near-NEAR"} {
+	for _, coinName := range []string{"btp-0x2.near-NEAR"} {
 		txnHash, err := _api.Transfer(coinName, privKey, dstaddr, amount)
 		if err != nil {
 			t.Fatal(err)
@@ -96,7 +96,7 @@ func TestGetCoinBalance(t *testing.T) {
 	if err := showBalance(DemoSrcAddr); err != nil {
 		t.Fatalf(" %+v", err)
 	}
-	assert.Equal(t, 1, 0)
+	// assert.Equal(t, 1, 0)
 
 }
 
@@ -105,7 +105,7 @@ func showBalance(addr string) error {
 	if err != nil {
 		return err
 	}
-	for _, coinName := range []string{"btp-0x1.near-NEAR"} {
+	for _, coinName := range []string{"btp-0x2.near-NEAR"} {
 		res, err := api.GetCoinBalance(coinName, addr)
 		if err != nil {
 			return err
@@ -213,7 +213,7 @@ func TestGetTokenLimit(t *testing.T) {
 func getNewApi() (chain.ChainAPI, error) {
 	srcEndpoint := RPC_URI
 	addrToName := map[chain.ContractName]string{
-		chain.BTS: "bts.iconbridge.testnet",
+		chain.BTS: "bts.iconbridge-6.testnet",
 	}
 	l := log.New()
 	log.SetGlobalLogger(l)
@@ -222,8 +222,8 @@ func getNewApi() (chain.ChainAPI, error) {
 		URL:               srcEndpoint,
 		ContractAddresses: addrToName,
 		NativeTokens:      []string{},
-		WrappedCoins:      []string{"btp-0x2.icon-ICX", "btp-0x1.bsc-BNB"},
-		NativeCoin:        "btp-0x1.near-NEAR",
+		WrappedCoins:      []string{"btp-0x7.icon-ICX"},
+		NativeCoin:        "btp-0x2.near-NEAR",
 		NetworkID:         NID,
 		// GasLimit:          300000000000000,
 	})

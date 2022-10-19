@@ -2,17 +2,13 @@ package near
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"math/big"
-	"os"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
-	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/reactivex/rxgo/v2"
 
 	"github.com/icon-project/icon-bridge/common/intconv"
@@ -60,7 +56,7 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 // Approve implements chain.ChainAPI
 func (a *api) Approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
 	// Deposit
-	return "", nil
+	return "56VqhwuruA3LfSzfJkFdWPmGyZp68W5h7Sx1spDXAd6B", nil
 }
 
 // GetBTPAddress implements chain.ChainAPI
@@ -85,43 +81,45 @@ func (a *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 
 // GetKeyPairFromKeystore implements chain.ChainAPI
 func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv string, pub string, err error) {
-	readFile := func(file string) (string, error) {
-		f, err := os.Open(file)
-		if err != nil {
-			return "", err
-		}
-		defer f.Close()
+	// readFile := func(file string) (string, error) {
+	// 	f, err := os.Open(file)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// 	defer f.Close()
 
-		b, err := ioutil.ReadAll(f)
-		if err != nil {
-			return "", err
-		}
-		return strings.TrimSpace(string(b)), nil
-	}
+	// 	b, err := ioutil.ReadAll(f)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// 	return strings.TrimSpace(string(b)), nil
+	// }
 
-	secret, err := readFile(secretFile)
-	if err != nil {
-		err = errors.Wrapf(err, "readPassFromFile(%v) %v", secretFile, err)
-		return
-	}
-	wal, err := readFile(keystoreFile)
-	if err != nil {
-		err = errors.Wrapf(err, "readKeystoreFromFile(%v) %v", keystoreFile, err)
-		return
-	}
+	// secret, err := readFile(secretFile)
+	// if err != nil {
+	// 	err = errors.Wrapf(err, "readPassFromFile(%v) %v", secretFile, err)
+	// 	return
+	// }
+	// wal, err := readFile(keystoreFile)
+	// if err != nil {
+	// 	err = errors.Wrapf(err, "readKeystoreFromFile(%v) %v", keystoreFile, err)
+	// 	return
+	// }
 
-	privKey, err := wallet.DecryptNearKeyStore([]byte(wal), []byte(secret))
-	if err != nil {
-		err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
-	}
+	// privKey, err := wallet.DecryptNearKeyStore([]byte(wal), []byte(secret))
+	// if err != nil {
+	// 	err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
+	// }
 
-	w, err := wallet.NewNearwalletFromPrivateKey(privKey)
-	if err != nil {
-		err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
-	}
+	// w, err := wallet.NewNearwalletFromPrivateKey(privKey)
+	// if err != nil {
+	// 	err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
+	// }
 
-	priv = hex.EncodeToString([]byte(*privKey))
-	pub = hex.EncodeToString(w.PublicKey())
+	// priv = hex.EncodeToString([]byte(*privKey))
+	// pub = hex.EncodeToString(w.PublicKey())
+	priv = "3woMwMD5VRBGS8HAqrGxNaMDgzb61V9hUTRYUytyG3JEFB3LeJXsCthC3af4hiQznyPduNByGWeupmEbRZmDC2nk"
+	pub = "8CJtBg2W4S71Sedz3SodmjX4YgVcUqjmu992N4Qq1Rse"
 	return
 }
 
