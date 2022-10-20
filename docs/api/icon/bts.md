@@ -58,6 +58,37 @@
             "userBalance" : "0x56a76b623167000"
         }
         ```
+
+* ### Fees
+    - #### Method
+        - feeRatio
+        
+    - #### Parameters
+        | Parameters | Type   | Info         |
+        |:-----------|:-------|:-------------|
+        | _name      | string | Name of coin |
+
+    - #### CLI Command
+        ```sh
+        goloop rpc call --uri <ENDPOINT> \
+            --to <BTS> \
+            --method feeRatio \
+            --param _name=<Name of coin>
+        ```
+    - #### Description
+        - When `value` amount is to be transferred cross chain
+        - `fee = (value * feeNumerator / FEE_DENOMINATOR) + fixedFee`
+        - where, FEE_DENOMINATOR = 10000
+        - The amount that gets transferred is: `value - fee`
+
+    - #### Returns
+        ```json
+        {
+            "fixedFee": "0x56a76b623167000",
+            "feeNumerator": "0x0"
+        }
+        ```
+        
 * ### Token Transfer to BTS
     - #### Method
         - transfer
@@ -70,7 +101,7 @@
 
     - #### CLI Command
         ```sh
-        goloop rpc sendtx call --uri <ENDPOINT>
+        goloop rpc sendtx call --uri <ENDPOINT> \
             --to <IRC2 Token Address> \
             --key_store <KEYSTORE_FILE> \
             --key_secret <KEYSTORE_SECRET> \
@@ -90,7 +121,7 @@
         | amount     | BigInteger | Amount to approve       |
     - #### CLI Command
         ```sh
-        goloop rpc sendtx call --uri <ENDPOINT>
+        goloop rpc sendtx call --uri <ENDPOINT> \
             --to <Wrapped Token Address> \
             --key_store <KEYSTORE_FILE> \
             --key_secret <KEYSTORE_SECRET> \
@@ -113,7 +144,7 @@
 
     - #### CLI Command
         ```sh
-        goloop rpc sendtx call --uri <ENDPOINT>
+        goloop rpc sendtx call --uri <ENDPOINT> \
             --to <BTS> \
             --key_store <KEYSTORE_FILE> \
             --key_secret <KEYSTORE_SECRET> \
@@ -134,7 +165,7 @@
     - #### CLI Command
 
         ```sh
-        goloop rpc sendtx call --uri <ENDPOINT>
+        goloop rpc sendtx call --uri <ENDPOINT> \
             --to <BTS> \
             --key_store <KEYSTORE_FILE> \
             --key_secret <KEYSTORE_SECRET> \
@@ -157,11 +188,11 @@
     - #### CLI Command
 
         ```sh
-        goloop rpc sendtx call --uri <ENDPOINT>
+        goloop rpc sendtx call --uri <ENDPOINT> \
             --to <BTS> \
-            --key_store <KEYSTORE_FILE>
-            --key_secret <KEYSTORE_SECRET>
-            --nid <NID>
+            --key_store <KEYSTORE_FILE> \
+            --key_secret <KEYSTORE_SECRET> \
+            --nid <NID> \
             --method transferBatch \
             --value <Amount> \ # 0 if nativecoin is not to be transferred
             --raw "{\"params\":{\"_coinNames\":\"<Array of coinNames>\",\"_values\":\"<Array of values>\"}}"
@@ -200,7 +231,7 @@
         | _value     | BigInteger | Amount to redeem |
     - CLI Command
         ```sh
-        goloop rpc sendtx call --uri <ENDPOINT>
+        goloop rpc sendtx call --uri <ENDPOINT> \
             --to <BTS> \
             --key_store <KEYSTORE_FILE> \
             --key_secret <KEYSTORE_SECRET> \
@@ -222,7 +253,7 @@
         | _addresses | String[] | Array of addresses to blacklist on _net |
     - #### CLI Command
         ```sh
-        goloop rpc sendtx call --uri <ENDPOINT>
+        goloop rpc sendtx call --uri <ENDPOINT> \
             --to <BTS> \
             --key_store <KEYSTORE_FILE> \
             --key_secret <KEYSTORE_SECRET> \
@@ -246,7 +277,7 @@
         | _addresses | String[] | Array of addresses to blacklist on _net |
     - #### CLI Command
         ```sh
-        goloop rpc sendtx call --uri <ENDPOINT>
+        goloop rpc sendtx call --uri <ENDPOINT> \
             --to <BTS> \
             --key_store <KEYSTORE_FILE> \
             --key_secret <KEYSTORE_SECRET> \
@@ -271,7 +302,7 @@
         | _tokenLimits | BigInteger[] | Array of tokenLimits for coinNames |
     - #### CLI Command
          ```sh
-        goloop rpc sendtx call --uri <ENDPOINT>
+        goloop rpc sendtx call --uri <ENDPOINT> \
             --to <BTS> \
             --key_store <KEYSTORE_FILE> \
             --key_secret <KEYSTORE_SECRET> \
