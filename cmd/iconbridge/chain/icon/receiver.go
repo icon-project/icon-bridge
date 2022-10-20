@@ -496,7 +496,7 @@ func handleBTPBlockRequest(
 		return
 	}
 	// fetch votes, next validators only if verifier exists
-	if vr != nil {
+	if vr.(*Verifier) != nil {
 		request.response.Votes, request.err = client.GetVotesByHeight(
 			&types.BlockHeightParam{Height: types.NewHexInt(request.height)})
 		if request.err != nil {
@@ -636,7 +636,7 @@ func handleBTPBlockResponse(blockResponse *btpBlockResponse, vr IVerifier, next 
 	for ; blockResponse != nil; *next++ {
 		log.WithFields(log.Fields{"height": blockResponse.Height}).Debug("block notification")
 
-		if vr != nil {
+		if vr.(*Verifier) != nil {
 			ok, err := vr.Verify(blockResponse.Header, blockResponse.Votes)
 			if !ok || err != nil {
 				if err != nil {
