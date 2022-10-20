@@ -343,6 +343,8 @@ pub mod errors {
         Unauthorized { message: &'static str },
         InvalidSequence,
         InternalEventHandleNotExists,
+        UnknownHandleBtpError,
+        UnkownHandleBtpMessage,
     }
 
     impl Exception for BmcError {
@@ -439,6 +441,13 @@ pub mod errors {
                 }
                 BmcError::InternalEventHandleNotExists => {
                     write!(f, "{}{}", label, "NotExistInternalEventHandle")
+                }
+
+                BmcError::UnknownHandleBtpError => {
+                    write!(f, "{}{}", label, "UnknownHandleBtpError")
+                }
+                BmcError::UnkownHandleBtpMessage => {
+                    write!(f, "{}{}", label, "UnkownHandleBtpMessage")
                 }
             }
         }

@@ -1,5 +1,5 @@
 use crate::types::messages::{BtpMessage, SerializedMessage};
-use crate::types::{BTPAddress, BTPError, Message};
+use crate::types::{BTPAddress, BtpError, Message};
 use near_sdk::json_types::{Base64VecU8, U128};
 use near_sdk::serde_json::from_str;
 use near_sdk::{
@@ -46,18 +46,21 @@ impl BmcEvent {
         service: String,
         sequence: U128,
         code: U128,
-        message: String,
+        message: BtpMessage<SerializedMessage>,
         btp_error_code: U128,
         btp_error_message: String,
     ) {
-        self.error.set(&to_value(BTPError::new(
-            service,
-            sequence,
-            code,
-            message,
-            btp_error_code,
-            btp_error_message,
-        )).unwrap().to_string()
+        self.error.set(
+            &to_value(BtpError::new(
+                service,
+                sequence,
+                code,
+                <Vec<u8>>::from(message).into(),
+                btp_error_code,
+                btp_error_message,
+            ))
+            .unwrap()
+            .to_string(),
         );
     }
 
