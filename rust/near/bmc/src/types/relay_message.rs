@@ -83,7 +83,7 @@ mod tests {
     use std::convert::TryInto;
 
     use libraries::types::messages::{
-        BmcServiceMessage, BtpMessage, SerializedBtpMessages, TokenServiceMessage,
+        BmcServiceMessage, BtpMessage, ErrorMessage, SerializedBtpMessages, TokenServiceMessage,
     };
     use near_sdk::serde_json::{self, json};
 
@@ -91,15 +91,14 @@ mod tests {
 
     #[test]
     fn deserialize_relay_message1() {
-        let message = "-QEz-QEwuQEt-QEqGrkBIfkBHvkBG7g5YnRwOi8vMHgxLmljb24vY3gyM2E5MWVlM2RkMjkwNDg2YTkxMTNhNmE0MjQyOTgyNWQ4MTNkZTUzLbjd-Nu4OWJ0cDovLzB4MzguYnNjLzB4MDM0QWFERTg2QkY0MDJGMDIzQWExN0U1NzI1ZkFCQzRhYjlFOTc5OLg5YnRwOi8vMHgxLmljb24vY3gyM2E5MWVlM2RkMjkwNDg2YTkxMTNhNmE0MjQyOTgyNWQ4MTNkZTUzg2J0cxW4XvhcALhZ-FeqMHg3QTQzNDFBZjQ5OTU4ODQ1NDZCY2Y3ZTA5ZUI5OGJlRDNlRDI2RDI4qmh4OTM3NTE3YWMwNDJkMGExNGYwOWQ0Njc3ZDMwMmJiMjExMTg0YWM1ZsCEAT1bUQ==";
-        let btp_message: BtpMessage<TokenServiceMessage> =
-            RelayMessage::try_from(message.to_string())
-                .unwrap()
-                .receipts[0]
-                .events()[0]
-                .message()
-                .clone()
-                .try_into()
-                .unwrap();
+        let message = "-P_4_bj7-PkBuPH47_jtuE9idHA6Ly8weDIubmVhci83MjcwYTc5YmU3ODlkNzcwZjJkZTAxNTA0NzY4NGUyODA2NTk3ZWVlZTk2ZWUzY2E4N2IxNzljNjM5OWRlYWFmNriZ-Je4OWJ0cDovLzB4Ny5pY29uL2N4MWFkNmZjYzQ2NWQxYjg2NDRjYTM3NWY5ZTEwYmFiZWVhNGMzODMxNbhPYnRwOi8vMHgyLm5lYXIvNzI3MGE3OWJlNzg5ZDc3MGYyZGUwMTUwNDc2ODRlMjgwNjU5N2VlZWU5NmVlM2NhODdiMTc5YzYzOTlkZWFhZoNidHOB3ITDKPgAhADNaJY=";
+        let btp_message: BtpMessage<ErrorMessage> = RelayMessage::try_from(message.to_string())
+            .unwrap()
+            .receipts[0]
+            .events()[0]
+            .message()
+            .clone()
+            .try_into()
+            .unwrap();
     }
 }

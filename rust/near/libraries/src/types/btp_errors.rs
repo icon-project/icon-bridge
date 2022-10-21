@@ -1,33 +1,32 @@
-use near_sdk::json_types::U128;
+use near_sdk::json_types::{Base64VecU8, U128};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     serde_json::{from_value, to_value, Value},
 };
-
 #[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize)]
 #[serde(crate = "near_sdk::serde")]
-pub struct BTPError {
+pub struct BtpError {
     service: String,
-    sequence: U128,
-    code: U128,
-    message: String,
-    btp_error_code: U128,
+    serial_no: U128,
+    code: u32,
+    message: Base64VecU8,
+    btp_error_code: u32,
     btp_error_message: String,
 }
 
-impl BTPError {
+impl BtpError {
     pub fn new(
         service: String,
-        sequence: U128,
-        code: U128,
-        message: String,
-        btp_error_code: U128,
-        btp_error_message: String
+        serial_no: U128,
+        code: u32,
+        message: Base64VecU8,
+        btp_error_code: u32,
+        btp_error_message: String,
     ) -> Self {
         Self {
             service,
-            sequence,
+            serial_no,
             code,
             message,
             btp_error_code,
@@ -35,23 +34,23 @@ impl BTPError {
         }
     }
 
-    pub fn service(&self) ->&String{
+    pub fn service(&self) -> &String {
         &self.service
     }
-    pub fn sequence(&self) -> &U128{
-        &self.sequence
+    pub fn serial_no(&self) -> &U128 {
+        &self.serial_no
     }
 
-    pub fn code(&self) -> &U128{
-        &self.code
+    pub fn code(&self) -> u32 {
+        self.code
     }
-    pub fn message(&self) -> &String{
+    pub fn message(&self) -> &Base64VecU8 {
         &self.message
     }
-    pub fn btp_error_code(&self) -> &U128{
-        &self.btp_error_code
+    pub fn btp_error_code(&self) -> u32 {
+        self.btp_error_code
     }
-    pub fn btp_error_message(&self) -> &String{
+    pub fn btp_error_message(&self) -> &String {
         &self.btp_error_message
     }
 }

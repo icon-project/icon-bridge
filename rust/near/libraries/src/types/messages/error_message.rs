@@ -1,20 +1,37 @@
-use crate::types::{
-    messages::BtpMessage, messages::Message, messages::SerializedMessage, BTPAddress, WrappedI128,
-};
 use crate::rlp::{self, Decodable, Encodable};
+use crate::types::{
+    messages::BtpMessage, messages::Message, messages::SerializedMessage, BTPAddress, Nullable,
+    WrappedI128,
+};
+use btp_common::errors::BmcError;
+use near_sdk::{
+    base64::{self, URL_SAFE_NO_PAD}, // TODO: Confirm
+    borsh::{self, maybestd::io, BorshDeserialize, BorshSerialize},
+    serde::{de, ser, Deserialize, Deserializer, Serialize, Serializer},
+};
 use std::convert::TryFrom;
 
 #[derive(Default, Debug, PartialEq, Eq, Clone)]
 pub struct ErrorMessage {
     code: u32,
-    message: String,
+    message: Nullable<String>,
 }
 
 impl Message for ErrorMessage {}
 
 impl ErrorMessage {
     pub fn new(code: u32, message: String) -> Self {
-        Self { code, message }
+        Self {
+            code,
+            message: Nullable::new(Some(message)),
+        }
+    }
+
+    pub fn code(&self) -> u32 {
+        self.code
+    }
+    pub fn message(&self) -> &Nullable<String> {
+        &self.message
     }
 }
 
@@ -39,8 +56,6 @@ impl From<BtpMessage<ErrorMessage>> for BtpMessage<SerializedMessage> {
 
 impl Decodable for ErrorMessage {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let data = rlp.as_val::<Vec<u8>>()?;
-        let rlp = rlp::Rlp::new(&data);
         Ok(Self {
             code: rlp.val_at(0)?,
             message: rlp.val_at(1)?,
@@ -72,13 +87,9 @@ impl TryFrom<BtpMessage<SerializedMessage>> for BtpMessage<ErrorMessage> {
 
 impl Encodable for ErrorMessage {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
-        let mut params = rlp::RlpStream::new();
-        params
-            .begin_unbounded_list()
+        stream
+            .begin_list(2)
             .append(&self.code)
-            .append(&self.message)
-            .finalize_unbounded_list();
-
-        stream.append(&params.out());
+            .append(&self.message);
     }
 }

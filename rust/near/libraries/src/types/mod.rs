@@ -60,3 +60,5 @@ mod btp_errors;
 mod coin_ids;
 pub use btp_errors::BtpError;
 pub use coin_ids::{CoinIds, CoinProperty};
+mod nullable;
+pub use nullable::Nullable;

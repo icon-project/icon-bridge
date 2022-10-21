@@ -44,16 +44,16 @@ impl BmcEvent {
     pub fn amend_error(
         &mut self,
         service: String,
-        sequence: U128,
-        code: U128,
-        message: BtpMessage<SerializedMessage>,
-        btp_error_code: U128,
+        serial_no: U128,
+        code: u32,
+        message: String,
+        btp_error_code: u32,
         btp_error_message: String,
     ) {
         self.error.set(
             &to_value(BtpError::new(
                 service,
-                sequence,
+                serial_no,
                 code,
                 <Vec<u8>>::from(message).into(),
                 btp_error_code,

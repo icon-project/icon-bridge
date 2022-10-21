@@ -5,12 +5,29 @@ use libraries::types::{
     WrappedNativeCoin,
 };
 use libraries::{
-    types::messages::BlackListType, types::messages::BtpMessage,
-    types::messages::SerializedMessage, types::messages::TokenServiceMessage,
-    types::messages::TokenServiceType, types::Asset, types::AssetFees, types::AssetMetadata,
-    types::Assets, types::Balances, types::BlackListedAccounts, types::Math, types::Network,
-    types::Owners, types::Requests, types::StorageBalances, types::TokenLimits,
+    types::messages::BlackListType,
+    types::messages::SerializedMessage,
+    types::messages::TokenServiceMessage,
+    types::messages::TokenServiceType,
+    types::messages::{BtpMessage, ErrorMessage},
+    types::Asset,
+    types::AssetFees,
+    types::AssetMetadata,
+    types::Assets,
+    types::Balances,
+    types::BlackListedAccounts,
+    types::Math,
+    types::Network,
+    types::Owners,
+    types::Request,
+    types::Requests,
+    types::StorageBalances,
+    types::TokenLimits,
+    types::WrappedI128,
 };
+
+use std::str::FromStr;
+
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LazyOption;
 use near_sdk::serde_json::json;

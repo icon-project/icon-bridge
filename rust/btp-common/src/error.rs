@@ -16,6 +16,15 @@ pub mod errors {
         Reserved,
     }
 
+    pub fn from_code(code: u32) -> Box<dyn Exception> {
+        match code {
+            0..=9 => todo!(),
+            10..=24 => Box::new(BtpException::Bmc(from_bmc(code - 10))),
+            25..=39 => todo!(),
+            _ => Box::new(BtpException::Bsh(from_bsh(code - 40))),
+        }
+    }
+
     impl<T> Exception for BtpException<T>
     where
         T: Exception,
@@ -78,6 +87,18 @@ pub mod errors {
                 _ => 0,
             }
         }
+    }
+
+    fn from_bmv(_: u32) -> BmvError {
+        todo!()
+    }
+
+    fn from_bsh(_: u32) -> BshError {
+        todo!()
+    }
+
+    fn from_bmc(_: u32) -> BmcError {
+        todo!()
     }
 
     impl fmt::Display for BmvError {

@@ -1,7 +1,4 @@
-use std::str::FromStr;
 
-use libraries::types::Request;
-use libraries::types::WrappedI128;
 
 use super::*;
 
@@ -46,17 +43,20 @@ impl BtpTokenService {
         source: BTPAddress,
         service: String,
         serial_no: i128,
-        code: u128,
-        message: String,
+        message: BtpMessage<SerializedMessage>,
     ) {
         self.assert_predecessor_is_bmc();
         self.assert_valid_service(&service);
+
+        let error_message: BtpMessage<ErrorMessage> = message.try_into().unwrap();
         self.handle_response(
             &WrappedI128::new(serial_no),
-            1,
+            error_message.message().clone().unwrap().code().into(),
             &format!(
-                "[BTPError] source: {}, code: {} message: {}",
-                source, code, message
+                "[BTPError] source: {}, code: {} message: {:?}",
+                source,
+                1,
+                error_message.message().clone().unwrap()
             ),
         )
         .unwrap();
@@ -68,7 +68,12 @@ impl BtpTokenService {
     }
 
     #[private]
-    pub fn send_service_message_callback(&mut self, destination_network: String, message: TokenServiceMessage, serial_no: i128) {
+    pub fn send_service_message_callback(
+        &mut self,
+        destination_network: String,
+        message: TokenServiceMessage,
+        serial_no: i128,
+    ) {
         match message.service_type() {
             TokenServiceType::RequestTokenTransfer {
                 sender,
@@ -170,7 +175,7 @@ impl BtpTokenService {
                                     code: 0,
                                     message: "AddedToBlacklist".to_string(),
                                 });
-                                
+
                             self.send_response(
                                 btp_message.serial_no(),
                                 btp_message.source(),
@@ -204,7 +209,7 @@ impl BtpTokenService {
                                             message: err.to_string(),
                                         },
                                     );
-                                    
+
                                     self.send_response(
                                         btp_message.serial_no(),
                                         btp_message.source(),
