@@ -89,7 +89,7 @@ fn deposit_wnear() {
     let result = contract.balance_of(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
     expected.deposit_mut().add(100).unwrap();
-    assert_eq!(result, U128::from(expected.deposit()))
+    assert_eq!(result, U128::from(expected.deposit()));
 }
 
 #[test]
@@ -148,7 +148,7 @@ fn withdraw_wnear() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    contract.on_withdraw(chuck(), 999, token_id.clone(), w_near.symbol().to_owned());
+    contract.on_withdraw(chuck(), 999, w_near.name().to_string(), token_id.clone());
 
     let result = contract.balance_of(chuck(), w_near.name().to_string());
     let mut expected = AccountBalance::default();
@@ -413,7 +413,7 @@ fn handle_success_response_baln_external_transfer() {
     let baln = <Coin>::new(BALN.to_owned());
     contract.register(baln.clone());
     let token_id = env::sha256(baln.name().to_owned().as_bytes());
-    contract.register_coin_callback(baln.clone(), token_id.clone());
+    contract.register_coin_callback(baln.clone(), token_id.clone().try_into().unwrap());
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -440,7 +440,12 @@ fn handle_success_response_baln_external_transfer() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    contract.on_mint(900, token_id.clone(), baln.symbol().to_string(), chuck());
+    contract.on_mint(
+        900,
+        token_id.clone().try_into().unwrap(),
+        baln.symbol().to_string(),
+        chuck(),
+    );
 
     testing_env!(context(chuck(), 0, 10u64.pow(18)));
     contract.transfer(
@@ -484,7 +489,11 @@ fn handle_success_response_baln_external_transfer() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    contract.on_burn(719, token_id.clone(), baln.symbol().to_string());
+    contract.on_burn(
+        719,
+        token_id.clone().try_into().unwrap(),
+        baln.symbol().to_string(),
+    );
 
     let result = contract.balance_of(alice(), baln.name().to_string());
     assert_eq!(result, U128::from(81));
@@ -660,7 +669,7 @@ fn handle_failure_response_baln_coin_external_transfer() {
     let baln = <Coin>::new(BALN.to_owned());
     contract.register(baln.clone());
     let token_id = env::sha256(baln.name().to_owned().as_bytes());
-    contract.register_coin_callback(baln.clone(), token_id.clone());
+    contract.register_coin_callback(baln.clone(), token_id.clone().try_into().unwrap());
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -686,7 +695,12 @@ fn handle_failure_response_baln_coin_external_transfer() {
     );
     contract.handle_btp_message(btp_message.try_into().unwrap());
 
-    contract.on_mint(900, token_id.clone(), baln.symbol().to_string(), chuck());
+    contract.on_mint(
+        900,
+        token_id.clone().try_into().unwrap(),
+        baln.symbol().to_string(),
+        chuck(),
+    );
 
     testing_env!(context(chuck(), 0));
     contract.transfer(
@@ -783,7 +797,9 @@ fn reclaim_baln_coin() {
 
     let baln = <Coin>::new(BALN.to_owned());
     contract.register(baln.clone());
-    let coin_id = env::sha256(baln.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(baln.clone(), coin_id.clone());
 
     let btp_message = &BtpMessage::new(
@@ -1186,7 +1202,9 @@ fn external_transfer_batch_nil_balance() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     contract.register(baln.clone());
-    let coin_id = env::sha256(baln.name().to_owned().as_bytes());
+    let coin_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
     contract.register_coin_callback(baln.clone(), coin_id.clone());
 
     testing_env!(

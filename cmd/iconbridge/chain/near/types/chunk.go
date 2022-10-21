@@ -14,3 +14,8 @@ type Chunk struct {
 	TxRoot               CryptoHash `json:"tx_root"`
 	Signature            Signature  `json:"signature"`
 }
+
+type ChunkHeader struct {
+	Header       Chunk         `json:"header"`
+	Transactions []Transaction `json:"transactions"`
+}

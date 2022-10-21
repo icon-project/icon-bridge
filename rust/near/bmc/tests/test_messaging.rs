@@ -229,6 +229,7 @@ fn handle_internal_service_message_unlink() {
     assert_eq!(reachables, expected);
 }
 
+#[ignore]
 #[test]
 fn deserialize_serialized_btp_messages_from_json() {
     let btp_message = json!(["uNz42rg5YnRwOi8vMHgxLmljb24vY3g4N2VkOTA0OGI1OTRiOTUxOTlmMzI2ZmM3NmU3NmE5ZDMzZGQ2NjViuE9idHA6Ly8weDEubmVhci84OGJkMDU0NDI2ODZiZTBhNWRmN2RhMzNiNmYxMDg5ZWJmZWEzNzY5YjE5ZGJiMjQ3N2ZlMGNkNmUwZjEyNmU0g2JtYwG4R_hFhlVubGlua7g8-Dq4OGJ0cDovLzB4NS5wcmEvY3g4N2VkOTA0OGI1OTRiOTUxOTlmMzI2ZmM3NmU3NmE5ZDMzZGQ2NjVi"]);

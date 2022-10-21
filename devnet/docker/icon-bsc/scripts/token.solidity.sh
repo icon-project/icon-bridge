@@ -2,12 +2,29 @@
 source utils.sh
 
 eth_blocknumber() {
-  curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' \
-    --data-raw '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[], "id": 1}' | jq -r .result
+  local curHexHeight=$(curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' \
+    --data-raw '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[], "id": 1}' | jq -r .result)
+  local curDecHeight=$(echo -n $curHexHeight | xargs printf "%d")
+  local decHeightWithConfirmationDelay=$(expr $curDecHeight - 15)
+  local isEpochBlock=$(expr $decHeightWithConfirmationDelay % 200)
+  if [ "$isEpochBlock" == "0" ]; then 
+    decHeightWithConfirmationDelay=$(expr $decHeightWithConfirmationDelay + 1)
+  fi
+  local hexHeight=$(echo -n $decHeightWithConfirmationDelay | xargs printf 0x"%x")
+  echo -n $hexHeight
 }
+
 eth_parentHash() {
   curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' \
     --data-raw "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBlockByNumber\",\"params\":[\"$1\", false], \"id\": 1}" | jq -r .result.parentHash
+}
+
+eth_validatorData() {
+  local decHeight=$(echo -n $1 | xargs printf "%d")
+  local epochDecHeight=$(expr $decHeight - $decHeight % 200)
+  local epochHexHeight=$(echo -n $epochDecHeight | xargs printf 0x"%x")
+  curl -s -X POST $BSC_RPC_URI --header 'Content-Type: application/json' \
+    --data-raw "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBlockByNumber\",\"params\":[\"$epochHexHeight\", false], \"id\": 1}" | jq -r .result.extraData
 }
 
 deploy_solidity_bmc() {
@@ -19,6 +36,7 @@ deploy_solidity_bmc() {
     local blockHeight=$(eth_blocknumber)
     echo $blockHeight | xargs printf "%d" > $CONFIG_DIR/bsc.chain.height
     eth_parentHash $blockHeight > $CONFIG_DIR/bsc.chain.parentHash
+    eth_validatorData $blockHeight > $CONFIG_DIR/bsc.chain.validatorData
     set +e
     local status="retry"
     for i in $(seq 1 20); do

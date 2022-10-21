@@ -190,9 +190,11 @@ pub mod errors {
         TokenNotRegistered,
         LessThanZero,
         UserAlreadyBlacklisted,
-        UserNotBlacklisted,
         BlacklistedUsers { message: String },
+        NonBlacklistedUsers { message: String },
         InvalidParams,
+        LimitExceed,
+        LimitNotSet,
     }
 
     impl Exception for BshError {
@@ -282,25 +284,31 @@ pub mod errors {
                     write!(f, "{}{}", label, "TokenNotRegistered")
                 }
                 BshError::Unknown => {
-                    write!(f, "{}", "Unknown")
+                    write!(f, "{}{}", label, "Unknown")
                 }
                 BshError::LessThanZero => {
-                    write!(f, "{}", "LessThanZero")
+                    write!(f, "{}{}", label, "LessThanZero")
                 }
                 BshError::Failure => {
-                    write!(f, "{}", "Failure")
+                    write!(f, "{}{}", label, "Failure")
                 }
                 BshError::UserAlreadyBlacklisted => {
-                    write!(f, "{}", "AlreadyBlacklisted")
+                    write!(f, "{}{}", label, "AlreadyBlacklisted")
                 }
-                BshError::UserNotBlacklisted => {
-                    write!(f, "{}", "NotBlacklisted")
+                BshError::NonBlacklistedUsers { message } => {
+                    write!(f, "{}{} for {}", label, "UsersNotBlacklisted", message)
+                }
+                BshError::InvalidParams => {
+                    write!(f, "{}{}", label, "InvalidParams")
+                }
+                BshError::LimitExceed => {
+                    write!(f, "{}{}", label, "LimitExceed")
                 }
                 BshError::BlacklistedUsers { message } => {
                     write!(f, "{}{} for {}", label, "UsersBlacklisted", message)
                 }
-                BshError::InvalidParams => {
-                    write!(f, "{}", "InvalidParams")
+                BshError::LimitNotSet => {
+                    write!(f, "{}{}", label, "LimitNotSet")
                 }
             }
         }

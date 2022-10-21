@@ -2,7 +2,7 @@
 name: Test Scenario
 about: Describes a test scenario
 title: ''
-labels: 'test'
+labels: ''
 assignees: ''
 
 ---

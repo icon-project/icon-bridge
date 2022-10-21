@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"math/big"
 	"strings"
 	"time"
@@ -33,13 +34,22 @@ type requestAPI struct {
 	contractNameToAddress map[chain.ContractName]string
 	networkID             string
 	cl                    *icon.Client
-	stepLimit             int64
 	nativeCoin            string
 	wrappedCoinsAddr      map[string]string
 	nativeTokensAddr      map[string]string
+	gasLimits             map[chain.GasLimitType]uint64
 }
 
 func newRequestAPI(cl *icon.Client, cfg *chain.Config) (req *requestAPI, err error) {
+	var defaultMapForDifferentGasLimits = map[chain.GasLimitType]uint64{
+		chain.TransferNativeCoinIntraChainGasLimit: 150000,
+		chain.TransferTokenIntraChainGasLimit:      300000,
+		chain.ApproveTokenInterChainGasLimit:       800000,
+		chain.TransferCoinInterChainGasLimit:       2500000,
+		chain.TransferBatchCoinInterChainGasLimit:  4000000,
+		chain.DefaultGasLimit:                      5000000,
+	}
+
 	if !strings.Contains(cfg.NetworkID, ".icon") {
 		return nil, fmt.Errorf("Expected cfg.NetwrkID=0xnid.icon Got %v", cfg.NetworkID)
 	}
@@ -47,15 +57,20 @@ func newRequestAPI(cl *icon.Client, cfg *chain.Config) (req *requestAPI, err err
 		networkID:             strings.Split(cfg.NetworkID, ".")[0],
 		contractNameToAddress: cfg.ContractAddresses,
 		cl:                    cl,
-		stepLimit:             cfg.GasLimit,
 		nativeCoin:            cfg.NativeCoin,
+		gasLimits:             cfg.GasLimit,
 	}
 	req.nativeTokensAddr, req.wrappedCoinsAddr, err = req.getCoinAddresses(cfg.NativeTokens, cfg.WrappedCoins)
+	for k, v := range defaultMapForDifferentGasLimits {
+		if _, ok := req.gasLimits[k]; !ok {
+			req.gasLimits[k] = v
+		}
+	}
 	return req, err
 }
 
 func (r *requestAPI) transactWithContract(senderKey string, contractAddress string,
-	amount *big.Int, args map[string]interface{}, method string) (txHash string, err error) {
+	amount *big.Int, args map[string]interface{}, method string, stepLimit int64) (txHash string, err error) {
 	var senderWallet module.Wallet
 	senderWallet, err = GetWalletFromPrivKey(senderKey)
 	if err != nil {
@@ -63,14 +78,14 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 		return
 	}
 
-	param := icon.TransactionParam{
-		Version:     icon.NewHexInt(icon.JsonrpcApiVersion),
-		ToAddress:   icon.Address(contractAddress),
-		Value:       icon.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
-		FromAddress: icon.Address(senderWallet.Address().String()),
-		StepLimit:   icon.NewHexInt(r.stepLimit),
-		Timestamp:   icon.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
-		NetworkID:   icon.HexInt(r.networkID),
+	param := types.TransactionParam{
+		Version:     types.NewHexInt(types.JsonrpcApiVersion),
+		ToAddress:   types.Address(contractAddress),
+		Value:       types.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
+		FromAddress: types.Address(senderWallet.Address().String()),
+		StepLimit:   types.NewHexInt(stepLimit),
+		Timestamp:   types.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
+		NetworkID:   types.HexInt(r.networkID),
 		DataType:    "call",
 	}
 	argMap := map[string]interface{}{}
@@ -97,8 +112,8 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 }
 
 func (r *requestAPI) callContract(contractAddress string, args map[string]interface{}, method string) (interface{}, error) {
-	param := &icon.CallParam{
-		ToAddress: icon.Address(contractAddress),
+	param := &types.CallParam{
+		ToAddress: types.Address(contractAddress),
 		DataType:  "call",
 	}
 	argMap := map[string]interface{}{}
@@ -128,7 +143,7 @@ func (r *requestAPI) transferIntraChain(coinName, senderKey, recepientAddress st
 
 func (r *requestAPI) transferTokenIntraChain(senderKey, recepientAddress string, amount *big.Int, caddr string) (txHash string, err error) {
 	args := map[string]interface{}{"_to": recepientAddress, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(senderKey, caddr, big.NewInt(0), args, "transfer")
+	return r.transactWithContract(senderKey, caddr, big.NewInt(0), args, "transfer", int64(r.gasLimits[chain.TransferTokenIntraChainGasLimit]))
 }
 
 func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string, amount *big.Int) (txHash string, err error) {
@@ -138,14 +153,14 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 		err = errors.Wrap(err, "GetWalletFromPrivKey ")
 		return
 	}
-	param := icon.TransactionParam{
-		Version:     icon.NewHexInt(icon.JsonrpcApiVersion),
-		ToAddress:   icon.Address(recepientAddress),
-		Value:       icon.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
-		FromAddress: icon.Address(senderWallet.Address().String()),
-		StepLimit:   icon.NewHexInt(r.stepLimit),
-		Timestamp:   icon.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
-		NetworkID:   icon.HexInt(r.networkID),
+	param := types.TransactionParam{
+		Version:     types.NewHexInt(types.JsonrpcApiVersion),
+		ToAddress:   types.Address(recepientAddress),
+		Value:       types.HexInt(intconv.FormatBigInt(amount)), //NewHexInt(amount.Int64()) Using Int64() can overflow for large amounts
+		FromAddress: types.Address(senderWallet.Address().String()),
+		StepLimit:   types.NewHexInt(int64(r.gasLimits[chain.TransferNativeCoinIntraChainGasLimit])),
+		Timestamp:   types.NewHexInt(time.Now().UnixNano() / int64(time.Microsecond)),
+		NetworkID:   types.HexInt(r.networkID),
 	}
 	if err = SignTransactionParam(senderWallet, &param); err != nil {
 		err = errors.Wrap(err, "SignTransactionParam ")
@@ -186,7 +201,7 @@ func (r *requestAPI) transferNativeCrossChain(senderKey, recepientAddress string
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	return r.transactWithContract(senderKey, caddr, amount, args, "transferNativeCoin")
+	return r.transactWithContract(senderKey, caddr, amount, args, "transferNativeCoin", int64(r.gasLimits[chain.TransferCoinInterChainGasLimit]))
 }
 
 func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddress string, amount *big.Int) (string, error) {
@@ -195,7 +210,7 @@ func (r *requestAPI) transferTokensCrossChain(coinName, senderKey, recepientAddr
 	if !ok {
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
-	return r.transactWithContract(senderKey, btsaddr, big.NewInt(0), args, "transfer")
+	return r.transactWithContract(senderKey, btsaddr, big.NewInt(0), args, "transfer", int64(r.gasLimits[chain.TransferCoinInterChainGasLimit]))
 }
 
 func (r *requestAPI) approve(coinName string, ownerKey string, amount *big.Int) (txnHash string, err error) {
@@ -218,7 +233,7 @@ func (r *requestAPI) approveCrossNativeCoin(coinName string, ownerKey string, am
 		return
 	}
 	approveArgs := map[string]interface{}{"spender": btsaddr, "amount": intconv.FormatBigInt(amount)}
-	approveTxnHash, err = r.transactWithContract(ownerKey, coinAddress, big.NewInt(0), approveArgs, "approve")
+	approveTxnHash, err = r.transactWithContract(ownerKey, coinAddress, big.NewInt(0), approveArgs, "approve", int64(r.gasLimits[chain.ApproveTokenInterChainGasLimit]))
 	if err != nil {
 		err = errors.Wrapf(err, "transactWithContract %v", coinAddress)
 		return
@@ -232,7 +247,7 @@ func (r *requestAPI) approveToken(coinName, senderKey string, amount *big.Int, c
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 	arg1 := map[string]interface{}{"_to": btsAddr, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(senderKey, caddr, big.NewInt(0), arg1, "transfer")
+	return r.transactWithContract(senderKey, caddr, big.NewInt(0), arg1, "transfer", int64(r.gasLimits[chain.ApproveTokenInterChainGasLimit]))
 }
 
 func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddress string, amounts []*big.Int) (txnHash string, err error) {
@@ -257,7 +272,7 @@ func (r *requestAPI) transferBatch(coinNames []string, senderKey, recepientAddre
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 
-	txnHash, err = r.transactWithContract(senderKey, btsaddr, nativeAmount, args, "transferBatch")
+	txnHash, err = r.transactWithContract(senderKey, btsaddr, nativeAmount, args, "transferBatch", int64(r.gasLimits[chain.TransferBatchCoinInterChainGasLimit]))
 	return
 }
 
@@ -313,6 +328,7 @@ func (r *requestAPI) getCoinBalance(coinName, addr string) (bal *chain.CoinBalan
 	if err != nil {
 		return nil, errors.Wrapf(err, "getBalanceOfType(userBalance) %v", err)
 	}
+	bal.TotalBalance = (&big.Int{}).Add(bal.UserBalance, bal.UsableBalance)
 	return
 }
 
@@ -420,14 +436,15 @@ func (r *requestAPI) getNativeCoinBalance(coinName, addr string) (bal *chain.Coi
 	zeroBalance := big.NewInt(0)
 	bal = &chain.CoinBalance{UsableBalance: zeroBalance, RefundableBalance: zeroBalance, LockedBalance: zeroBalance, UserBalance: new(big.Int)}
 	// Native
-	bal.UserBalance, err = r.cl.GetBalance(&icon.AddressParam{Address: icon.Address(addr)})
+	bal.UserBalance, err = r.cl.GetBalance(&types.AddressParam{Address: types.Address(addr)})
 	if err != nil {
 		return nil, errors.Wrapf(err, "%v", err)
 	}
+	bal.TotalBalance = (&big.Int{}).Set(bal.UserBalance)
 	return
 }
 
-func SignTransactionParam(wallet module.Wallet, param *icon.TransactionParam) error {
+func SignTransactionParam(wallet module.Wallet, param *types.TransactionParam) error {
 	js, err := json.Marshal(param)
 	if err != nil {
 		return errors.Wrap(err, "jsonMarshal ")
@@ -468,184 +485,288 @@ func (r *requestAPI) reclaim(coinName string, ownerKey string, amount *big.Int) 
 		return "", fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 	}
 	arg1 := map[string]interface{}{"_coinName": coinName, "_value": intconv.FormatBigInt(amount)}
-	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), arg1, "reclaim")
+	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), arg1, "reclaim", int64(r.gasLimits[chain.DefaultGasLimit]))
 }
 
-func (a *api) CallBTS(method chain.ContractCallMethodName, args []interface{}) (response interface{}, err error) {
-	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
-	if !ok {
-		return nil, fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
-	}
-	if args == nil {
-		return nil, errors.New("Got nil args")
-	}
-	if method == chain.IsUserBlackListed {
-		if len(args) != 2 {
-			return nil, fmt.Errorf("Expected 2 args for net, address. Got %v", len(args))
-		}
-		_addr, ok := args[1].(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected second arg of type string for hex address; Got %T", args[1])
-		}
-		if strings.Contains(_addr, "btp:") {
-			splts := strings.Split(_addr, "/")
-			_addr = splts[len(splts)-1]
-		}
-		res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_net": args[0], "_address": _addr}, "isUserBlackListed")
-		if err != nil {
-			return nil, err
-		} else if res == nil {
-			return nil, errors.New("isUserBlackListed result is nil")
-		}
-		resStr, ok := res.(string)
-		if !ok {
-			return nil, fmt.Errorf("isUserBlackListed Response Expected string Got %T", res)
-		}
-		if resStr == "0x0" {
-			response = false
-		} else {
-			response = true
-		}
-	} else if method == chain.GetTokenLimit {
-		if len(args) != 1 {
-			return nil, fmt.Errorf("Expected 1 args for coinName. Got %v", len(args))
-		}
-		response, err = a.requester.callContract(btsAddr, map[string]interface{}{"_name": args[0]}, "getTokenLimit")
-	} else if method == chain.GetTokenLimitStatus {
-		if len(args) != 2 {
-			return nil, fmt.Errorf("Expected 2 args for _net, _coinName. Got %v", len(args))
-		}
-		response, err = a.requester.callContract(btsAddr, map[string]interface{}{"_net": args[0], "_coinName": args[1]}, "tokenLimitStatus")
-	} else if method == chain.GetBlackListedUsers {
-		if len(args) != 3 {
-			return nil, fmt.Errorf("Expected 3 args for _net, _start, _end. Got %v", len(args))
-		}
-		response, err = a.requester.callContract(btsAddr, map[string]interface{}{"_net": args[0], "_start": args[1], "_end": args[2]}, "getBlackListedUsers")
-	} else if method == chain.CheckTransferRestrictions {
-		if len(args) != 4 {
-			return nil, fmt.Errorf("Expected 4 args net, coinName, addr, value. Got %v", len(args))
-		}
-		_addr, ok := args[2].(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected third arg addr of type string for hex address; Got %T", args[1])
-		}
-		if strings.Contains(_addr, "btp:") {
-			splts := strings.Split(_addr, "/")
-			_addr = splts[len(splts)-1]
-		}
-		var res interface{}
-		res, err = a.requester.callContract(btsAddr, map[string]interface{}{"_net": args[0], "_address": _addr}, "isUserBlackListed")
-		if err != nil {
-			return nil, errors.Wrapf(err, "isUserBlackListed %v", err)
-		} else if res == nil {
-			return nil, errors.New("isUserBlackListed returned nil")
-		}
-		if resOk, ok := res.(string); !ok {
-			return nil, fmt.Errorf("Expected bool Got type %T", res)
-		} else if ok && resOk == "0x1" {
-			response = errors.New("Blacklisted")
-			return
-		}
-		res, err = a.requester.callContract(btsAddr, map[string]interface{}{"_name": args[1]}, "getTokenLimit")
-		if err != nil {
-			return nil, errors.Wrapf(err, "getTokenLimit %v", err)
-		} else if res == nil {
-			return nil, errors.New("getTokenLimit returned nil")
-		}
-		limitStr, ok := res.(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected string for Tokenlimit Got type %T", res)
-		}
-		limit := new(big.Int)
-		limit.SetString(limitStr[2:], 16)
-		value, ok := args[3].(*big.Int)
-		if !ok {
-			return nil, fmt.Errorf("Expected *big.Int for value Got type %T", res)
-		}
-		if value.Cmp(limit) > 0 {
-			response = errors.New("LimitExceed")
-			return
-		}
-		return nil, nil
-	} else if method == chain.IsOwner {
-		if len(args) != 1 {
-			return nil, fmt.Errorf("Expected 1 args _addr. Got %v", len(args))
-		}
-		_addr, ok := args[0].(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected third arg addr of type string for hex address; Got %T", args[1])
-		}
-		if strings.Contains(_addr, "btp:") {
-			splts := strings.Split(_addr, "/")
-			_addr = splts[len(splts)-1]
-		}
-		res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_addr": _addr}, "isOwner")
-		if err != nil {
-			return nil, err
-		} else if res == nil {
-			return nil, errors.New("isOwner result is nil")
-		}
-		resStr, ok := res.(string)
-		if !ok {
-			return nil, fmt.Errorf("isOwner Response Expected string Got %T", res)
-		}
-		if resStr == "0x0" {
-			response = false
-		} else {
-			response = true
-		}
-		return response, err
-	} else {
-		response = nil
-		err = fmt.Errorf("method %v not supported", method)
-		return
-	}
-	return
-}
-
-func (a *api) TransactWithBTS(ownerKey string, method chain.ContractTransactMethodName, args []interface{}) (txnHash string, err error) {
+// Configure API
+func (a *api) SetTokenLimit(ownerKey string, coinNames []string, tokenLimits []*big.Int) (txnHash string, err error) {
 	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
 	if !ok {
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	if args == nil {
-		err = errors.New("Got nil args")
+	strTokenLimits := make([]string, len(tokenLimits))
+	for i, v := range tokenLimits {
+		strTokenLimits[i] = intconv.FormatBigInt(v)
+	}
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_coinNames": coinNames, "_tokenLimits": strTokenLimits}, "setTokenLimit", int64(a.requester.gasLimits[chain.DefaultGasLimit]))
+}
+
+func (a *api) AddBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error) {
+	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	if method == chain.AddBlackListAddress {
-		if len(args) != 2 {
-			return "", fmt.Errorf("Expected 2 args _net, _addresses. Got %v", len(args))
-		}
-		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": args[0], "_addresses": args[1]}, "addBlacklistAddress")
-	} else if method == chain.RemoveBlackListAddress {
-		if len(args) != 2 {
-			return "", fmt.Errorf("Expected 2 args _net, _addresses. Got %v", len(args))
-		}
-		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": args[0], "_addresses": args[1]}, "removeBlacklistAddress")
-	} else if method == chain.AddRestriction {
-		if len(args) != 0 {
-			return "", fmt.Errorf("Expected 0 args. Got %v", len(args))
-		}
-		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "addRestriction")
-	} else if method == chain.DisableRestrictions {
-		if len(args) != 0 {
-			return "", fmt.Errorf("Expected 0 args. Got %v", len(args))
-		}
-		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "disableRestrictions")
-	} else if method == chain.SetTokenLimit {
-		if len(args) != 2 {
-			return "", fmt.Errorf("Expected 2 args for _coinNames, _tokenLimits. Got %v", len(args))
-		}
-		resArr, ok := args[1].([]*big.Int)
-		if !ok {
-			return "", fmt.Errorf("Expected second arg _tokenLimits field of type []interface{}; Got %T", args[1])
-		}
-		_tokenLimits := make([]string, len(resArr))
-		for i := 0; i < len(resArr); i++ {
-			_tokenLimits[i] = intconv.FormatBigInt(resArr[i])
-		}
-		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_coinNames": args[0], "_tokenLimits": _tokenLimits}, "setTokenLimit")
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": net, "_addresses": addrs}, "addBlacklistAddress", int64(a.requester.gasLimits[chain.DefaultGasLimit]))
+}
+
+func (a *api) RemoveBlackListAddress(ownerKey string, net string, addrs []string) (txnHash string, err error) {
+	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
 	}
-	return "", fmt.Errorf("method %v not supported", method)
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_net": net, "_addresses": addrs}, "removeBlacklistAddress", int64(a.requester.gasLimits[chain.DefaultGasLimit]))
+}
+
+func (a *api) ChangeRestriction(ownerKey string, enable bool) (txnHash string, err error) {
+	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	if enable {
+		return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "addRestriction", int64(a.requester.gasLimits[chain.DefaultGasLimit]))
+	}
+	return a.requester.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{}, "disableRestrictions", int64(a.requester.gasLimits[chain.DefaultGasLimit]))
+}
+
+func (r *requestAPI) setFeeGatheringTerm(ownerKey string, interval uint64) (hash string, err error) {
+	bmcAddr, ok := r.contractNameToAddress[chain.BMC]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BMC)
+		return
+	}
+	return r.transactWithContract(ownerKey, bmcAddr, big.NewInt(0), map[string]interface{}{"_value": hexutil.EncodeUint64(interval)}, "setFeeGatheringTerm", int64(r.gasLimits[chain.DefaultGasLimit]))
+}
+
+func (r *requestAPI) getFeeGatheringTerm() (interval uint64, err error) {
+	bmcAddr, ok := r.contractNameToAddress[chain.BMC]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BMC)
+		return
+	}
+	res, err := r.callContract(bmcAddr, map[string]interface{}{}, "getFeeGatheringTerm")
+	if err != nil {
+		return 0, errors.Wrap(err, "callContract getFeeGatheringTerm ")
+	} else if res == nil {
+		return 0, errors.New("callContract getFeeGatheringTerm returned nil value ")
+	}
+	tmpStr, ok := res.(string)
+	if !ok {
+		return 0, fmt.Errorf("Expected type string Got %T", res)
+	}
+	return hexutil.DecodeUint64(tmpStr)
+}
+
+func (r *requestAPI) setFeeRatio(ownerKey string, coinName string, feeNumerator, fixedFee *big.Int) (hash string, err error) {
+	btsAddr, ok := r.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	_feeNumerator := intconv.FormatBigInt(feeNumerator)
+	_fixedFee := intconv.FormatBigInt(fixedFee)
+	return r.transactWithContract(ownerKey, btsAddr, big.NewInt(0), map[string]interface{}{"_name": coinName, "_feeNumerator": _feeNumerator, "_fixedFee": _fixedFee}, "setFeeRatio", int64(r.gasLimits[chain.DefaultGasLimit]))
+}
+
+func (r *requestAPI) getAccumulatedFees() (ret map[string]*big.Int, err error) {
+	btsAddr, ok := r.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	res, err := r.callContract(btsAddr, map[string]interface{}{}, "getAccumulatedFees")
+	if err != nil {
+		return nil, errors.Wrap(err, "callContract getAccumulatedFees ")
+	} else if res == nil {
+		return nil, errors.New("callContract getAccumulatedFees returned nil value ")
+	}
+	resMap, ok := res.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Expected type map[string]interface{} Got %T", res)
+	}
+	ret = map[string]*big.Int{}
+	for k, v := range resMap {
+		tmpStr, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("Expected type string Got %T", v)
+		}
+		bal := new(big.Int)
+		bal.SetString(tmpStr[2:], 16)
+		ret[k] = bal
+	}
+	return
+}
+
+func (r *requestAPI) getFeeRatio(coinName string) (feeNumerator, fixedFee *big.Int, err error) {
+	btsAddr, ok := r.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	res, err := r.callContract(btsAddr, map[string]interface{}{"_name": coinName}, "feeRatio")
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "callContract feeRatio ")
+	} else if res == nil {
+		return nil, nil, errors.New("callContract returned nil value ")
+	}
+	feeMap, ok := res.(map[string]interface{})
+	if !ok {
+		return nil, nil, fmt.Errorf("Expected type map[string]interface{} Got %T", res)
+	}
+	getFeeOfType := func(feeMap map[string]interface{}, key string) (bal *big.Int, err error) {
+		tmp, ok := feeMap[key]
+		if !ok {
+			return nil, fmt.Errorf("")
+		}
+		tmpStr, ok := tmp.(string)
+		if !ok {
+			return nil, fmt.Errorf("Expected type string Got %T", tmp)
+		}
+		bal = new(big.Int)
+		bal.SetString(tmpStr[2:], 16)
+		return
+	}
+	feeNumerator, err = getFeeOfType(feeMap, "feeNumerator")
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "getFeeOfType(feeNumerator) %v", err)
+	}
+	fixedFee, err = getFeeOfType(feeMap, "fixedFee")
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "getFeeOfType(fixedFee) %v", err)
+	}
+	return
+}
+
+func (a *api) IsUserBlackListed(net, addr string) (response bool, err error) {
+	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	if strings.Contains(addr, "btp:") {
+		splts := strings.Split(addr, "/")
+		addr = splts[len(splts)-1]
+	}
+	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_net": net, "_address": addr}, "isUserBlackListed")
+	if err != nil {
+		err = errors.Wrapf(err, "CallContract %v", err)
+		return
+	} else if res == nil {
+		err = errors.New("isUserBlackListed result is nil")
+		return
+	}
+	resStr, ok := res.(string)
+	if !ok {
+		return false, fmt.Errorf("isUserBlackListed Response Expected string Got %T", res)
+	}
+	response = true
+	if resStr == "0x0" {
+		response = false
+	}
+	return
+}
+
+func (a *api) GetTokenLimit(coinName string) (tokenLimit *big.Int, err error) {
+	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_name": coinName}, "getTokenLimit")
+	if err != nil {
+		err = errors.Wrapf(err, "CallContract %v", err)
+		return
+	} else if res == nil {
+		err = errors.New("getTokenLimit result is nil")
+		return
+	}
+	tmpStr, ok := res.(string)
+	if !ok {
+		err = fmt.Errorf("Expected type string Got %T", res)
+		return
+	}
+	tokenLimit = new(big.Int)
+	tokenLimit.SetString(tmpStr[2:], 16)
+	return
+}
+
+func (a *api) IsBTSOwner(addr string) (response bool, err error) {
+	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	if strings.Contains(addr, "btp:") {
+		splts := strings.Split(addr, "/")
+		addr = splts[len(splts)-1]
+	}
+	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_addr": addr}, "isOwner")
+	if err != nil {
+		return false, err
+	} else if res == nil {
+		return false, errors.New("isOwner result is nil")
+	}
+	resStr, ok := res.(string)
+	if !ok {
+		return false, fmt.Errorf("isOwner Response Expected string Got %T", res)
+	}
+	response = true
+	if resStr == "0x0" {
+		response = false
+	}
+	return response, err
+}
+
+func (a *api) GetTokenLimitStatus(net, coinName string) (response bool, err error) {
+	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_net": net, "_coinName": coinName}, "tokenLimitStatus")
+	if err != nil {
+		return false, err
+	} else if res == nil {
+		return false, errors.New("tokenLimitStatus result is nil")
+	}
+	resStr, ok := res.(string)
+	if !ok {
+		return false, fmt.Errorf("tokenLimitStatus Response Expected string Got %T", res)
+	}
+	response = true
+	if resStr == "0x0" {
+		response = false
+	}
+	return
+}
+
+func (a *api) GetBlackListedUsers(net string, startCursor, endCursor int) (users []string, err error) {
+	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
+	if !ok {
+		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
+		return
+	}
+	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_net": net, "_start": "0x0", "_end": "0x64"}, "getBlackListedUsers")
+	if err != nil {
+		return nil, err
+	} else if res == nil {
+		return nil, errors.New("getBlackListedUsers result is nil")
+	}
+	intArr, ok := res.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("getBlackListedUsers Response Expected []interface Got %T", res)
+	} else if ok && len(intArr) == 0 {
+		return
+	}
+	users = make([]string, len(intArr))
+	for i, v := range intArr {
+		users[i], ok = v.(string)
+		if !ok {
+			return nil, fmt.Errorf("getBlackListedUsers; response element Expected string Got %T", v)
+		}
+	}
+	return
 }

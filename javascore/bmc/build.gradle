@@ -7,12 +7,17 @@ dependencies {
     implementation("foundation.icon:javaee-scorex:$scorexVersion")
     implementation fileTree(dir: '../lib', include: 'score-util.jar')
     implementation fileTree(dir: '../lib', include: 'lib-0.1.0.jar')
+    testImplementation fileTree(dir: '../lib', include: 'test-lib-0.1.0.jar')
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$jupiterVersion")
+    testImplementation "org.junit.jupiter:junit-jupiter"
 
     testImplementation("foundation.icon:javaee-unittest:$javaeeUnittestVersion")
     testImplementation 'org.bouncycastle:bcprov-jdk15on:1.70'
+    testImplementation('org.mockito:mockito-core:4.3.1')
+    testImplementation group: 'org.mockito', name: 'mockito-inline', version: '4.3.0'
+
 }
 
 optimizedJar {

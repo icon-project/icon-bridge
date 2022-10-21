@@ -2,6 +2,7 @@ package icon
 
 import (
 	"bytes"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"io"
 
 	"github.com/gorilla/websocket"
@@ -11,7 +12,7 @@ import (
 	"github.com/icon-project/goloop/common/trie/ompt"
 )
 
-func mptProve(key HexInt, proofs [][]byte, hash []byte) ([]byte, error) {
+func mptProve(key types.HexInt, proofs [][]byte, hash []byte) ([]byte, error) {
 	db := db.NewMapDB()
 	defer db.Close()
 	index, err := key.Value()

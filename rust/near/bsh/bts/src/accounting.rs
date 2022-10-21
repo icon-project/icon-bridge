@@ -55,7 +55,10 @@ impl BtpTokenService {
 
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
-        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
 
         self.assert_have_minimum_amount(amount);
         self.assert_have_sufficient_deposit(&account, &coin_id, amount, None);
@@ -93,8 +96,8 @@ impl BtpTokenService {
             .then(ext_self::on_withdraw(
                 account.clone(),
                 amount,
+                coin_name,
                 coin_id,
-                coin.symbol().to_owned(),
                 env::current_account_id(),
                 estimate::NO_DEPOSIT,
                 estimate::GAS_FOR_FT_TRANSFER_CALL,
@@ -106,7 +109,10 @@ impl BtpTokenService {
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
         self.assert_have_minimum_amount(amount.into());
-        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
         self.assert_have_sufficient_refundable(&account, &coin_id, amount);
 
         let mut balance = self.balances.get(&account, &coin_id).unwrap();
@@ -116,22 +122,22 @@ impl BtpTokenService {
         self.balances.set(&account, &coin_id, balance);
     }
 
-    pub fn locked_balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+    pub fn locked_balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
         let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
 
         let balance = self
             .balances
-            .get(&owner_id, &coin_id)
+            .get(&account_id, &coin_id)
             .expect(format!("{}", BshError::AccountNotExist).as_str());
         balance.locked().into()
     }
 
-    pub fn refundable_balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+    pub fn refundable_balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
         let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
 
         let balance = self
             .balances
-            .get(&owner_id, &coin_id)
+            .get(&account_id, &coin_id)
             .expect(format!("{}", BshError::AccountNotExist).as_str());
         balance.refundable().into()
     }
@@ -142,16 +148,19 @@ impl BtpTokenService {
         owner_id: AccountId,
         coin_name: String,
     ) -> Option<AccountBalance> {
-        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
         self.balances.get(&owner_id, &coin_id)
     }
 
-    pub fn balance_of(&self, owner_id: AccountId, coin_name: String) -> U128 {
+    pub fn balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
         let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
         
         let balance = self
             .balances
-            .get(&owner_id, &coin_id)
+            .get(&account_id, &coin_id)
             .expect(format!("{}", BshError::AccountNotExist).as_str());
         balance.deposit().into()
     }
@@ -161,8 +170,8 @@ impl BtpTokenService {
         &mut self,
         account: AccountId,
         amount: u128,
+        coin_name: String,
         coin_id: CoinId,
-        coin_symbol: String,
     ) {
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
@@ -176,7 +185,7 @@ impl BtpTokenService {
                     "code": "0",
                     "by": account,
                     "amount": amount.to_string(),
-                    "token_name": coin_symbol
+                    "token_name": coin_name
 
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
@@ -193,7 +202,7 @@ impl BtpTokenService {
                     "code": "1",
                     "by": account,
                     "amount": amount.to_string(),
-                    "token_name": coin_symbol
+                    "token_name": coin_name
 
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
