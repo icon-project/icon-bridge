@@ -89,7 +89,7 @@ func TestNearReceiver(t *testing.T) {
 						assert.True(f, testData.Expected.Success.(func(chan *chain.Message) bool)(srcMsgCh))
 						assert.Nil(f, err)
 					} else {
-						assert.True(f, testData.Expected.Fail.(func(chan *chain.Message, <-chan error, error) bool)(srcMsgCh, errCh, err))
+						assert.True(f, testData.Expected.Fail.(func(<-chan error, error) bool)(errCh, err))
 					}
 				})
 			}

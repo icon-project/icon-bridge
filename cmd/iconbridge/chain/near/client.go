@@ -349,7 +349,7 @@ func (c *Client) MonitorBlocks(height uint64, source string, concurrency uint, c
 			bn := types.NewBlockNotification(offset)
 
 			if err != nil && !errors.Is(err, errors.ErrUnknownBlock) {
-				return bn, err
+				return nil, err
 			}
 
 			bn.SetBlock(block)

@@ -33,10 +33,11 @@ func init() {
 			},
 			MockApi: func() *mock.MockApi {
 				blockByHeightMap, blockByHashMap := mock.LoadBlockFromFile([]string{"377825", "377826", "377827", "377828", "377829", "377830", "377831"})
-				
+				contractStateChangeMap := mock.LoadEventsFromFile([]string{"377827", "377828", "377829", "377830"})
 				mockApi := mock.NewMockApi(mock.Storage{
-					BlockByHeightMap: blockByHeightMap,
-					BlockByHashMap:   blockByHashMap,
+					BlockByHeightMap:       blockByHeightMap,
+					BlockByHashMap:         blockByHashMap,
+					ContractStateChangeMap: contractStateChangeMap,
 				})
 
 				mockApi.On("Block", mock.MockParam).Return(mockApi.BlockFactory())
