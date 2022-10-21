@@ -177,7 +177,6 @@ func (c *Client) Dov2(method string, reqPtr, respPtr interface{}) (jrResp *Respo
 	var response2 Response2
 	resp, err = c._do(req)
 	if err != nil {
-		fmt.Println("---")
 		if hErr, ok := err.(*common.HttpError); ok && len(hErr.Response()) > 0 {
 			if resp != nil && common.HasContentType(resp.Header, echo.MIMEApplicationJSON) {
 				if dErr := json.Unmarshal(hErr.Response(), &response2); dErr != nil {
@@ -190,9 +189,7 @@ func (c *Client) Dov2(method string, reqPtr, respPtr interface{}) (jrResp *Respo
 					err = fmt.Errorf("fail to decode response body err:%+v, httpErr:%+v, httpResp:%+v, responseBody:%s",
 						dErr, err, resp, string(hErr.Response()))
 				} else {
-					fmt.Println("---", response2)
 					err = c.ErrFunc(response2.Error)
-					//fmt.Printf("jrResp.Error:%+v in HttpError", err)
 				}
 			}
 			return
