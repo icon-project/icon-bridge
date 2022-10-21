@@ -348,11 +348,14 @@ func (c *Client) MonitorBlocks(height uint64, source string, concurrency uint, c
 			block, err := c.GetBlockByHeight(offset)
 			bn := types.NewBlockNotification(offset)
 
-			if err != nil && !errors.Is(err, errors.ErrUnknownBlock) {
+			if err != nil && errors.Is(err, errors.ErrUnknownBlock) {
+				return bn, nil
+			} else if err != nil && !errors.Is(err, errors.ErrUnknownBlock) {
 				return nil, err
 			}
 
 			bn.SetBlock(block)
+
 			receipts, err := subClient().GetReceipts(&block, source)
 			if err != nil && !errors.Is(err, errors.ErrUnknownBlock) {
 				return bn, err
