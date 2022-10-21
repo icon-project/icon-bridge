@@ -148,11 +148,12 @@ func TestVerify(t *testing.T) {
 		ValidatorData: validatorData,
 	}
 	vr := &Verifier{
-		mu:         sync.RWMutex{},
-		next:       big.NewInt(int64(opts.BlockHeight)),
-		parentHash: common.BytesToHash(opts.BlockHash),
-		validators: map[ethCommon.Address]bool{},
-		chainID:    big.NewInt(97),
+		mu:                         sync.RWMutex{},
+		next:                       big.NewInt(int64(opts.BlockHeight)),
+		parentHash:                 common.BytesToHash(opts.BlockHash),
+		validators:                 map[ethCommon.Address]bool{},
+		chainID:                    big.NewInt(97),
+		useNewValidatorsFromHeight: big.NewInt(int64(opts.BlockHeight)),
 	}
 	vr.validators, err = getValidatorMapFromHex(opts.ValidatorData)
 	require.NoError(t, err)
@@ -275,9 +276,9 @@ func TestReceiver_MockNewVerifier(t *testing.T) {
 	require.Equal(t, vr.Next().Cmp(big.NewInt(int64(opts.BlockHeight))), 0)
 	require.Equal(t, vr.ParentHash().String(), opts.BlockHash.String())
 	for k := range validatorMap {
-		require.Equal(t, vr.IsValidator(k), true)
+		require.Equal(t, vr.IsValidator(k, big.NewInt(height)), true)
 	}
-	require.Equal(t, vr.IsValidator(ethCommon.HexToAddress("abc")), false)
+	require.Equal(t, vr.IsValidator(ethCommon.HexToAddress("abc"), big.NewInt(height)), false)
 }
 
 func TestReceiver_MockVerifyAndUpdate_CorrectHeader(t *testing.T) {
@@ -342,9 +343,9 @@ func TestReceiver_MockVerifyAndUpdate_CorrectHeader(t *testing.T) {
 	require.Equal(t, vr.ParentHash().String(), header.Hash().String())
 	require.Equal(t, vr.Next().Cmp((&big.Int{}).Add(header.Number, big.NewInt(1))), 0)
 	for k := range validatorMap {
-		require.Equal(t, vr.IsValidator(k), true)
+		require.Equal(t, vr.IsValidator(k, big.NewInt(height)), true)
 	}
-	require.Equal(t, vr.IsValidator(ethCommon.HexToAddress("abc")), false)
+	require.Equal(t, vr.IsValidator(ethCommon.HexToAddress("abc"), big.NewInt(height)), false)
 	err = vr.Verify(nextHeader, next2Header, nil)
 	require.NoError(t, err)
 	err = vr.Update(nextHeader)
@@ -352,7 +353,7 @@ func TestReceiver_MockVerifyAndUpdate_CorrectHeader(t *testing.T) {
 	require.Equal(t, vr.ParentHash().String(), nextHeader.Hash().String())
 	require.Equal(t, vr.Next().Cmp((&big.Int{}).Add(nextHeader.Number, big.NewInt(1))), 0)
 	for k := range validatorMap {
-		require.Equal(t, vr.IsValidator(k), true)
+		require.Equal(t, vr.IsValidator(k, big.NewInt(height)), true)
 	}
 }
 
@@ -421,7 +422,7 @@ func TestReceiver_MockSyncVerifier(t *testing.T) {
 	require.Equal(t, vr.ParentHash().String(), nextHeader.Hash().String())
 	require.Equal(t, vr.Next().Cmp((&big.Int{}).Add(nextHeader.Number, big.NewInt(1))), 0)
 	for k := range validatorMap {
-		require.Equal(t, vr.IsValidator(k), true)
+		require.Equal(t, vr.IsValidator(k, big.NewInt(height)), true)
 	}
 }
 
