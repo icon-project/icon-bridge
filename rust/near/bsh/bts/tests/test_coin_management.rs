@@ -186,7 +186,7 @@ fn set_token_limit() {
     contract.set_token_limit(coins, limits).unwrap();
     let token_limits = contract.get_token_limit("NEAR".to_string());
 
-    assert_eq!(token_limits, 10000000000000000000000_u128)
+    assert_eq!(token_limits, U128(10000000000000000000000))
 }
 
 #[test]
@@ -209,7 +209,7 @@ fn update_token_limit() {
     contract.set_token_limit(coins, limits).unwrap();
 
     let token_limits = contract.get_token_limit("NEAR".to_string());
-    assert_eq!(token_limits, 10000000000000000000003_u128)
+    assert_eq!(token_limits, U128(10000000000000000000003))
 }
 
 #[test]
