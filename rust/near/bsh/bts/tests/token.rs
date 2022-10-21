@@ -59,4 +59,13 @@ lazy_static! {
             spec: "ft-1.0.0".to_string()
         })
     );
+    pub static ref NEAR_NATIVE_COIN: WrappedNativeCoin = WrappedNativeCoin::new(
+        "btp-0x1.near-NEAR".into(),
+        "NEAR".into(),
+        None,
+        "0x1.near".into(),
+        1000,
+        1,
+        None
+    );
 }

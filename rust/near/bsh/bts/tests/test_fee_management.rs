@@ -135,3 +135,31 @@ fn handle_fee_gathering() {
     let result = contract.balance_of(alice(), nativecoin.name().to_string());
     assert_eq!(result, U128::from(899));
 }
+
+#[test]
+fn get_fee() {
+    let context = |account_id: AccountId, deposit: u128| {
+        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+    };
+    testing_env!(context(alice(), 0));
+
+    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let mut contract = BtpTokenService::new(
+        "nativecoin".to_string(),
+        bmc(),
+        "0x1.near".into(),
+        nativecoin.clone(),
+    );
+
+    testing_env!(context(alice(), 0));
+
+    let result = contract.get_fee("NEAR".into(), U128(1000));
+    assert_eq!(result, Ok(U128::from(101)));
+
+    contract.set_fee_ratio("NEAR".into(), 10.into(), 10.into());
+
+    testing_env!(context(charlie(), 0));
+    let result = contract.get_fee("NEAR".into(), U128(1000));
+    assert_eq!(result, Ok(U128::from(11)));
+
+}

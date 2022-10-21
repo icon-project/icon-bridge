@@ -11,6 +11,8 @@ const (
 	ICON ChainType = "ICON"
 	HMNY ChainType = "HMNY"
 	BSC  ChainType = "BSC"
+	NEAR ChainType = "NEAR"
+	SNOW ChainType = "SNOW"
 )
 
 type ContractName string

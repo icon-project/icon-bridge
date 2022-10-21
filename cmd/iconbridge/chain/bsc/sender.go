@@ -87,13 +87,12 @@ type sender struct {
 	dst          chain.BTPAddress
 	opts         senderOptions
 	cls          []IClient
-	bmcs         []*BMC
 	prevGasPrice *big.Int
 }
 
-func (s *sender) jointClient() (IClient, *BMC) {
+func (s *sender) client() IClient {
 	randInt := rand.Intn(len(s.cls))
-	return s.cls[randInt], s.bmcs[randInt]
+	return s.cls[randInt]
 }
 
 func NewSender(
@@ -120,7 +119,7 @@ func NewSender(
 	if s.opts.BoostGasPrice > maxGasPriceBoost {
 		s.opts.BoostGasPrice = maxGasPriceBoost
 	}
-	s.cls, s.bmcs, err = newClients(urls, dst.ContractAddress(), s.log)
+	s.cls, err = newClients(urls, dst.ContractAddress(), s.log)
 	if err != nil {
 		return nil, err
 	}
@@ -133,8 +132,7 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	_, bmcCl := s.jointClient()
-	status, err := bmcCl.GetStatus(&bind.CallOpts{Context: ctx}, s.src.String())
+	status, err := s.client().GetStatus(&bind.CallOpts{Context: ctx}, s.src.String())
 	if err != nil {
 		s.log.Error("GetStatus", "err", err)
 		return nil, err
@@ -198,8 +196,7 @@ func (s *sender) Segment(
 	if err != nil {
 		return nil, nil, err
 	}
-	cl, _ := s.jointClient()
-	gasPrice, gasHeight, err := cl.GetMedianGasPriceForBlock(ctx)
+	gasPrice, gasHeight, err := s.client().GetMedianGasPriceForBlock(ctx)
 	if err != nil || gasPrice.Int64() == 0 {
 		s.log.Infof("GetMedianGasPriceForBlock(%v) Msg: %v. Using default value for gas price \n", gasHeight.String(), err)
 		gasPrice = s.prevGasPrice
@@ -220,13 +217,12 @@ func (s *sender) Segment(
 }
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
-	cl, _ := s.jointClient()
-	bal, err := cl.GetBalance(ctx, s.w.Address())
+	bal, err := s.client().GetBalance(ctx, s.w.Address())
 	return bal, &s.opts.BalanceThreshold.Int, err
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, gasPrice *big.Int) (*relayTx, error) {
-	client, bmcClient := s.jointClient()
+	client := s.client()
 
 	newTransactOpts := func(w bscTypes.Wallet) (*bind.TransactOpts, error) {
 		txo, err := bind.NewKeyedTransactorWithChainID(w.(*wallet.EvmWallet).Skey, client.GetChainID())
@@ -235,7 +231,7 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, ga
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 		defer cancel()
-		txo.GasPrice, _ = client.GetEthClient().SuggestGasPrice(ctx)
+		txo.GasPrice, _ = client.SuggestGasPrice(ctx)
 		txo.GasLimit = uint64(DefaultGasLimit)
 		return txo, nil
 	}
@@ -254,7 +250,6 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte, ga
 		Message: message, // base64.URLEncoding.EncodeToString(rlpCrm),
 		opts:    txOpts,
 		cl:      client,
-		bmcCl:   bmcClient,
 	}, nil
 }
 
@@ -265,7 +260,6 @@ type relayTx struct {
 	opts      *bind.TransactOpts
 	pendingTx *ethtypes.Transaction
 	cl        IClient
-	bmcCl     *BMC
 }
 
 func (tx *relayTx) ID() interface{} {
@@ -283,7 +277,7 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	defer cancel()
 	txOpts := *tx.opts
 	txOpts.Context = _ctx
-	nonce, err := tx.cl.GetEthClient().NonceAt(ctx, txOpts.From, nil)
+	nonce, err := tx.cl.NonceAt(ctx, txOpts.From, nil)
 	if err != nil {
 		return err
 	}
@@ -295,7 +289,7 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 				"tx": string(txBytes)}).Debug("handleRelayMessage: tx sent")
 		}
 	}()
-	tx.pendingTx, err = tx.bmcCl.HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
+	tx.pendingTx, err = tx.cl.HandleRelayMessage(&txOpts, tx.Prev, tx.Message)
 	if err != nil {
 		tx.cl.Log().WithFields(log.Fields{
 			"error": err}).Debug("handleRelayMessage: send tx")
@@ -319,14 +313,14 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) 
 		time.Sleep(time.Second)
 		_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 		defer cancel()
-		_, isPending, err = tx.cl.GetEthClient().TransactionByHash(_ctx, tx.pendingTx.Hash())
+		_, isPending, err = tx.cl.TransactionByHash(_ctx, tx.pendingTx.Hash())
 	}
 	if err != nil {
 		return 0, err
 	}
 	_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 	defer cancel()
-	txr, err := tx.cl.GetEthClient().TransactionReceipt(_ctx, tx.pendingTx.Hash())
+	txr, err := tx.cl.TransactionReceipt(_ctx, tx.pendingTx.Hash())
 	if err != nil {
 		return 0, err
 	}
@@ -344,7 +338,7 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) 
 
 		_ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 		defer cancel()
-		data, err := tx.cl.GetEthClient().CallContract(_ctx, callMsg, txr.BlockNumber)
+		data, err := tx.cl.CallContract(_ctx, callMsg, txr.BlockNumber)
 		if err != nil {
 			return 0, err
 		}

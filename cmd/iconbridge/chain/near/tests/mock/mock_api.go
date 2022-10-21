@@ -117,6 +117,26 @@ func (m *MockApi) Changes(param interface{}) (types.ContractStateChange, error) 
 	return r0, r1
 }
 
+func (m *MockApi) Chunk(param interface{}) (types.ChunkHeader, error) {
+	ret := m.Called(param)
+
+	var r0 types.ChunkHeader
+	if rf, ok := ret.Get(0).(func(interface{}) types.ChunkHeader); ok {
+		r0 = rf(param)
+	} else {
+		r0 = ret.Get(0).(types.ChunkHeader)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(interface{}) error); ok {
+		r1 = rf(param)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 func (m *MockApi) LightClientProof(param interface{}) (types.ReceiptProof, error) {
 	ret := m.Called(param)
 

@@ -124,7 +124,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     /**
      * To change the Coin Fee setting( Fixed fee and fee percentage)
-     *
+     *  Fee Numerator can range from 0 to 10000. (10000 means 100%)
      * @param _name         name of the Coin
      * @param _feeNumerator fee numerator to calculate the fee percentage, Set Zero
      *                      to retain existing value
@@ -163,6 +163,18 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         );
     }
 
+    /**
+     * Registers a coin to BTP Token Service
+     * Deploys a IRC2Tradeable Contract if token does not exist
+     * Can't register tokens with same name
+     *
+     * @param _name A coin name
+     * @param _symbol Symbol of that coin
+     * @param _decimals Number of decimals
+     * @param _feeNumerator Fee numerator for coin
+     * @param _fixedFee Fixed fee for coin
+     * @param _addr Contract address of token (pass null or zero score address for wrapped tokens)
+     */
     @External
     public void register(String _name, String _symbol, int _decimals, BigInteger _feeNumerator, BigInteger _fixedFee,
             @Optional Address _addr) {
@@ -185,6 +197,16 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         }
     }
 
+    /**
+     * Set token limit for tokens
+     * Can set limit for not registered tokens as well
+     * Initially set limit is set on BTS javascore
+     * Sends Token Limit BTP Message to connected chains
+     * Size of array should be same
+     * Order of coin name and token limit in param is same
+     * @param _coinNames Array of name of the coins
+     * @param _tokenLimits Maximum allowable limit for all tokens in above parameter
+     */
     @External
     public void setTokenLimit(String[] _coinNames, BigInteger[] _tokenLimits) {
         requireOwnerAccess();
@@ -236,6 +258,15 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         return sn.get();
     }
 
+    /**
+     * Add users to blacklist on certain networks
+     * Maintains information of all addresses blacklisted on all chains
+     * Sends Blacklist BTP Message to connected chains
+     * No BTP Message if blacklisted only on ICON
+     * Save address in lowercase string
+     * @param _net chain to blacklist on
+     * @param _addresses list of addresses to blacklist
+     */
     @External
     public void addBlacklistAddress(String _net, String[] _addresses) {
         requireOwnerAccess();
@@ -275,6 +306,12 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         sendMessage(_net, BTSMessage.BLACKLIST_MESSAGE, sn, request.toBytes());
     }
 
+    /**
+     * Remove users from blacklist on certain networks
+     * Sends Blacklist BTP Message to connected chains
+     * @param _net chain name
+     * @param _addresses list of addresses to remove from blacklist
+     */
     @External
     public void removeBlacklistAddress(String _net, String[] _addresses) {
         requireOwnerAccess();
@@ -414,7 +451,15 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         return fees;
     }
 
-    // To receive IRC2 token from existing Contract
+    /**
+     * Applicable for regular IRC2 Tokens
+     * Called when IRC2 Tokens are transferred to BTS, not manually called by user.
+     * Adds transferred amount to usable balance
+     * Only for registered tokens
+     * @param _from From address
+     * @param _value Amount to send to BTS
+     * @param _data data if any
+     */
     @External
     public void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
         checkUintLimit(_value);
@@ -429,6 +474,16 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         }
     }
 
+    /**
+     * Reclaim tokens/nativecoin if failed to mint on destination chain.
+     * Reclaim IRC2 Tokens sent to BTS, which are not yet transferred to destination chain.
+     * Transfers amount of that coin back to user.
+     * If amount in BTS > _value, remaining amount set to refundable.
+     * Refundable amount can be claimed anytime
+     *
+     * @param _coinName A given name of coin
+     * @param _value An amount to re-claim
+     */
     @External
     public void reclaim(String _coinName, BigInteger _value) {
         require(_value.compareTo(BigInteger.ZERO) > 0, "_value must be positive");
@@ -450,6 +505,13 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         }
     }
 
+    /**
+     * To transfer nativecoin |ICX| to destination chains
+     * Checks for blacklist and token limit
+     * Sends BTP Message for cross-chain transfer of ICX
+     * lock ICX on BTS, mint equivalent on destination chain
+     * @param _to BTP Address of destination chain that a user expects to receive an equivalent amount of tokens.
+     */
     @Payable
     @External
     public void transferNativeCoin(String _to) {
@@ -461,6 +523,19 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         sendRequest(Context.getCaller(), to, List.of(name), List.of(value));
     }
 
+    /**
+     * Applicable for IRC2 Tradable and regular IRC2 Tokens
+     * Checks for blacklist and token limit
+     * Called after IRC2 Tradable Tokens are approved to BTS contract
+     * Called after IRC2 Tokens are transferrd to BTS contract
+     * Sends BTP Message for cross-chain transfer of tokens
+     * subtract value from usable balance
+     * lock tokens on BTS, mint equivalent on destination chain
+     *
+     * @param _coinName A given name of coin that is to be transferred to destination chain
+     * @param _value Transferring amount.
+     * @param _to BTP Address of destination chain that a user expects to receive an equivalent amount of tokens.
+     */
     @External
     public void transfer(String _coinName, BigInteger _value, String _to) {
         require(_value != null && _value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
@@ -475,6 +550,15 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         sendRequest(owner, to, List.of(_coinName), List.of(_value));
     }
 
+    /**
+     * Transfer multiple tokens/nativecoin in batch
+     * Checks for blacklist and token limit
+     * locks value of all tokens/nativecoin on BTS, mints on destination
+     *
+     * @param _coinNames    Given names of each coin that is equivalent to retrieve a wrapped Token Contract's address, i.e. list["Token A"] = 0x12345678
+     * @param _values       Transferring amounts per coin
+     * @param _to           Target BTP Address of destination to recieve coins at.
+     */
     @Payable
     @External
     public void transferBatch(String[] _coinNames, BigInteger[] _values, String _to) {
@@ -618,8 +702,18 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     /**
+     * Handles token transfer request/response, blacklist, token limit
+     * Token transfer from other chain (Handle request)
+     * Token transfer from ICON (Handle successful/unsuccessful response incoming from destination chain)
+     * locking/unlocking of tokens/ICX
+     * set to refundable on unsuccessful response
+     * handles add/remove from blacklist based on response
+     * checks networks where token limit has been added
      *
-     * @param _from net
+     * @param _from BTP Address of source
+     * @param _svc Service Type
+     * @param _sn Serial Number
+     * @param _msg BTS Message in bytes
      */
     @External
     public void handleBTPMessage(String _from, String _svc, BigInteger _sn, byte[] _msg) {
@@ -655,8 +749,15 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     /**
+     * For handling BTP Error Messages
+     * Called if BTP Message couldn't be resolved on destination chain
+     * Handled for token transfers, token limit and blacklist error response
      *
-     * @param _src net
+     * @param _src BTP Address of source
+     * @param _svc Service type
+     * @param _sn Serial Number
+     * @param _code BTP Transaction code
+     * @param _msg error message if any
      */
     @External
     public void handleBTPError(String _src, String _svc, BigInteger _sn, long _code, String _msg) {
@@ -696,6 +797,13 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         }
     }
 
+    /**
+     * Sends fee accumulated on BTS Contract to fee gathering address defined on BMC
+     * Called once after a certain block height by BMC
+     *
+     * @param _fa Fee Aggregator Adddress
+     * @param _svc Service Type
+     */
     @External
     public void handleFeeGathering(String _fa, String _svc) {
         require(Context.getCaller().equals(bmc), "Only BMC");
@@ -1170,6 +1278,10 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         }
     }
 
+    /**
+     * Add _addr as owner
+     * @param _addr Admin/Owner address to access on BMC
+     */
     @External
     public void addOwner(Address _addr) {
         try {
@@ -1181,6 +1293,12 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         }
     }
 
+    /**
+     * Remove _addr from owners list
+     * Only current owners can call this method
+     * Contract deployer cannot be removed as owner
+     * @param _addr Address to remove as owner
+     */
     @External
     public void removeOwner(Address _addr) {
         try {
@@ -1202,12 +1320,19 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         return ownerManager.isOwner(_addr);
     }
 
+    /**
+     * Enable restrictions.
+     * Checks for blacklist and token limit if enabled
+     */
     @External
     public void addRestriction() {
         requireOwnerAccess();
         restriction.set(true);
     }
 
+    /**
+     * Disables restrictions
+     */
     @External
     public void disableRestrictions() {
         requireOwnerAccess();
