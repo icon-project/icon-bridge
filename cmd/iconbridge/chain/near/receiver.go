@@ -11,26 +11,33 @@ import (
 	"math/rand"
 )
 
+type ReceiverOptions struct {
+	SyncConcurrency uint `json:"syncConcurrency"`
+}
 type Receiver struct {
 	clients     []IClient
 	source      chain.BTPAddress
 	destination chain.BTPAddress
 	logger      log.Logger
-	options     struct {
-		SyncConcurrency uint `json:"syncConcurrency"`
-	}
+	options     ReceiverOptions
 }
 
-func NewReceiver(src, dst chain.BTPAddress, urls []string, options json.RawMessage, logger log.Logger) (chain.Receiver, error) {
+func NewReceiver(source, destination chain.BTPAddress, urls []string, options json.RawMessage, logger log.Logger) (chain.Receiver, error) {
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
 
+	clients, err := newClients(urls, logger)
+	if err != nil {
+		return nil, err
+	}
+	
 	r := &Receiver{
-		clients:     newClients(urls, logger),
-		source:      src,
-		destination: dst,
-		logger:      logger,
+		clients,
+		source,
+		destination,
+		logger,
+		ReceiverOptions{},
 	}
 
 	if err := json.Unmarshal(options, &r.options); err != nil {

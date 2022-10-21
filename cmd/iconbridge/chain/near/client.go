@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/errors"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
@@ -334,13 +334,15 @@ func (c *Client) MonitorBlocks(height uint64, source string, concurrency uint, c
 			block, err := c.GetBlockByHeight(offset)
 			bn := types.NewBlockNotification(offset)
 
-			if err != nil {
-				fmt.Println(err)
-				return bn, nil // TODO: Handle Error
+			if err != nil && !errors.Is(err, errors.ErrUnknownBlock) {
+				return bn, err
 			}
 
 			bn.SetBlock(block)
-			receipts, _ := subClient().GetReceipts(&block, source) // TODO: Handle Error
+			receipts, err := subClient().GetReceipts(&block, source)
+			if err != nil && !errors.Is(err, errors.ErrUnknownBlock) {
+				return bn, err
+			}
 
 			bn.SetReceipts(receipts)
 
@@ -356,28 +358,48 @@ func (c *Client) MonitorBlocks(height uint64, source string, concurrency uint, c
 	}))
 }
 
-func newClients(urls []string, logger log.Logger) []IClient {
+func NewClient(endpoint string, logger log.Logger) (IClient, error) {
 	transport := &http.Transport{MaxIdleConnsPerHost: 1000}
+	url, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid url: %v, err: %v", endpoint, err)
+	}
+
+	return &Client{
+		logger:          logger,
+		isMonitorClosed: false,
+		api: &api{
+			host: url.Host,
+			Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: transport}, url.String()).SetErrFunc(func(buffer json.RawMessage) error {
+				var rpcErr errors.RpcError
+				err = json.Unmarshal(buffer, &rpcErr)
+				if err != nil {
+					return err
+				}
+
+				return &rpcErr
+			}),
+		},
+	}, nil
+}
+
+func newClients(urls []string, logger log.Logger) ([]IClient, error) {
+	if len(urls) == 0 {
+		return nil, fmt.Errorf("empty urls: %v", urls)
+	}
+
 	clients := make([]IClient, 0)
 
-	for _, _url := range urls {
-		url, err := url.Parse(_url)
+	for _, url := range urls {
+		client, err := NewClient(url, logger)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
-		client := &Client{
-			logger:          logger,
-			isMonitorClosed: false,
-			api: &api{
-				host:   url.Host,
-				Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: transport}, url.String()),
-			},
-		}
 		clients = append(clients, client)
 	}
 
-	return clients
+	return clients, nil
 }
 
 func (c *Client) SendTransaction(payload string) (*types.CryptoHash, error) {

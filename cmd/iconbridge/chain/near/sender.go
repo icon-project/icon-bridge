@@ -41,8 +41,14 @@ func NewSender(source, destination chain.BTPAddress, urls []string, wallet walle
 		return nil, fmt.Errorf("empty urls: %v", urls)
 	}
 
+	clients, err := newClients(urls, logger)
+	if err != nil {
+		return nil, err
+	}
+	
+
 	sender := &Sender{
-		clients:     newClients(urls, logger),
+		clients:     clients,
 		source:      source,
 		destination: destination,
 		wallet:      wallet,
@@ -197,7 +203,7 @@ func (relayTx *RelayTransaction) Receipt(ctx context.Context) (blockHeight uint6
 		return 0, fmt.Errorf("no pending tx")
 	}
 
-	for i, isPending := 0, true; i < 5 && (isPending || err == errors.ErrUnknownTransaction); i++ {
+	for i, isPending := 0, true; i < 5 && (isPending || errors.Is(err, errors.ErrUnknownTransaction)); i++ {
 		time.Sleep(time.Second)
 		_, cancel := context.WithTimeout(ctx, defaultGetTxTimeout)
 		defer cancel()

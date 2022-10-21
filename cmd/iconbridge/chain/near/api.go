@@ -11,7 +11,7 @@ type api struct {
 }
 
 func (api *api) Block(param interface{}) (response types.Block, err error) {
-	if _, err := api.Do("block", param, &response); err != nil {
+	if _, err := api.Dov2("block", param, &response); err != nil {
 		return types.Block{}, err
 	}
 
@@ -43,7 +43,7 @@ func (api *api) CallFunction(param interface{}) (response types.CallFunctionResp
 }
 
 func (api *api) Changes(param interface{}) (response types.ContractStateChange, err error) {
-	if _, err := api.Do("EXPERIMENTAL_changes", param, &response); err != nil {
+	if _, err := api.Dov2("EXPERIMENTAL_changes", param, &response); err != nil {
 		return types.ContractStateChange{}, err
 	}
 
@@ -67,7 +67,7 @@ func (api *api) Status(param interface{}) (response types.ChainStatus, err error
 }
 
 func (api *api) Transaction(param interface{}) (response types.TransactionResult, err error) {
-	if _, err := api.Do("tx", param, &response); err != nil {
+	if _, err := api.Dov2("tx", param, &response); err != nil {
 		return types.TransactionResult{}, err
 	}
 
