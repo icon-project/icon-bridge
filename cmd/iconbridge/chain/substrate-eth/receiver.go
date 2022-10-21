@@ -277,7 +277,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			for ; bn != nil; next++ {
 				if lbn != nil {
 					if bn.Height.Cmp(lbn.Height) == 0 {
-						if !bytes.Equal(bn.Header.ParentHash.Bytes(), lbn.Header.ParentHash.Bytes()) {
+						if bn.Header.ParentHash != lbn.Header.ParentHash {
 							r.log.WithFields(log.Fields{"lbnParentHash": lbn.Header.ParentHash, "bnParentHash": bn.Header.ParentHash}).Error("verification failed on retry ")
 							break
 						}
