@@ -4,6 +4,8 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 type SenderSegmentTest struct {
@@ -50,13 +52,8 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From:     chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: []*chain.Receipt{},
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.Equal(f, len(nextMessage.Receipts), 0)
 				},
 			},
 		},
@@ -104,13 +101,9 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From:     chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: []*chain.Receipt{},
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f, len(relayMessage) > 3988)
+					assert.Equal(f, len(nextMessage.Receipts), 0)
 				},
 			},
 		},
@@ -158,23 +151,9 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: []*chain.Receipt{{
-							Index: uint64(0),
-							Events: []*chain.Event{
-								{
-									Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
-									Sequence: uint64(0),
-									Message:  make([]byte, 5000),
-								},
-							},
-							Height: uint64(1),
-						}},
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f, len(relayMessage) > 5000)
+					assert.Equal(f, len(nextMessage.Receipts), 0)
 				},
 			},
 		},
@@ -227,17 +206,9 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: func() []*chain.Receipt {
-							receipts := make([]*chain.Receipt, 0)
-
-							return receipts
-						}(),
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 2000)
+					assert.Equal(f, len(nextMessage.Receipts), 0)
 				},
 			},
 		},
@@ -290,28 +261,10 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: func() []*chain.Receipt {
-							receipts := make([]*chain.Receipt, 0)
-							receipts = append(receipts, &chain.Receipt{
-								Index: uint64(0),
-								Events: []*chain.Event{
-									{
-										Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
-										Sequence: uint64(0),
-										Message:  make([]byte, 3988),
-									},
-								},
-								Height: uint64(1),
-							})
-
-							return receipts
-						}(),
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 3000)
+					assert.Equal(f, len(nextMessage.Receipts), 1)
+					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 3988)
 				},
 			},
 		},
@@ -380,16 +333,9 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: func() []*chain.Receipt {
-							receipts := make([]*chain.Receipt, 0)
-							return receipts
-						}(),
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 2000)
+					assert.Equal(f, len(nextMessage.Receipts), 0)
 				},
 			},
 		},
@@ -458,28 +404,10 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: func() []*chain.Receipt {
-							receipts := make([]*chain.Receipt, 0)
-							receipts = append(receipts, &chain.Receipt{
-								Index: uint64(1),
-								Events: []*chain.Event{
-									{
-										Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
-										Sequence: uint64(4),
-										Message:  make([]byte, 4000),
-									},
-								},
-								Height: uint64(1),
-							})
-
-							return receipts
-						}(),
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 1500)
+					assert.Equal(f, len(nextMessage.Receipts), 1)
+					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 4000)
 				},
 			},
 		},
@@ -548,33 +476,11 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: func() []*chain.Receipt {
-							receipts := make([]*chain.Receipt, 0)
-							receipts = append(receipts, &chain.Receipt{
-								Index: uint64(1),
-								Events: []*chain.Event{
-									{
-										Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
-										Sequence: uint64(3),
-										Message:  make([]byte, 4000),
-									},
-									{
-										Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
-										Sequence: uint64(4),
-										Message:  make([]byte, 4000),
-									},
-								},
-								Height: uint64(1),
-							})
-
-							return receipts
-						}(),
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 1000)
+					assert.Equal(f, len(nextMessage.Receipts), 1)
+					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 4000)
+					assert.Equal(f, len(nextMessage.Receipts[0].Events[1].Message), 4000)
 				},
 			},
 		},
@@ -625,13 +531,9 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From:     chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: []*chain.Receipt{},
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 3988)
+					assert.Equal(f, len(nextMessage.Receipts), 0)
 				},
 			},
 		},
@@ -682,23 +584,9 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: []*chain.Receipt{{
-							Index: uint64(0),
-							Events: []*chain.Event{
-								{
-									Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
-									Sequence: uint64(0),
-									Message:  make([]byte, 9000),
-								},
-							},
-							Height: uint64(1),
-						}},
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 9000)
+					assert.Equal(f, len(nextMessage.Receipts), 0)
 				},
 			},
 		},
@@ -754,16 +642,9 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: func() []*chain.Receipt {
-							receipts := make([]*chain.Receipt, 0)
-							return receipts
-						}(),
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 7000)
+					assert.Equal(f, len(nextMessage.Receipts), 0)
 				},
 			},
 		},
@@ -819,28 +700,10 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: func() []*chain.Receipt {
-							receipts := make([]*chain.Receipt, 0)
-							receipts = append(receipts, &chain.Receipt{
-								Index: uint64(0),
-								Events: []*chain.Event{
-									{
-										Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
-										Sequence: uint64(0),
-										Message:  make([]byte, 3988),
-									},
-								},
-								Height: uint64(1),
-							})
-
-							return receipts
-						}(),
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 7000)
+					assert.Equal(f, len(nextMessage.Receipts), 1)
+					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 3988)
 				},
 			},
 		},
@@ -912,16 +775,9 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: func() []*chain.Receipt {
-							receipts := make([]*chain.Receipt, 0)
-							return receipts
-						}(),
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 6000)
+					assert.Equal(f, len(nextMessage.Receipts), 0)
 				},
 			},
 		},
@@ -993,28 +849,10 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: func() []*chain.Receipt {
-							receipts := make([]*chain.Receipt, 0)
-							receipts = append(receipts, &chain.Receipt{
-								Index: uint64(1),
-								Events: []*chain.Event{
-									{
-										Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
-										Sequence: uint64(4),
-										Message:  make([]byte, 10000),
-									},
-								},
-								Height: uint64(1),
-							})
-
-							return receipts
-						}(),
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 4500)
+					assert.Equal(f, len(nextMessage.Receipts), 1)
+					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 10000)
 				},
 			},
 		},
@@ -1086,33 +924,11 @@ func init() {
 				Success interface{}
 				Fail    interface{}
 			}{
-				Success: struct {
-					NewMessage *chain.Message
-				}{
-					NewMessage: &chain.Message{
-						From: chain.BTPAddress("btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5"),
-						Receipts: func() []*chain.Receipt {
-							receipts := make([]*chain.Receipt, 0)
-							receipts = append(receipts, &chain.Receipt{
-								Index: uint64(1),
-								Events: []*chain.Event{
-									{
-										Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
-										Sequence: uint64(3),
-										Message:  make([]byte, 10000),
-									},
-									{
-										Next:     chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
-										Sequence: uint64(4),
-										Message:  make([]byte, 10000),
-									},
-								},
-								Height: uint64(1),
-							})
-
-							return receipts
-						}(),
-					},
+				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
+					assert.True(f,len(relayMessage) > 3000)
+					assert.Equal(f, len(nextMessage.Receipts), 1)
+					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 10000)
+					assert.Equal(f, len(nextMessage.Receipts[0].Events[1].Message), 10000)
 				},
 			},
 		},

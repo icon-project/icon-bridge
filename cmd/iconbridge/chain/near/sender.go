@@ -140,7 +140,7 @@ func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message [
 			},
 		}
 
-		return NewRelayTransaction(ctx, nearWallet, s.destination.ContractAddress(), s.client(), actions), nil
+		return NewRelayTransaction(ctx, nearWallet, s.destination.ContractAddress(), s.client(), actions, message), nil
 	}
 
 	return nil, fmt.Errorf("failed to cast wallet")
@@ -151,9 +151,10 @@ type RelayTransaction struct {
 	client      IClient
 	wallet      *wallet.NearWallet
 	context     context.Context
+	message     []byte
 }
 
-func NewRelayTransaction(context context.Context, wallet *wallet.NearWallet, destination string, client IClient, actions []types.Action) *RelayTransaction {
+func NewRelayTransaction(context context.Context, wallet *wallet.NearWallet, destination string, client IClient, actions []types.Action, message []byte) *RelayTransaction {
 	transaction := types.Transaction{
 		SignerId:   types.AccountId(wallet.Address()),
 		ReceiverId: types.AccountId(destination),
@@ -162,10 +163,11 @@ func NewRelayTransaction(context context.Context, wallet *wallet.NearWallet, des
 	}
 
 	return &RelayTransaction{
-		Transaction: transaction,
-		client:      client,
-		wallet:      wallet,
-		context:     context,
+		transaction,
+		client,
+		wallet,
+		context,
+		message,
 	}
 }
 

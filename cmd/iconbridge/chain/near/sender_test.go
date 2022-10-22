@@ -206,18 +206,20 @@ func TestNearSender(t *testing.T) {
 					sender, err := NewSender(SenderConfig{source: input.Source, destination: input.Destination, wallet: nearWallet, options: input.Options}, log.New(), client)
 					require.NoError(f, err)
 
-					_, newMsg, err := sender.Segment(context.Background(), input.Message)
+					relayTx, newMsg, err := sender.Segment(context.Background(), input.Message)
 					require.NoError(f, err)
 
 					if testData.Expected.Success != nil {
-						expected, Ok := (testData.Expected.Success).(struct {
-							NewMessage *chain.Message
-						})
-						require.True(f, Ok)
+						message := make([]byte, 0)
 
-						assert.Equal(f, expected.NewMessage, newMsg)
+						if relayTx != nil {
+							message = (relayTx).(*RelayTransaction).message
+						}
+
+						testData.Expected.Success.(func(*testing.T, []byte, *chain.Message))(f, message, newMsg)
+						assert.Nil(f, err)
 					} else {
-						assert.Error(f, err)
+						testData.Expected.Fail.(func(*testing.T, error))(f, err)
 					}
 				})
 			}
