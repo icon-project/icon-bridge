@@ -399,6 +399,7 @@ var TransferUniDirection Script = Script{
 			return
 		}
 		ts.logger.Debug("initSrcNativeCoinBalance ", initSrcNativeCoinBalance)
+		ts.logger.Debug("initSrcBalance ", initSrcBalance)
 		// ApproveToken On Source
 		var approveHash string
 		if coinName != src.NativeCoin() {
@@ -1487,8 +1488,8 @@ var TransferWithoutApprove Script = Script{
 			addresses:  make(map[chain.ChainType][]keypair),
 		}
 		if len(coinNames) != 1 {
-			errs = fmt.Errorf(" Should specify a single coinName, got %v", len(coinNames))
-			ts.logger.Error(errs)
+			errs = UnsupportedCoinArgs
+			ts.logger.Debugf(" Should specify a single coinName, got %v", len(coinNames))
 			return
 		}
 		coinName := coinNames[0]
@@ -2215,8 +2216,12 @@ var TransferToBlackListedDstAddress Script = Script{
 			ts.logger.Error(errs)
 			return
 		}
+		responseChain := srcChain
+		if responseChain == ts.FullConfigAPIChain() {
+			responseChain = dstChain
+		}
 		if dstChain != ts.FullConfigAPIChain() { // for interchain-configurations
-			err = ts.WaitForConfigResponse(ctx, chain.AddToBlacklistRequest, chain.BlacklistResponse, dstChain, blackListAddHash,
+			err = ts.WaitForConfigResponse(ctx, chain.AddToBlacklistRequest, chain.BlacklistResponse, responseChain, blackListAddHash,
 				map[chain.EventLogType]func(event *evt) error{
 					chain.AddToBlacklistRequest: func(ev *evt) error {
 						if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
@@ -2380,7 +2385,7 @@ var TransferToBlackListedDstAddress Script = Script{
 			return
 		}
 		if dstChain != ts.FullConfigAPIChain() { // for interchain-configurations
-			err = ts.WaitForConfigResponse(ctx, chain.RemoveFromBlacklistRequest, chain.BlacklistResponse, dstChain, blackListRemoveHash,
+			err = ts.WaitForConfigResponse(ctx, chain.RemoveFromBlacklistRequest, chain.BlacklistResponse, responseChain, blackListRemoveHash,
 				map[chain.EventLogType]func(event *evt) error{
 					chain.RemoveFromBlacklistRequest: func(ev *evt) error {
 						if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
@@ -2438,7 +2443,7 @@ var TransferToBlackListedDstAddress Script = Script{
 			}
 		}
 
-		ts.logger.Debug("Final Send Should Succeed")
+		//ts.logger.Debug("Final Send Should Succeed")
 		// Final Send Should Succeed
 		if errs = ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); errs != nil {
 			// errs = errors.Wrapf(err, "Fund Token %v", err)
@@ -2688,8 +2693,13 @@ var TransferFromBlackListedSrcAddress Script = Script{
 			ts.logger.Error(errs)
 			return
 		}
+		responseChain := srcChain
+		if responseChain == ts.FullConfigAPIChain() {
+			responseChain = dstChain
+		}
+
 		if srcChain != ts.FullConfigAPIChain() { // for interchain-configurations
-			err = ts.WaitForConfigResponse(ctx, chain.AddToBlacklistRequest, chain.BlacklistResponse, srcChain, blackListAddHash,
+			err = ts.WaitForConfigResponse(ctx, chain.AddToBlacklistRequest, chain.BlacklistResponse, responseChain, blackListAddHash,
 				map[chain.EventLogType]func(event *evt) error{
 					chain.AddToBlacklistRequest: func(ev *evt) error {
 						if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
@@ -2704,7 +2714,6 @@ var TransferFromBlackListedSrcAddress Script = Script{
 							Sn:        reqEvt.Sn,
 							Fee:       map[string]*big.Int{},
 						})
-
 						if reqEvt.Net != blsSrcNet {
 							return fmt.Errorf("Expected same; Got different reqEvt.Net %v DstNet %v", reqEvt.Net, blsSrcNet)
 						}
@@ -2846,7 +2855,7 @@ var TransferFromBlackListedSrcAddress Script = Script{
 			return
 		}
 		if srcChain != ts.FullConfigAPIChain() { // for interchain-configurations
-			err = ts.WaitForConfigResponse(ctx, chain.RemoveFromBlacklistRequest, chain.BlacklistResponse, dstChain, blackListRemoveHash,
+			err = ts.WaitForConfigResponse(ctx, chain.RemoveFromBlacklistRequest, chain.BlacklistResponse, responseChain, blackListRemoveHash,
 				map[chain.EventLogType]func(event *evt) error{
 					chain.RemoveFromBlacklistRequest: func(ev *evt) error {
 						if ev == nil || (ev != nil && ev.msg == nil) || (ev != nil && ev.msg != nil && ev.msg.EventLog == nil) {
@@ -2861,7 +2870,6 @@ var TransferFromBlackListedSrcAddress Script = Script{
 							Sn:        reqEvt.Sn,
 							Fee:       map[string]*big.Int{},
 						})
-
 						if reqEvt.Net != blsSrcNet {
 							return fmt.Errorf("Expected same; Got different reqEvt.Net %v DstNet %v", reqEvt.Net, blsSrcNet)
 						}
@@ -2881,7 +2889,6 @@ var TransferFromBlackListedSrcAddress Script = Script{
 						if !ok {
 							return fmt.Errorf("Expected *chain.BlacklistResponseEvent. Got %T", ev.msg.EventLog)
 						}
-
 						if resEvt.Code != 0 {
 							return fmt.Errorf("Expected Code 0; Got Sn %v Code %v Msg %v", resEvt.Sn, resEvt.Code, resEvt.Msg)
 						}
@@ -2894,7 +2901,7 @@ var TransferFromBlackListedSrcAddress Script = Script{
 				ts.logger.Error(errs)
 				return
 			}
-			if isBlackListed, err = fCfg.IsUserBlackListed(blsSrcNet, blsSrcAddr); err != nil {
+			if isBlackListed, err = stdCfg.IsUserBlackListed(blsSrcNet, blsSrcAddr); err != nil {
 				errs = errors.Wrapf(err, "isBlackListed %v", err)
 				ts.logger.Error(errs)
 				return
@@ -2905,7 +2912,7 @@ var TransferFromBlackListedSrcAddress Script = Script{
 			}
 		}
 
-		ts.logger.Debug("Final Send Should Succeed")
+		ts.logger.Debugf("Sending %v after removing from blacklist \n", blsSrcAddr)
 		// Final Send Should Succeed
 		if errs = ts.Fund(srcChain, srcAddr, userSuppliedAmount, coinName); errs != nil {
 			// errs = errors.Wrapf(err, "Fund Token %v", err)
@@ -3021,12 +3028,12 @@ var TransferBatchBiDirection Script = Script{
 		}
 		if len(coinNames) == 1 && coinNames[0] == src.NativeCoin() {
 			errs = UnsupportedCoinArgs //
-			ts.logger.Error(fmt.Errorf("A single src.NativeCoin %v has been used", coinNames[0]))
+			ts.logger.Debug(fmt.Errorf("A single src.NativeCoin %v has been used", coinNames[0]))
 			return
 		}
 		if len(coinNames) == 1 && coinNames[0] == dst.NativeCoin() {
 			errs = UnsupportedCoinArgs //
-			ts.logger.Error(fmt.Errorf("A single dst.NativeCoin %v has been used", coinNames[0]))
+			ts.logger.Debug(fmt.Errorf("A single dst.NativeCoin %v has been used", coinNames[0]))
 			return
 		}
 		srcKey, srcAddr, err := ts.GetKeyPairs(srcChain)

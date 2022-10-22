@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/log"
@@ -42,9 +43,9 @@ func NewReceiver(config ReceiverConfig, logger log.Logger, clients ...IClient) (
 	}
 
 	r := &Receiver{
-		clients: clients,
-		logger:  logger,
-		source: config.source,
+		clients:     clients,
+		logger:      logger,
+		source:      config.source,
 		destination: config.destination,
 	}
 
@@ -86,26 +87,30 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 
 		if err := r.ReceiveBlocks(opts.Height, r.source.ContractAddress(), func(blockNotification *types.BlockNotification) {
 			r.logger.WithFields(log.Fields{"height": blockNotification.Block().Height()}).Debug("block notification")
-			receipts := blockNotification.Receipts()
+			receipts := make([]*chain.Receipt, 0)
 
-			for _, receipt := range receipts {
+			for _, receipt := range blockNotification.Receipts() {
 				events := receipt.Events[:0]
 				for _, event := range receipt.Events {
 					switch {
-
-					case event.Sequence == opts.Seq:
+					case event.Sequence == opts.Seq && event.Next == r.destination:
 						events = append(events, event)
 						opts.Seq++
 
-					case event.Sequence > opts.Seq:
+					case event.Sequence > opts.Seq && event.Next == r.destination:
 						r.logger.WithFields(log.Fields{
 							"seq": log.Fields{"got": event.Sequence, "expected": opts.Seq},
 						}).Error("invalid event seq")
 
 						_errCh <- fmt.Errorf("invalid event seq")
+						return
 					}
 
 					receipt.Events = events
+				}
+
+				if len(events) > 0 {
+					receipts = append(receipts, receipt)
 				}
 			}
 
@@ -120,7 +125,7 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		}
 	}()
 
-	return errCh, nil
+	return _errCh, nil
 }
 
 func (r *Receiver) client() IClient {

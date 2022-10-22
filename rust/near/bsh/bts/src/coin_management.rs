@@ -193,8 +193,11 @@ impl BtpTokenService {
         &self.token_limits
     }
 
-    pub fn get_token_limit(&self, coin_name: String) -> u128 {
-        *self.token_limits.get(&coin_name).unwrap()
+    pub fn get_token_limit(&self, coin_name: String) -> U128 {
+        self.token_limits
+            .get(&coin_name)
+            .map(|token_limit| U128(*token_limit))
+            .expect(&format!("{}", BshError::LimitNotSet))
     }
 }
 
