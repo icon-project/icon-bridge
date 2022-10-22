@@ -4,7 +4,7 @@ use std::{collections::HashSet, convert::TryInto};
 pub mod accounts;
 use accounts::*;
 use libraries::types::{
-    messages::{BtpMessage, TokenServiceMessage, TokenServiceType},
+    messages::{BtpMessage, SerializedMessage, TokenServiceMessage, TokenServiceType},
     Account, AccountBalance, Asset, BTPAddress, Math, TransferableAsset, WrappedI128,
     WrappedNativeCoin,
 };

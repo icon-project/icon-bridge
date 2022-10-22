@@ -1,4 +1,4 @@
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Wrapper<T>(T);
 
 impl<T> Wrapper<T> {

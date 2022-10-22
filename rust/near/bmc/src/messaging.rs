@@ -1,8 +1,11 @@
-use std::convert::TryFrom;
+use std::{convert::TryFrom, ops::Neg};
 
 use super::*;
 use crate::types::{Event, RelayMessage};
-use libraries::types::WrappedI128;
+use libraries::{
+    emit_error,
+    types::{BtpError, WrappedI128},
+};
 
 #[near_bindgen]
 impl BtpMessageCenter {
@@ -23,13 +26,19 @@ impl BtpMessageCenter {
             &mut link,
             btp_messages,
             env::predecessor_account_id(),
-        ).unwrap();
+        )
+        .unwrap();
         self.links.set(&source, &link);
     }
 
     #[cfg(feature = "testable")]
     pub fn get_message(&self) -> Result<BtpMessage<SerializedMessage>, String> {
         self.event.get_message()
+    }
+
+    #[cfg(feature = "testable")]
+    pub fn get_error(&self) -> Result<BtpError, String> {
+        self.event.get_error()
     }
 
     #[cfg(feature = "testable")]
@@ -136,6 +145,44 @@ impl BtpMessageCenter {
             _ => (),
         }
     }
+
+    #[private]
+    pub fn handle_btp_error_callback(&mut self, message: BtpMessage<SerializedMessage>) {
+        match env::promise_result(0) {
+            PromiseResult::Failed => {
+                let error_message: BtpMessage<ErrorMessage> = message.try_into().unwrap();
+                let exception = <Box<dyn Exception>>::from((
+                    error_message.message().clone().unwrap().code(),
+                    &error_message
+                        .clone()
+                        .message()
+                        .as_ref()
+                        .unwrap()
+                        .clone()
+                        .message()
+                        .0,
+                ));
+                emit_error!(
+                    self,
+                    event,
+                    error_message.service().clone(),
+                    (error_message.serial_no().negate().get().to_owned() as u128).into(),
+                    error_message.message().clone().unwrap().code(),
+                    error_message
+                        .message()
+                        .clone()
+                        .unwrap()
+                        .message()
+                        .get()
+                        .map(|message| message.to_owned())
+                        .unwrap_or("".to_string()),
+                    exception.code(),
+                    exception.message()
+                );
+            }
+            _ => todo!(),
+        };
+    }
 }
 
 impl BtpMessageCenter {
@@ -144,10 +191,10 @@ impl BtpMessageCenter {
         source: &BTPAddress,
         #[allow(unused_mut)] mut messages: SerializedBtpMessages,
     ) {
-        messages
-            .retain(|message| self.handle_btp_error_message(&source, message, BmcError::ErrorDrop));
         messages.retain(|message| self.handle_service_message(&source, message));
         messages.retain(|message| self.handle_route_message(&source, message));
+        messages
+            .retain(|message| self.handle_btp_error_message(&source, message, BmcError::ErrorDrop));
     }
 
     pub fn propogate_internal(&mut self, service_message: BmcServiceMessage) {
@@ -179,7 +226,7 @@ impl BtpMessageCenter {
         message: &BtpMessage<SerializedMessage>,
         error: BmcError,
     ) -> bool {
-        true
+        unimplemented!()
     }
 
     fn handle_service_message(
@@ -188,7 +235,6 @@ impl BtpMessageCenter {
         message: &BtpMessage<SerializedMessage>,
     ) -> bool {
         if self.btp_address.network_address() == message.destination().network_address() {
-            
             let outcome = match message.service().as_str() {
                 SERVICE => self.handle_internal_service_message(source, message.clone().try_into()),
                 _ => self.handle_external_service_message(source, message),
@@ -263,7 +309,21 @@ impl BtpMessageCenter {
                 estimate::HANDLE_EXTERNAL_SERVICE_MESSAGE_CALLBACK,
             ));
         } else {
-            // Handle Error
+            bsh_contract::handle_btp_error(
+                source.clone(),
+                message.service().clone(),
+                *message.serial_no().clone().get(),
+                message.to_owned(),
+                serivce_account_id.to_owned(),
+                estimate::NO_DEPOSIT,
+                estimate::BSH_HANDLE_BTP_MESSAGE,
+            )
+            .then(bmc_contract::handle_btp_error_callback(
+                message.to_owned(),
+                env::current_account_id(),
+                estimate::NO_DEPOSIT,
+                estimate::HANDLE_BTP_ERROR_CALLBACK,
+            ));
         }
         Ok(())
     }
@@ -273,7 +333,6 @@ impl BtpMessageCenter {
         source: &BTPAddress,
         message: &BtpMessage<SerializedMessage>,
     ) -> bool {
-        
         self.send_message(source, &message.destination(), message.to_owned());
         false
     }
@@ -305,7 +364,7 @@ impl BtpMessageCenter {
         link: &mut Link,
         btp_messages: SerializedBtpMessages,
         relay: AccountId,
-    ) -> Result<(),BmcError>{
+    ) -> Result<(), BmcError> {
         let mut relay_status = match link.relays().status(&relay) {
             Some(status) => status,
             None => RelayStatus::default(),
@@ -314,9 +373,12 @@ impl BtpMessageCenter {
         if relay_status
             .message_count_mut()
             .add(btp_messages.len().try_into().unwrap())
-            .is_err(){
-                return Err(BmcError::Unknown { message: "FAILED TO UPDATE RELAY STATUS".to_string() })
-            }
+            .is_err()
+        {
+            return Err(BmcError::Unknown {
+                message: "FAILED TO UPDATE RELAY STATUS".to_string(),
+            });
+        }
         link.relays_mut().set_status(&relay, &relay_status);
 
         self.handle_btp_messages(source, btp_messages);
@@ -341,17 +403,17 @@ impl BtpMessageCenter {
             for event_idx in 0..receipts[rps_idx].events().len() {
                 event = &receipts[rps_idx].events()[event_idx];
                 self.ensure_valid_sequence(link, event)?;
-                if  link.rx_seq_mut().add(1).is_err(){
-                    return Err(BmcError::Unknown { message: "FAILED TO UPDATE SEQUENCE".to_string() })
+                if link.rx_seq_mut().add(1).is_err() {
+                    return Err(BmcError::Unknown {
+                        message: "FAILED TO UPDATE SEQUENCE".to_string(),
+                    });
                 };
-                
+
                 if event.next() != &self.btp_address {
                     continue;
                 }
                 match event.btp_message() {
-                    Some(btp_message) => {
-                        btp_messages.push(btp_message)
-                    },
+                    Some(btp_message) => btp_messages.push(btp_message),
                     None => continue,
                 };
             }
