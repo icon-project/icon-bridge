@@ -16,15 +16,6 @@ pub mod errors {
         Reserved,
     }
 
-    pub fn from_code(code: u32) -> Box<dyn Exception> {
-        match code {
-            0..=9 => todo!(),
-            10..=24 => Box::new(BtpException::Bmc(from_bmc(code - 10))),
-            25..=39 => todo!(),
-            _ => Box::new(BtpException::Bsh(from_bsh(code - 40))),
-        }
-    }
-
     impl<T> Exception for BtpException<T>
     where
         T: Exception,
@@ -44,6 +35,17 @@ pub mod errors {
                 BtpException::Bmc(error) => error.message(),
                 BtpException::Bsh(error) => error.message(),
                 _ => todo!(),
+            }
+        }
+    }
+
+    impl From<(u32, &Option<String>)> for Box<dyn Exception> {
+        fn from((code, message): (u32, &Option<String>)) -> Self {
+            match code {
+                0..=9 => todo!(),
+                10..=24 => Box::new(BtpException::Bmc(BmcError::from((code - 10, message)))),
+                25..=39 => todo!(),
+                _ => Box::new(BtpException::Bsh(BshError::from((code - 40, message)))),
             }
         }
     }
@@ -89,16 +91,45 @@ pub mod errors {
         }
     }
 
-    fn from_bmv(_: u32) -> BmvError {
-        todo!()
+    impl From<(u32, &Option<String>)> for BshError {
+        fn from((code, _): (u32, &Option<String>)) -> BshError {
+            match code {
+                1 => BshError::PermissionNotExist,
+                _ => BshError::Unknown,
+            }
+        }
     }
 
-    fn from_bsh(_: u32) -> BshError {
-        todo!()
-    }
-
-    fn from_bmc(_: u32) -> BmcError {
-        todo!()
+    impl From<(u32, &Option<String>)> for BmcError {
+        fn from((code, message): (u32, &Option<String>)) -> BmcError {
+            match code {
+                0 => BmcError::Unknown {
+                    message: message.clone().unwrap_or("Undefined".to_string()),
+                },
+                1 => BmcError::PermissionNotExist,
+                2 => BmcError::InvalidSerialNo,
+                3 => BmcError::VerifierExist,
+                4 => BmcError::VerifierNotExist,
+                5 => BmcError::ServiceExist,
+                6 => BmcError::ServiceNotExist,
+                7 => BmcError::LinkExist,
+                8 => BmcError::LinkNotExist,
+                9 => BmcError::RelayExist {
+                    link: message.clone().unwrap_or("Undefined".to_string()),
+                },
+                10 => BmcError::RelayNotExist {
+                    link: message.clone().unwrap_or("Undefined".to_string()),
+                },
+                11 => BmcError::Unreachable {
+                    destination: message.clone().unwrap_or("Undefined".to_string()),
+                },
+                12 => BmcError::ErrorDrop,
+                13 => BmcError::InvalidSequence,
+                _ => BmcError::Unknown {
+                    message: message.clone().unwrap_or("Undefined".to_string()),
+                },
+            }
+        }
     }
 
     impl fmt::Display for BmvError {
@@ -304,25 +335,25 @@ pub mod errors {
                     write!(f, "{}{}", label, "TokenNotRegistered")
                 }
                 BshError::Unknown => {
-                    write!(f, "{}", "Unknown")
+                    write!(f, "{}{}", label, "Unknown")
                 }
                 BshError::LessThanZero => {
-                    write!(f, "{}", "LessThanZero")
+                    write!(f, "{}{}", label, "LessThanZero")
                 }
                 BshError::Failure => {
-                    write!(f, "{}", "Failure")
+                    write!(f, "{}{}", label, "Failure")
                 }
                 BshError::UserAlreadyBlacklisted => {
-                    write!(f, "{}", "AlreadyBlacklisted")
+                    write!(f, "{}{}", label, "AlreadyBlacklisted")
                 }
                 BshError::NonBlacklistedUsers { message } => {
                     write!(f, "{}{} for {}", label, "UsersNotBlacklisted", message)
                 }
                 BshError::InvalidParams => {
-                    write!(f, "{}", "InvalidParams")
+                    write!(f, "{}{}", label, "InvalidParams")
                 }
                 BshError::LimitExceed => {
-                    write!(f, "{}", "LimitExceed")
+                    write!(f, "{}{}", label, "LimitExceed")
                 }
                 BshError::BlacklistedUsers { message } => {
                     write!(f, "{}{} for {}", label, "UsersBlacklisted", message)

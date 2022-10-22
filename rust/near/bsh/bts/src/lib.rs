@@ -64,6 +64,9 @@ pub type Coins = Assets<WrappedNativeCoin>;
 pub static NEP141_CONTRACT: &'static [u8] = include_bytes!("../res/NEP141_CONTRACT.wasm");
 pub static FEE_DENOMINATOR: u128 = 10_u128.pow(4);
 
+pub static RC_ERROR: u8 = 1;
+pub static RC_OK: u8 = 0;
+
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct BtpTokenService {

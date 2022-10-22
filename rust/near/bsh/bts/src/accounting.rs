@@ -123,7 +123,10 @@ impl BtpTokenService {
     }
 
     pub fn locked_balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
-        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
 
         let balance = self
             .balances
@@ -133,7 +136,10 @@ impl BtpTokenService {
     }
 
     pub fn refundable_balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
-        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
 
         let balance = self
             .balances
@@ -156,8 +162,11 @@ impl BtpTokenService {
     }
 
     pub fn balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
-        let coin_id = self.coin_id(&coin_name).map_err(|err| format!("{}", err)).unwrap();
-        
+        let coin_id = self
+            .coin_id(&coin_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
+
         let balance = self
             .balances
             .get(&account_id, &coin_id)
@@ -180,13 +189,11 @@ impl BtpTokenService {
                 self.balances.set(&account.clone(), &coin_id, balance);
                 let log = json!(
                 {
-
                     "event": "Withdraw",
                     "code": "0",
                     "by": account,
                     "amount": amount.to_string(),
                     "token_name": coin_name
-
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
@@ -194,16 +201,13 @@ impl BtpTokenService {
                 log!("Not Ready")
             }
             PromiseResult::Failed => {
-                println!("{}", amount.to_string());
                 let log = json!(
                 {
-
                     "event": "Withdraw",
                     "code": "1",
                     "by": account,
                     "amount": amount.to_string(),
                     "token_name": coin_name
-
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
             }

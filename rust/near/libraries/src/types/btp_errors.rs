@@ -4,7 +4,7 @@ use near_sdk::{
     serde::{Deserialize, Serialize},
     serde_json::{from_value, to_value, Value},
 };
-#[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize)]
+#[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, Debug)]
 #[serde(crate = "near_sdk::serde")]
 pub struct BtpError {
     service: String,

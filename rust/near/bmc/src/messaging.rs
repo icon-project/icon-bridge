@@ -2,8 +2,10 @@ use std::{convert::TryFrom, ops::Neg};
 
 use super::*;
 use crate::types::{Event, RelayMessage};
-use btp_common::from_code;
-use libraries::{emit_error, types::WrappedI128};
+use libraries::{
+    emit_error,
+    types::{BtpError, WrappedI128},
+};
 
 #[near_bindgen]
 impl BtpMessageCenter {
@@ -32,6 +34,11 @@ impl BtpMessageCenter {
     #[cfg(feature = "testable")]
     pub fn get_message(&self) -> Result<BtpMessage<SerializedMessage>, String> {
         self.event.get_message()
+    }
+
+    #[cfg(feature = "testable")]
+    pub fn get_error(&self) -> Result<BtpError, String> {
+        self.event.get_error()
     }
 
     #[cfg(feature = "testable")]
@@ -144,7 +151,17 @@ impl BtpMessageCenter {
         match env::promise_result(0) {
             PromiseResult::Failed => {
                 let error_message: BtpMessage<ErrorMessage> = message.try_into().unwrap();
-                let excetption = from_code(error_message.message().clone().unwrap().code());
+                let exception = <Box<dyn Exception>>::from((
+                    error_message.message().clone().unwrap().code(),
+                    &error_message
+                        .clone()
+                        .message()
+                        .as_ref()
+                        .unwrap()
+                        .clone()
+                        .message()
+                        .0,
+                ));
                 emit_error!(
                     self,
                     event,
@@ -159,8 +176,8 @@ impl BtpMessageCenter {
                         .get()
                         .map(|message| message.to_owned())
                         .unwrap_or("".to_string()),
-                    excetption.code(),
-                    "BmcError::UnknownHandleBtpError".to_string()
+                    exception.code(),
+                    exception.message()
                 );
             }
             _ => todo!(),

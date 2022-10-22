@@ -1,5 +1,3 @@
-
-
 use super::*;
 
 #[near_bindgen]
@@ -50,12 +48,12 @@ impl BtpTokenService {
 
         let error_message: BtpMessage<ErrorMessage> = message.try_into().unwrap();
         self.handle_response(
-            &WrappedI128::new(serial_no),
-            error_message.message().clone().unwrap().code().into(),
+            &WrappedI128::new(serial_no).negate(),
+            RC_ERROR,
             &format!(
                 "[BTPError] source: {}, code: {} message: {:?}",
                 source,
-                1,
+                RC_ERROR,
                 error_message.message().clone().unwrap()
             ),
         )
@@ -312,14 +310,14 @@ impl BtpTokenService {
     fn handle_response(
         &mut self,
         serial_no: &WrappedI128,
-        code: u128,
+        code: u8,
         message: &str,
     ) -> Result<Option<TokenServiceMessage>, BshError> {
         if let Some(request) = self.requests().get(*serial_no.get()) {
             let sender_id = AccountId::try_from(request.sender().to_owned()).unwrap();
-            if code == 0 {
+            if code == RC_OK {
                 self.finalize_external_transfer(&sender_id, request.assets());
-            } else if code == 1 {
+            } else if code == RC_ERROR {
                 self.rollback_external_transfer(&sender_id, request.assets());
             }
             self.requests_mut().remove(*serial_no.get());

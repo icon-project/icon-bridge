@@ -1,4 +1,4 @@
-use crate::types::messages::{BtpMessage, SerializedMessage};
+use crate::types::messages::{BtpMessage, ErrorMessage, SerializedMessage};
 use crate::types::{BTPAddress, BtpError, Message};
 use near_sdk::json_types::{Base64VecU8, U128};
 use near_sdk::serde_json::from_str;
@@ -8,7 +8,7 @@ use near_sdk::{
     serde::{Deserialize, Serialize},
     serde_json::{from_value, to_value, Value},
 };
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct BmcEvent {
@@ -75,5 +75,7 @@ impl BmcEvent {
             .map_err(|e| format!("{}", e))
     }
 
-    pub fn get_error(&self) {}
+    pub fn get_error(&self) -> Result<BtpError, String> {
+        from_str(&self.error.get().ok_or("Not Found")?).map_err(|e| format!(""))
+    }
 }

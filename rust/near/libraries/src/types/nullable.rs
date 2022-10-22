@@ -1,7 +1,7 @@
 use crate::rlp::{self, Decodable, Encodable};
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
-pub struct Nullable<T>(Option<T>);
+pub struct Nullable<T>(pub Option<T>);
 
 impl<T> Nullable<T> {
     pub fn new(item: Option<T>) -> Self {
