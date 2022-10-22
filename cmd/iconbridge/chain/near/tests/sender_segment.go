@@ -53,7 +53,7 @@ func init() {
 				Fail    interface{}
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
-					assert.Equal(f, len(nextMessage.Receipts), 0)
+					assert.Equal(f, 0, len(nextMessage.Receipts))
 				},
 			},
 		},
@@ -103,7 +103,7 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f, len(relayMessage) > 3988)
-					assert.Equal(f, len(nextMessage.Receipts), 0)
+					assert.Equal(f, 0, len(nextMessage.Receipts))
 				},
 			},
 		},
@@ -153,7 +153,7 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f, len(relayMessage) > 5000)
-					assert.Equal(f, len(nextMessage.Receipts), 0)
+					assert.Equal(f, 0, len(nextMessage.Receipts))
 				},
 			},
 		},
@@ -208,7 +208,7 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 2000)
-					assert.Equal(f, len(nextMessage.Receipts), 0)
+					assert.Equal(f, 0, len(nextMessage.Receipts))
 				},
 			},
 		},
@@ -263,8 +263,8 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 3000)
-					assert.Equal(f, len(nextMessage.Receipts), 1)
-					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 3988)
+					assert.Equal(f, 1, len(nextMessage.Receipts))
+					assert.Equal(f, 3988, len(nextMessage.Receipts[0].Events[0].Message))
 				},
 			},
 		},
@@ -335,7 +335,7 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 2000)
-					assert.Equal(f, len(nextMessage.Receipts), 0)
+					assert.Equal(f, 0, len(nextMessage.Receipts))
 				},
 			},
 		},
@@ -406,8 +406,8 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 1500)
-					assert.Equal(f, len(nextMessage.Receipts), 1)
-					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 4000)
+					assert.Equal(f, 1, len(nextMessage.Receipts))
+					assert.Equal(f, 4000, len(nextMessage.Receipts[0].Events[0].Message))
 				},
 			},
 		},
@@ -478,9 +478,9 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 1000)
-					assert.Equal(f, len(nextMessage.Receipts), 1)
-					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 4000)
-					assert.Equal(f, len(nextMessage.Receipts[0].Events[1].Message), 4000)
+					assert.Equal(f, 1, len(nextMessage.Receipts))
+					assert.Equal(f, 4000, len(nextMessage.Receipts[0].Events[0].Message))
+					assert.Equal(f, 4000, len(nextMessage.Receipts[0].Events[1].Message))
 				},
 			},
 		},
@@ -533,7 +533,7 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 3988)
-					assert.Equal(f, len(nextMessage.Receipts), 0)
+					assert.Equal(f, 0, len(nextMessage.Receipts))
 				},
 			},
 		},
@@ -586,7 +586,7 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 9000)
-					assert.Equal(f, len(nextMessage.Receipts), 0)
+					assert.Equal(f, 0, len(nextMessage.Receipts))
 				},
 			},
 		},
@@ -644,7 +644,7 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 7000)
-					assert.Equal(f, len(nextMessage.Receipts), 0)
+					assert.Equal(f, 0, len(nextMessage.Receipts))
 				},
 			},
 		},
@@ -702,8 +702,8 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 7000)
-					assert.Equal(f, len(nextMessage.Receipts), 1)
-					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 3988)
+					assert.Equal(f, 1, len(nextMessage.Receipts))
+					assert.Equal(f, 3988, len(nextMessage.Receipts[0].Events[0].Message))
 				},
 			},
 		},
@@ -777,7 +777,7 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 6000)
-					assert.Equal(f, len(nextMessage.Receipts), 0)
+					assert.Equal(f, 0, len(nextMessage.Receipts))
 				},
 			},
 		},
@@ -851,8 +851,8 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 4500)
-					assert.Equal(f, len(nextMessage.Receipts), 1)
-					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 10000)
+					assert.Equal(f, 1, len(nextMessage.Receipts))
+					assert.Equal(f, 10000, len(nextMessage.Receipts[0].Events[0].Message))
 				},
 			},
 		},
@@ -926,9 +926,9 @@ func init() {
 			}{
 				Success: func(f *testing.T, relayMessage []byte, nextMessage *chain.Message) {
 					assert.True(f,len(relayMessage) > 3000)
-					assert.Equal(f, len(nextMessage.Receipts), 1)
-					assert.Equal(f, len(nextMessage.Receipts[0].Events[0].Message), 10000)
-					assert.Equal(f, len(nextMessage.Receipts[0].Events[1].Message), 10000)
+					assert.Equal(f, 1, len(nextMessage.Receipts))
+					assert.Equal(f, 10000, len(nextMessage.Receipts[0].Events[0].Message))
+					assert.Equal(f, 10000, len(nextMessage.Receipts[0].Events[1].Message))
 				},
 			},
 		},
