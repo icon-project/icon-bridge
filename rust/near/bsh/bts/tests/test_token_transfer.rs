@@ -497,7 +497,7 @@ fn handle_success_response_baln_external_transfer() {
 #[test]
 #[cfg(feature = "testable")]
 fn handle_failure_response_wnear_external_transfer() {
-    use libraries::types::AccumulatedAssetFees;
+    use libraries::types::{messages::ErrorMessage, AccumulatedAssetFees};
 
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
@@ -556,22 +556,23 @@ fn handle_failure_response_wnear_external_transfer() {
     let result = contract.balance_of(alice(), w_near.name().to_string());
     assert_eq!(result, U128::from(0));
 
-    let btp_message = &BtpMessage::new(
-        BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
+    let source = BTPAddress::new("btp://0x1.icon/0x12345678".to_string());
+    let btp_message = BtpMessage::new(
+        source.clone(),
         BTPAddress::new("btp://1234.iconee/0x12345678".to_string()),
         "TokenBSH".to_string(),
-        WrappedI128::new(1),
+        WrappedI128::new(-1),
         vec![],
-        Some(TokenServiceMessage::new(
-            TokenServiceType::ResponseHandleService {
-                code: 1,
-                message: "Transfer Failed".to_string(),
-            },
-        )),
+        Some(ErrorMessage::new(1, "Transfer Failed".to_string())),
     );
 
     testing_env!(context(bmc(), 0));
-    contract.handle_btp_message(btp_message.try_into().unwrap());
+    contract.handle_btp_error(
+        source.clone(),
+        "TokenBSH".to_string(),
+        -1,
+        btp_message.try_into().unwrap(),
+    );
 
     let result = contract.balance_of(alice(), w_near.name().to_string());
     assert_eq!(result, U128::from(100));

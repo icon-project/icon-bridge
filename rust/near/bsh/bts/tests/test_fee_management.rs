@@ -139,12 +139,12 @@ fn get_fee() {
     testing_env!(context(alice(), 0));
 
     let result = contract.get_fee("NEAR".into(), U128(1000));
-    assert_eq!(result, Ok(U128::from(101)));
+    assert_eq!(result, U128::from(101));
 
     contract.set_fee_ratio("NEAR".into(), 10.into(), 10.into());
 
     testing_env!(context(charlie(), 0));
     let result = contract.get_fee("NEAR".into(), U128(1000));
-    assert_eq!(result, Ok(U128::from(11)));
+    assert_eq!(result, U128::from(11));
 
 }

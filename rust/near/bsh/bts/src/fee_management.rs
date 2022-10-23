@@ -51,8 +51,7 @@ impl BtpTokenService {
         self.coins.set(&coin_id, &coin)
     }
 
-    #[handle_result]
-    pub fn get_fee(&self, coin_name: String, amount: U128) -> Result<U128, String> {
+    pub fn get_fee(&self, coin_name: String, amount: U128) -> U128 {
         let coin_id = self
             .coin_id(&coin_name)
             .map_err(|err| format!("{}", err))
@@ -60,7 +59,7 @@ impl BtpTokenService {
         let coin = self.coins.get(&coin_id).unwrap();
 
         self.calculate_coin_transfer_fee(u128::from(amount), &coin)
-            .map(|e| U128(e))
+            .map(|e| U128(e)).unwrap()
     }
 }
 

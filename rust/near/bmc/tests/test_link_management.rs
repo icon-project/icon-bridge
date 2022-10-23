@@ -1,9 +1,8 @@
 use bmc::BtpMessageCenter;
 use near_sdk::{env, serde_json::json, testing_env, AccountId, VMContext, Gas, test_utils::VMContextBuilder};
-use std::collections::HashSet;
 pub mod accounts;
 use accounts::*;
-use libraries::types::{Address, BTPAddress, VerifierStatus};
+use libraries::types::BTPAddress;
 
 fn get_context(is_view: bool, signer_account_id: AccountId) -> VMContext {
     VMContextBuilder::new()
