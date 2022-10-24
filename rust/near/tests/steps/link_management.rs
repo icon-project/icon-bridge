@@ -5,7 +5,6 @@ use test_helper::types::Context;
 
 pub static ICON_LINK_IS_ADDED: fn(Context) -> Context = |context: Context| {
     context
-        .pipe(VERIFIER_FOR_ICON_IS_ADDED)
         .pipe(ICON_LINK_ADDRESS_IS_PROVIDED_AS_ADD_LINK_PARAM)
         .pipe(BMC_OWNER_INVOKES_ADD_LINK_IN_BMC)
 };
@@ -117,11 +116,6 @@ pub static USER_SHOULD_GET_THE_ICON_LINK_STATUS: fn(Context) = |context: Context
         .pipe(USER_INVOKES_GET_STATUS_IN_BMC);
     let result: LinkStatus = from_value(context.method_responses("get_status")).unwrap();
     assert_eq!(result.delay_limit(), 4);
-};
-
-pub static BMC_SHOULD_THROW_VERIFIER_NOT_EXISITING_ERROR: fn(Context) = |context: Context| {
-    let error = context.method_errors("add_link");
-    assert!(error.to_string().contains("BMCRevertNotExistBMV"));
 };
 
 pub static BMC_SHOULD_THROW_LINK_DOES_NOT_EXIST_ERROR_ON_SETTING_LINK: fn(Context) =

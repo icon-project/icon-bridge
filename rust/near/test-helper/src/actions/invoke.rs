@@ -3,7 +3,7 @@ use near_primitives::types::{Balance, Gas};
 use near_primitives::views::FinalExecutionStatus;
 use serde_json::Value;
 use tokio::runtime::Handle;
-use workspaces::{self, Account, AccountId, Contract};
+use workspaces::{self, Account, AccountId, Contract, result::ExecutionSuccess, result::ExecutionFailure};
 
 pub fn call(
     context: &Context,
@@ -13,15 +13,14 @@ pub fn call(
     value: Option<Value>,
     gas: Option<Gas>,
     deposit: Option<Balance>,
-) -> Result<(), anyhow::Error> {
-    let worker = context.worker().clone();
+) -> Result<ExecutionSuccess, ExecutionFailure> {
     let handle = Handle::current();
     tokio::task::block_in_place(move || {
         handle.block_on(async {
-            let mut request = account.call(&worker, contract_id, method);
+            let mut request = account.call(contract_id, method);
 
             if let Some(args) = value {
-                request = request.args_json(args)?;
+                request = request.args_json(args);
             }
 
             if let Some(gas) = gas {
@@ -32,11 +31,7 @@ pub fn call(
                 request = request.deposit(deposit);
             }
 
-            let request = request.transact().await;
-            match request.unwrap().status {
-                FinalExecutionStatus::Failure(err) => Err(anyhow::anyhow!(err)),
-                _ => return Ok(()),
-            }
+            request.transact().await.expect("Transaction Failure").into_result()
         })
     })
 }
@@ -48,12 +43,10 @@ pub fn view(
     value: Option<Value>,
 ) -> Result<serde_json::Value, String> {
     let handle = Handle::current();
-    let worker = context.worker().clone();
     tokio::task::block_in_place(move || {
         handle.block_on(async {
             let result = contract
                 .view(
-                    &worker,
                     method,
                     value.unwrap_or_default().to_string().into_bytes(),
                 )
@@ -79,7 +72,7 @@ macro_rules! invoke_call {
             None,
         );
         if outcome.is_err() {
-            $context.add_method_errors($method, outcome.unwrap_err().to_string());
+            $context.add_method_errors($method, format!("{:?}", outcome.unwrap_err()));
         };
     };
     ($self: ident, $context: ident, $method: tt, $param: ident) => {
@@ -93,7 +86,7 @@ macro_rules! invoke_call {
             None,
         );
         if outcome.is_err() {
-            $context.add_method_errors($method, outcome.unwrap_err().to_string());
+            $context.add_method_errors($method, format!("{:?}", outcome.unwrap_err()));
         };
     };
     ($self: ident, $context: ident, $method: tt, $param: ident, $deposit: expr) => {
@@ -107,7 +100,7 @@ macro_rules! invoke_call {
             $deposit,
         );
         if outcome.is_err() {
-            $context.add_method_errors($method, outcome.unwrap_err().to_string());
+            $context.add_method_errors($method, format!("{:?}", outcome.unwrap_err()));
         }
     };
     ($self: ident, $context: ident, $method: tt, $param: ident, $deposit: expr, $gas: expr) => {
@@ -121,7 +114,7 @@ macro_rules! invoke_call {
             $deposit,
         );
         if outcome.is_err() {
-            $context.add_method_errors($method, outcome.unwrap_err().to_string());
+            $context.add_method_errors($method, format!("{:?}", outcome.unwrap_err()));
         }
     };
 }

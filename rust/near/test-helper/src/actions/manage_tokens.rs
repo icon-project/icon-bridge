@@ -1,11 +1,10 @@
 use crate::invoke_call;
-use crate::types::{Context, Contract, NativeCoinBsh, TokenBsh};
+use crate::types::{Context, Contract, Bts};
 use duplicate::duplicate;
 
 #[duplicate(
     contract_type;
-    [ NativeCoinBsh ];
-    [ TokenBsh ];
+    [ Bts ];
 )]
 
 impl Contract<'_, contract_type> {
