@@ -164,7 +164,7 @@ impl BtpMessageCenter {
                     exception.message()
                 );
             }
-            _ => todo!(),
+            _ => {}
         };
     }
 }
