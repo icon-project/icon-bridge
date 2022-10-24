@@ -13,7 +13,6 @@ mod handle_relay_message {
         async fn handle_relay_message_as_registered_relay_success() {
             Kitten::given(NEW_CONTEXT)
                 .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-                .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
                 .and(BMC_CONTRACT_IS_OWNED_BY_ALICE)
                 .and(ICON_LINK_IS_PRESENT_IN_BMC)
                 .and(RELAY_1_IS_REGISTERED_FOR_ICON_LINK)
