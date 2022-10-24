@@ -8,12 +8,11 @@ rust_shared_library(
     srcs = [
         "src/assertion.rs",
         "src/estimate.rs",
-        "src/external/bmc.rs",
         "src/external/bsh.rs",
         "src/external/mod.rs",
         "src/types/events.rs",
         "src/types/receipts.rs",
-         "src/types/relay_message.rs",
+        "src/types/relay_message.rs",
         "src/types/mod.rs",
         "src/internal_service.rs",
         "src/lib.rs",
@@ -38,7 +37,7 @@ rust_shared_library(
         "@rules_rust//wasm_bindgen/raze:wasm_bindgen",
         "@rust//btp-common:btp_common",
         "@rust//near/libraries",
-        "@rust//near/libraries/cargo:near_sdk",
+        "@rust//near/cargo:near_sdk",
     ],
 )
 

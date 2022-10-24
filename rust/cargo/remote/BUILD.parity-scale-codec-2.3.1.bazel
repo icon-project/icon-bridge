@@ -48,7 +48,7 @@ rust_library(
     data = [],
     edition = "2018",
     proc_macro_deps = [
-        "@raze__impl_trait_for_tuples__0_2_1//:impl_trait_for_tuples",
+        "@raze__impl_trait_for_tuples__0_2_2//:impl_trait_for_tuples",
         "@raze__parity_scale_codec_derive__2_3_1//:parity_scale_codec_derive",
     ],
     rustc_flags = [
@@ -64,8 +64,8 @@ rust_library(
     deps = [
         "@raze__arrayvec__0_7_2//:arrayvec",
         "@raze__bitvec__0_20_4//:bitvec",
-        "@raze__byte_slice_cast__1_2_0//:byte_slice_cast",
-        "@raze__serde__1_0_118//:serde",
+        "@raze__byte_slice_cast__1_2_1//:byte_slice_cast",
+        "@raze__serde__1_0_147//:serde",
     ],
 )
 

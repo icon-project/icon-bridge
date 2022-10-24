@@ -37,7 +37,7 @@ rust_library(
     name = "c2_chacha",
     srcs = glob(["**/*.rs"]),
     aliases = {
-        "@raze__ppv_lite86__0_2_15//:ppv_lite86": "ppv_lite86",
+        "@raze__ppv_lite86__0_2_16//:ppv_lite86": "ppv_lite86",
     },
     crate_features = [
         "cipher",
@@ -60,6 +60,6 @@ rust_library(
     # buildifier: leave-alone
     deps = [
         "@raze__cipher__0_2_5//:cipher",
-        "@raze__ppv_lite86__0_2_15//:ppv_lite86",
+        "@raze__ppv_lite86__0_2_16//:ppv_lite86",
     ],
 )

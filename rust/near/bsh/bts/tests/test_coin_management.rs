@@ -1,6 +1,6 @@
 use bts::BtpTokenService;
 use near_sdk::{
-    env, json_types::U128, serde_json::to_value, testing_env, AccountId, PromiseResult, VMContext,
+    env, json_types::U128, serde_json::to_value, testing_env, AccountId, PromiseResult, VMContext, test_utils::VMContextBuilder, Gas, VMConfig, RuntimeFeesConfig
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -13,39 +13,25 @@ mod token;
 use token::*;
 pub type Coin = Asset<WrappedNativeCoin>;
 
-fn get_context(
-    input: Vec<u8>,
-    is_view: bool,
-    signer_account_id: AccountId,
-    attached_deposit: u128,
-) -> VMContext {
-    VMContext {
-        current_account_id: alice().to_string(),
-        signer_account_id: signer_account_id.to_string(),
-        signer_account_pk: vec![0, 1, 2],
-        predecessor_account_id: signer_account_id.to_string(),
-        input,
-        block_index: 0,
-        block_timestamp: 0,
-        account_balance: 0,
-        account_locked_balance: 0,
-        storage_usage: 0,
-        attached_deposit,
-        prepaid_gas: 10u64.pow(18),
-        random_seed: vec![0, 1, 2],
-        is_view,
-        output_data_receivers: vec![],
-        epoch_height: 19,
-    }
+fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u128) -> VMContext {
+    VMContextBuilder::new()
+        .current_account_id(alice())
+        .is_view(is_view)
+        .signer_account_id(signer_account_id.clone())
+        .predecessor_account_id(signer_account_id)
+        .storage_usage(env::storage_usage())
+        .prepaid_gas(Gas(10u64.pow(18)))
+        .attached_deposit(attached_deposit)
+        .build()
 }
 
 #[test]
 fn register_token() {
-    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    let context = |v: AccountId, d: u128| (get_context(false, v, d));
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -83,11 +69,11 @@ fn register_token() {
 #[test]
 #[should_panic(expected = "BSHRevertAlreadyExistsToken")]
 fn register_existing_token() {
-    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    let context = |v: AccountId, d: u128| (get_context(false, v, d));
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -110,11 +96,11 @@ fn register_existing_token() {
 #[test]
 #[should_panic(expected = "BSHRevertNotExistsPermission")]
 fn register_token_permission() {
-    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    let context = |v: AccountId, d: u128| (get_context(false, v, d));
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -136,7 +122,7 @@ fn register_token_permission() {
 
 #[test]
 fn get_registered_coin_id() {
-    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    let context = |v: AccountId, d: u128| (get_context(false, v, d));
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
@@ -155,7 +141,7 @@ fn get_registered_coin_id() {
 #[test]
 #[should_panic(expected = "BSHRevertNotExistsToken: ICON")]
 fn get_non_exist_coin_id() {
-    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    let context = |v: AccountId, d: u128| (get_context(false, v, d));
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
@@ -172,7 +158,7 @@ fn get_non_exist_coin_id() {
 
 #[test]
 fn set_token_limit() {
-    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    let context = |v: AccountId, d: u128| (get_context(false, v, d));
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
@@ -186,12 +172,12 @@ fn set_token_limit() {
     contract.set_token_limit(coins, limits).unwrap();
     let token_limits = contract.get_token_limit("NEAR".to_string());
 
-    assert_eq!(token_limits, 10000000000000000000000_u128)
+    assert_eq!(token_limits, U128(10000000000000000000000))
 }
 
 #[test]
 fn update_token_limit() {
-    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    let context = |v: AccountId, d: u128| (get_context(false, v, d));
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
@@ -209,16 +195,16 @@ fn update_token_limit() {
     contract.set_token_limit(coins, limits).unwrap();
 
     let token_limits = contract.get_token_limit("NEAR".to_string());
-    assert_eq!(token_limits, 10000000000000000000003_u128)
+    assert_eq!(token_limits, U128(10000000000000000000003))
 }
 
 #[test]
 fn query_token_metadata() {
-    let context = |v: AccountId, d: u128| (get_context(vec![], false, v, d));
+    let context = |v: AccountId, d: u128| (get_context(false, v, d));
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );

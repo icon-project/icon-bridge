@@ -17,7 +17,7 @@ pub enum TokenServiceType {
     },
     RequestTokenRegister,
     ResponseHandleService {
-        code: u128,
+        code: u8,
         message: String,
     },
     RequestBlacklist {
@@ -96,7 +96,7 @@ impl Encodable for TokenServiceMessage {
                 ref message,
             } => {
                 let mut params = rlp::RlpStream::new_list(2);
-                params.append::<u128>(code).append::<String>(message);
+                params.append::<u8>(code).append::<String>(message);
                 stream.append::<u128>(&2).append(&params.out());
             }
             &TokenServiceType::ResponseBlacklist {

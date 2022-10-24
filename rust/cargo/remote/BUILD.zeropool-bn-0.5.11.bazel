@@ -1,0 +1,69 @@
+"""
+@generated
+cargo-raze crate build file.
+
+DO NOT EDIT! Replaced on runs of cargo-raze
+"""
+
+# buildifier: disable=load
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+# buildifier: disable=load
+load(
+    "@rules_rust//rust:defs.bzl",
+    "rust_binary",
+    "rust_library",
+    "rust_proc_macro",
+    "rust_test",
+)
+
+package(default_visibility = [
+    # Public for visibility by "@raze__crate__version//" targets.
+    #
+    # Prefer access through "//cargo", which limits external
+    # visibility to explicit Cargo.toml dependencies.
+    "//visibility:public",
+])
+
+licenses([
+    "notice",  # MIT from expression "MIT OR Apache-2.0"
+])
+
+# Generated Targets
+
+# Unsupported target "api" with type "bench" omitted
+
+# Unsupported target "dh" with type "example" omitted
+
+# Unsupported target "joux" with type "example" omitted
+
+rust_library(
+    name = "zeropool_bn",
+    srcs = glob(["**/*.rs"]),
+    crate_features = [
+        "borsh",
+        "default",
+        "std",
+    ],
+    crate_root = "src/lib.rs",
+    data = [],
+    edition = "2018",
+    rustc_flags = [
+        "--cap-lints=allow",
+    ],
+    tags = [
+        "cargo-raze",
+        "manual",
+        "crate-name=zeropool-bn"
+    ],
+    version = "0.5.11",
+    # buildifier: leave-alone
+    deps = [
+        "@raze__borsh__0_9_3//:borsh",
+        "@raze__byteorder__1_4_3//:byteorder",
+        "@raze__crunchy__0_2_2//:crunchy",
+        "@raze__lazy_static__1_4_0//:lazy_static",
+        "@raze__rand__0_8_5//:rand",
+        "@raze__rustc_hex__2_1_0//:rustc_hex",
+    ],
+)

@@ -57,7 +57,7 @@ rust_library(
     # buildifier: leave-alone
     deps = [
         "@raze__byteorder__1_4_3//:byteorder",
-        "@raze__rand__0_8_4//:rand",
+        "@raze__rand__0_8_5//:rand",
         "@raze__rustc_hex__2_1_0//:rustc_hex",
         "@raze__static_assertions__1_1_0//:static_assertions",
     ],

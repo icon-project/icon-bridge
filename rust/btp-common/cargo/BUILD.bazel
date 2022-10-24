@@ -6,7 +6,7 @@ licenses([
 
 alias(
     name = "serde",
-    actual = "@raze__serde__1_0_118//:serde",
+    actual = "@raze__serde__1_0_147//:serde",
     tags = [
         "cargo-raze",
         "manual",

@@ -1,0 +1,74 @@
+"""
+@generated
+cargo-raze crate build file.
+
+DO NOT EDIT! Replaced on runs of cargo-raze
+"""
+
+# buildifier: disable=load
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+# buildifier: disable=load
+load(
+    "@rules_rust//rust:defs.bzl",
+    "rust_binary",
+    "rust_library",
+    "rust_proc_macro",
+    "rust_test",
+)
+
+package(default_visibility = [
+    # Public for visibility by "@raze__crate__version//" targets.
+    #
+    # Prefer access through "//cargo", which limits external
+    # visibility to explicit Cargo.toml dependencies.
+    "//visibility:public",
+])
+
+licenses([
+    "notice",  # MIT from expression "MIT OR Apache-2.0"
+])
+
+# Generated Targets
+
+rust_library(
+    name = "near_vm_logic",
+    srcs = glob(["**/*.rs"]),
+    aliases = {
+        "@raze__zeropool_bn__0_5_11//:zeropool_bn": "bn",
+    },
+    crate_features = [
+        "bn",
+        "default",
+        "protocol_feature_alt_bn128",
+    ],
+    crate_root = "src/lib.rs",
+    data = [],
+    edition = "2021",
+    rustc_flags = [
+        "--cap-lints=allow",
+    ],
+    tags = [
+        "cargo-raze",
+        "manual",
+        "crate-name=near-vm-logic"
+    ],
+    version = "0.14.0",
+    # buildifier: leave-alone
+    deps = [
+        "@raze__base64__0_13_1//:base64",
+        "@raze__borsh__0_9_3//:borsh",
+        "@raze__bs58__0_4_0//:bs58",
+        "@raze__byteorder__1_4_3//:byteorder",
+        "@raze__near_account_id__0_14_0//:near_account_id",
+        "@raze__near_crypto__0_14_0//:near_crypto",
+        "@raze__near_primitives__0_14_0//:near_primitives",
+        "@raze__near_primitives_core__0_14_0//:near_primitives_core",
+        "@raze__near_vm_errors__0_14_0//:near_vm_errors",
+        "@raze__ripemd__0_1_3//:ripemd",
+        "@raze__serde__1_0_147//:serde",
+        "@raze__sha2__0_10_6//:sha2",
+        "@raze__sha3__0_10_6//:sha3",
+        "@raze__zeropool_bn__0_5_11//:zeropool_bn",
+    ],
+)

@@ -193,44 +193,35 @@ impl BtpTokenService {
         &self.token_limits
     }
 
-    pub fn get_token_limit(&self, coin_name: String) -> u128 {
-        *self.token_limits.get(&coin_name).unwrap()
+    pub fn get_token_limit(&self, coin_name: String) -> U128 {
+        self.token_limits
+            .get(&coin_name)
+            .map(|token_limit| U128(*token_limit))
+            .expect(&format!("{}", BshError::LimitNotSet))
     }
 }
 
 impl BtpTokenService {
     pub fn mint(&mut self, coin_id: &CoinId, amount: u128, coin: &Coin, receiver_id: AccountId) {
-        ext_nep141::mint(
+        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap()).mint(
             amount.into(),
-            coin.metadata().uri().to_owned().unwrap(),
-            estimate::NO_DEPOSIT,
-            estimate::GAS_FOR_MINT,
         )
-        .then(ext_self::on_mint(
+        .then(Self::ext(env::current_account_id()).on_mint(
             amount,
             *coin_id,
             coin.symbol().to_string(),
             receiver_id,
-            env::current_account_id(),
-            estimate::NO_DEPOSIT,
-            estimate::GAS_FOR_ON_MINT,
         ));
     }
 
     pub fn burn(&mut self, coin_id: &CoinId, amount: u128, coin: &Coin) {
-        ext_nep141::burn(
+        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap()).burn(
             amount.into(),
-            coin.metadata().uri().to_owned().unwrap(),
-            estimate::NO_DEPOSIT,
-            estimate::GAS_FOR_BURN,
         )
-        .then(ext_self::on_burn(
+        .then(Self::ext(env::current_account_id()).on_burn(
             amount,
             coin_id.to_owned(),
             coin.symbol().to_string(),
-            env::current_account_id(),
-            estimate::NO_DEPOSIT,
-            estimate::GAS_FOR_FT_TRANSFER_CALL,
         ));
     }
 

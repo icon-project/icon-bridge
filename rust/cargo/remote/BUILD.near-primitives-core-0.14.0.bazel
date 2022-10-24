@@ -1,0 +1,67 @@
+"""
+@generated
+cargo-raze crate build file.
+
+DO NOT EDIT! Replaced on runs of cargo-raze
+"""
+
+# buildifier: disable=load
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+# buildifier: disable=load
+load(
+    "@rules_rust//rust:defs.bzl",
+    "rust_binary",
+    "rust_library",
+    "rust_proc_macro",
+    "rust_test",
+)
+
+package(default_visibility = [
+    # Public for visibility by "@raze__crate__version//" targets.
+    #
+    # Prefer access through "//cargo", which limits external
+    # visibility to explicit Cargo.toml dependencies.
+    "//visibility:public",
+])
+
+licenses([
+    "notice",  # MIT from expression "MIT OR Apache-2.0"
+])
+
+# Generated Targets
+
+rust_library(
+    name = "near_primitives_core",
+    srcs = glob(["**/*.rs"]),
+    crate_features = [
+        "default",
+        "protocol_feature_alt_bn128",
+    ],
+    crate_root = "src/lib.rs",
+    data = [],
+    edition = "2021",
+    proc_macro_deps = [
+        "@raze__derive_more__0_99_17//:derive_more",
+    ],
+    rustc_flags = [
+        "--cap-lints=allow",
+    ],
+    tags = [
+        "cargo-raze",
+        "manual",
+        "crate-name=near-primitives-core"
+    ],
+    version = "0.14.0",
+    # buildifier: leave-alone
+    deps = [
+        "@raze__base64__0_11_0//:base64",
+        "@raze__borsh__0_9_3//:borsh",
+        "@raze__bs58__0_4_0//:bs58",
+        "@raze__near_account_id__0_14_0//:near_account_id",
+        "@raze__num_rational__0_3_2//:num_rational",
+        "@raze__serde__1_0_147//:serde",
+        "@raze__sha2__0_10_6//:sha2",
+        "@raze__strum__0_24_1//:strum",
+    ],
+)

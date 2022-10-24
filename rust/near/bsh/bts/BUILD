@@ -8,7 +8,6 @@ rust_shared_library(
     srcs = [
         "src/external/bmc.rs",
         "src/external/mod.rs",
-        "src/external/native_coin.rs",
         "src/external/fungible_token.rs",
         "src/external/nep141.rs",
         "src/types/mod.rs",
@@ -40,9 +39,9 @@ rust_shared_library(
     deps = [
         "@rules_rust//wasm_bindgen/raze:wasm_bindgen",
         "@rust//btp-common:btp_common",
-        "@rust//near/bsh/bts/cargo:near_sdk",
+        "@rust//near/cargo:near_sdk",
         "@rust//near/libraries",
-        "@rust//near/bsh/bts/cargo:near_contract_standards",
+        "@rust//near/cargo:near_contract_standards",
     ],
 )
 

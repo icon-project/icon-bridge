@@ -1,0 +1,198 @@
+"""
+@generated
+cargo-raze crate build file.
+
+DO NOT EDIT! Replaced on runs of cargo-raze
+"""
+
+# buildifier: disable=load
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+# buildifier: disable=load
+load(
+    "@rules_rust//rust:defs.bzl",
+    "rust_binary",
+    "rust_library",
+    "rust_proc_macro",
+    "rust_test",
+)
+
+package(default_visibility = [
+    # Public for visibility by "@raze__crate__version//" targets.
+    #
+    # Prefer access through "//cargo", which limits external
+    # visibility to explicit Cargo.toml dependencies.
+    "//visibility:public",
+])
+
+licenses([
+    "notice",  # MIT from expression "MIT"
+])
+
+# Generated Targets
+# buildifier: disable=out-of-order-load
+# buildifier: disable=load-on-top
+load(
+    "@rules_rust//cargo:cargo_build_script.bzl",
+    "cargo_build_script",
+)
+
+cargo_build_script(
+    name = "schemars_build_script",
+    srcs = glob(["**/*.rs"]),
+    build_script_env = {
+    },
+    crate_features = [
+        "default",
+        "derive",
+        "schemars_derive",
+    ],
+    crate_root = "build.rs",
+    data = glob(["**"]),
+    edition = "2018",
+    rustc_flags = [
+        "--cap-lints=allow",
+    ],
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+    version = "0.8.11",
+    visibility = ["//visibility:private"],
+    deps = [
+    ],
+)
+
+# Unsupported target "custom_serialization" with type "example" omitted
+
+# Unsupported target "custom_settings" with type "example" omitted
+
+# Unsupported target "doc_comments" with type "example" omitted
+
+# Unsupported target "enum_repr" with type "example" omitted
+
+# Unsupported target "from_value" with type "example" omitted
+
+# Unsupported target "main" with type "example" omitted
+
+# Unsupported target "remote_derive" with type "example" omitted
+
+# Unsupported target "schemars_attrs" with type "example" omitted
+
+# Unsupported target "serde_attrs" with type "example" omitted
+
+# Unsupported target "validate" with type "example" omitted
+
+rust_library(
+    name = "schemars",
+    srcs = glob(["**/*.rs"]),
+    crate_features = [
+        "default",
+        "derive",
+        "schemars_derive",
+    ],
+    crate_root = "src/lib.rs",
+    data = [],
+    edition = "2018",
+    proc_macro_deps = [
+        "@raze__schemars_derive__0_8_11//:schemars_derive",
+    ],
+    rustc_flags = [
+        "--cap-lints=allow",
+    ],
+    tags = [
+        "cargo-raze",
+        "manual",
+        "crate-name=schemars"
+    ],
+    version = "0.8.11",
+    # buildifier: leave-alone
+    deps = [
+        ":schemars_build_script",
+        "@raze__dyn_clone__1_0_9//:dyn_clone",
+        "@raze__serde__1_0_147//:serde",
+        "@raze__serde_json__1_0_87//:serde_json",
+    ],
+)
+
+# Unsupported target "arrayvec" with type "test" omitted
+
+# Unsupported target "bound" with type "test" omitted
+
+# Unsupported target "bytes" with type "test" omitted
+
+# Unsupported target "chrono" with type "test" omitted
+
+# Unsupported target "crate_alias" with type "test" omitted
+
+# Unsupported target "default" with type "test" omitted
+
+# Unsupported target "deprecated" with type "test" omitted
+
+# Unsupported target "dereference" with type "test" omitted
+
+# Unsupported target "docs" with type "test" omitted
+
+# Unsupported target "either" with type "test" omitted
+
+# Unsupported target "enum" with type "test" omitted
+
+# Unsupported target "enum_deny_unknown_fields" with type "test" omitted
+
+# Unsupported target "enum_repr" with type "test" omitted
+
+# Unsupported target "enumset" with type "test" omitted
+
+# Unsupported target "examples" with type "test" omitted
+
+# Unsupported target "ffi" with type "test" omitted
+
+# Unsupported target "flatten" with type "test" omitted
+
+# Unsupported target "from_value" with type "test" omitted
+
+# Unsupported target "indexmap" with type "test" omitted
+
+# Unsupported target "inline_subschemas" with type "test" omitted
+
+# Unsupported target "macro" with type "test" omitted
+
+# Unsupported target "nonzero_ints" with type "test" omitted
+
+# Unsupported target "property_name" with type "test" omitted
+
+# Unsupported target "range" with type "test" omitted
+
+# Unsupported target "remote_derive" with type "test" omitted
+
+# Unsupported target "remote_derive_generic" with type "test" omitted
+
+# Unsupported target "result" with type "test" omitted
+
+# Unsupported target "schema_for_schema" with type "test" omitted
+
+# Unsupported target "schema_name" with type "test" omitted
+
+# Unsupported target "schema_with_enum" with type "test" omitted
+
+# Unsupported target "schema_with_struct" with type "test" omitted
+
+# Unsupported target "skip" with type "test" omitted
+
+# Unsupported target "smallvec" with type "test" omitted
+
+# Unsupported target "struct" with type "test" omitted
+
+# Unsupported target "struct_additional_properties" with type "test" omitted
+
+# Unsupported target "time" with type "test" omitted
+
+# Unsupported target "transparent" with type "test" omitted
+
+# Unsupported target "ui" with type "test" omitted
+
+# Unsupported target "url" with type "test" omitted
+
+# Unsupported target "uuid" with type "test" omitted
+
+# Unsupported target "validate" with type "test" omitted

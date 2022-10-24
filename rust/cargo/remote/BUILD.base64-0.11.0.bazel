@@ -1,3 +1,10 @@
+"""
+@generated
+cargo-raze crate build file.
+
+DO NOT EDIT! Replaced on runs of cargo-raze
+"""
+
 # buildifier: disable=load
 load("@bazel_skylib//lib:selects.bzl", "selects")
 
@@ -11,12 +18,22 @@ load(
 )
 
 package(default_visibility = [
+    # Public for visibility by "@raze__crate__version//" targets.
+    #
+    # Prefer access through "//cargo", which limits external
+    # visibility to explicit Cargo.toml dependencies.
     "//visibility:public",
 ])
 
 licenses([
-    "notice",
+    "notice",  # MIT from expression "MIT OR Apache-2.0"
 ])
+
+# Generated Targets
+
+# Unsupported target "benchmarks" with type "bench" omitted
+
+# Unsupported target "make_tables" with type "example" omitted
 
 rust_library(
     name = "base64",
@@ -41,3 +58,11 @@ rust_library(
     deps = [
     ],
 )
+
+# Unsupported target "decode" with type "test" omitted
+
+# Unsupported target "encode" with type "test" omitted
+
+# Unsupported target "helpers" with type "test" omitted
+
+# Unsupported target "tests" with type "test" omitted

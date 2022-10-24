@@ -82,6 +82,6 @@ rust_library(
     # buildifier: leave-alone
     deps = [
         ":reed_solomon_erasure_build_script",
-        "@raze__smallvec__1_7_0//:smallvec",
+        "@raze__smallvec__1_10_0//:smallvec",
     ],
 )

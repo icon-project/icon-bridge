@@ -1,5 +1,7 @@
 use bts::BtpTokenService;
-use near_sdk::{env, json_types::U128, testing_env, AccountId, VMContext};
+use near_sdk::{
+    env, json_types::U128, test_utils::VMContextBuilder, testing_env, AccountId, Gas, VMContext,
+};
 pub mod accounts;
 use accounts::*;
 use libraries::types::{
@@ -14,31 +16,21 @@ use token::*;
 pub type Coin = Asset<WrappedNativeCoin>;
 
 fn get_context(
-    input: Vec<u8>,
     is_view: bool,
     signer_account_id: AccountId,
     attached_deposit: u128,
-    storage_usage: u64,
     account_balance: u128,
 ) -> VMContext {
-    VMContext {
-        current_account_id: alice().to_string(),
-        signer_account_id: signer_account_id.to_string(),
-        signer_account_pk: vec![0, 1, 2],
-        predecessor_account_id: signer_account_id.to_string(),
-        input,
-        block_index: 0,
-        block_timestamp: 0,
-        account_balance,
-        account_locked_balance: 0,
-        storage_usage,
-        attached_deposit,
-        prepaid_gas: 10u64.pow(18),
-        random_seed: vec![0, 1, 2],
-        is_view,
-        output_data_receivers: vec![],
-        epoch_height: 19,
-    }
+    VMContextBuilder::new()
+        .current_account_id(alice())
+        .is_view(is_view)
+        .signer_account_id(signer_account_id.clone())
+        .predecessor_account_id(signer_account_id)
+        .storage_usage(env::storage_usage())
+        .prepaid_gas(Gas(10u64.pow(18)))
+        .attached_deposit(attached_deposit)
+        .account_balance(account_balance)
+        .build()
 }
 
 #[test]
@@ -46,9 +38,7 @@ fn get_context(
 fn handle_fee_gathering() {
     use libraries::types::AccumulatedAssetFees;
 
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
     let destination =
@@ -138,9 +128,7 @@ fn handle_fee_gathering() {
 
 #[test]
 fn get_fee() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
 
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());

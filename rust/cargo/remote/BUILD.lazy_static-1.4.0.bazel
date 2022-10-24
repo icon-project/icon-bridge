@@ -35,6 +35,8 @@ rust_library(
     name = "lazy_static",
     srcs = glob(["**/*.rs"]),
     crate_features = [
+        "spin",
+        "spin_no_std",
     ],
     crate_root = "src/lib.rs",
     data = [],
@@ -50,6 +52,7 @@ rust_library(
     version = "1.4.0",
     # buildifier: leave-alone
     deps = [
+        "@raze__spin__0_5_2//:spin",
     ],
 )
 

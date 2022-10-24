@@ -1,0 +1,127 @@
+"""
+@generated
+cargo-raze crate build file.
+
+DO NOT EDIT! Replaced on runs of cargo-raze
+"""
+
+# buildifier: disable=load
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+# buildifier: disable=load
+load(
+    "@rules_rust//rust:defs.bzl",
+    "rust_binary",
+    "rust_library",
+    "rust_proc_macro",
+    "rust_test",
+)
+
+package(default_visibility = [
+    # Public for visibility by "@raze__crate__version//" targets.
+    #
+    # Prefer access through "//cargo", which limits external
+    # visibility to explicit Cargo.toml dependencies.
+    "//visibility:public",
+])
+
+licenses([
+    "notice",  # MIT from expression "MIT OR Apache-2.0"
+])
+
+# Generated Targets
+
+rust_binary(
+    # Prefix bin name to disambiguate from (probable) collision with lib name
+    # N.B.: The exact form of this is subject to change.
+    name = "cargo_bin_generate_schema_schema",
+    srcs = glob(["**/*.rs"]),
+    crate_features = [
+        "const-generics",
+        "default",
+        "rc",
+        "std",
+    ],
+    crate_root = "src/generate_schema_schema.rs",
+    data = [],
+    edition = "2018",
+    proc_macro_deps = [
+        "@raze__borsh_derive__0_9_3//:borsh_derive",
+    ],
+    rustc_flags = [
+        "--cap-lints=allow",
+    ],
+    tags = [
+        "cargo-raze",
+        "manual",
+        "crate-name=generate_schema_schema"
+    ],
+    version = "0.9.3",
+    # buildifier: leave-alone
+    deps = [
+        ":borsh",
+        "@raze__hashbrown__0_11_2//:hashbrown",
+    ],
+)
+
+rust_library(
+    name = "borsh",
+    srcs = glob(["**/*.rs"]),
+    crate_features = [
+        "const-generics",
+        "default",
+        "rc",
+        "std",
+    ],
+    crate_root = "src/lib.rs",
+    data = [],
+    edition = "2018",
+    proc_macro_deps = [
+        "@raze__borsh_derive__0_9_3//:borsh_derive",
+    ],
+    rustc_flags = [
+        "--cap-lints=allow",
+    ],
+    tags = [
+        "cargo-raze",
+        "manual",
+        "crate-name=borsh"
+    ],
+    version = "0.9.3",
+    # buildifier: leave-alone
+    deps = [
+        "@raze__hashbrown__0_11_2//:hashbrown",
+    ],
+)
+
+# Unsupported target "smoke" with type "test" omitted
+
+# Unsupported target "test_arrays" with type "test" omitted
+
+# Unsupported target "test_binary_heaps" with type "test" omitted
+
+# Unsupported target "test_de_errors" with type "test" omitted
+
+# Unsupported target "test_generic_struct" with type "test" omitted
+
+# Unsupported target "test_hash_map" with type "test" omitted
+
+# Unsupported target "test_macro_namespace_collisions" with type "test" omitted
+
+# Unsupported target "test_nonzero_integers" with type "test" omitted
+
+# Unsupported target "test_rc" with type "test" omitted
+
+# Unsupported target "test_schema_enums" with type "test" omitted
+
+# Unsupported target "test_schema_nested" with type "test" omitted
+
+# Unsupported target "test_schema_structs" with type "test" omitted
+
+# Unsupported target "test_simple_structs" with type "test" omitted
+
+# Unsupported target "test_strings" with type "test" omitted
+
+# Unsupported target "test_vecs" with type "test" omitted
+
+# Unsupported target "test_zero_size" with type "test" omitted

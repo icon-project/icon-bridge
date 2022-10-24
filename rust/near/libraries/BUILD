@@ -58,13 +58,15 @@ rust_library(
         "src/types/blacklist.rs",
         "src/types/token_limit.rs",
         "src/types/coin_ids.rs",
+        "src/types/nullable.rs",
+        "src/types/btp_errors.rs"
     ],
     deps = [
         "@rust//btp-common:btp_common",
-        "@rust//near/libraries/cargo:bytes",
-        "@rust//near/libraries/cargo:near_sdk",
-        "@rust//near/libraries/cargo:rustc_hex",
-        "@rust//near/libraries/cargo:serde",
-        "@rust//near/libraries/cargo:near_contract_standards"
+        "@rust//near/cargo:bytes",
+        "@rust//near/cargo:near_sdk",
+        "@rust//near/cargo:rustc_hex",
+        "@rust//near/cargo:serde",
+        "@rust//near/cargo:near_contract_standards"
     ],
 )

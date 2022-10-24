@@ -58,7 +58,7 @@ cargo_build_script(
     version = "0.3.3",
     visibility = ["//visibility:private"],
     deps = [
-        "@raze__autocfg__1_0_1//:autocfg",
+        "@raze__autocfg__1_1_0//:autocfg",
     ],
 )
 
@@ -93,8 +93,8 @@ rust_library(
     # buildifier: leave-alone
     deps = [
         ":num_bigint_build_script",
-        "@raze__num_integer__0_1_44//:num_integer",
-        "@raze__num_traits__0_2_14//:num_traits",
+        "@raze__num_integer__0_1_45//:num_integer",
+        "@raze__num_traits__0_2_15//:num_traits",
     ],
 )
 

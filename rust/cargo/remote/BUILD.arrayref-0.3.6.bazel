@@ -1,3 +1,10 @@
+"""
+@generated
+cargo-raze crate build file.
+
+DO NOT EDIT! Replaced on runs of cargo-raze
+"""
+
 # buildifier: disable=load
 load("@bazel_skylib//lib:selects.bzl", "selects")
 
@@ -11,12 +18,24 @@ load(
 )
 
 package(default_visibility = [
+    # Public for visibility by "@raze__crate__version//" targets.
+    #
+    # Prefer access through "//cargo", which limits external
+    # visibility to explicit Cargo.toml dependencies.
     "//visibility:public",
 ])
 
 licenses([
-    "restricted",
+    "restricted",  # BSD-2-Clause from expression "BSD-2-Clause"
 ])
+
+# Generated Targets
+
+# Unsupported target "array_refs" with type "example" omitted
+
+# Unsupported target "array_refs_with_const" with type "example" omitted
+
+# Unsupported target "simple-case" with type "example" omitted
 
 rust_library(
     name = "arrayref",
