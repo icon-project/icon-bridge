@@ -1,4 +1,4 @@
-use crate::types::{Bmc, Bmv, Context, Contract, NativeCoinBsh, TokenBsh};
+use crate::types::{Bmc, Bts, Context, Contract};
 use duplicate::duplicate;
 use std::path::Path;
 use tokio::runtime::Handle;
@@ -12,9 +12,7 @@ pub async fn deploy(path: &str, worker: Worker<impl DevNetwork>) -> Result<Works
 #[duplicate(
     contract_type;
     [ Bmc ];
-    [ Bmv ];
-    [ TokenBsh ];
-    [ NativeCoinBsh ];
+    [ Bts ];
 )]
 impl Contract<'_, contract_type> {
     pub fn deploy(&self, mut context: Context) -> Context {
