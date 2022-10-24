@@ -339,22 +339,16 @@ impl BtpTokenService {
         destination_network: String,
         message: TokenServiceMessage,
     ) {
-        ext_bmc::send_service_message(
+        ext_bmc::ext(self.bmc.clone(),).send_service_message(
             serial_no,
             self.name.clone(),
             destination_network.clone(),
             message.clone().into(),
-            self.bmc.clone(),
-            estimate::NO_DEPOSIT,
-            estimate::GAS_FOR_SEND_SERVICE_MESSAGE,
         )
-        .then(ext_self::send_service_message_callback(
+        .then(Self::ext(env::current_account_id()).send_service_message_callback(
             destination_network,
             message.clone(),
             serial_no,
-            env::current_account_id(),
-            estimate::NO_DEPOSIT,
-            estimate::GAS_FOR_SEND_SERVICE_MESSAGE,
         ));
 
         #[cfg(feature = "testable")]

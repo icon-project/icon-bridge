@@ -1,4 +1,4 @@
-use near_sdk::ext_contract;
+use near_sdk::{ext_contract, AccountId};
 use near_sdk::json_types::U128;
 
 

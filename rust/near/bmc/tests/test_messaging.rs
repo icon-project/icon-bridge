@@ -1,11 +1,14 @@
 use bmc::{BtpMessageCenter, RelayMessage};
 use libraries::types::{Account, BtpError};
 use near_sdk::{
+    VMConfig,
+    RuntimeFeesConfig,
     borsh::{try_to_vec_with_schema, BorshSerialize},
     env,
     json_types::U128,
     serde_json::{from_value, json},
     testing_env, AccountId, PromiseResult, VMContext,
+    Gas, test_utils::VMContextBuilder
 };
 use std::convert::TryFrom;
 pub mod accounts;
@@ -22,24 +25,14 @@ use libraries::types::{
 use std::convert::TryInto;
 
 fn get_context(input: Vec<u8>, is_view: bool, signer_account_id: AccountId) -> VMContext {
-    VMContext {
-        current_account_id: alice().to_string(),
-        signer_account_id: signer_account_id.to_string(),
-        signer_account_pk: vec![0, 1, 2],
-        predecessor_account_id: signer_account_id.to_string(),
-        input,
-        block_index: 0,
-        block_timestamp: 0,
-        account_balance: 0,
-        account_locked_balance: 0,
-        storage_usage: env::storage_usage(),
-        attached_deposit: 0,
-        prepaid_gas: 10u64.pow(18),
-        random_seed: vec![0, 1, 2],
-        is_view,
-        output_data_receivers: vec![],
-        epoch_height: 19,
-    }
+    VMContextBuilder::new()
+        .current_account_id(alice())
+        .is_view(is_view)
+        .signer_account_id(signer_account_id.clone())
+        .predecessor_account_id(signer_account_id)
+        .storage_usage(env::storage_usage())
+        .prepaid_gas(Gas(10u64.pow(18)))
+        .build()
 }
 
 #[test]
@@ -253,8 +246,8 @@ fn deserialize_serialized_btp_messages_from_json() {
         None,
     );
     assert_eq!(serialized_btp_messages, vec![btp_message_2])
-    // TODO: Add;
 }
+
 #[ignore]
 #[test]
 #[cfg(feature = "testable")]
@@ -339,7 +332,6 @@ fn handle_external_service_message_existing_service() {
     );
 }
 
-// #[ignore]
 #[test]
 #[cfg(feature = "testable")]
 fn handle_external_service_message_non_existing_service() {
@@ -421,8 +413,8 @@ fn handle_external_service_error_message() {
     contract.add_relays(link.clone(), vec![charlie()]);
     testing_env!(
         context(charlie()),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Failed]
     );

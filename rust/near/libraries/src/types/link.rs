@@ -342,33 +342,10 @@ mod tests {
 
     use super::*;
     use near_sdk::AccountId;
-    use near_sdk::{testing_env, VMContext};
-
-    fn get_context(input: Vec<u8>, is_view: bool) -> VMContext {
-        VMContext {
-            current_account_id: "alice.testnet".to_string(),
-            signer_account_id: "robert.testnet".to_string(),
-            signer_account_pk: vec![0, 1, 2],
-            predecessor_account_id: "jane.testnet".to_string(),
-            input,
-            block_index: 0,
-            block_timestamp: 0,
-            account_balance: 0,
-            account_locked_balance: 0,
-            storage_usage: 0,
-            attached_deposit: 0,
-            prepaid_gas: 10u64.pow(18),
-            random_seed: vec![0, 1, 2],
-            is_view,
-            output_data_receivers: vec![],
-            epoch_height: 19,
-        }
-    }
 
     #[test]
     fn add_link() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
+
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -383,8 +360,7 @@ mod tests {
 
     #[test]
     fn add_link_relays_pass() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
+
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -413,8 +389,7 @@ mod tests {
 
     #[test]
     fn set_link_block_interval_dst() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
+
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -434,8 +409,7 @@ mod tests {
 
     #[test]
     fn set_link_max_aggregation_src() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
+
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -455,8 +429,7 @@ mod tests {
 
     #[test]
     fn set_link_delay_limit_src() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
+
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -476,8 +449,7 @@ mod tests {
 
     #[test]
     fn set_link_relays_pass() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
+
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -518,8 +490,7 @@ mod tests {
 
     #[test]
     fn remove_link() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
+
         let mut links = Links::new();
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
@@ -532,8 +503,7 @@ mod tests {
 
     #[test]
     fn remove_link_non_existing() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
+
         let mut links = Links::new();
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
@@ -549,8 +519,7 @@ mod tests {
 
     #[test]
     fn to_vec_links() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
+
         let mut links = Links::new();
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),

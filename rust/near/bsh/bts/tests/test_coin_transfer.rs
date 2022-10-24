@@ -1,5 +1,5 @@
 use bts::BtpTokenService;
-use near_sdk::{env, json_types::U128, testing_env, AccountId, PromiseResult, VMContext};
+use near_sdk::{env, json_types::U128, testing_env, AccountId, PromiseResult, VMContext, test_utils::VMContextBuilder, Gas, VMConfig, RuntimeFeesConfig};
 pub mod accounts;
 use accounts::*;
 use libraries::types::{
@@ -13,38 +13,23 @@ use std::convert::TryInto;
 use token::*;
 pub type Coin = Asset<WrappedNativeCoin>;
 
-fn get_context(
-    input: Vec<u8>,
-    is_view: bool,
-    signer_account_id: AccountId,
-    attached_deposit: u128,
-    storage_usage: u64,
-    account_balance: u128,
-) -> VMContext {
-    VMContext {
-        current_account_id: alice().to_string(),
-        signer_account_id: signer_account_id.to_string(),
-        signer_account_pk: vec![0, 1, 2],
-        predecessor_account_id: signer_account_id.to_string(),
-        input,
-        block_index: 0,
-        block_timestamp: 0,
-        account_balance,
-        account_locked_balance: 0,
-        storage_usage,
-        attached_deposit,
-        prepaid_gas: 10u64.pow(18),
-        random_seed: vec![0, 1, 2],
-        is_view,
-        output_data_receivers: vec![],
-        epoch_height: 19,
-    }
+fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u128, account_balance: u128) -> VMContext {
+    VMContextBuilder::new()
+        .current_account_id(alice())
+        .is_view(is_view)
+        .signer_account_id(signer_account_id.clone())
+        .predecessor_account_id(signer_account_id)
+        .storage_usage(env::storage_usage())
+        .prepaid_gas(Gas(10u64.pow(18)))
+        .attached_deposit(attached_deposit)
+        .account_balance(account_balance)
+        .build()
 }
 
 #[test]
 fn deposit_native_coin() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
@@ -68,11 +53,9 @@ fn deposit_native_coin() {
 fn withdraw_native_coin() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             1000,
         )
     };
@@ -99,8 +82,8 @@ fn withdraw_native_coin() {
 
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -117,11 +100,9 @@ fn withdraw_native_coin() {
 fn withdraw_native_coin_higher_amount() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             1000,
         )
     };
@@ -157,7 +138,7 @@ fn external_transfer() {
     use btp_common::btp_address::Address;
 
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
@@ -172,8 +153,8 @@ fn external_transfer() {
 
     testing_env!(
         context(chuck(), 10000000000000000000000000),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -227,7 +208,7 @@ fn external_transfer() {
 #[cfg(feature = "testable")]
 fn handle_success_response_native_coin_external_transfer() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
@@ -302,12 +283,12 @@ fn handle_success_response_native_coin_external_transfer() {
 #[cfg(feature = "testable")]
 fn handle_success_response_icx_coin_external_transfer() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -349,8 +330,8 @@ fn handle_success_response_icx_coin_external_transfer() {
 
     testing_env!(
         context(chuck(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -398,8 +379,8 @@ fn handle_success_response_icx_coin_external_transfer() {
 
     testing_env!(
         context(chuck(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -439,7 +420,7 @@ fn handle_failure_response_native_coin_external_transfer() {
     use libraries::types::AccumulatedAssetFees;
 
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
@@ -518,12 +499,12 @@ fn handle_failure_response_icx_coin_external_transfer() {
     use libraries::types::AccumulatedAssetFees;
 
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -560,8 +541,8 @@ fn handle_failure_response_icx_coin_external_transfer() {
     );
     testing_env!(
         context(bmc(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -644,12 +625,12 @@ fn handle_failure_response_icx_coin_external_transfer() {
 #[cfg(feature = "testable")]
 fn reclaim_icx_coin() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -690,8 +671,8 @@ fn reclaim_icx_coin() {
 
     testing_env!(
         context(chuck(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -737,7 +718,7 @@ fn reclaim_icx_coin() {
 #[should_panic(expected = "BSHRevertNotMinimumDeposit")]
 fn external_transfer_higher_amount() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
@@ -759,7 +740,7 @@ fn external_transfer_higher_amount() {
 #[should_panic(expected = "BSHRevertNotExistsToken: ICON")]
 fn external_transfer_unregistered_coin() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
@@ -782,12 +763,12 @@ fn external_transfer_unregistered_coin() {
 #[should_panic(expected = "BSHRevertNotMinimumDeposit")]
 fn external_transfer_nil_balance() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -817,7 +798,7 @@ fn external_transfer_nil_balance() {
 #[cfg(feature = "testable")]
 fn external_transfer_batch() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
@@ -853,7 +834,7 @@ fn external_transfer_batch() {
 #[should_panic(expected = "BSHRevertNotMinimumDeposit")]
 fn external_transfer_batch_higher_amount() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
@@ -879,7 +860,7 @@ fn external_transfer_batch_higher_amount() {
 #[should_panic(expected = "BSHRevertNotExistsToken")]
 fn external_transfer_batch_unregistered_coin() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
@@ -906,12 +887,12 @@ fn external_transfer_batch_unregistered_coin() {
 #[should_panic(expected = "BSHRevertNotMinimumDeposit")]
 fn external_transfer_batch_nil_balance() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );

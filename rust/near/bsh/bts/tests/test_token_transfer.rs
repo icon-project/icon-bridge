@@ -1,5 +1,5 @@
 use bts::{BtpTokenService, Coin};
-use near_sdk::{env, json_types::U128, testing_env, AccountId, PromiseResult, VMContext};
+use near_sdk::{env, json_types::U128, testing_env, AccountId, PromiseResult, VMContext, test_utils::VMContextBuilder, Gas, VMConfig, RuntimeFeesConfig};
 pub mod accounts;
 use accounts::*;
 use libraries::types::{
@@ -15,44 +15,25 @@ use token::*;
 pub type TokenFee = AssetItem;
 pub type Token = Asset<WrappedFungibleToken>;
 
-fn get_context(
-    input: Vec<u8>,
-    is_view: bool,
-    signer_account_id: AccountId,
-    attached_deposit: u128,
-    storage_usage: u64,
-    account_balance: u128,
-    prepaid_gas: u64,
-) -> VMContext {
-    VMContext {
-        current_account_id: alice().to_string(),
-        signer_account_id: signer_account_id.to_string(),
-        signer_account_pk: vec![0, 1, 2],
-        predecessor_account_id: signer_account_id.to_string(),
-        input,
-        block_index: 0,
-        block_timestamp: 0,
-        account_balance,
-        account_locked_balance: 0,
-        storage_usage,
-        attached_deposit,
-        prepaid_gas: prepaid_gas,
-        random_seed: vec![0, 1, 2],
-        is_view,
-        output_data_receivers: vec![],
-        epoch_height: 19,
-    }
+fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u128, account_balance: u128, prepaid_gas: u64) -> VMContext {
+    VMContextBuilder::new()
+        .current_account_id(alice())
+        .is_view(is_view)
+        .signer_account_id(signer_account_id.clone())
+        .predecessor_account_id(signer_account_id)
+        .storage_usage(env::storage_usage())
+        .prepaid_gas(Gas(prepaid_gas))
+        .attached_deposit(attached_deposit)
+        .build()
 }
 
 #[test]
 fn deposit_wnear() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
@@ -60,8 +41,8 @@ fn deposit_wnear() {
 
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -78,8 +59,8 @@ fn deposit_wnear() {
 
     testing_env!(
         context(wnear(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -96,19 +77,17 @@ fn deposit_wnear() {
 fn withdraw_wnear() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             1000,
             10u64.pow(18),
         )
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -125,8 +104,8 @@ fn withdraw_wnear() {
 
     testing_env!(
         context(wnear(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -143,8 +122,8 @@ fn withdraw_wnear() {
 
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -161,19 +140,17 @@ fn withdraw_wnear() {
 fn withdraw_wnear_higher_amount() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             1000,
             10u64.pow(18),
         )
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -205,19 +182,17 @@ fn withdraw_wnear_higher_amount() {
 fn external_transfer() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -237,8 +212,8 @@ fn external_transfer() {
 
     testing_env!(
         context(wnear(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -276,19 +251,17 @@ fn external_transfer() {
 fn handle_success_response_wnear_external_transfer() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -308,8 +281,8 @@ fn handle_success_response_wnear_external_transfer() {
 
     testing_env!(
         context(wnear(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -384,19 +357,17 @@ fn handle_success_response_wnear_external_transfer() {
 fn handle_success_response_baln_external_transfer() {
     let context = |account_id: AccountId, deposit: u128, prepaid_gas: u64| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             prepaid_gas,
         )
     };
     testing_env!(
         context(alice(), 1_000_000_000_000_000_000_000_000, 10u64.pow(18)),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -435,8 +406,8 @@ fn handle_success_response_baln_external_transfer() {
 
     testing_env!(
         context(alice(), 0, 10u64.pow(18)),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -484,8 +455,8 @@ fn handle_success_response_baln_external_transfer() {
 
     testing_env!(
         context(alice(), 0, 10u64.pow(18)),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -530,19 +501,17 @@ fn handle_failure_response_wnear_external_transfer() {
 
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -561,8 +530,8 @@ fn handle_failure_response_wnear_external_transfer() {
 
     testing_env!(
         context(wnear(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -641,19 +610,17 @@ fn handle_failure_response_baln_coin_external_transfer() {
 
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
     };
     testing_env!(
         context(alice(), 1_000_000_000_000_000_000_000_000),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -689,8 +656,8 @@ fn handle_failure_response_baln_coin_external_transfer() {
 
     testing_env!(
         context(bmc(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -770,19 +737,17 @@ fn handle_failure_response_baln_coin_external_transfer() {
 fn reclaim_baln_coin() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
     };
     testing_env!(
         context(alice(), 1_000_000_000_000_000_000_000_000),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -820,8 +785,8 @@ fn reclaim_baln_coin() {
 
     testing_env!(
         context(bmc(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -868,11 +833,9 @@ fn reclaim_baln_coin() {
 fn external_transfer_higher_amount() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
@@ -880,8 +843,8 @@ fn external_transfer_higher_amount() {
 
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -900,8 +863,8 @@ fn external_transfer_higher_amount() {
 
     testing_env!(
         context(wnear(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -916,19 +879,17 @@ fn external_transfer_higher_amount() {
 fn external_transfer_unregistered_coin() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -951,11 +912,9 @@ fn external_transfer_unregistered_coin() {
 fn external_transfer_nil_balance() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
@@ -963,8 +922,8 @@ fn external_transfer_nil_balance() {
 
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -983,8 +942,8 @@ fn external_transfer_nil_balance() {
 
     testing_env!(
         context(wnear(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -999,19 +958,17 @@ fn external_transfer_nil_balance() {
 fn external_transfer_batch() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -1031,8 +988,8 @@ fn external_transfer_batch() {
 
     testing_env!(
         context(wnear(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -1060,11 +1017,9 @@ fn external_transfer_batch() {
 fn external_transfer_batch_higher_amount() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
@@ -1072,8 +1027,8 @@ fn external_transfer_batch_higher_amount() {
 
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -1092,8 +1047,8 @@ fn external_transfer_batch_higher_amount() {
 
     testing_env!(
         context(wnear(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -1112,19 +1067,17 @@ fn external_transfer_batch_higher_amount() {
 fn external_transfer_batch_unregistered_coin() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
     };
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -1144,8 +1097,8 @@ fn external_transfer_batch_unregistered_coin() {
 
     testing_env!(
         context(wnear(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -1164,11 +1117,9 @@ fn external_transfer_batch_unregistered_coin() {
 fn external_transfer_batch_nil_balance() {
     let context = |account_id: AccountId, deposit: u128| {
         get_context(
-            vec![],
             false,
             account_id,
             deposit,
-            env::storage_usage(),
             0,
             10u64.pow(18),
         )
@@ -1176,8 +1127,8 @@ fn external_transfer_batch_nil_balance() {
 
     testing_env!(
         context(alice(), 1_000_000_000_000_000_000_000_000),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -1197,8 +1148,8 @@ fn external_transfer_batch_nil_balance() {
 
     testing_env!(
         context(alice(), 1_000_000_000_000_000_000_000_000),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
@@ -1210,8 +1161,8 @@ fn external_transfer_batch_nil_balance() {
 
     testing_env!(
         context(wnear(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );

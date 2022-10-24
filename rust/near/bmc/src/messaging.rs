@@ -32,16 +32,6 @@ impl BtpMessageCenter {
     }
 
     #[cfg(feature = "testable")]
-    pub fn get_message(&self) -> Result<BtpMessage<SerializedMessage>, String> {
-        self.event.get_message()
-    }
-
-    #[cfg(feature = "testable")]
-    pub fn get_error(&self) -> Result<BtpError, String> {
-        self.event.get_error()
-    }
-
-    #[cfg(feature = "testable")]
     pub fn send_message(
         &mut self,
         previous: &BTPAddress,
@@ -69,13 +59,7 @@ impl BtpMessageCenter {
         message: BtpMessage<SerializedMessage>,
     ) {
         if let Some(next) = self.resolve_route(destination) {
-            bmc_contract::emit_message(
-                next,
-                message,
-                env::current_account_id(),
-                estimate::NO_DEPOSIT,
-                estimate::SEND_MESSAGE,
-            );
+            Self::ext(env::current_account_id()).emit_message(next, message);
         } else {
             self.send_error(
                 source,
@@ -295,35 +279,26 @@ impl BtpMessageCenter {
         let serivce_account_id = self.services.get(message.service()).unwrap();
 
         if message.serial_no().get().to_owned() >= 0 {
-            bsh_contract::handle_btp_message(
-                message.to_owned(),
-                serivce_account_id.to_owned(),
-                estimate::NO_DEPOSIT,
-                estimate::BSH_HANDLE_BTP_MESSAGE,
-            )
-            .then(bmc_contract::handle_external_service_message_callback(
-                source.to_owned(),
-                message.to_owned(),
-                env::current_account_id(),
-                estimate::NO_DEPOSIT,
-                estimate::HANDLE_EXTERNAL_SERVICE_MESSAGE_CALLBACK,
-            ));
+            bsh_contract::ext(serivce_account_id.to_owned())
+                .handle_btp_message(message.to_owned())
+                .then(
+                    Self::ext(env::current_account_id()).handle_external_service_message_callback(
+                        source.to_owned(),
+                        message.to_owned(),
+                    ),
+                );
         } else {
-            bsh_contract::handle_btp_error(
-                source.clone(),
-                message.service().clone(),
-                *message.serial_no().clone().get(),
-                message.to_owned(),
-                serivce_account_id.to_owned(),
-                estimate::NO_DEPOSIT,
-                estimate::BSH_HANDLE_BTP_MESSAGE,
-            )
-            .then(bmc_contract::handle_btp_error_callback(
-                message.to_owned(),
-                env::current_account_id(),
-                estimate::NO_DEPOSIT,
-                estimate::HANDLE_BTP_ERROR_CALLBACK,
-            ));
+            bsh_contract::ext(serivce_account_id.to_owned())
+                .handle_btp_error(
+                    source.clone(),
+                    message.service().clone(),
+                    *message.serial_no().clone().get(),
+                    message.to_owned(),
+                )
+                .then(
+                    Self::ext(env::current_account_id())
+                        .handle_btp_error_callback(message.to_owned()),
+                );
         }
         Ok(())
     }
@@ -420,5 +395,15 @@ impl BtpMessageCenter {
         }
 
         Ok(btp_messages)
+    }
+
+    #[cfg(feature = "testable")]
+    pub fn get_message(&self) -> Result<BtpMessage<SerializedMessage>, String> {
+        self.event.get_message()
+    }
+
+    #[cfg(feature = "testable")]
+    pub fn get_error(&self) -> Result<BtpError, String> {
+        self.event.get_error()
     }
 }
