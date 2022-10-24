@@ -1,7 +1,8 @@
 use super::*;
 use serde_json::Value;
 use std::collections::HashMap;
-use workspaces::{Worker, Account as WorkspaceAccount, Sandbox, sandbox};
+use workspaces::{Worker, Account as WorkspaceAccount, Contract as WorkspaceContract, Network, sandbox, DevNetwork, network::Sandbox};
+use tokio::runtime::Handle;
 
 pub struct Context {
     worker: Worker<Sandbox>,
@@ -15,8 +16,13 @@ pub struct Context {
 
 impl Context {
     pub fn new() -> Context {
+        let handle = Handle::current();
+        let worker = tokio::task::block_in_place(move || {
+            handle.block_on(async { sandbox().await.unwrap() })
+        });
+
         Context {
-            worker: sandbox(),
+            worker,
             contracts: Contracts::default(),
             accounts: Accounts::default(),
             signer: None,

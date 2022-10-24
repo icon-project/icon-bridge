@@ -9,4 +9,4 @@ pub(crate) use account::Accounts;
 
 pub use near_crypto::SecretKey;
 
-pub use workspaces::{sandbox, Sandbox, Testnet, testnet};
+pub use workspaces::{sandbox, Network, testnet};
