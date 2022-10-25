@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 )
 
@@ -45,7 +46,7 @@ type Header struct {
 	Root        common.Hash    `json:"stateRoot"        gencodec:"required"`
 	TxHash      common.Hash    `json:"transactionsRoot" gencodec:"required"`
 	ReceiptHash common.Hash    `json:"receiptsRoot"     gencodec:"required"`
-	//Bloom       types.Bloom    `json:"logsBloom"        gencodec:"required"`
+	Bloom       types.Bloom    `json:"logsBloom"        gencodec:"required"`
 	Difficulty  *big.Int       `json:"difficulty"       gencodec:"required"`
 	Number      *big.Int       `json:"number"           gencodec:"required"`
 	GasLimit    uint64         `json:"gasLimit"         gencodec:"required"`

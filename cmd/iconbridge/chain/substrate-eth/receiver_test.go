@@ -70,44 +70,44 @@ func TestFilterLogs(t *testing.T) {
 	}
 }
 
-//func TestSubscribeMessage(t *testing.T) {
-//	var src, dst chain.BTPAddress
-//	err := src.Set(BSC_BMC_PERIPHERY)
-//	err = dst.Set(ICON_BMC)
-//	if err != nil {
-//		fmt.Println(err)
-//	}
-//
-//	recv := newTestReceiver(t, src, dst).(*receiver)
-//
-//	ctx, cancel := context.Background(), func() {}
-//	if deadline, ok := t.Deadline(); ok {
-//		ctx, cancel = context.WithDeadline(context.Background(), deadline)
-//	}
-//	defer cancel()
-//	srcMsgCh := make(chan *chain.Message)
-//	srcErrCh, err := recv.Subscribe(ctx,
-//		srcMsgCh,
-//		chain.SubscribeOptions{
-//			Seq:    75,
-//			Height: uint64(BlockHeight),
-//		})
-//	require.NoError(t, err, "failed to subscribe")
-//
-//	for {
-//		defer cancel()
-//		select {
-//		case err := <-srcErrCh:
-//			t.Logf("subscription closed: %v", err)
-//			t.FailNow()
-//		case msg := <-srcMsgCh:
-//			if len(msg.Receipts) > 0 && msg.Receipts[0].Height == 21447824 {
-//				// received event exit
-//				return
-//			}
-//		}
-//	}
-//}
+func TestSubscribeMessage(t *testing.T) {
+	var src, dst chain.BTPAddress
+	err := src.Set(BSC_BMC_PERIPHERY)
+	err = dst.Set(ICON_BMC)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	recv := newTestReceiver(t, src, dst).(*receiver)
+
+	ctx, cancel := context.Background(), func() {}
+	if deadline, ok := t.Deadline(); ok {
+		ctx, cancel = context.WithDeadline(context.Background(), deadline)
+	}
+	defer cancel()
+	srcMsgCh := make(chan *chain.Message)
+	srcErrCh, err := recv.Subscribe(ctx,
+		srcMsgCh,
+		chain.SubscribeOptions{
+			Seq:    75,
+			Height: uint64(BlockHeight),
+		})
+	require.NoError(t, err, "failed to subscribe")
+
+	for {
+		defer cancel()
+		select {
+		case err := <-srcErrCh:
+			t.Logf("subscription closed: %v", err)
+			t.FailNow()
+		case msg := <-srcMsgCh:
+			if len(msg.Receipts) > 0 && msg.Receipts[0].Height == 21447824 {
+				// received event exit
+				return
+			}
+		}
+	}
+}
 
 func TestReceiver_GetReceiptProofs(t *testing.T) {
 	cl := newTestClient(t, BSC_BMC_PERIPHERY)

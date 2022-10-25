@@ -222,7 +222,7 @@ func encodeSigHeader(w io.Writer, header *ethTypes.Header, chainId *big.Int) {
 		header.Root,
 		header.TxHash,
 		header.ReceiptHash,
-		//header.Bloom,
+		header.Bloom,
 		header.Difficulty,
 		header.Number,
 		header.GasLimit,

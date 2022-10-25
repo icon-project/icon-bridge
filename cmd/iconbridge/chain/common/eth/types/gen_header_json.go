@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 var _ = (*headerMarshaling)(nil)
@@ -23,6 +24,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 		Root        common.Hash    `json:"stateRoot"        gencodec:"required"`
 		TxHash      common.Hash    `json:"transactionsRoot" gencodec:"required"`
 		ReceiptHash common.Hash    `json:"receiptsRoot"     gencodec:"required"`
+		Bloom       types.Bloom    `json:"logsBloom"        gencodec:"required"`
 		Difficulty  *hexutil.Big   `json:"difficulty"       gencodec:"required"`
 		Number      *hexutil.Big   `json:"number"           gencodec:"required"`
 		GasLimit    hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
@@ -41,6 +43,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 	enc.Root = h.Root
 	enc.TxHash = h.TxHash
 	enc.ReceiptHash = h.ReceiptHash
+	enc.Bloom = h.Bloom
 	enc.Difficulty = (*hexutil.Big)(h.Difficulty)
 	enc.Number = (*hexutil.Big)(h.Number)
 	enc.GasLimit = hexutil.Uint64(h.GasLimit)
@@ -63,6 +66,7 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		Root        *common.Hash    `json:"stateRoot"        gencodec:"required"`
 		TxHash      *common.Hash    `json:"transactionsRoot" gencodec:"required"`
 		ReceiptHash *common.Hash    `json:"receiptsRoot"     gencodec:"required"`
+		Bloom       *types.Bloom    `json:"logsBloom"        gencodec:"required"`
 		Difficulty  *hexutil.Big    `json:"difficulty"       gencodec:"required"`
 		Number      *hexutil.Big    `json:"number"           gencodec:"required"`
 		GasLimit    *hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
@@ -104,6 +108,10 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'receiptsRoot' for Header")
 	}
 	h.ReceiptHash = *dec.ReceiptHash
+	if dec.Bloom == nil {
+		return errors.New("missing required field 'logsBloom' for Header")
+	}
+	h.Bloom = *dec.Bloom
 	if dec.Difficulty == nil {
 		return errors.New("missing required field 'difficulty' for Header")
 	}
