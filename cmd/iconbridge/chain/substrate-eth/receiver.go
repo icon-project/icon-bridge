@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
-	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	commonTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/common/eth/types"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
@@ -144,7 +144,7 @@ func (r *receiver) syncVerifier(vr IVerifier, height int64) error {
 
 	type res struct {
 		Height int64
-		Header *types.Header
+		Header *commonTypes.Header
 	}
 
 	type req struct {
@@ -156,7 +156,7 @@ func (r *receiver) syncVerifier(vr IVerifier, height int64) error {
 
 	r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Info("syncVerifier: start")
 
-	var prevHeader *types.Header
+	var prevHeader *commonTypes.Header
 	cursor := vr.Next().Int64()
 	for cursor <= height {
 		rqch := make(chan *req, r.opts.SyncConcurrency)
@@ -281,7 +281,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 	next, latest := opts.StartHeight, latestHeight()
 
 	// last unverified block notification
-	var lbn *BlockNotification
+	var lastBN *BlockNotification
 	// start monitor loop
 	for {
 		select {
@@ -300,33 +300,33 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		case bn := <-bnch:
 			// process all notifications
 			for ; bn != nil; next++ {
-				if lbn != nil {
-					if bn.Height.Cmp(lbn.Height) == 0 {
-						if bn.Header.ParentHash != lbn.Header.ParentHash {
-							r.log.WithFields(log.Fields{"lbnParentHash": lbn.Header.ParentHash, "bnParentHash": bn.Header.ParentHash}).Error("verification failed on retry ")
+				if lastBN != nil {
+					if bn.Height.Cmp(lastBN.Height) == 0 {
+						if bn.Header.ParentHash != lastBN.Header.ParentHash {
+							r.log.WithFields(log.Fields{"lbnParentHash": lastBN.Header.ParentHash, "bnParentHash": bn.Header.ParentHash}).Error("verification failed on retry ")
 							break
 						}
 					} else {
 						if vr != nil {
-							if err := vr.Verify(lbn.Header, bn.Header, bn.Receipts); err != nil {
+							if err := vr.Verify(lastBN.Header, bn.Header, bn.Receipts); err != nil {
 								r.log.WithFields(log.Fields{
-									"height":     lbn.Height,
-									"lbnHash":    lbn.Hash,
+									"height":     lastBN.Height,
+									"lbnHash":    lastBN.Hash,
 									"nextHeight": next,
 									"bnHash":     bn.Hash}).Error("verification failed. refetching block ", err)
 								next--
 								break
 							}
-							if err := vr.Update(lbn.Header); err != nil {
+							if err := vr.Update(lastBN.Header); err != nil {
 								return errors.Wrapf(err, "receiveLoop: vr.Update: %v", err)
 							}
 						}
-						if err := callback(lbn); err != nil {
+						if err := callback(lastBN); err != nil {
 							return errors.Wrapf(err, "receiveLoop: callback: %v", err)
 						}
 					}
 				}
-				if lbn, bn = bn, nil; len(bnch) > 0 {
+				if lastBN, bn = bn, nil; len(bnch) > 0 {
 					bn = <-bnch
 				}
 			}
@@ -368,7 +368,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						qch <- q
 						continue
 					}
-					r.log.Debugf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash(), q.err)
+					r.log.Debugf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash, q.err)
 					bns = append(bns, nil)
 					if len(bns) == cap(bns) {
 						close(qch)
@@ -399,7 +399,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 								return
 							}
 							q.v.Header = header
-							q.v.Hash = q.v.Header.Hash()
+							q.v.Hash = q.v.Header.Hash
 						}
 
 						if q.v.Header.GasUsed > 0 {

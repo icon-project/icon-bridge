@@ -3,10 +3,14 @@ package substrate_eth
 import (
 	"context"
 	"fmt"
+	//gsrpc "github.com/centrifuge/go-substrate-rpc-client/v4"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
+	commonTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/common/eth/types"
 	"math"
 	"math/big"
 
-	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 
@@ -48,6 +52,7 @@ type Client struct {
 	log     log.Logger
 	rpc     *rpc.Client
 	eth     *ethclient.Client
+	//sub     *gsrpc.SubstrateAPI
 	chainID *big.Int
 	//bmc *BMC
 }
@@ -56,11 +61,12 @@ type IClient interface {
 	GetBalance(ctx context.Context, hexAddr string) (*big.Int, error)
 	GetBlockNumber() (uint64, error)
 	//GetBlockByHash(hash common.Hash) (*snowTypes.Block, error)
-	GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error)
+	GetHeaderByHeight(height *big.Int) (*commonTypes.Header, error)
 	//GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error)
 	GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts, error)
 	GetChainID() *big.Int
 	GetEthClient() *ethclient.Client
+	//GetSubstrateClient() *gsrpc.SubstrateAPI
 	Log() log.Logger
 }
 
@@ -94,10 +100,32 @@ func (cl *Client) GetBlockByHash(hash common.Hash) (*bscTypes.Block, error) {
 }
 */
 
-func (cl *Client) GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error) {
+func (cl *Client) GetHeaderByHeight(height *big.Int) (*commonTypes.Header, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
-	return cl.eth.HeaderByNumber(ctx, height)
+	return headerByNumber(cl, ctx, height)
+}
+
+func headerByNumber(cl *Client, ctx context.Context, number *big.Int) (*commonTypes.Header, error) {
+	var head *commonTypes.Header
+	err := cl.rpc.CallContext(ctx, &head, "eth_getBlockByNumber", toBlockNumArg(number), false)
+
+	if err == nil && head == nil {
+		err = ethereum.NotFound
+	}
+
+	return head, err
+}
+
+func toBlockNumArg(number *big.Int) string {
+	if number == nil {
+		return "latest"
+	}
+	pending := big.NewInt(-1)
+	if number.Cmp(pending) == 0 {
+		return "pending"
+	}
+	return hexutil.EncodeBig(number)
 }
 
 /*
@@ -259,6 +287,10 @@ func (c *Client) GetChainID() *big.Int {
 func (c *Client) GetEthClient() *ethclient.Client {
 	return c.eth
 }
+
+//func (c *Client) GetSubstrateClient() *gsrpc.SubstrateAPI {
+//	return c.sub
+//}
 
 func (c *Client) Log() log.Logger {
 	return c.log

@@ -6,6 +6,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/trie"
+	commonTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/common/eth/types"
 	"math/big"
 	"sync"
 	"testing"
@@ -15,8 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	ethTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/mocks"
 	"github.com/icon-project/icon-bridge/common/intconv"
@@ -69,44 +70,44 @@ func TestFilterLogs(t *testing.T) {
 	}
 }
 
-func TestSubscribeMessage(t *testing.T) {
-	var src, dst chain.BTPAddress
-	err := src.Set(BSC_BMC_PERIPHERY)
-	err = dst.Set(ICON_BMC)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	recv := newTestReceiver(t, src, dst).(*receiver)
-
-	ctx, cancel := context.Background(), func() {}
-	if deadline, ok := t.Deadline(); ok {
-		ctx, cancel = context.WithDeadline(context.Background(), deadline)
-	}
-	defer cancel()
-	srcMsgCh := make(chan *chain.Message)
-	srcErrCh, err := recv.Subscribe(ctx,
-		srcMsgCh,
-		chain.SubscribeOptions{
-			Seq:    75,
-			Height: uint64(BlockHeight),
-		})
-	require.NoError(t, err, "failed to subscribe")
-
-	for {
-		defer cancel()
-		select {
-		case err := <-srcErrCh:
-			t.Logf("subscription closed: %v", err)
-			t.FailNow()
-		case msg := <-srcMsgCh:
-			if len(msg.Receipts) > 0 && msg.Receipts[0].Height == 21447824 {
-				// received event exit
-				return
-			}
-		}
-	}
-}
+//func TestSubscribeMessage(t *testing.T) {
+//	var src, dst chain.BTPAddress
+//	err := src.Set(BSC_BMC_PERIPHERY)
+//	err = dst.Set(ICON_BMC)
+//	if err != nil {
+//		fmt.Println(err)
+//	}
+//
+//	recv := newTestReceiver(t, src, dst).(*receiver)
+//
+//	ctx, cancel := context.Background(), func() {}
+//	if deadline, ok := t.Deadline(); ok {
+//		ctx, cancel = context.WithDeadline(context.Background(), deadline)
+//	}
+//	defer cancel()
+//	srcMsgCh := make(chan *chain.Message)
+//	srcErrCh, err := recv.Subscribe(ctx,
+//		srcMsgCh,
+//		chain.SubscribeOptions{
+//			Seq:    75,
+//			Height: uint64(BlockHeight),
+//		})
+//	require.NoError(t, err, "failed to subscribe")
+//
+//	for {
+//		defer cancel()
+//		select {
+//		case err := <-srcErrCh:
+//			t.Logf("subscription closed: %v", err)
+//			t.FailNow()
+//		case msg := <-srcMsgCh:
+//			if len(msg.Receipts) > 0 && msg.Receipts[0].Height == 21447824 {
+//				// received event exit
+//				return
+//			}
+//		}
+//	}
+//}
 
 func TestReceiver_GetReceiptProofs(t *testing.T) {
 	cl := newTestClient(t, BSC_BMC_PERIPHERY)
@@ -207,8 +208,8 @@ func TestReceiver_MockNewVerifier(t *testing.T) {
 	// mock client
 	cl := new(mocks.IClient)
 	cl.On("GetChainID").Return(big.NewInt(97))
-	cl.On("GetHeaderByHeight", big.NewInt(height)).Return(&ethTypes.Header{ParentHash: ethCommon.BytesToHash(blockHash)}, nil)
-	cl.On("GetHeaderByHeight", big.NewInt(height-height%int64(defaultEpochLength))).Return(&ethTypes.Header{Extra: validatorData}, nil)
+	cl.On("GetHeaderByHeight", big.NewInt(height)).Return(&commonTypes.Header{ParentHash: ethCommon.BytesToHash(blockHash)}, nil)
+	cl.On("GetHeaderByHeight", big.NewInt(height-height%int64(defaultEpochLength))).Return(&commonTypes.Header{Extra: validatorData}, nil)
 
 	rx := &receiver{
 		cls: []IClient{cl},
@@ -248,9 +249,9 @@ func TestReceiver_MockVerifyAndUpdate_CorrectHeader(t *testing.T) {
 	require.NoError(t, err)
 	next2HeaderBytes, err := hex.DecodeString(next2HeaderStr)
 	require.NoError(t, err)
-	header := new(ethTypes.Header)
-	nextHeader := new(ethTypes.Header)
-	next2Header := new(ethTypes.Header)
+	header := new(commonTypes.Header)
+	nextHeader := new(commonTypes.Header)
+	next2Header := new(commonTypes.Header)
 	err = json.Unmarshal(headerBytes, header)
 	require.NoError(t, err)
 	err = json.Unmarshal(nextHeaderBytes, nextHeader)
@@ -274,7 +275,7 @@ func TestReceiver_MockVerifyAndUpdate_CorrectHeader(t *testing.T) {
 	cl.On("GetHeaderByHeight", big.NewInt(height)).Return(header, nil)
 	cl.On("GetHeaderByHeight", big.NewInt(height+1)).Return(nextHeader, nil)
 	cl.On("GetHeaderByHeight", big.NewInt(height+2)).Return(next2Header, nil)
-	cl.On("GetHeaderByHeight", big.NewInt(height-height%int64(defaultEpochLength))).Return(&ethTypes.Header{Extra: validatorData}, nil)
+	cl.On("GetHeaderByHeight", big.NewInt(height-height%int64(defaultEpochLength))).Return(&commonTypes.Header{Extra: validatorData}, nil)
 
 	rx := &receiver{
 		cls: []IClient{cl},
@@ -285,7 +286,7 @@ func TestReceiver_MockVerifyAndUpdate_CorrectHeader(t *testing.T) {
 	require.NoError(t, err)
 	err = vr.Update(header) // should not update because header.Number % defaultEpochLength != 0
 	require.NoError(t, err)
-	require.Equal(t, vr.ParentHash().String(), header.Hash().String())
+	require.Equal(t, vr.ParentHash().String(), header.Hash.String())
 	require.Equal(t, vr.Next().Cmp((&big.Int{}).Add(header.Number, big.NewInt(1))), 0)
 	for k := range validatorMap {
 		require.Equal(t, vr.IsValidator(k), true)
@@ -295,7 +296,7 @@ func TestReceiver_MockVerifyAndUpdate_CorrectHeader(t *testing.T) {
 	require.NoError(t, err)
 	err = vr.Update(nextHeader)
 	require.NoError(t, err)
-	require.Equal(t, vr.ParentHash().String(), nextHeader.Hash().String())
+	require.Equal(t, vr.ParentHash().String(), nextHeader.Hash.String())
 	require.Equal(t, vr.Next().Cmp((&big.Int{}).Add(nextHeader.Number, big.NewInt(1))), 0)
 	for k := range validatorMap {
 		require.Equal(t, vr.IsValidator(k), true)
@@ -324,9 +325,9 @@ func TestReceiver_MockSyncVerifier(t *testing.T) {
 	require.NoError(t, err)
 	next2HeaderBytes, err := hex.DecodeString(next2HeaderStr)
 	require.NoError(t, err)
-	header := new(ethTypes.Header)
-	nextHeader := new(ethTypes.Header)
-	next2Header := new(ethTypes.Header)
+	header := new(commonTypes.Header)
+	nextHeader := new(commonTypes.Header)
+	next2Header := new(commonTypes.Header)
 	err = json.Unmarshal(headerBytes, header)
 	require.NoError(t, err)
 	err = json.Unmarshal(nextHeaderBytes, nextHeader)
@@ -350,7 +351,7 @@ func TestReceiver_MockSyncVerifier(t *testing.T) {
 	cl.On("GetHeaderByHeight", big.NewInt(height)).Return(header, nil)
 	cl.On("GetHeaderByHeight", big.NewInt(height+1)).Return(nextHeader, nil)
 	cl.On("GetHeaderByHeight", big.NewInt(height+2)).Return(next2Header, nil)
-	cl.On("GetHeaderByHeight", big.NewInt(height-height%int64(defaultEpochLength))).Return(&ethTypes.Header{Extra: validatorData}, nil)
+	cl.On("GetHeaderByHeight", big.NewInt(height-height%int64(defaultEpochLength))).Return(&commonTypes.Header{Extra: validatorData}, nil)
 
 	rx := &receiver{
 		cls: []IClient{cl},
@@ -364,7 +365,7 @@ func TestReceiver_MockSyncVerifier(t *testing.T) {
 	err = rx.syncVerifier(vr, next2Header.Number.Int64())
 	require.NoError(t, err)
 	require.NoError(t, err)
-	require.Equal(t, vr.ParentHash().String(), nextHeader.Hash().String())
+	require.Equal(t, vr.ParentHash().String(), nextHeader.Hash.String())
 	require.Equal(t, vr.Next().Cmp((&big.Int{}).Add(nextHeader.Number, big.NewInt(1))), 0)
 	for k := range validatorMap {
 		require.Equal(t, vr.IsValidator(k), true)

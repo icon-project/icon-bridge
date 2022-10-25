@@ -19,6 +19,7 @@ package substrate_eth
 import (
 	"encoding/hex"
 	"fmt"
+	commonTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/common/eth/types"
 	"math/big"
 	"strconv"
 	"strings"
@@ -141,7 +142,7 @@ type EventFilter struct {
 type BlockNotification struct {
 	Hash          common.Hash
 	Height        *big.Int
-	Header        *types.Header
+	Header        *commonTypes.Header
 	Receipts      types.Receipts
 	HasBTPMessage *bool
 }
