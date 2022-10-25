@@ -1,4 +1,4 @@
-# Icon Bridge
+# ICON Bridge
 ![release](https://img.shields.io/github/v/release/icon-project/icon-bridge)
 [![codecov](https://codecov.io/gh/icon-project/icon-bridge/branch/main/graph/badge.svg?token=YXV6EE5KB5)](https://codecov.io/gh/icon-project/icon-bridge)
 
@@ -7,10 +7,10 @@
 Scorecard](https://api.securityscorecards.dev/projects/github.com/icon-project/icon-bridge/badge)](https://api.securityscorecards.dev/projects/github.com/icon-project/icon-bridge)
 
 
-This repository contains the smart contracts source code and relay source code for Icon bridge. 
+This repository contains the smart contracts source code and relay source code for ICON bridge. 
 ## Project Overview
 
-Icon Bridge is a centralized bridge for Blockchain Transmission Protocol(BTP) Relay System which can be used to transfer tokens across multiple chains. Currently, it supports cross chain transfer from ICON and Binance Smart Chain (BSC).
+ICON Bridge is a centralized bridge for Blockchain Transmission Protocol(BTP) Relay System which can be used to transfer tokens across multiple chains. Currently, it supports cross chain transfer from ICON and Binance Smart Chain (BSC).
 
 The main components of icon bridge are:
 * ### BTP Message Relay (BMR)
@@ -43,6 +43,6 @@ For the latest mainnet contract addresses, please check [Mainnet Contract Addres
 For the testnet contract addresses, please check [Testnet Contract Addresses](./docs/testnet_deployment.json)
 
 
-## RoadMap
+## Roadmap
 
 ## Contributors
