@@ -16,7 +16,10 @@ register_icon_wrapped_coin() {
         if [ "$coinIDRes" == "null" ]; then
             configure_javascore_register_wrapped_coin "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}" "${ICON_WRAPPED_COIN_FIXED_FEE[$i]}" "${ICON_WRAPPED_COIN_FEE_NUMERATOR[$i]}" "${ICON_WRAPPED_COIN_DECIMALS[$i]}"
             get_btp_icon_coinId "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}"
+        elif [ ! -f icon.addr.coin${ICON_WRAPPED_COIN_SYM[$i]} ]; then
+            get_btp_icon_coinId "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}"
         fi
+        cat $CONFIG_DIR/icon.addr.coin${ICON_WRAPPED_COIN_SYM[$i]}
     done
 }
 
@@ -30,12 +33,13 @@ register_eth_wrapped_coin() {
         tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js --method coinId --coinName "${BSC_WRAPPED_COIN_NAME[$i]}")
         coinId=$(echo "$tx" | grep "coinId:" | sed -e "s/^coinId: //")
         exists=$(echo $coinId | wc -l | awk '{$1=$1;print}')
-        if [ "$exists" != "1" ]; then
-            sleep 3
+        if [ "$exists" != "1" ] || [ "$coinId" == "0x0000000000000000000000000000000000000000" ]; then
             bsc_register_wrapped_coin "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}" "${BSC_WRAPPED_COIN_FIXED_FEE[$i]}" "${BSC_WRAPPED_COIN_FEE_NUMERATOR[$i]}" "${BSC_WRAPPED_COIN_DECIMALS[$i]}"
             get_coinID "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}"
+        elif [ ! -f $CONFIG_DIR/bsc.addr.coin${BSC_WRAPPED_COIN_SYM[$i]} ]; then
+            get_coinID "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}"
         fi
-        sleep 3
+        cat $CONFIG_DIR/bsc.addr.coin${BSC_WRAPPED_COIN_SYM[$i]}
     done
 }
 

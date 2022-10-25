@@ -232,7 +232,7 @@ configure_javascore_register_wrapped_coin() {
 
 get_btp_icon_coinId() {
   echo "Get BTP Icon Addr " $2
-  cd $CONTRACTS_DIR/solidity/bts
+  cd $CONFIG_DIR
   goloop rpc call --to $(cat icon.addr.bts) \
     --method coinId \
     --param _coinName="$1" | jq -r . >tx/icon.coinId.$2
