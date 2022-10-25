@@ -7,14 +7,18 @@ goloop_lastblock() {
   goloop rpc lastblock
 }
 
-deploy_javascore_bmc() {
-  cd $CONFIG_DIR
-
-  if [ ! -f icon.addr.bmcbtp ]; then
-    echo "deploying javascore BMC"
+extract_chain_height_and_validator() {
+    cd $CONFIG_DIR
     local icon_block_height=$(goloop_lastblock | jq -r .height)
     echo $icon_block_height > icon.chain.height
     echo $(URI=$ICON_ENDPOINT HEIGHT=$(decimal2Hex $(($icon_block_height - 1))) $ICONBRIDGE_BIN_DIR/iconvalidators | jq -r .hash) > icon.chain.validators
+}
+
+deploy_javascore_bmc() {
+  cd $CONFIG_DIR
+  if [ ! -f icon.addr.bmcbtp ]; then
+    echo "deploying javascore BMC"
+    extract_chain_height_and_validator
     goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bmc.jar \
       --content_type application/java \
       --param _net=$(cat net.btp.icon) | jq -r . >tx/tx.icon.bmc
@@ -228,7 +232,7 @@ configure_javascore_register_wrapped_coin() {
 
 get_btp_icon_coinId() {
   echo "Get BTP Icon Addr " $2
-  cd $CONFIG_DIR
+  cd $CONTRACTS_DIR/solidity/bts
   goloop rpc call --to $(cat icon.addr.bts) \
     --method coinId \
     --param _coinName="$1" | jq -r . >tx/icon.coinId.$2

@@ -66,20 +66,31 @@ remove_artifacts_of_local_deployment() {
 build_smart_contracts() {
     echo "Creating build artifacts on PC"
     #Run the script from icon-bridge/devnet/docker/icon-bsc
-    ICON_BSC_DIR=${PWD}
-    ROOT_DIR=$(echo "$(cd "$(dirname "../../../../")"; pwd)")
-    if [ -d $ICON_BSC_DIR/build ]; then
-        echo "Save Previous Build Artifacts"
-        local suffix=$(date +%s)
-        mv build build_${suffix}
+    local ICON_BSC_DIR=${PWD}
+    local ROOT_DIR=$(echo "$(cd "$(dirname "../../../../")"; pwd)")
+    local BUILD_DIR=$ICON_BSC_DIR/build
+    local KEYSTORE_DIR=$ICON_BSC_DIR/_ixh/keystore
+    if [ ${#buildsuffix} != 0 ]; then 
+        if [ ${buildsuffix} != "arctic" ]; then 
+            echo "Accepted buildsuffix: arctic. Got ${buildsuffix}"
+            exit 0
+        fi
+        BUILD_DIR+=$buildsuffix
+        KEYSTORE_DIR=$ICON_BSC_DIR/_ixh_${buildsuffix}/keystore
     fi
-    CONTRACTS_DIR="$ICON_BSC_DIR/build/contracts"
-    JAVASCORE_DIR="$CONTRACTS_DIR/javascore"
-    SOLIDITY_DIR="$CONTRACTS_DIR/solidity"
+    echo $BUILD_DIR
+    if [ -d $BUILD_DIR ]; then
+        echo "Save Previous Build Artifacts"
+        local datesuffix=$(date +%s)
+        mv $BUILD_DIR ${BUILD_DIR}_${datesuffix}
+    fi
+    local CONTRACTS_DIR="$BUILD_DIR/contracts"
+    local JAVASCORE_DIR="$CONTRACTS_DIR/javascore"
+    local SOLIDITY_DIR="$CONTRACTS_DIR/solidity"
 
     mkdir -p "$JAVASCORE_DIR"
     mkdir -p "$SOLIDITY_DIR"
-    mkdir -p "$ICON_BSC_DIR/_ixh/keystore"
+    mkdir -p "$KEYSTORE_DIR"
 
     echo "Creating go build artifacts"
     cd $ROOT_DIR/cmd/iconvalidators/
@@ -113,7 +124,7 @@ build_smart_contracts() {
     cd ..
     cd bts && yarn install
 
-    echo "Build Artifacts have been created on path "$ICON_BSC_DIR/build
+    echo "Build Artifacts have been created on path "$BUILD_DIR
 }
 
 build_chain_nodes() {
@@ -191,6 +202,19 @@ deploy_smart_contracts_on_localnet() {
     fi
 }
 
+deploy_smart_contracts_on_testnet_arctic() {
+    cd scripts 
+    if [ ! -f config_temp.sh ]; then 
+        cp config.sh config_temp.sh 
+        cp config/arctic.sh config.sh 
+    fi 
+    ./deploy_arctic.sh
+    if [ -f config_temp.sh ]; then 
+        mv config_temp.sh config.sh 
+    fi 
+    echo "Done deploying smart contracts"
+}
+
 ########################################################
 
 build_relay_img() {
@@ -201,7 +225,7 @@ build_relay_img() {
 
 run_relay_img() {
     local relayConfigPath=${PWD}/_ixh/bmr.config.json
-    if [ ! -f relayConfigPath ]; then
+    if [ ! -f $relayConfigPath ]; then
         echo "relay config does not exist on path "$relayConfigPath
         exit 0
     fi
@@ -278,4 +302,6 @@ elif [ $1 == "runrelayimg" ]; then
     run_relay_img
 elif [ $1 == "stoprelayimg" ]; then 
     stop_relay_img
+elif [ $1 == "deployscarctic" ]; then 
+    deploy_smart_contracts_on_testnet_arctic
 fi

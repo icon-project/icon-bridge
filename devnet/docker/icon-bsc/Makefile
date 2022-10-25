@@ -13,6 +13,9 @@ deploysclocalnet:
 deploysctestnet:
 	./build.sh deploysctestnet
 
+deployscarctic:
+	./build.sh deployscarctic
+
 runrelaysrc:
 	./build.sh runrelaysrc
 

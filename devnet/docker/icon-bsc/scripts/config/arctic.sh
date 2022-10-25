@@ -1,7 +1,7 @@
 #!/bin/bash
 BASE_DIR=$(echo "$(cd "$(dirname "../../")"; pwd)")
-BUILD_DIR=$BASE_DIR/build
-export ICONBRIDGE_CONFIG_DIR=$BASE_DIR/_ixh
+BUILD_DIR=$BASE_DIR/buildarctic
+export ICONBRIDGE_CONFIG_DIR=$BASE_DIR/_ixh_arctic
 export ICONBRIDGE_CONTRACTS_DIR=$BUILD_DIR/contracts
 export ICONBRIDGE_SCRIPTS_DIR=$BASE_DIR/scripts
 export ICONBRIDGE_BIN_DIR=$BASE_DIR
