@@ -2,11 +2,11 @@ package substrate_eth
 
 import (
 	"fmt"
+	subEthTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/types"
 	"math/big"
 	"sync"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/icon-project/icon-bridge/common"
 )
 
@@ -33,14 +33,14 @@ func (vr *Verifier) Next() *big.Int {
 	return (&big.Int{}).Set(vr.next)
 }
 
-func (vr *Verifier) Verify(h *types.Header, newHeader *types.Header) error {
+func (vr *Verifier) Verify(h *subEthTypes.Header, newHeader *subEthTypes.Header) error {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
 	if newHeader.Number.Cmp((&big.Int{}).Add(h.Number, big1)) != 0 {
 		return fmt.Errorf("Different height between successive header: Prev %v New %v", h.Number, newHeader.Number)
 	}
-	if h.Hash() != newHeader.ParentHash {
-		return fmt.Errorf("Different hash between successive header: (%v): Prev %v New %v", h.Number, h.Hash(), newHeader.ParentHash)
+	if h.Hash != newHeader.ParentHash {
+		return fmt.Errorf("Different hash between successive header: (%v): Prev %v New %v", h.Number, h.Hash, newHeader.ParentHash)
 	}
 	if vr.next.Cmp(h.Number) != 0 {
 		return fmt.Errorf("Unexpected height: Got %v Expected %v", h.Number, vr.next)
@@ -48,14 +48,8 @@ func (vr *Verifier) Verify(h *types.Header, newHeader *types.Header) error {
 	if h.ParentHash != vr.parentHash {
 		return fmt.Errorf("Unexpected Hash(%v): Got %v Expected %v", h.Number, h.ParentHash, vr.parentHash)
 	}
-	vr.parentHash = h.Hash()
+	vr.parentHash = h.Hash
 	vr.next.Add(h.Number, big1)
 	return nil
 }
 
-// func (vr *Verifier) Update(h *types.Header) error {
-// 	vr.mu.Lock()
-// 	defer vr.mu.Unlock()
-// 	// next height should have vr.parentHash as parentHash
-// 	return nil
-// }

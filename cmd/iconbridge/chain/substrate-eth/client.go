@@ -3,11 +3,14 @@ package substrate_eth
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"math"
 	"math/big"
 
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
+	subEthTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/types"
 	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -56,7 +59,7 @@ type IClient interface {
 	GetBalance(ctx context.Context, hexAddr string) (*big.Int, error)
 	GetBlockNumber() (uint64, error)
 	//GetBlockByHash(hash common.Hash) (*snowTypes.Block, error)
-	GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error)
+	GetHeaderByHeight(height *big.Int) (*subEthTypes.Header, error)
 	//GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error)
 	GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts, error)
 	GetChainID() *big.Int
@@ -81,85 +84,36 @@ func (cl *Client) GetBlockNumber() (uint64, error) {
 	return bn, nil
 }
 
-/*
-func (cl *Client) GetBlockByHash(hash common.Hash) (*bscTypes.Block, error) {
+
+func (cl *Client) GetHeaderByHeight(height *big.Int) (*subEthTypes.Header, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
-	var hb bscTypes.Block
-	err := cl.rpc.CallContext(ctx, &hb, "eth_getBlockByHash", hash, false)
-	if err != nil {
-		return nil, err
-	}
-	return &hb, nil
-}
-*/
-
-func (cl *Client) GetHeaderByHeight(height *big.Int) (*ethTypes.Header, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
-	defer cancel()
-	return cl.eth.HeaderByNumber(ctx, height)
+	return headerByNumber(cl, ctx, height)
 }
 
-/*
-func (cl *Client) GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error) {
-	hb, err := cl.GetBlockByHash(hash)
-	if err != nil {
-		return nil, err
+func headerByNumber(cl *Client, ctx context.Context, number *big.Int) (*subEthTypes.Header, error) {
+	var head *subEthTypes.Header
+	err := cl.rpc.CallContext(ctx, &head, "eth_getBlockByNumber", toBlockNumArg(number), false)
+
+	if err == nil && head == nil {
+		err = ethereum.NotFound
 	}
-	if hb.GasUsed == "0x0" || len(hb.Transactions) == 0 {
-		return nil, nil
-	}
-	txhs := hb.Transactions
-	// fetch all txn receipts concurrently
-	type rcq struct {
-		txh   string
-		v     *ethTypes.Receipt
-		err   error
-		retry int
-	}
-	qch := make(chan *rcq, len(txhs))
-	for _, txh := range txhs {
-		qch <- &rcq{txh, nil, nil, RPCCallRetry}
-	}
-	rmap := make(map[string]*ethTypes.Receipt)
-	for q := range qch {
-		switch {
-		case q.err != nil:
-			if q.retry == 0 {
-				return nil, q.err
-			}
-			q.retry--
-			q.err = nil
-			qch <- q
-		case q.v != nil:
-			rmap[q.txh] = q.v
-			if len(rmap) == cap(qch) {
-				close(qch)
-			}
-		default:
-			go func(q *rcq) {
-				defer func() { qch <- q }()
-				ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
-				defer cancel()
-				if q.v == nil {
-					q.v = &ethTypes.Receipt{}
-				}
-				q.v, err = cl.eth.TransactionReceipt(ctx, common.HexToHash(q.txh))
-				if q.err != nil {
-					q.err = errors.Wrapf(q.err, "getTranasctionReceipt: %v", q.err)
-				}
-			}(q)
-		}
-	}
-	receipts := make(ethTypes.Receipts, 0, len(txhs))
-	for _, txh := range txhs {
-		if r, ok := rmap[txh]; ok {
-			receipts = append(receipts, r)
-		}
-	}
-	return receipts, nil
+
+	return head, err
 }
-*/
+
+func toBlockNumArg(number *big.Int) string {
+	if number == nil {
+		return "latest"
+	}
+	pending := big.NewInt(-1)
+	if number.Cmp(pending) == 0 {
+		return "pending"
+	}
+	return hexutil.EncodeBig(number)
+}
+
+
 func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error) {
 	gasPrice = big.NewInt(0)
 	header, err := c.eth.HeaderByNumber(ctx, nil)
