@@ -105,12 +105,9 @@ impl BtpMessageCenter {
             #[allow(unused_variables)]
             if let Some(account_id) = self.services.get(service) {
                 #[cfg(not(feature = "testable"))]
-                bsh_contract::handle_fee_gathering(
+                bsh_contract::ext(account_id.clone()).handle_fee_gathering(
                     fee_aggregator.clone(),
                     service.clone(),
-                    account_id.clone(),
-                    estimate::NO_DEPOSIT,
-                    estimate::GATHER_FEE,
                 );
             }
         });

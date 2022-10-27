@@ -87,22 +87,6 @@ pub static USER_INVOKES_GET_RELAYS_IN_BMC: fn(Context) -> Context =
 
 /*  * * * * * * * * * * * *
 * * * * * * * * * * * * * *
-*   Verifiers     * * * * *
-* * * * * * * * * * * * * *
-* * * * * * * * * * * * * *
-*/
-
-pub static USER_INVOKES_ADD_VERIFIER_IN_BMC: fn(Context) -> Context =
-    |context: Context| BMC_CONTRACT.add_verifier(context, 30000000000000);
-
-pub static USER_INVOKES_REMOVE_VERIFIER_IN_BMC: fn(Context) -> Context =
-    |context: Context| BMC_CONTRACT.remove_verifier(context, 30000000000000);
-
-pub static USER_INVOKES_GET_VERIFIERS_IN_BMC: fn(Context) -> Context =
-    |context: Context| BMC_CONTRACT.get_verifiers(context);
-
-/*  * * * * * * * * * * * *
-* * * * * * * * * * * * * *
 *   Owners      * * * * * *
 * * * * * * * * * * * * * *
 * * * * * * * * * * * * * *

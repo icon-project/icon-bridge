@@ -1,8 +1,3 @@
-use std::str::FromStr;
-
-use libraries::types::Request;
-use libraries::types::WrappedI128;
-
 use super::*;
 
 #[near_bindgen]
@@ -46,17 +41,20 @@ impl BtpTokenService {
         source: BTPAddress,
         service: String,
         serial_no: i128,
-        code: u128,
-        message: String,
+        message: BtpMessage<SerializedMessage>,
     ) {
         self.assert_predecessor_is_bmc();
         self.assert_valid_service(&service);
+
+        let error_message: BtpMessage<ErrorMessage> = message.try_into().unwrap();
         self.handle_response(
-            &WrappedI128::new(serial_no),
-            1,
+            &WrappedI128::new(serial_no).negate(),
+            RC_ERROR,
             &format!(
-                "[BTPError] source: {}, code: {} message: {}",
-                source, code, message
+                "[BTPError] source: {}, code: {} message: {:?}",
+                source,
+                RC_ERROR,
+                error_message.message().clone().unwrap()
             ),
         )
         .unwrap();
@@ -68,7 +66,12 @@ impl BtpTokenService {
     }
 
     #[private]
-    pub fn send_service_message_callback(&mut self, destination_network: String, message: TokenServiceMessage, serial_no: i128) {
+    pub fn send_service_message_callback(
+        &mut self,
+        destination_network: String,
+        message: TokenServiceMessage,
+        serial_no: i128,
+    ) {
         match message.service_type() {
             TokenServiceType::RequestTokenTransfer {
                 sender,
@@ -170,7 +173,7 @@ impl BtpTokenService {
                                     code: 0,
                                     message: "AddedToBlacklist".to_string(),
                                 });
-                                
+
                             self.send_response(
                                 btp_message.serial_no(),
                                 btp_message.source(),
@@ -204,7 +207,7 @@ impl BtpTokenService {
                                             message: err.to_string(),
                                         },
                                     );
-                                    
+
                                     self.send_response(
                                         btp_message.serial_no(),
                                         btp_message.source(),
@@ -307,14 +310,14 @@ impl BtpTokenService {
     fn handle_response(
         &mut self,
         serial_no: &WrappedI128,
-        code: u128,
+        code: u8,
         message: &str,
     ) -> Result<Option<TokenServiceMessage>, BshError> {
         if let Some(request) = self.requests().get(*serial_no.get()) {
             let sender_id = AccountId::try_from(request.sender().to_owned()).unwrap();
-            if code == 0 {
+            if code == RC_OK {
                 self.finalize_external_transfer(&sender_id, request.assets());
-            } else if code == 1 {
+            } else if code == RC_ERROR {
                 self.rollback_external_transfer(&sender_id, request.assets());
             }
             self.requests_mut().remove(*serial_no.get());
@@ -336,22 +339,16 @@ impl BtpTokenService {
         destination_network: String,
         message: TokenServiceMessage,
     ) {
-        ext_bmc::send_service_message(
+        ext_bmc::ext(self.bmc.clone(),).send_service_message(
             serial_no,
             self.name.clone(),
             destination_network.clone(),
             message.clone().into(),
-            self.bmc.clone(),
-            estimate::NO_DEPOSIT,
-            estimate::GAS_FOR_SEND_SERVICE_MESSAGE,
         )
-        .then(ext_self::send_service_message_callback(
+        .then(Self::ext(env::current_account_id()).send_service_message_callback(
             destination_network,
             message.clone(),
             serial_no,
-            env::current_account_id(),
-            estimate::NO_DEPOSIT,
-            estimate::GAS_FOR_SEND_SERVICE_MESSAGE,
         ));
 
         #[cfg(feature = "testable")]

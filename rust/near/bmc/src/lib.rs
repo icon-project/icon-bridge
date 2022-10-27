@@ -1,6 +1,6 @@
 //! BTP Message Center
 
-use btp_common::errors::{BmcError, BtpException, Exception, BshError};
+use btp_common::errors::{BmcError, BshError, BtpException, Exception};
 use libraries::{
     emit_message,
     types::{
@@ -8,11 +8,8 @@ use libraries::{
             BmcServiceMessage, BmcServiceType, BtpMessage, ErrorMessage, SerializedBtpMessages,
             SerializedMessage,
         },
-        Service,
-
-        HashedCollection,
-        Address, BTPAddress, BmcEvent, Connection, Connections, Links, RelayStatus,
-        Network, Owners, Routes, Services, Math, LinkStatus, Link
+        Address, BTPAddress, BmcEvent, Connection, Connections, HashedCollection, Link, LinkStatus,
+        Links, Math, Network, Owners, RelayStatus, Routes, Service, Services,
     },
 };
 
@@ -20,10 +17,9 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde_json::{to_value, Value};
 use near_sdk::AccountId;
 use near_sdk::{
-    PromiseResult,
     env,
     json_types::{Base64VecU8, U128, U64},
-    log, near_bindgen, require, serde_json, Gas, PanicOnDefault,
+    log, near_bindgen, require, serde_json, Gas, PanicOnDefault, PromiseResult,
 };
 use std::convert::TryInto;
 
@@ -38,8 +34,8 @@ mod relay_management;
 mod route_management;
 mod service_management;
 mod types;
-pub use types::RelayMessage;
 use external::*;
+pub use types::RelayMessage;
 
 const SERVICE: &str = "bmc";
 

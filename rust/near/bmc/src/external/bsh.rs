@@ -8,8 +8,7 @@ pub trait BshContract {
         source: BTPAddress,
         service: String,
         serial_no: i128,
-        code: u128,
-        message: String,
+        message: BtpMessage<SerializedMessage>,
     );
     fn handle_fee_gathering(fee_aggregator: BTPAddress, service: String);
 }

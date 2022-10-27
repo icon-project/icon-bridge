@@ -92,6 +92,10 @@ impl BtpTokenService {
         amount: u128,
         fees: Option<u128>,
     ) {
+        require!(
+            amount >= fees.unwrap_or_default(),
+            format!("{}", BshError::NotMinimumAmount)
+        );
         let amount = std::cmp::max(amount, fees.unwrap_or_default());
         if let Some(balance) = self.balances.get(&account, &coin_id) {
             require!(

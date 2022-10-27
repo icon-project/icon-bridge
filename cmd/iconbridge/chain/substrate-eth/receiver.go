@@ -22,10 +22,9 @@ import (
 )
 
 const (
-	BlockInterval              = 3 * time.Second
-	BlockHeightPollInterval    = 15 * time.Second
+	BlockInterval              = 12 * time.Second
+	BlockHeightPollInterval    = BlockInterval * 5
 	BlockFinalityConfirmations = 10
-	// TODO: adapt BlockHeightPollInterval depending on the value of BlockInterval or BlockFinalityConfirmations to avoid drift
 	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
 	RPCCallRetry               = 5
 )

@@ -10,6 +10,51 @@
     truffle console --network bsc
     ```
 
+## Readonly 
+* ### balance
+    - Returns usable balance, locked balance, refundable balance and user balance
+    - Usage
+        ```js
+        const btsCore = await BTSCore.deployed()
+        await btsCore.balanceOf(coinName)
+
+        // coinName     : Name of coin
+        ```
+    - Returns
+        ```json
+        {
+            "_usableBalance" : "0x0",
+            "_lockedBalance" : "0x12345",
+            "_refundableBalance" : "0x0",
+            "_userBalance" : "0x56a76b623167000"
+        }
+        ```
+* ### feeRatio
+    - Returns fixed fee and fee numerator
+    - Fee numerator can be between 0 and 10000
+    - When `value` amount is to be transferred cross chain
+
+        ```
+        fee = (value * feeRatio / FEE_DENOMINATOR) + fixedFee
+        transferAmount = value - fee
+        ```
+    - Usage
+        ```js
+        const btsCore = await BTSCore.deployed()
+        await btsCore.feeRatio(coinName)
+
+        // coinName     : Name of coin
+        ```
+    - Returns
+        ```json
+        {
+            "_feeNumerator" : "0x12345",
+            "_fixedFee" : "0x0",
+        }
+        ```
+
+
+* ### fees
 ## Transfer from BSC to other chains
 
 * ### Transfer ERC20 tokens and wrapped tokens

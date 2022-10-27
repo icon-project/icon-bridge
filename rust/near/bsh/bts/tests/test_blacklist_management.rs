@@ -9,50 +9,35 @@ use std::{
 use btp_common::errors::BshError;
 use bts::{BtpTokenService, Coin};
 use libraries::types::{
-    messages::{BtpMessage, SerializedMessage},
-    BTPAddress,
+    messages::{BtpMessage, ErrorMessage, SerializedMessage},
+    BTPAddress, WrappedI128,
 };
 use near_sdk::{
     env, serde_json::to_value, test_utils::test_env::alice, testing_env, AccountId, PromiseResult,
-    VMContext,
+    VMContext, test_utils::VMContextBuilder, Gas
 };
 mod token;
 use token::*;
 pub mod accounts;
 use accounts::*;
 
-fn get_context(
-    input: Vec<u8>,
-    is_view: bool,
-    signer_account_id: AccountId,
-    attached_deposit: u128,
-    storage_usage: u64,
-    account_balance: u128,
-) -> VMContext {
-    VMContext {
-        current_account_id: alice().to_string(),
-        signer_account_id: signer_account_id.to_string(),
-        signer_account_pk: vec![0, 1, 2],
-        predecessor_account_id: signer_account_id.to_string(),
-        input,
-        block_index: 0,
-        block_timestamp: 0,
-        account_balance,
-        account_locked_balance: 0,
-        storage_usage,
-        attached_deposit,
-        prepaid_gas: 10u64.pow(18),
-        random_seed: vec![0, 1, 2],
-        is_view,
-        output_data_receivers: vec![],
-        epoch_height: 19,
-    }
+fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u128, account_balance: u128) -> VMContext {
+    VMContextBuilder::new()
+        .current_account_id(alice())
+        .is_view(is_view)
+        .signer_account_id(signer_account_id.clone())
+        .predecessor_account_id(signer_account_id)
+        .storage_usage(env::storage_usage())
+        .prepaid_gas(Gas(10u64.pow(18)))
+        .attached_deposit(attached_deposit)
+        .account_balance(account_balance)
+        .build()
 }
 
 #[test]
 fn add_user_to_blacklist() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
@@ -76,7 +61,7 @@ fn add_user_to_blacklist() {
 #[test]
 fn remove_blacklisted_user_from_blacklist() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
@@ -111,7 +96,7 @@ fn remove_blacklisted_user_from_blacklist() {
 #[test]
 fn remove_non_blacklisted_user_from_blacklist() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
@@ -150,7 +135,7 @@ fn remove_non_blacklisted_user_from_blacklist() {
 
 fn handle_btp_message_to_add_user_to_blacklist() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
@@ -180,7 +165,7 @@ fn handle_btp_message_to_change_token_limit() {
     use libraries::types::TokenLimit;
 
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NEAR_NATIVE_COIN.to_owned());
@@ -210,7 +195,7 @@ fn handle_btp_message_to_change_token_limit() {
 #[test]
 fn is_user_blacklisted() {
     let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
+        get_context(false, account_id, deposit, 0)
     };
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
@@ -228,4 +213,43 @@ fn is_user_blacklisted() {
     let is_user_blacklisted = contract.is_user_black_listed(charlie());
 
     assert_eq!(true, is_user_blacklisted)
+}
+
+#[test]
+
+fn handle_external_service_error_message() {
+    use near_sdk::json_types::Base64VecU8;
+
+    let message = "-P_4_bj7-PkBuPH47_jtuE9idHA6Ly8weDIubmVhci83MjcwYTc5YmU3ODlkNzcwZjJkZTAxNTA0NzY4NGUyODA2NTk3ZWVlZTk2ZWUzY2E4N2IxNzljNjM5OWRlYWFmNriZ-Je4OWJ0cDovLzB4Ny5pY29uL2N4MWFkNmZjYzQ2NWQxYjg2NDRjYTM3NWY5ZTEwYmFiZWVhNGMzODMxNbhPYnRwOi8vMHgyLm5lYXIvNzI3MGE3OWJlNzg5ZDc3MGYyZGUwMTUwNDc2ODRlMjgwNjU5N2VlZWU5NmVlM2NhODdiMTc5YzYzOTlkZWFhZoNidHOB3ITDKPgAhADNaJY=";
+    let btp_message: BtpMessage<SerializedMessage> = BtpMessage::new(
+        BTPAddress::new("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315".to_string()),
+        BTPAddress::new(
+            "btp://0x2.near/7270a79be789d770f2de015047684e2806597eeee96ee3ca87b179c6399deaaf"
+                .to_string(),
+        ),
+        "bts".to_string(),
+        WrappedI128::new(-36),
+        vec![195, 40, 248, 0],
+        None,
+    );
+
+    let context = |account_id: AccountId, deposit: u128| {
+        get_context(false, account_id, 0, deposit)
+    };
+    testing_env!(context(alice(), 0));
+    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let mut contract = BtpTokenService::new(
+        "bts".to_string(),
+        bmc(),
+        "0x1.near".into(),
+        nativecoin.clone(),
+    );
+    let link =
+        BTPAddress::new("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315".to_string());
+    let destination = BTPAddress::new(
+        "btp://0x2.near/7270a79be789d770f2de015047684e2806597eeee96ee3ca87b179c6399deaaf"
+            .to_string(),
+    );
+    testing_env!(context(bmc(), 0));
+    contract.handle_btp_error(link.clone(), "bts".to_string(), -36, btp_message)
 }

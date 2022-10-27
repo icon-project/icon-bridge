@@ -1,20 +1,18 @@
-use crate::types::{Bmc, Bmv, Context, Contract, NativeCoinBsh, TokenBsh};
+use crate::types::{Bmc, Bts, Context, Contract};
 use duplicate::duplicate;
 use std::path::Path;
 use tokio::runtime::Handle;
 use workspaces::prelude::*;
-use workspaces::{Contract as WorkspaceContract, Sandbox, Worker,DevNetwork};
+use workspaces::{Contract as WorkspaceContract, Worker, DevNetwork};
 
-pub async fn deploy(path: &str, worker: Worker<impl DevNetwork>) -> anyhow::Result<WorkspaceContract> {
-    worker.dev_deploy(&std::fs::read(Path::new(path))?).await
+pub async fn deploy(path: &str, worker: Worker<impl DevNetwork>) -> Result<WorkspaceContract, workspaces::error::Error> {
+    worker.dev_deploy(&std::fs::read(Path::new(path)).unwrap()).await
 }
 
 #[duplicate(
     contract_type;
     [ Bmc ];
-    [ Bmv ];
-    [ TokenBsh ];
-    [ NativeCoinBsh ];
+    [ Bts ];
 )]
 impl Contract<'_, contract_type> {
     pub fn deploy(&self, mut context: Context) -> Context {

@@ -13,8 +13,8 @@ testable = []
 [dependencies]
 btp-common = { path = "../../../btp-common" }
 libraries = { path = "../../libraries" }
-near-sdk = { git = "https://github.com/near/near-sdk-rs.git" }
-near-contract-standards = { git = "https://github.com/near/near-sdk-rs.git" }
+near-sdk = "4.1.0-pre.3"
+near-contract-standards = "4.1.0-pre.3"
 tiny-keccak = { version = "2.0", features = ["fips202"] }
 
 [dev-dependencies]
