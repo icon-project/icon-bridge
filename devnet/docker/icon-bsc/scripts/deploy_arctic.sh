@@ -380,7 +380,7 @@ generate_relay_config() {
         --arg dst_key_store_cointype "evm" \
         --arg dst_key_password "$(cat $CONFIG_DIR/keystore/bsc.bmr.wallet.secret)" \
         --argjson dst_tx_data_size_limit 8192 \
-        --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":"100000000000000000000","boost_gas_price":1.5}'
+        --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":"100000000000000000000","boost_gas_price":1.0}'
     )"
 }
 
