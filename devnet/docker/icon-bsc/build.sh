@@ -206,7 +206,7 @@ deploy_smart_contracts_on_testnet_arctic() {
     cd scripts 
     if [ ! -f config_temp.sh ]; then 
         cp config.sh config_temp.sh 
-        cp config/arctic.sh config.sh 
+        cp config/icon-ice-arctic-config.sh config.sh 
     fi 
     ./deploy_arctic.sh
     if [ -f config_temp.sh ]; then 
