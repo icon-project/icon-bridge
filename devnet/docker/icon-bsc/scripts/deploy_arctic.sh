@@ -327,12 +327,11 @@ generate_relay_config() {
     --arg log_writer_filename "bmr/bmr.log" \
     --argjson b2i_relay "$(
       jq -n '
-            .name = "b2a" |
+            .name = "s2i" |
             .src.address = $src_address |
             .src.endpoint = [ $src_endpoint ] |
             .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
             .src.options.verifier.parentHash = $src_options_verifier_parentHash |
-            .src.options.verifier.validatorData = $src_options_verifier_validatorData |
             .src.options.syncConcurrency = 100 |
             .src.offset = $src_offset |
             .dst.address = $dst_address |
@@ -356,7 +355,7 @@ generate_relay_config() {
     )" \
     --argjson i2b_relay "$(
       jq -n '
-            .name = "a2b" |
+            .name = "i2s" |
             .src.address = $src_address |
             .src.endpoint = [ $src_endpoint ] |
             .src.offset = $src_offset |
