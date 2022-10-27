@@ -64,7 +64,7 @@ export BSC_WRAPPED_COIN_DECIMALS=(18 18 18 18 18 18 18 18 18)
 # export BSC_BMC_NET=${BSC_BMC_NET:-"0x229.snow"}
 # export ICON_BMC_NET=${ICON_BMC_NET:-"0x1.icon"}
 # export GOLOOP_RPC_NID="0x1"
-# export BSC_NID="56"
+# export BSC_NID="553"
 
 # export ICON_ENDPOINT="https://ctz.solidwallet.io/api/v3/icon_dex"
 # export ICON_NATIVE_COIN_SYM=("ICX")
@@ -86,7 +86,7 @@ export BSC_WRAPPED_COIN_DECIMALS=(18 18 18 18 18 18 18 18 18)
 # export ICON_WRAPPED_COIN_FEE_NUMERATOR=(0 0 0 0 0 0 0)
 # export ICON_WRAPPED_COIN_DECIMALS=(18 18 18 18 18 18 18)
 
-# export BSC_ENDPOINT="https://arctic-rpc.icenetwork.io:9933"
+# export BSC_ENDPOINT="https://snow-rpc-1.icenetwork.io:9933"
 # export BSC_NATIVE_COIN_SYM=("ICZ")
 # export BSC_NATIVE_COIN_NAME=("btp-$BSC_BMC_NET-ICZ")
 # export BSC_NATIVE_TOKEN_SYM=()
@@ -105,7 +105,7 @@ export BSC_WRAPPED_COIN_DECIMALS=(18 18 18 18 18 18 18 18 18)
 # export BSC_WRAPPED_COIN_DECIMALS=(18 18 18 18 18 18 18 18 18)
 
 
-# export INIT_ADDRESS_PATH=$BASE_DIR/mainnet/addresses.json
+# export INIT_ADDRESS_PATH=$BASE_DIR/mainnet/snow_addresses.json
 # # mainnet: end
 
 
