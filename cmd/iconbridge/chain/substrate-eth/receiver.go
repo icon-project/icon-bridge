@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	subEthTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/types"
 	"math/big"
 	"math/rand"
 	"sort"
 	"time"
+
+	subEthTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/types"
 
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,9 +23,9 @@ import (
 )
 
 const (
-	BlockInterval              = 12 * time.Second
-	BlockHeightPollInterval    = BlockInterval * 5
-	BlockFinalityConfirmations = 10
+	BlockInterval              = 20 * time.Second
+	BlockHeightPollInterval    = BlockInterval * 3
+	BlockFinalityConfirmations = 5
 	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
 	RPCCallRetry               = 5
 )
