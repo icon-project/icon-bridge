@@ -23,7 +23,7 @@ setup_linked_account() {
       ensure_bsc_key_store $BSC_KEY_STORE $BSC_SECRET
       echo "Do not Panic..."
       echo "Missing BSC God Wallet on the required path. One has been created "$BSC_KEY_STORE
-      echo "Fund this newly created wallet and rerun ./deploysc.sh again " 
+      echo "Fund this newly created wallet and rerun again " 
       exit 0
   fi
 
@@ -53,7 +53,7 @@ setup_account() {
         ensure_bsc_key_store $BSC_KEY_STORE $BSC_SECRET
         echo "Do not Panic..."
         echo "Missing BSC God Wallet on the required path. One has been created "$BSC_KEY_STORE
-        echo "Fund this newly created wallet and rerun ./deploysc.sh again " 
+        echo "Fund this newly created wallet and rerun again " 
         exit 0
     fi
     export PRIVATE_KEY="[\""$(cat $BSC_KEY_STORE.priv)"\"]"
