@@ -86,7 +86,7 @@ export BSC_WRAPPED_COIN_DECIMALS=(18 18 18 18 18 18 18 18 18)
 # export ICON_WRAPPED_COIN_FEE_NUMERATOR=(0 0 0 0 0 0 0)
 # export ICON_WRAPPED_COIN_DECIMALS=(18 18 18 18 18 18 18)
 
-# export BSC_ENDPOINT="https://snow-rpc-1.icenetwork.io:9933"
+# export BSC_ENDPOINT="https://snow-rpc.icenetwork.io:9933"
 # export BSC_NATIVE_COIN_SYM=("ICZ")
 # export BSC_NATIVE_COIN_NAME=("btp-$BSC_BMC_NET-ICZ")
 # export BSC_NATIVE_TOKEN_SYM=()
