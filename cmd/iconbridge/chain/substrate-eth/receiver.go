@@ -3,29 +3,29 @@ package substrate_eth
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
 	"sort"
-	"sync"
 	"time"
+
+	subEthTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/types"
 
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
 
 const (
-	BlockInterval              = 12 * time.Second
-	BlockHeightPollInterval    = BlockInterval * 5
-	BlockFinalityConfirmations = 10
+	BlockInterval              = 20 * time.Second
+	BlockHeightPollInterval    = BlockInterval * 3
+	BlockFinalityConfirmations = 5
 	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
 	RPCCallRetry               = 5
 )
@@ -95,16 +95,11 @@ type BnOptions struct {
 	Concurrency uint64
 }
 
-func (r *receiver) newVerifier(opts *VerifierOptions) (vri IVerifier, err error) {
-	vr := &Verifier{
-		mu:         sync.RWMutex{},
+func (r *receiver) newVerifer(opts *VerifierOptions) (*Verifier, error) {
+	vr := Verifier{
 		next:       big.NewInt(int64(opts.BlockHeight)),
 		parentHash: common.HexToHash(opts.BlockHash.String()),
-		validators: map[ethCommon.Address]bool{},
-		chainID:    r.client().GetChainID(),
 	}
-
-	// cross check input parent hash
 	header, err := r.client().GetHeaderByHeight(big.NewInt(int64(opts.BlockHeight)))
 	if err != nil {
 		err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
@@ -113,26 +108,10 @@ func (r *receiver) newVerifier(opts *VerifierOptions) (vri IVerifier, err error)
 	if header.ParentHash != vr.parentHash {
 		return nil, fmt.Errorf("Unexpected Hash(%v): Got %v Expected %v", opts.BlockHeight, header.ParentHash.Hex(), vr.parentHash.Hex())
 	}
-
-	// cross check input validator data
-	roundedHeight := big.NewInt(int64(opts.BlockHeight - opts.BlockHeight%defaultEpochLength))
-	header, err = r.client().GetHeaderByHeight(roundedHeight)
-	if err != nil {
-		err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
-		return nil, err
-	}
-
-	if !bytes.Equal(header.Extra, opts.ValidatorData) {
-		return nil, fmt.Errorf("Unexpected ValidatorData(%v): Got %v Expected %v", roundedHeight, hex.EncodeToString(header.Extra), opts.ValidatorData)
-	}
-	vr.validators, err = getValidatorMapFromHex(opts.ValidatorData)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getValidatorMapFromHex %v", err)
-	}
-	return vr, nil
+	return &vr, nil
 }
 
-func (r *receiver) syncVerifier(vr IVerifier, height int64) error {
+func (r *receiver) syncVerifier(vr *Verifier, height int64) error {
 	if height == vr.Next().Int64() {
 		return nil
 	}
@@ -144,7 +123,7 @@ func (r *receiver) syncVerifier(vr IVerifier, height int64) error {
 
 	type res struct {
 		Height int64
-		Header *types.Header
+		Header *subEthTypes.Header
 	}
 
 	type req struct {
@@ -156,7 +135,7 @@ func (r *receiver) syncVerifier(vr IVerifier, height int64) error {
 
 	r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Info("syncVerifier: start")
 
-	var prevHeader *types.Header
+	var prevHeader *subEthTypes.Header
 	cursor := vr.Next().Int64()
 	for cursor <= height {
 		rqch := make(chan *req, r.opts.SyncConcurrency)
@@ -223,11 +202,7 @@ func (r *receiver) syncVerifier(vr IVerifier, height int64) error {
 				if vr.Next().Int64() >= height { // if height is greater than targetHeight, break loop
 					break
 				}
-				err := vr.Verify(prevHeader, next.Header, nil)
-				if err != nil {
-					return errors.Wrapf(err, "syncVerifier: Verify: %v", err)
-				}
-				err = vr.Update(prevHeader)
+				err := vr.Verify(prevHeader, next.Header)
 				if err != nil {
 					return errors.Wrapf(err, "syncVerifier: Update: %v", err)
 				}
@@ -247,9 +222,9 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		return errors.New("receiveLoop: invalid options: <nil>")
 	}
 
-	var vr IVerifier
+	var vr *Verifier
 	if r.opts.Verifier != nil {
-		vr, err = r.newVerifier(r.opts.Verifier)
+		vr, err = r.newVerifer(r.opts.Verifier)
 		if err != nil {
 			return err
 		}
@@ -308,7 +283,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						}
 					} else {
 						if vr != nil {
-							if err := vr.Verify(lbn.Header, bn.Header, bn.Receipts); err != nil {
+							if err := vr.Verify(lbn.Header, bn.Header); err != nil {
 								r.log.WithFields(log.Fields{
 									"height":     lbn.Height,
 									"lbnHash":    lbn.Hash,
@@ -316,9 +291,6 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 									"bnHash":     bn.Hash}).Error("verification failed. refetching block ", err)
 								next--
 								break
-							}
-							if err := vr.Update(lbn.Header); err != nil {
-								return errors.Wrapf(err, "receiveLoop: vr.Update: %v", err)
 							}
 						}
 						if err := callback(lbn); err != nil {
@@ -368,7 +340,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						qch <- q
 						continue
 					}
-					r.log.Debugf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash(), q.err)
+					r.log.Debugf("receiveLoop: bnq: h=%d:%v, %v", q.h, q.v.Header.Hash, q.err)
 					bns = append(bns, nil)
 					if len(bns) == cap(bns) {
 						close(qch)
@@ -399,7 +371,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 								return
 							}
 							q.v.Header = header
-							q.v.Hash = q.v.Header.Hash()
+							q.v.Hash = q.v.Header.Hash
 						}
 
 						if q.v.Header.GasUsed > 0 {
@@ -416,6 +388,14 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 							}
 							// TODO optimize retry of GetBlockReceipts()
 							q.v.Receipts, q.err = r.client().GetBlockReceiptsFromHeight(q.v.Height)
+							if q.err == nil {
+								receiptsRoot := ethTypes.DeriveSha(q.v.Receipts, trie.NewStackTrie(nil))
+								if !bytes.Equal(receiptsRoot.Bytes(), q.v.Header.ReceiptHash.Bytes()) {
+									q.err = fmt.Errorf(
+										"invalid receipts: remote=%v, local=%v",
+										q.v.Header.ReceiptHash, receiptsRoot)
+								}
+							}
 							if q.err != nil {
 								q.err = errors.Wrapf(q.err, "GetBlockReceipts: %v", q.err)
 								return
