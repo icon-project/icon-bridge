@@ -189,6 +189,20 @@ configure_bmc_javascore_addRelay() {
   fi
 }
 
+configure_bmc_javascore_removeRelay() {
+  echo "Removing bsc Relay"
+  cd $CONFIG_DIR
+  if [ ! -f icon.configure.removeRelay ]; then
+    goloop rpc sendtx call --to $(cat icon.addr.bmc) \
+      --method removeRelay \
+      --param _link=$(cat bsc.addr.bmcbtp) \
+      --param _addr=$1 | jq -r . >tx/removeRelay.icon
+    sleep 3
+    ensure_txresult tx/removeRelay.icon
+    echo "removeRelay" > icon.configure.removeRelay
+  fi
+}
+
 
 configure_javascore_register_native_token() {
   echo "Register Native Token " $2
