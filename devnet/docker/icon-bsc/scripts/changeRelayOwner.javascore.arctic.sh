@@ -1,8 +1,13 @@
 #! /bin/bash
 set -e 
 
+source config/icon-ice-arctic-config.sh
 source token.javascore.sh 
 
+if [ "$(basename $CONFIG_DIR)" != "_ixh_arctic" ]; then 
+    echo "The scipt is currently meant for Arctic chain only. Got config dir ${CONFIG_DIR}"
+    exit 0
+fi
 
 if [ $# -eq 0 ]; then
     echo "No arguments supplied: Pass --remove addr or --add"

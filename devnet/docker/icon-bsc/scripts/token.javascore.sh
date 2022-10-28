@@ -177,6 +177,9 @@ configure_javascore_setLinkHeight() {
 configure_bmc_javascore_addRelay() {
   echo "Adding bsc Relay"
   local icon_bmr_owner=$(cat $CONFIG_DIR/keystore/icon.bmr.wallet.json | jq -r .address)
+  echo $icon_bmr_owner
+  sleep 5
+  echo "Starting"
   cd $CONFIG_DIR
   if [ ! -f icon.configure.addRelay ]; then
     goloop rpc sendtx call --to $(cat icon.addr.bmc) \
@@ -190,8 +193,11 @@ configure_bmc_javascore_addRelay() {
 }
 
 configure_bmc_javascore_removeRelay() {
-  echo "Removing bsc Relay"
   cd $CONFIG_DIR
+  echo "BMC BTP Address"
+  cat bsc.addr.bmcbtp
+  sleep 5
+  echo "Starting.."
   if [ ! -f icon.configure.removeRelay ]; then
     goloop rpc sendtx call --to $(cat icon.addr.bmc) \
       --method removeRelay \
