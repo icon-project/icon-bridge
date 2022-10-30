@@ -3,10 +3,11 @@ package substrate_eth
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"math"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -61,7 +62,7 @@ type IClient interface {
 	//GetBlockByHash(hash common.Hash) (*snowTypes.Block, error)
 	GetHeaderByHeight(height *big.Int) (*subEthTypes.Header, error)
 	//GetBlockReceipts(hash common.Hash) (ethTypes.Receipts, error)
-	GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts, error)
+	GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts, bool, error)
 	GetChainID() *big.Int
 	GetEthClient() *ethclient.Client
 	Log() log.Logger
@@ -83,7 +84,6 @@ func (cl *Client) GetBlockNumber() (uint64, error) {
 	}
 	return bn, nil
 }
-
 
 func (cl *Client) GetHeaderByHeight(height *big.Int) (*subEthTypes.Header, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
@@ -113,7 +113,6 @@ func toBlockNumArg(number *big.Int) string {
 	return hexutil.EncodeBig(number)
 }
 
-
 func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.Int, gasHeight *big.Int, err error) {
 	gasPrice = big.NewInt(0)
 	header, err := c.eth.HeaderByNumber(ctx, nil)
@@ -142,18 +141,22 @@ func (c *Client) GetMedianGasPriceForBlock(ctx context.Context) (gasPrice *big.I
 	return
 }
 
-func (cl *Client) GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts, error) {
+func (cl *Client) GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
 	defer cancel()
 	hb, err := cl.eth.BlockByNumber(ctx, height)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if hb.GasUsed() == 0 || len(hb.Transactions()) == 0 {
-		return nil, nil
+		return nil, false, nil
 	}
 	txhs := []string{}
+	isEIP1559 := false
 	for _, v := range hb.Transactions() {
+		if v.Type() == 2 {
+			isEIP1559 = true
+		}
 		txhs = append(txhs, v.Hash().String())
 	}
 	// fetch all txn receipts concurrently
@@ -172,7 +175,7 @@ func (cl *Client) GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts
 		switch {
 		case q.err != nil:
 			if q.retry == 0 {
-				return nil, q.err
+				return nil, isEIP1559, q.err
 			}
 			q.retry--
 			q.err = nil
@@ -203,7 +206,7 @@ func (cl *Client) GetBlockReceiptsFromHeight(height *big.Int) (ethTypes.Receipts
 			receipts = append(receipts, r)
 		}
 	}
-	return receipts, nil
+	return receipts, isEIP1559, nil
 }
 
 func (c *Client) GetChainID() *big.Int {
