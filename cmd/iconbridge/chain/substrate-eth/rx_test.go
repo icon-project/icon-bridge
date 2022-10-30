@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const endpoint = "wss://snow-rpc-1.icenetwork.io"
+const endpoint = ""
 
 func newTestClient(t *testing.T, bmcAddr string) IClient {
 	url := endpoint
