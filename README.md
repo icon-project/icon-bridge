@@ -57,3 +57,6 @@ Please see our quarterly roadmap [here](https://github.com/orgs/icon-project/pro
 <!-- prettier-ignore-end -->
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://allcontributors.org) specification.
+Contributions of any kind are welcome!
