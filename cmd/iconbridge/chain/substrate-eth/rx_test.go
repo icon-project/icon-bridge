@@ -1,5 +1,6 @@
 package substrate_eth
 
+/*
 import (
 	"bytes"
 	"context"
@@ -154,3 +155,4 @@ func parallelFetch(start, end, concurrency int) error {
 	}
 	return nil
 }
+*/
