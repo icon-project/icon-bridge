@@ -45,7 +45,7 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 
 		w, err := rc.Dst.Wallet()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("dst.wallet chain %v err %v", rc.Name, err)
 		}
 		chainName := rc.Dst.Address.BlockChain()
 		srvName := "BMR-"
