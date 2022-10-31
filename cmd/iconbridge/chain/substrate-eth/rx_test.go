@@ -67,9 +67,9 @@ func TestReceiver_GetReceiptProofsType(t *testing.T) {
 }
 
 func TestParallelFetch(t *testing.T) {
-	start := 245210
-	end := 247550
-	concurrency := 250
+	start := 245204
+	end := 245208
+	concurrency := 10
 	err := parallelFetch(start, end, concurrency)
 	if err != nil {
 		t.Fatal(fmt.Errorf("parallelTransfers %v", err))
