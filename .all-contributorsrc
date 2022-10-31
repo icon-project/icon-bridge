@@ -15,6 +15,17 @@
         "test",
         "doc"
       ]
+    },
+    {
+      "login": "MuhammedIrfan",
+      "name": "Muhammed Irfan",
+      "avatar_url": "https://avatars.githubusercontent.com/u/50794925?v=4",
+      "profile": "https://github.com/MuhammedIrfan",
+      "contributions": [
+        "doc",
+        "test",
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
