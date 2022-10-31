@@ -26,6 +26,19 @@
         "test",
         "code"
       ]
+    },
+    {
+      "login": "CyrusVorwald-ICON",
+      "name": "CyrusVorwald-ICON",
+      "avatar_url": "https://avatars.githubusercontent.com/u/90732384?v=4",
+      "profile": "https://github.com/CyrusVorwald-ICON",
+      "contributions": [
+        "business",
+        "doc",
+        "ideas",
+        "maintenance",
+        "projectManagement"
+      ]
     }
   ],
   "contributorsPerLine": 7,
