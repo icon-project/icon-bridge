@@ -389,16 +389,12 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 							// TODO optimize retry of GetBlockReceipts()
 							isEIP1559 := false
 							q.v.Receipts, isEIP1559, q.err = r.client().GetBlockReceiptsFromHeight(q.v.Height)
-							if q.err == nil {
-								if isEIP1559 {
-									r.log.Warnf("Received EIP-1559 transaction on height %v \n", q.v.Height)
-								} else {
-									receiptsRoot := ethTypes.DeriveSha(q.v.Receipts, trie.NewStackTrie(nil))
-									if !bytes.Equal(receiptsRoot.Bytes(), q.v.Header.ReceiptHash.Bytes()) {
-										q.err = fmt.Errorf(
-											"invalid receipts: remote=%v, local=%v",
-											q.v.Header.ReceiptHash, receiptsRoot)
-									}
+							if q.err == nil && !isEIP1559 {
+								receiptsRoot := ethTypes.DeriveSha(q.v.Receipts, trie.NewStackTrie(nil))
+								if !bytes.Equal(receiptsRoot.Bytes(), q.v.Header.ReceiptHash.Bytes()) {
+									q.err = fmt.Errorf(
+										"invalid receipts: remote=%v, local=%v",
+										q.v.Header.ReceiptHash, receiptsRoot)
 								}
 							}
 							if q.err != nil {
