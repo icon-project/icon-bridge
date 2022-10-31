@@ -58,7 +58,7 @@ Please see our quarterly roadmap [here](https://github.com/orgs/icon-project/pro
 <table>
   <tbody>
     <tr>
-      <td align="center"><a href="https://github.com/izyak"><img src="https://avatars.githubusercontent.com/u/76203436?v=4?s=100" width="100px;" alt="izyak"/><br /><sub><b>izyak</b></sub></a><br /><a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Tests">⚠️</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Documentation">📖</a></td>
+      <td align="center"><a href="https://github.com/izyak"><img src="https://avatars.githubusercontent.com/u/76203436?v=4?s=100" width="100px;" alt="izyak"/><br /><sub><b>izyak</b></sub></a><br /><a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Tests">⚠️</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Documentation">📖</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Code">💻</a></td>
       <td align="center"><a href="https://github.com/andrii-kl"><img src="https://avatars.githubusercontent.com/u/18900364?v=4?s=100" width="100px;" alt="Andrii"/><br /><sub><b>Andrii</b></sub></a><br /><a href="https://github.com/icon-project/icon-bridge/commits?author=andrii-kl" title="Documentation">📖</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=andrii-kl" title="Tests">⚠️</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=andrii-kl" title="Code">💻</a></td>
     </tr>
   </tbody>
