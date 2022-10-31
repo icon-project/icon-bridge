@@ -1,6 +1,6 @@
 # ICON Bridge
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 ![release](https://img.shields.io/github/v/release/icon-project/icon-bridge)
 [![codecov](https://codecov.io/gh/icon-project/icon-bridge/branch/main/graph/badge.svg?token=YXV6EE5KB5)](https://codecov.io/gh/icon-project/icon-bridge)
@@ -59,6 +59,7 @@ Please see our quarterly roadmap [here](https://github.com/orgs/icon-project/pro
   <tbody>
     <tr>
       <td align="center"><a href="https://github.com/izyak"><img src="https://avatars.githubusercontent.com/u/76203436?v=4?s=100" width="100px;" alt="izyak"/><br /><sub><b>izyak</b></sub></a><br /><a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Tests">⚠️</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Documentation">📖</a></td>
+      <td align="center"><a href="https://github.com/MuhammedIrfan"><img src="https://avatars.githubusercontent.com/u/50794925?v=4?s=100" width="100px;" alt="Muhammed Irfan"/><br /><sub><b>Muhammed Irfan</b></sub></a><br /><a href="https://github.com/icon-project/icon-bridge/commits?author=MuhammedIrfan" title="Documentation">📖</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=MuhammedIrfan" title="Tests">⚠️</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=MuhammedIrfan" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
