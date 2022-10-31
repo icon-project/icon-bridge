@@ -40,6 +40,17 @@
         "maintenance",
         "projectManagement"
       ]
+    },
+    {
+      "login": "shreyasbhat0",
+      "name": "Shreyas S Bhat",
+      "avatar_url": "https://avatars.githubusercontent.com/u/35568964?v=4",
+      "profile": "http://themissingsemicolon.in",
+      "contributions": [
+        "doc",
+        "test",
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

@@ -1,6 +1,6 @@
 # ICON Bridge
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 ![release](https://img.shields.io/github/v/release/icon-project/icon-bridge)
 [![codecov](https://codecov.io/gh/icon-project/icon-bridge/branch/main/graph/badge.svg?token=YXV6EE5KB5)](https://codecov.io/gh/icon-project/icon-bridge)
@@ -61,6 +61,7 @@ Please see our quarterly roadmap [here](https://github.com/orgs/icon-project/pro
       <td align="center"><a href="https://github.com/izyak"><img src="https://avatars.githubusercontent.com/u/76203436?v=4?s=100" width="100px;" alt="izyak"/><br /><sub><b>izyak</b></sub></a><br /><a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Tests">⚠️</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Documentation">📖</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Code">💻</a></td>
       <td align="center"><a href="https://github.com/andrii-kl"><img src="https://avatars.githubusercontent.com/u/18900364?v=4?s=100" width="100px;" alt="Andrii"/><br /><sub><b>Andrii</b></sub></a><br /><a href="https://github.com/icon-project/icon-bridge/commits?author=andrii-kl" title="Documentation">📖</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=andrii-kl" title="Tests">⚠️</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=andrii-kl" title="Code">💻</a></td>
       <td align="center"><a href="https://github.com/CyrusVorwald-ICON"><img src="https://avatars.githubusercontent.com/u/90732384?v=4?s=100" width="100px;" alt="CyrusVorwald-ICON"/><br /><sub><b>CyrusVorwald-ICON</b></sub></a><br /><a href="#business-CyrusVorwald-ICON" title="Business development">💼</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=CyrusVorwald-ICON" title="Documentation">📖</a> <a href="#ideas-CyrusVorwald-ICON" title="Ideas, Planning, & Feedback">🤔</a> <a href="#maintenance-CyrusVorwald-ICON" title="Maintenance">🚧</a> <a href="#projectManagement-CyrusVorwald-ICON" title="Project Management">📆</a></td>
+      <td align="center"><a href="http://themissingsemicolon.in"><img src="https://avatars.githubusercontent.com/u/35568964?v=4?s=100" width="100px;" alt="Shreyas S Bhat"/><br /><sub><b>Shreyas S Bhat</b></sub></a><br /><a href="https://github.com/icon-project/icon-bridge/commits?author=shreyasbhat0" title="Documentation">📖</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=shreyasbhat0" title="Tests">⚠️</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=shreyasbhat0" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
