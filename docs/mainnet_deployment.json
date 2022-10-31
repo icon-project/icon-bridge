@@ -11,6 +11,12 @@
                "network_id": "0x38",
                "btp_network_id": "0x38.bsc",
                "block_height": 20493051
+          },
+          "snow": {
+               "uri": "https://snow-rpc.icenetwork.io:9933",
+               "network_id": "0x228",
+               "btp_network_id": "0x228.snow",
+               "block_height": 224136
           }
      },
      "contracts": {
@@ -23,6 +29,7 @@
                "USDC" : "cx532e4235f9004c233604c1be98ca839cd777d58c",
                "BTCB" : "cx5b5a03cb525a1845d0af3a872d525b18a810acb0",
                "ETH" : "cx288d13e1b63563459a2ac6179f237711f6851cb5",
+               "ICZ" : "cxbdcc8e15406998d99c4927fecfde99f7c1404358",
                "bmc": "cx23a91ee3dd290486a9113a6a42429825d813de53",
                "bts": "cxcef70e92b89f2d8191a0582de966280358713c32"
           },
@@ -35,10 +42,26 @@
                "ICX" : "0x9b7b6A964f8870699Ae74744941663D257b0ec1f",
                "sICX" : "0x33acDF0Fe57C531095F6bf5a992bF5aA81c94Acf",
                "bnUSD" : "0xa804D2e9221057099eF331AE1c0D6616cC27d770",
+               "ICZ" : "0xEC018C4e38A67038c2dFBFe94ff2df1B6c6F5385",
                "BMCManagement": "0xe221e50fbe2Ba54b1898b4c02F66bf9598fbD1dB",
                "BMCPeriphery": "0x034AaDE86BF402F023Aa17E5725fABC4ab9E9798",
                "BTSCore": "0x7A4341Af4995884546Bcf7e09eB98beD3eD26D28",
                "BTSPeriphery": "0x556CA2d717d366A448c118D14e94a744b3c6578c"
+          },
+          "snow": {
+               "BNB" : "0x11c6d7F2CEaf0abFCf65B7b2d6ad8F33e4d3E2dB",
+               "BUSD" : "0xA1FAEe5611bdB376DA55bC54651E96b411c7868e",
+               "USDT" : "0x6492c150E1b148803b928803f6376ba37423436f",
+               "USDC" : "0x9A5d5AB8eA1B82665BE1193C9FBb266288037199",
+               "BTCB" : "0x4677B5BE84f9c21BE810ff70030EFA8f49aa0d43",
+               "ETH" : "0xCf5dCc7462727e04F3E35966662aa3806374430F",
+               "ICX" : "0x1106e77ec895C5f246159e89f7d62F79898eF88d",
+               "sICX" : "0x9c93CeA18Ee49Ea279Be5832Dc389Bb9B8AFB7dC",
+               "bnUSD" : "0x93ea705B67eD6bdbd4A72657Ea8c767f50E3Db9e",
+               "BMCManagement": "0xe4c6161200bbBe5CDE23D1E7606C82632c0eb930",
+               "BMCPeriphery": "0xf808Fbb55CFDDa37D051B962b7918a8D3981feD5",
+               "BTSCore": "0x3814DDe28CBED096721336AB5C9aE547FcbB4Cae",
+               "BTSPeriphery": "0xf3f6A41FA0436A9ba4b3da599B72023f15EFE12b"
           }
       }
 }
