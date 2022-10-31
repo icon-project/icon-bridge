@@ -26,6 +26,17 @@
         "test",
         "code"
       ]
+    },
+    {
+      "login": "bbist",
+      "name": "bbist",
+      "avatar_url": "https://avatars.githubusercontent.com/u/76272791?v=4",
+      "profile": "https://github.com/bbist",
+      "contributions": [
+        "doc",
+        "test",
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
