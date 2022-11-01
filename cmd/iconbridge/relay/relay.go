@@ -219,7 +219,7 @@ func (r *relay) Start(ctx context.Context) error {
 
 			retryCount := 0
 		waitLoop:
-			for blockHeight, err := tx.Receipt(ctx); retryCount < 90; _, err = tx.Receipt(ctx) {
+			for blockHeight, err := tx.Receipt(ctx); retryCount < 30; _, err = tx.Receipt(ctx) {
 				switch {
 				case err == nil:
 					newMsg.From = srcMsg.From

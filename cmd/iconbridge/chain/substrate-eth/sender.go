@@ -211,7 +211,9 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*
 			).Int(nil)
 		}
 
-		txo.GasPrice = gasPrice
+		// Randomness of range [0, 1e5] is used to make gas price random => this will make transaction hash random
+		// A random transaction hash is essential for substrate chain to avoid TemporaryBan error
+		txo.GasPrice = (&big.Int{}).Add(gasPrice, big.NewInt(int64(rand.Intn(100000))))
 		txo.GasLimit = uint64(DefaultGasLimit)
 		return txo, nil
 	}

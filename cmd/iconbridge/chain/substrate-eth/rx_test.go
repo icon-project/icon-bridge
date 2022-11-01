@@ -1,6 +1,5 @@
 package substrate_eth
 
-/*
 import (
 	"bytes"
 	"context"
@@ -22,8 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
-const endpoint = "wss://arctic-archive.icenetwork.io:9944"
+const endpoint = "wss://arctic-rpc.icenetwork.io:9944"
 
 func newTestClient(t *testing.T, bmcAddr string) IClient {
 	url := endpoint
@@ -180,7 +178,7 @@ func TestReceiver_GetGasPriceUsed(t *testing.T) {
 
 func TestParallelTransactions(t *testing.T) {
 	for i := 0; i < 1; i++ {
-		gp := big.NewInt(int64(1000000000000)) // retry with less than 8
+		gp := big.NewInt(int64(1200)) // retry with less than 8
 		hash := nativeCoinTransferRequest(t, context.TODO(), gp)
 		fmt.Println(i, " ", hash)
 		time.Sleep(time.Second)
@@ -195,7 +193,8 @@ func nativeCoinTransferRequest(t *testing.T, ctx context.Context, gasPrice *big.
 
 	clrpc, err := rpc.Dial(endpoint)
 	require.NoError(t, err)
-	btscore, err := btscore.NewBtscore(common.HexToAddress(btscoreAddr), ethclient.NewClient(clrpc))
+	ethcl := ethclient.NewClient(clrpc)
+	btscore, err := btscore.NewBtscore(common.HexToAddress(btscoreAddr), ethcl)
 	require.NoError(t, err)
 
 	privBytes, err := hex.DecodeString(privKeyString)
@@ -208,8 +207,28 @@ func nativeCoinTransferRequest(t *testing.T, ctx context.Context, gasPrice *big.
 	txo.Value = big.NewInt(5000000000000000000)
 	txo.Context = ctx
 	txo.GasPrice = gasPrice
-	txn, err := btscore.TransferNativeCoin(txo, recepientAddress)
+	nonce, err := ethcl.NonceAt(ctx, common.HexToAddress("0x4B9c58976F89f211A5B1079d79cEa25bc5C1e4ED"), nil)
 	require.NoError(t, err)
-	return txn.Hash().String()
+	txo.Nonce = big.NewInt(int64(nonce))
+	// txn, err := btscore.TransferNativeCoin(txo, recepientAddress)
+	// require.NoError(t, err)
+	// fmt.Println("Init ", txn.Hash().String())
+	for i := 0; i < 5; i++ {
+		txn, err := btscore.TransferNativeCoin(txo, recepientAddress)
+		if err != nil {
+			fmt.Println("retrywith error ", err)
+		} else {
+			fmt.Println("itr ", txn.Hash().String())
+		}
+	}
+
+	txo.GasPrice = (&big.Int{}).Add(txo.GasPrice, big.NewInt(1))
+	txn, err := btscore.TransferNativeCoin(txo, recepientAddress)
+	if err != nil {
+		fmt.Println("retrywith error ", err)
+	} else {
+		fmt.Println("final ", txn.Hash().String())
+	}
+
+	return "Done"
 }
-*/
