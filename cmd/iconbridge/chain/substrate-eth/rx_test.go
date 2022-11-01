@@ -1,5 +1,6 @@
 package substrate_eth
 
+/*
 import (
 	"bytes"
 	"context"
@@ -232,3 +233,4 @@ func nativeCoinTransferRequest(t *testing.T, ctx context.Context, gasPrice *big.
 
 	return "Done"
 }
+*/
