@@ -85,11 +85,11 @@ impl BtpTokenService {
         coin_id: CoinId,
         coin_symbol: String,
         receiver_id: AccountId,
-        #[callback_result] stroage_cost: Result<U128, near_sdk::PromiseError>,
+        #[callback_result] storage_cost: Result<U128, near_sdk::PromiseError>,
     ) {
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
-                if stroage_cost.is_ok() {
+                if storage_cost.is_ok() {
                     let mut balance = self
                         .balances
                         .get(&env::current_account_id(), &coin_id)
@@ -104,19 +104,17 @@ impl BtpTokenService {
                         &coin_id,
                         amount,
                     );
-                    if let Some(storage_balance) = self.storage_balances.get(&receiver_id.clone()) {
-                        if *storage_balance == 0 {
-                            self.storage_balances
-                                .set(receiver_id.clone(), stroage_cost.unwrap().into())
-                        } else {
-                            let stroage_cost: u128 = stroage_cost.unwrap().into();
-                            self.storage_balances
-                                .set(receiver_id.clone(), stroage_cost + storage_balance)
-                        }
-                    } else {
-                        self.storage_balances
-                            .set(receiver_id.clone(), stroage_cost.unwrap().into())
-                    }
+
+                    let mut storage_balance =
+                        match self.storage_balances.get(&receiver_id.clone(), &coin_id) {
+                            Some(balance) => balance,
+                            None => u128::default(),
+                        };
+
+                    storage_balance.add(storage_cost.unwrap().0).unwrap();
+
+                    self.storage_balances
+                        .set(&receiver_id, &coin_id, storage_balance);
 
                     let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
                     let log = json!(

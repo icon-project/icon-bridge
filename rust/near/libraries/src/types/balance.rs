@@ -118,10 +118,8 @@ mod tests {
     use std::convert::TryInto;
     use std::vec;
 
-
     #[test]
     fn add_balance() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -143,7 +141,6 @@ mod tests {
 
     #[test]
     fn add_balance_exisitng() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -193,7 +190,6 @@ mod tests {
 
     #[test]
     fn remove_balance() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -223,7 +219,6 @@ mod tests {
 
     #[test]
     fn remove_balance_non_exisitng() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -247,7 +242,6 @@ mod tests {
 
     #[test]
     fn set_balance() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -291,7 +285,6 @@ mod tests {
 
     #[test]
     fn deposit_add() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -334,7 +327,6 @@ mod tests {
 
     #[test]
     fn deposit_add_overflow() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -364,7 +356,6 @@ mod tests {
 
     #[test]
     fn deposit_sub_underflow() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -392,7 +383,6 @@ mod tests {
 
     #[test]
     fn locked_balance_add() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -437,7 +427,6 @@ mod tests {
 
     #[test]
     fn locked_balance_sub() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -513,7 +502,6 @@ mod tests {
 
     #[test]
     fn refundable_balance_add() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -558,7 +546,6 @@ mod tests {
 
     #[test]
     fn refundable_balance_sub() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()

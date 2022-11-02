@@ -59,6 +59,7 @@ impl BtpTokenService {
 
         self.assert_have_minimum_amount(amount);
         self.assert_have_sufficient_deposit(&account, &coin_id, amount, None);
+        self.assert_have_sufficient_storage_deposit(&account, &coin_id);
 
         // Check if current account have sufficient balance
         self.assert_have_sufficient_balance(amount);
@@ -196,9 +197,9 @@ impl BtpTokenService {
         }
     }
 
-    pub fn get_storage_cost(&self, account: AccountId) -> U128 {
-        match self.storage_balances.get(&account) {
-            Some(storage_cost) => return U128::from(*storage_cost),
+    pub fn get_storage_cost(&self, account: AccountId, coin_id: CoinId) -> U128 {
+        match self.storage_balances.get(&account, &coin_id) {
+            Some(storage_cost) => return U128::from(storage_cost),
             None => return U128::from(0),
         }
     }
