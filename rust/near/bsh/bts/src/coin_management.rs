@@ -85,29 +85,64 @@ impl BtpTokenService {
         coin_id: CoinId,
         coin_symbol: String,
         receiver_id: AccountId,
+        #[callback_result] stroage_cost: Result<U128, near_sdk::PromiseError>,
     ) {
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
-                let mut balance = self
-                    .balances
-                    .get(&env::current_account_id(), &coin_id)
-                    .unwrap();
-                balance.deposit_mut().add(amount).unwrap();
-                self.balances
-                    .set(&env::current_account_id(), &coin_id, balance);
+                if stroage_cost.is_ok() {
+                    let mut balance = self
+                        .balances
+                        .get(&env::current_account_id(), &coin_id)
+                        .unwrap();
+                    balance.deposit_mut().add(amount).unwrap();
+                    self.balances
+                        .set(&env::current_account_id(), &coin_id, balance);
 
-                self.internal_transfer(&env::current_account_id(), &receiver_id, &coin_id, amount);
-                let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
-                let log = json!(
-                {
-                    "event": "Mint",
-                    "code": "0",
-                    "amount": amount.to_string(),
-                    "token_name": coin_name,
-                    "token_account": env::signer_account_id().to_string()
+                    self.internal_transfer(
+                        &env::current_account_id(),
+                        &receiver_id,
+                        &coin_id,
+                        amount,
+                    );
+                    if let Some(storage_balance) = self.storage_balances.get(&receiver_id.clone()) {
+                        if *storage_balance == 0 {
+                            self.storage_balances
+                                .set(receiver_id.clone(), stroage_cost.unwrap().into())
+                        } else {
+                            let stroage_cost: u128 = stroage_cost.unwrap().into();
+                            self.storage_balances
+                                .set(receiver_id.clone(), stroage_cost + storage_balance)
+                        }
+                    } else {
+                        self.storage_balances
+                            .set(receiver_id.clone(), stroage_cost.unwrap().into())
+                    }
 
-                });
-                log!(near_sdk::serde_json::to_string(&log).unwrap());
+                    let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
+                    let log = json!(
+                    {
+                        "event": "Mint",
+                        "code": "0",
+                        "amount": amount.to_string(),
+                        "token_name": coin_name,
+                        "token_account": env::signer_account_id().to_string()
+
+                    });
+                    log!(near_sdk::serde_json::to_string(&log).unwrap());
+                } else {
+                    let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
+
+                    let log = json!(
+                    {
+                        "event": "Mint",
+                        "code": "1",
+                        "amount": amount.to_string(),
+                        "token_name": coin_name,
+                        "token_account": env::signer_account_id().to_string()
+
+                    });
+                    log!(near_sdk::serde_json::to_string(&log).unwrap());
+                }
             }
             PromiseResult::NotReady => {
                 log!("Not Ready")
@@ -203,26 +238,24 @@ impl BtpTokenService {
 
 impl BtpTokenService {
     pub fn mint(&mut self, coin_id: &CoinId, amount: u128, coin: &Coin, receiver_id: AccountId) {
-        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap()).mint(
-            amount.into(),
-        )
-        .then(Self::ext(env::current_account_id()).on_mint(
-            amount,
-            *coin_id,
-            coin.symbol().to_string(),
-            receiver_id,
-        ));
+        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap())
+            .mint(amount.into(), receiver_id.clone())
+            .then(Self::ext(env::current_account_id()).on_mint(
+                amount,
+                *coin_id,
+                coin.symbol().to_string(),
+                receiver_id,
+            ));
     }
 
     pub fn burn(&mut self, coin_id: &CoinId, amount: u128, coin: &Coin) {
-        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap()).burn(
-            amount.into(),
-        )
-        .then(Self::ext(env::current_account_id()).on_burn(
-            amount,
-            coin_id.to_owned(),
-            coin.symbol().to_string(),
-        ));
+        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap())
+            .burn(amount.into())
+            .then(Self::ext(env::current_account_id()).on_burn(
+                amount,
+                coin_id.to_owned(),
+                coin.symbol().to_string(),
+            ));
     }
 
     pub fn verify_mint(&self, coin_id: &CoinId, amount: u128) -> Result<(), String> {

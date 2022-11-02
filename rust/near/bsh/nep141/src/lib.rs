@@ -23,7 +23,6 @@ enum StorageKey {
     FungibleToken,
     Metadata,
 }
-
 #[near_bindgen]
 impl Contract {
     /// Initializes the contract with the given total supply owned by the given `owner_id` with
@@ -43,10 +42,19 @@ impl Contract {
         this
     }
 
-    pub fn mint(&mut self, amount: U128) {
+    pub fn mint(&mut self, amount: U128, receiver_id: AccountId) -> U128 {
         require!(env::predecessor_account_id() == self.owner);
         self.token
-            .internal_deposit(&env::predecessor_account_id(), amount.into())
+            .internal_deposit(&env::predecessor_account_id(), amount.into());
+
+        match self.storage_balance_of(receiver_id.clone()) {
+            Some(_) => U128::from(0),
+            None => {
+                let inital_storage_used = env::storage_usage();
+                self.token.internal_register_account(&receiver_id);
+                self.get_storage_cost(inital_storage_used)
+            }
+        }
     }
 
     pub fn burn(&mut self, amount: U128) {
@@ -55,31 +63,19 @@ impl Contract {
             .internal_withdraw(&env::predecessor_account_id(), amount.into())
     }
 
-    pub fn ft_transfer_with_storage_check(
-        &mut self,
-        receiver_id: AccountId,
-        amount: Balance,
-        memo: Option<String>,
-    ) {
-        require!(env::predecessor_account_id() == self.owner);
-        if let None = self.storage_balance_of(receiver_id.clone()) {
-            self.token.internal_register_account(&receiver_id);
-        }
-
-        self.token.internal_transfer(
-            &env::predecessor_account_id(),
-            &receiver_id.clone(),
-            amount,
-            memo,
-        )
-    }
-
     fn on_account_closed(&mut self, account_id: AccountId, balance: Balance) {
         log!("Closed @{} with {}", account_id, balance);
     }
 
     fn on_tokens_burned(&mut self, account_id: AccountId, amount: Balance) {
         log!("Account @{} burned {}", account_id, amount);
+    }
+
+    fn get_storage_cost(&self, intial_storage_usage: u64) -> U128 {
+        let total_storage_usage = env::storage_usage() - intial_storage_usage;
+        let storage_cost =
+            total_storage_usage as u128 * env::storage_byte_cost() + 669547687500000000;
+        U128(storage_cost)
     }
 }
 
