@@ -21,12 +21,10 @@ Get familiar with some terminologies used in icon-bridge [here.](terminologies.m
 | /devnet/docker/goloop | Scripts to build ICON Chain docker image|
 | /devnet/docker/icon-bsc | Scripts to build iconbridge between icon and bsc chains|
 | /devnet/docker/icon-hmny | Scripts to build iconbridge between icon and harmony chains|
-| /doc | Documentation(Obsolete) |
 | /docs | Documentation |
 | /docker | Scripts to create docker containers (Some of it Obsolete) |
 | /javascore | javascore smart contracts |
 | /solidity | solidity smart contracts |
-| /testnet |-- (Obsolete) |
 
 >TLDR version of deployment is available [here](#tdlr)
 
