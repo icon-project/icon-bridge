@@ -12,3 +12,4 @@ mod manage_tokens;
 mod setup;
 mod initialize;
 pub use setup::create_account;
+mod get_token_metadata;
