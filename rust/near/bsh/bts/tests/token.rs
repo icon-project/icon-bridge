@@ -7,6 +7,7 @@ use near_sdk::AccountId;
 lazy_static! {
     pub static ref NATIVE_COIN: WrappedNativeCoin = WrappedNativeCoin::new(
         "NEAR".into(),
+        "Wrapped TOKEN From SOURCE_CHAIN".into(),
         "NEAR".into(),
         None,
         "0x1.near".into(),
@@ -16,6 +17,7 @@ lazy_static! {
     );
     pub static ref ICON_COIN: WrappedNativeCoin = WrappedNativeCoin::new(
         "ICON".into(),
+        "Wrapped TOKEN From SOURCE_CHAIN".into(),
         "ICX".into(),
         Some(AccountId::try_from("icx.near".to_string()).unwrap()),
         "0x1.icon".into(),
@@ -31,6 +33,7 @@ lazy_static! {
     );
     pub static ref WNEAR: WrappedNativeCoin = WrappedNativeCoin::new(
         "WNEAR".into(),
+        "Wrapped TOKEN From SOURCE_CHAIN".into(),
         "wNEAR".into(),
         Some(AccountId::try_from("wnear.near".to_string()).unwrap()),
         "0x1.near".into(),
@@ -46,6 +49,7 @@ lazy_static! {
     );
     pub static ref BALN: WrappedNativeCoin = WrappedNativeCoin::new(
         "BALN".into(),
+        "Wrapped TOKEN From SOURCE_CHAIN".into(),
         "BALN".into(),
         Some(AccountId::try_from("baln.icon".to_string()).unwrap()),
         "0x1.icon".into(),
@@ -61,6 +65,7 @@ lazy_static! {
     );
     pub static ref NEAR_NATIVE_COIN: WrappedNativeCoin = WrappedNativeCoin::new(
         "btp-0x1.near-NEAR".into(),
+        "Wrapped TOKEN From SOURCE_CHAIN".into(),
         "NEAR".into(),
         None,
         "0x1.near".into(),

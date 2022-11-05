@@ -46,7 +46,7 @@ impl BtpTokenService {
                     "total_supply": U128(0),
                     "metadata": {
                         "spec": coin_metadata.spec.clone(),
-                        "name": coin.name(),
+                        "name": coin.label(),
                         "symbol": coin.symbol(),
                         "icon": coin_metadata.icon.clone(),
                         "reference": coin_metadata.reference.clone(),
