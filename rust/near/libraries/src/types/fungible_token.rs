@@ -18,6 +18,7 @@ pub struct AssetMetadataExtras {
 #[serde(crate = "near_sdk::serde")]
 pub struct FungibleToken {
     name: String,
+    label: String,
     symbol: String,
     uri: Option<AccountId>,
     network: Network,
@@ -45,6 +46,7 @@ where
 impl FungibleToken {
     pub fn new(
         name: String,
+        label: String,
         symbol: String,
         uri: Option<AccountId>,
         network: Network,
@@ -54,6 +56,7 @@ impl FungibleToken {
     ) -> FungibleToken {
         Self {
             name,
+            label,
             symbol,
             uri,
             network,
@@ -77,6 +80,10 @@ impl FungibleToken {
 impl AssetMetadata for FungibleToken {
     fn name(&self) -> &String {
         &self.name
+    }
+
+    fn label(&self) -> &String {
+        &self.label
     }
 
     fn network(&self) -> &Network {

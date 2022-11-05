@@ -7,6 +7,7 @@ pub type AssetId = [u8; 32];
 
 pub trait AssetMetadata {
     fn name(&self) -> &String;
+    fn label(&self) -> &String;
     fn network(&self) -> &Network;
     fn symbol(&self) -> &String;
     fn fee_numerator(&self) -> u128;
@@ -30,6 +31,10 @@ impl<T: AssetMetadata> Asset<T> {
 
     pub fn name(&self) -> &String {
         self.metadata.name()
+    }
+
+    pub fn label(&self) -> &String {
+        self.metadata.label()
     }
 
     pub fn network(&self) -> &String {
