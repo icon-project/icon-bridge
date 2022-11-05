@@ -378,7 +378,7 @@ impl BtpTokenService {
 
         assets
             .iter()
-            .map(|asset| self.ensure_value_within_limit(&asset.name(), &asset.amount()))
+            .map(|asset| self.ensure_amount_within_limit(&asset.name(), asset.amount()))
             .collect::<Result<(), BshError>>()?;
 
         Ok(())
