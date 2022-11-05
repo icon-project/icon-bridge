@@ -1,21 +1,22 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::collections::UnorderedSet;
 use near_sdk::AccountId;
 use std::collections::HashSet;
 
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct Owners(HashSet<AccountId>);
+pub struct Owners(UnorderedSet<AccountId>);
 
 impl Owners {
     pub fn new() -> Self {
-        Self(HashSet::new())
+        Self(UnorderedSet::new(b"owners".to_vec()))
     }
 
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.0.len() as usize
     }
 
     pub fn add(&mut self, address: &AccountId) {
-        self.0.insert(address.to_owned());
+        self.0.insert(address);
     }
 
     pub fn remove(&mut self, address: &AccountId) {
@@ -28,7 +29,7 @@ impl Owners {
 
     pub fn to_vec(&self) -> Vec<AccountId> {
         if !self.0.is_empty() {
-            return self.0.clone().into_iter().collect::<Vec<AccountId>>();
+            return self.0.to_vec();
         }
         vec![]
     }
@@ -41,7 +42,6 @@ mod tests {
 
     #[test]
     fn add_owner() {
-
         let mut owners = Owners::new();
         owners.add(
             &"88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
@@ -58,7 +58,6 @@ mod tests {
 
     #[test]
     fn add_existing_owner() {
-
         let mut owners = Owners::new();
         let owner_1 = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -80,7 +79,6 @@ mod tests {
 
     #[test]
     fn remove_owner() {
-
         let mut owners = Owners::new();
         let owner = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -93,7 +91,6 @@ mod tests {
 
     #[test]
     fn remove_owner_non_existing() {
-
         let mut owners = Owners::new();
         let owner_1 = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e8"
             .parse::<AccountId>()
@@ -109,7 +106,6 @@ mod tests {
 
     #[test]
     fn to_vec_owners() {
-
         let mut owners = Owners::new();
         let owner_1 = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()

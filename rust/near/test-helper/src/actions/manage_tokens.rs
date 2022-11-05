@@ -9,7 +9,7 @@ use duplicate::duplicate;
 
 impl Contract<'_, contract_type> {
     pub fn register(&self, mut context: Context) -> Context {
-        invoke_call!(self, context, "register", method_params);
+        invoke_call!(self, context, "register", method_params, Some(10_000_000_000_000_000_000_000_000), Some(300_000_000_000_000));
         context
     }
 }

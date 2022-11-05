@@ -99,7 +99,7 @@ impl BtpMessageCenter {
 
     pub fn assert_sender_is_authorized_service(&self, service: &str) {
         require!(
-            self.services.get(service) == Some(&env::predecessor_account_id()),
+            self.services.get(service) == Some(env::predecessor_account_id()),
             format!("{}", BmcError::PermissionNotExist)
         );
     }

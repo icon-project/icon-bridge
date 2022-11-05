@@ -1,4 +1,4 @@
-use libraries::types::FungibleToken;
+use libraries::types::{FungibleToken, TokenLimit};
 
 use super::*;
 
@@ -46,7 +46,7 @@ impl BtpTokenService {
                     "total_supply": U128(0),
                     "metadata": {
                         "spec": coin_metadata.spec.clone(),
-                        "name": coin.name(),
+                        "name": coin.label(),
                         "symbol": coin.symbol(),
                         "icon": coin_metadata.icon.clone(),
                         "reference": coin_metadata.reference.clone(),
@@ -222,14 +222,14 @@ impl BtpTokenService {
         self.coins.get(&coin_id).unwrap()
     }
 
-    pub fn get_token_limits(&self) -> &TokenLimits {
-        &self.token_limits
+    pub fn get_token_limits(&self) -> Vec<TokenLimit> {
+        self.token_limits.to_vec()
     }
 
     pub fn get_token_limit(&self, coin_name: String) -> U128 {
         self.token_limits
             .get(&coin_name)
-            .map(|token_limit| U128(*token_limit))
+            .map(|token_limit| U128(token_limit))
             .expect(&format!("{}", BshError::LimitNotSet))
     }
 }
