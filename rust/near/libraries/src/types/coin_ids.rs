@@ -63,7 +63,6 @@ mod tests {
 
     #[test]
     fn add_coin_property() {
-
         let coins = vec!["ICX", "NEAR", "sIcx"];
 
         let mut coin_store = CoinIds::new();
@@ -94,7 +93,6 @@ mod tests {
     }
     #[test]
     fn get_coin_id() {
-
         let coins = vec!["ICX", "NEAR", "sIcx"];
 
         let mut coin_store = CoinIds::new();

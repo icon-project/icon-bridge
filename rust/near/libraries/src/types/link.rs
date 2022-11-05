@@ -1,7 +1,7 @@
 use super::relay::BmrStatus;
 use super::{BTPAddress, Math, Relays};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::UnorderedMap;
+use near_sdk::collections::{LookupMap, UnorderedMap, UnorderedSet};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, AccountId, BlockHeight};
 use std::collections::HashSet;
@@ -279,29 +279,37 @@ impl LinkStatus {
 }
 
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct Links(UnorderedMap<BTPAddress, Link>);
+
+pub struct Links {
+    keys: UnorderedSet<BTPAddress>,
+    values: LookupMap<BTPAddress, Link>,
+}
 
 impl Deref for Links {
-    type Target = UnorderedMap<BTPAddress, Link>;
+    type Target = LookupMap<BTPAddress, Link>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.values
     }
 }
 
 impl DerefMut for Links {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.values
     }
 }
 
 impl Links {
     pub fn new() -> Self {
-        Self(UnorderedMap::new(b"links".to_vec()))
+        Self {
+            keys: UnorderedSet::new(b"link_keys".to_vec()),
+            values: LookupMap::new(b"link_values".to_vec()),
+        }
     }
 
     pub fn add(&mut self, link: &BTPAddress, block_interval_src: u64) {
-        self.0.insert(
+        self.keys.insert(&link);
+        self.values.insert(
             link,
             &Link {
                 relays: Relays::new(link),
@@ -313,26 +321,27 @@ impl Links {
     }
 
     pub fn set(&mut self, link: &BTPAddress, property: &Link) {
-        self.0.insert(link, property);
+        self.values.insert(link, property);
     }
 
     pub fn remove(&mut self, link: &BTPAddress) {
-        self.0.remove(&link);
+        self.keys.remove(&link);
+        self.values.remove(&link);
     }
 
     pub fn to_vec(&self) -> Vec<BTPAddress> {
-        self.0.keys_as_vector().to_vec()
+        self.keys.to_vec()
     }
 
     pub fn get(&self, link: &BTPAddress) -> Option<Link> {
-        if let Some(value) = self.0.get(link) {
+        if let Some(value) = self.values.get(link) {
             return Some(value);
         }
         None
     }
 
     pub fn contains(&self, link: &BTPAddress) -> bool {
-        return self.0.get(link).is_some();
+        return self.keys.contains(link);
     }
 }
 
@@ -345,7 +354,6 @@ mod tests {
 
     #[test]
     fn add_link() {
-
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -360,7 +368,6 @@ mod tests {
 
     #[test]
     fn add_link_relays_pass() {
-
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -389,7 +396,6 @@ mod tests {
 
     #[test]
     fn set_link_block_interval_dst() {
-
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -409,7 +415,6 @@ mod tests {
 
     #[test]
     fn set_link_max_aggregation_src() {
-
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -429,7 +434,6 @@ mod tests {
 
     #[test]
     fn set_link_delay_limit_src() {
-
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -449,7 +453,6 @@ mod tests {
 
     #[test]
     fn set_link_relays_pass() {
-
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -490,7 +493,6 @@ mod tests {
 
     #[test]
     fn remove_link() {
-
         let mut links = Links::new();
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
@@ -503,7 +505,6 @@ mod tests {
 
     #[test]
     fn remove_link_non_existing() {
-
         let mut links = Links::new();
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
@@ -519,7 +520,6 @@ mod tests {
 
     #[test]
     fn to_vec_links() {
-
         let mut links = Links::new();
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),

@@ -196,7 +196,7 @@ impl BtpTokenService {
     }
     pub fn ensure_value_within_limit(&self, coin_name: &str, value: &u128) -> Result<(), BshError> {
         if let Some(token_limit) = self.token_limits.get(coin_name) {
-            if token_limit > value {
+            if &token_limit > value {
                 return Err(BshError::LimitExceed);
             }
         }

@@ -1,12 +1,11 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
-use std::{collections::HashMap, hash::Hash};
+use near_sdk::collections::UnorderedMap;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, Debug)]
-pub struct TokenLimits(HashMap<String, u128>);
+#[derive(BorshDeserialize, BorshSerialize, Debug)]
+pub struct TokenLimits(UnorderedMap<String, u128>);
 
-#[derive(Serialize, Debug, Eq, PartialEq, Hash, Deserialize)]
+#[derive(Serialize, Debug, Eq, PartialEq, Hash, Deserialize, Clone)]
 pub struct TokenLimit {
     coin_name: String,
     token_limit: u128,
@@ -23,26 +22,29 @@ impl TokenLimit {
 
 impl TokenLimits {
     pub fn new() -> Self {
-        let token_limit = HashMap::new();
-        Self(token_limit)
+        Self(UnorderedMap::new(b"token_limits".to_vec()))
     }
 
     pub fn add(&mut self, coin_name: &str, token_limit: &u128) {
-        self.0.insert(coin_name.to_string(), token_limit.to_owned());
+        self.0
+            .insert(&coin_name.to_string(), &token_limit.to_owned());
     }
 
     pub fn remove(&mut self, coin_name: &str) {
-        if self.0.contains_key(coin_name) {
-            self.0.remove(coin_name);
+        if self.contains(coin_name) {
+            self.0.remove(&coin_name.to_string());
         }
     }
 
     pub fn contains(&self, coin_name: &str) -> bool {
-        return self.0.contains_key(coin_name);
+        if let Some(_) = self.0.keys().into_iter().find(|s| s == &coin_name) {
+            return true;
+        }
+        false
     }
 
-    pub fn get(&self, coin_name: &str) -> Option<&u128> {
-        if let Some(token_limit) = self.0.get(coin_name) {
+    pub fn get(&self, coin_name: &str) -> Option<u128> {
+        if let Some(token_limit) = self.0.get(&coin_name.to_string()) {
             return Some(token_limit);
         }
         None
@@ -52,13 +54,10 @@ impl TokenLimits {
         if !self.0.is_empty() {
             return self
                 .0
-                .clone()
+                .to_vec()
                 .into_iter()
-                .map(|v| TokenLimit {
-                    coin_name: v.0,
-                    token_limit: v.1,
-                })
-                .collect();
+                .map(|values| TokenLimit::new(values.0, values.1))
+                .collect::<Vec<TokenLimit>>();
         }
         vec![]
     }
@@ -81,18 +80,9 @@ mod tests {
 
         let result: HashSet<_> = token_limits.to_vec().into_iter().collect();
         let actual = vec![
-            TokenLimit {
-                coin_name: "ICX".to_string(),
-                token_limit: 1000000000_u128,
-            },
-            TokenLimit {
-                coin_name: "NEAR".to_string(),
-                token_limit: 100000002,
-            },
-            TokenLimit {
-                coin_name: "sIcx".to_string(),
-                token_limit: 1000000003,
-            },
+            TokenLimit::new("ICX".to_string(), 1000000000_u128),
+            TokenLimit::new("NEAR".to_string(), 100000002),
+            TokenLimit::new("sIcx".to_string(), 1000000003),
         ];
         let actual: HashSet<_> = actual.into_iter().collect();
         assert_eq!(result, actual);
@@ -112,6 +102,42 @@ mod tests {
 
         token_limits.add("ICX", &10000000333_u128);
 
-        assert_eq!(token_limits.get("ICX").unwrap(), &10000000333_u128);
+        assert_eq!(token_limits.get("ICX").unwrap(), 10000000333_u128);
+    }
+
+    #[test]
+    fn check_for_non_existing_token_limit() {
+        let coins = vec!["ICX", "NEAR", "sIcx"];
+        let limits = vec![1000000000_u128, 100000002, 1000000003];
+
+        let mut token_limits = TokenLimits::new();
+        for (index, coin) in coins.into_iter().enumerate() {
+            token_limits.add(coin, &limits[index]);
+        }
+
+        let expected = token_limits.contains("ICXV");
+
+        assert_eq!(false, expected);
+    }
+
+    #[test]
+    fn remove_token_from_token_limits() {
+        let coins = vec!["ICX", "NEAR", "sIcx"];
+        let limits = vec![1000000000_u128, 100000002, 1000000003];
+
+        let mut token_limits = TokenLimits::new();
+        for (index, coin) in coins.into_iter().enumerate() {
+            token_limits.add(coin, &limits[index]);
+        }
+
+        token_limits.remove("ICX");
+        let actual: HashSet<_> = vec![
+            TokenLimit::new("NEAR".to_string(), 100000002_u128),
+            TokenLimit::new("sIcx".to_string(), 1000000003_u128),
+        ]
+        .into_iter()
+        .collect();
+
+        assert_eq!(actual, token_limits.to_vec().into_iter().collect());
     }
 }
