@@ -1,4 +1,4 @@
-use libraries::types::FungibleToken;
+use libraries::types::{FungibleToken, TokenLimit};
 
 use super::*;
 
@@ -189,40 +189,38 @@ impl BtpTokenService {
         self.coins.get(&coin_id).unwrap()
     }
 
-    pub fn get_token_limits(&self) -> &TokenLimits {
-        &self.token_limits
+    pub fn get_token_limits(&self) -> Vec<TokenLimit> {
+        self.token_limits.to_vec()
     }
 
     pub fn get_token_limit(&self, coin_name: String) -> U128 {
         self.token_limits
             .get(&coin_name)
-            .map(|token_limit| U128(*token_limit))
+            .map(|token_limit| U128(token_limit))
             .expect(&format!("{}", BshError::LimitNotSet))
     }
 }
 
 impl BtpTokenService {
     pub fn mint(&mut self, coin_id: &CoinId, amount: u128, coin: &Coin, receiver_id: AccountId) {
-        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap()).mint(
-            amount.into(),
-        )
-        .then(Self::ext(env::current_account_id()).on_mint(
-            amount,
-            *coin_id,
-            coin.symbol().to_string(),
-            receiver_id,
-        ));
+        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap())
+            .mint(amount.into())
+            .then(Self::ext(env::current_account_id()).on_mint(
+                amount,
+                *coin_id,
+                coin.symbol().to_string(),
+                receiver_id,
+            ));
     }
 
     pub fn burn(&mut self, coin_id: &CoinId, amount: u128, coin: &Coin) {
-        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap()).burn(
-            amount.into(),
-        )
-        .then(Self::ext(env::current_account_id()).on_burn(
-            amount,
-            coin_id.to_owned(),
-            coin.symbol().to_string(),
-        ));
+        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap())
+            .burn(amount.into())
+            .then(Self::ext(env::current_account_id()).on_burn(
+                amount,
+                coin_id.to_owned(),
+                coin.symbol().to_string(),
+            ));
     }
 
     pub fn verify_mint(&self, coin_id: &CoinId, amount: u128) -> Result<(), String> {

@@ -1,7 +1,7 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde::{Serialize, Deserialize};
+use near_sdk::collections::{TreeMap, UnorderedMap};
+use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::AccountId;
-use std::{collections::HashMap, hash::Hash};
 
 #[derive(Serialize, Debug, Eq, PartialEq, Hash, Deserialize)]
 pub struct Service {
@@ -10,40 +10,39 @@ pub struct Service {
 }
 
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct Services(HashMap<String, AccountId>);
+pub struct Services(TreeMap<String, AccountId>);
 
 impl Services {
     pub fn new() -> Self {
-        let services = HashMap::new();
-        Self(services)
+        Self(TreeMap::new(b"services".to_vec()))
     }
 
     pub fn add(&mut self, name: &str, service: &AccountId) {
-        self.0.insert(name.to_string(), service.to_owned());
+        self.0.insert(&name.to_string(), &service.to_owned());
     }
 
     pub fn remove(&mut self, name: &str) {
-        if self.0.contains_key(name) {
-            self.0.remove(name);
+        if self.contains(name) {
+            self.0.remove(&name.to_string());
         }
     }
 
     pub fn contains(&self, name: &str) -> bool {
-        return self.0.contains_key(name);
+        self.0.contains_key(&name.to_string())
     }
 
-    pub fn get(&self, name: &str) -> Option<&AccountId> {
-        if let Some(service) = self.0.get(name) {
-            return Some(service);
+    pub fn get(&self, name: &str) -> Option<AccountId> {
+        match self.0.get(&name.to_string()) {
+            Some(service) => Some(service),
+            None => None,
         }
-        None
     }
 
     pub fn to_vec(&self) -> Vec<Service> {
         if !self.0.is_empty() {
             return self
                 .0
-                .clone()
+                .to_vec()
                 .into_iter()
                 .map(|v| Service {
                     name: v.0,
@@ -72,7 +71,7 @@ mod tests {
         assert_eq!(
             result,
             Some(
-                &"88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
+                "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
                     .parse::<AccountId>()
                     .unwrap()
             )
@@ -101,7 +100,7 @@ mod tests {
         assert_eq!(
             result,
             Some(
-                &"68bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
+                "68bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
                     .parse::<AccountId>()
                     .unwrap()
             )
