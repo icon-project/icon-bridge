@@ -20,14 +20,25 @@ impl BtpTokenService {
         self.assert_have_minimum_amount(amount);
         self.assert_coin_registered(&coin_account);
 
+        //inital cost
+
+        let intial_storage_usage = env::storage_usage();
+
         let coin_id = self.registered_coins.get(&coin_account).unwrap().clone();
         let mut balance = match self.balances.get(&sender_id, &coin_id) {
             Some(balance) => balance,
             None => AccountBalance::default(),
         };
 
-        self.process_deposit(amount, &mut balance);
+        //self.process_deposit(amount, &mut balance);
         self.balances.set(&sender_id, &coin_id, balance);
+
+        //total cost
+        let total_storage_cost = self.calculate_storage_cost(intial_storage_usage);
+        //append to storagebalance.
+
+        self.storage_balances
+            .set(&sender_id, &coin_id, total_storage_cost.into());
 
         PromiseOrValue::Value(U128::from(0))
     }
@@ -38,14 +49,21 @@ impl BtpTokenService {
         let amount = env::attached_deposit();
         self.assert_have_minimum_amount(amount);
         let coin_id = Self::hash_coin_id(&self.native_coin_name);
-
-        let mut balance = match self.balances.get(&account, &coin_id) {
+        //calc inital cost
+        let intial_storage_usage = env::storage_usage();
+        let balance = match self.balances.get(&account, &coin_id) {
             Some(balance) => balance,
             None => AccountBalance::default(),
         };
 
-        self.process_deposit(amount, &mut balance);
+        //self.process_deposit(amount, &mut balance);
         self.balances.set(&account, &coin_id, balance);
+
+        // final cost
+        let total_storage_cost = self.calculate_storage_cost(intial_storage_usage);
+        //append to storage.
+        self.storage_balances
+            .set(&account, &coin_id, total_storage_cost.into());
     }
 
     #[payable]

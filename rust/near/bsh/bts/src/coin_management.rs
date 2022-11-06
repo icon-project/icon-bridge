@@ -98,20 +98,31 @@ impl BtpTokenService {
                     self.balances
                         .set(&env::current_account_id(), &coin_id, balance);
 
+                    //calculate storage cost
+
+                    let inital_storage_used = env::storage_usage();
+
                     self.internal_transfer(
                         &env::current_account_id(),
                         &receiver_id,
                         &coin_id,
                         amount,
                     );
-
+                    //toatl storage cost
+                    let total_storage_cost = self.calculate_storage_cost(inital_storage_used);
                     let mut storage_balance =
                         match self.storage_balances.get(&receiver_id.clone(), &coin_id) {
                             Some(balance) => balance,
                             None => u128::default(),
                         };
 
-                    storage_balance.add(storage_cost.unwrap().0).unwrap();
+                    //add both and append.
+
+                    storage_balance
+                        .add(storage_cost.unwrap().0)
+                        .unwrap()
+                        .add(total_storage_cost.0)
+                        .unwrap();
 
                     self.storage_balances
                         .set(&receiver_id, &coin_id, storage_balance);
