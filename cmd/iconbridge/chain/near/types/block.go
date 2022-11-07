@@ -61,29 +61,29 @@ func (b *Block) Hash() *CryptoHash {
 	return &b.Header.Hash
 }
 
-func (b *Block) ComputeInnerHash(innerLite HeaderInnerLite, innerRest HeaderInnerRest) ([]byte, error) {
+func (b *Block) ComputeInnerHash(innerLite HeaderInnerLite, innerRest HeaderInnerRest) ([32]byte, error) {
 	innerLiteSerialized, err := innerLite.BorshSerialize()
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
 	innerRestSerialized, err := innerRest.BorshSerialize()
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
 	innerliteHash := sha256.Sum256(innerLiteSerialized)
 	innerRestHash := sha256.Sum256(innerRestSerialized)
-	innerHash := CombineHash(innerliteHash[:], innerRestHash[:])
+	innerHash := CombineHash(innerliteHash, innerRestHash)
 
 	return innerHash, nil
 
 }
 
-func (b *Block) ComputeHash(PreviousBlockHash []byte, innerLite HeaderInnerLite, innerRest HeaderInnerRest) ([]byte, error) {
+func (b *Block) ComputeHash(PreviousBlockHash [32]byte, innerLite HeaderInnerLite, innerRest HeaderInnerRest) (CryptoHash, error) {
 	innerHash, err := b.ComputeInnerHash(innerLite, innerRest)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
 	hash := CombineHash(innerHash, PreviousBlockHash)

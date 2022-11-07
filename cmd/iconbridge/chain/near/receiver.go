@@ -23,9 +23,8 @@ type Receiver struct {
 	source      chain.BTPAddress
 	destination chain.BTPAddress
 	logger      log.Logger
-	options     struct {
-		SyncConcurrency uint `json:"syncConcurrency"`
-	}
+	verifier    *Verifier
+	options     types.ReceiverOptions
 }
 
 func receiverFactory(source, destination chain.BTPAddress, urls []string, options json.RawMessage, logger log.Logger) (chain.Receiver, error) {
@@ -54,6 +53,7 @@ func NewReceiver(config ReceiverConfig, logger log.Logger, clients ...IClient) (
 		return nil, err
 	}
 
+	r.verifier = newVerifier(r.options.Verifier.PreviousBlockHeight, r.options.Verifier.PreviousBlockHash, r.options.Verifier.NextEpochId, r.options.Verifier.BlockProducers)
 	return r, nil
 }
 
@@ -86,6 +86,24 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		defer close(_errCh)
 
 		if err := r.ReceiveBlocks(opts.Height, r.source.ContractAddress(), func(blockNotification *types.BlockNotification) {
+			if r.verifier.blockHeight+1 == uint64(blockNotification.Offset()) {
+				blockNotification.SetApprovalMessage(types.ApprovalMessage{
+					Type:              [1]byte{types.ApprovalEndorsement},
+					PreviousBlockHash: r.verifier.blockHash,
+				})
+			} else {
+				blockNotification.SetApprovalMessage(types.ApprovalMessage{
+					Type:                [1]byte{types.ApprovalSkip},
+					PreviousBlockHeight: r.verifier.blockHeight,
+				})
+			}
+
+			err := r.verifier.validateHeader(blockNotification)
+			if err != nil {
+				_errCh <- err
+				return
+			}
+
 			r.logger.WithFields(log.Fields{"height": blockNotification.Block().Height()}).Debug("block notification")
 			receipts := make([]*chain.Receipt, 0)
 
