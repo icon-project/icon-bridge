@@ -20,8 +20,6 @@ impl BtpTokenService {
         self.assert_have_minimum_amount(amount);
         self.assert_coin_registered(&coin_account);
 
-        //inital cost
-
         let intial_storage_usage = env::storage_usage();
 
         let coin_id = self.registered_coins.get(&coin_account).unwrap().clone();
@@ -29,13 +27,12 @@ impl BtpTokenService {
             Some(balance) => balance,
             None => AccountBalance::default(),
         };
+        self.process_deposit(amount, &mut balance);
 
-        //self.process_deposit(amount, &mut balance);
         self.balances.set(&sender_id, &coin_id, balance);
 
-        //total cost
+        // calculate storage cost for the account
         let total_storage_cost = self.calculate_storage_cost(intial_storage_usage);
-        //append to storagebalance.
 
         self.storage_balances
             .set(&sender_id, &coin_id, total_storage_cost.into());
@@ -49,19 +46,16 @@ impl BtpTokenService {
         let amount = env::attached_deposit();
         self.assert_have_minimum_amount(amount);
         let coin_id = Self::hash_coin_id(&self.native_coin_name);
-        //calc inital cost
+
         let intial_storage_usage = env::storage_usage();
-        let balance = match self.balances.get(&account, &coin_id) {
+        let mut balance = match self.balances.get(&account, &coin_id) {
             Some(balance) => balance,
             None => AccountBalance::default(),
         };
-
-        //self.process_deposit(amount, &mut balance);
+        self.process_deposit(amount, &mut balance);
         self.balances.set(&account, &coin_id, balance);
 
-        // final cost
         let total_storage_cost = self.calculate_storage_cost(intial_storage_usage);
-        //append to storage.
         self.storage_balances
             .set(&account, &coin_id, total_storage_cost.into());
     }
@@ -77,6 +71,8 @@ impl BtpTokenService {
 
         self.assert_have_minimum_amount(amount);
         self.assert_have_sufficient_deposit(&account, &coin_id, amount, None);
+
+        // Check for attached storage usage cost
         self.assert_have_sufficient_storage_deposit(&account, &coin_id);
 
         // Check if current account have sufficient balance
@@ -197,6 +193,8 @@ impl BtpTokenService {
                     "token_name": coin_name
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
+
+                self.storage_balances.set(&account, &coin_id, 0)
             }
             PromiseResult::NotReady => {
                 log!("Not Ready")

@@ -1,5 +1,8 @@
 use bts::BtpTokenService;
-use near_sdk::{env, json_types::U128, testing_env, AccountId, PromiseResult, VMContext, test_utils::VMContextBuilder, Gas, VMConfig, RuntimeFeesConfig};
+use near_sdk::{
+    env, json_types::U128, test_utils::VMContextBuilder, testing_env, AccountId, Gas,
+    PromiseResult, RuntimeFeesConfig, VMConfig, VMContext,
+};
 use std::{collections::HashSet, convert::TryInto};
 pub mod accounts;
 use accounts::*;
@@ -32,9 +35,7 @@ fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u1
 fn handle_transfer_mint_registered_icx() {
     use std::vec;
 
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(false, account_id, deposit)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit);
 
     testing_env!(
         context(alice(), 0),
@@ -92,6 +93,7 @@ fn handle_transfer_mint_registered_icx() {
         coin_id,
         icx_coin.symbol().to_string(),
         destination.account_id(),
+        Ok(U128::from(700000)),
     );
 
     let result = contract.balance_of(destination.account_id(), icx_coin.name().to_string());

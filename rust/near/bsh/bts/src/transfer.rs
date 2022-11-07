@@ -10,13 +10,14 @@ impl BtpTokenService {
             .coin_id(&coin_name)
             .map_err(|err| format!("{}", err))
             .unwrap();
-        //check for enough attached deposit
+        //check for enough attached deposit to bear storage cost
         self.assert_have_sufficient_storage_deposit(&sender_id, &coin_id);
         let asset = self
             .process_external_transfer(&coin_id.to_owned(), &sender_id, amount.into())
             .unwrap();
 
-        self.send_request(sender_id, destination, vec![asset]);
+        self.send_request(sender_id.clone(), destination, vec![asset]);
+        self.storage_balances.set(&sender_id, &coin_id, 0)
     }
 
     #[payable]
@@ -45,6 +46,7 @@ impl BtpTokenService {
             storage_cost.add(storage_balance).unwrap();
         });
 
+        //check for enough attached deposit to bear storage cost
         self.assert_have_sufficient_storage_deposit_for_batch(storage_cost);
 
         let assets = coin_ids
@@ -57,7 +59,11 @@ impl BtpTokenService {
             })
             .collect::<Vec<TransferableAsset>>();
 
-        self.send_request(sender_id, destination, assets);
+        self.send_request(sender_id.clone(), destination, assets);
+        coin_ids
+            .clone()
+            .into_iter()
+            .for_each(|coin_id| self.storage_balances.set(&sender_id, &coin_id, 0));
     }
 }
 

@@ -206,8 +206,9 @@ impl BtpTokenService {
 
     pub fn assert_have_sufficient_storage_deposit(&self, account: &AccountId, asset_id: &AssetId) {
         if let Some(storage_balance) = self.storage_balances.get(account, asset_id) {
+            let attached_deposit = env::attached_deposit();
             require!(
-                env::attached_deposit() == storage_balance,
+                attached_deposit == storage_balance,
                 format!("{}", BshError::NotMinimumDeposit)
             );
         }

@@ -148,8 +148,7 @@ impl BtpTokenService {
     }
 
     fn process_deposit(&mut self, amount: u128, balance: &mut AccountBalance) {
-        let storage_cost = 0;
-        balance.deposit_mut().add(amount - storage_cost).unwrap();
+        balance.deposit_mut().add(amount).unwrap();
     }
 
     fn calculate_storage_cost(&self, intial_storage_usage: u64) -> U128 {
