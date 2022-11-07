@@ -47,8 +47,10 @@ func (c *Client) _do(req *http.Request) (resp *http.Response, err error) {
 	return
 }
 
-//Supported Parameter Structures only 'by-name through an Object'
-//refer https://www.jsonrpc.org/specification#parameter_structures
+// Supported Parameter Structures only 'by-name through an Object'
+// refer https://www.jsonrpc.org/specification#parameter_structures
+//
+// Deprecated: Use Dov2 to support handling custom errors    
 func (c *Client) Do(method string, reqPtr, respPtr interface{}) (jrResp *Response, err error) {
 	jrReq := &Request{
 		ID:      time.Now().UnixNano() / int64(time.Millisecond),
