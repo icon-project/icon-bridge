@@ -5,6 +5,7 @@ type VerifierConfig struct {
 	PreviousBlockHash   CryptoHash       `json:"previousBlockHash"`
 	NextEpochId         CryptoHash       `json:"nextEpoch"`
 	BlockProducers      []*BlockProducer `json:"blockProducers"`
+	NextBpHash          CryptoHash       `json:"nextBpHash"`
 }
 
 type ReceiverOptions struct {

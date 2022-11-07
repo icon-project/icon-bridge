@@ -194,7 +194,7 @@ func LoadLightClientBlocksFromFile(names []string) map[string]Response {
 
 	var LightClientBlockMap = map[string]Response{}
 	for index, buffer := range loadFiles(names, sectionDir) {
-		var LightClientBlock types.NextBlockProducers
+		var LightClientBlock types.BlockProducers
 
 		err := json.Unmarshal(buffer, &LightClientBlock)
 		if err != nil {

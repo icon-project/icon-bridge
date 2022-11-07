@@ -53,7 +53,7 @@ func NewReceiver(config ReceiverConfig, logger log.Logger, clients ...IClient) (
 		return nil, err
 	}
 
-	r.verifier = newVerifier(r.options.Verifier.PreviousBlockHeight, r.options.Verifier.PreviousBlockHash, r.options.Verifier.NextEpochId, r.options.Verifier.BlockProducers)
+	r.verifier = newVerifier(r.options.Verifier.PreviousBlockHeight, r.options.Verifier.PreviousBlockHash, r.options.Verifier.NextEpochId, r.options.Verifier.NextBpHash, r.options.Verifier.BlockProducers)
 	return r, nil
 }
 
@@ -90,11 +90,13 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 				blockNotification.SetApprovalMessage(types.ApprovalMessage{
 					Type:              [1]byte{types.ApprovalEndorsement},
 					PreviousBlockHash: r.verifier.blockHash,
+					TargetHeight:      uint64(blockNotification.Offset()),
 				})
 			} else {
 				blockNotification.SetApprovalMessage(types.ApprovalMessage{
 					Type:                [1]byte{types.ApprovalSkip},
 					PreviousBlockHeight: r.verifier.blockHeight,
+					TargetHeight:        uint64(blockNotification.Offset()),
 				})
 			}
 

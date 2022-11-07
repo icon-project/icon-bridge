@@ -1,8 +1,11 @@
 package types
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+
+	"github.com/near/borsh-go"
 )
 
 type ValidatorStakeStructVersion []byte
@@ -35,17 +38,29 @@ type BlockProducer struct {
 	Stake                       BigInt                      `json:"stake"`
 }
 
-type NextBlockProducers []BlockProducer
+type BlockProducers []*BlockProducer
 
-func (nbps *NextBlockProducers) UnmarshalJSON(p []byte) error {
+func (bps *BlockProducers) UnmarshalJSON(p []byte) error {
 	var response struct {
-		BlockProducers []BlockProducer `json:"next_bps"`
+		BlockProducers []*BlockProducer `json:"next_bps"`
 	}
 	err := json.Unmarshal(p, &response)
 	if err != nil {
 		return err
 	}
 
-	*nbps = NextBlockProducers(response.BlockProducers)
+	*bps = BlockProducers(response.BlockProducers)
 	return nil
 }
+
+func (bps *BlockProducers) Hash() (CryptoHash, error) {
+	serializedBps, err := borsh.Serialize(*bps)
+
+	if err != nil {
+		return CryptoHash{}, err
+	}
+
+	return sha256.Sum256(serializedBps), nil
+}
+
+

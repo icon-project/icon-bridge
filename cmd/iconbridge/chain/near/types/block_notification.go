@@ -6,7 +6,7 @@ type BlockNotification struct {
 	offset          int64
 	block           Block
 	approvalMessage ApprovalMessage
-	blockProducers  []*BlockProducer
+	blockProducers  BlockProducers
 	receipts        []*chain.Receipt
 }
 
@@ -28,8 +28,8 @@ func (bn *BlockNotification) ApprovalMessage() *ApprovalMessage {
 	return &bn.approvalMessage
 }
 
-func (bn *BlockNotification) BlockProducers() []*BlockProducer {
-	return bn.blockProducers
+func (bn *BlockNotification) BlockProducers() *BlockProducers {
+	return &bn.blockProducers
 }
 
 func (bn *BlockNotification) Receipts() []*chain.Receipt {
@@ -44,7 +44,7 @@ func (bn *BlockNotification) SetApprovalMessage(approvalMessage ApprovalMessage)
 	bn.approvalMessage = approvalMessage
 }
 
-func (bn *BlockNotification) SetBlockProducers(blockProducers []*BlockProducer) {
+func (bn *BlockNotification) SetBlockProducers(blockProducers BlockProducers) {
 	bn.blockProducers = blockProducers
 }
 

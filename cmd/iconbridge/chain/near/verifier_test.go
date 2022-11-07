@@ -26,7 +26,7 @@ func TestNearVerifier(t *testing.T) {
 					})
 					require.True(f, Ok)
 
-					verifier := newVerifier(input.Options.Verifier.PreviousBlockHeight, input.Options.Verifier.PreviousBlockHash, input.Options.Verifier.NextEpochId, input.Options.Verifier.BlockProducers)
+					verifier := newVerifier(input.Options.Verifier.PreviousBlockHeight, input.Options.Verifier.PreviousBlockHash, input.Options.Verifier.NextEpochId, input.Options.Verifier.NextBpHash, input.Options.Verifier.BlockProducers)
 
 					bn := types.NewBlockNotification(int64(input.Offset))
 					block, err := client.GetBlockByHeight(int64(input.Offset))
@@ -37,20 +37,21 @@ func TestNearVerifier(t *testing.T) {
 						bn.SetApprovalMessage(types.ApprovalMessage{
 							Type:              [1]byte{types.ApprovalEndorsement},
 							PreviousBlockHash: verifier.blockHash,
+							TargetHeight:      uint64(bn.Offset()),
 						})
 					} else {
 						bn.SetApprovalMessage(types.ApprovalMessage{
 							Type:                [1]byte{types.ApprovalSkip},
 							PreviousBlockHeight: verifier.blockHeight,
+							TargetHeight:      uint64(bn.Offset()),
 						})
 					}
-
 
 					err = verifier.validateHeader(bn)
 					if testData.Expected.Success != nil {
 						assert.Nil(f, err)
 					} else {
-						assert.Error(f, err)
+						assert.True(f, testData.Expected.Fail.(func(error) bool)(err))
 					}
 
 				})
