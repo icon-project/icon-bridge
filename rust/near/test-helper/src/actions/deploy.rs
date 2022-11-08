@@ -4,10 +4,17 @@ use std::path::Path;
 use std::str::FromStr;
 use tokio::runtime::Handle;
 use workspaces::{prelude::*, AccountId};
-use workspaces::{Contract as WorkspaceContract, Worker, DevNetwork, types::KeyType, types::SecretKey};
+use workspaces::{
+    types::KeyType, types::SecretKey, Contract as WorkspaceContract, DevNetwork, Worker,
+};
 
-pub async fn deploy(path: &str, worker: Worker<impl DevNetwork>) -> Result<WorkspaceContract, workspaces::error::Error> {
-    worker.dev_deploy(&std::fs::read(Path::new(path)).unwrap()).await
+pub async fn deploy(
+    path: &str,
+    worker: Worker<impl DevNetwork>,
+) -> Result<WorkspaceContract, workspaces::error::Error> {
+    worker
+        .dev_deploy(&std::fs::read(Path::new(path)).unwrap())
+        .await
 }
 
 #[duplicate(
@@ -34,7 +41,11 @@ impl Contract<'_, contract_type> {
 )]
 impl Contract<'_, contract_type> {
     pub fn setup(&self, mut context: Context, account_id: &str) -> Context {
-        let contract = WorkspaceContract::from_secret_key(AccountId::from_str(account_id).unwrap(), SecretKey::from_random(KeyType::ED25519), context.worker());
+        let contract = WorkspaceContract::from_secret_key(
+            AccountId::from_str(account_id).unwrap(),
+            SecretKey::from_random(KeyType::ED25519),
+            context.worker(),
+        );
         context.set_signer(contract.as_account());
         context.contracts_mut().add(self.name(), contract);
         context
