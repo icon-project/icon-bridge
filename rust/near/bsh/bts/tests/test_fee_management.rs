@@ -55,9 +55,12 @@ fn handle_fee_gathering() {
 
     let coin_id = contract.coin_id(nativecoin.name()).unwrap();
 
-    let storage_cost = contract.get_storage_cost(chuck(), coin_id);
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
 
-    testing_env!(context(chuck(), storage_cost.into()));
+    testing_env!(context(chuck(), storage_cost));
 
     contract.transfer(
         nativecoin.name().to_string(),

@@ -45,7 +45,6 @@ impl BtpTokenService {
             };
             storage_cost.add(storage_balance).unwrap();
         });
-
         //check for enough attached deposit to bear storage cost
         self.assert_have_sufficient_storage_deposit_for_batch(storage_cost);
 

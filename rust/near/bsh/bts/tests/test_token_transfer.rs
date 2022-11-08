@@ -114,7 +114,10 @@ fn withdraw_wnear() {
     expected.deposit_mut().add(1000).unwrap();
     assert_eq!(result, U128::from(expected.deposit()));
 
-    let storage_cost = contract.get_storage_cost(chuck(), token_id).0;
+    let storage_cost = contract
+        .get_storage_balance(chuck(), w_near.name().to_string())
+        .0
+        + 1;
     testing_env!(context(chuck(), storage_cost));
     contract.withdraw(w_near.name().to_string(), U128::from(999));
 
@@ -205,9 +208,12 @@ fn external_transfer() {
     );
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
-    let storage_cost = contract.get_storage_cost(chuck(), token_id.clone());
+    let storage_cost = contract
+        .get_storage_balance(chuck(), w_near.name().to_string())
+        .0
+        + 1;
 
-    testing_env!(context(chuck(), storage_cost.into()));
+    testing_env!(context(chuck(), storage_cost));
     contract.transfer(
         w_near.name().to_string(),
         destination.clone(),
@@ -270,7 +276,10 @@ fn handle_success_response_wnear_external_transfer() {
     );
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
-    let storage_cost = contract.get_storage_cost(chuck(), token_id).0;
+    let storage_cost = contract
+        .get_storage_balance(chuck(), w_near.name().to_string())
+        .0
+        + 1;
 
     testing_env!(context(chuck(), storage_cost));
     contract.transfer(
@@ -398,8 +407,9 @@ fn handle_success_response_baln_external_transfer() {
     );
 
     let storage_cost = contract
-        .get_storage_cost(chuck(), token_id.clone().try_into().unwrap())
-        .0;
+        .get_storage_balance(chuck(), baln.name().to_string())
+        .0
+        + 1;
 
     testing_env!(context(chuck(), storage_cost, 10u64.pow(18)));
     contract.transfer(
@@ -514,7 +524,10 @@ fn handle_failure_response_wnear_external_transfer() {
     );
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
-    let storage_cost = contract.get_storage_cost(chuck(), token_id).0;
+    let storage_cost = contract
+        .get_storage_balance(chuck(), w_near.name().to_string())
+        .0
+        + 1;
 
     testing_env!(context(chuck(), storage_cost));
     contract.transfer(
@@ -645,8 +658,9 @@ fn handle_failure_response_baln_coin_external_transfer() {
     );
 
     let storage_cost = contract
-        .get_storage_cost(chuck(), token_id.clone().try_into().unwrap())
-        .0;
+        .get_storage_balance(chuck(), baln.name().to_string())
+        .0
+        + 1;
 
     testing_env!(context(chuck(), storage_cost));
     contract.transfer(
@@ -771,7 +785,10 @@ fn reclaim_baln_coin() {
         Ok(U128::from(700000)),
     );
 
-    let storage_cost = contract.get_storage_cost(chuck(), coin_id).0;
+    let storage_cost = contract
+        .get_storage_balance(chuck(), baln.name().to_string())
+        .0
+        + 1;
 
     testing_env!(context(chuck(), storage_cost));
     contract.transfer(
@@ -951,7 +968,10 @@ fn external_transfer_batch() {
     );
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
-    let stroage_cost = contract.get_storage_cost(chuck(), token_id).0;
+    let stroage_cost = contract
+        .get_storage_balance(chuck(), w_near.name().to_string())
+        .0
+        + 1;
 
     testing_env!(context(chuck(), stroage_cost));
     contract.transfer_batch(

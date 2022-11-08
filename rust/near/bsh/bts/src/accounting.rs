@@ -72,6 +72,7 @@ impl BtpTokenService {
         self.assert_have_minimum_amount(amount);
         self.assert_have_sufficient_deposit(&account, &coin_id, amount, None);
 
+        self.assert_minimum_one_yocto();
         // Check for attached storage usage cost
         self.assert_have_sufficient_storage_deposit(&account, &coin_id);
 
@@ -81,14 +82,16 @@ impl BtpTokenService {
         let coin = self.coins.get(&coin_id).unwrap();
 
         let transfer_promise = if coin.network() != &self.network {
-            ext_nep141::ext(coin.metadata().uri().to_owned().unwrap()).ft_transfer(
-                account.clone(),
-                amount.into(),
-                None,
-            )
+            ext_nep141::ext(coin.metadata().uri().to_owned().unwrap())
+                .with_attached_deposit(1)
+                .ft_transfer(account.clone(), amount.into(), None)
         } else {
             if let Some(uri) = coin.metadata().uri_deref() {
-                ext_ft::ext(uri).ft_transfer(account.clone(), U128::from(amount), None)
+                ext_ft::ext(uri).with_attached_deposit(1).ft_transfer(
+                    account.clone(),
+                    U128::from(amount),
+                    None,
+                )
             } else {
                 Promise::new(account.clone()).transfer(amount)
             }
@@ -213,7 +216,8 @@ impl BtpTokenService {
         }
     }
 
-    pub fn get_storage_cost(&self, account: AccountId, coin_id: CoinId) -> U128 {
+    pub fn get_storage_balance(&self, account: AccountId, coin_name: String) -> U128 {
+        let coin_id = self.coin_id(&coin_name).unwrap();
         match self.storage_balances.get(&account, &coin_id) {
             Some(storage_cost) => return U128::from(storage_cost),
             None => return U128::from(0),

@@ -77,9 +77,12 @@ fn withdraw_native_coin() {
     expected.deposit_mut().add(1000).unwrap();
     assert_eq!(result, U128::from(expected.deposit()));
 
-    let storage_cost = contract.get_storage_cost(chuck(), coin_id);
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
 
-    testing_env!(context(chuck(), storage_cost.into()));
+    testing_env!(context(chuck(), storage_cost));
     contract.withdraw(nativecoin.name().to_string(), U128::from(999));
 
     testing_env!(
@@ -157,9 +160,12 @@ fn external_transfer() {
 
     let token_id = contract.coin_id(nativecoin.name()).unwrap();
 
-    let storage_cost = contract.get_storage_cost(chuck(), token_id.clone());
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
 
-    testing_env!(context(chuck(), storage_cost.into()));
+    testing_env!(context(chuck(), storage_cost));
 
     contract.transfer(
         nativecoin.name().to_string(),
@@ -236,9 +242,12 @@ fn handle_success_response_native_coin_external_transfer() {
 
     let token_id = contract.coin_id(nativecoin.name()).unwrap();
 
-    let storage_cost = contract.get_storage_cost(chuck(), token_id.clone());
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
 
-    testing_env!(context(chuck(), storage_cost.into()));
+    testing_env!(context(chuck(), storage_cost));
 
     contract.transfer(
         nativecoin.name().to_string(),
@@ -360,9 +369,12 @@ fn handle_success_response_icx_coin_external_transfer() {
         Ok(U128::from(700000)),
     );
 
-    let storage_cost = contract.get_storage_cost(chuck(), coin_id.clone());
+    let storage_cost = contract
+        .get_storage_balance(chuck(), icx_coin.name().to_string())
+        .0
+        + 1;
 
-    testing_env!(context(chuck(), storage_cost.into()));
+    testing_env!(context(chuck(), storage_cost));
     contract.transfer(
         icx_coin.name().to_string(),
         destination.clone(),
@@ -454,9 +466,12 @@ fn handle_failure_response_native_coin_external_transfer() {
 
     contract.deposit();
 
-    let storage_cost = contract.get_storage_cost(chuck(), coin_id.clone());
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
 
-    testing_env!(context(chuck(), storage_cost.into()));
+    testing_env!(context(chuck(), storage_cost));
     contract.transfer(
         nativecoin.name().to_string(),
         destination.clone(),
@@ -577,7 +592,10 @@ fn handle_failure_response_icx_coin_external_transfer() {
         Ok(U128::from(700000)),
     );
 
-    let storage_cost = contract.get_storage_cost(chuck(), coin_id.clone()).0;
+    let storage_cost = contract
+        .get_storage_balance(chuck(), icx_coin.name().to_string())
+        .0
+        + 1;
 
     testing_env!(context(chuck(), storage_cost));
 
@@ -705,7 +723,10 @@ fn reclaim_icx_coin() {
         chuck(),
         Ok(U128::from(700000)),
     );
-    let storage_cost = contract.get_storage_cost(chuck(), coin_id.clone()).0;
+    let storage_cost = contract
+        .get_storage_balance(chuck(), icx_coin.name().to_string())
+        .0
+        + 1;
 
     testing_env!(context(chuck(), storage_cost));
     contract.transfer(
@@ -837,9 +858,12 @@ fn external_transfer_batch() {
 
     let token_id = contract.coin_id(nativecoin.name()).unwrap();
 
-    let storage_cost = contract.get_storage_cost(chuck(), token_id.clone());
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
 
-    testing_env!(context(chuck(), storage_cost.into()));
+    testing_env!(context(chuck(), storage_cost));
     contract.transfer_batch(
         vec![nativecoin.name().to_string()],
         destination,
