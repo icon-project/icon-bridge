@@ -203,4 +203,28 @@ impl BtpTokenService {
         }
         Ok(())
     }
+
+    pub fn assert_have_sufficient_storage_deposit(&self, account: &AccountId, asset_id: &AssetId) {
+        if let Some(storage_balance) = self.storage_balances.get(account, asset_id) {
+            let attached_deposit = env::attached_deposit();
+            require!(
+                attached_deposit > storage_balance,
+                format!("{}", BshError::NotMinimumDeposit)
+            );
+        }
+    }
+
+    pub fn assert_have_sufficient_storage_deposit_for_batch(&self, storage_balance: u128) {
+        require!(
+            env::attached_deposit() > storage_balance,
+            format!("{}", BshError::NotMinimumDeposit)
+        );
+    }
+
+    pub fn assert_minimum_one_yocto(&self) {
+        require!(
+            env::attached_deposit() >= 1,
+            format!("{}", BshError::RequiredMinimumOneYoctoNear)
+        );
+    }
 }

@@ -2,6 +2,7 @@ use super::*;
 
 #[near_bindgen]
 impl BtpTokenService {
+    #[payable]
     pub fn transfer(&mut self, coin_name: String, destination: BTPAddress, amount: U128) {
         let sender_id = env::predecessor_account_id();
         self.assert_have_minimum_amount(amount.into());
@@ -9,14 +10,17 @@ impl BtpTokenService {
             .coin_id(&coin_name)
             .map_err(|err| format!("{}", err))
             .unwrap();
-
+        //check for enough attached deposit to bear storage cost
+        self.assert_have_sufficient_storage_deposit(&sender_id, &coin_id);
         let asset = self
             .process_external_transfer(&coin_id.to_owned(), &sender_id, amount.into())
             .unwrap();
 
-        self.send_request(sender_id, destination, vec![asset]);
+        self.send_request(sender_id.clone(), destination, vec![asset]);
+        self.storage_balances.set(&sender_id, &coin_id, 0)
     }
 
+    #[payable]
     pub fn transfer_batch(
         &mut self,
         coin_names: Vec<String>,
@@ -32,6 +36,18 @@ impl BtpTokenService {
             .map_err(|err| format!("{}", err))
             .unwrap();
 
+        let mut storage_cost = u128::default();
+
+        coin_ids.clone().into_iter().for_each(|coin_id| {
+            let storage_balance = match self.storage_balances.get(&sender_id.clone(), &coin_id) {
+                Some(balance) => balance,
+                None => u128::default(),
+            };
+            storage_cost.add(storage_balance).unwrap();
+        });
+        //check for enough attached deposit to bear storage cost
+        self.assert_have_sufficient_storage_deposit_for_batch(storage_cost);
+
         let assets = coin_ids
             .iter()
             .enumerate()
@@ -42,7 +58,11 @@ impl BtpTokenService {
             })
             .collect::<Vec<TransferableAsset>>();
 
-        self.send_request(sender_id, destination, assets);
+        self.send_request(sender_id.clone(), destination, assets);
+        coin_ids
+            .clone()
+            .into_iter()
+            .for_each(|coin_id| self.storage_balances.set(&sender_id, &coin_id, 0));
     }
 }
 
@@ -94,8 +114,7 @@ impl BtpTokenService {
             }
             None => {
                 let mut balance = AccountBalance::default();
-                let storage_deposit = 0_u128; // TODO: Calculate storage deposit
-                let amount = amount - storage_deposit;
+                let amount = amount;
                 balance.deposit_mut().add(amount).unwrap();
                 balance
             }
