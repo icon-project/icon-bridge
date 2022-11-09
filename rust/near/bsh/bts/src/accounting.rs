@@ -20,7 +20,7 @@ impl BtpTokenService {
         self.assert_have_minimum_amount(amount);
         self.assert_coin_registered(&coin_account);
 
-        let intial_storage_usage = env::storage_usage();
+        let initial_storage_usage = env::storage_usage();
 
         let coin_id = self.registered_coins.get(&coin_account).unwrap().clone();
         let mut balance = match self.balances.get(&sender_id, &coin_id) {
@@ -32,7 +32,7 @@ impl BtpTokenService {
         self.balances.set(&sender_id, &coin_id, balance);
 
         // calculate storage cost for the account
-        let total_storage_cost = self.calculate_storage_cost(intial_storage_usage);
+        let total_storage_cost = self.calculate_storage_cost(initial_storage_usage);
 
         self.storage_balances
             .set(&sender_id, &coin_id, total_storage_cost.into());
@@ -47,7 +47,7 @@ impl BtpTokenService {
         self.assert_have_minimum_amount(amount);
         let coin_id = Self::hash_coin_id(&self.native_coin_name);
 
-        let intial_storage_usage = env::storage_usage();
+        let initial_storage_usage = env::storage_usage();
         let mut balance = match self.balances.get(&account, &coin_id) {
             Some(balance) => balance,
             None => AccountBalance::default(),
@@ -55,7 +55,7 @@ impl BtpTokenService {
         self.process_deposit(amount, &mut balance);
         self.balances.set(&account, &coin_id, balance);
 
-        let total_storage_cost = self.calculate_storage_cost(intial_storage_usage);
+        let total_storage_cost = self.calculate_storage_cost(initial_storage_usage);
         self.storage_balances
             .set(&account, &coin_id, total_storage_cost.into());
     }

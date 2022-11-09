@@ -151,8 +151,8 @@ impl BtpTokenService {
         balance.deposit_mut().add(amount).unwrap();
     }
 
-    fn calculate_storage_cost(&self, intial_storage_usage: u64) -> U128 {
-        let total_storage_usage = env::storage_usage() - intial_storage_usage;
+    fn calculate_storage_cost(&self, initial_storage_usage: u64) -> U128 {
+        let total_storage_usage = env::storage_usage() - initial_storage_usage;
         let storage_cost =
             total_storage_usage as u128 * env::storage_byte_cost() + 669547687500000000;
         U128(storage_cost)
