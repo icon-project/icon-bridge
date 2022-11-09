@@ -224,7 +224,7 @@ impl BtpTokenService {
     pub fn assert_minimum_one_yocto(&self) {
         require!(
             env::attached_deposit() >= 1,
-            format!("Attach atleaset ONE YOCTO NEAR",)
+            format!("{}", BshError::RequiredMinimumOneYoctoNear)
         );
     }
 }

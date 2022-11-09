@@ -247,6 +247,7 @@ pub mod errors {
         InvalidParams,
         LimitExceed,
         LimitNotSet,
+        RequiredMinimumOneYoctoNear,
     }
 
     impl Exception for BshError {
@@ -361,6 +362,9 @@ pub mod errors {
                 }
                 BshError::LimitNotSet => {
                     write!(f, "{}{}", label, "LimitNotSet")
+                }
+                BshError::RequiredMinimumOneYoctoNear => {
+                    write!(f, "{}{}", label, "RequiredMinimumOneYoctoNear")
                 }
             }
         }
