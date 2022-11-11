@@ -56,20 +56,17 @@ impl Requests {
     }
 
     pub fn contains(&self, serial_no: i128) -> bool {
-        return self.0.get(&serial_no).is_some();
+        self.0.get(&serial_no).is_some()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{
-        TransferableAsset,
-    };
+    use crate::types::TransferableAsset;
 
     #[test]
     fn add_request() {
-
         let mut requests = Requests::new();
         let request = Request::new(
             "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4".to_string(),
@@ -83,7 +80,6 @@ mod tests {
 
     #[test]
     fn add_request_existing() {
-
         let mut requests = Requests::new();
         let request = Request::new(
             "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4".to_string(),
@@ -98,7 +94,6 @@ mod tests {
 
     #[test]
     fn remove_request() {
-
         let mut requests = Requests::new();
         let request = Request::new(
             "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4".to_string(),
@@ -113,7 +108,6 @@ mod tests {
 
     #[test]
     fn remove_request_non_existing() {
-
         let mut requests = Requests::new();
         requests.remove(1);
         let result = requests.get(1);

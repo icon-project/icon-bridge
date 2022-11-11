@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+#![allow(unused_imports)]
 use std::{
     collections::HashSet,
     convert::{TryFrom, TryInto},
@@ -13,15 +15,20 @@ use libraries::types::{
     BTPAddress, WrappedI128,
 };
 use near_sdk::{
-    env, serde_json::to_value, test_utils::test_env::alice, testing_env, AccountId, PromiseResult,
-    VMContext, test_utils::VMContextBuilder, Gas
+    env, serde_json::to_value, test_utils::test_env::alice, test_utils::VMContextBuilder,
+    testing_env, AccountId, Gas, PromiseResult, VMContext,
 };
 mod token;
 use token::*;
 pub mod accounts;
 use accounts::*;
 
-fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u128, account_balance: u128) -> VMContext {
+fn get_context(
+    is_view: bool,
+    signer_account_id: AccountId,
+    attached_deposit: u128,
+    account_balance: u128,
+) -> VMContext {
     VMContextBuilder::new()
         .current_account_id(alice())
         .is_view(is_view)
@@ -36,9 +43,7 @@ fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u1
 
 #[test]
 fn add_user_to_blacklist() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(false, account_id, deposit, 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
@@ -60,9 +65,7 @@ fn add_user_to_blacklist() {
 
 #[test]
 fn remove_blacklisted_user_from_blacklist() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(false, account_id, deposit, 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
@@ -95,9 +98,7 @@ fn remove_blacklisted_user_from_blacklist() {
 
 #[test]
 fn remove_non_blacklisted_user_from_blacklist() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(false, account_id, deposit, 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
@@ -134,9 +135,7 @@ fn remove_non_blacklisted_user_from_blacklist() {
 #[test]
 
 fn handle_btp_message_to_add_user_to_blacklist() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(false, account_id, deposit, 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
@@ -164,9 +163,7 @@ fn handle_btp_message_to_add_user_to_blacklist() {
 fn handle_btp_message_to_change_token_limit() {
     use libraries::types::TokenLimit;
 
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(false, account_id, deposit, 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NEAR_NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
@@ -194,9 +191,7 @@ fn handle_btp_message_to_change_token_limit() {
 
 #[test]
 fn is_user_blacklisted() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(false, account_id, deposit, 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
@@ -233,9 +228,7 @@ fn handle_external_service_error_message() {
         None,
     );
 
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(false, account_id, 0, deposit)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, 0, deposit);
     testing_env!(context(alice(), 0));
     let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(

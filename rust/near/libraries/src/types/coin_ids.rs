@@ -31,7 +31,7 @@ impl CoinIds {
     }
 
     pub fn contains(&self, coin_name: &str) -> bool {
-        return self.0.contains_key(coin_name);
+        self.0.contains_key(coin_name)
     }
 
     pub fn get(&self, coin_name: &str) -> Option<&AssetId> {

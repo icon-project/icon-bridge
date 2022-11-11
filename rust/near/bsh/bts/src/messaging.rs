@@ -11,29 +11,27 @@ impl BtpTokenService {
     pub fn handle_btp_message(&mut self, message: BtpMessage<SerializedMessage>) {
         self.assert_predecessor_is_bmc();
         self.assert_valid_service(message.service());
-        let outcome = self.handle_service_message(message.clone().try_into());
 
-        if outcome.is_err() {
-            let error = outcome.clone().unwrap_err();
-            self.send_response(
-                message.serial_no(),
-                message.source(),
-                TokenServiceMessage::new(TokenServiceType::ResponseHandleService {
-                    code: 1,
-                    message: format!("{}", error),
-                }),
-            );
-        } else {
-            match outcome.clone().unwrap() {
-                Some(service_message) => {
-                    self.send_response(message.serial_no(), message.source(), service_message);
+        match self.handle_service_message(message.clone().try_into()) {
+            Ok(outcome) => {
+                if let Some(service_message) = outcome {
+                    self.send_response(message.serial_no(), message.source(), service_message)
                 }
-                None => (),
+            }
+            Err(error) => {
+                self.send_response(
+                    message.serial_no(),
+                    message.source(),
+                    TokenServiceMessage::new(TokenServiceType::ResponseHandleService {
+                        code: 1,
+                        message: format!("{}", error),
+                    }),
+                );
+
+                #[cfg(feature = "testable")]
+                env::panic_str(error.to_string().as_str())
             }
         }
-
-        #[cfg(feature = "testable")]
-        outcome.clone().unwrap();
     }
 
     pub fn handle_btp_error(
@@ -72,12 +70,13 @@ impl BtpTokenService {
         message: TokenServiceMessage,
         serial_no: i128,
     ) {
-        match message.service_type() {
-            TokenServiceType::RequestTokenTransfer {
-                sender,
-                receiver,
-                assets,
-            } => match env::promise_result(0) {
+        if let TokenServiceType::RequestTokenTransfer {
+            sender,
+            receiver,
+            assets,
+        } = message.service_type()
+        {
+            match env::promise_result(0) {
                 PromiseResult::Successful(_) => {
                     let mut assets_log: Vec<Value> = Vec::new();
                     assets.iter().for_each(|asset| {
@@ -120,9 +119,7 @@ impl BtpTokenService {
                     log!(near_sdk::serde_json::to_string(&log).unwrap());
                     self.rollback_external_transfer(&AccountId::from_str(sender).unwrap(), assets)
                 }
-            },
-
-            _ => {}
+            };
         }
     }
 }
@@ -132,7 +129,7 @@ impl BtpTokenService {
         &mut self,
         message: Result<BtpMessage<TokenServiceMessage>, BshError>,
     ) -> Result<Option<TokenServiceMessage>, BshError> {
-        let btp_message = message.clone()?;
+        let btp_message = message?;
 
         if let Some(service_message) = btp_message.message() {
             match service_message.service_type() {
@@ -145,7 +142,7 @@ impl BtpTokenService {
                 TokenServiceType::ResponseHandleService {
                     ref code,
                     ref message,
-                } => self.handle_response(btp_message.serial_no(), *code, &message),
+                } => self.handle_response(btp_message.serial_no(), *code, message),
 
                 TokenServiceType::RequestBlacklist {
                     request_type,
@@ -154,7 +151,7 @@ impl BtpTokenService {
                 } => {
                     let mut non_valid_addresses: Vec<String> = Vec::new();
                     let mut valid_addresses: Vec<AccountId> = Vec::new();
-                    addresses.into_iter().clone().for_each(|address| {
+                    addresses.iter().clone().for_each(|address| {
                         match AccountId::try_from(address.clone()) {
                             Ok(account_id) => valid_addresses.push(account_id),
                             Err(_) => non_valid_addresses.push(address.to_string()),
@@ -286,7 +283,7 @@ impl BtpTokenService {
         self.requests_mut().add(
             serial_no,
             &Request::new(
-                sender_id.clone().into(),
+                sender_id.into(),
                 destination.contract_address().unwrap(),
                 assets,
             ),
@@ -339,22 +336,25 @@ impl BtpTokenService {
         destination_network: String,
         message: TokenServiceMessage,
     ) {
-        ext_bmc::ext(self.bmc.clone(),).send_service_message(
-            serial_no,
-            self.name.clone(),
-            destination_network.clone(),
-            message.clone().into(),
-        )
-        .then(Self::ext(env::current_account_id()).send_service_message_callback(
-            destination_network,
-            message.clone(),
-            serial_no,
-        ));
-
         #[cfg(feature = "testable")]
         {
-            let service_message: SerializedMessage = message.into();
+            let service_message: SerializedMessage = message.clone().into();
             self.message.set(&(service_message.data().clone().into()));
         }
+
+        ext_bmc::ext(self.bmc.clone())
+            .send_service_message(
+                serial_no,
+                self.name.clone(),
+                destination_network.clone(),
+                message.clone().into(),
+            )
+            .then(
+                Self::ext(env::current_account_id()).send_service_message_callback(
+                    destination_network,
+                    message,
+                    serial_no,
+                ),
+            );
     }
 }

@@ -1,5 +1,5 @@
 use bts::BtpTokenService;
-use near_sdk::{testing_env, AccountId, VMContext, test_utils::VMContextBuilder, Gas, env};
+use near_sdk::{env, test_utils::VMContextBuilder, testing_env, AccountId, Gas, VMContext};
 use std::collections::HashSet;
 pub mod accounts;
 use accounts::*;

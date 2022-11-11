@@ -28,6 +28,6 @@ impl BtpTokenService {
     /// Get account ids of registered owners
     /// Caller can be ANY
     pub fn get_owners(&self) -> Vec<AccountId> {
-        self.owners.to_vec().into()
+        self.owners.to_vec()
     }
 }

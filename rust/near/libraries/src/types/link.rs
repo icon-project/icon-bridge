@@ -160,7 +160,7 @@ impl Link {
                             guess_height - self.rotate_height
                         };
                         let rotate_count = count.div_ceil(rotate_term);
-                        rotate_count.deref().clone()
+                        *rotate_count.deref()
                     };
 
                     let mut base_height: u64 = 0;
@@ -175,7 +175,7 @@ impl Link {
                         .deref()
                         .to_owned();
                     if skip_count > 0 {
-                        skip_count = skip_count - 1;
+                        skip_count -= 1;
                         rotate_count.add(skip_count).unwrap();
                         base_height = current_height;
                     }
@@ -308,7 +308,7 @@ impl Links {
     }
 
     pub fn add(&mut self, link: &BTPAddress, block_interval_src: u64) {
-        self.keys.insert(&link);
+        self.keys.insert(link);
         self.values.insert(
             link,
             &Link {
@@ -325,8 +325,8 @@ impl Links {
     }
 
     pub fn remove(&mut self, link: &BTPAddress) {
-        self.keys.remove(&link);
-        self.values.remove(&link);
+        self.keys.remove(link);
+        self.values.remove(link);
     }
 
     pub fn to_vec(&self) -> Vec<BTPAddress> {
@@ -341,7 +341,7 @@ impl Links {
     }
 
     pub fn contains(&self, link: &BTPAddress) -> bool {
-        return self.keys.contains(link);
+        self.keys.contains(link)
     }
 }
 

@@ -1,6 +1,10 @@
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
 use bts::BtpTokenService;
 use near_sdk::{
-    env, json_types::U128, serde_json::to_value, testing_env, AccountId, PromiseResult, VMContext, test_utils::VMContextBuilder, Gas, VMConfig, RuntimeFeesConfig
+    env, json_types::U128, serde_json::to_value, test_utils::VMContextBuilder, testing_env,
+    AccountId, Gas, PromiseResult, RuntimeFeesConfig, VMConfig, VMContext,
 };
 use std::{
     collections::{HashMap, HashSet},

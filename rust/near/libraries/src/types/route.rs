@@ -52,7 +52,7 @@ impl Routes {
             .values
             .get(&destination.network_address().unwrap())
             .unwrap_or_default();
-        list.remove(&destination);
+        list.remove(destination);
 
         if list.is_empty() {
             self.values.remove(&destination.network_address().unwrap());

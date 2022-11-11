@@ -86,7 +86,8 @@ impl Message for SerializedMessage {}
 
 impl Encodable for BtpMessage<SerializedMessage> {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
-        stream.begin_list(5)
+        stream
+            .begin_list(5)
             .append(self.source())
             .append(self.destination())
             .append(self.service())
@@ -109,7 +110,7 @@ impl TryFrom<String> for SerializedMessage {
 
 impl Decodable for BtpMessage<SerializedMessage> {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-       Ok(Self {
+        Ok(Self {
             source: rlp.val_at::<BTPAddress>(0)?,
             destination: rlp.val_at::<BTPAddress>(1)?,
             service: rlp.val_at::<String>(2)?,
@@ -186,7 +187,7 @@ mod base64_bytes {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&base64::encode_config(&bytes, URL_SAFE_NO_PAD))
+        serializer.serialize_str(&base64::encode_config(bytes, URL_SAFE_NO_PAD))
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>

@@ -102,13 +102,10 @@ impl BtpMessageCenter {
 
         services.iter().for_each(|service| {
             //TODO: Handle Services that are not available
-            #[allow(unused_variables)]
             if let Some(account_id) = self.services.get(service) {
                 #[cfg(not(feature = "testable"))]
-                bsh_contract::ext(account_id.clone()).handle_fee_gathering(
-                    fee_aggregator.clone(),
-                    service.clone(),
-                );
+                bsh_contract::ext(account_id.clone())
+                    .handle_fee_gathering(fee_aggregator.clone(), service.clone());
             }
         });
         Ok(())

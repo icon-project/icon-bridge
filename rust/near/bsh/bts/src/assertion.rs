@@ -42,18 +42,6 @@ impl BtpTokenService {
         );
     }
 
-    pub fn assert_valid_fee_ratio(&self, fee_numerator: u128, fixed_fee: u128) {
-        require!(
-            fee_numerator <= FEE_DENOMINATOR,
-            format!("{}", BshError::InvalidSetting),
-        );
-
-        require!(
-            fee_numerator >= 0 && fixed_fee >= 0,
-            format!("{}", BshError::LessThanZero),
-        );
-    }
-
     pub fn assert_valid_service(&self, service: &String) {
         require!(
             self.name() == service,
@@ -97,7 +85,7 @@ impl BtpTokenService {
             format!("{}", BshError::NotMinimumAmount)
         );
         let amount = std::cmp::max(amount, fees.unwrap_or_default());
-        if let Some(balance) = self.balances.get(&account, &coin_id) {
+        if let Some(balance) = self.balances.get(account, coin_id) {
             require!(
                 balance.deposit() >= amount,
                 format!("{}", BshError::NotMinimumDeposit)
@@ -113,7 +101,7 @@ impl BtpTokenService {
         coin_id: &CoinId,
         amount: u128,
     ) {
-        if let Some(balance) = self.balances.get(&account, &coin_id) {
+        if let Some(balance) = self.balances.get(account, coin_id) {
             require!(
                 balance.refundable() >= amount,
                 format!("{}", BshError::NotMinimumRefundable)
@@ -132,7 +120,7 @@ impl BtpTokenService {
 
     pub fn assert_owner_exists(&self, account: &AccountId) {
         require!(
-            self.owners.contains(&account),
+            self.owners.contains(account),
             format!("{}", BshError::OwnerNotExist)
         );
     }
@@ -180,7 +168,7 @@ impl BtpTokenService {
         Ok(())
     }
 
-    pub fn ensure_coin_exists(&self, coin_name: &String) -> bool {
+    pub fn ensure_coin_exists(&self, coin_name: &str) -> bool {
         match self.coin_ids.get(coin_name) {
             Some(coin) => true,
             None => false,

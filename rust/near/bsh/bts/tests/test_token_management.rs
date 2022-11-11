@@ -1,7 +1,14 @@
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+
 use std::convert::{TryFrom, TryInto};
 
 use bts::{BtpTokenService, Coin};
-use near_sdk::{env, serde_json::to_value, testing_env, AccountId, PromiseResult, VMContext, test_utils::VMContextBuilder, Gas, VMConfig, RuntimeFeesConfig};
+use near_sdk::{
+    env, serde_json::to_value, test_utils::VMContextBuilder, testing_env, AccountId, Gas,
+    PromiseResult, RuntimeFeesConfig, VMConfig, VMContext,
+};
 pub mod accounts;
 use accounts::*;
 use libraries::types::{

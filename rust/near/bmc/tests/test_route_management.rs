@@ -1,7 +1,10 @@
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+
 use bmc::BtpMessageCenter;
 use near_sdk::{
-    env,
-    serde_json::json, test_utils::VMContextBuilder, testing_env, AccountId, Gas, VMContext,
+    env, serde_json::json, test_utils::VMContextBuilder, testing_env, AccountId, Gas, VMContext,
 };
 
 pub mod accounts;

@@ -13,7 +13,7 @@ impl BtpTokenService {
         //check for enough attached deposit to bear storage cost
         self.assert_have_sufficient_storage_deposit(&sender_id, &coin_id);
         let asset = self
-            .process_external_transfer(&coin_id.to_owned(), &sender_id, amount.into())
+            .process_external_transfer(&coin_id, &sender_id, amount.into())
             .unwrap();
 
         self.send_request(sender_id.clone(), destination, vec![asset]);
@@ -60,7 +60,6 @@ impl BtpTokenService {
 
         self.send_request(sender_id.clone(), destination, assets);
         coin_ids
-            .clone()
             .into_iter()
             .for_each(|coin_id| self.storage_balances.set(&sender_id, &coin_id, 0));
     }
@@ -73,13 +72,13 @@ impl BtpTokenService {
         sender_id: &AccountId,
         mut amount: u128,
     ) -> Result<TransferableAsset, String> {
-        let coin = self.coins.get(&coin_id).unwrap();
-        let fees = self.calculate_coin_transfer_fee(amount.into(), &coin)?;
+        let coin = self.coins.get(coin_id).unwrap();
+        let fees = self.calculate_coin_transfer_fee(amount, &coin)?;
 
-        self.assert_have_sufficient_deposit(&sender_id, &coin_id, amount, Some(fees));
+        self.assert_have_sufficient_deposit(sender_id, coin_id, amount, Some(fees));
 
         amount.sub(fees)?;
-        let mut balance = self.balances.get(&sender_id, &coin_id).unwrap();
+        let mut balance = self.balances.get(sender_id, coin_id).unwrap();
 
         // Handle Fees
         balance.locked_mut().add(fees)?;
@@ -89,7 +88,7 @@ impl BtpTokenService {
         balance.deposit_mut().sub(amount)?;
         balance.locked_mut().add(amount)?;
 
-        self.balances.set(&sender_id, &coin_id, balance);
+        self.balances.set(sender_id, coin_id, balance);
 
         Ok(TransferableAsset::new(coin.name().clone(), amount, fees))
     }
@@ -107,7 +106,7 @@ impl BtpTokenService {
         let mut sender_balance = self.balances.get(sender_id, coin_id).unwrap();
         sender_balance.deposit_mut().sub(amount).unwrap();
 
-        let receiver_balance = match self.balances.get(&receiver_id, coin_id) {
+        let receiver_balance = match self.balances.get(receiver_id, coin_id) {
             Some(mut balance) => {
                 balance.deposit_mut().add(amount).unwrap();
                 balance
@@ -135,15 +134,13 @@ impl BtpTokenService {
         self.assert_sender_is_not_receiver(sender_id, receiver_id);
         sender_balance.deposit_mut().sub(amount)?;
 
-        match self.balances.get(&receiver_id, coin_id) {
+        match self.balances.get(receiver_id, coin_id) {
             Some(mut balance) => {
                 balance.deposit_mut().add(amount)?;
                 balance
             }
             None => {
                 let mut balance = AccountBalance::default();
-                let storage_deposit = 0_u128; // TODO: Calculate storage deposit
-                let amount = amount - storage_deposit;
                 balance.deposit_mut().add(amount)?;
                 balance
             }
@@ -155,8 +152,8 @@ impl BtpTokenService {
         &mut self,
         sender_id: &AccountId,
         receiver_id: &AccountId,
-        coin_ids: &Vec<CoinId>,
-        amounts: &Vec<U128>,
+        coin_ids: &[CoinId],
+        amounts: &[U128],
     ) {
         coin_ids.iter().enumerate().for_each(|(index, coin_id)| {
             self.internal_transfer(sender_id, receiver_id, coin_id, amounts[index].into());
@@ -166,20 +163,20 @@ impl BtpTokenService {
     pub fn finalize_external_transfer(
         &mut self,
         sender_id: &AccountId,
-        assets: &Vec<TransferableAsset>,
+        assets: &[TransferableAsset],
     ) {
         assets.iter().for_each(|asset| {
             let coin_id = Self::hash_coin_id(asset.name());
             let coin = self.coins.get(&coin_id).unwrap();
             let mut coin_fee = self.coin_fees.get(&coin_id).unwrap().to_owned();
 
-            let mut sender_balance = self.balances.get(&sender_id, &coin_id).unwrap();
+            let mut sender_balance = self.balances.get(sender_id, &coin_id).unwrap();
             sender_balance
                 .locked_mut()
                 .sub(asset.amount() + asset.fees())
                 .unwrap();
 
-            self.balances.set(&sender_id, &coin_id, sender_balance);
+            self.balances.set(sender_id, &coin_id, sender_balance);
 
             let mut current_account_balance = self
                 .balances
@@ -208,18 +205,18 @@ impl BtpTokenService {
     pub fn rollback_external_transfer(
         &mut self,
         sender_id: &AccountId,
-        assets: &Vec<TransferableAsset>,
+        assets: &[TransferableAsset],
     ) {
         assets.iter().for_each(|asset| {
             let coin_id = Self::hash_coin_id(asset.name());
             let mut coin_fee = self.coin_fees.get(&coin_id).unwrap().to_owned();
-            let mut sender_balance = self.balances.get(&sender_id, &coin_id).unwrap();
+            let mut sender_balance = self.balances.get(sender_id, &coin_id).unwrap();
             sender_balance
                 .locked_mut()
                 .sub(asset.amount() + asset.fees())
                 .unwrap();
             sender_balance.refundable_mut().add(asset.amount()).unwrap();
-            self.balances.set(&sender_id, &coin_id, sender_balance);
+            self.balances.set(sender_id, &coin_id, sender_balance);
 
             let mut current_account_balance = self
                 .balances
@@ -244,7 +241,7 @@ impl BtpTokenService {
         &mut self,
         message_source: &BTPAddress,
         receiver_id: &String,
-        assets: &Vec<TransferableAsset>,
+        assets: &[TransferableAsset],
     ) -> Result<Option<TokenServiceMessage>, BshError> {
         let receiver_id = AccountId::try_from(receiver_id.to_owned()).map_err(|error| {
             BshError::InvalidAddress {
@@ -268,7 +265,7 @@ impl BtpTokenService {
             })
             .collect();
 
-        if unregistered_coins.len() > 0 {
+        if !unregistered_coins.is_empty() {
             return Err(BshError::TokenNotExist {
                 message: unregistered_coins.join(", "),
             });
@@ -276,13 +273,7 @@ impl BtpTokenService {
 
         let coins = coin_ids
             .into_iter()
-            .map(|(asset_index, coin_id)| {
-                (
-                    asset_index,
-                    coin_id.clone(),
-                    self.coins.get(&coin_id).unwrap(),
-                )
-            })
+            .map(|(asset_index, coin_id)| (asset_index, coin_id, self.coins.get(&coin_id).unwrap()))
             .collect::<Vec<(usize, CoinId, Coin)>>();
 
         let transferable =
@@ -300,7 +291,7 @@ impl BtpTokenService {
                 self.mint(
                     coin_id,
                     assets[index.to_owned()].amount(),
-                    &coin,
+                    coin,
                     receiver_id.clone(),
                 );
             } else {
@@ -325,8 +316,8 @@ impl BtpTokenService {
         &self,
         sender_id: &AccountId,
         receiver_id: &AccountId,
-        coins: &Vec<(usize, CoinId, Asset<WrappedNativeCoin>)>,
-        assets: &Vec<TransferableAsset>,
+        coins: &[(usize, CoinId, Asset<WrappedNativeCoin>)],
+        assets: &[TransferableAsset],
     ) -> Result<(), String> {
         coins
             .iter()
@@ -353,9 +344,9 @@ impl BtpTokenService {
     pub fn refund_balance_amount(
         &mut self,
         index: usize,
-        amounts: &Vec<U128>,
+        amounts: &[U128],
         returned_amount: u128,
-        coin_ids: &Vec<CoinId>,
+        coin_ids: &[CoinId],
         sender_id: &AccountId,
         receiver_id: &AccountId,
     ) -> U128 {
@@ -391,13 +382,13 @@ impl BtpTokenService {
     fn check_for_transfer_restriction(
         &self,
         user: &AccountId,
-        assets: &Vec<TransferableAsset>,
+        assets: &[TransferableAsset],
     ) -> Result<(), BshError> {
         self.ensure_user_not_blacklisted(user)?;
 
         assets
             .iter()
-            .map(|asset| self.ensure_amount_within_limit(&asset.name(), asset.amount()))
+            .map(|asset| self.ensure_amount_within_limit(asset.name(), asset.amount()))
             .collect::<Result<(), BshError>>()?;
 
         Ok(())

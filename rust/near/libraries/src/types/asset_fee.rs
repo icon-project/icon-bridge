@@ -18,7 +18,7 @@ impl AssetFees {
     }
 
     pub fn add(&mut self, asset_id: &AssetId) {
-        self.0.insert(&asset_id, &u128::default());
+        self.0.insert(asset_id, &u128::default());
     }
 
     pub fn remove(&mut self, asset_id: &AssetId) {
@@ -33,6 +33,6 @@ impl AssetFees {
     }
 
     pub fn set(&mut self, asset_id: &AssetId, asset_fee: AssetFee) {
-        self.0.insert(&asset_id.clone(), &asset_fee);
+        self.0.insert(asset_id, &asset_fee);
     }
 }

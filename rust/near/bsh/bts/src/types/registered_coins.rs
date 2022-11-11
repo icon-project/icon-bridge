@@ -22,7 +22,7 @@ impl RegisteredCoins {
     }
 
     pub fn contains(&self, coin_account: &AccountId) -> bool {
-        return self.0.contains_key(coin_account);
+        self.0.contains_key(coin_account)
     }
 
     pub fn get(&self, coin_account: &AccountId) -> Option<&AssetId> {

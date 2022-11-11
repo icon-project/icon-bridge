@@ -78,8 +78,8 @@ impl Encodable for BlackListType {
 impl Encodable for TokenServiceMessage {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
         stream.begin_unbounded_list();
-        match self.service_type() {
-            &TokenServiceType::RequestTokenTransfer {
+        match *self.service_type() {
+            TokenServiceType::RequestTokenTransfer {
                 ref sender,
                 ref receiver,
                 ref assets,
@@ -91,7 +91,7 @@ impl Encodable for TokenServiceMessage {
                     .append_list(assets);
                 stream.append::<u128>(&0).append(&params.out());
             }
-            &TokenServiceType::ResponseHandleService {
+            TokenServiceType::ResponseHandleService {
                 ref code,
                 ref message,
             } => {
@@ -99,7 +99,7 @@ impl Encodable for TokenServiceMessage {
                 params.append::<u8>(code).append::<String>(message);
                 stream.append::<u128>(&2).append(&params.out());
             }
-            &TokenServiceType::ResponseBlacklist {
+            TokenServiceType::ResponseBlacklist {
                 ref code,
                 ref message,
             } => {
@@ -107,7 +107,7 @@ impl Encodable for TokenServiceMessage {
                 params.append::<u128>(code).append::<String>(message);
                 stream.append::<u128>(&3).append(&params.out());
             }
-            &TokenServiceType::ResponseChangeTokenLimit {
+            TokenServiceType::ResponseChangeTokenLimit {
                 ref code,
                 ref message,
             } => {

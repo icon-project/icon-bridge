@@ -1,8 +1,9 @@
-use near_sdk::{json_types::{Base64VecU8}};
-use near_contract_standards::fungible_token::metadata::{FungibleTokenMetadata,FungibleTokenMetadataProvider};
+use near_contract_standards::fungible_token::metadata::{
+    FungibleTokenMetadata, FungibleTokenMetadataProvider,
+};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::json_types::Base64VecU8;
 use near_sdk::serde::{Deserialize, Serialize};
-
 
 pub struct Nep141 {
     pub spec: String,
@@ -38,14 +39,14 @@ impl Nep141 {
 
 impl FungibleTokenMetadataProvider for Nep141 {
     fn ft_metadata(&self) -> FungibleTokenMetadata {
-        FungibleTokenMetadata { 
-            spec : self.spec.clone(),
+        FungibleTokenMetadata {
+            spec: self.spec.clone(),
             name: self.name.clone(),
             symbol: self.symbol.clone(),
             icon: self.icon.clone(),
             reference: self.reference.clone(),
             reference_hash: self.reference_hash.clone(),
-            decimals: self.decimals.clone()
-         }
+            decimals: self.decimals,
+        }
     }
 }

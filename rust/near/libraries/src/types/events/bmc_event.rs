@@ -66,16 +66,11 @@ impl BmcEvent {
 
     pub fn get_message(&self) -> Result<BtpMessage<SerializedMessage>, String> {
         let message: Message =
-            from_str(&self.message.get().ok_or("Not Found")?).map_err(|e| format!(""))?;
-        message
-            .message()
-            .0
-            .clone()
-            .try_into()
-            .map_err(|e| format!("{}", e))
+            from_str(&self.message.get().ok_or("Not Found")?).map_err(|e| format!("{}", e))?;
+        message.message().0.clone().try_into()
     }
 
     pub fn get_error(&self) -> Result<BtpError, String> {
-        from_str(&self.error.get().ok_or("Not Found")?).map_err(|e| format!(""))
+        from_str(&self.error.get().ok_or("Not Found")?).map_err(|e| format!("{}", e))
     }
 }

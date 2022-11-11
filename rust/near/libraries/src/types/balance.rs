@@ -76,15 +76,14 @@ impl Balances {
 
     pub fn get(&self, account: &AccountId, asset_id: &AssetId) -> Option<AccountBalance> {
         if let Some(balance) = self.values.get(&(account.to_owned(), asset_id.to_owned())) {
-            return Some(balance.to_owned());
+            return Some(balance);
         }
         None
     }
 
     pub fn contains(&self, account: &AccountId, asset_id: &AssetId) -> bool {
-        return self
-            .keys
-            .contains(&(account.to_owned(), asset_id.to_owned()));
+        self.keys
+            .contains(&(account.to_owned(), asset_id.to_owned()))
     }
 
     pub fn set(

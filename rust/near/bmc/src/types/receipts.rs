@@ -1,4 +1,4 @@
-use super:: {Events};
+use super::Events;
 use libraries::rlp::{self, Decodable};
 
 #[derive(Clone, PartialEq, Eq, Debug)]

@@ -31,16 +31,7 @@ impl TokenLimits {
     }
 
     pub fn remove(&mut self, coin_name: &str) {
-        if self.contains(coin_name) {
-            self.0.remove(&coin_name.to_string());
-        }
-    }
-
-    pub fn contains(&self, coin_name: &str) -> bool {
-        if let Some(_) = self.0.keys().into_iter().find(|s| s == &coin_name) {
-            return true;
-        }
-        false
+        self.0.remove(&coin_name.to_string());
     }
 
     pub fn get(&self, coin_name: &str) -> Option<u128> {
@@ -48,6 +39,13 @@ impl TokenLimits {
             return Some(token_limit);
         }
         None
+    }
+
+    pub fn contains(&self, coin_name: &str) -> bool {
+        if let Some(_) = self.0.keys().into_iter().find(|s| s == &coin_name) {
+            return true;
+        }
+        false
     }
 
     pub fn to_vec(&self) -> Vec<TokenLimit> {

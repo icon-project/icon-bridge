@@ -33,7 +33,6 @@ impl BtpTokenService {
 
     pub fn set_fee_ratio(&mut self, coin_name: String, fee_numerator: U128, fixed_fee: U128) {
         self.assert_have_permission();
-        self.assert_valid_fee_ratio(fee_numerator.into(), fixed_fee.into());
 
         let coin_id = self
             .coin_id(&coin_name)
@@ -59,7 +58,7 @@ impl BtpTokenService {
         let coin = self.coins.get(&coin_id).unwrap();
 
         self.calculate_coin_transfer_fee(u128::from(amount), &coin)
-            .map(|e| U128(e))
+            .map(U128)
             .unwrap()
     }
 }
@@ -72,8 +71,8 @@ impl BtpTokenService {
             .to_vec()
             .iter()
             .filter_map(|coin| {
-                let coin_id = self.coin_ids.get(&coin.name).unwrap().clone();
-                let coin_fee = self.coin_fees.get(&coin_id).unwrap().clone();
+                let coin_id = *self.coin_ids.get(&coin.name).unwrap();
+                let coin_fee = self.coin_fees.get(&coin_id).unwrap();
 
                 if coin_fee > 0 {
                     self.coin_fees.set(&coin_id, 0);

@@ -15,16 +15,16 @@ impl Owners {
         self.0.len() as usize
     }
 
-    pub fn add(&mut self, address: &AccountId) {
-        self.0.insert(address);
+    pub fn add(&mut self, account_id: &AccountId) {
+        self.0.insert(account_id);
     }
 
-    pub fn remove(&mut self, address: &AccountId) {
-        self.0.remove(&address);
+    pub fn remove(&mut self, account_id: &AccountId) {
+        self.0.remove(account_id);
     }
 
-    pub fn contains(&self, address: &AccountId) -> bool {
-        self.0.contains(&address)
+    pub fn contains(&self, account_id: &AccountId) -> bool {
+        self.0.contains(account_id)
     }
 
     pub fn to_vec(&self) -> Vec<AccountId> {
@@ -32,6 +32,9 @@ impl Owners {
             return self.0.to_vec();
         }
         vec![]
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 

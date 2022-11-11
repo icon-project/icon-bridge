@@ -21,7 +21,7 @@ impl Connections {
     pub fn add(&mut self, connection: &Connection, link: &BTPAddress) {
         let mut list = self.0.get(connection).unwrap_or_default();
         list.insert(link.to_owned());
-        self.0.insert(&connection, &list);
+        self.0.insert(connection, &list);
     }
 
     pub fn remove(&mut self, connection: &Connection, link: &BTPAddress) {
@@ -55,7 +55,6 @@ mod tests {
 
     #[test]
     fn add_connection() {
-
         let destination = BTPAddress::new(
             "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -80,7 +79,6 @@ mod tests {
 
     #[test]
     fn remove_connection() {
-
         let destination = BTPAddress::new(
             "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -105,17 +103,16 @@ mod tests {
             &Connection::LinkReachable(destination.network_address().unwrap()),
             &link_2,
         );
-        connections.remove(&Connection::Route(destination.network_address().unwrap()), &link_1);
-        let link = connections.get(&Connection::Route(destination.network_address().unwrap()));
-        assert_eq!(
-            link,
-            None
+        connections.remove(
+            &Connection::Route(destination.network_address().unwrap()),
+            &link_1,
         );
+        let link = connections.get(&Connection::Route(destination.network_address().unwrap()));
+        assert_eq!(link, None);
     }
 
     #[test]
     fn contains_connection() {
-
         let destination = BTPAddress::new(
             "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -140,18 +137,26 @@ mod tests {
             &Connection::LinkReachable(destination.network_address().unwrap()),
             &link_2,
         );
-        connections.remove(&Connection::Route(destination.network_address().unwrap()), &link_1);
-        let result = connections.contains(&Connection::Route(destination.network_address().unwrap()));
+        connections.remove(
+            &Connection::Route(destination.network_address().unwrap()),
+            &link_1,
+        );
+        let result =
+            connections.contains(&Connection::Route(destination.network_address().unwrap()));
         assert_eq!(result, false);
 
-        connections.remove(&Connection::LinkReachable(destination.network_address().unwrap()), &link_1);
-        let result = connections.contains(&Connection::LinkReachable(destination.network_address().unwrap()));
+        connections.remove(
+            &Connection::LinkReachable(destination.network_address().unwrap()),
+            &link_1,
+        );
+        let result = connections.contains(&Connection::LinkReachable(
+            destination.network_address().unwrap(),
+        ));
         assert_eq!(result, true);
     }
 
     #[test]
     fn get_connection() {
-
         let destination = BTPAddress::new(
             "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -181,7 +186,9 @@ mod tests {
             ))
         );
 
-        let link = connections.get(&Connection::LinkReachable(destination.network_address().unwrap()));
+        let link = connections.get(&Connection::LinkReachable(
+            destination.network_address().unwrap(),
+        ));
         assert_eq!(
             link,
             Some(BTPAddress::new(
@@ -190,5 +197,4 @@ mod tests {
             ))
         );
     }
-
 }

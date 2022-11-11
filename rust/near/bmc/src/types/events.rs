@@ -3,10 +3,11 @@ use libraries::{
     types::{
         messages::{BtpMessage, SerializedMessage},
         BTPAddress,
-    }, BytesMut,
+    },
+    BytesMut,
 };
-use std::{ops::Deref, convert::TryFrom};
 use near_sdk::base64::{self, URL_SAFE_NO_PAD};
+use std::{convert::TryFrom, ops::Deref};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Event {
@@ -29,10 +30,9 @@ impl Event {
     }
 
     pub fn btp_message(&self) -> Option<BtpMessage<SerializedMessage>> {
-        match BtpMessage::try_from(self.message.clone()) { // TODO : OPTIMIZE
-            Ok(message) => {
-                return Some(message)
-            },
+        match BtpMessage::try_from(self.message.clone()) {
+            // TODO : OPTIMIZE
+            Ok(message) => return Some(message),
             Err(_) => return None,
         }
     }
@@ -50,7 +50,7 @@ impl Deref for Events {
 impl Decodable for Event {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         let data = rlp.val_at::<BytesMut>(2).unwrap();
-        
+
         Ok(Self {
             next: rlp.val_at(0)?,
             sequence: rlp.val_at(1)?,

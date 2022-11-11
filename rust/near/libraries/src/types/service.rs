@@ -32,10 +32,7 @@ impl Services {
     }
 
     pub fn get(&self, name: &str) -> Option<AccountId> {
-        match self.0.get(&name.to_string()) {
-            Some(service) => Some(service),
-            None => None,
-        }
+        self.0.get(&name.to_string())
     }
 
     pub fn to_vec(&self) -> Vec<Service> {

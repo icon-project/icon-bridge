@@ -2,7 +2,7 @@ use super::*;
 
 #[near_bindgen]
 impl BtpMessageCenter {
-        // * * * * * * * * * * * * * * * * *
+    // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
     // * * * * Owner Management  * * * *
     // * * * * * * * * * * * * * * * * *

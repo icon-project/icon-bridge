@@ -1,5 +1,4 @@
 //! BTP Message Center
-
 use btp_common::errors::{BmcError, BshError, BtpException, Exception};
 use libraries::{
     emit_message,

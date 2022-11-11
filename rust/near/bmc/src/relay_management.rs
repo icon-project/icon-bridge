@@ -22,7 +22,7 @@ impl BtpMessageCenter {
         self.assert_have_permission();
         self.assert_link_exists(&link);
         self.assert_relay_not_exists(&link, &relay);
-        if let Some(link_property) = self.links.get(&link).as_mut(){
+        if let Some(link_property) = self.links.get(&link).as_mut() {
             link_property.relays_mut().add(&relay);
             self.links.set(&link, link_property)
         }
@@ -31,7 +31,7 @@ impl BtpMessageCenter {
     pub fn remove_relay(&mut self, link: BTPAddress, relay: AccountId) {
         self.assert_have_permission();
         self.assert_link_exists(&link);
-        self.assert_relay_exists(&link,&relay);
+        self.assert_relay_exists(&link, &relay);
         if let Some(link_property) = self.links.get(&link).as_mut() {
             link_property.relays_mut().remove(&relay);
             self.links.set(&link, &link_property);

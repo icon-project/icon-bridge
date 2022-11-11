@@ -22,7 +22,7 @@ impl BtpTokenService {
                 env::promise_create(
                     uri,
                     "storage_deposit",
-                    &json!({}).to_string().as_bytes(),
+                    json!({}).to_string().as_bytes(),
                     env::attached_deposit(),
                     estimate::GAS_FOR_TOKEN_STORAGE_DEPOSIT,
                 );
@@ -45,13 +45,13 @@ impl BtpTokenService {
                     "owner_id": env::current_account_id(),
                     "total_supply": U128(0),
                     "metadata": {
-                        "spec": coin_metadata.spec.clone(),
+                        "spec": coin_metadata.spec,
                         "name": coin.label(),
                         "symbol": coin.symbol(),
-                        "icon": coin_metadata.icon.clone(),
-                        "reference": coin_metadata.reference.clone(),
-                        "reference_hash": coin_metadata.reference_hash.clone(),
-                        "decimals": coin_metadata.decimals.clone()
+                        "icon": coin_metadata.icon,
+                        "reference": coin_metadata.reference,
+                        "reference_hash": coin_metadata.reference_hash,
+                        "decimals": coin_metadata.decimals
                     }
                 })
                 .to_string()
@@ -89,7 +89,7 @@ impl BtpTokenService {
     ) {
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
-                if storage_cost.is_ok() {
+                if let Ok(storage_cost) = storage_cost {
                     let mut balance = self
                         .balances
                         .get(&env::current_account_id(), &coin_id)
@@ -115,7 +115,7 @@ impl BtpTokenService {
                         };
 
                     storage_balance
-                        .add(storage_cost.unwrap().0)
+                        .add(storage_cost.0)
                         .unwrap()
                         .add(total_storage_cost.0)
                         .unwrap();
@@ -236,8 +236,8 @@ impl BtpTokenService {
     pub fn get_token_limit(&self, coin_name: String) -> U128 {
         self.token_limits
             .get(&coin_name)
-            .map(|token_limit| U128(token_limit))
-            .expect(&format!("{}", BshError::LimitNotSet))
+            .map(U128)
+            .unwrap_or_else(|| env::panic_str(&format!("{}", BshError::LimitNotSet)))
     }
 }
 
@@ -320,9 +320,9 @@ impl BtpTokenService {
                 for (index, coin_name) in valid_coins.iter().enumerate() {
                     self.token_limits.add(coin_name, &token_limits[index])
                 }
-                return Ok(());
+                Ok(())
             }
-            Err(err) => return Err(err),
+            Err(err) => Err(err),
         }
     }
 

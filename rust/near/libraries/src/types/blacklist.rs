@@ -14,16 +14,16 @@ impl BlackListedAccounts {
         self.0.len() as usize
     }
 
-    pub fn add(&mut self, user: &AccountId) {
-        self.0.insert(&user.to_owned());
+    pub fn add(&mut self, account_id: &AccountId) {
+        self.0.insert(account_id);
     }
 
-    pub fn remove(&mut self, user: &AccountId) {
-        self.0.remove(&user);
+    pub fn remove(&mut self, account_id: &AccountId) {
+        self.0.remove(account_id);
     }
 
-    pub fn contains(&self, user: &AccountId) -> bool {
-        self.0.contains(&user)
+    pub fn contains(&self, account_id: &AccountId) -> bool {
+        self.0.contains(account_id)
     }
 
     pub fn to_vec(&self) -> Vec<AccountId> {
@@ -31,6 +31,10 @@ impl BlackListedAccounts {
             return self.0.to_vec();
         }
         vec![]
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 

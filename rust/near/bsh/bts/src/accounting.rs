@@ -22,7 +22,7 @@ impl BtpTokenService {
 
         let initial_storage_usage = env::storage_usage();
 
-        let coin_id = self.registered_coins.get(&coin_account).unwrap().clone();
+        let coin_id = *self.registered_coins.get(&coin_account).unwrap();
         let mut balance = match self.balances.get(&sender_id, &coin_id) {
             Some(balance) => balance,
             None => AccountBalance::default(),
@@ -85,30 +85,25 @@ impl BtpTokenService {
             ext_nep141::ext(coin.metadata().uri().to_owned().unwrap())
                 .with_attached_deposit(1)
                 .ft_transfer(account.clone(), amount.into(), None)
+        } else if let Some(uri) = coin.metadata().uri_deref() {
+            ext_ft::ext(uri).with_attached_deposit(1).ft_transfer(
+                account.clone(),
+                U128::from(amount),
+                None,
+            )
         } else {
-            if let Some(uri) = coin.metadata().uri_deref() {
-                ext_ft::ext(uri).with_attached_deposit(1).ft_transfer(
-                    account.clone(),
-                    U128::from(amount),
-                    None,
-                )
-            } else {
-                Promise::new(account.clone()).transfer(amount)
-            }
+            Promise::new(account.clone()).transfer(amount)
         };
 
-        transfer_promise.then(Self::ext(env::current_account_id()).on_withdraw(
-            account.clone(),
-            amount,
-            coin_name,
-            coin_id,
-        ));
+        transfer_promise.then(
+            Self::ext(env::current_account_id()).on_withdraw(account, amount, coin_name, coin_id),
+        );
     }
 
     pub fn reclaim(&mut self, coin_name: String, amount: U128) {
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
-        self.assert_have_minimum_amount(amount.into());
+        self.assert_have_minimum_amount(amount);
         let coin_id = self
             .coin_id(&coin_name)
             .map_err(|err| format!("{}", err))
@@ -131,7 +126,7 @@ impl BtpTokenService {
         let balance = self
             .balances
             .get(&account_id, &coin_id)
-            .expect(format!("{}", BshError::AccountNotExist).as_str());
+            .unwrap_or_else(|| env::panic_str(format!("{}", BshError::AccountNotExist).as_str()));
         balance.locked().into()
     }
 
@@ -144,7 +139,7 @@ impl BtpTokenService {
         let balance = self
             .balances
             .get(&account_id, &coin_id)
-            .expect(format!("{}", BshError::AccountNotExist).as_str());
+            .unwrap_or_else(|| env::panic_str(format!("{}", BshError::AccountNotExist).as_str()));
         balance.refundable().into()
     }
 
@@ -170,7 +165,7 @@ impl BtpTokenService {
         let balance = self
             .balances
             .get(&account_id, &coin_id)
-            .expect(format!("{}", BshError::AccountNotExist).as_str());
+            .unwrap_or_else(|| env::panic_str(format!("{}", BshError::AccountNotExist).as_str()));
         balance.deposit().into()
     }
 
@@ -219,8 +214,8 @@ impl BtpTokenService {
     pub fn get_storage_balance(&self, account: AccountId, coin_name: String) -> U128 {
         let coin_id = self.coin_id(&coin_name).unwrap();
         match self.storage_balances.get(&account, &coin_id) {
-            Some(storage_cost) => return U128::from(storage_cost),
-            None => return U128::from(0),
+            Some(storage_cost) => U128::from(storage_cost),
+            None => U128::from(0),
         }
     }
 }

@@ -18,7 +18,7 @@ pub trait AssetMetadata {
     fn extras(&self) -> &Option<AssetMetadataExtras>;
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize, Debug, PartialEq)]
+#[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Asset<T: AssetMetadata> {
     pub metadata: T,
@@ -54,6 +54,6 @@ impl<T: AssetMetadata> Asset<T> {
     }
 
     pub fn extras(&self) -> &Option<AssetMetadataExtras> {
-        &self.metadata.extras()
+        self.metadata.extras()
     }
 }

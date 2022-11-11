@@ -1,3 +1,7 @@
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+
 use bts::BtpTokenService;
 use near_sdk::{
     env, json_types::U128, test_utils::VMContextBuilder, testing_env, AccountId, Gas,

@@ -1,10 +1,10 @@
-use crate::types::{btp_address::Network, asset::AssetMetadata};
+use crate::types::{asset::AssetMetadata, btp_address::Network};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::json_types::{Base64VecU8, U128};
 use near_sdk::serde::{Deserialize, Deserializer, Serialize, Serializer};
 use near_sdk::AccountId;
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AssetMetadataExtras {
     pub spec: String,
@@ -14,7 +14,7 @@ pub struct AssetMetadataExtras {
     pub decimals: u8,
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct FungibleToken {
     name: String,
@@ -22,11 +22,17 @@ pub struct FungibleToken {
     symbol: String,
     uri: Option<AccountId>,
     network: Network,
-    #[serde(deserialize_with = "deserialize_u128", serialize_with = "serialize_u128")]
+    #[serde(
+        deserialize_with = "deserialize_u128",
+        serialize_with = "serialize_u128"
+    )]
     fee_numerator: u128,
-    #[serde(deserialize_with = "deserialize_u128", serialize_with = "serialize_u128")]
+    #[serde(
+        deserialize_with = "deserialize_u128",
+        serialize_with = "serialize_u128"
+    )]
     fixed_fee: u128,
-    extras: Option<AssetMetadataExtras>
+    extras: Option<AssetMetadataExtras>,
 }
 
 fn deserialize_u128<'de, D>(deserializer: D) -> Result<u128, D::Error>
@@ -44,6 +50,7 @@ where
 }
 
 impl FungibleToken {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: String,
         label: String,
@@ -52,7 +59,7 @@ impl FungibleToken {
         network: Network,
         fee_numerator: u128,
         fixed_fee: u128,
-        extras: Option<AssetMetadataExtras>
+        extras: Option<AssetMetadataExtras>,
     ) -> FungibleToken {
         Self {
             name,
@@ -62,7 +69,7 @@ impl FungibleToken {
             network,
             fee_numerator,
             fixed_fee,
-            extras
+            extras,
         }
     }
 }
@@ -94,7 +101,7 @@ impl AssetMetadata for FungibleToken {
         &self.symbol
     }
 
-    fn extras(&self) -> &Option<AssetMetadataExtras>{
+    fn extras(&self) -> &Option<AssetMetadataExtras> {
         &self.extras
     }
 
