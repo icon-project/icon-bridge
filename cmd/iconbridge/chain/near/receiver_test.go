@@ -26,10 +26,11 @@ func TestNearReceiver(t *testing.T) {
 						Offset      uint64
 						Source      chain.BTPAddress
 						Destination chain.BTPAddress
+						Options     types.ReceiverOptions
 					})
 					require.True(f, Ok)
 
-					receiver, err := NewReceiver(ReceiverConfig{source: input.Source, destination: input.Destination}, log.New(), client)
+					receiver, err := NewReceiver(ReceiverConfig{input.Source, input.Destination, input.Options}, log.New(), client)
 					require.Nil(f, err)
 
 					if testData.Expected.Success != nil {
@@ -69,10 +70,11 @@ func TestNearReceiver(t *testing.T) {
 						Offset      uint64
 						Source      chain.BTPAddress
 						Destination chain.BTPAddress
+						Options     types.ReceiverOptions
 					})
 					require.True(f, Ok)
 
-					receiver, err := NewReceiver(ReceiverConfig{source: input.Source, destination: input.Destination}, log.New(), client)
+					receiver, err := NewReceiver(ReceiverConfig{input.Source, input.Destination, input.Options}, log.New(), client)
 					require.Nil(f, err)
 					srcMsgCh := make(chan *chain.Message)
 					deadline, _ := f.Deadline()

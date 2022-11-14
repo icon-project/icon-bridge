@@ -1,14 +1,15 @@
 package types
 
 type VerifierConfig struct {
-	PreviousBlockHeight uint64           `json:"previousBlockHeight"`
-	PreviousBlockHash   CryptoHash       `json:"previousBlockHash"`
-	NextEpochId         CryptoHash       `json:"nextEpoch"`
-	BlockProducers      []*BlockProducer `json:"blockProducers"`
-	NextBpHash          CryptoHash       `json:"nextBpHash"`
+	BlockHeight       uint64     `json:"block_height"`
+	PreviousBlockHash CryptoHash `json:"previous_block_hash"`
+	CurrentEpochId    CryptoHash `json:"current_epoch_id"`
+	NextEpochId       CryptoHash `json:"next_epoch_id"`
+	NextBpsHash       CryptoHash `json:"next_bps_hash"`
+	CurrentBpsHash    CryptoHash `json:"current_bps_hash"`
 }
 
 type ReceiverOptions struct {
-	SyncConcurrency uint           `json:"syncConcurrency"`
-	Verifier        VerifierConfig `json:"verifier"`
+	SyncConcurrency int            `json:"sync_concurrency"`
+	Verifier        *VerifierConfig `json:"verifier"`
 }

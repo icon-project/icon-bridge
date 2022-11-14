@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"fmt"
 	"github.com/near/borsh-go"
 )
@@ -18,7 +19,7 @@ type ApprovalMessage struct {
 	TargetHeight        uint64
 }
 
-func (a ApprovalMessage) BorshSerialize() ([]byte, error) {
+func (a *ApprovalMessage) BorshSerialize() ([]byte, error) {
 	serialized := new(bytes.Buffer)
 	serialized.Write(a.Type[:])
 
@@ -42,11 +43,16 @@ func (a ApprovalMessage) BorshSerialize() ([]byte, error) {
 	return serialized.Bytes(), nil
 }
 
-func (a ApprovalMessage) Verify(p PublicKey, s Signature) (bool, error)  {
-	_, err := a.BorshSerialize()
-	if err != nil {
-		return false, fmt.Errorf("failed to Verify ApprovalMessage: %v", err)
+func (a *ApprovalMessage) Verify(p *PublicKey, s *Signature) error {
+	approvalMessage, err := a.BorshSerialize()
+
+	if !ed25519.Verify(p.Data[:], approvalMessage, s.Data[:]) {
+		return fmt.Errorf("invalid signature: %v for block producer: %v", s.Base58Encode(), p.Base58Encode())
 	}
 
-	return false, nil
+	if err != nil {
+		return fmt.Errorf("failed to Verify ApprovalMessage: %v", err)
+	}
+
+	return nil
 }

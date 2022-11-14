@@ -8,6 +8,7 @@ type Response struct {
 type Storage struct {
 	LatestChainStatus      Response
 	BmcLinkStatusMap       map[string]Response
+	BlockProducersMap      map[string]Response
 	AccessKeyMap           map[string]Response
 	BlockByHashMap         map[string]Response
 	ReceiptProofMap        map[string]Response

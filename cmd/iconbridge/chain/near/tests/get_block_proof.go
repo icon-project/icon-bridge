@@ -26,12 +26,10 @@ func init() {
 			Input:       int64(377826),
 			MockStorage: func() mock.Storage {
 				blockByHeightMap, blockByHashMap := mock.LoadBlockFromFile([]string{"377825", "377826", "377827", "377828"})
-				lightClientBlockMap := mock.LoadLightClientBlocksFromFile([]string{"DDbjZ12VbmV36trcJDPxAAHsDWTtGEC9DB6ZSVLE9N1c", "5YqjrSoiQjqrmrMHQJVZB25at7yQ2BZEC2exweLFmc6w", "9HhNTVZBu7sBFFsn4dCFnJehVXvMUJ8TDLXDffRJa1hz", "4CSFBudwkUAgoHHQNh6UnVx78EP9ubeUhbc9ZHoC5w4u"})
 
 				return mock.Storage{
 					BlockByHeightMap:    blockByHeightMap,
 					BlockByHashMap:      blockByHashMap,
-					LightClientBlockMap: lightClientBlockMap,
 				}
 			}(),
 			Expected: struct {

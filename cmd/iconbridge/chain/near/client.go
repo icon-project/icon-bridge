@@ -6,21 +6,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
-	"net/http"
-	"net/url"
-	"strconv"
-	"time"
-
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/jsonrpc"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/near/borsh-go"
 	"github.com/reactivex/rxgo/v2"
+	"math/big"
+	"net/http"
+	"net/url"
+	"reflect"
+	"strconv"
+	"time"
 )
 
 const BmcContractMessageStateKey = "bWVzc2FnZQ=="
+
+type Source struct{}
 
 type Client struct {
 	api             IApi
@@ -35,6 +37,7 @@ type Wallet interface {
 
 type IApi interface {
 	Block(param interface{}) (response types.Block, err error)
+	BlockProducers(param interface{}) (response types.BlockProducers, err error)
 	BroadcastTxCommit(param interface{}) (response types.TransactionResult, err error)
 	BroadcastTxAsync(param interface{}) (response types.CryptoHash, err error)
 	CallFunction(param interface{}) (response types.CallFunctionResponse, err error)
@@ -50,20 +53,24 @@ type IApi interface {
 type IClient interface {
 	Api() IApi
 	CloseMonitor()
+	FetchReceipts(context.Context, interface{}) (interface{}, error)
+	FilterUnknownBlocks(interface{}) bool
 	GetBalance(types.AccountId) (*big.Int, error)
 	GetBlockByHash(types.CryptoHash) (types.Block, error)
 	GetBlockByHeight(int64) (types.Block, error)
 	GetBmcLinkStatus(destination, source chain.BTPAddress) (*chain.BMCLinkStatus, error)
 	GetLatestBlockHash() (types.CryptoHash, error)
-	GetNonce(publicKey types.PublicKey, accountId string) (int64, error)
-	GetTransactionResult(types.CryptoHash, types.AccountId) (types.TransactionResult, error)
-	GetReceipts(block *types.Block, accountId string) ([]*chain.Receipt, error)
-	Logger() log.Logger
-	MonitorBlocks(height uint64, source string, concurrency uint, callback func(rxgo.Observable) error, subClient func() IClient) error
-	SendTransaction(payload string) (*types.CryptoHash, error)
 	GetLatestBlockHeight() (int64, error)
-	MonitorBlockHeight(offset int64) rxgo.Observable
+	GetNonce(publicKey types.PublicKey, accountId string) (int64, error)
+	GetReceipts(block *types.Block, accountId string) ([]*chain.Receipt, error)
+	GetTransactionResult(types.CryptoHash, types.AccountId) (types.TransactionResult, error)
+	GetBlockProducers(types.CryptoHash) (types.BlockProducers, error)
 	IsMonitorClosed() bool
+	Logger() log.Logger
+	MonitorBlocks(height uint64, target uint64, concurrency int, callback func(observable rxgo.Observable) error) error
+	MonitorBlockHeight(offset int64) rxgo.Observable
+	SendTransaction(payload string) (*types.CryptoHash, error)
+	SerializeBlocks(interface{}) int
 }
 
 func (c *Client) CloseMonitor() {
@@ -72,6 +79,33 @@ func (c *Client) CloseMonitor() {
 
 func (c *Client) Api() IApi {
 	return c.api
+}
+
+func (c *Client) FilterUnknownBlocks(bn interface{}) bool {
+	return *bn.(*types.BlockNotification).Block().Hash() != [32]byte{}
+}
+
+func (c *Client) FetchReceipts(context context.Context, bn interface{}) (interface{}, error) {
+	source, ok := context.Value(Source{}).(string)
+	if !ok {
+		return nil, fmt.Errorf("expected string but got: %v", reflect.TypeOf(context.Value(Source{})))
+	}
+
+	blockNotification, ok := bn.(*types.BlockNotification)
+	if !ok {
+		return nil, fmt.Errorf("expected *types.BlockNotification but got: %v", reflect.TypeOf(bn))
+	}
+
+	if *blockNotification.Block().Hash() != [32]byte{} {
+		receipts, err := c.GetReceipts(blockNotification.Block(), source)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get receipts for block: %v", blockNotification.Offset())
+		}
+
+		blockNotification.SetReceipts(receipts)
+	}
+
+	return blockNotification, nil
 }
 
 func (c *Client) GetBalance(accountId types.AccountId) (balance *big.Int, err error) {
@@ -93,12 +127,7 @@ func (c *Client) GetBalance(accountId types.AccountId) (balance *big.Int, err er
 }
 
 func (c *Client) GetBlock(param interface{}) (types.Block, error) {
-	block, err := c.api.Block(param)
-	if err != nil {
-		return types.Block{}, err
-	}
-
-	return block, nil
+	return c.api.Block(param)
 }
 
 func (c *Client) GetBlockByHash(blockHash types.CryptoHash) (types.Block, error) {
@@ -117,7 +146,14 @@ func (c *Client) GetBlockByHeight(height int64) (types.Block, error) {
 	}{
 		BlockId: height,
 	}
+
 	return c.GetBlock(param)
+}
+
+func (c *Client) GetBlockProducers(epochId types.CryptoHash) (types.BlockProducers, error) {
+	param := []string{epochId.Base58Encode()}
+
+	return c.api.BlockProducers(param)
 }
 
 func (c *Client) GetBmcLinkStatus(destination, source chain.BTPAddress) (*chain.BMCLinkStatus, error) {
@@ -169,12 +205,7 @@ func (c *Client) GetBmcLinkStatus(destination, source chain.BTPAddress) (*chain.
 }
 
 func (c *Client) GetChainStatus() (types.ChainStatus, error) {
-	chainStatus, err := c.api.Status([]interface{}{})
-	if err != nil {
-		return types.ChainStatus{}, err
-	}
-
-	return chainStatus, nil
+	return c.api.Status([]interface{}{})
 }
 
 func (c *Client) GetLatestBlockHash() (types.CryptoHash, error) {
@@ -285,12 +316,7 @@ func (c *Client) GetReceipts(block *types.Block, accountId string) ([]*chain.Rec
 func (c *Client) GetTransactionResult(transactionId types.CryptoHash, senderId types.AccountId) (types.TransactionResult, error) {
 	param := []string{transactionId.Base58Encode(), string(senderId)}
 
-	transactionResult, err := c.api.Transaction(param)
-	if err != nil {
-		return types.TransactionResult{}, err
-	}
-
-	return transactionResult, nil
+	return c.api.Transaction(param)
 }
 
 func (c *Client) Logger() log.Logger {
@@ -342,7 +368,7 @@ func (c *Client) MonitorBlockHeight(offset int64) rxgo.Observable {
 	return rxgo.FromChannel(channel, rxgo.WithCPUPool())
 }
 
-func (c *Client) MonitorBlocks(height uint64, source string, concurrency uint, callback func(rxgo.Observable) error, subClient func() IClient) error {
+func (c *Client) MonitorBlocks(height uint64, target uint64, concurrency int, callback func(observable rxgo.Observable) error) error {
 	return callback(c.MonitorBlockHeight(int64(height)).Map(func(_ context.Context, offset interface{}) (interface{}, error) {
 		if offset, Ok := (offset).(int64); Ok {
 			block, err := c.GetBlockByHeight(offset)
@@ -354,18 +380,11 @@ func (c *Client) MonitorBlocks(height uint64, source string, concurrency uint, c
 			}
 
 			bn.SetBlock(block)
-			receipts, _ := subClient().GetReceipts(&block, source) // TODO: Handle Error
-
-			bn.SetReceipts(receipts)
-
 			return bn, nil
 		}
-		return nil, fmt.Errorf("error casting offset to int64")
-	}, rxgo.WithPool(int(concurrency))).Serialize(int(height), func(_bn interface{}) int {
-		bn := _bn.(*types.BlockNotification)
 
-		return int(bn.Offset())
-	}, rxgo.WithPool(int(concurrency)), rxgo.WithErrorStrategy(rxgo.ContinueOnError)).TakeUntil(func(i interface{}) bool {
+		return nil, fmt.Errorf("error casting offset to int64")
+	}, rxgo.WithPool(concurrency), rxgo.WithErrorStrategy(rxgo.ContinueOnError)).TakeUntil(func(bn interface{}) bool {
 		return c.isMonitorClosed
 	}))
 }
@@ -415,4 +434,10 @@ func (c *Client) SendTransaction(payload string) (*types.CryptoHash, error) {
 	}
 
 	return &txId, nil
+}
+
+func (c *Client) SerializeBlocks(_bn interface{}) int {
+	bn := _bn.(*types.BlockNotification)
+
+	return int(bn.Offset())
 }

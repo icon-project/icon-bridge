@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
+	"sync"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
@@ -15,7 +17,7 @@ import (
 type ReceiverConfig struct {
 	source      chain.BTPAddress
 	destination chain.BTPAddress
-	options     json.RawMessage
+	options     types.ReceiverOptions
 }
 
 type Receiver struct {
@@ -27,9 +29,15 @@ type Receiver struct {
 	options     types.ReceiverOptions
 }
 
-func receiverFactory(source, destination chain.BTPAddress, urls []string, options json.RawMessage, logger log.Logger) (chain.Receiver, error) {
+func receiverFactory(source, destination chain.BTPAddress, urls []string, opt json.RawMessage, logger log.Logger) (chain.Receiver, error) {
+	var options types.ReceiverOptions
 	clients, err := newClients(urls, logger)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(opt, &options); err != nil {
+		logger.Panicf("fail to unmarshal options:%#v err:%+v", opt, err)
 		return nil, err
 	}
 
@@ -46,20 +54,29 @@ func NewReceiver(config ReceiverConfig, logger log.Logger, clients ...IClient) (
 		logger:      logger,
 		source:      config.source,
 		destination: config.destination,
+		options:     config.options,
 	}
 
-	if err := json.Unmarshal(config.options, &r.options); err != nil && config.options != nil {
-		logger.Panicf("fail to unmarshal opt:%#v err:%+v", config.options, err)
-		return nil, err
-	}
-
-	r.verifier = newVerifier(r.options.Verifier.PreviousBlockHeight, r.options.Verifier.PreviousBlockHash, r.options.Verifier.NextEpochId, r.options.Verifier.NextBpHash, r.options.Verifier.BlockProducers)
 	return r, nil
 }
 
+func (r *Receiver) MapReceipts(height uint64, source string, observable rxgo.Observable) rxgo.Observable {
+	return observable.Map(
+		r.client().FetchReceipts,
+		rxgo.WithPool(r.options.SyncConcurrency),
+		rxgo.WithContext(context.WithValue(context.Background(), Source{}, source)),
+	).Serialize(
+		int(height),
+		r.client().SerializeBlocks,
+	).Filter(
+		r.client().FilterUnknownBlocks,
+	)
+}
+
 func (r *Receiver) ReceiveBlocks(height uint64, source string, processBlockNotification func(blockNotification *types.BlockNotification)) error {
-	return r.client().MonitorBlocks(height, source, r.options.SyncConcurrency, func(observable rxgo.Observable) error {
-		result := observable.Observe()
+
+	return r.client().MonitorBlocks(height, math.MaxInt64, r.options.SyncConcurrency, func(observable rxgo.Observable) error {
+		result := r.MapReceipts(height, source, observable).Observe()
 
 		for item := range result {
 			if err := item.E; err != nil {
@@ -67,14 +84,10 @@ func (r *Receiver) ReceiveBlocks(height uint64, source string, processBlockNotif
 			}
 
 			bn, _ := item.V.(*types.BlockNotification)
-
-			if *bn.Block().Hash() != [32]byte{} {
-				processBlockNotification(bn)
-			}
+			processBlockNotification(bn)
 		}
+
 		return nil
-	}, func() IClient {
-		return r.client()
 	})
 }
 
@@ -82,28 +95,46 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 	opts.Seq++
 	_errCh := make(chan error)
 
+	if r.options.Verifier != nil {
+		r.verifier, err = NewVerifier(
+			r.options.Verifier.BlockHeight,
+			r.options.Verifier.PreviousBlockHash,
+			r.options.Verifier.CurrentEpochId,
+			r.options.Verifier.NextEpochId,
+			r.options.Verifier.CurrentBpsHash,
+			r.options.Verifier.NextBpsHash,
+			r.options.SyncConcurrency,
+			r.client(),
+		)
+	}
+
+	if err != nil {
+		return _errCh, err
+	}
+
 	go func() {
 		defer close(_errCh)
 
-		if err := r.ReceiveBlocks(opts.Height, r.source.ContractAddress(), func(blockNotification *types.BlockNotification) {
-			if r.verifier.blockHeight+1 == uint64(blockNotification.Offset()) {
-				blockNotification.SetApprovalMessage(types.ApprovalMessage{
-					Type:              [1]byte{types.ApprovalEndorsement},
-					PreviousBlockHash: r.verifier.blockHash,
-					TargetHeight:      uint64(blockNotification.Offset()),
-				})
-			} else {
-				blockNotification.SetApprovalMessage(types.ApprovalMessage{
-					Type:                [1]byte{types.ApprovalSkip},
-					PreviousBlockHeight: r.verifier.blockHeight,
-					TargetHeight:        uint64(blockNotification.Offset()),
-				})
+		if r.verifier != nil {
+			wg := new(sync.WaitGroup)
+			wg.Add(1)
+
+			r.logger.WithFields(log.Fields{"start": r.options.Verifier.BlockHeight, "target": opts.Height - 1}).Debug("syncing verifier head")
+			if err := r.verifier.SyncHeader(wg, opts.Height-1); err != nil {
+				_errCh <- err
 			}
 
-			err := r.verifier.validateHeader(blockNotification)
-			if err != nil {
-				_errCh <- err
-				return
+			wg.Wait()
+			r.logger.Debug("syncing complete")
+		}
+
+		if err := r.ReceiveBlocks(opts.Height, r.source.ContractAddress(), func(blockNotification *types.BlockNotification) {
+			if r.verifier != nil {
+				err := r.verifier.ValidateHeader(blockNotification)
+				if err != nil {
+					_errCh <- err
+					return
+				}
 			}
 
 			r.logger.WithFields(log.Fields{"height": blockNotification.Block().Height()}).Debug("block notification")
@@ -123,6 +154,7 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 						}).Error("invalid event seq")
 
 						_errCh <- fmt.Errorf("invalid event seq")
+
 						return
 					}
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 )
 
 type ReceiverSubscribe struct {
@@ -29,11 +30,13 @@ func init() {
 				Offset      uint64
 				Source      chain.BTPAddress
 				Destination chain.BTPAddress
+				Options     types.ReceiverOptions
 			}{
 				Seq:         0,
 				Offset:      377825,
 				Source:      chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
 				Destination: chain.BTPAddress("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315"),
+				Options:     types.ReceiverOptions{},
 			},
 			MockApi: func() *mock.MockApi {
 				blockByHeightMap, blockByHashMap := mock.LoadBlockFromFile([]string{"377825", "377826", "377827", "377828", "377829", "377830", "377831"})
@@ -72,11 +75,13 @@ func init() {
 				Offset      uint64
 				Source      chain.BTPAddress
 				Destination chain.BTPAddress
+				Options     types.ReceiverOptions
 			}{
 				Seq:         0,
 				Offset:      377825,
 				Source:      chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
 				Destination: chain.BTPAddress("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315"),
+				Options:     types.ReceiverOptions{},
 			},
 			MockApi: func() *mock.MockApi {
 				blockByHeightMap, blockByHashMap := mock.LoadBlockFromFile([]string{"377825", "377826", "377827", "377828", "377829", "377830", "377831"})
@@ -129,11 +134,13 @@ func init() {
 				Offset      uint64
 				Source      chain.BTPAddress
 				Destination chain.BTPAddress
+				Options     types.ReceiverOptions
 			}{
 				Seq:         0,
 				Offset:      377825,
 				Source:      chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
 				Destination: chain.BTPAddress("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315"),
+				Options:     types.ReceiverOptions{},
 			},
 			MockApi: func() *mock.MockApi {
 				blockByHeightMap, blockByHashMap := mock.LoadBlockFromFile([]string{"377825", "377826", "377827", "377828", "377829", "377830", "377831"})
@@ -176,11 +183,13 @@ func init() {
 				Offset      uint64
 				Source      chain.BTPAddress
 				Destination chain.BTPAddress
+				Options     types.ReceiverOptions
 			}{
 				Seq:         0,
 				Offset:      377825,
 				Source:      chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
 				Destination: chain.BTPAddress("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315"),
+				Options:     types.ReceiverOptions{},
 			},
 			MockApi: func() *mock.MockApi {
 				blockByHeightMap, blockByHashMap := mock.LoadBlockFromFile([]string{"377825", "377826", "377827", "377828", "377829", "377830", "377831"})
@@ -232,11 +241,13 @@ func init() {
 				Offset      uint64
 				Source      chain.BTPAddress
 				Destination chain.BTPAddress
+				Options     types.ReceiverOptions
 			}{
 				Seq:         0,
 				Offset:      377825,
 				Source:      chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
 				Destination: chain.BTPAddress("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315"),
+				Options:     types.ReceiverOptions{},
 			},
 			MockApi: func() *mock.MockApi {
 				blockByHeightMap, blockByHashMap := mock.LoadBlockFromFile([]string{"377825", "377826", "377827", "377828", "377829", "377830", "377831"})

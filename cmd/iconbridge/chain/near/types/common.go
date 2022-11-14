@@ -217,6 +217,10 @@ func (b *BigInt) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
+func (b BigInt) Serialize() ([]byte, error) {
+	return borsh.Serialize(big.Int(b))
+}
+
 func CombineHash(hash1 [32]byte, hash2 [32]byte) [32]byte {
 	combined := new(bytes.Buffer)
 	combined.Write(hash1[:])

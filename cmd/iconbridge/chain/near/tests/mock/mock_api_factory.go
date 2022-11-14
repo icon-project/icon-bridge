@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/MuhammedIrfan/testify-mock/mock"
+	"github.com/stretchr/testify/mock"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 )
@@ -54,6 +54,30 @@ func (m *MockApi) BlockFactory() func(args mock.Arguments) mock.Arguments {
 		}
 
 		return []interface{}{block, errors.New("invalid Param")}
+	}
+}
+
+func (m *MockApi) BlockProducersFactory() func(args mock.Arguments) mock.Arguments {
+	return func(args mock.Arguments) mock.Arguments {
+		var blockProducers types.BlockProducers
+		param, Ok := args.Get(0).([]string)
+
+		if Ok && m.BlockProducersMap[param[0]] != emptyResponse {
+			if m.BlockProducersMap[param[0]].Error != nil {
+				return []interface{}{blockProducers, m.BlockProducersMap[param[0]].Error}
+			}
+
+			if response, Ok := (m.BlockProducersMap[param[0]].Reponse).([]byte); Ok {
+				err := json.Unmarshal(response, &blockProducers)
+				if err != nil {
+					return []interface{}{blockProducers, err}
+				}
+
+				return []interface{}{blockProducers, nil}
+			}
+		}
+
+		return []interface{}{types.BlockProducers{}, errors.New("invalid Param")}
 	}
 }
 

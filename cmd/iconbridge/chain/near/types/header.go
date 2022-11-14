@@ -22,7 +22,7 @@ type Header struct {
 	ChallengesRoot        CryptoHash         `json:"challenges_root"`
 	Timestamp             Timestamp          `json:"timestamp_nanosec"`
 	RandomValue           CryptoHash         `json:"random_value"`
-	ValidatorProposals    []BlockProducer    `json:"validator_proposals"`
+	ValidatorProposals    BlockProducers     `json:"validator_proposals"`
 	ChunkMask             []bool             `json:"chunk_mask"`
 	GasPrice              BigInt             `json:"gas_price"`
 	BlockOrdinal          uint64             `json:"block_ordinal"`
@@ -59,7 +59,7 @@ type HeaderInnerRest struct {
 	ChunkTransactionRoot  [32]byte
 	ChallengesRoot        [32]byte
 	RandomValue           [32]byte
-	ValidatorProposals    []BlockProducer
+	ValidatorProposals    BlockProducers
 	ChunkMask             []bool
 	GasPrice              BigInt
 	TotalSupply           BigInt
@@ -74,13 +74,39 @@ type HeaderInnerRest struct {
 }
 
 func (h HeaderInnerRest) BorshSerialize() ([]byte, error) {
+	bps := make([]struct {
+		ValidatorStakeStructVersion ValidatorStakeStructVersion
+		AccountId                   AccountId
+		PublicKey                   PublicKey
+		Stake                       big.Int
+	}, 0)
+
+	for _, bp := range h.ValidatorProposals {
+		bps = append(bps, struct {
+			ValidatorStakeStructVersion ValidatorStakeStructVersion
+			AccountId                   AccountId
+			PublicKey                   PublicKey
+			Stake                       big.Int
+		}{
+			ValidatorStakeStructVersion: bp.ValidatorStakeStructVersion,
+			AccountId:                   bp.AccountId,
+			PublicKey:                   bp.PublicKey,
+			Stake:                       big.Int(bp.Stake),
+		})
+	}
+
 	return borsh.Serialize(struct {
-		ChunkReceiptsRoot     CryptoHash
-		ChunkHeadersRoot      CryptoHash
-		ChunkTransactionRoot  CryptoHash
-		ChallengesRoot        CryptoHash
-		RandomValue           CryptoHash
-		ValidatorProposals    []BlockProducer
+		ChunkReceiptsRoot    CryptoHash
+		ChunkHeadersRoot     CryptoHash
+		ChunkTransactionRoot CryptoHash
+		ChallengesRoot       CryptoHash
+		RandomValue          CryptoHash
+		ValidatorProposals   []struct {
+			ValidatorStakeStructVersion ValidatorStakeStructVersion
+			AccountId                   AccountId
+			PublicKey                   PublicKey
+			Stake                       big.Int
+		}
 		ChunkMask             []bool
 		GasPrice              big.Int
 		TotalSupply           big.Int
@@ -98,7 +124,7 @@ func (h HeaderInnerRest) BorshSerialize() ([]byte, error) {
 		ChunkTransactionRoot:  h.ChunkTransactionRoot,
 		ChallengesRoot:        h.ChallengesRoot,
 		RandomValue:           h.RandomValue,
-		ValidatorProposals:    h.ValidatorProposals,
+		ValidatorProposals:    bps,
 		ChunkMask:             h.ChunkMask,
 		GasPrice:              big.Int(h.GasPrice),
 		TotalSupply:           big.Int(h.TotalSupply),

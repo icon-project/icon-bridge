@@ -18,6 +18,14 @@ func (api *api) Block(param interface{}) (response types.Block, err error) {
 	return response, nil
 }
 
+func (api *api) BlockProducers(param interface{}) (response types.BlockProducers, err error) {
+	if _, err := api.Do("EXPERIMENTAL_validators_ordered", param, &response); err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 func (api *api) BroadcastTxCommit(param interface{}) (response types.TransactionResult, err error) {
 	if _, err := api.Do("broadcast_tx_commit", param, &response); err != nil {
 		return types.TransactionResult{}, err

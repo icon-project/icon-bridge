@@ -28,31 +28,13 @@ func init() {
 			}{
 				Offset: 377826,
 				Options: types.ReceiverOptions{
-					Verifier: types.VerifierConfig{
-						PreviousBlockHeight: 377825,
-						PreviousBlockHash:   types.NewCryptoHash("DDbjZ12VbmV36trcJDPxAAHsDWTtGEC9DB6ZSVLE9N1c"),
-						NextBpHash:          types.NewCryptoHash("5QouG4ceHjyARjVTaySWXcXdsQduDqExVRKdwLjeANi"),
-						NextEpochId:         types.NewCryptoHash("84toXNMo2p5ttdjkV6RHdJFrgxrnTLRkCTjb7aA8Dh95"),
-						BlockProducers: []*types.BlockProducer{
-							{
-								ValidatorStakeStructVersion: []byte{0},
-								AccountId:                   "node2",
-								PublicKey:                   types.NewPublicKeyFromString("ed25519:GkDv7nSMS3xcqA45cpMvFmfV1o4fRF6zYo1JRR6mNqg5"),
-								Stake:                       types.NewBigInt("50902386756263328030239719089112"),
-							},
-							{
-								ValidatorStakeStructVersion: []byte{0},
-								AccountId:                   "node1",
-								PublicKey:                   types.NewPublicKeyFromString("ed25519:6DSjZ8mvsRZDvFqFxo8tCKePG96omXW7eVYVSySmDk8e"),
-								Stake:                       types.NewBigInt("50879053856734837790009183916723"),
-							},
-							{
-								ValidatorStakeStructVersion: []byte{0},
-								AccountId:                   "node0",
-								PublicKey:                   types.NewPublicKeyFromString("ed25519:7PGseFbWxvYVgZ89K1uTJKYoKetWs7BJtbyXDzfbAcqX"),
-								Stake:                       types.NewBigInt("50868735427469424893279346843466"),
-							},
-						},
+					Verifier: &types.VerifierConfig{
+						BlockHeight:       377825,
+						PreviousBlockHash: types.NewCryptoHash("84toXNMo2p5ttdjkV6RHdJFrgxrnTLRkCTjb7aA8Dh95"),
+						CurrentBpsHash:    types.NewCryptoHash("C4zVnMf27hRJYoWEC816Pttyz122TWZN7zjUMoZCNkuw"),
+						CurrentEpochId:    types.NewCryptoHash("FtrJuAXqH5oXDVADh6QkUyacf2MGmLHYbHCHKSZ8C7KS"),
+						NextEpochId:       types.NewCryptoHash("84toXNMo2p5ttdjkV6RHdJFrgxrnTLRkCTjb7aA8Dh95"),
+						NextBpsHash:       types.NewCryptoHash("5QouG4ceHjyARjVTaySWXcXdsQduDqExVRKdwLjeANi"),
 					},
 				},
 			},
@@ -65,6 +47,8 @@ func init() {
 				})
 
 				mockApi.On("Block", mock.MockParam).Return(mockApi.BlockFactory())
+				mockApi.On("BlockProducers", mock.MockParam).Return(mockApi.BlockProducersFactory())
+				mockApi.On("Status", mock.MockParam).Return(mockApi.StatusFactory())
 				return mockApi
 			}(),
 			Expected: struct {
@@ -75,38 +59,20 @@ func init() {
 			},
 		},
 		{
-			Description: "Valid invalid previous hash",
+			Description: "Invalid previous hash",
 			Input: struct {
 				Offset  uint64
 				Options types.ReceiverOptions
 			}{
 				Offset: 377826,
 				Options: types.ReceiverOptions{
-					Verifier: types.VerifierConfig{
-						PreviousBlockHeight: 377825,
-						PreviousBlockHash:   types.NewCryptoHash("FDbjZ12VbmV36trcJDPxAAHsDWTtGEC9DB6ZSVLE9N1c"),
-						NextBpHash:          types.NewCryptoHash("5QouG4ceHjyARjVTaySWXcXdsQduDqExVRKdwLjeANi"),
-						NextEpochId:         types.NewCryptoHash("84toXNMo2p5ttdjkV6RHdJFrgxrnTLRkCTjb7aA8Dh95"),
-						BlockProducers: []*types.BlockProducer{
-							{
-								ValidatorStakeStructVersion: []byte{0},
-								AccountId:                   "node2",
-								PublicKey:                   types.NewPublicKeyFromString("ed25519:GkDv7nSMS3xcqA45cpMvFmfV1o4fRF6zYo1JRR6mNqg5"),
-								Stake:                       types.NewBigInt("50902386756263328030239719089112"),
-							},
-							{
-								ValidatorStakeStructVersion: []byte{0},
-								AccountId:                   "node1",
-								PublicKey:                   types.NewPublicKeyFromString("ed25519:6DSjZ8mvsRZDvFqFxo8tCKePG96omXW7eVYVSySmDk8e"),
-								Stake:                       types.NewBigInt("50879053856734837790009183916723"),
-							},
-							{
-								ValidatorStakeStructVersion: []byte{0},
-								AccountId:                   "node0",
-								PublicKey:                   types.NewPublicKeyFromString("ed25519:7PGseFbWxvYVgZ89K1uTJKYoKetWs7BJtbyXDzfbAcqX"),
-								Stake:                       types.NewBigInt("50868735427469424893279346843466"),
-							},
-						},
+					Verifier: &types.VerifierConfig{
+						BlockHeight:       377825,
+						PreviousBlockHash: types.NewCryptoHash("74toXNMo2p5ttdjkV6RHdJFrgxrnTLRkCTjb7aA8Dh95"),
+						CurrentBpsHash:    types.NewCryptoHash("G2TyLP33XfqndppUzipoTWTs6XnKjmUhCQg1tH44isAG"),
+						CurrentEpochId:    types.NewCryptoHash("FtrJuAXqH5oXDVADh6QkUyacf2MGmLHYbHCHKSZ8C7KS"),
+						NextEpochId:       types.NewCryptoHash("84toXNMo2p5ttdjkV6RHdJFrgxrnTLRkCTjb7aA8Dh95"),
+						NextBpsHash:       types.NewCryptoHash("5QouG4ceHjyARjVTaySWXcXdsQduDqExVRKdwLjeANi"),
 					},
 				},
 			},
@@ -116,9 +82,16 @@ func init() {
 				mockApi := mock.NewMockApi(mock.Storage{
 					BlockByHeightMap: blockByHeightMap,
 					BlockByHashMap:   blockByHashMap,
+					BlockProducersMap: map[string]mock.Response{
+						"74toXNMo2p5ttdjkV6RHdJFrgxrnTLRkCTjb7aA8Dh95": {
+							Reponse: []byte(`[]`),
+						},
+					},
 				})
 
 				mockApi.On("Block", mock.MockParam).Return(mockApi.BlockFactory())
+				mockApi.On("BlockProducers", mock.MockParam).Return(mockApi.BlockProducersFactory())
+				mockApi.On("Status", mock.MockParam).Return(mockApi.StatusFactory())
 				return mockApi
 			}(),
 			Expected: struct {
@@ -126,7 +99,7 @@ func init() {
 				Fail    interface{}
 			}{
 				Fail: func(err error) bool {
-					return err.Error() == string("expected hash: 5YqjrSoiQjqrmrMHQJVZB25at7yQ2BZEC2exweLFmc6w, got hash: F7NwcVd8LMzi3PGzNXKz5v9Hq7k1P1UC7ys1JBrHV8m9")
+					return err.Error() == string("expected hash: 5YqjrSoiQjqrmrMHQJVZB25at7yQ2BZEC2exweLFmc6w, got hash: E78zFTZ21jN4nFaiygYqZNLw8iKMSYxrTNFG8X7eAJhE for block: 377826")
 				},
 			},
 		},

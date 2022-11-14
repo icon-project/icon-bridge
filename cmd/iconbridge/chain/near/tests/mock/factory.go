@@ -188,27 +188,6 @@ func LoadTransactionResultFromFile(names []string) map[string]Response {
 	return transactionResultMap
 }
 
-func LoadLightClientBlocksFromFile(names []string) map[string]Response {
-	sectionDir := mockDataPath + "/lightclient_blocks"
-	validateDirectory(sectionDir)
-
-	var LightClientBlockMap = map[string]Response{}
-	for index, buffer := range loadFiles(names, sectionDir) {
-		var LightClientBlock types.BlockProducers
-
-		err := json.Unmarshal(buffer, &LightClientBlock)
-		if err != nil {
-			panic(fmt.Errorf("error [LoadLightClientBlock][ParseJson]: %v", err))
-		}
-
-		LightClientBlockMap[names[index]] = Response{
-			Reponse: buffer,
-			Error:   nil,
-		}
-	}
-	return LightClientBlockMap
-}
-
 func LoadChainStatusFromFile(blocks []string) Response {
 	sectionDir := mockDataPath + "/status"
 	validateDirectory(sectionDir)
@@ -229,4 +208,26 @@ func LoadChainStatusFromFile(blocks []string) Response {
 	}
 
 	return LatestChainStatus
+}
+
+func LoadBlockProducersFromFile(epochs []string) map[string]Response {
+	sectionDir := mockDataPath + "/block_producers"
+	validateDirectory(sectionDir)
+
+	var blockProducersMap = map[string]Response{}
+	for index, buffer := range loadFiles(epochs, sectionDir) {
+		var bps types.BlockProducers
+
+		err := json.Unmarshal(buffer, &bps)
+		if err != nil {
+			panic(fmt.Errorf("error [LoadBlockProducers][ParseJson]: %v", err))
+		}
+
+		blockProducersMap[epochs[index]] = Response{
+			Reponse: buffer,
+			Error:   nil,
+		}
+	}
+
+	return blockProducersMap
 }
