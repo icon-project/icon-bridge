@@ -109,7 +109,7 @@ impl BtpMessageCenter {
     pub fn increment_link_rx_seq(&mut self, link: &BTPAddress) {
         if let Some(link_property) = self.links.get(link).as_mut() {
             link_property.rx_seq_mut().add(1).unwrap();
-            self.links.set(&link, &link_property);
+            self.links.set(link, link_property);
         }
     }
 

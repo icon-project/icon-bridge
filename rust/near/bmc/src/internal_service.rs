@@ -10,7 +10,7 @@ impl BtpMessageCenter {
     pub fn handle_init(
         &mut self,
         source: &BTPAddress,
-        links: &Vec<BTPAddress>,
+        links: &[BTPAddress],
     ) -> Result<(), BmcError> {
         if let Some(mut link) = self.links.get(source) {
             for source_link in links.iter() {
@@ -92,7 +92,7 @@ impl BtpMessageCenter {
         &self,
         source: &BTPAddress,
         fee_aggregator: &BTPAddress,
-        services: &Vec<String>,
+        services: &[String],
     ) -> Result<(), BmcError> {
         if source.network_address() != fee_aggregator.network_address() {
             return Err(BmcError::FeeAggregatorNotAllowed {
@@ -104,7 +104,7 @@ impl BtpMessageCenter {
             //TODO: Handle Services that are not available
             if let Some(account_id) = self.services.get(service) {
                 #[cfg(not(feature = "testable"))]
-                bsh_contract::ext(account_id.clone())
+                bsh_contract::ext(account_id)
                     .handle_fee_gathering(fee_aggregator.clone(), service.clone());
             }
         });

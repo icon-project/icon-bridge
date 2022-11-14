@@ -42,7 +42,7 @@ impl BtpMessageCenter {
 
     pub fn assert_owner_exists(&self, account: &AccountId) {
         require!(
-            self.owners.contains(&account),
+            self.owners.contains(account),
             format!("{}", BmcError::OwnerNotExist)
         );
     }
@@ -126,9 +126,9 @@ impl BtpMessageCenter {
     }
 
     pub fn assert_relay_not_exists(&self, link: &BTPAddress, relay: &AccountId) {
-        if let Some(link_property) = self.links.get(&link) {
+        if let Some(link_property) = self.links.get(link) {
             require!(
-                !link_property.relays().contains(&relay),
+                !link_property.relays().contains(relay),
                 format!(
                     "{}",
                     BmcError::RelayExist {
@@ -140,9 +140,9 @@ impl BtpMessageCenter {
     }
 
     pub fn assert_relay_exists(&self, link: &BTPAddress, relay: &AccountId) {
-        if let Some(link_property) = self.links.get(&link).as_mut() {
+        if let Some(link_property) = self.links.get(link).as_mut() {
             require!(
-                link_property.relays().contains(&relay),
+                link_property.relays().contains(relay),
                 format!(
                     "{}",
                     BmcError::RelayNotExist {

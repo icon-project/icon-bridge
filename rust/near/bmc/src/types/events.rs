@@ -32,8 +32,8 @@ impl Event {
     pub fn btp_message(&self) -> Option<BtpMessage<SerializedMessage>> {
         match BtpMessage::try_from(self.message.clone()) {
             // TODO : OPTIMIZE
-            Ok(message) => return Some(message),
-            Err(_) => return None,
+            Ok(message) => Some(message),
+            Err(_) => None,
         }
     }
 }

@@ -14,7 +14,7 @@ impl BtpMessageCenter {
         self.assert_link_exists(&link);
         if let Some(link_property) = self.links.get(&link).as_mut() {
             link_property.relays_mut().set(&relays);
-            self.links.set(&link, &link_property);
+            self.links.set(&link, link_property);
         }
     }
 
@@ -34,7 +34,7 @@ impl BtpMessageCenter {
         self.assert_relay_exists(&link, &relay);
         if let Some(link_property) = self.links.get(&link).as_mut() {
             link_property.relays_mut().remove(&relay);
-            self.links.set(&link, &link_property);
+            self.links.set(&link, link_property);
         }
     }
 

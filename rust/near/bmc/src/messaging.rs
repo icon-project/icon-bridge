@@ -84,7 +84,7 @@ impl BtpMessageCenter {
                 "btp://{}/{}",
                 network, 0000000000000000
             )))
-            .expect(format!("{}", BmcError::LinkNotExist).as_str());
+            .unwrap_or_else(|| env::panic_str(format!("{}", BmcError::LinkNotExist).as_str()));
         let message = BtpMessage::new(
             self.btp_address.clone(),
             destination.clone(),
@@ -104,7 +104,7 @@ impl BtpMessageCenter {
     ) -> Vec<u8> {
         if let Some(link_property) = self.links.get(&link).as_mut() {
             link_property.tx_seq_mut().add(1).unwrap();
-            self.links.set(&link, &link_property);
+            self.links.set(&link, link_property);
             emit_message!(
                 self,
                 event,
@@ -122,49 +122,43 @@ impl BtpMessageCenter {
         source: BTPAddress,
         message: BtpMessage<SerializedMessage>,
     ) {
-        match env::promise_result(0) {
-            PromiseResult::Failed => {
-                self.send_error(&source, &BtpException::Bsh(BshError::Unknown), message)
-            }
-            _ => (),
+        if env::promise_result(0) == PromiseResult::Failed {
+            self.send_error(&source, &BtpException::Bsh(BshError::Unknown), message)
         }
     }
 
     #[private]
     pub fn handle_btp_error_callback(&mut self, message: BtpMessage<SerializedMessage>) {
-        match env::promise_result(0) {
-            PromiseResult::Failed => {
-                let error_message: BtpMessage<ErrorMessage> = message.try_into().unwrap();
-                let exception = <Box<dyn Exception>>::from((
-                    error_message.message().clone().unwrap().code(),
-                    &error_message
-                        .clone()
-                        .message()
-                        .as_ref()
-                        .unwrap()
-                        .clone()
-                        .message()
-                        .0,
-                ));
-                emit_error!(
-                    self,
-                    event,
-                    error_message.service().clone(),
-                    (error_message.serial_no().negate().get().to_owned() as u128).into(),
-                    error_message.message().clone().unwrap().code(),
-                    error_message
-                        .message()
-                        .clone()
-                        .unwrap()
-                        .message()
-                        .get()
-                        .map(|message| message.to_owned())
-                        .unwrap_or("".to_string()),
-                    exception.code(),
-                    exception.message()
-                );
-            }
-            _ => {}
+        if env::promise_result(0) == PromiseResult::Failed {
+            let error_message: BtpMessage<ErrorMessage> = message.try_into().unwrap();
+            let exception = <Box<dyn Exception>>::from((
+                error_message.message().clone().unwrap().code(),
+                &error_message
+                    .clone()
+                    .message()
+                    .as_ref()
+                    .unwrap()
+                    .clone()
+                    .message()
+                    .0,
+            ));
+            emit_error!(
+                self,
+                event,
+                error_message.service().clone(),
+                (error_message.serial_no().negate().get().to_owned() as u128).into(),
+                error_message.message().clone().unwrap().code(),
+                error_message
+                    .message()
+                    .clone()
+                    .unwrap()
+                    .message()
+                    .get()
+                    .map(|message| message.to_owned())
+                    .unwrap_or_else(|_| "".to_string()),
+                exception.code(),
+                exception.message()
+            );
         };
     }
 }
@@ -175,10 +169,10 @@ impl BtpMessageCenter {
         source: &BTPAddress,
         #[allow(unused_mut)] mut messages: SerializedBtpMessages,
     ) {
-        messages.retain(|message| self.handle_service_message(&source, message));
-        messages.retain(|message| self.handle_route_message(&source, message));
+        messages.retain(|message| self.handle_service_message(source, message));
+        messages.retain(|message| self.handle_route_message(source, message));
         messages
-            .retain(|message| self.handle_btp_error_message(&source, message, BmcError::ErrorDrop));
+            .retain(|message| self.handle_btp_error_message(source, message, BmcError::ErrorDrop));
     }
 
     pub fn propogate_internal(&mut self, service_message: BmcServiceMessage) {
@@ -256,13 +250,13 @@ impl BtpMessageCenter {
     ) -> Result<(), BmcError> {
         if let Some(service_message) = message?.message() {
             match service_message.service_type() {
-                BmcServiceType::Init { links } => self.handle_init(source, &links),
-                BmcServiceType::Link { link } => self.handle_link(source, &link),
-                BmcServiceType::Unlink { link } => self.handle_unlink(source, &link),
+                BmcServiceType::Init { links } => self.handle_init(source, links),
+                BmcServiceType::Link { link } => self.handle_link(source, link),
+                BmcServiceType::Unlink { link } => self.handle_unlink(source, link),
                 BmcServiceType::FeeGathering {
                     fee_aggregator,
                     services,
-                } => self.handle_fee_gathering(source, &fee_aggregator, &services),
+                } => self.handle_fee_gathering(source, fee_aggregator, services),
                 _ => Err(BmcError::InternalEventHandleNotExists),
             }
         } else {
@@ -278,8 +272,8 @@ impl BtpMessageCenter {
         self.ensure_service_exists(message.service())?;
         let serivce_account_id = self.services.get(message.service()).unwrap();
 
-        if message.serial_no().get().to_owned() >= 0 {
-            bsh_contract::ext(serivce_account_id.to_owned())
+        if *message.serial_no().get() >= 0 {
+            bsh_contract::ext(serivce_account_id)
                 .handle_btp_message(message.to_owned())
                 .then(
                     Self::ext(env::current_account_id()).handle_external_service_message_callback(
@@ -288,7 +282,7 @@ impl BtpMessageCenter {
                     ),
                 );
         } else {
-            bsh_contract::ext(serivce_account_id.to_owned())
+            bsh_contract::ext(serivce_account_id)
                 .handle_btp_error(
                     source.clone(),
                     message.service().clone(),
@@ -308,7 +302,7 @@ impl BtpMessageCenter {
         source: &BTPAddress,
         message: &BtpMessage<SerializedMessage>,
     ) -> bool {
-        self.send_message(source, &message.destination(), message.to_owned());
+        self.send_message(source, message.destination(), message.to_owned());
         false
     }
 
