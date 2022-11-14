@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::types::AssetId;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{self, LookupMap};
+use near_sdk::collections::{self, LookupMap, UnorderedSet};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::AccountId;
 use near_sdk::Balance;
@@ -44,28 +44,38 @@ impl AccountBalance {
 }
 
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct Balances(HashMap<(AccountId, AssetId), AccountBalance>);
+
+pub struct Balances {
+    keys: UnorderedSet<(AccountId, AssetId)>,
+    values: LookupMap<(AccountId, AssetId), AccountBalance>,
+}
 
 impl Balances {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self {
+            keys: UnorderedSet::new(b"balances_keys".to_vec()),
+            values: LookupMap::new(b"balance_values".to_vec()),
+        }
     }
 
     pub fn add(&mut self, account: &AccountId, asset_id: &AssetId) {
         if !self.contains(account, asset_id) {
-            self.0.insert(
-                (account.to_owned(), asset_id.to_owned()),
-                AccountBalance::default(),
+            self.keys.insert(&(account.to_owned(), asset_id.to_owned()));
+            self.values.insert(
+                &(account.to_owned(), asset_id.to_owned()),
+                &AccountBalance::default(),
             );
         }
     }
 
     pub fn remove(&mut self, account: &AccountId, asset_id: &AssetId) {
-        self.0.remove(&(account.to_owned(), asset_id.to_owned()));
+        self.keys.remove(&(account.to_owned(), asset_id.to_owned()));
+        self.values
+            .remove(&(account.to_owned(), asset_id.to_owned()));
     }
 
     pub fn get(&self, account: &AccountId, asset_id: &AssetId) -> Option<AccountBalance> {
-        if let Some(balance) = self.0.get(&(account.to_owned(), asset_id.to_owned())) {
+        if let Some(balance) = self.values.get(&(account.to_owned(), asset_id.to_owned())) {
             return Some(balance.to_owned());
         }
         None
@@ -73,8 +83,8 @@ impl Balances {
 
     pub fn contains(&self, account: &AccountId, asset_id: &AssetId) -> bool {
         return self
-            .0
-            .contains_key(&(account.to_owned(), asset_id.to_owned()));
+            .keys
+            .contains(&(account.to_owned(), asset_id.to_owned()));
     }
 
     pub fn set(
@@ -83,25 +93,20 @@ impl Balances {
         asset_id: &AssetId,
         account_balance: AccountBalance,
     ) {
-        self.0
-            .insert((account.to_owned(), asset_id.to_owned()), account_balance);
+        self.values
+            .insert(&(account.to_owned(), asset_id.to_owned()), &account_balance);
     }
 
     pub fn to_vec(&self) -> Vec<((AccountId, AssetId), AccountBalance)> {
-        if !self.0.is_empty() {
+        if !self.keys.is_empty() {
             return self
-                .0
-                .clone()
+                .keys
+                .to_vec()
                 .into_iter()
-                .map(|((accound_id, asset_id), account_balance)| {
-                    (
-                        (accound_id, asset_id),
-                        AccountBalance {
-                            deposit: account_balance.deposit(),
-                            refundable: account_balance.refundable(),
-                            locked: account_balance.locked(),
-                        },
-                    )
+                .map(|(account_id, asset_id)| {
+                    let account_balance = self.values.get(&(account_id.clone(), asset_id)).unwrap();
+
+                    ((account_id, asset_id), account_balance)
                 })
                 .collect();
         }
@@ -118,10 +123,8 @@ mod tests {
     use std::convert::TryInto;
     use std::vec;
 
-
     #[test]
     fn add_balance() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -143,7 +146,6 @@ mod tests {
 
     #[test]
     fn add_balance_exisitng() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -193,7 +195,6 @@ mod tests {
 
     #[test]
     fn remove_balance() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -223,7 +224,6 @@ mod tests {
 
     #[test]
     fn remove_balance_non_exisitng() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -247,7 +247,6 @@ mod tests {
 
     #[test]
     fn set_balance() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -291,7 +290,6 @@ mod tests {
 
     #[test]
     fn deposit_add() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -334,7 +332,6 @@ mod tests {
 
     #[test]
     fn deposit_add_overflow() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -364,7 +361,6 @@ mod tests {
 
     #[test]
     fn deposit_sub_underflow() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -392,7 +388,6 @@ mod tests {
 
     #[test]
     fn locked_balance_add() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -437,7 +432,6 @@ mod tests {
 
     #[test]
     fn locked_balance_sub() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -513,7 +507,6 @@ mod tests {
 
     #[test]
     fn refundable_balance_add() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -558,7 +551,6 @@ mod tests {
 
     #[test]
     fn refundable_balance_sub() {
-
         let mut balances = Balances::new();
         let account = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()

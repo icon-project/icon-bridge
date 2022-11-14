@@ -76,7 +76,7 @@ pub static ICON_LINK_SHOULD_BE_ADDED_TO_THE_LIST_OF_LINKS: fn(Context) = |contex
         .into_iter()
         .collect();
     let expected: HashSet<_> =
-        vec!["btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5".to_string()]
+        vec!["btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315".to_string()]
             .into_iter()
             .collect();
 
@@ -258,8 +258,9 @@ pub static BMC_SHOULD_THROW_INVALID_PARAM_ERROR_ON_ADDING_LINK: fn(Context) = |c
     assert!(error.to_string().contains("InvalidBtpAddress"));
 };
 
-pub static BMC_SHOULD_THROW_LINK_ALREADY_EXISTS_ERROR_ON_ADDING_LINK: fn(Context) = |context: Context| {
-    let error = context.method_errors("add_link");
+pub static BMC_SHOULD_THROW_LINK_ALREADY_EXISTS_ERROR_ON_ADDING_LINK: fn(Context) =
+    |context: Context| {
+        let error = context.method_errors("add_link");
 
-    assert!(error.to_string().contains("BMCRevertAlreadyExistsLink"));
-};
+        assert!(error.to_string().contains("BMCRevertAlreadyExistsLink"));
+    };

@@ -1,17 +1,25 @@
 use super::*;
+use libraries::types::{
+    messages::{BtpMessage, SerializedMessage, TokenServiceMessage, TokenServiceType},
+    BTPAddress, TransferableAsset, WrappedI128,
+};
 use serde_json::json;
+use std::convert::TryFrom;
 use test_helper::types::Context;
 
 pub static USER_INVOKES_HANDLE_RELAY_MESSAGE_IN_BMC: fn(Context) -> Context =
     |context: Context| BMC_CONTRACT.handle_relay_message(context, 300_000_000_000_000);
 
-pub static RELAY_1_INVOKES_HANDLE_RELAY_MESSAGE_IN_BMC: fn(Context) -> Context = |context: Context| {
-    context
-        .pipe(THE_TRANSACTION_IS_SIGNED_BY_RELAY_1)
-        .pipe(USER_INVOKES_HANDLE_RELAY_MESSAGE_IN_BMC)
-};
+pub static RELAY_1_INVOKES_HANDLE_RELAY_MESSAGE_IN_BMC: fn(Context) -> Context =
+    |context: Context| {
+        context
+            .pipe(THE_TRANSACTION_IS_SIGNED_BY_RELAY_1)
+            .pipe(USER_INVOKES_HANDLE_RELAY_MESSAGE_IN_BMC)
+    };
 
-pub static BMC_INIT_LINK_RELAY_MESSAGE_IS_PROVIDED_AS_HANDLE_RELAY_MESSAGE_PARAM: fn(Context) -> Context = |mut context: Context| {
+pub static BMC_INIT_LINK_RELAY_MESSAGE_IS_PROVIDED_AS_HANDLE_RELAY_MESSAGE_PARAM: fn(
+    Context,
+) -> Context = |mut context: Context| {
     context.add_method_params(
         "handle_relay_message",
         json!({
@@ -21,3 +29,47 @@ pub static BMC_INIT_LINK_RELAY_MESSAGE_IS_PROVIDED_AS_HANDLE_RELAY_MESSAGE_PARAM
     );
     context
 };
+
+pub static TOKEN_TRANSFER_MESSAGE_IS_PROVIDED_AS_HANDLE_BTP_MESSAGE_PARAM: fn(Context) -> Context =
+    |mut context: Context| {
+        let mut context = CHUCKS_ACCOUNT_IS_CREATED(context);
+        let btp_message = BtpMessage::new(
+            BTPAddress::new(
+                "btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315".to_string(),
+            ),
+            BTPAddress::new(
+                "btp://0x2.near/7270a79be789d770f2de015047684e2806597eeee96ee3ca87b179c6399deaaf"
+                    .to_string(),
+            ),
+            "bts".to_string(),
+            WrappedI128::new(1),
+            vec![],
+            Some(TokenServiceMessage::new(
+                TokenServiceType::RequestTokenTransfer {
+                    sender: "cx1ad6fcc465d1b8644ca375f9e10babeea4c38315".to_string(),
+                    receiver: context.accounts().get("chuck").to_owned().id().to_string(),
+                    assets: vec![TransferableAsset::new(
+                        "btp-0x7.icon-icx".to_string(),
+                        100000000000000,
+                        99,
+                    )],
+                },
+            )),
+        );
+        let btp_message = <BtpMessage<SerializedMessage>>::try_from(&btp_message).unwrap();
+        context.add_method_params(
+            "handle_btp_message",
+            json!({ "message": String::from(&btp_message) }),
+        );
+        context
+    };
+
+pub static BMC_OWNER_INVOKES_HANDLE_BTP_MESSAGE_IN_BTS: fn(Context) -> Context =
+    |context: Context| {
+        context
+            .pipe(THE_TRANSACTION_IS_SIGNED_BY_BMC_OWNER)
+            .pipe(USER_INVOKES_HANDLE_BTP_MESSAGE_IN_BTS)
+    };
+
+pub static USER_INVOKES_HANDLE_BTP_MESSAGE_IN_BTS: fn(Context) -> Context =
+    |context: Context| BTS_CONTRACT.handle_btp_message(context, 300_000_000_000_000);

@@ -37,11 +37,12 @@ pub static RELAY_1_ACCOUNT_IS_CREATED: fn(Context) -> Context = |mut context: Co
 // * * * * * * * * * * * * * *
 // * * * * * * * * * * * * * *
 
-pub static THE_TRANSACTION_IS_SIGNED_BY_BMC_OWNER: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.contracts().get("bmc").as_account().clone();
-    context.set_signer(&signer);
-    context
-};
+pub static THE_TRANSACTION_IS_SIGNED_BY_BMC_OWNER: fn(Context) -> Context =
+    |mut context: Context| {
+        let signer = context.contracts().get("bmc").as_account().clone();
+        context.set_signer(&signer);
+        context
+    };
 
 pub static THE_TRANSACTION_IS_SIGNED_BY_ALICE: fn(Context) -> Context = |mut context: Context| {
     let signer = context.accounts().get("alice").to_owned();

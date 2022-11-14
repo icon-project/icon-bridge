@@ -184,7 +184,7 @@ func (r *Receiver) newVerifier(opts *types.VerifierOptions) (*Verifier, error) {
 	return &vr, nil
 }
 
-func (r *Receiver) syncVerifier(verifier *Verifier, height int64) error {
+func (r *Receiver) syncVerifier(verifier IVerifier, height int64) error {
 	if height == verifier.Next() {
 		return nil
 	}
@@ -309,7 +309,7 @@ func (r *Receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64
 
 	blockReq.Height, logFilter.seq = types.NewHexInt(int64(startHeight)), startSeq
 
-	var vr *Verifier
+	var vr IVerifier
 	if r.opts.Verifier != nil {
 		vr, err = r.newVerifier(r.opts.Verifier)
 		if err != nil {
