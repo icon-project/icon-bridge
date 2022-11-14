@@ -28,14 +28,6 @@ impl Event {
     pub fn message(&self) -> &BtpMessage<SerializedMessage> {
         &self.message
     }
-
-    pub fn btp_message(&self) -> Option<BtpMessage<SerializedMessage>> {
-        match BtpMessage::try_from(self.message.clone()) {
-            // TODO : OPTIMIZE
-            Ok(message) => Some(message),
-            Err(_) => None,
-        }
-    }
 }
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Events(Vec<Event>);

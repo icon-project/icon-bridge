@@ -381,10 +381,8 @@ impl BtpMessageCenter {
                 if event.next() != &self.btp_address {
                     continue;
                 }
-                match event.btp_message() {
-                    Some(btp_message) => btp_messages.push(btp_message),
-                    None => continue,
-                };
+
+                btp_messages.push(event.message().clone());
             }
         }
 
