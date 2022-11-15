@@ -137,7 +137,7 @@ impl BtpTokenService {
                     sender: _,
                     ref receiver,
                     ref assets,
-                } => self.handle_coin_transfer(btp_message.source(), receiver, assets),
+                } => self.handle_token_transfer(btp_message.source(), receiver, assets),
 
                 TokenServiceType::ResponseHandleService {
                     ref code,
@@ -219,10 +219,10 @@ impl BtpTokenService {
                     }
                 }
                 TokenServiceType::RequestChangeTokenLimit {
-                    coin_names,
+                    token_names,
                     token_limits,
                     network,
-                } => match self.set_token_limit(coin_names.clone(), token_limits.clone()) {
+                } => match self.set_token_limit(token_names.clone(), token_limits.clone()) {
                     Ok(()) => {
                         let response =
                             TokenServiceMessage::new(TokenServiceType::ResponseChangeTokenLimit {

@@ -1,8 +1,8 @@
 use btp_common::btp_address::Address;
 use btp_common::errors::BshError;
 use libraries::types::{
-    Account, AccountBalance, AccumulatedAssetFees, AssetId, BTPAddress, CoinIds, TransferableAsset,
-    WrappedNativeCoin,
+    Account, AccountBalance, AccumulatedAssetFees, AssetId, BTPAddress, TokenIds,
+    TransferableAsset, WrappedNativeCoin,
 };
 use libraries::{
     types::messages::BlackListType,
@@ -47,19 +47,19 @@ use external::*;
 mod accounting;
 mod assertion;
 mod blacklist_management;
-mod coin_management;
 mod estimate;
 mod fee_management;
 mod messaging;
 mod owner_management;
+mod token_management;
 mod transfer;
 mod types;
 mod util;
-pub use types::RegisteredCoins;
-pub type CoinFees = AssetFees;
-pub type CoinId = AssetId;
-pub type Coin = Asset<WrappedNativeCoin>;
-pub type Coins = Assets<WrappedNativeCoin>;
+pub use types::RegisteredTokens;
+pub type TokenFees = AssetFees;
+pub type TokenId = AssetId;
+pub type Token = Asset<WrappedNativeCoin>;
+pub type Tokens = Assets<WrappedNativeCoin>;
 
 pub static NEP141_CONTRACT: &[u8] = include_bytes!("../res/NEP141_CONTRACT.wasm");
 pub static FEE_DENOMINATOR: u128 = 10_u128.pow(4);
@@ -73,18 +73,18 @@ pub struct BtpTokenService {
     native_coin_name: String,
     network: Network,
     owners: Owners,
-    coins: Coins,
+    tokens: Tokens,
     balances: Balances,
     storage_balances: StorageBalances,
-    coin_fees: CoinFees,
+    token_fees: TokenFees,
     requests: Requests,
     serial_no: i128,
     bmc: AccountId,
     name: String,
     blacklisted_accounts: BlackListedAccounts,
     token_limits: TokenLimits,
-    coin_ids: CoinIds,
-    registered_coins: RegisteredCoins,
+    token_ids: TokenIds,
+    registered_tokens: RegisteredTokens,
 
     #[cfg(feature = "testable")]
     pub message: LazyOption<Base64VecU8>,
@@ -93,38 +93,38 @@ pub struct BtpTokenService {
 #[near_bindgen]
 impl BtpTokenService {
     #[init]
-    pub fn new(service_name: String, bmc: AccountId, network: String, native_coin: Coin) -> Self {
+    pub fn new(service_name: String, bmc: AccountId, network: String, native_coin: Token) -> Self {
         require!(!env::state_exists(), "Already initialized");
         let mut owners = Owners::new();
         owners.add(&env::current_account_id());
 
-        let mut coins = <Coins>::new();
+        let mut tokens = <Tokens>::new();
         let mut balances = Balances::new();
-        let native_coin_id = Self::hash_coin_id(native_coin.name());
+        let native_coin_id = Self::hash_token_id(native_coin.name());
 
         balances.add(&env::current_account_id(), &native_coin_id);
-        coins.add(&native_coin_id, &native_coin);
+        tokens.add(&native_coin_id, &native_coin);
         let blacklisted_accounts = BlackListedAccounts::new();
-        let mut coin_fees = CoinFees::new();
-        coin_fees.add(&native_coin_id);
-        let mut coin_ids = CoinIds::new();
-        coin_ids.add(native_coin.name(), native_coin_id);
+        let mut token_fees = TokenFees::new();
+        token_fees.add(&native_coin_id);
+        let mut token_ids = TokenIds::new();
+        token_ids.add(native_coin.name(), native_coin_id);
         Self {
             native_coin_name: native_coin.name().to_owned(),
             network,
             owners,
-            coins,
+            tokens,
             balances,
             storage_balances: StorageBalances::new(),
-            coin_fees,
+            token_fees,
             serial_no: Default::default(),
             requests: Requests::new(),
             bmc,
             name: service_name,
             blacklisted_accounts,
-            registered_coins: RegisteredCoins::new(),
+            registered_tokens: RegisteredTokens::new(),
             token_limits: TokenLimits::new(),
-            coin_ids,
+            token_ids,
 
             #[cfg(feature = "testable")]
             message: LazyOption::new(b"message".to_vec(), None),

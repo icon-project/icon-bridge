@@ -1,2 +1,2 @@
-mod registered_coins;
-pub use registered_coins::RegisteredCoins;
+mod registered_tokens;
+pub use registered_tokens::RegisteredTokens;

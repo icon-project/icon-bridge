@@ -26,7 +26,7 @@ pub enum TokenServiceType {
         network: String,
     },
     RequestChangeTokenLimit {
-        coin_names: Vec<String>,
+        token_names: Vec<String>,
         token_limits: Vec<u128>,
         network: String,
     },
@@ -159,7 +159,7 @@ impl TryFrom<(u128, &Vec<u8>)> for TokenServiceType {
                 network: payload.val_at::<String>(2)?,
             }),
             4 => Ok(Self::RequestChangeTokenLimit {
-                coin_names: payload.list_at(0)?,
+                token_names: payload.list_at(0)?,
                 token_limits: payload.list_at(1)?,
                 network: payload.val_at::<String>(2)?,
             }),
@@ -277,7 +277,7 @@ mod tests {
         let service: BtpMessage<TokenServiceMessage> = service_message.clone().try_into().unwrap();
         let change_token_limit = TokenServiceMessage {
             service_type: TokenServiceType::RequestChangeTokenLimit {
-                coin_names: vec!["btp-0x1.near-NEAR".to_string()],
+                token_names: vec!["btp-0x1.near-NEAR".to_string()],
                 token_limits: vec![10000000000000000000000],
                 network: "0x1.near".to_string(),
             },

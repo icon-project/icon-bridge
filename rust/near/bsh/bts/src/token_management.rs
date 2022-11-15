@@ -6,19 +6,19 @@ use super::*;
 impl BtpTokenService {
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
-    // * * * * Coin Management  * * * *
+    // * * * * Token Management  * * * *
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
 
-    /// Register Coin, Accept coin meta(name, symbol, network, denominator) as parameters
+    /// Register Token, Accept Token meta(name, symbol, network, denominator) as parameters
     // TODO: Complete Documentation
     #[payable]
-    pub fn register(&mut self, coin: Coin) {
+    pub fn register(&mut self, token: Token) {
         self.assert_have_permission();
-        self.assert_coin_does_not_exists(&coin);
-        let coin_id = Self::hash_coin_id(coin.name());
-        if coin.network() == &self.network {
-            if let Some(uri) = coin.metadata().uri_deref() {
+        self.assert_token_does_not_exists(&token);
+        let token_id = Self::hash_token_id(token.name());
+        if token.network() == &self.network {
+            if let Some(uri) = token.metadata().uri_deref() {
                 env::promise_create(
                     uri,
                     "storage_deposit",
@@ -28,12 +28,12 @@ impl BtpTokenService {
                 );
             };
 
-            self.coin_ids.add(coin.name(), coin_id);
-            self.register_coin(coin);
+            self.token_ids.add(token.name(), token_id);
+            self.register_token(token);
         } else {
-            let coin_metadata = coin.extras().clone().expect("Coin Metadata Missing");
+            let token_metadata = token.extras().clone().expect("Token Metadata Missing");
             let promise_idx = env::promise_batch_create(
-                &coin.metadata().uri_deref().expect("Coin Account Missing"),
+                &token.metadata().uri_deref().expect("Token Account Missing"),
             );
             env::promise_batch_action_create_account(promise_idx);
             env::promise_batch_action_transfer(promise_idx, env::attached_deposit());
@@ -45,13 +45,13 @@ impl BtpTokenService {
                     "owner_id": env::current_account_id(),
                     "total_supply": U128(0),
                     "metadata": {
-                        "spec": coin_metadata.spec,
-                        "name": coin.label(),
-                        "symbol": coin.symbol(),
-                        "icon": coin_metadata.icon,
-                        "reference": coin_metadata.reference,
-                        "reference_hash": coin_metadata.reference_hash,
-                        "decimals": coin_metadata.decimals
+                        "spec": token_metadata.spec,
+                        "name": token.label(),
+                        "symbol": token.symbol(),
+                        "icon": token_metadata.icon,
+                        "reference": token_metadata.reference,
+                        "reference_hash": token_metadata.reference_hash,
+                        "decimals": token_metadata.decimals
                     }
                 })
                 .to_string()
@@ -62,8 +62,8 @@ impl BtpTokenService {
             env::promise_then(
                 promise_idx,
                 env::current_account_id(),
-                "register_coin_callback",
-                &json!({ "coin": coin,"coin_id": coin_id })
+                "register_token_callback",
+                &json!({ "token": token,"token_id": token_id })
                     .to_string()
                     .into_bytes(),
                 0,
@@ -74,16 +74,16 @@ impl BtpTokenService {
 
     // TODO: Unregister Token
 
-    pub fn coins(&self) -> Value {
-        to_value(self.coins.to_vec()).unwrap()
+    pub fn tokens(&self) -> Value {
+        to_value(self.tokens.to_vec()).unwrap()
     }
 
     #[private]
     pub fn on_mint(
         &mut self,
         amount: u128,
-        coin_id: CoinId,
-        coin_symbol: String,
+        token_id: TokenId,
+        token_symbol: String,
         receiver_id: AccountId,
         #[callback_result] storage_cost: Result<U128, near_sdk::PromiseError>,
     ) {
@@ -92,24 +92,24 @@ impl BtpTokenService {
                 if let Ok(storage_cost) = storage_cost {
                     let mut balance = self
                         .balances
-                        .get(&env::current_account_id(), &coin_id)
+                        .get(&env::current_account_id(), &token_id)
                         .unwrap();
                     balance.deposit_mut().add(amount).unwrap();
                     self.balances
-                        .set(&env::current_account_id(), &coin_id, balance);
+                        .set(&env::current_account_id(), &token_id, balance);
 
                     let inital_storage_used = env::storage_usage();
 
                     self.internal_transfer(
                         &env::current_account_id(),
                         &receiver_id,
-                        &coin_id,
+                        &token_id,
                         amount,
                     );
                     // calculate storage cost for the account
                     let total_storage_cost = self.calculate_storage_cost(inital_storage_used);
                     let mut storage_balance =
-                        match self.storage_balances.get(&receiver_id.clone(), &coin_id) {
+                        match self.storage_balances.get(&receiver_id.clone(), &token_id) {
                             Some(balance) => balance,
                             None => u128::default(),
                         };
@@ -121,28 +121,28 @@ impl BtpTokenService {
                         .unwrap();
 
                     self.storage_balances
-                        .set(&receiver_id, &coin_id, storage_balance);
+                        .set(&receiver_id, &token_id, storage_balance);
 
-                    let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
+                    let token_name = self.tokens.get(&token_id).unwrap().name().to_string();
                     let log = json!(
                     {
                         "event": "Mint",
                         "code": "0",
                         "amount": amount.to_string(),
-                        "token_name": coin_name,
+                        "token_name": token_name,
                         "token_account": env::signer_account_id().to_string()
 
                     });
                     log!(near_sdk::serde_json::to_string(&log).unwrap());
                 } else {
-                    let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
+                    let token_name = self.tokens.get(&token_id).unwrap().name().to_string();
 
                     let log = json!(
                     {
                         "event": "Mint",
                         "code": "1",
                         "amount": amount.to_string(),
-                        "token_name": coin_name,
+                        "token_name": token_name,
                         "token_account": env::signer_account_id().to_string()
 
                     });
@@ -153,14 +153,14 @@ impl BtpTokenService {
                 log!("Not Ready")
             }
             PromiseResult::Failed => {
-                let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
+                let token_name = self.tokens.get(&token_id).unwrap().name().to_string();
 
                 let log = json!(
                 {
                     "event": "Mint",
                     "code": "1",
                     "amount": amount.to_string(),
-                    "token_name": coin_name,
+                    "token_name": token_name,
                     "token_account": env::signer_account_id().to_string()
 
                 });
@@ -170,36 +170,36 @@ impl BtpTokenService {
     }
 
     #[private]
-    pub fn on_burn(&mut self, amount: u128, coin_id: CoinId, coin_symbol: String) {
+    pub fn on_burn(&mut self, amount: u128, token_id: TokenId, token_symbol: String) {
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
                 let mut balance = self
                     .balances
-                    .get(&env::current_account_id(), &coin_id)
+                    .get(&env::current_account_id(), &token_id)
                     .unwrap();
                 balance.deposit_mut().sub(amount).unwrap();
                 self.balances
-                    .set(&env::current_account_id(), &coin_id, balance);
-                let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
+                    .set(&env::current_account_id(), &token_id, balance);
+                let token_name = self.tokens.get(&token_id).unwrap().name().to_string();
                 let log = json!(
                 {
                     "event": "Burn",
                     "code": "0",
                     "amount": amount.to_string(),
-                    "token_name": coin_name,
+                    "token_name": token_name,
                     "token_account": env::signer_account_id().to_string()
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
             PromiseResult::NotReady => log!("Not Ready"),
             PromiseResult::Failed => {
-                let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
+                let token_name = self.tokens.get(&token_id).unwrap().name().to_string();
                 let log = json!(
                 {
                     "event": "Burn",
                     "code": "1",
                     "amount": amount.to_string(),
-                    "token_name": coin_name,
+                    "token_name": token_name,
                     "token_account": env::signer_account_id().to_string()
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
@@ -208,88 +208,94 @@ impl BtpTokenService {
     }
 
     #[private]
-    pub fn register_coin_callback(&mut self, coin: Coin, coin_id: CoinId) {
+    pub fn register_token_callback(&mut self, token: Token, token_id: TokenId) {
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
-                self.coin_ids.add(coin.name(), coin_id);
-                self.register_coin(coin)
+                self.token_ids.add(token.name(), token_id);
+                self.register_token(token)
             }
             PromiseResult::NotReady => log!("Not Ready"),
             PromiseResult::Failed => {
-                log!("Failed to register the coin")
+                log!("Failed to register the token")
             }
         }
     }
 
-    pub fn coin(&self, coin_name: String) -> Asset<FungibleToken> {
-        let coin_id = self
-            .coin_id(&coin_name)
+    pub fn token(&self, token_name: String) -> Asset<FungibleToken> {
+        let token_id = self
+            .token_id(&token_name)
             .map_err(|err| format!("{}", err))
             .unwrap();
-        self.coins.get(&coin_id).unwrap()
+        self.tokens.get(&token_id).unwrap()
     }
 
     pub fn get_token_limits(&self) -> Vec<TokenLimit> {
         self.token_limits.to_vec()
     }
 
-    pub fn get_token_limit(&self, coin_name: String) -> U128 {
+    pub fn get_token_limit(&self, token_name: String) -> U128 {
         self.token_limits
-            .get(&coin_name)
+            .get(&token_name)
             .map(U128)
             .unwrap_or_else(|| env::panic_str(&format!("{}", BshError::LimitNotSet)))
     }
 }
 
 impl BtpTokenService {
-    pub fn mint(&mut self, coin_id: &CoinId, amount: u128, coin: &Coin, receiver_id: AccountId) {
-        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap())
+    pub fn mint(
+        &mut self,
+        token_id: &TokenId,
+        amount: u128,
+        token: &Token,
+        receiver_id: AccountId,
+    ) {
+        ext_nep141::ext(token.metadata().uri().to_owned().unwrap())
             .mint(amount.into(), receiver_id.clone())
             .then(Self::ext(env::current_account_id()).on_mint(
                 amount,
-                *coin_id,
-                coin.symbol().to_string(),
+                *token_id,
+                token.symbol().to_string(),
                 receiver_id,
             ));
     }
 
-    pub fn burn(&mut self, coin_id: &CoinId, amount: u128, coin: &Coin) {
-        ext_nep141::ext(coin.metadata().uri().to_owned().unwrap())
+    pub fn burn(&mut self, token_id: &TokenId, amount: u128, token: &Token) {
+        ext_nep141::ext(token.metadata().uri().to_owned().unwrap())
             .burn(amount.into())
             .then(Self::ext(env::current_account_id()).on_burn(
                 amount,
-                coin_id.to_owned(),
-                coin.symbol().to_string(),
+                token_id.to_owned(),
+                token.symbol().to_string(),
             ));
     }
 
-    pub fn verify_mint(&self, coin_id: &CoinId, amount: u128) -> Result<(), String> {
+    pub fn verify_mint(&self, token_id: &TokenId, amount: u128) -> Result<(), String> {
         let mut balance = self
             .balances
-            .get(&env::current_account_id(), coin_id)
+            .get(&env::current_account_id(), token_id)
             .unwrap();
         balance.deposit_mut().add(amount)?;
         Ok(())
     }
 
-    pub fn register_coin(&mut self, coin: Coin) {
-        let coin_id = Self::hash_coin_id(coin.name());
+    pub fn register_token(&mut self, token: Token) {
+        let token_id = Self::hash_token_id(token.name());
 
-        self.coins.add(&coin_id, &coin);
-        self.coin_fees.add(&coin_id);
+        self.tokens.add(&token_id, &token);
+        self.token_fees.add(&token_id);
 
-        self.registered_coins.add(
-            &coin.metadata().uri_deref().expect("Coin Account Missing"),
-            &coin_id,
+        self.registered_tokens.add(
+            &token.metadata().uri_deref().expect("Token Account Missing"),
+            &token_id,
         );
 
-        self.balances.add(&env::current_account_id(), &coin_id);
+        self.balances.add(&env::current_account_id(), &token_id);
         let log = json!(
         {
             "event": "Register",
             "code": "0",
-            "token_name": coin.name(),
-            "token_account": coin.metadata().uri()
+            "token_name": token.name(),
+            "token_account": token.metadata().uri()
 
         });
         log!(near_sdk::serde_json::to_string(&log).unwrap());
@@ -297,28 +303,28 @@ impl BtpTokenService {
 
     pub fn set_token_limit(
         &mut self,
-        coin_names: Vec<String>,
+        token_names: Vec<String>,
         token_limits: Vec<u128>,
     ) -> Result<(), BshError> {
-        match self.ensure_length_matches(&coin_names, &token_limits) {
+        match self.ensure_length_matches(&token_names, &token_limits) {
             Ok(()) => {
-                let mut invalid_coins: Vec<String> = Vec::new();
-                let mut valid_coins: Vec<String> = Vec::new();
-                coin_names.into_iter().for_each(|coin_name| {
-                    match self.ensure_coin_exists(&coin_name) {
-                        true => valid_coins.push(coin_name),
-                        false => invalid_coins.push(coin_name),
+                let mut invalid_tokens: Vec<String> = Vec::new();
+                let mut valid_tokens: Vec<String> = Vec::new();
+                token_names.into_iter().for_each(|token_name| {
+                    match self.ensure_token_exists(&token_name) {
+                        true => valid_tokens.push(token_name),
+                        false => invalid_tokens.push(token_name),
                     }
                 });
 
-                if !invalid_coins.is_empty() {
+                if !invalid_tokens.is_empty() {
                     return Err(BshError::TokenNotExist {
-                        message: invalid_coins.join(", "),
+                        message: invalid_tokens.join(", "),
                     });
                 }
 
-                for (index, coin_name) in valid_coins.iter().enumerate() {
-                    self.token_limits.add(coin_name, &token_limits[index])
+                for (index, token_name) in valid_tokens.iter().enumerate() {
+                    self.token_limits.add(token_name, &token_limits[index])
                 }
                 Ok(())
             }
@@ -326,12 +332,12 @@ impl BtpTokenService {
         }
     }
 
-    pub fn coin_id(&self, coin_name: &str) -> Result<CoinId, BshError> {
-        self.coin_ids
-            .get(coin_name)
-            .map(|coin_id| coin_id.to_owned())
+    pub fn token_id(&self, token_name: &str) -> Result<TokenId, BshError> {
+        self.token_ids
+            .get(token_name)
+            .map(|token_id| token_id.to_owned())
             .ok_or(BshError::TokenNotExist {
-                message: coin_name.to_string(),
+                message: token_name.to_string(),
             })
     }
 }

@@ -4,7 +4,7 @@
 
 use std::convert::{TryFrom, TryInto};
 
-use bts::{BtpTokenService, Coin};
+use bts::{BtpTokenService, Token};
 use near_sdk::{
     env, serde_json::to_value, test_utils::VMContextBuilder, testing_env, AccountId, Gas,
     PromiseResult, RuntimeFeesConfig, VMConfig, VMContext,
@@ -18,7 +18,7 @@ use libraries::types::{
 mod token;
 use token::*;
 
-pub type Token = Asset<WrappedNativeCoin>;
+// pub type Token = Asset<WrappedNativeCoin>;
 pub type TokenItem = AssetItem;
 
 fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u128) -> VMContext {
@@ -43,7 +43,7 @@ fn register_token() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
@@ -52,12 +52,12 @@ fn register_token() {
     );
     let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
-    let coin_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
+    let token_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
         .try_into()
         .unwrap();
-    contract.register_coin_callback(baln.clone(), coin_id);
+    contract.register_token_callback(baln.clone(), token_id);
 
-    let result = contract.coins();
+    let result = contract.tokens();
     let expected = to_value(vec![
         AssetItem {
             name: nativecoin.name().to_owned(),
@@ -85,7 +85,7 @@ fn register_existing_token() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
@@ -94,10 +94,10 @@ fn register_existing_token() {
     );
     let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
-    let coin_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
+    let token_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
         .try_into()
         .unwrap();
-    contract.register_coin_callback(baln.clone(), coin_id);
+    contract.register_token_callback(baln.clone(), token_id);
 
     contract.register(baln.clone());
 }
@@ -107,7 +107,7 @@ fn register_existing_token() {
 fn register_token_permission() {
     let context = |v: AccountId, d: u128| (get_context(false, v, d));
     testing_env!(context(alice(), 0));
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
@@ -124,15 +124,15 @@ fn register_token_permission() {
 fn get_non_exist_token_id() {
     let context = |v: AccountId, d: u128| (get_context(false, v, d));
     testing_env!(context(alice(), 0));
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
         nativecoin,
     );
-    let coin_id = contract
-        .coin_id("ICON")
+    let token_id = contract
+        .token_id("ICON")
         .map_err(|err| format!("{}", err))
         .unwrap();
 }
@@ -147,7 +147,7 @@ fn get_registered_token_id() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
@@ -156,12 +156,12 @@ fn get_registered_token_id() {
     );
     let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
-    let coin_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
+    let token_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
         .try_into()
         .unwrap();
-    contract.register_coin_callback(baln.clone(), coin_id);
+    contract.register_token_callback(baln.clone(), token_id);
 
-    let token_id = contract.coin_id("BALN").unwrap();
+    let token_id = contract.token_id("BALN").unwrap();
     let expected: [u8; 32] = env::sha256(baln.name().as_bytes()).try_into().unwrap();
     assert_eq!(token_id, expected)
 }
