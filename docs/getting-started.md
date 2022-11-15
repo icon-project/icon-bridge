@@ -372,7 +372,8 @@ Deployment Involves the following steps:
  
 * ###  Deploy on local machine
  
-    - #### Single Step Deployment 
+    - #### Single Step Deployment
+    > Note: The single step deployment process requires node docker images to be built. See [setting up blockchain nodes](https://github.com/icon-project/icon-bridge/blob/main/docs/getting-started.md#setting-up-blockchain-nodes) for more information. 
     
         ```sh 
         make cleanimglocal          # Clean Previous build & deployment artifacts if present
