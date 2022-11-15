@@ -92,6 +92,31 @@ pub struct BtpTokenService {
 
 #[near_bindgen]
 impl BtpTokenService {
+    /// new creates the btp properties
+    /// 
+    /// # Arguments 
+    /// * `service_name` - name of the existing service should be given in the string format
+    /// * `bmc` - Account id of the existing bmc should be given
+    /// * `network` - name of the network should be given in the string format
+    /// * `native_coin` - Coin should be given as values where in which contains the name,symbol, fee_numerator, denominator, network, fixed_fee, uri, extras.
+    /// 
+    /// # Example
+    /// ```
+    /// service_name = "service1",
+    /// bmc = "btp.account.testnet",
+    /// network = "network1",
+    /// native_coin ={ "metadata" = {
+    /// name = "near",
+    /// symbol = "near",
+    /// fee_numerator = "1000",
+    /// denominator = "100000000000000",
+    /// network = "0x1.near",
+    /// fixed_fee = "2123"
+    /// uri = null,
+    /// extras = null
+    /// }}
+    /// ```
+    /// 
     #[init]
     pub fn new(service_name: String, bmc: AccountId, network: String, native_coin: Coin) -> Self {
         require!(!env::state_exists(), "Already initialized");
@@ -131,26 +156,41 @@ impl BtpTokenService {
         }
     }
 
+    /// Returns the bmc account id
     fn bmc(&self) -> &AccountId {
         &self.bmc
     }
 
+    /// Returns the name of the coin
     fn name(&self) -> &String {
         &self.name
     }
 
+    /// Returns the requests
     fn requests(&self) -> &Requests {
         &self.requests
     }
 
+    /// Resturns the mutable requests
     fn requests_mut(&mut self) -> &mut Requests {
         &mut self.requests
     }
 
+    /// method process deposit got created
+    /// 
+    /// # Arguments
+    /// * `amount` - should be an unsigned number
+    /// * `balance` - Balance of the account should be given
+    /// 
     fn process_deposit(&mut self, amount: u128, balance: &mut AccountBalance) {
         balance.deposit_mut().add(amount).unwrap();
     }
-
+ 
+    /// calculating the cost of storage
+    /// 
+    /// # Arguments
+    /// * `intial_storage_usage` - should be an unsigned number
+    /// 
     fn calculate_storage_cost(&self, initial_storage_usage: u64) -> U128 {
         let total_storage_usage = env::storage_usage() - initial_storage_usage;
         let storage_cost =
@@ -160,6 +200,7 @@ impl BtpTokenService {
 }
 
 impl BtpTokenService {
+    /// Returns the serial number 
     pub fn serial_no(&self) -> i128 {
         self.serial_no
     }

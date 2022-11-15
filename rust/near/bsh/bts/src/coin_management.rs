@@ -11,7 +11,9 @@ impl BtpTokenService {
     // * * * * * * * * * * * * * * * * *
 
     /// Register Coin, Accept coin meta(name, symbol, network, denominator) as parameters
-    // TODO: Complete Documentation
+
+    ///
+
     #[payable]
     pub fn register(&mut self, coin: Coin) {
         self.assert_have_permission();
@@ -74,11 +76,20 @@ impl BtpTokenService {
 
     // TODO: Unregister Token
 
+/// Querying the coins in btp
+
     pub fn coins(&self) -> Value {
         to_value(self.coins.to_vec()).unwrap()
     }
 
     #[private]
+    /// Method on mint is created
+    /// # Arguments
+    /// * `amount` - should be in unsigned integer
+    /// * `coin_id` - coin id should be provided
+    /// * `coin_symbol` - Should be in a string format
+    /// * `receiver_id` - The Account Id of the user should be given
+    /// 
     pub fn on_mint(
         &mut self,
         amount: u128,
@@ -97,7 +108,7 @@ impl BtpTokenService {
                     balance.deposit_mut().add(amount).unwrap();
                     self.balances
                         .set(&env::current_account_id(), &coin_id, balance);
-
+                    //initial storage useage can be get
                     let inital_storage_used = env::storage_usage();
 
                     self.internal_transfer(
@@ -170,6 +181,12 @@ impl BtpTokenService {
     }
 
     #[private]
+    /// on burn method got created in btp
+    /// # Arguments
+    /// * `amount` - should be in unsigned integer
+    /// * `coin_id` - Coin id should be given
+    /// * `coin_symbol` - It should be in a string format
+    /// 
     pub fn on_burn(&mut self, amount: u128, coin_id: CoinId, coin_symbol: String) {
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
@@ -180,6 +197,7 @@ impl BtpTokenService {
                 balance.deposit_mut().sub(amount).unwrap();
                 self.balances
                     .set(&env::current_account_id(), &coin_id, balance);
+                    // getting the coin name
                 let coin_name = self.coins.get(&coin_id).unwrap().name().to_string();
                 let log = json!(
                 {
@@ -208,6 +226,10 @@ impl BtpTokenService {
     }
 
     #[private]
+    /// Call back the registered coin
+    /// # Arguments
+    /// * `coin` : Should give the parameters like name, symbol, fee_numerator, denominator, network, fixed fee, uri, extras
+    /// 
     pub fn register_coin_callback(&mut self, coin: Coin, coin_id: CoinId) {
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
@@ -220,7 +242,10 @@ impl BtpTokenService {
             }
         }
     }
-
+/// Method coin is created 
+/// # Arguments
+/// * `coin_name` - name of the coin should be given in string format
+/// 
     pub fn coin(&self, coin_name: String) -> Asset<FungibleToken> {
         let coin_id = self
             .coin_id(&coin_name)
@@ -228,11 +253,14 @@ impl BtpTokenService {
             .unwrap();
         self.coins.get(&coin_id).unwrap()
     }
-
+/// returns the token limits 
     pub fn get_token_limits(&self) -> Vec<TokenLimit> {
         self.token_limits.to_vec()
     }
-
+/// getting the token limit by giving the particular coin name
+/// # Arguments
+/// * `coin_name` - name of the coin should be in the string format
+/// 
     pub fn get_token_limit(&self, coin_name: String) -> U128 {
         self.token_limits
             .get(&coin_name)
@@ -242,6 +270,13 @@ impl BtpTokenService {
 }
 
 impl BtpTokenService {
+    /// mint method is created
+    /// # Arguments
+    /// * `coin_id` - coin id should be given
+    /// * `amount` - should be a unsigned number
+    /// * `coin` - Should give the parameters like name, symbol, fee_numerator, denominator, network, fixed fee, uri, extras
+    /// * `receiver_id` - Should give the existence account id.
+    /// 
     pub fn mint(&mut self, coin_id: &CoinId, amount: u128, coin: &Coin, receiver_id: AccountId) {
         ext_nep141::ext(coin.metadata().uri().to_owned().unwrap())
             .mint(amount.into(), receiver_id.clone())
@@ -253,6 +288,12 @@ impl BtpTokenService {
             ));
     }
 
+    /// method burn got created
+    /// # Arguments
+    /// * `coin_id` - should give the coin_id of the particular coin
+    /// * `amount` - should be an unsigned number
+    /// * `coin` - Should give the parameters like name, symbol, fee_numerator, denominator, network, fixed fee, uri, extras
+    /// 
     pub fn burn(&mut self, coin_id: &CoinId, amount: u128, coin: &Coin) {
         ext_nep141::ext(coin.metadata().uri().to_owned().unwrap())
             .burn(amount.into())
@@ -262,7 +303,11 @@ impl BtpTokenService {
                 coin.symbol().to_string(),
             ));
     }
-
+    /// verify mint method got created
+    /// # Arguments
+    /// * `coin_id` - Should give the coin id of the particular coin
+    /// * `amount` - should be an unsigned number
+    /// 
     pub fn verify_mint(&self, coin_id: &CoinId, amount: u128) -> Result<(), String> {
         let mut balance = self
             .balances
@@ -272,6 +317,10 @@ impl BtpTokenService {
         Ok(())
     }
 
+    /// Coin got registered
+    /// # Arguments
+    /// * `coin` - Should give the parameters like name, symbol, fee_numerator, denominator, network, fixed fee, uri, extras
+    /// 
     pub fn register_coin(&mut self, coin: Coin) {
         let coin_id = Self::hash_coin_id(coin.name());
 
@@ -294,7 +343,12 @@ impl BtpTokenService {
         });
         log!(near_sdk::serde_json::to_string(&log).unwrap());
     }
-
+    /// setting the token limit of the coin
+    /// caller should be a owner
+    /// # Arguments
+    /// * `coin_names` - should be in the vector format
+    /// * `token-limits` - Given in the vector format
+    /// 
     pub fn set_token_limit(
         &mut self,
         coin_names: Vec<String>,
@@ -325,7 +379,10 @@ impl BtpTokenService {
             Err(err) => return Err(err),
         }
     }
-
+    /// method coin_id is created by using coin name
+    /// # Arguments
+    /// `coin_name` - name of the coin should be given in the string format
+    /// 
     pub fn coin_id(&self, coin_name: &str) -> Result<CoinId, BshError> {
         self.coin_ids
             .get(coin_name)

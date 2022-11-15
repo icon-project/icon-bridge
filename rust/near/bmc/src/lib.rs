@@ -40,20 +40,44 @@ pub use types::RelayMessage;
 const SERVICE: &str = "bmc";
 
 #[near_bindgen]
+
+///BtpMessageCenter should set the properties fot bmc
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct BtpMessageCenter {
+    ///Check the interval between  blocks
     block_interval: u64,
+    ///btp_address
     btp_address: BTPAddress,
+    ///owner who can manage all the properties
     owners: Owners,
+    ///Contains services
     services: Services,
+    ///Contain links that are used in bmc
     links: Links,
+    /// Routes which have destination and source address
     routes: Routes,
+    ///connection
     connections: Connections,
+    ///event handler
     event: BmcEvent,
 }
 
 #[near_bindgen]
 impl BtpMessageCenter {
+    /// new creates the bmc properties
+    /// 
+    /// # Arguments
+    /// 
+    /// *network - Network name should be given on which we are about work. (example: btp)
+    /// *block_interval - should be in unsigned numbers
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    ///  network = "btp",
+    /// block_interval = "2";
+    /// ```
+    /// 
     #[init]
     pub fn new(network: String, block_interval: u64) -> Self {
         require!(!env::state_exists(), "Already initialized");

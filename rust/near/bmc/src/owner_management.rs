@@ -10,6 +10,8 @@ impl BtpMessageCenter {
 
     /// Add another owner
     /// Caller must be an owner of BTP network
+    /// # Arguments
+    /// * account - name of the account should be given
     pub fn add_owner(&mut self, account: AccountId) {
         self.assert_have_permission();
         self.assert_owner_does_not_exists(&account);
@@ -18,6 +20,8 @@ impl BtpMessageCenter {
 
     /// Remove an existing owner
     /// Caller must be an owner of BTP network
+    /// # Arguments
+    /// * account - name of the account should be given
     pub fn remove_owner(&mut self, account: AccountId) {
         self.assert_have_permission();
         self.assert_owner_exists(&account);
@@ -27,6 +31,7 @@ impl BtpMessageCenter {
 
     /// Get account ids of registered owners
     /// Caller can be ANY
+    
     pub fn get_owners(&self) -> Vec<AccountId> {
         self.owners.to_vec()
     }

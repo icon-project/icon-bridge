@@ -3,6 +3,13 @@ use super::*;
 #[near_bindgen]
 impl BtpTokenService {
     #[payable]
+
+    /// method transfer is created with given arguements
+    /// # Arguments
+    /// * `coin_name` - name of the coin should be in the string format
+    /// * `destination` - address of the btp should be given in the form btp://0x1.near/account.testnet
+    /// * `amount` - should be an unsigned number
+    /// 
     pub fn transfer(&mut self, coin_name: String, destination: BTPAddress, amount: U128) {
         let sender_id = env::predecessor_account_id();
         self.assert_have_minimum_amount(amount.into());
@@ -21,6 +28,13 @@ impl BtpTokenService {
     }
 
     #[payable]
+
+    /// transfer batch method is created 
+    /// # Arguments 
+    /// * `coin_names` - Vector of string names should be given
+    /// * `destination` - address of the btp should be given in the form btp://0x1.near/account.testnet
+    /// * `amounts` - should be an unsigned number
+    /// 
     pub fn transfer_batch(
         &mut self,
         coin_names: Vec<String>,
@@ -35,7 +49,7 @@ impl BtpTokenService {
             .collect::<Result<Vec<CoinId>, BshError>>()
             .map_err(|err| format!("{}", err))
             .unwrap();
-
+        // take the default storage cost
         let mut storage_cost = u128::default();
 
         coin_ids.clone().into_iter().for_each(|coin_id| {
@@ -67,6 +81,13 @@ impl BtpTokenService {
 }
 
 impl BtpTokenService {
+    /// The method  process external transfer is created
+    /// # Arguments
+    /// * `coin_id` - Coin id of the existing coin should be given
+    /// * `sender_id` - account id should be given
+    /// * `amount` - should be an unsigned number
+    /// This will returns the result of transferable assest
+    /// 
     pub fn process_external_transfer(
         &mut self,
         coin_id: &CoinId,
@@ -94,6 +115,13 @@ impl BtpTokenService {
         Ok(TransferableAsset::new(coin.name().clone(), amount, fees))
     }
 
+    /// iternal transfer method got created in btp
+    /// # Arguments
+    /// * `sender_id` -  account id should be given
+    /// * `receiver_id` - account id should be given
+    /// * `coin_id` - Given coin id should be provided
+    /// * `amount` - should be an unsigned number
+    /// 
     pub fn internal_transfer(
         &mut self,
         sender_id: &AccountId,
@@ -124,6 +152,14 @@ impl BtpTokenService {
         self.balances.set(receiver_id, coin_id, receiver_balance);
     }
 
+    /// method verify internal transfer is created
+    /// # Arguments
+    /// * `sender_id` - account id should be given
+    /// * `receiver_id` - account id should be given
+    /// * `coin_id` - Given coin id should be provided
+    /// * `amount` - should be an unsigned numbers
+    /// * `sender_balance` - Mutable account balance should be provided
+    /// 
     pub fn verify_internal_transfer(
         &self,
         sender_id: &AccountId,
@@ -150,7 +186,15 @@ impl BtpTokenService {
         };
         Ok(())
     }
-
+    
+    /// internal transfer batch method got created
+    /// 
+    /// # Arguments
+    /// * `sender_id` - account id should be given
+    /// * `receiver_id` - account id should be given
+    /// * `coin_ids` - coin ids should be given in the form of vector
+    /// * `amounts` - unsigned number should be given
+    /// 
     pub fn internal_transfer_batch(
         &mut self,
         sender_id: &AccountId,
@@ -163,6 +207,11 @@ impl BtpTokenService {
         });
     }
 
+    /// finalising the external transfer
+    /// 
+    /// # Arguments
+    /// * `sender_id` - account id should be given
+    /// * `assets` - should be in a vector of transferable assets 
     pub fn finalize_external_transfer(
         &mut self,
         sender_id: &AccountId,
@@ -205,6 +254,11 @@ impl BtpTokenService {
         });
     }
 
+    /// Rollback external transfer method got created
+    /// # Arguments
+    /// * `sender_id` - account id should be given
+    /// * `assets` - should be in a vector of transferable assets 
+    /// 
     pub fn rollback_external_transfer(
         &mut self,
         sender_id: &AccountId,
@@ -239,7 +293,8 @@ impl BtpTokenService {
             self.coin_fees.set(&coin_id, coin_fee);
         });
     }
-
+/// Handling the coin transfer in btp
+/// 
     pub fn handle_coin_transfer(
         &mut self,
         message_source: &BTPAddress,
@@ -251,7 +306,7 @@ impl BtpTokenService {
                 message: error.to_string(),
             }
         })?;
-
+// unregistered coins
         let mut unregistered_coins: Vec<String> = Vec::new();
 
         let coin_ids: Vec<(usize, CoinId)> = assets
@@ -321,6 +376,12 @@ impl BtpTokenService {
         )))
     }
 
+    /// coins transfarable method got created
+    /// # Arguments
+    /// * `sender_id` - account id should be given
+    /// * `receiver_id` - account id should be given
+    /// * `coins` - should be in a vector containng the coin ids
+    /// * `assets` - should be in a vector of transferable assets 
     fn is_coins_transferable(
         &self,
         sender_id: &AccountId,
@@ -350,6 +411,15 @@ impl BtpTokenService {
             .collect()
     }
 
+///Refunding the balance amount
+/// # arguments
+/// * `index` - size of the index should be mentioned
+/// * `amounts` - vector of unsigned integer 
+/// * `returned_amount` - unsigned numbers
+/// * `coin_ids` - vector of coin id
+/// * `sender_id` - account id should be given 
+/// * `receiver_id` - account id should be given
+/// 
     pub fn refund_balance_amount(
         &mut self,
         index: usize,
@@ -369,7 +439,7 @@ impl BtpTokenService {
             .balances
             .get(receiver_id, coin_id)
             .expect("Token receiver no longer exists");
-
+        // comparing the receiver balance greater than 0
         if receiver_balance.deposit() > 0 {
             let refund_amount = std::cmp::min(receiver_balance.deposit(), unused_amount); // TODO: Revisit
             receiver_balance.deposit_mut().sub(refund_amount).unwrap();
@@ -388,11 +458,17 @@ impl BtpTokenService {
         U128::from(0)
     }
 
+/// Checking for transfer restriction
+/// # Arguments
+/// * `user` - account idshould be given
+/// * `assets` - should be in the form of vectors of transferable assets
+/// 
     fn check_for_transfer_restriction(
         &self,
         user: &AccountId,
         assets: &Vec<TransferableAsset>,
     ) -> Result<(), BshError> {
+        //checking if user is blocklisted or not
         self.ensure_user_not_blacklisted(user)?;
 
         assets

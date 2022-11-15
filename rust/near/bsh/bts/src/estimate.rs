@@ -1,5 +1,6 @@
 use near_sdk::{Balance, Gas};
-
+/// These constant variables can create gas for resolve transfer, transfer call, mint, on_mint, send service message, no_deposit, burn, token storage deposit and one yocto
+/// 
 pub const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(10_000_000_000_000);
 pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25_000_000_000_000);
 pub const GAS_FOR_MINT: Gas = Gas(10_000_000_000_000);

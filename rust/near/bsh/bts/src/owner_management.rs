@@ -10,6 +10,8 @@ impl BtpTokenService {
 
     /// Add another owner
     /// Caller must be an owner of BTP network
+    /// # Arguments 
+    /// * `account` - account id should be given (account.testnet)
     pub fn add_owner(&mut self, account: AccountId) {
         self.assert_have_permission();
         self.assert_owner_does_not_exists(&account);
@@ -18,6 +20,8 @@ impl BtpTokenService {
 
     /// Remove an existing owner
     /// Caller must be an owner of BTP network
+    /// # Arguments
+    /// * `account` - account id should be given (account.testnet)
     pub fn remove_owner(&mut self, account: AccountId) {
         self.assert_have_permission();
         self.assert_owner_exists(&account);

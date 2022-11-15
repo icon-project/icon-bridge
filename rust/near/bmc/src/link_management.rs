@@ -8,6 +8,13 @@ impl BtpMessageCenter {
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
 
+    ///
+    /// Adding the link to bmc
+    /// 
+    /// # Arguments
+    /// * `link` - It should be in a format btp:0x1.near/account.testnet
+    /// 
+    
     pub fn add_link(&mut self, link: BTPAddress) {
         self.assert_have_permission();
         self.assert_link_does_not_exists(&link);
@@ -28,6 +35,14 @@ impl BtpMessageCenter {
         );
     }
 
+
+    /// 
+    /// Removing the link from bmc
+    /// 
+    /// # Arguments
+    /// * `link` - It should be in the format btp://0x1.near/account.testnet
+    /// 
+    
     pub fn remove_link(&mut self, link: BTPAddress) {
         self.assert_have_permission();
         self.assert_link_exists(&link);
@@ -42,6 +57,18 @@ impl BtpMessageCenter {
             .remove(&Connection::Link(link.network_address().unwrap()), &link);
     }
 
+
+    /// ```
+    ///  if let Some(link) = self.links.get(&link){
+    /// return link
+    ///     .reachable()
+    ///     .to_owned()
+    ///     .into_iter()
+    ///     .collect::<HashedCollection<BTPAddress>>();
+    /// }
+    /// HashedCollection::new()
+    /// ```
+
     #[cfg(feature = "testable")]
     pub fn get_reachable_link(&self, link: BTPAddress) -> HashedCollection<BTPAddress> {
         if let Some(link) = self.links.get(&link) {
@@ -54,9 +81,19 @@ impl BtpMessageCenter {
         HashedCollection::new()
     }
 
+
+    /// Returns a list of links present in the bmc
+
     pub fn get_links(&self) -> serde_json::Value {
         self.links.to_vec().into()
     }
+
+    /// We can set the existing link
+    /// # Arguments
+    /// * link - It should be in the format btp://0x1.near/account.testnet
+    /// * block_interval - u64, will comvert the string slice into integer
+    /// * max_aggregation - u64, will comvert the string slice into integer
+    /// * delay_limit - u64, will comvert the string slice into integer  
 
     pub fn set_link(
         &mut self,
@@ -89,10 +126,24 @@ impl BtpMessageCenter {
         }
     }
 
+    ///
+    /// Get the status of the link
+    /// 
+    /// # Arguement
+    /// * link - should be in the form btp://0x1.near/account.testnet
+    /// 
     pub fn get_status(&self, link: BTPAddress) -> LinkStatus {
         self.assert_link_exists(&link);
         self.links.get(&link).unwrap().status()
     }
+
+    ///
+    /// Setting the link height 
+    /// 
+    /// # Arguement
+    /// * link - should be in the form btp://0x1.near/account.testnet
+    /// * height - u64, converts the string slice to Integer
+    /// 
 
     pub fn set_link_rx_height(&mut self, link: BTPAddress, height: u64) {
         self.assert_have_permission();

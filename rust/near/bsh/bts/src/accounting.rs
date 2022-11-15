@@ -8,6 +8,11 @@ impl BtpTokenService {
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
 
+    /// On transfer method is created in bsh
+    /// # Arguments
+    /// * `sender_id` - It should be the account_id
+    /// * `amount` - should be in the unsigned integer.
+    /// 
     pub fn ft_on_transfer(
         &mut self,
         sender_id: AccountId,
@@ -19,9 +24,9 @@ impl BtpTokenService {
 
         self.assert_have_minimum_amount(amount);
         self.assert_coin_registered(&coin_account);
-
+        /// gets the the use of storage
         let initial_storage_usage = env::storage_usage();
-
+        /// Getting the particular coin account
         let coin_id = self.registered_coins.get(&coin_account).unwrap().clone();
         let mut balance = match self.balances.get(&sender_id, &coin_id) {
             Some(balance) => balance,
@@ -41,8 +46,12 @@ impl BtpTokenService {
     }
 
     #[payable]
+    /// Deposit method is created
+   
     pub fn deposit(&mut self) {
+        /// Getting the previous account
         let account = env::predecessor_account_id();
+        /// To know the attached cost
         let amount = env::attached_deposit();
         self.assert_have_minimum_amount(amount);
         let coin_id = Self::hash_coin_id(&self.native_coin_name);
@@ -61,6 +70,11 @@ impl BtpTokenService {
     }
 
     #[payable]
+    /// withdraw mwthod is created in btp
+    /// # Arguments
+    /// * `coin_name` - Name of the coin should be in the string format
+    /// * `amount` - should be an unsigned number
+    /// 
     pub fn withdraw(&mut self, coin_name: String, amount: U128) {
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
@@ -105,6 +119,11 @@ impl BtpTokenService {
         ));
     }
 
+    /// Reclaim method is created in btp
+    /// # Arguments 
+    /// * `coin_name` - name of the coin should be given in the string format
+    /// * `amount` - should be an unsigned number
+    /// 
     pub fn reclaim(&mut self, coin_name: String, amount: U128) {
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
@@ -121,7 +140,11 @@ impl BtpTokenService {
 
         self.balances.set(&account, &coin_id, balance);
     }
-
+    /// locked balance method is created
+    /// # Arguments
+    /// * `account_id` - Account id should be given
+    /// * `coin_name` - name of the coin should be given in the string format
+    /// 
     pub fn locked_balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
         let coin_id = self
             .coin_id(&coin_name)
@@ -134,7 +157,12 @@ impl BtpTokenService {
             .expect(format!("{}", BshError::AccountNotExist).as_str());
         balance.locked().into()
     }
-
+    /// Refundable balance method is created in btp
+    /// # Arguments
+    /// * `account_id` - account_id should be given
+    /// * `coin_name` - name of the coin should be given in the string format
+    /// Returns the refundable balance
+    /// 
     pub fn refundable_balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
         let coin_id = self
             .coin_id(&coin_name)
@@ -148,6 +176,15 @@ impl BtpTokenService {
         balance.refundable().into()
     }
 
+    ////
+    /// ```
+    /// let coin_id = self
+    ///     .coin_id(&coin_name)
+    ///     .map_err(|err| format!("{}",err))
+    ///     .unwrap();
+    /// self.balances.get(&owner_id, &coin_id)
+    /// ```
+    /// 
     #[cfg(feature = "testable")]
     pub fn account_balance(
         &self,
@@ -161,6 +198,11 @@ impl BtpTokenService {
         self.balances.get(&owner_id, &coin_id)
     }
 
+    /// Checks the balance in the btp
+    /// # Arguments
+    /// * `account_id` - Account-id should be given
+    /// * `coin_name` - name of the coin should be given in the string format
+    /// 
     pub fn balance_of(&self, account_id: AccountId, coin_name: String) -> U128 {
         let coin_id = self
             .coin_id(&coin_name)
@@ -175,6 +217,13 @@ impl BtpTokenService {
     }
 
     #[private]
+    /// The private on_withdraw method is created
+    /// # Arguments
+    /// * `account` - The account name should be given
+    /// * `amount` - should be an unsigned number
+    /// * `coin_name` - The name of the coin should be given in the string format
+    /// * `coin_id` - coin id should be provided
+    /// 
     pub fn on_withdraw(
         &mut self,
         account: AccountId,
@@ -215,7 +264,11 @@ impl BtpTokenService {
             }
         }
     }
-
+   /// querying the storage balance by giving account name and coin_name as an arguments
+   /// # Arguments
+   /// * `account` - AccountID should be given
+   /// * `coin_name` - Name of the coin should be given in the string format
+   /// 
     pub fn get_storage_balance(&self, account: AccountId, coin_name: String) -> U128 {
         let coin_id = self.coin_id(&coin_name).unwrap();
         match self.storage_balances.get(&account, &coin_id) {

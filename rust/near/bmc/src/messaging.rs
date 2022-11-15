@@ -15,6 +15,13 @@ impl BtpMessageCenter {
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
 
+
+    /// Handling the relay message
+    /// Caller must be the owner of the btp network
+    /// # Arguments
+    /// * source - It should be in the form of btp://0x1.near/account.testnet
+    /// * message - RelayMessage should be given
+
     pub fn handle_relay_message(&mut self, source: BTPAddress, message: RelayMessage) {
         self.assert_link_exists(&source);
         self.assert_relay_is_registered(&source);
@@ -30,6 +37,21 @@ impl BtpMessageCenter {
         .unwrap();
         self.links.set(&source, &link);
     }
+
+
+    /// ```
+    /// if let Some(next) = self.resolve_route(destination) {
+    /// self.emit_message(next,message);
+    /// }else{
+    /// self.send_error(
+    /// &previous,
+    /// &BtpException::Bmc(BmcError::Unreachable {
+    ///     destination: destination.to_string(),
+    /// }),
+    /// message,
+    /// );
+    /// }
+    /// ```
 
     #[cfg(feature = "testable")]
     pub fn send_message(
@@ -51,6 +73,13 @@ impl BtpMessageCenter {
         }
     }
 
+
+    /// Sending the message by giving dource and destination
+    /// # Arguments 
+    /// * source - should be in the form of btp://0x1.near/account.testnet
+    /// * destination - should be in the form of btp://0x1.near/account.testnet
+    /// * message - Serialised message
+
     #[cfg(not(feature = "testable"))]
     fn send_message(
         &mut self,
@@ -70,6 +99,13 @@ impl BtpMessageCenter {
             );
         }
     }
+
+    /// Sending the service message
+    /// Caller should be the owner
+    /// # arguments
+    /// * serial_no - should be in signed integer
+    /// * service - Service name should be given which is already present.
+    /// * message - Serialised message
 
     pub fn send_service_message(
         &mut self,
@@ -204,6 +240,12 @@ impl BtpMessageCenter {
         self.send_message(&self.btp_address.clone(), destination, btp_message.into())
     }
 
+
+    /// Handling the error message in btp 
+    /// # Arguments
+    /// * source - should be in the form of btp://0x1.near/account.testnet
+    /// * message - serialised message
+    /// * error - Toggle to display error
     fn handle_btp_error_message(
         &self,
         source: &BTPAddress,
@@ -212,6 +254,13 @@ impl BtpMessageCenter {
     ) -> bool {
         unimplemented!()
     }
+
+    ///Handling the service message
+    /// Caller should be the owner
+    /// # Arguments
+    /// * source - should be in the form of btp://0x1.near/account.testnet
+    /// * message - serialised message
+    /// Returns true or false depending on the service message.
 
     fn handle_service_message(
         &mut self,
@@ -240,6 +289,11 @@ impl BtpMessageCenter {
         }
     }
 
+
+/// ```
+/// self.handle_service_message(&source, &message)
+/// ```
+
     #[cfg(feature = "testable")]
     pub fn handle_service_message_testable(
         &mut self,
@@ -249,6 +303,13 @@ impl BtpMessageCenter {
         self.handle_service_message(&source, &message);
     }
 
+
+    ///
+    /// Handling the internal service message
+    /// caller should be the owner
+    /// # Arguments
+    /// * source - should be in the form of btp://0x1.near/account.testnet
+    /// * message - Should take the result of service message 
     fn handle_internal_service_message(
         &mut self,
         source: &BTPAddress,
@@ -270,6 +331,12 @@ impl BtpMessageCenter {
         }
     }
 
+    /// HAndling the external message in Bmc
+    /// # Arguments
+    /// * source - should be in the form of btp://0x1.near/account.testnet
+    /// * message - serialised message should be given
+    /// If service exists then it will return with the service message or 
+    /// else return with the btp error message
     fn handle_external_service_message(
         &self,
         source: &BTPAddress,
@@ -302,7 +369,10 @@ impl BtpMessageCenter {
         }
         Ok(())
     }
-
+    /// Handling the route message
+    /// Caller should be the owner
+    /// # Arguments
+    /// * souce - should be in the form of btp://0x1.near/account.testnet
     fn handle_route_message(
         &mut self,
         source: &BTPAddress,
@@ -311,6 +381,13 @@ impl BtpMessageCenter {
         self.send_message(source, &message.destination(), message.to_owned());
         false
     }
+
+    /// Sending the error message
+    /// Caller should be a owner of bmc
+    /// # Arguments
+    /// * source - should be in the form of btp://0x1.near/account.testnet
+    /// * exception - Dynamic exception should be given
+    /// * message - The serialised message property should be used.
 
     fn send_error(
         &mut self,
@@ -333,6 +410,16 @@ impl BtpMessageCenter {
         );
     }
 
+
+    ///Processing the bmc message
+    /// Caller should be a owner
+    /// # Arguments
+    /// * source - should be in the form of btp://0x1.near/account.testnet
+    /// * link - Link which is present in the bmc is given
+    /// * btp_messages - Serialised message property should be  given
+    /// * relay - Should give the existing relay account id.
+    /// 
+    
     fn process_bmc_messages(
         &mut self,
         source: &BTPAddress,
@@ -359,6 +446,13 @@ impl BtpMessageCenter {
         self.handle_btp_messages(source, btp_messages);
         Ok(())
     }
+
+
+    /// Getting the btp messages 
+    /// # Arguments
+    /// * message : Relay message should be given
+    /// * link - The link which is present inside the bmc should be given
+    /// If the message exists ,It returns the serialised message or else returns bmc error
 
     fn get_btp_messages(
         &mut self,
@@ -397,11 +491,24 @@ impl BtpMessageCenter {
         Ok(btp_messages)
     }
 
+
+    /// Returns the message
+    /// 
+    /// ```
+    /// self.event.get_message()
+    /// ```
+
     #[cfg(feature = "testable")]
     pub fn get_message(&self) -> Result<BtpMessage<SerializedMessage>, String> {
         self.event.get_message()
     }
 
+
+    /// Return error
+    /// 
+    /// ```
+    /// self.event.get_error()
+    /// ```
     #[cfg(feature = "testable")]
     pub fn get_error(&self) -> Result<BtpError, String> {
         self.event.get_error()

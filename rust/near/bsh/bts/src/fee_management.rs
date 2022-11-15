@@ -8,6 +8,8 @@ impl BtpTokenService {
     // * * * * * * * * * * * * * * * * *
     // * * * * * * * * * * * * * * * * *
 
+    /// Returns the total accumulated fees
+    
     pub fn accumulated_fees(&self) -> Vec<AccumulatedAssetFees> {
         self.coins
             .to_vec()
@@ -25,12 +27,27 @@ impl BtpTokenService {
             .collect()
     }
 
+    /// handling the fee gather method
+    /// 
+    /// # Arguments
+    /// * `fee_aggregator` - should be in the form of btp://0x1.near/account.testnet
+    /// * `service` - Name of the service should be given in string format
+    /// 
     pub fn handle_fee_gathering(&mut self, fee_aggregator: BTPAddress, service: String) {
         self.assert_predecessor_is_bmc();
         self.assert_valid_service(&service);
         self.transfer_fees(&fee_aggregator);
     }
 
+
+    /// setting the fee ratio in btp
+    /// caller should be owner
+    /// 
+    /// # Arguments
+    /// * `coin_name` - name of the coin shpuld be given in the string format
+    /// * `fee_numerator` - unsigned number should be given
+    /// * `fixed_fee` - unsigned number should be given
+    /// 
     pub fn set_fee_ratio(&mut self, coin_name: String, fee_numerator: U128, fixed_fee: U128) {
         self.assert_have_permission();
         self.assert_valid_fee_ratio(fee_numerator.into(), fixed_fee.into());
@@ -39,7 +56,7 @@ impl BtpTokenService {
             .coin_id(&coin_name)
             .map_err(|err| format!("{}", err))
             .unwrap();
-
+        // Getting the coin by its id
         let mut coin = self.coins.get(&coin_id).unwrap();
         coin.metadata_mut()
             .fee_numerator_mut()
@@ -51,6 +68,12 @@ impl BtpTokenService {
         self.coins.set(&coin_id, &coin)
     }
 
+
+    /// The method get fee is created
+    /// # Arguments 
+    /// * `coin_name` - name of the coin should be given in string format
+    /// * `amount` - should be an unsigned number
+    /// 
     pub fn get_fee(&self, coin_name: String, amount: U128) -> U128 {
         let coin_id = self
             .coin_id(&coin_name)
@@ -65,6 +88,11 @@ impl BtpTokenService {
 }
 
 impl BtpTokenService {
+    /// method transfer fees got created in btp
+    /// caller should be a owner
+    /// # Arguments
+    /// * `fee_aggregator` - btp address should be given that should be in the form of btp://0x1.near/account.testnet
+    /// 
     pub fn transfer_fees(&mut self, fee_aggregator: &BTPAddress) {
         let sender_id = env::current_account_id();
         let assets = self
@@ -91,6 +119,11 @@ impl BtpTokenService {
         self.send_request(sender_id, fee_aggregator.clone(), assets);
     }
 
+    /// coin transfer fee is calculated
+    /// # Arguments
+    /// * `amount` - should be a unsigned number
+    /// * `coin` - wrapped native coin should be given
+    /// 
     pub fn calculate_coin_transfer_fee(
         &self,
         amount: u128,

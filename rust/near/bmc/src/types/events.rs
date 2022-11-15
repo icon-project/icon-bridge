@@ -16,14 +16,15 @@ pub struct Event {
 }
 
 impl Event {
+    ///Returns the address
     pub fn next(&self) -> &BTPAddress {
         &self.next
     }
-
+    /// returns the sequence
     pub fn sequence(&self) -> u128 {
         self.sequence
     }
-
+    /// Returns the btp serialised message
     pub fn message(&self) -> &BtpMessage<SerializedMessage> {
         &self.message
     }
@@ -37,17 +38,22 @@ impl Event {
         }
     }
 }
+
+/// An events to do work on it
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Events(Vec<Event>);
 
 impl Deref for Events {
+    /// Event - To take the particular target
     type Target = Vec<Event>;
+    /// Returns the target
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl Decodable for Event {
+    /// Decodes the result
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         let data = rlp.val_at::<BytesMut>(2).unwrap();
         
