@@ -178,9 +178,7 @@ func (a *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 	if !strings.Contains(addr, "btp://") {
 		return nil, errors.New("Address should be BTP address. Use GetBTPAddress(hexAddr)")
 	}
-	if !strings.Contains(addr, ".icon") {
-		return nil, fmt.Errorf("Address should be BTP address of account in native chain. Got %v", addr)
-	}
+
 	splts := strings.Split(addr, "/")
 	address := splts[len(splts)-1]
 	return a.requester.getCoinBalance(coinName, address)
