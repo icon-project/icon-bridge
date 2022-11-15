@@ -55,7 +55,6 @@ BUILD_TARGETS += iconbridge
 
 linux : $(addsuffix -linux,$(BUILD_TARGETS))
 
-PYSCORE_DIST_DIR = $(BUILD_ROOT)/build/contracts/pyscore
 SOLIDITY_DIST_DIR = $(BUILD_ROOT)/build/contracts/solidity
 
 $(SOLIDITY_DIST_DIR)/%:
@@ -69,28 +68,6 @@ $(SOLIDITY_DIST_DIR)/%:
 	cp solidity/$(MODULE)/*.json $@/ ; \
 	cp solidity/$(MODULE)/*.lock $@/ ; \
 	rm -rf $@/contracts/Mock ; \
-
-$(PYSCORE_DIST_DIR)/%:
-	$(eval MODULE := $(patsubst $(PYSCORE_DIST_DIR)/%,%,$@))
-	mkdir -p $@ ; \
-	cp -r pyscore/lib pyscore/$(MODULE) $@/
-
-dist-py-bmc: $(PYSCORE_DIST_DIR)/bmc
-	cd $(PYSCORE_DIST_DIR)/bmc ; \
-	echo '{"version": "0.0.1","main_module": "bmc.bmc","main_score": "BTPMessageCenter"}' > package.json ; \
-	zip -r -v $(PYSCORE_DIST_DIR)/bmc.zip bmc lib package.json -x *__pycache__* -x *tests*
-
-dist-py-bmv: $(PYSCORE_DIST_DIR)/bmv
-	cd $(PYSCORE_DIST_DIR)/bmv ; \
-	echo '{"version": "0.0.1","main_module": "bmv.icon.icon","main_score": "BTPMessageVerifier"}' > package.json ; \
-	zip -r -v $(PYSCORE_DIST_DIR)/bmv.zip bmv lib package.json -x *__pycache__* -x *tests*
-	
-dist-py-irc2: $(PYSCORE_DIST_DIR)/token_bsh
-	cd $(PYSCORE_DIST_DIR)/token_bsh ; \
-	echo '{"version": "0.0.1","main_module": "token_bsh.token_bsh","main_score": "TokenBSH"}' > package.json ; \
-	zip -r -v $(PYSCORE_DIST_DIR)/token_bsh.zip token_bsh lib package.json -x *__pycache__* -x *tests* -x *sample* ; \
-	cd token_bsh/sample/irc2_token ; \
-    zip -r -v $(PYSCORE_DIST_DIR)/irc2_token.zip * -x *__pycache__* -x *tests*
 
 dist-sol-bmc: $(SOLIDITY_DIST_DIR)/bmc
 	cd $(SOLIDITY_DIST_DIR)/bmc ; 
@@ -106,11 +83,6 @@ dist-sol-bts: $(SOLIDITY_DIST_DIR)/bts
 
 dist-sol-token_bsh: $(SOLIDITY_DIST_DIR)/TokenBSH
 	cd $(SOLIDITY_DIST_DIR)/TokenBSH ;
-
-dist-py: dist-py-bmc dist-py-bmv dist-py-irc2
-
-clean-dist-py:
-	rm -rf $(PYSCORE_DIST_DIR)/*
 
 clean-dist-sol:
 	rm -rf $(SOLIDITY_DIST_DIR)
@@ -132,16 +104,6 @@ iconbridge-image: iconbridge-linux
 	BUILD_TAGS="$(GOBUILD_TAGS)" \
 	DIST_DIR="$(BUILD_ROOT)/build/contracts" \
 	$(BUILD_ROOT)/docker/iconbridge/build.sh $(ICONBRIDGE_IMAGE) $(BUILD_ROOT) $(ICONBRIDGE_DOCKER_DIR)
-
-iconbridge-debug: iconbridge-linux dist-py
-	@ echo "[#] Building image $(ICONBRIDGE_IMAGE) for $(GL_VERSION)"
-	@ rm -rf $(ICONBRIDGE_DOCKER_DIR)
-	@ \
-	BIN_DIR=$(abspath $(LINUX_BIN_DIR)) \
-	BIN_VERSION=$(GL_VERSION) \
-	BUILD_TAGS="$(GOBUILD_TAGS)" \
-	DIST_DIR="$(PYSCORE_DIST_DIR)" \
-	$(BUILD_ROOT)/docker/iconbridge/build-debug.sh $(ICONBRIDGE_IMAGE) $(BUILD_ROOT) $(ICONBRIDGE_DOCKER_DIR)
 
 .PHONY: test
 
