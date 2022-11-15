@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -221,6 +222,31 @@ func (b BigInt) Serialize() ([]byte, error) {
 	return borsh.Serialize(big.Int(b))
 }
 
+type SuccessValue []byte
+
+func (s *SuccessValue) UnmarshalJSON(p []byte) error {
+	var v string
+
+	err := json.Unmarshal(p, &v)
+	if err != nil {
+		return err
+	}
+
+	if v == "" {
+		s = nil
+		return nil
+	}
+
+	data, err := base64.URLEncoding.Strict().DecodeString(v)
+	if err != nil {
+		return err
+	}
+
+	*s = data
+
+	return nil
+}
+
 func CombineHash(hash1 [32]byte, hash2 [32]byte) [32]byte {
 	combined := new(bytes.Buffer)
 	combined.Write(hash1[:])
@@ -239,10 +265,46 @@ type MerklePathItem struct {
 type MerklePath []MerklePathItem
 
 type ExecutionStatus struct {
-	SuccessValue     string     `json:"SuccessValue"`
-	SuccessReceiptId CryptoHash `json:"SuccessReceiptId"`
-	Failure          Failure    `json:"Failure"`
-	Unknown          string     `json:"Unknown"`
+	Unknown          string       `json:"Unknown"`
+	Failure          Failure      `json:"Failure"`
+	SuccessValue     SuccessValue `json:"SuccessValue"`
+	SuccessReceiptId CryptoHash   `json:"SuccessReceiptId"`
+}
+
+func (e ExecutionStatus) Serialize() ([]byte, error) {
+	if e.Failure != *new(Failure) {
+		return borsh.Serialize(struct {
+			Enum    uint8
+			Failure Failure
+		}{
+			Enum:    1,
+			Failure: e.Failure,
+		})
+	} else if e.SuccessValue != nil {
+		return borsh.Serialize(struct {
+			Enum         uint8
+			SuccessValue SuccessValue
+		}{
+			Enum:         2,
+			SuccessValue: e.SuccessValue,
+		})
+	} else if e.SuccessReceiptId != [32]byte{} {
+		return borsh.Serialize(struct {
+			Enum             uint8
+			SuccessReceiptId CryptoHash
+		}{
+			Enum:             3,
+			SuccessReceiptId: e.SuccessReceiptId,
+		})
+	} else {
+		return borsh.Serialize(struct {
+			Enum    uint8
+			Unknown string
+		}{
+			Enum:    0,
+			Unknown: e.Unknown,
+		})
+	}
 }
 
 // TODO: Add More Errors
@@ -276,12 +338,28 @@ type ExecutionOutcomeWithIdView struct {
 }
 
 type ExecutionOutcomeView struct {
-	Logs        []string        `json:"logs"`
 	ReceiptIds  []CryptoHash    `json:"receipt_ids"`
 	GasBurnt    uint64          `json:"gas_burnt"`
-	TokensBurnt string          `json:"tokens_burnt"`
-	ExecutorId  string          `json:"executor_id"`
+	TokensBurnt BigInt          `json:"tokens_burnt"`
+	ExecutorId  AccountId       `json:"executor_id"`
 	Status      ExecutionStatus `json:"status"`
+	Logs        []string        `json:"logs"`
+}
+
+func (e ExecutionOutcomeView) Serialize() ([]byte, error) {
+	return borsh.Serialize(struct {
+		ReceiptIds  []CryptoHash
+		GasBurnt    uint64
+		TokensBurnt BigInt
+		ExecutorId  AccountId
+		Status      ExecutionStatus
+	}{
+		ReceiptIds: e.ReceiptIds,
+		GasBurnt: e.GasBurnt,
+		TokensBurnt: e.TokensBurnt,
+		ExecutorId: e.ExecutorId,
+		Status: e.Status,
+	})
 }
 
 type Action struct {
