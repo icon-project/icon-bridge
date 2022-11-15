@@ -404,7 +404,6 @@ fn handle_success_response_baln_external_transfer() {
     contract.on_mint(
         900,
         token_id.clone().try_into().unwrap(),
-        baln.symbol().to_string(),
         chuck(),
         Ok(U128::from(700000)),
     );
@@ -456,11 +455,7 @@ fn handle_success_response_baln_external_transfer() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    contract.on_burn(
-        719,
-        token_id.clone().try_into().unwrap(),
-        baln.symbol().to_string(),
-    );
+    contract.on_burn(719, token_id.clone().try_into().unwrap());
 
     let result = contract.balance_of(alice(), baln.name().to_string());
     assert_eq!(result, U128::from(81));
@@ -655,7 +650,6 @@ fn handle_failure_response_baln_coin_external_transfer() {
     contract.on_mint(
         900,
         token_id.clone().try_into().unwrap(),
-        baln.symbol().to_string(),
         chuck(),
         Ok(U128::from(700000)),
     );
@@ -780,13 +774,7 @@ fn reclaim_baln_coin() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     contract.handle_btp_message(btp_message.try_into().unwrap());
-    contract.on_mint(
-        899,
-        token_id.clone(),
-        baln.symbol().to_string(),
-        chuck(),
-        Ok(U128::from(700000)),
-    );
+    contract.on_mint(899, token_id.clone(), chuck(), Ok(U128::from(700000)));
 
     let storage_cost = contract
         .get_storage_balance(chuck(), baln.name().to_string())

@@ -1,53 +1,8 @@
-use btp_common::btp_address::Address;
-use btp_common::errors::BshError;
-use libraries::types::{
-    Account, AccountBalance, AccumulatedAssetFees, AssetId, BTPAddress, TokenIds,
-    TransferableAsset, WrappedNativeCoin,
-};
-use libraries::{
-    types::messages::BlackListType,
-    types::messages::SerializedMessage,
-    types::messages::TokenServiceMessage,
-    types::messages::TokenServiceType,
-    types::messages::{BtpMessage, ErrorMessage},
-    types::Asset,
-    types::AssetFees,
-    types::AssetMetadata,
-    types::Assets,
-    types::Balances,
-    types::BlackListedAccounts,
-    types::Math,
-    types::Network,
-    types::Owners,
-    types::Request,
-    types::Requests,
-    types::StorageBalances,
-    types::TokenLimits,
-    types::WrappedI128,
-};
-
-use std::str::FromStr;
-
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LazyOption;
-use near_sdk::serde_json::json;
-use near_sdk::serde_json::{to_value, Value};
-use near_sdk::PromiseOrValue;
-use near_sdk::{assert_one_yocto, AccountId};
-use near_sdk::{
-    env,
-    json_types::{Base64VecU8, U128},
-    log, near_bindgen, require, Gas, PanicOnDefault, Promise, PromiseResult,
-};
-use std::collections::HashSet;
-use std::convert::TryFrom;
-use std::convert::TryInto;
-mod external;
-use external::*;
 mod accounting;
 mod assertion;
 mod blacklist_management;
 mod estimate;
+mod external;
 mod fee_management;
 mod messaging;
 mod owner_management;
@@ -55,6 +10,38 @@ mod token_management;
 mod transfer;
 mod types;
 mod util;
+
+use btp_common::{btp_address::Address, errors::BshError};
+use libraries::types::{
+    messages::{
+        BlackListType, BtpMessage, ErrorMessage, SerializedMessage, TokenServiceMessage,
+        TokenServiceType,
+    },
+    AccountBalance, AccumulatedAssetFees, Asset, AssetFees, AssetId, AssetMetadata, Assets,
+    BTPAddress, Balances, BlackListedAccounts, FungibleToken, Math, Network, Owners, Request,
+    Requests, StorageBalances, TokenIds, TokenLimit, TokenLimits, TransferableAsset, WrappedI128,
+    WrappedNativeCoin,
+};
+
+use std::str::FromStr;
+
+use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+
+#[cfg(feature = "testable")]
+use near_sdk::{collections::LazyOption, json_types::Base64VecU8};
+
+use near_sdk::{
+    env,
+    json_types::U128,
+    log, near_bindgen, require,
+    serde_json::{json, to_value, Value},
+    AccountId, Balance, Gas, PanicOnDefault, Promise, PromiseOrValue, PromiseResult,
+};
+
+use std::convert::{TryFrom, TryInto};
+
+use external::*;
+
 pub use types::RegisteredTokens;
 pub type TokenFees = AssetFees;
 pub type TokenId = AssetId;

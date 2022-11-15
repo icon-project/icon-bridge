@@ -95,7 +95,6 @@ fn handle_transfer_mint_registered_icx() {
     contract.on_mint(
         900,
         token_id,
-        icx_coin.symbol().to_string(),
         destination.account_id(),
         Ok(U128::from(700000)),
     );

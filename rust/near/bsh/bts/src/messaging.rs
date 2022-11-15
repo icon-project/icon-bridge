@@ -137,7 +137,7 @@ impl BtpTokenService {
                     sender: _,
                     ref receiver,
                     ref assets,
-                } => self.handle_token_transfer(btp_message.source(), receiver, assets),
+                } => self.handle_token_transfer(receiver, assets),
 
                 TokenServiceType::ResponseHandleService {
                     ref code,
@@ -147,6 +147,7 @@ impl BtpTokenService {
                 TokenServiceType::RequestBlacklist {
                     request_type,
                     addresses,
+                    #[allow(unused_variables)]
                     network,
                 } => {
                     let mut non_valid_addresses: Vec<String> = Vec::new();
@@ -221,6 +222,7 @@ impl BtpTokenService {
                 TokenServiceType::RequestChangeTokenLimit {
                     token_names,
                     token_limits,
+                    #[allow(unused_variables)]
                     network,
                 } => match self.set_token_limit(token_names.clone(), token_limits.clone()) {
                     Ok(()) => {

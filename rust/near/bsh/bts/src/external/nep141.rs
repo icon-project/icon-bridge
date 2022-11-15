@@ -1,6 +1,4 @@
-use near_contract_standards::fungible_token::metadata::FungibleTokenMetadata;
-use near_sdk::json_types::U128;
-use near_sdk::{ext_contract, AccountId, Balance};
+use super::*;
 
 #[ext_contract(ext_nep141)]
 pub trait Nep141Service {

@@ -373,7 +373,6 @@ fn handle_success_response_icx_coin_external_transfer() {
     contract.on_mint(
         900,
         token_id.clone(),
-        icx_coin.symbol().to_string(),
         chuck().clone(),
         Ok(U128::from(700000)),
     );
@@ -424,7 +423,7 @@ fn handle_success_response_icx_coin_external_transfer() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    contract.on_burn(720, token_id.clone(), icx_coin.symbol().to_string());
+    contract.on_burn(720, token_id.clone());
 
     let result = contract.balance_of(alice(), icx_coin.name().to_string());
     assert_eq!(result, U128::from(80));
@@ -596,7 +595,6 @@ fn handle_failure_response_icx_coin_external_transfer() {
     contract.on_mint(
         900,
         token_id.clone(),
-        icx_coin.symbol().to_string(),
         chuck().clone(),
         Ok(U128::from(700000)),
     );
@@ -725,13 +723,7 @@ fn reclaim_icx_coin() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     let token_id = contract.token_id(icx_coin.name()).unwrap();
-    contract.on_mint(
-        900,
-        token_id.clone(),
-        icx_coin.symbol().to_string(),
-        chuck(),
-        Ok(U128::from(700000)),
-    );
+    contract.on_mint(900, token_id.clone(), chuck(), Ok(U128::from(700000)));
     let storage_cost = contract
         .get_storage_balance(chuck(), icx_coin.name().to_string())
         .0

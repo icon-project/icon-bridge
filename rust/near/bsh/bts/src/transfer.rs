@@ -239,7 +239,6 @@ impl BtpTokenService {
 
     pub fn handle_token_transfer(
         &mut self,
-        message_source: &BTPAddress,
         receiver_id: &String,
         assets: &[TransferableAsset],
     ) -> Result<Option<TokenServiceMessage>, BshError> {

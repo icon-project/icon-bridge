@@ -1,5 +1,3 @@
-use libraries::types::{FungibleToken, TokenLimit};
-
 use super::*;
 
 #[near_bindgen]
@@ -83,7 +81,6 @@ impl BtpTokenService {
         &mut self,
         amount: u128,
         token_id: TokenId,
-        token_symbol: String,
         receiver_id: AccountId,
         #[callback_result] storage_cost: Result<U128, near_sdk::PromiseError>,
     ) {
@@ -170,7 +167,7 @@ impl BtpTokenService {
     }
 
     #[private]
-    pub fn on_burn(&mut self, amount: u128, token_id: TokenId, token_symbol: String) {
+    pub fn on_burn(&mut self, amount: u128, token_id: TokenId) {
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
                 let mut balance = self
@@ -251,22 +248,13 @@ impl BtpTokenService {
     ) {
         ext_nep141::ext(token.metadata().uri().to_owned().unwrap())
             .mint(amount.into(), receiver_id.clone())
-            .then(Self::ext(env::current_account_id()).on_mint(
-                amount,
-                *token_id,
-                token.symbol().to_string(),
-                receiver_id,
-            ));
+            .then(Self::ext(env::current_account_id()).on_mint(amount, *token_id, receiver_id));
     }
 
     pub fn burn(&mut self, token_id: &TokenId, amount: u128, token: &Token) {
         ext_nep141::ext(token.metadata().uri().to_owned().unwrap())
             .burn(amount.into())
-            .then(Self::ext(env::current_account_id()).on_burn(
-                amount,
-                token_id.to_owned(),
-                token.symbol().to_string(),
-            ));
+            .then(Self::ext(env::current_account_id()).on_burn(amount, token_id.to_owned()));
     }
 
     pub fn verify_mint(&self, token_id: &TokenId, amount: u128) -> Result<(), String> {

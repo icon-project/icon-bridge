@@ -1,5 +1,4 @@
-use libraries::types::messages::SerializedMessage;
-use near_sdk::ext_contract;
+use super::*;
 
 #[ext_contract(ext_bmc)]
 pub trait BtpMessageCenter {

@@ -174,7 +174,7 @@ impl BtpTokenService {
 
     pub fn ensure_token_exists(&self, token_name: &str) -> bool {
         match self.token_ids.get(token_name) {
-            Some(token) => true,
+            Some(_) => true,
             None => false,
         }
     }
