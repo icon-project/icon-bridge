@@ -5,10 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 
 	"github.com/haltingstate/secp256k1-go"
 	"github.com/pkg/errors"
@@ -133,8 +134,8 @@ func (r *requestAPI) transferIntraChain(coinName, senderKey, recepientAddress st
 		txnHash, err = r.transferNativeIntraChain(senderKey, recepientAddress, amount)
 	} else if caddr, ok := r.nativeTokensAddr[coinName]; ok {
 		txnHash, err = r.transferTokenIntraChain(senderKey, recepientAddress, amount, caddr)
-	} else if _, ok := r.wrappedCoinsAddr[coinName]; ok {
-		err = fmt.Errorf("IntraChain transfers not supported for wrapped coins. Got %v", coinName)
+	} else if caddr, ok := r.wrappedCoinsAddr[coinName]; ok {
+		txnHash, err = r.transferTokenIntraChain(senderKey, recepientAddress, amount, caddr)
 	} else {
 		err = fmt.Errorf("Coin %v not amongst registered coins", coinName)
 	}
