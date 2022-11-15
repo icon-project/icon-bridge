@@ -14,7 +14,7 @@ import (
 const (
 	RPC_URI      = "https://lisbon.net.solidwallet.io/api/v3/icon_dex"
 	TokenGodKey  = ""
-	TokenGodAddr = "btp://0x2.icon/hx40a9ffc38589375a434e2066cfd9a7bfe2ebcc09"
+	TokenGodAddr = "btp://0x2.icon/"
 	GodKey       = ""
 	GodAddr      = "btp://0x2.icon/hx077ada6dd02f63b02650c5861f9f41166e45d9f1"
 	DemoSrcKey   = ""
@@ -32,10 +32,10 @@ func TestTransferIntraChain(t *testing.T) {
 		return
 	}
 	amount := new(big.Int)
-	amount.SetString("10000000000000000000", 10)
+	amount.SetString("70750343697585467", 10)
 	srckey := TokenGodKey
 	dstaddr := DemoSrcAddr
-	for _, coinName := range []string{"btp-0x2.icon-ICX", "btp-0x2.icon-bnUSD"} {
+	for _, coinName := range []string{"btp-0x228.snow-ICZ"} {
 		txnHash, err := api.Transfer(coinName, srckey, dstaddr, amount)
 		if err != nil {
 			t.Fatal(err)
@@ -190,7 +190,7 @@ func TestBatchTransfer(t *testing.T) {
 }
 
 func TestGetCoinBalance(t *testing.T) {
-	if err := showBalance(TokenGodAddr); err != nil {
+	if err := showBalance(DemoSrcAddr); err != nil {
 		t.Fatalf(" %+v", err)
 	}
 
@@ -201,7 +201,7 @@ func showBalance(addr string) error {
 	if err != nil {
 		return err
 	}
-	for _, coinName := range []string{"btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH", "btp-0x2.icon-ICX", "btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD", "btp-0x61.bsc-BNB"} {
+	for _, coinName := range []string{"btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH", "btp-0x2.icon-ICX", "btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD", "btp-0x61.bsc-BNB", "btp-0x228.snow-ICZ"} {
 		res, err := api.GetCoinBalance(coinName, addr)
 		if err != nil {
 			return err
@@ -268,8 +268,8 @@ func TestReceiver(t *testing.T) {
 func getNewApi() (chain.ChainAPI, error) {
 	srcEndpoint := RPC_URI
 	addrToName := map[chain.ContractName]string{
-		chain.BMC: "cx3f562d203e73519e6fe63e282f59a533109ed8b9",
-		chain.BTS: "cxb1e4d2381361f5a2000cbf90e3b868db02d3044e",
+		chain.BMC: "cx8059df76efcd0b076c7493756b5baf6a5bfe03c4",
+		chain.BTS: "cx9b16a2374e6fd35f223bb902137ce34013c8a5f2",
 	}
 	l := log.New()
 	log.SetGlobalLogger(l)
@@ -280,7 +280,8 @@ func getNewApi() (chain.ChainAPI, error) {
 		NetworkID:         NID,
 		NativeCoin:        "btp-0x2.icon-ICX",
 		NativeTokens:      []string{"btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"},
-		WrappedCoins:      []string{"btp-0x61.bsc-BNB", "btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH"},
+		WrappedCoins:      []string{"btp-0x61.bsc-BNB", "btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH", "btp-0x228.snow-ICZ", "btp-0x2.near-NEAR"},
+		GasLimit:          make(map[chain.GasLimitType]uint64),
 	})
 }
 
@@ -301,7 +302,7 @@ func TestGetKeyFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	priv, pub, err := api.GetKeyPairFromKeystore("../../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.json", "../../../../devnet/docker/icon-bsc/_ixh/keystore/icon.god.wallet.secret")
+	priv, pub, err := api.GetKeyPairFromKeystore("../../../../devnet/docker/icon-bsc/_ixh_arxiv/_ixh_icon-bsc/keystore/icon.god.wallet.json", "../../../../devnet/docker/icon-bsc/_ixh_arxiv/_ixh_icon-bsc/keystore/icon.god.wallet.secret")
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

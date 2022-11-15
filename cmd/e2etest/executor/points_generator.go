@@ -83,44 +83,50 @@ func (gen *pointGenerator) batchPointGenerator(pts []*transferPoint, cfgPerCoinP
 	for _, pair := range [][2]int{{0, 1}, {1, 0}} {
 		chainA := chains[pair[0]]
 		chainB := chains[pair[1]]
-		tp := &transferPoint{
-			SrcChain: chainA,
-			DstChain: chainB,
-			CoinNames: []string{
-				gen.cfgPerChain[chainA].NativeCoin,
-				gen.cfgPerChain[chainA].NativeTokens[rand.Intn(len(gen.cfgPerChain[chainA].NativeTokens))],
-			},
+		if len(gen.cfgPerChain[chainA].NativeTokens) != 0 {
+			tp := &transferPoint{
+				SrcChain: chainA,
+				DstChain: chainB,
+				CoinNames: []string{
+					gen.cfgPerChain[chainA].NativeCoin,
+					gen.cfgPerChain[chainA].NativeTokens[rand.Intn(len(gen.cfgPerChain[chainA].NativeTokens))],
+				},
+			}
+			for _, c := range tp.CoinNames {
+				tp.Amounts = append(tp.Amounts, gen.getAmountBeforeFeeCharge(chainA, c, cfgPerCoinPerChain[chainA][c].baseFee, cfgPerCoinPerChain[chainA][c].numerator, big.NewInt(1)))
+			}
+			pts = append(pts, tp)
 		}
-		for _, c := range tp.CoinNames {
-			tp.Amounts = append(tp.Amounts, gen.getAmountBeforeFeeCharge(chainA, c, cfgPerCoinPerChain[chainA][c].baseFee, cfgPerCoinPerChain[chainA][c].numerator, big.NewInt(1)))
-		}
-		pts = append(pts, tp)
 
-		tp = &transferPoint{
-			SrcChain: chainA,
-			DstChain: chainB,
-			CoinNames: []string{
-				gen.cfgPerChain[chainA].NativeCoin,
-				gen.cfgPerChain[chainA].WrappedCoins[rand.Intn(len(gen.cfgPerChain[chainA].WrappedCoins))],
-			},
+		if len(gen.cfgPerChain[chainA].WrappedCoins) != 0 {
+			tp := &transferPoint{
+				SrcChain: chainA,
+				DstChain: chainB,
+				CoinNames: []string{
+					gen.cfgPerChain[chainA].NativeCoin,
+					gen.cfgPerChain[chainA].WrappedCoins[rand.Intn(len(gen.cfgPerChain[chainA].WrappedCoins))],
+				},
+			}
+			for _, c := range tp.CoinNames {
+				tp.Amounts = append(tp.Amounts, gen.getAmountBeforeFeeCharge(chainA, c, cfgPerCoinPerChain[chainA][c].baseFee, cfgPerCoinPerChain[chainA][c].numerator, big.NewInt(1)))
+			}
+			pts = append(pts, tp)
 		}
-		for _, c := range tp.CoinNames {
-			tp.Amounts = append(tp.Amounts, gen.getAmountBeforeFeeCharge(chainA, c, cfgPerCoinPerChain[chainA][c].baseFee, cfgPerCoinPerChain[chainA][c].numerator, big.NewInt(1)))
-		}
-		pts = append(pts, tp)
 
-		pts = append(pts, &transferPoint{
-			SrcChain: chainA,
-			DstChain: chainB,
-			CoinNames: []string{
-				gen.cfgPerChain[chainA].NativeTokens[rand.Intn(len(gen.cfgPerChain[chainA].NativeTokens))],
-				gen.cfgPerChain[chainA].WrappedCoins[rand.Intn(len(gen.cfgPerChain[chainA].WrappedCoins))],
-			},
-		})
-		for _, c := range tp.CoinNames {
-			tp.Amounts = append(tp.Amounts, gen.getAmountBeforeFeeCharge(chainA, c, cfgPerCoinPerChain[chainA][c].baseFee, cfgPerCoinPerChain[chainA][c].numerator, big.NewInt(1)))
+		if len(gen.cfgPerChain[chainA].WrappedCoins) != 0 && len(gen.cfgPerChain[chainA].NativeTokens) != 0 {
+			tp := &transferPoint{
+				SrcChain: chainA,
+				DstChain: chainB,
+				CoinNames: []string{
+					gen.cfgPerChain[chainA].NativeTokens[rand.Intn(len(gen.cfgPerChain[chainA].NativeTokens))],
+					gen.cfgPerChain[chainA].WrappedCoins[rand.Intn(len(gen.cfgPerChain[chainA].WrappedCoins))],
+				},
+			}
+			for _, c := range tp.CoinNames {
+				tp.Amounts = append(tp.Amounts, gen.getAmountBeforeFeeCharge(chainA, c, cfgPerCoinPerChain[chainA][c].baseFee, cfgPerCoinPerChain[chainA][c].numerator, big.NewInt(1)))
+			}
+			pts = append(pts, tp)
 		}
-		pts = append(pts, tp)
 	}
 	return pts
 }
@@ -179,27 +185,27 @@ func (gen *pointGenerator) GenerateConfigPoints() (pts []*configPoint, err error
 	pts = []*configPoint{
 		{
 			chainName: chain.ICON,
-			TokenLimits: map[string]*big.Int{
-				"btp-0x2.icon-ICX":  highValue,
-				"btp-0x2.icon-BUSD": highValue,
-			},
+			// TokenLimits: map[string]*big.Int{
+			// 	"btp-0x2.icon-ICX":  highValue,
+			// 	"btp-0x2.icon-BUSD": highValue,
+			// },
 			Fee: map[string][2]*big.Int{
-				"btp-0x2.icon-ICX": {
+				gen.cfgPerChain[chain.ICON].NativeCoin: {
 					big.NewInt(100), big.NewInt(4300000000000000000),
 				},
 			},
 		},
-		{
-			chainName: chain.ICON,
-			TokenLimits: map[string]*big.Int{
-				"btp-0x2.icon-sICX": highValue,
-			},
-			Fee: map[string][2]*big.Int{
-				"btp-0x2.icon-sICX": {
-					big.NewInt(100), big.NewInt(3900000000000000000),
-				},
-			},
-		},
+		// {
+		// 	chainName: chain.ICON,
+		// 	TokenLimits: map[string]*big.Int{
+		// 		"btp-0x2.icon-sICX": highValue,
+		// 	},
+		// 	Fee: map[string][2]*big.Int{
+		// 		"btp-0x2.icon-sICX": {
+		// 			big.NewInt(100), big.NewInt(3900000000000000000),
+		// 		},
+		// 	},
+		// },
 	}
 	return
 }

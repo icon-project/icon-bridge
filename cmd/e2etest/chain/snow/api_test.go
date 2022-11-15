@@ -23,7 +23,7 @@ const (
 	DemoSrcKey   = ""
 	DemoSrcAddr  = "btp://0x228.snow/0x54a1be6CB9260A52B7E2e988Bc143e4c66b81202"
 	DemoDstAddr  = "btp://0x2.icon/hx0000000000000000000000000000000000000000"
-	GodDstAddr   = "btp://0x2.icon/hx077ada6dd02f63b02650c5861f9f41166e45d9f1"
+	GodDstAddr   = "btp://0x2.icon/hx1637472e23df38a3b90d644017d0c4c973142e72"
 	BtsAddr      = "btp://0x228.snow/0x71a1520bBb7e6072Bbf3682A60c73D63b693690A"
 )
 
@@ -33,8 +33,8 @@ func TestApprove(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	amt := new(big.Int)
-	amt.SetString("5000000000000000000", 10)
-	for _, coin := range []string{"btp-0x228.snow-ETH"} {
+	amt.SetString("8597727619896550976", 10)
+	for _, coin := range []string{"btp-0x228.snow-ICZ"} {
 		// coin := "USDC"
 		approveHash, err := rpi.Approve(coin, TokenGodKey, amt)
 		if err != nil {
@@ -81,7 +81,7 @@ func TestTransferIntraChain(t *testing.T) {
 
 func TestTransferInterChain(t *testing.T) {
 	//"BUSD", "USDT", "USDC", "BTCB", "ETH"
-	coin := "btp-0x228.snow-ETH"
+	coin := "btp-0x228.snow-ICZ"
 	rpi, err := getNewApi()
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -98,7 +98,7 @@ func TestTransferInterChain(t *testing.T) {
 	}
 
 	amt := new(big.Int)
-	amt.SetString("5000000000000000000", 10)
+	amt.SetString("8597727619896550976", 10)
 	txnHash, err := rpi.Transfer(coin, srcKey, dstAddr, amt)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -139,10 +139,10 @@ func TestBatchTransfer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	coins := []string{"btp-0x228.snow-USDC"}
+	coins := []string{"btp-0x228.snow-ICZ"}
 
 	largeAmt := new(big.Int)
-	largeAmt.SetString("5000000000000000000", 10)
+	largeAmt.SetString("8597727619896550976", 10)
 	amounts := []*big.Int{largeAmt}
 	for i, coin := range coins {
 		fmt.Println("coin", coin)
@@ -216,9 +216,9 @@ func TestGetKeyPair(t *testing.T) {
 
 func getNewApi() (chain.ChainAPI, error) {
 	ctrMap := map[chain.ContractName]string{
-		chain.BTS:          "0x14df5C016598462537A8057D4C2b19926d312Cf9",
-		chain.BTSPeriphery: "0x3875646aAABB9f7Dc5F2D360BBaaBdCE26DE8f98",
-		chain.BMCPeriphery: "0x7a8fa48aFaAc9A401EBE062E4c20E75FB2d8669A",
+		chain.BTS:          "0x7a6Cad739314adB23D752379e6A0699755Baa8B8",
+		chain.BTSPeriphery: "0xF8e9a3DF47eF5168EfD7aE1EAf61fa53b70a8687",
+		chain.BMCPeriphery: "0x15FC0d621b7E717b9aC111048ABe88Ea8dF5794c",
 	}
 
 	l := log.New()
@@ -227,8 +227,8 @@ func getNewApi() (chain.ChainAPI, error) {
 		Name:              chain.SNOW,
 		URL:               RPC_URI,
 		ContractAddresses: ctrMap,
-		NativeTokens:      []string{"btp-0x228.snow-BUSD", "btp-0x228.snow-USDT", "btp-0x228.snow-USDC", "btp-0x228.snow-BTCB", "btp-0x228.snow-ETH"},
-		WrappedCoins:      []string{"btp-0x2.icon-ICX", "btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"},
+		NativeTokens:      []string{},
+		WrappedCoins:      []string{"btp-0x2.icon-ICX", "btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD", "btp-0x61.bsc-BNB", "btp-0x61.bsc-BUSD", "btp-0x61.bsc-USDT", "btp-0x61.bsc-USDC", "btp-0x61.bsc-BTCB", "btp-0x61.bsc-ETH", "btp-0x2.near-NEAR"},
 		NativeCoin:        "btp-0x228.snow-ICZ",
 		NetworkID:         "0x228.snow",
 		GasLimit:          make(map[chain.GasLimitType]uint64),
