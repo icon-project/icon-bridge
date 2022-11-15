@@ -11,8 +11,8 @@ impl BtpMessageCenter {
 
     /// Adding the route to bmc
     /// # Arguments
-    /// * destination - Should give the btp address that should be in the form of btp://0x1.near/account.testnet
-    /// * link - Link should be given which is to be added for the route.
+    /// * `destination` - Should give the btp address that should be in the form of btp://0x1.near/account.testnet
+    /// * `link` - Link should be given which is to be added for the route.
     pub fn add_route(&mut self, destination: BTPAddress, link: BTPAddress) {
         self.assert_have_permission();
         self.assert_route_does_not_exists(&destination);
@@ -27,7 +27,7 @@ impl BtpMessageCenter {
     /// Removing the route from bmc
     /// 
     /// # Arguments
-    /// * destination - Should give the btp address that should be in the form of btp://0x1.near/account.testnet
+    /// * `destination` - Should give the btp address that should be in the form of btp://0x1.near/account.testnet
 
     pub fn remove_route(&mut self, destination: BTPAddress) {
         self.assert_have_permission();
@@ -60,7 +60,7 @@ impl BtpMessageCenter {
 
     /// Resolving the route in bmc
     /// # Arguments
-    /// * destination - Should be in the form of btp://0x1.near/account.testnet
+    /// * `destination` - Should be in the form of btp://0x1.near/account.testnet
     /// return Some of destination address else None
     pub fn resolve_route(&self, destination: &BTPAddress) -> Option<BTPAddress> {
         if self.links.contains(destination) {

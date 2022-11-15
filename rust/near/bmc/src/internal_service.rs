@@ -9,8 +9,8 @@ impl BtpMessageCenter {
 
     ///Handling the init process
     /// # Arguments
-    /// * source - should be in the form of btp://0x1.near/account.testnet
-    /// * links - Given by the vectors
+    /// * `source` - should be in the form of btp://0x1.near/account.testnet
+    /// * `links` - Given by the vectors
     /// 
     pub fn handle_init(
         &mut self,
@@ -40,8 +40,8 @@ impl BtpMessageCenter {
     }
     /// Handling the links in bmc
     /// # Arguments
-    /// * source - should be in the form of btp://0x1.near/account.testnet
-    /// * souce_link - should be in the form of btp://0x1.near/account.testnet
+    /// * `source` - should be in the form of btp://0x1.near/account.testnet
+    /// * `souce_link` - should be in the form of btp://0x1.near/account.testnet
     /// 
     pub fn handle_link(
         &mut self,
@@ -72,8 +72,8 @@ impl BtpMessageCenter {
 
      /// Handling the unlinks in bmc
     /// # Arguments
-    /// * source - should be in the form of btp://0x1.near/account.testnet
-    /// * souce_link - should be in the form of btp://0x1.near/account.testnet
+    /// * `source` - should be in the form of btp://0x1.near/account.testnet
+    /// * `souce_link` - should be in the form of btp://0x1.near/account.testnet
     ///  
     
     pub fn handle_unlink(
@@ -105,9 +105,9 @@ impl BtpMessageCenter {
     
     /// Handle fee gathering in bmc
     /// # Arguments
-    /// * source - should be in the form of btp://0x1.near/account.testnet
-    /// * fee_aggregator - should be in the form of btp://0x1.near/account.testnet
-    /// * services - should be given in vector with the format of string.
+    /// * `source` - should be in the form of btp://0x1.near/account.testnet
+    /// * `fee_aggregator` - should be in the form of btp://0x1.near/account.testnet
+    /// * `services` - should be given in vector with the format of string.
     /// 
     pub fn handle_fee_gathering(
         &self,

@@ -13,8 +13,8 @@ impl BtpMessageCenter {
 /// Caller should be a owner
 /// 
 /// # Arguments
-/// * link - should be in the form of btp://0x1.near/account.testnet
-/// * relays - Relays can be added by using vectors
+/// * `link` - should be in the form of btp://0x1.near/account.testnet
+/// * `relays` - Relays can be added by using vectors
 /// Multiple relays can be added 
 
     pub fn add_relays(&mut self, link: BTPAddress, relays: Vec<AccountId>) {
@@ -27,8 +27,8 @@ impl BtpMessageCenter {
     }
 /// Adding the relay to the bmc
 ///  #Arguments
-/// * link - should be in the form of btp://0x1.near/account.testnet
-/// * relay - Account id should be given to add that inside the link 
+/// * `link` - should be in the form of btp://0x1.near/account.testnet
+/// * `relay` - Account id should be given to add that inside the link 
 /// 
     pub fn add_relay(&mut self, link: BTPAddress, relay: AccountId) {
         self.assert_have_permission();
@@ -43,8 +43,8 @@ impl BtpMessageCenter {
 /// Removing the relay from the bmc
 /// 
 /// # Arguments
-/// * link - Should be in the form of btp://0x1.near/account.testnet
-/// * relay - Account id should be given.
+/// * `link` - Should be in the form of btp://0x1.near/account.testnet
+/// * `relay` - Account id should be given.
 
     pub fn remove_relay(&mut self, link: BTPAddress, relay: AccountId) {
         self.assert_have_permission();
@@ -60,7 +60,7 @@ impl BtpMessageCenter {
     /// Getting the list of relays prsent inside the bmc
     /// Caller can be any
     /// #Arguments
-    /// *link - should be in the form of btp://0x1.near/account.testnet
+    /// * `link` - should be in the form of btp://0x1.near/account.testnet
     /// Fetch the relays respective to the given link
     pub fn get_relays(&self, link: BTPAddress) -> Value {
         self.assert_link_exists(&link);

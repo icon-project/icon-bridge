@@ -68,8 +68,8 @@ impl BtpMessageCenter {
     /// 
     /// # Arguments
     /// 
-    /// *network - Network name should be given on which we are about work. (example: btp)
-    /// *block_interval - should be in unsigned numbers
+    /// * `network` - Network name should be given on which we are about work. (example: btp)
+    /// * `block_interval` - should be in unsigned numbers
     /// 
     /// # Example
     /// 

@@ -90,10 +90,10 @@ impl BtpMessageCenter {
 
     /// We can set the existing link
     /// # Arguments
-    /// * link - It should be in the format btp://0x1.near/account.testnet
-    /// * block_interval - u64, will comvert the string slice into integer
-    /// * max_aggregation - u64, will comvert the string slice into integer
-    /// * delay_limit - u64, will comvert the string slice into integer  
+    /// * `link` - It should be in the format btp://0x1.near/account.testnet
+    /// * `block_interval` - u64, will comvert the string slice into integer
+    /// * `max_aggregation` - u64, will comvert the string slice into integer
+    /// * `delay_limit` - u64, will comvert the string slice into integer  
 
     pub fn set_link(
         &mut self,
@@ -130,7 +130,7 @@ impl BtpMessageCenter {
     /// Get the status of the link
     /// 
     /// # Arguement
-    /// * link - should be in the form btp://0x1.near/account.testnet
+    /// * `link` - should be in the form btp://0x1.near/account.testnet
     /// 
     pub fn get_status(&self, link: BTPAddress) -> LinkStatus {
         self.assert_link_exists(&link);
@@ -141,8 +141,8 @@ impl BtpMessageCenter {
     /// Setting the link height 
     /// 
     /// # Arguement
-    /// * link - should be in the form btp://0x1.near/account.testnet
-    /// * height - u64, converts the string slice to Integer
+    /// * `link` - should be in the form btp://0x1.near/account.testnet
+    /// * `height` - u64, converts the string slice to Integer
     /// 
 
     pub fn set_link_rx_height(&mut self, link: BTPAddress, height: u64) {

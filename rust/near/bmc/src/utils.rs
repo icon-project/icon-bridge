@@ -39,8 +39,8 @@ impl Utils for u128 {
     ///
     /// get rotate term function is created
     /// #Arguments
-    /// * max_agg - unsigned number
-    /// * scale - unsigned number
+    /// * `max_agg` - unsigned number
+    /// * `scale`- unsigned number
     /// Returns the unsigned number
     /// 
     fn get_rotate_term(max_agg: u128, scale: u128) -> u128 {
