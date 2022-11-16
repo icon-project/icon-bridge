@@ -1,10 +1,11 @@
+#![allow(unused)]
 pub mod error;
 mod traits;
 mod util;
 pub use traits::Prove;
 
 use crate::{
-    rlp::{self, Decodable, Encodable},
+    rlp::{self, encode, Decodable, Encodable},
     types::{Hash, Hasher},
 };
 use error::MptError;

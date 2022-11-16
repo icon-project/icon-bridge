@@ -1,13 +1,9 @@
-use near_sdk::serde::Serialize;
-use near_sdk::serde_json::Value;
-use std::collections::HashSet;
-use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
+use super::*;
 
 #[derive(Debug, Serialize)]
-pub struct HashedCollection<T: PartialEq + Hash + Eq>(pub HashSet<T>);
+pub struct HashedCollection<T: PartialEq + HASH + Eq>(pub HashSet<T>);
 
-impl<T: PartialEq + Hash + Eq> HashedCollection<T> {
+impl<T: PartialEq + HASH + Eq> HashedCollection<T> {
     pub fn new() -> HashedCollection<T> {
         Self(HashSet::new())
     }
@@ -16,7 +12,7 @@ impl<T: PartialEq + Hash + Eq> HashedCollection<T> {
     }
 }
 
-impl<T: PartialEq + Hash + Eq> PartialEq for HashedCollection<T> {
+impl<T: PartialEq + HASH + Eq> PartialEq for HashedCollection<T> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
@@ -25,8 +21,8 @@ impl<T: PartialEq + Hash + Eq> PartialEq for HashedCollection<T> {
 #[derive(Debug)]
 pub struct HashedValue(Value);
 
-impl Hash for HashedValue {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl HASH for HashedValue {
+    fn hash<H: HASHER>(&self, state: &mut H) {
         self.0.to_string().hash(state)
     }
 }

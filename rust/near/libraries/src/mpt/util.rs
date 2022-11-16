@@ -1,4 +1,4 @@
-use crate::types::Math;
+use super::*;
 
 #[allow(unused)]
 

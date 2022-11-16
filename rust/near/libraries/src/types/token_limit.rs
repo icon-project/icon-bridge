@@ -1,6 +1,4 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::UnorderedMap;
-use serde::{Deserialize, Serialize};
+use super::*;
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub struct TokenLimits(UnorderedMap<String, u128>);

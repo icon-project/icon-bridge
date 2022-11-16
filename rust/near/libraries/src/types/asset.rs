@@ -1,8 +1,5 @@
-use crate::types::btp_address::Network;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde::{Deserialize, Serialize};
+use super::*;
 
-use super::fungible_token::AssetMetadataExtras;
 pub type AssetId = [u8; 32];
 
 pub trait AssetMetadata {

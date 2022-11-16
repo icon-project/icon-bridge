@@ -1,7 +1,4 @@
-use super::BTPAddress;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LookupMap;
-use std::collections::HashSet;
+use super::*;
 
 #[derive(BorshDeserialize, BorshSerialize, Eq, PartialEq, PartialOrd, Hash, Clone)]
 pub enum Connection {

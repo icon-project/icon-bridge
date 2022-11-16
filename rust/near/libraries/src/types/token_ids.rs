@@ -1,9 +1,4 @@
-use super::AssetId;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::env;
-use near_sdk::serde::{Deserialize, Serialize};
-use std::convert::TryInto;
-use std::{collections::HashMap, hash::Hash};
+use super::*;
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub struct TokenIds(HashMap<String, AssetId>);

@@ -1,8 +1,4 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LookupMap, UnorderedSet};
-use near_sdk::AccountId;
-
-use super::AssetId;
+use super::*;
 
 type StorageBalance = u128;
 #[derive(BorshDeserialize, BorshSerialize)]

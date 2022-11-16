@@ -1,11 +1,4 @@
-use std::collections::HashMap;
-
-use crate::types::AssetId;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{self, LookupMap, UnorderedSet};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
-use near_sdk::Balance;
+use super::*;
 
 #[derive(
     Debug, Default, BorshDeserialize, BorshSerialize, PartialEq, Eq, Clone, Serialize, Deserialize,
@@ -120,7 +113,6 @@ mod tests {
     use crate::types::Math;
     use near_sdk::{env, AccountId};
     use std::convert::TryInto;
-    use std::vec;
 
     #[test]
     fn add_balance() {

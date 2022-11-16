@@ -1,10 +1,4 @@
-use super::{Address, BTPAddress};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LookupMap, UnorderedMap, UnorderedSet};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::serde_json::{json, Value};
-use std::collections::HashMap;
-use std::collections::HashSet;
+use super::*;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Hash)]
 pub struct Route {

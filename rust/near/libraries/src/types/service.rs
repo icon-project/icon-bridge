@@ -1,7 +1,4 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{TreeMap, UnorderedMap};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
+use super::*;
 
 #[derive(Serialize, Debug, Eq, PartialEq, Hash, Deserialize)]
 pub struct Service {

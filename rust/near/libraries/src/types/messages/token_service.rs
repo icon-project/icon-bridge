@@ -1,12 +1,4 @@
-use crate::rlp::{self, Decodable, Encodable};
-use crate::types::{
-    messages::BtpMessage, messages::Message, messages::SerializedMessage, TransferableAsset,
-};
-use btp_common::errors::BshError;
-use near_sdk::base64::{self, URL_SAFE_NO_PAD};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
-use std::convert::TryFrom;
+use super::*;
 
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 pub enum TokenServiceType {
@@ -263,7 +255,6 @@ pub struct TokenServiceMessage {
 
 #[cfg(test)]
 mod tests {
-    use btp_common::errors::BshError;
 
     use super::{
         BlackListType, BtpMessage, SerializedMessage, TokenServiceMessage, TokenServiceType,
@@ -349,6 +340,6 @@ mod tests {
 
     #[test]
     fn deserialize_transfer_request_message_btp_message() {
-        let btp_message = <BtpMessage<SerializedMessage>>::try_from("-QEfuDlidHA6Ly8weDIuaWNvbi9jeDY3ZTIzOGQ4YjFiY2Q4MTVmMzI0ZWQ3ZjU4NWExYWExODhkZDYzZDm4T2J0cDovLzB4MS5uZWFyLzQzODI3ZGZjMDZiZTZiNmQ2ZGEwNDhlYWIyOTdmOWEzNWJhZjIyYjJjZmE1MTFiNDZiMzk1ZTRiODkxNTFmZjODYnRzB7iM-IoAuIf4hapoeGRlYjY5Yjg0YjhjNGY5ZmZhNmU2MWJiNmM3MzMxMTBmMjRlODU0NGO4QDE2YTEyNTVhMDViMTAyZGQzMTY1NDJiODc4MGNmZWRmN2M2M2ZhYjJlODNjYzEyMmIwMWJmYzRiYzQyMDBlMWbX1otidHAtMHgyLUlDWIkAwcP4n1QPcKM".to_string()).unwrap();
+        let _btp_message = <BtpMessage<SerializedMessage>>::try_from("-QEfuDlidHA6Ly8weDIuaWNvbi9jeDY3ZTIzOGQ4YjFiY2Q4MTVmMzI0ZWQ3ZjU4NWExYWExODhkZDYzZDm4T2J0cDovLzB4MS5uZWFyLzQzODI3ZGZjMDZiZTZiNmQ2ZGEwNDhlYWIyOTdmOWEzNWJhZjIyYjJjZmE1MTFiNDZiMzk1ZTRiODkxNTFmZjODYnRzB7iM-IoAuIf4hapoeGRlYjY5Yjg0YjhjNGY5ZmZhNmU2MWJiNmM3MzMxMTBmMjRlODU0NGO4QDE2YTEyNTVhMDViMTAyZGQzMTY1NDJiODc4MGNmZWRmN2M2M2ZhYjJlODNjYzEyMmIwMWJmYzRiYzQyMDBlMWbX1otidHAtMHgyLUlDWIkAwcP4n1QPcKM".to_string()).unwrap();
     }
 }

@@ -1,12 +1,4 @@
-use super::relay::BmrStatus;
-use super::{BTPAddress, Math, Relays};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LookupMap, UnorderedMap, UnorderedSet};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{env, AccountId, BlockHeight};
-use std::collections::HashSet;
-use std::convert::TryInto;
-use std::ops::{Deref, DerefMut};
+use super::{relay::BmrStatus, *};
 
 #[derive(Debug, Default, BorshDeserialize, BorshSerialize, Eq, PartialEq)]
 pub struct Link {
@@ -162,7 +154,7 @@ impl Link {
                         let rotate_count = count.div_ceil(rotate_term);
                         *rotate_count.deref()
                     };
-
+                    #[allow(unused)]
                     let mut base_height: u64 = 0;
                     if rotate_count > 0_u64 {
                         base_height = self.rotate_height + ((rotate_count - 1) * rotate_term);
@@ -190,6 +182,7 @@ impl Link {
                         current_height - self.rotate_height
                     };
                     let rotate_count = count.div_ceil(rotate_term);
+                    #[allow(unused)]
                     let mut base_height: u64 = 0;
                     if *rotate_count > 0_u64 {
                         base_height = self.rotate_height + ((*rotate_count - 1) * rotate_term);

@@ -1,7 +1,4 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::UnorderedMap;
-
-use super::TransferableAsset;
+use super::*;
 
 #[derive(Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct Request {

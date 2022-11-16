@@ -1,7 +1,4 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::UnorderedSet;
-use near_sdk::AccountId;
-use std::collections::HashSet;
+use super::*;
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Owners(UnorderedSet<AccountId>);

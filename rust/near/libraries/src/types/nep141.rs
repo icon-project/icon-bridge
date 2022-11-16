@@ -1,9 +1,4 @@
-use near_contract_standards::fungible_token::metadata::{
-    FungibleTokenMetadata, FungibleTokenMetadataProvider,
-};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::json_types::Base64VecU8;
-use near_sdk::serde::{Deserialize, Serialize};
+use super::*;
 
 pub struct Nep141 {
     pub spec: String,

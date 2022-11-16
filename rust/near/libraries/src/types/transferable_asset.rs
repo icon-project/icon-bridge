@@ -1,8 +1,4 @@
-use super::Network;
-use crate::rlp::{self, Decodable, Encodable, encode};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde::{Deserialize, Serialize};
-
+use super::*;
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, Deserialize, Serialize)]
 pub struct TransferableAsset {
     name: String,
@@ -60,15 +56,18 @@ fn rlp_encode() {
     let transferable_asset = TransferableAsset {
         name: "btp-0x1.near-NEAR".to_string(),
         amount: u128::MAX,
-        fees: 1000000000000000000000000
+        fees: 1000000000000000000000000,
     };
 
     let e = encode(&transferable_asset);
     let rlp = rlp::Rlp::new(&e);
 
-    assert_eq!(rlp.as_val::<TransferableAsset>().unwrap(), TransferableAsset {
-        name: "btp-0x1.near-NEAR".to_string(),
-        amount: u128::MAX,
-        fees: 1000000000000000000000000
-    });
+    assert_eq!(
+        rlp.as_val::<TransferableAsset>().unwrap(),
+        TransferableAsset {
+            name: "btp-0x1.near-NEAR".to_string(),
+            amount: u128::MAX,
+            fees: 1000000000000000000000000
+        }
+    );
 }
