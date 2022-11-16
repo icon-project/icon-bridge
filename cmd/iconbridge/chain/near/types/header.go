@@ -74,39 +74,13 @@ type HeaderInnerRest struct {
 }
 
 func (h HeaderInnerRest) BorshSerialize() ([]byte, error) {
-	bps := make([]struct {
-		ValidatorStakeStructVersion ValidatorStakeStructVersion
-		AccountId                   AccountId
-		PublicKey                   PublicKey
-		Stake                       big.Int
-	}, 0)
-
-	for _, bp := range h.ValidatorProposals {
-		bps = append(bps, struct {
-			ValidatorStakeStructVersion ValidatorStakeStructVersion
-			AccountId                   AccountId
-			PublicKey                   PublicKey
-			Stake                       big.Int
-		}{
-			ValidatorStakeStructVersion: bp.ValidatorStakeStructVersion,
-			AccountId:                   bp.AccountId,
-			PublicKey:                   bp.PublicKey,
-			Stake:                       big.Int(bp.Stake),
-		})
-	}
-
 	return borsh.Serialize(struct {
 		ChunkReceiptsRoot    CryptoHash
 		ChunkHeadersRoot     CryptoHash
 		ChunkTransactionRoot CryptoHash
 		ChallengesRoot       CryptoHash
 		RandomValue          CryptoHash
-		ValidatorProposals   []struct {
-			ValidatorStakeStructVersion ValidatorStakeStructVersion
-			AccountId                   AccountId
-			PublicKey                   PublicKey
-			Stake                       big.Int
-		}
+		ValidatorProposals   BlockProducers
 		ChunkMask             []bool
 		GasPrice              big.Int
 		TotalSupply           big.Int
@@ -124,7 +98,7 @@ func (h HeaderInnerRest) BorshSerialize() ([]byte, error) {
 		ChunkTransactionRoot:  h.ChunkTransactionRoot,
 		ChallengesRoot:        h.ChallengesRoot,
 		RandomValue:           h.RandomValue,
-		ValidatorProposals:    bps,
+		ValidatorProposals:    h.ValidatorProposals,
 		ChunkMask:             h.ChunkMask,
 		GasPrice:              big.Int(h.GasPrice),
 		TotalSupply:           big.Int(h.TotalSupply),
