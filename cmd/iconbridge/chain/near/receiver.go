@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"reflect"
 	"sync"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -76,15 +77,32 @@ func (r *Receiver) MapReceipts(height uint64, source string, observable rxgo.Obs
 func (r *Receiver) ReceiveBlocks(height uint64, source string, processBlockNotification func(blockNotification *types.BlockNotification)) error {
 
 	return r.client().MonitorBlocks(height, math.MaxInt64, r.options.SyncConcurrency, func(observable rxgo.Observable) error {
-		result := r.MapReceipts(height, source, observable).Observe()
+		result := r.MapReceipts(height, source, observable).Scan(
+			func(_ context.Context, acc interface{}, bn interface{}) (interface{}, error) {
+				blockNotification, _ := bn.(*types.BlockNotification)
+
+				if r.verifier != nil {
+					if err := r.verifier.ValidateHeader(blockNotification); err != nil {
+						return nil, err
+					}
+				}
+
+				r.logger.WithFields(log.Fields{"height": blockNotification.Block().Height()}).Debug("block notification")
+
+				return blockNotification, nil
+			},
+		).Observe()
 
 		for item := range result {
 			if err := item.E; err != nil {
 				return err
 			}
 
-			bn, _ := item.V.(*types.BlockNotification)
-			processBlockNotification(bn)
+			if bn, ok := item.V.(*types.BlockNotification); ok {
+				processBlockNotification(bn)
+			} else {
+				return fmt.Errorf("expected *types.BlockNotification but got: %v", reflect.TypeOf(item.V))
+			}
 		}
 
 		return nil
@@ -129,15 +147,6 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		}
 
 		if err := r.ReceiveBlocks(opts.Height, r.source.ContractAddress(), func(blockNotification *types.BlockNotification) {
-			if r.verifier != nil {
-				err := r.verifier.ValidateHeader(blockNotification)
-				if err != nil {
-					_errCh <- err
-					return
-				}
-			}
-
-			r.logger.WithFields(log.Fields{"height": blockNotification.Block().Height()}).Debug("block notification")
 			receipts := make([]*chain.Receipt, 0)
 
 			for _, receipt := range blockNotification.Receipts() {

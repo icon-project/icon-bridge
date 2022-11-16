@@ -171,7 +171,3 @@ func (v *Verifier) ValidateHeader(blockNotification *types.BlockNotification) (e
 
 	return
 }
-
-func (v *Verifier) validateReceiptsOutcome() error {
-	return nil
-}
