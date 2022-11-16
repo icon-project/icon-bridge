@@ -12,7 +12,9 @@ use std::{
 };
 pub mod accounts;
 use accounts::*;
-use libraries::types::{AccountBalance, Asset, AssetItem, Math, TokenLimits, WrappedNativeCoin};
+use libraries::types::{
+    AccountBalance, Asset, AssetItem, AssetMetadata, Math, TokenLimits, WrappedNativeCoin,
+};
 mod token;
 use token::*;
 pub type Token = Asset<WrappedNativeCoin>;
@@ -229,4 +231,39 @@ fn query_token_metadata() {
     let result = contract.token(icx_coin.name().to_string());
 
     assert_eq!(icx_coin, result);
+}
+
+#[test]
+fn query_token_fee_ratio() {
+    let context = |v: AccountId, d: u128| (get_context(false, v, d));
+    testing_env!(
+        context(alice(), 0),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
+        Default::default(),
+        vec![PromiseResult::Successful(vec![1_u8])]
+    );
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
+    let mut contract = BtpTokenService::new(
+        "nativecoin".to_string(),
+        bmc(),
+        "0x1.near".into(),
+        nativecoin.clone(),
+    );
+    let icx_coin = <Token>::new(ICON_COIN.to_owned());
+    contract.register(icx_coin.clone());
+    let token_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+        .try_into()
+        .unwrap();
+    contract.register_token_callback(icx_coin.clone(), token_id);
+
+    let result = contract.get_fee_ratio(icx_coin.name().to_string());
+
+    assert_eq!(
+        (
+            icx_coin.metadata().fee_numerator().into(),
+            icx_coin.metadata().fixed_fee().into()
+        ),
+        result
+    );
 }

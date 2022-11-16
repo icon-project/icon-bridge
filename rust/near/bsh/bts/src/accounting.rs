@@ -218,4 +218,20 @@ impl BtpTokenService {
             None => U128::from(0),
         }
     }
+
+    pub fn get_fee_ratio(&self, token_name: String) -> (U128, U128) {
+        let token_id = self
+            .token_id(&token_name)
+            .map_err(|err| format!("{}", err))
+            .unwrap();
+        let token = self
+            .tokens
+            .get(&token_id)
+            .unwrap_or_else(|| env::panic_str(&format!("{}", BshError::TokenNotRegistered)));
+
+        (
+            token.metadata().fee_numerator().into(),
+            token.metadata().fixed_fee().into(),
+        )
+    }
 }
