@@ -20,14 +20,22 @@ impl BtpTokenService {
         self.assert_have_minimum_amount(amount);
         self.assert_coin_registered(&coin_account);
 
+        let initial_storage_usage = env::storage_usage();
+
         let coin_id = self.registered_coins.get(&coin_account).unwrap().clone();
         let mut balance = match self.balances.get(&sender_id, &coin_id) {
             Some(balance) => balance,
             None => AccountBalance::default(),
         };
-
         self.process_deposit(amount, &mut balance);
+
         self.balances.set(&sender_id, &coin_id, balance);
+
+        // calculate storage cost for the account
+        let total_storage_cost = self.calculate_storage_cost(initial_storage_usage);
+
+        self.storage_balances
+            .set(&sender_id, &coin_id, total_storage_cost.into());
 
         PromiseOrValue::Value(U128::from(0))
     }
@@ -39,20 +47,21 @@ impl BtpTokenService {
         self.assert_have_minimum_amount(amount);
         let coin_id = Self::hash_coin_id(&self.native_coin_name);
 
+        let initial_storage_usage = env::storage_usage();
         let mut balance = match self.balances.get(&account, &coin_id) {
             Some(balance) => balance,
             None => AccountBalance::default(),
         };
-
         self.process_deposit(amount, &mut balance);
         self.balances.set(&account, &coin_id, balance);
+
+        let total_storage_cost = self.calculate_storage_cost(initial_storage_usage);
+        self.storage_balances
+            .set(&account, &coin_id, total_storage_cost.into());
     }
 
     #[payable]
     pub fn withdraw(&mut self, coin_name: String, amount: U128) {
-        // To Prevent Spam
-        assert_one_yocto();
-
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
         let coin_id = self
@@ -63,20 +72,22 @@ impl BtpTokenService {
         self.assert_have_minimum_amount(amount);
         self.assert_have_sufficient_deposit(&account, &coin_id, amount, None);
 
+        self.assert_minimum_one_yocto();
+        // Check for attached storage usage cost
+        self.assert_have_sufficient_storage_deposit(&account, &coin_id);
+
         // Check if current account have sufficient balance
-        self.assert_have_sufficient_balance(1 + amount);
+        self.assert_have_sufficient_balance(amount);
 
         let coin = self.coins.get(&coin_id).unwrap();
 
         let transfer_promise = if coin.network() != &self.network {
-            ext_nep141::ext(coin.metadata().uri().to_owned().unwrap()).ft_transfer_with_storage_check(
-                account.clone(),
-                amount,
-                None,
-            )
+            ext_nep141::ext(coin.metadata().uri().to_owned().unwrap())
+                .with_attached_deposit(1)
+                .ft_transfer(account.clone(), amount.into(), None)
         } else {
             if let Some(uri) = coin.metadata().uri_deref() {
-                ext_ft::ext(uri).ft_transfer(
+                ext_ft::ext(uri).with_attached_deposit(1).ft_transfer(
                     account.clone(),
                     U128::from(amount),
                     None,
@@ -86,14 +97,12 @@ impl BtpTokenService {
             }
         };
 
-        transfer_promise
-            .then(Self::ext(env::current_account_id()).on_withdraw(
-                account.clone(),
-                amount,
-                coin_name,
-                coin_id,
-            ))
-            .then(Promise::new(account.clone()).transfer(1));
+        transfer_promise.then(Self::ext(env::current_account_id()).on_withdraw(
+            account.clone(),
+            amount,
+            coin_name,
+            coin_id,
+        ));
     }
 
     pub fn reclaim(&mut self, coin_name: String, amount: U128) {
@@ -187,6 +196,8 @@ impl BtpTokenService {
                     "token_name": coin_name
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
+
+                self.storage_balances.set(&account, &coin_id, 0)
             }
             PromiseResult::NotReady => {
                 log!("Not Ready")
@@ -202,6 +213,14 @@ impl BtpTokenService {
                 });
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
+        }
+    }
+
+    pub fn get_storage_balance(&self, account: AccountId, coin_name: String) -> U128 {
+        let coin_id = self.coin_id(&coin_name).unwrap();
+        match self.storage_balances.get(&account, &coin_id) {
+            Some(storage_cost) => return U128::from(storage_cost),
+            None => return U128::from(0),
         }
     }
 }

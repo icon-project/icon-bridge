@@ -3,7 +3,9 @@ use near_primitives::types::{Balance, Gas};
 use near_primitives::views::FinalExecutionStatus;
 use serde_json::Value;
 use tokio::runtime::Handle;
-use workspaces::{self, Account, AccountId, Contract, result::ExecutionSuccess, result::ExecutionFailure};
+use workspaces::{
+    self, result::ExecutionFailure, result::ExecutionSuccess, Account, AccountId, Contract,
+};
 
 pub fn call(
     context: &Context,
@@ -31,7 +33,11 @@ pub fn call(
                 request = request.deposit(deposit);
             }
 
-            request.transact().await.expect("Transaction Failure").into_result()
+            request
+                .transact()
+                .await
+                .expect("Transaction Failure")
+                .into_result()
         })
     })
 }
@@ -46,10 +52,7 @@ pub fn view(
     tokio::task::block_in_place(move || {
         handle.block_on(async {
             let result = contract
-                .view(
-                    method,
-                    value.unwrap_or_default().to_string().into_bytes(),
-                )
+                .view(method, value.unwrap_or_default().to_string().into_bytes())
                 .await;
             match result {
                 Ok(value) => Ok(value.json().unwrap()),

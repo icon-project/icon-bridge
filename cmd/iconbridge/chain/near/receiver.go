@@ -15,6 +15,10 @@ import (
 	"github.com/reactivex/rxgo/v2"
 )
 
+type ReceiverOptions struct {
+	SyncConcurrency uint `json:"syncConcurrency"`
+}
+
 type ReceiverConfig struct {
 	source      chain.BTPAddress
 	destination chain.BTPAddress
@@ -49,7 +53,7 @@ func NewReceiver(config ReceiverConfig, logger log.Logger, clients ...IClient) (
 	if len(clients) == 0 {
 		return nil, fmt.Errorf("nil clients")
 	}
-
+	
 	r := &Receiver{
 		clients:     clients,
 		logger:      logger,

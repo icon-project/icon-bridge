@@ -230,6 +230,7 @@ func getNewApi() (chain.ChainAPI, error) {
 		WrappedCoins:      []string{"btp-0x2.icon-ICX", "btp-0x2.icon-sICX", "btp-0x2.icon-bnUSD"},
 		NativeCoin:        "btp-0x61.bsc-BNB",
 		NetworkID:         "0x61.bsc",
+		GasLimit:          make(map[chain.GasLimitType]uint64),
 	})
 	if err != nil {
 		return nil, err

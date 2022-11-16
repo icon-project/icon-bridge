@@ -20,9 +20,10 @@ pub static BTS_CONTRACT_IS_INITIALZIED: fn(Context) -> Context = |mut context: C
             "native_coin": {
                 "metadata": {
                     "name": "NEAR",
+                    "label": "Native NEAR Token",
                     "symbol": "NEAR",
-                    "fee_numerator": "1000",
-                    "denominator": "10000000000000000000",
+                    "fee_numerator": "100",
+                    "fixed_fee": "155000000000000000000000",
                     "network": super::NEAR_NETWORK
                 }
             },

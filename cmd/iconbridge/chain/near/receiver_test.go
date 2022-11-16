@@ -34,21 +34,16 @@ func TestNearReceiver(t *testing.T) {
 					require.Nil(f, err)
 
 					if testData.Expected.Success != nil {
-						expected, Ok := (testData.Expected.Success).(struct {
-							Hash   string
-							Height uint64
-						})
-						require.True(f, Ok)
-
 						err = receiver.ReceiveBlocks(input.Offset, input.Source.ContractAddress(), func(blockNotification *types.BlockNotification) {
-							if expected.Height == uint64(blockNotification.Offset()) {
-								assert.Equal(f, expected.Hash, blockNotification.Block().Hash().Base58Encode())
-
-								receiver.StopReceivingBlocks()
-							}
+							assert.True(f, testData.Expected.Success.(func(*types.BlockNotification, func()) bool)(blockNotification, receiver.StopReceivingBlocks))
 						})
 						assert.Nil(f, err)
 					} else {
+						err = receiver.ReceiveBlocks(input.Offset, input.Source.ContractAddress(), func(blockNotification *types.BlockNotification) {
+							if err != nil {
+								assert.True(f, testData.Expected.Fail.(func(error) bool)(err))
+							}
+						})
 						assert.Error(f, err)
 					}
 				})
@@ -91,7 +86,7 @@ func TestNearReceiver(t *testing.T) {
 						assert.True(f, testData.Expected.Success.(func(chan *chain.Message) bool)(srcMsgCh))
 						assert.Nil(f, err)
 					} else {
-						assert.True(f, testData.Expected.Fail.(func(chan *chain.Message, <-chan error, error) bool)(srcMsgCh, errCh, err))
+						assert.True(f, testData.Expected.Fail.(func(<-chan error, error) bool)(errCh, err))
 					}
 				})
 			}

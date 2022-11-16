@@ -1,5 +1,7 @@
 use bts::BtpTokenService;
-use near_sdk::{env, json_types::U128, testing_env, AccountId, VMContext, test_utils::VMContextBuilder, Gas};
+use near_sdk::{
+    env, json_types::U128, test_utils::VMContextBuilder, testing_env, AccountId, Gas, VMContext,
+};
 pub mod accounts;
 use accounts::*;
 use libraries::types::{
@@ -13,7 +15,12 @@ use token::*;
 
 pub type Coin = Asset<WrappedNativeCoin>;
 
-fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u128, account_balance: u128) -> VMContext {
+fn get_context(
+    is_view: bool,
+    signer_account_id: AccountId,
+    attached_deposit: u128,
+    account_balance: u128,
+) -> VMContext {
     VMContextBuilder::new()
         .current_account_id(alice())
         .is_view(is_view)
@@ -31,9 +38,7 @@ fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u1
 fn handle_fee_gathering() {
     use libraries::types::AccumulatedAssetFees;
 
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(false, account_id, deposit, 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
     let destination =
@@ -47,6 +52,16 @@ fn handle_fee_gathering() {
     testing_env!(context(chuck(), 1000));
 
     contract.deposit();
+
+    let coin_id = contract.coin_id(nativecoin.name()).unwrap();
+
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
+
+    testing_env!(context(chuck(), storage_cost));
+
     contract.transfer(
         nativecoin.name().to_string(),
         destination.clone(),
@@ -123,9 +138,7 @@ fn handle_fee_gathering() {
 
 #[test]
 fn get_fee() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(false, account_id, deposit, 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
 
     let nativecoin = Coin::new(NATIVE_COIN.to_owned());
@@ -146,5 +159,4 @@ fn get_fee() {
     testing_env!(context(charlie(), 0));
     let result = contract.get_fee("NEAR".into(), U128(1000));
     assert_eq!(result, U128::from(11));
-
 }

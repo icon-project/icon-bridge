@@ -3,12 +3,6 @@ use super::{BMC_CONTRACT, BTS_CONTRACT};
 use serde_json::{from_value, json};
 use test_helper::types::Context;
 
-pub static BOB_IS_BTS_CONTRACT_OWNER: fn(Context) -> Context = |mut context: Context| {
-    let bsh_signer = context.contracts().get("bsh").to_owned();
-    context.accounts_mut().add("bob", &bsh_signer);
-    context
-};
-
 pub static BOB_INVOKES_TRANSFER_NATIVE_COIN_FORM_BSH: fn(Context) -> Context =
     |mut context: Context| {
         let signer = context.accounts().get("bob").to_owned();
@@ -22,12 +16,6 @@ pub static BOB_INVOKES_GET_BALANCE_FORM_BSH: fn(Context) -> Context = |mut conte
     BTS_CONTRACT.get_balance_of(context)
 };
 
-pub static BOB_INVOKES_REGISTER_NEW_COIN_FORM_BSH: fn(Context) -> Context =
-    |mut context: Context| {
-        let signer = context.accounts().get("bob").to_owned();
-        context.set_signer(&signer);
-        BTS_CONTRACT.register(context)
-    };
 
 pub static CHUCK_INVOKES_REGISTER_NEW_COIN_FORM_BSH: fn(Context) -> Context =
     |mut context: Context| {
@@ -48,23 +36,7 @@ pub static BOB_INVOKES_REMOVE_OWNER: fn(Context) -> Context = |mut context: Cont
     BTS_CONTRACT.remove_owner(context)
 };
 
-pub static BSH_OWNER_REGISTERS_NEW_COIN: fn(Context) -> Context = |mut context: Context| {
-    BOBS_ACCOUNT_IS_CREATED(context)
-        .pipe(BOB_IS_BTS_CONTRACT_OWNER)
-        .pipe(NEW_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM)
-        .pipe(BOB_INVOKES_REGISTER_NEW_COIN_FORM_BSH)
-};
 
-pub static NEW_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM: fn(Context) -> Context =
-    |mut context: Context| {
-        context.add_method_params(
-            "register",
-            json!({
-                "name":"coin1"
-            }),
-        );
-        context
-};
 
 pub static NEW_BSH_PERIPHERY_ADDRESS_IS_PROVIDED_AS_UPDATE_PERIPHERY_PARAM: fn(Context) -> Context =
     |mut context: Context| {

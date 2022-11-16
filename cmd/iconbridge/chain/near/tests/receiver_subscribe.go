@@ -274,20 +274,16 @@ func init() {
 				Fail    interface{}
 			}{
 				Success: nil,
-				Fail: func(srcMsg chan *chain.Message, output <-chan error, err error) bool {
+				Fail: func(output <-chan error, err error) bool {
 					result := false
 
 					if err != nil {
 						return true
 					}
 					go func() {
-						for {
-							select {
-							case <-srcMsg:
-							case err := <-output:
-								if err.Error() == "invalid event seq" {
-									result = true
-								}
+						for err := range output {
+							if err.Error() == "invalid event seq" {
+								result = true
 							}
 						}
 					}()

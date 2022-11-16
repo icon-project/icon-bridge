@@ -47,7 +47,6 @@ func newRequestAPI(cfg *chain.Config) (*requestAPI, error) {
 		return nil, errors.Wrapf(err, "rpc.Dial(%v)", cfg.URL)
 	}
 	cleth := ethclient.NewClient(clrpc)
-
 	caddr, ok := cfg.ContractAddresses[chain.BTS]
 	if !ok {
 		return nil, fmt.Errorf("contractNameToAddress doesn't include %v", chain.BTS)

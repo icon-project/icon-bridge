@@ -101,6 +101,7 @@ mod tests {
         let mut tokens = Assets::new();
         let native_coin = WrappedNativeCoin::new(
             "ABC Asset".to_string(),
+            "ABC Asset".to_string(),
             "ABC".to_string(),
             None,
             "0x1.near".to_string(),
@@ -136,6 +137,7 @@ mod tests {
         let mut tokens = Assets::new();
         let native_coin = WrappedNativeCoin::new(
             "ABC Asset".to_string(),
+            "ABC Asset".to_string(),
             "ABC".to_string(),
             None,
             "0x1.near".to_string(),
@@ -170,6 +172,7 @@ mod tests {
     fn remove_token() {
         let mut tokens = Assets::new();
         let native_coin = WrappedNativeCoin::new(
+            "ABC Asset".to_string(),
             "ABC Asset".to_string(),
             "ABC".to_string(),
             None,
@@ -227,6 +230,7 @@ mod tests {
         let mut tokens = <Assets<WrappedNativeCoin>>::new();
         let native_coin_1 = WrappedNativeCoin::new(
             "ABC Asset".to_string(),
+            "ABC Asset".to_string(),
             "ABC".to_string(),
             None,
             "0x1.near".to_string(),
@@ -235,6 +239,7 @@ mod tests {
             None,
         );
         let native_coin_2 = WrappedNativeCoin::new(
+            "DEF Asset".to_string(),
             "DEF Asset".to_string(),
             "DEF".to_string(),
             None,
@@ -278,6 +283,7 @@ mod tests {
     fn to_vec_tokens_value() {
         let mut tokens = <Assets<WrappedNativeCoin>>::new();
         let native_coin = WrappedNativeCoin::new(
+            "ABC Asset".to_string(),
             "ABC Asset".to_string(),
             "ABC".to_string(),
             None,

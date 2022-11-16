@@ -1,5 +1,8 @@
 use bts::BtpTokenService;
-use near_sdk::{env, json_types::U128, testing_env, AccountId, PromiseResult, VMContext, test_utils::VMContextBuilder, Gas, VMConfig, RuntimeFeesConfig};
+use near_sdk::{
+    env, json_types::U128, test_utils::VMContextBuilder, testing_env, AccountId, Gas,
+    PromiseResult, RuntimeFeesConfig, VMConfig, VMContext,
+};
 use std::{collections::HashSet, convert::TryInto};
 pub mod accounts;
 use accounts::*;
@@ -32,9 +35,7 @@ fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u1
 fn handle_transfer_mint_registered_icx() {
     use std::vec;
 
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(false, account_id, deposit)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit);
 
     testing_env!(
         context(alice(), 0),
@@ -92,8 +93,42 @@ fn handle_transfer_mint_registered_icx() {
         coin_id,
         icx_coin.symbol().to_string(),
         destination.account_id(),
+        Ok(U128::from(700000)),
     );
 
     let result = contract.balance_of(destination.account_id(), icx_coin.name().to_string());
     assert_eq!(result, U128::from(900));
+}
+
+#[test]
+fn message_generator() {
+    let icx = <Coin>::new(ICON_COIN.to_owned());
+
+    let btp_message = BtpMessage::new(
+        BTPAddress::new("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315".to_string()),
+        BTPAddress::new(
+            "btp://0x2.near/7270a79be789d770f2de015047684e2806597eeee96ee3ca87b179c6399deaaf"
+                .to_string(),
+        ),
+        "bts".to_string(),
+        WrappedI128::new(1),
+        vec![],
+        Some(TokenServiceMessage::new(
+            TokenServiceType::RequestTokenTransfer {
+                sender: "cx1ad6fcc465d1b8644ca375f9e10babeea4c38315".to_string(),
+                receiver: "chuck".to_string(),
+                assets: vec![TransferableAsset::new(
+                    "btp-0x7.icon-icx".to_string(),
+                    100000000000000,
+                    99,
+                )],
+            },
+        )),
+    );
+    let btp_messages = <BtpMessage<SerializedMessage>>::try_from(&btp_message).unwrap();
+    println!("{:?}", String::from(&btp_messages));
+
+    let token_s = <BtpMessage<SerializedMessage>>::try_from(String::from(&btp_messages)).unwrap();
+
+    println!("{:?}", token_s)
 }

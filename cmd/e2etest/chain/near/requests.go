@@ -309,8 +309,8 @@ func (r *requestAPI) transferIntraChain(coinName, senderKey, recepientAddress st
 		txnHash, err = r.transferNativeIntraChain(senderKey, recepientAddress, amount)
 	} else if caddr, ok := r.nativeTokensAddr[coinName]; ok {
 		txnHash, err = r.transferTokenIntraChain(senderKey, recepientAddress, amount, caddr)
-	} else if _, ok := r.wrappedCoinsAddr[coinName]; ok {
-		err = fmt.Errorf("IntraChain transfers not supported for wrapped coins. Got %v", coinName)
+	} else if caddr, ok := r.wrappedCoinsAddr[coinName]; ok {
+		txnHash, err = r.transferTokenIntraChain(senderKey, recepientAddress, amount, caddr)
 	} else {
 		err = fmt.Errorf("coin %v not amongst registered coins", coinName)
 	}

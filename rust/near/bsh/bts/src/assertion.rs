@@ -194,12 +194,37 @@ impl BtpTokenService {
         }
         Ok(())
     }
-    pub fn ensure_value_within_limit(&self, coin_name: &str, value: &u128) -> Result<(), BshError> {
+
+    pub fn ensure_amount_within_limit(&self, coin_name: &str, value: u128) -> Result<(), BshError> {
         if let Some(token_limit) = self.token_limits.get(coin_name) {
             if token_limit > value {
                 return Err(BshError::LimitExceed);
             }
         }
         Ok(())
+    }
+
+    pub fn assert_have_sufficient_storage_deposit(&self, account: &AccountId, asset_id: &AssetId) {
+        if let Some(storage_balance) = self.storage_balances.get(account, asset_id) {
+            let attached_deposit = env::attached_deposit();
+            require!(
+                attached_deposit > storage_balance,
+                format!("{}", BshError::NotMinimumDeposit)
+            );
+        }
+    }
+
+    pub fn assert_have_sufficient_storage_deposit_for_batch(&self, storage_balance: u128) {
+        require!(
+            env::attached_deposit() > storage_balance,
+            format!("{}", BshError::NotMinimumDeposit)
+        );
+    }
+
+    pub fn assert_minimum_one_yocto(&self) {
+        require!(
+            env::attached_deposit() >= 1,
+            format!("{}", BshError::RequiredMinimumOneYoctoNear)
+        );
     }
 }
