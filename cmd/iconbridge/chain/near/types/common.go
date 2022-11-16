@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"math"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,16 @@ const (
 	ED25519   = 0
 	SECP256K1 = 1
 )
+
+type Height uint64
+
+func (h *Height) Int() int {
+	if *h > math.MaxInt {
+		panic("overflow")
+	}
+
+	return int(*h)
+}
 
 type AccountId string
 

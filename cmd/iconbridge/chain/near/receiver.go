@@ -65,13 +65,13 @@ func NewReceiver(config ReceiverConfig, logger log.Logger, clients ...IClient) (
 	return r, nil
 }
 
-func (r *Receiver) MapReceipts(height uint64, source string, observable rxgo.Observable) rxgo.Observable {
+func (r *Receiver) MapReceipts(height types.Height, source string, observable rxgo.Observable) rxgo.Observable {
 	return observable.Map(
 		r.client().FetchReceipts,
 		rxgo.WithPool(r.options.SyncConcurrency),
 		rxgo.WithContext(context.WithValue(context.Background(), Source{}, source)),
 	).Serialize(
-		int(height),
+		height.Int(),
 		r.client().SerializeBlocks,
 	).Filter(
 		r.client().FilterUnknownBlocks,
