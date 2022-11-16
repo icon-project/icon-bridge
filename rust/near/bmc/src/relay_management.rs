@@ -1,5 +1,4 @@
 use super::*;
-use near_sdk::BlockHeight;
 
 #[near_bindgen]
 impl BtpMessageCenter {

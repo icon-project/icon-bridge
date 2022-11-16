@@ -1,27 +1,5 @@
 //! BTP Message Center
-use btp_common::errors::{BmcError, BshError, BtpException, Exception};
-use libraries::{
-    emit_message,
-    types::{
-        messages::{
-            BmcServiceMessage, BmcServiceType, BtpMessage, ErrorMessage, SerializedBtpMessages,
-            SerializedMessage,
-        },
-        Address, BTPAddress, BmcEvent, Connection, Connections, HashedCollection, Link, LinkStatus,
-        Links, Math, Network, Owners, RelayStatus, Routes, Service, Services,
-    },
-};
-
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde_json::{to_value, Value};
-use near_sdk::AccountId;
-use near_sdk::{
-    env,
-    json_types::{Base64VecU8, U128, U64},
-    log, near_bindgen, require, serde_json, Gas, PanicOnDefault, PromiseResult,
-};
-use std::convert::TryInto;
-
+//!
 mod assertion;
 mod estimate;
 mod external;
@@ -33,8 +11,40 @@ mod relay_management;
 mod route_management;
 mod service_management;
 mod types;
-use external::*;
+
+#[cfg(feature = "testable")]
+use libraries::types::{BtpError, HashedCollection};
+#[cfg(feature = "testable")]
+use near_sdk::{
+    collections::LazyOption,
+    json_types::{Base64VecU8, U128, U64},
+};
+
+use crate::types::Event;
+use std::convert::TryInto;
 pub use types::RelayMessage;
+
+use btp_common::errors::{BmcError, BshError, BtpException, Exception};
+
+use libraries::{
+    emit_error, emit_message,
+    types::{
+        messages::{
+            BmcServiceMessage, BmcServiceType, BtpMessage, ErrorMessage, SerializedBtpMessages,
+            SerializedMessage,
+        },
+        Address, BTPAddress, BmcEvent, Connection, Connections, Link, LinkStatus, Links, Math,
+        Owners, RelayStatus, Routes, Service, Services, WrappedI128,
+    },
+};
+use near_sdk::{
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    env, near_bindgen, require, serde_json,
+    serde_json::{to_value, Value},
+    AccountId, Balance, Gas, PanicOnDefault, PromiseResult,
+};
+
+use external::*;
 
 const SERVICE: &str = "bmc";
 

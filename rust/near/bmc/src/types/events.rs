@@ -1,13 +1,4 @@
-use libraries::{
-    rlp::{self, Decodable},
-    types::{
-        messages::{BtpMessage, SerializedMessage},
-        BTPAddress,
-    },
-    BytesMut,
-};
-use near_sdk::base64::{self, URL_SAFE_NO_PAD};
-use std::{convert::TryFrom, ops::Deref};
+use super::*;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Event {

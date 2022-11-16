@@ -1,11 +1,4 @@
-use std::{convert::TryFrom, ops::Neg};
-
 use super::*;
-use crate::types::{Event, RelayMessage};
-use libraries::{
-    emit_error,
-    types::{BtpError, WrappedI128},
-};
 
 #[near_bindgen]
 impl BtpMessageCenter {
@@ -198,6 +191,7 @@ impl BtpMessageCenter {
         self.send_message(&self.btp_address.clone(), destination, btp_message.into())
     }
 
+    #[allow(unused)]
     fn handle_btp_error_message(
         &self,
         source: &BTPAddress,
