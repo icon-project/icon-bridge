@@ -11,7 +11,7 @@ pub mod accounts;
 use accounts::*;
 use libraries::types::{
     messages::BmcServiceMessage, messages::BmcServiceType, messages::BtpMessage,
-    messages::SerializedMessage, Address, BTPAddress, HashedCollection, HashedValue, WrappedI128,
+    messages::SerializedMessage, BTPAddress, HashedCollection, HashedValue, WrappedI128,
 };
 
 fn get_context(input: Vec<u8>, is_view: bool, signer_account_id: AccountId) -> VMContext {

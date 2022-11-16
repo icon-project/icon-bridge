@@ -8,7 +8,7 @@ use near_sdk::{
 };
 pub mod accounts;
 use accounts::*;
-use libraries::types::{Address, BTPAddress, VerifierResponse, VerifierStatus};
+use libraries::types::{BTPAddress, VerifierResponse, VerifierStatus};
 
 fn get_context(
     input: Vec<u8>,
