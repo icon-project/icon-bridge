@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -19,7 +19,7 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/e2etest/chain/bsc/abi/bmcperiphery"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/mocks"
-	bscTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/types"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/types"
 	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
@@ -29,9 +29,7 @@ import (
 )
 
 const (
-	ICON_BMC          = "btp://0x7.icon/cx8a6606d526b96a16e6764aee5d9abecf926689df"
 	BSC_BMC_PERIPHERY = "btp://0x61.bsc/0xB4fC4b3b4e3157448B7D279f06BC8e340d63e2a9"
-	BlockHeight       = 21447824
 )
 
 func newTestReceiver(t *testing.T, src, dst chain.BTPAddress) chain.Receiver {
@@ -503,7 +501,7 @@ func Test_MockReceiveLoop(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	err := rx.receiveLoop(ctx, &BnOptions{StartHeight: 23033451, Concurrency: 1},
-		func(v *BlockNotification) error {
+		func(v *types.BlockNotification) error {
 			if v.HasBTPMessage != nil && *v.HasBTPMessage {
 				if !blockHasBTPMessage[int(v.Height.Int64())] {
 					return fmt.Errorf("Expected hasBTPMessage %v Got %v", blockHasBTPMessage[int(v.Height.Int64())], *v.HasBTPMessage)
@@ -721,7 +719,7 @@ func TestClient_MockMedianGasPrice(t *testing.T) {
 func TestClient_MockBlockReceipts(t *testing.T) {
 	blkHash := ethCommon.HexToHash("0x941bf8efb2664191d52fdc4745ea07129aa6032097c0a434ac0e652f592ad00f")
 	//blkNumber := 23033400
-	blk := &bscTypes.Block{
+	blk := &types.Block{
 		Transactions: []string{"0x4d2c7826773b5e9a74eebff4fa6cba796faf6e318c4710a45b4afba7830de5da", "0x33f061ca51140df25c48d52e867df338b3771b431035d7b8bd2045346fec0372"},
 		GasUsed:      "0x203c27",
 	}
