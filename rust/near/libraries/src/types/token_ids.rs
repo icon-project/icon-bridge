@@ -1,12 +1,17 @@
 use super::*;
 
-#[derive(BorshDeserialize, BorshSerialize, Debug)]
+#[derive(BorshDeserialize, BorshSerialize, Debug, Clone)]
 pub struct TokenIds(HashMap<String, AssetId>);
 
 #[derive(Serialize, Debug, Eq, PartialEq, Hash, Deserialize)]
 pub struct TokenProperty {
     token_name: String,
     token_id: AssetId,
+}
+impl TokenProperty {
+    pub fn get_token_id(&self) -> &AssetId {
+        &self.token_id
+    }
 }
 
 impl TokenIds {

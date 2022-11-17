@@ -137,7 +137,7 @@ impl BtpTokenService {
     }
 
     pub fn assert_token_does_not_exists(&self, token: &Token) {
-        let token_id = self.token_ids.get(&self.native_coin_name);
+        let token_id = self.token_ids.get(token.name());
 
         require!(token_id.is_none(), format!("{}", BshError::TokenExist))
     }
@@ -172,8 +172,10 @@ impl BtpTokenService {
     }
 
     pub fn ensure_token_exists(&self, token_name: &str) -> Result<(), BshError> {
-        if !self.token_ids.get(token_name) {
-            return Err(BshError::TokenNotExist { message: token_name.to_owned() });
+        if !self.token_ids.get(token_name).is_some() {
+            return Err(BshError::TokenNotExist {
+                message: token_name.to_owned(),
+            });
         }
 
         Ok(())

@@ -2,18 +2,12 @@ use super::*;
 
 #[near_bindgen]
 impl BtpTokenService {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * Fee Management  * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
     pub fn accumulated_fees(&self) -> Vec<AccumulatedAssetFees> {
         self.tokens
             .to_vec()
             .iter()
             .map(|token| {
-                let token_id = *self.token_ids.get(&self.native_coin_name).unwrap();
+                let token_id = *self.token_ids.get(&token.name).unwrap();
                 let token_fee = self.token_fees.get(&token_id).unwrap();
                 let token = self.tokens.get(&token_id).unwrap();
 
@@ -104,7 +98,7 @@ impl BtpTokenService {
         token: &Asset<FungibleToken>,
     ) -> Result<u128, String> {
         let mut fee = (amount * token.metadata().fee_numerator()) / FEE_DENOMINATOR;
-        
+
         fee.add(token.metadata().fixed_fee()).map(|fee| *fee)
     }
 }

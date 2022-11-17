@@ -175,7 +175,7 @@ fn set_token_limit() {
     );
     let tokens = vec!["NEAR".to_string()];
     let limits = vec![10000000000000000000000_u128];
-    contract.set_token_limit(tokens, limits).unwrap();
+    contract.set_token_limit(&tokens, &limits).unwrap();
     let token_limits = contract.get_token_limit("NEAR".to_string());
 
     assert_eq!(token_limits, U128(10000000000000000000000))
@@ -194,11 +194,11 @@ fn update_token_limit() {
     );
     let tokens = vec!["NEAR".to_string()];
     let limits = vec![10000000000000000000000_u128];
-    contract.set_token_limit(tokens, limits).unwrap();
+    contract.set_token_limit(&tokens, &limits).unwrap();
 
     let tokens = vec!["NEAR".to_string()];
     let limits = vec![10000000000000000000003_u128];
-    contract.set_token_limit(tokens, limits).unwrap();
+    contract.set_token_limit(&tokens, &limits).unwrap();
 
     let token_limits = contract.get_token_limit("NEAR".to_string());
     assert_eq!(token_limits, U128(10000000000000000000003))

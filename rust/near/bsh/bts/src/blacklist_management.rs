@@ -12,7 +12,7 @@ impl BtpTokenService {
 }
 
 impl BtpTokenService {
-    pub fn add_to_blacklist(&mut self, users: Vec<AccountId>, network: &str) {
+    pub fn add_to_blacklist(&mut self, users: Vec<AccountId>) {
         users
             .iter()
             .for_each(|user| self.blacklisted_accounts.add(user));
@@ -43,18 +43,23 @@ impl BtpTokenService {
         &mut self,
         request_type: &BlackListType,
         addresses: &[String],
-        network: &str
+        network: &str,
     ) -> Result<Option<TokenServiceMessage>, BshError> {
         let mut non_valid_addresses: Vec<String> = Vec::new();
         let mut valid_addresses: Vec<AccountId> = Vec::new();
 
-        addresses
-            .iter()
-            .clone()
-            .for_each(|address| match AccountId::try_from(address.clone()) {
-                Ok(account_id) => valid_addresses.push(account_id),
-                Err(_) => non_valid_addresses.push(address.to_string()),
+        if network == self.network {
+            addresses.iter().clone().for_each(|address| {
+                match AccountId::try_from(address.clone()) {
+                    Ok(account_id) => valid_addresses.push(account_id),
+                    Err(_) => non_valid_addresses.push(address.to_string()),
+                }
             });
+        } else {
+            return Err(BshError::InvalidAddress {
+                message: network.to_string(),
+            });
+        }
 
         if !non_valid_addresses.is_empty() {
             return Err(BshError::InvalidAddress {
@@ -64,7 +69,7 @@ impl BtpTokenService {
 
         match request_type {
             BlackListType::AddToBlacklist => {
-                self.add_to_blacklist(valid_addresses, network);
+                self.add_to_blacklist(valid_addresses);
 
                 Ok(Some(TokenServiceMessage::new(
                     TokenServiceType::ResponseBlacklist {
@@ -74,7 +79,7 @@ impl BtpTokenService {
                 )))
             }
             BlackListType::RemoveFromBlacklist => {
-                self.remove_from_blacklist(valid_addresses, network)?;
+                self.remove_from_blacklist(valid_addresses)?;
 
                 Ok(Some(TokenServiceMessage::new(
                     TokenServiceType::ResponseBlacklist {

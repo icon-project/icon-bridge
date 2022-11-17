@@ -137,7 +137,7 @@ impl BtpTokenService {
                     sender: _,
                     ref receiver,
                     ref assets,
-                } => self.handle_token_transfer(receiver, assets),
+                } => self.handle_token_transfer(btp_message.source(), receiver, assets),
                 TokenServiceType::ResponseHandleService {
                     ref code,
                     ref message,
@@ -167,30 +167,23 @@ impl BtpTokenService {
                     token_names,
                     token_limits,
                     network: _,
-                } => match self.set_token_limit(token_names, token_limits) {
-                    Ok(()) => {
-                        let response =
-                            TokenServiceMessage::new(TokenServiceType::ResponseChangeTokenLimit {
-                                code: 0,
-                                message: "ChangeTokenLimit".to_string(),
-                            });
-
-                        self.send_response(btp_message.serial_no(), btp_message.source(), response);
-
-                        Ok(None)
-                    }
-                    Err(err) => {
-                        let response =
+                } => self
+                    .handle_request_change_token_limit(token_names, token_limits)
+                    .or_else(|error| -> Result<Option<TokenServiceMessage>, BshError> {
+                        self.send_response(
+                            btp_message.serial_no(),
+                            btp_message.source(),
                             TokenServiceMessage::new(TokenServiceType::ResponseChangeTokenLimit {
                                 code: 1,
-                                message: err.to_string(),
-                            });
+                                message: format!("{}", error),
+                            }),
+                        );
 
-                        self.send_response(btp_message.serial_no(), btp_message.source(), response);
+                        #[cfg(feature = "testable")]
+                        env::panic_str(error.to_string().as_str());
 
                         Ok(None)
-                    }
-                },
+                    }),
                 TokenServiceType::UnknownType => {
                     log!(
                         "Unknown Response: from {} for serial_no {}",

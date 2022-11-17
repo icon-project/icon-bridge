@@ -2,12 +2,6 @@ use super::*;
 
 #[near_bindgen]
 impl BtpTokenService {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * Token Management  * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
     /// Register Token, Accept Token meta(name, symbol, network, denominator) as parameters
     // TODO: Complete Documentation
     #[payable]
@@ -18,7 +12,7 @@ impl BtpTokenService {
 
         let promise = if token.network() == &self.network {
             env::promise_create(
-                &token.metadata().uri_deref().expect("Token Account Missing"),
+                token.metadata().uri_deref().expect("Token Account Missing"),
                 "storage_deposit",
                 json!({}).to_string().as_bytes(),
                 env::attached_deposit(),
@@ -226,13 +220,24 @@ impl BtpTokenService {
     }
 
     pub fn get_token_limits(&self) -> Vec<TokenLimit> {
-        self.token_limits.to_vec()
+        self.token_ids
+            .to_vec()
+            .into_iter()
+            .map(|x| {
+                let token = self.tokens.get(x.get_token_id()).unwrap();
+                TokenLimit::new(
+                    token.name().to_string(),
+                    token.metadata.token_limit().unwrap().clone(),
+                )
+            })
+            .collect()
     }
 
     pub fn get_token_limit(&self, token_name: String) -> U128 {
-        self.token_limits
-            .get(&token_name)
-            .map(U128)
+        let token_id = self.token_ids.get(&token_name).unwrap();
+        self.tokens
+            .get(&token_id)
+            .map(|token| U128(token.metadata().token_limit().unwrap()))
             .unwrap_or_else(|| env::panic_str(&format!("{}", BshError::LimitNotSet)))
     }
 }
@@ -296,17 +301,21 @@ impl BtpTokenService {
         let mut unregistered_tokens: Vec<String> = Vec::new();
 
         let token_ids = token_names
-            .iter()
-            .map(|token| *self.token_ids.get(token).unwrap_or_default())
+            .into_iter()
+            .map(|token| self.token_ids.get(token).unwrap().clone())
             .enumerate()
-            .filter(|(index, token)| {
-                return if !self.ensure_token_exists(assets[index.to_owned()].name()).is_ok() {
-                    unregistered_tokens.push(assets[index.to_owned()].name().to_owned());
+            .filter(|(index, _)| {
+                return if !self
+                    .ensure_token_exists(&token_names[index.to_owned()])
+                    .is_ok()
+                {
+                    unregistered_tokens.push(token_names[index.to_owned()].to_owned());
                     false
                 } else {
                     true
                 };
-            });
+            })
+            .collect::<Vec<(usize, AssetId)>>();
 
         if !unregistered_tokens.is_empty() {
             return Err(BshError::TokenNotExist {
@@ -314,11 +323,14 @@ impl BtpTokenService {
             });
         }
 
-        for (index, token_name) in token_ids {
+        for (index, token_id) in token_ids {
             let mut token = self.tokens.get(&token_id).unwrap();
 
-            token.metadata_mut().token_limit_mut().clone_from(&Some(token_limits[index]));
-            
+            token
+                .metadata_mut()
+                .token_limit_mut()
+                .clone_from(&Some(token_limits[index]));
+
             self.tokens.set(&token_id, &token)
         }
 
@@ -347,5 +359,23 @@ impl BtpTokenService {
                 message: "ChangeTokenLimit".to_string(),
             },
         )))
+    }
+
+    pub fn validate_transfer_restrictions(
+        &self,
+        network: &str,
+        token: &Asset<FungibleToken>,
+        value: u128,
+        to_address: &str,
+    ) -> Result<(), BshError> {
+        self.ensure_user_not_blacklisted(&to_address, &network)?;
+
+        if let Some(limit) = token.metadata().token_limit() {
+            if value > *limit {
+                return Err(BshError::LimitExceed);
+            }
+        }
+
+        Ok(())
     }
 }

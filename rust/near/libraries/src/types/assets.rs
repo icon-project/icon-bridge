@@ -103,6 +103,7 @@ mod tests {
             10000,
             10000,
             None,
+            Some(10000),
         );
 
         tokens.add(
@@ -139,6 +140,7 @@ mod tests {
             10000,
             10000,
             None,
+            None,
         );
 
         tokens.add(
@@ -174,6 +176,7 @@ mod tests {
             "0x1.near".to_string(),
             10000,
             10000,
+            None,
             None,
         );
 
@@ -232,6 +235,7 @@ mod tests {
             10000,
             10000,
             None,
+            None,
         );
         let native_coin_2 = WrappedNativeCoin::new(
             "DEF Asset".to_string(),
@@ -241,6 +245,7 @@ mod tests {
             "0x1.bsc".to_string(),
             10000,
             10000,
+            None,
             None,
         );
 
@@ -285,6 +290,7 @@ mod tests {
             "0x1.near".to_string(),
             10000,
             10000,
+            None,
             None,
         );
         tokens.add(

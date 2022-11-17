@@ -2,12 +2,6 @@ use super::*;
 
 #[near_bindgen]
 impl BtpTokenService {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * Owner Management  * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
     /// Add another owner
     /// Caller must be an owner of BTP network
     pub fn add_owner(&mut self, account: AccountId) {

@@ -10,6 +10,15 @@ impl BtpTokenService {
             .token_id(&token_name)
             .map_err(|err| format!("{}", err))
             .unwrap();
+
+        self.check_restriction(
+            token_name.clone(),
+            sender_id.to_string(),
+            destination.contract_address().unwrap().to_string(),
+            amount,
+        )
+        .map_err(|err| format!("{}", err))
+        .unwrap();
         //check for enough attached deposit to bear storage cost
         self.assert_have_sufficient_storage_deposit(&sender_id, &token_id);
         let asset = self
@@ -166,7 +175,7 @@ impl BtpTokenService {
         assets: &[TransferableAsset],
     ) {
         assets.iter().for_each(|asset| {
-            let token_id = *self.token_ids.get(&self.native_coin_name).unwrap();
+            let token_id = self.token_id(asset.name()).unwrap();
             let token = self.tokens.get(&token_id).unwrap();
             let mut token_fee = self.token_fees.get(&token_id).unwrap().to_owned();
 
@@ -208,7 +217,7 @@ impl BtpTokenService {
         assets: &[TransferableAsset],
     ) {
         assets.iter().for_each(|asset| {
-            let token_id = *self.token_ids.get(&self.native_coin_name).unwrap();
+            let token_id = self.token_id(asset.name()).unwrap();
             let mut token_fee = self.token_fees.get(&token_id).unwrap().to_owned();
             let mut sender_balance = self.balances.get(sender_id, &token_id).unwrap();
             sender_balance
@@ -239,6 +248,7 @@ impl BtpTokenService {
 
     pub fn handle_token_transfer(
         &mut self,
+        message_source: &BTPAddress,
         receiver_id: &String,
         assets: &[TransferableAsset],
     ) -> Result<Option<TokenServiceMessage>, BshError> {
@@ -252,10 +262,18 @@ impl BtpTokenService {
 
         let token_ids: Vec<(usize, TokenId)> = assets
             .iter()
-            .map(|asset| *self.token_ids.get(&asset.name()).unwrap_or_default())
+            .map(|asset| {
+                self.token_ids
+                    .get(&asset.name())
+                    .map(|id| *id)
+                    .unwrap_or_default()
+            })
             .enumerate()
-            .filter(|(index, token)| {
-                return if !self.ensure_token_exists(assets[index.to_owned()].name()).is_ok() {
+            .filter(|(index, _)| {
+                return if !self
+                    .ensure_token_exists(assets[index.to_owned()].name())
+                    .is_ok()
+                {
                     unregistered_tokens.push(assets[index.to_owned()].name().to_owned());
                     false
                 } else {
@@ -277,8 +295,13 @@ impl BtpTokenService {
             })
             .collect::<Vec<(usize, TokenId, Token)>>();
 
-        let transferable =
-            self.is_tokens_transferable(&env::current_account_id(), &receiver_id, &tokens, assets);
+        let transferable = self.is_tokens_transferable(
+            &message_source,
+            &env::current_account_id(),
+            &receiver_id,
+            &tokens,
+            assets,
+        );
         if transferable.is_err() {
             return Err(BshError::Reverted {
                 message: format!("Coins not transferable: {}", transferable.unwrap_err()),
@@ -313,6 +336,7 @@ impl BtpTokenService {
 
     fn is_tokens_transferable(
         &self,
+        source: &BTPAddress,
         sender_id: &AccountId,
         receiver_id: &AccountId,
         tokens: &[(usize, TokenId, Asset<FungibleToken>)],
@@ -321,15 +345,15 @@ impl BtpTokenService {
         tokens
             .iter()
             .map(|(index, token_id, token)| -> Result<(), String> {
-                self.ensure_user_not_blacklisted(receiver_id)?;
-                
                 let mut sender_balance = self.balances.get(sender_id, token_id).unwrap();
 
-                if &Some(token_limit) = token.metadata().token_limit() {
-                    if assets[index.to_owned()].amount() > token_limit {
-                        return Err("limit exceeded".to_string())
-                    }
-                };
+                // self.check_restriction(
+                //     token.name().to_string(),
+                //     sender_id.to_string(),
+                //     receiver_id.to_string(),
+                //     assets[index.to_owned()].amount().into(),
+                // )
+                // ?;
 
                 if token.network() != &self.network {
                     self.verify_mint(token_id, assets[index.to_owned()].amount())?;

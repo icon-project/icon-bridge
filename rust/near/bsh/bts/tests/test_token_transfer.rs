@@ -63,6 +63,9 @@ fn deposit_wnear() {
     let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
 
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
     testing_env!(
         context(wnear(), 0),
         VMConfig::test(),
@@ -100,7 +103,9 @@ fn withdraw_wnear() {
     );
     let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
-    let token_id = contract.token_id(w_near.name()).unwrap();
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     testing_env!(
         context(wnear(), 0),
@@ -110,6 +115,8 @@ fn withdraw_wnear() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
+
+    let token_id = contract.token_id(w_near.name()).unwrap();
 
     testing_env!(context(chuck(), 0));
     let result = contract.balance_of(chuck(), w_near.name().to_string());
@@ -162,6 +169,9 @@ fn withdraw_wnear_higher_amount() {
     let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
 
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
     testing_env!(context(wnear(), 0));
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
 
@@ -199,6 +209,9 @@ fn external_transfer() {
     );
     let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     let token_id = contract.token_id(w_near.name()).unwrap();
 
@@ -268,6 +281,10 @@ fn handle_success_response_wnear_external_transfer() {
     let w_near = <Token>::new(WNEAR.to_owned());
 
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
     let token_id = contract.token_id(w_near.name()).unwrap();
 
     testing_env!(
@@ -511,6 +528,10 @@ fn handle_failure_response_wnear_external_transfer() {
     );
     let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
     let token_id = contract.token_id(w_near.name()).unwrap();
 
     testing_env!(
@@ -843,6 +864,9 @@ fn external_transfer_higher_amount() {
     let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
 
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
     testing_env!(
         context(wnear(), 0),
         VMConfig::test(),
@@ -910,6 +934,9 @@ fn external_transfer_nil_balance() {
 
     contract.register(w_near.clone());
 
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
     testing_env!(
         context(wnear(), 0),
         VMConfig::test(),
@@ -948,6 +975,10 @@ fn external_transfer_batch() {
         nativecoin.clone(),
     );
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
     let token_id = contract.token_id(w_near.name()).unwrap();
 
     testing_env!(
@@ -1008,6 +1039,9 @@ fn external_transfer_batch_higher_amount() {
     let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
 
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
     testing_env!(
         context(wnear(), 0),
         VMConfig::test(),
@@ -1051,6 +1085,9 @@ fn external_transfer_batch_unregistered_coin() {
     let w_near = <Token>::new(WNEAR.to_owned());
     let baln = <Token>::new(BALN.to_owned());
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     testing_env!(
         context(wnear(), 0),
@@ -1096,6 +1133,9 @@ fn external_transfer_batch_nil_balance() {
     let w_near = <Token>::new(WNEAR.to_owned());
     let baln = <Token>::new(BALN.to_owned());
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     testing_env!(
         context(alice(), 1_000_000_000_000_000_000_000_000),
