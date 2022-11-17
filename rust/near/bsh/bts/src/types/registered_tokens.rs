@@ -29,6 +29,7 @@ impl RegisteredTokens {
         if let Some(token_id) = self.0.get(token_account) {
             return Some(token_id);
         }
+        
         None
     }
 }

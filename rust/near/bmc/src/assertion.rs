@@ -3,13 +3,6 @@ use crate::types::Event;
 use super::*;
 
 impl BtpMessageCenter {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * Internal Validations  * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
-    /// Check whether signer account id is an owner
     pub fn assert_have_permission(&self) {
         require!(
             self.owners.contains(&env::predecessor_account_id()),
@@ -60,6 +53,7 @@ impl BtpMessageCenter {
 
     pub fn assert_relay_is_registered(&self, link: &BTPAddress) {
         let link = self.links.get(link).unwrap();
+
         require!(
             link.relays().contains(&env::predecessor_account_id()),
             format!(
@@ -157,12 +151,15 @@ impl BtpMessageCenter {
         if !self.services.contains(name) {
             return Err(BmcError::ServiceNotExist);
         }
+
         Ok(())
     }
+
     pub fn ensure_valid_sequence(&self, link: &Link, event: &Event) -> Result<(), BmcError> {
         if link.rx_seq() != event.sequence() {
             return Err(BmcError::InvalidSequence);
         }
+        
         Ok(())
     }
 }

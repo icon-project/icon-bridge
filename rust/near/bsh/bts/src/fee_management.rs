@@ -13,9 +13,10 @@ impl BtpTokenService {
             .to_vec()
             .iter()
             .map(|token| {
-                let token_id = Self::hash_token_id(&token.name);
+                let token_id = *self.token_ids.get(&self.native_coin_name).unwrap();
                 let token_fee = self.token_fees.get(&token_id).unwrap();
                 let token = self.tokens.get(&token_id).unwrap();
+
                 AccumulatedAssetFees {
                     name: token.name().clone(),
                     network: token.network().clone(),
@@ -28,6 +29,7 @@ impl BtpTokenService {
     pub fn handle_fee_gathering(&mut self, fee_aggregator: BTPAddress, service: String) {
         self.assert_predecessor_is_bmc();
         self.assert_valid_service(&service);
+
         self.transfer_fees(&fee_aggregator);
     }
 
@@ -40,10 +42,12 @@ impl BtpTokenService {
             .unwrap();
 
         let mut token = self.tokens.get(&token_id).unwrap();
+
         token
             .metadata_mut()
             .fee_numerator_mut()
             .clone_from(&fee_numerator.into());
+
         token
             .metadata_mut()
             .fixed_fee_mut()
@@ -57,6 +61,7 @@ impl BtpTokenService {
             .token_id(&token_name)
             .map_err(|err| format!("{}", err))
             .unwrap();
+
         let token = self.tokens.get(&token_id).unwrap();
 
         self.calculate_token_transfer_fee(u128::from(amount), &token)
@@ -68,6 +73,7 @@ impl BtpTokenService {
 impl BtpTokenService {
     pub fn transfer_fees(&mut self, fee_aggregator: &BTPAddress) {
         let sender_id = env::current_account_id();
+
         let assets = self
             .tokens
             .to_vec()
@@ -95,9 +101,10 @@ impl BtpTokenService {
     pub fn calculate_token_transfer_fee(
         &self,
         amount: u128,
-        token: &Asset<WrappedNativeCoin>,
+        token: &Asset<FungibleToken>,
     ) -> Result<u128, String> {
         let mut fee = (amount * token.metadata().fee_numerator()) / FEE_DENOMINATOR;
+        
         fee.add(token.metadata().fixed_fee()).map(|fee| *fee)
     }
 }

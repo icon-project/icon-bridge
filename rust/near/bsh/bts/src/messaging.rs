@@ -2,12 +2,6 @@ use super::*;
 
 #[near_bindgen]
 impl BtpTokenService {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * *  Messaging  * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
     pub fn handle_btp_message(&mut self, message: BtpMessage<SerializedMessage>) {
         self.assert_predecessor_is_bmc();
         self.assert_valid_service(message.service());
@@ -45,6 +39,7 @@ impl BtpTokenService {
         self.assert_valid_service(&service);
 
         let error_message: BtpMessage<ErrorMessage> = message.try_into().unwrap();
+
         self.handle_response(
             &WrappedI128::new(serial_no).negate(),
             RC_ERROR,
@@ -79,6 +74,7 @@ impl BtpTokenService {
             match env::promise_result(0) {
                 PromiseResult::Successful(_) => {
                     let mut assets_log: Vec<Value> = Vec::new();
+
                     assets.iter().for_each(|asset| {
                         assets_log.push(json!({
                         "token_name": asset.name(),
@@ -86,6 +82,7 @@ impl BtpTokenService {
                         "fee": asset.fees().to_string(),
                         }))
                     });
+
                     let log = json!({
                       "event": "TransferStart",
                       "code": "0",
@@ -100,6 +97,7 @@ impl BtpTokenService {
                 PromiseResult::NotReady => log!("Not Ready"),
                 PromiseResult::Failed => {
                     let mut assets_log: Vec<Value> = Vec::new();
+
                     assets.iter().for_each(|asset| {
                         assets_log.push(json!({
                         "token_name": asset.name(),
@@ -107,6 +105,7 @@ impl BtpTokenService {
                         "fee": asset.fees().to_string(),
                         }))
                     });
+
                     let log = json!({
                       "event": "TransferStart",
                       "code": "1",
@@ -117,6 +116,7 @@ impl BtpTokenService {
                     });
 
                     log!(near_sdk::serde_json::to_string(&log).unwrap());
+
                     self.rollback_external_transfer(&AccountId::from_str(sender).unwrap(), assets)
                 }
             };
@@ -138,93 +138,36 @@ impl BtpTokenService {
                     ref receiver,
                     ref assets,
                 } => self.handle_token_transfer(receiver, assets),
-
                 TokenServiceType::ResponseHandleService {
                     ref code,
                     ref message,
                 } => self.handle_response(btp_message.serial_no(), *code, message),
-
                 TokenServiceType::RequestBlacklist {
                     request_type,
                     addresses,
-                    #[allow(unused_variables)]
                     network,
-                } => {
-                    let mut non_valid_addresses: Vec<String> = Vec::new();
-                    let mut valid_addresses: Vec<AccountId> = Vec::new();
-                    addresses.iter().clone().for_each(|address| {
-                        match AccountId::try_from(address.clone()) {
-                            Ok(account_id) => valid_addresses.push(account_id),
-                            Err(_) => non_valid_addresses.push(address.to_string()),
-                        }
-                    });
-                    if !non_valid_addresses.is_empty() {
-                        return Err(BshError::InvalidAddress {
-                            message: non_valid_addresses.join(", "),
-                        });
-                    }
-                    match request_type {
-                        BlackListType::AddToBlacklist => {
-                            self.add_to_blacklist(valid_addresses);
-                            let response =
-                                TokenServiceMessage::new(TokenServiceType::ResponseBlacklist {
-                                    code: 0,
-                                    message: "AddedToBlacklist".to_string(),
-                                });
+                } => self
+                    .handle_request_blacklist(request_type, addresses, network)
+                    .or_else(|error| -> Result<Option<TokenServiceMessage>, BshError> {
+                        self.send_response(
+                            btp_message.serial_no(),
+                            btp_message.source(),
+                            TokenServiceMessage::new(TokenServiceType::ResponseBlacklist {
+                                code: 1,
+                                message: format!("{}", error),
+                            }),
+                        );
 
-                            self.send_response(
-                                btp_message.serial_no(),
-                                btp_message.source(),
-                                response,
-                            );
+                        #[cfg(feature = "testable")]
+                        env::panic_str(error.to_string().as_str());
 
-                            Ok(None)
-                        }
-                        BlackListType::RemoveFromBlacklist => {
-                            match self.remove_from_blacklist(valid_addresses) {
-                                Ok(()) => {
-                                    let response = TokenServiceMessage::new(
-                                        TokenServiceType::ResponseBlacklist {
-                                            code: 0,
-                                            message: "RemovedFromBlacklist".to_string(),
-                                        },
-                                    );
-
-                                    self.send_response(
-                                        btp_message.serial_no(),
-                                        btp_message.source(),
-                                        response,
-                                    );
-
-                                    Ok(None)
-                                }
-                                Err(err) => {
-                                    let response = TokenServiceMessage::new(
-                                        TokenServiceType::ResponseBlacklist {
-                                            code: 1,
-                                            message: err.to_string(),
-                                        },
-                                    );
-
-                                    self.send_response(
-                                        btp_message.serial_no(),
-                                        btp_message.source(),
-                                        response,
-                                    );
-
-                                    Ok(None)
-                                }
-                            }
-                        }
-                        BlackListType::UnhandledType => todo!(),
-                    }
-                }
+                        Ok(None)
+                    }),
                 TokenServiceType::RequestChangeTokenLimit {
                     token_names,
                     token_limits,
-                    #[allow(unused_variables)]
-                    network,
-                } => match self.set_token_limit(token_names.clone(), token_limits.clone()) {
+                    network: _,
+                } => match self.set_token_limit(token_names, token_limits) {
                     Ok(()) => {
                         let response =
                             TokenServiceMessage::new(TokenServiceType::ResponseChangeTokenLimit {
@@ -248,7 +191,6 @@ impl BtpTokenService {
                         Ok(None)
                     }
                 },
-
                 TokenServiceType::UnknownType => {
                     log!(
                         "Unknown Response: from {} for serial_no {}",
@@ -329,6 +271,7 @@ impl BtpTokenService {
             });
             log!(near_sdk::serde_json::to_string(&log).unwrap())
         }
+
         Ok(None)
     }
 

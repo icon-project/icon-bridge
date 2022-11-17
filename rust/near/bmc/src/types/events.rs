@@ -1,4 +1,13 @@
-use super::*;
+use libraries::{
+    BytesMut,
+    rlp::{self, Decodable},
+    types::{
+        messages::{BtpMessage, SerializedMessage},
+        BTPAddress,
+    },
+};
+
+use std::ops::Deref;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Event {
@@ -20,11 +29,13 @@ impl Event {
         &self.message
     }
 }
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Events(Vec<Event>);
 
 impl Deref for Events {
     type Target = Vec<Event>;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -46,6 +57,7 @@ impl Decodable for Events {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         let data = rlp.as_val::<Vec<u8>>()?;
         let rlp = rlp::Rlp::new(&data);
+
         Ok(Self(rlp.as_list()?))
     }
 }

@@ -1,12 +1,6 @@
 use super::*;
 
 impl BtpTokenService {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * Internal Validations  * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
     pub fn assert_predecessor_is_bmc(&self) {
         require!(
             env::predecessor_account_id() == *self.bmc(),
@@ -88,7 +82,9 @@ impl BtpTokenService {
             amount >= fees.unwrap_or_default(),
             format!("{}", BshError::NotMinimumAmount)
         );
+
         let amount = std::cmp::max(amount, fees.unwrap_or_default());
+
         if let Some(balance) = self.balances.get(account, token_id) {
             require!(
                 balance.deposit() >= amount,
@@ -141,8 +137,9 @@ impl BtpTokenService {
     }
 
     pub fn assert_token_does_not_exists(&self, token: &Token) {
-        let token = self.tokens.get(&Self::hash_token_id(token.name()));
-        require!(token.is_none(), format!("{}", BshError::TokenExist))
+        let token_id = self.token_ids.get(&self.native_coin_name);
+
+        require!(token_id.is_none(), format!("{}", BshError::TokenExist))
     }
 
     pub fn assert_token_registered(&self, token_account: &AccountId) {
@@ -158,45 +155,37 @@ impl BtpTokenService {
                 message: user.to_string(),
             });
         }
+
         Ok(())
     }
 
     pub fn ensure_length_matches(
         &self,
-        token_names: &Vec<String>,
-        token_limits: &Vec<u128>,
+        token_names: &[String],
+        token_limits: &[u128],
     ) -> Result<(), BshError> {
         if token_names.len() != token_limits.len() {
             return Err(BshError::InvalidParams);
         }
+
         Ok(())
     }
 
-    pub fn ensure_token_exists(&self, token_name: &str) -> bool {
-        match self.token_ids.get(token_name) {
-            Some(_) => true,
-            None => false,
+    pub fn ensure_token_exists(&self, token_name: &str) -> Result<(), BshError> {
+        if !self.token_ids.get(token_name) {
+            return Err(BshError::TokenNotExist { message: token_name.to_owned() });
         }
+
+        Ok(())
     }
+
     pub fn ensure_user_not_blacklisted(&self, user: &AccountId) -> Result<(), BshError> {
         if self.blacklisted_accounts.contains(user) {
             return Err(BshError::BlacklistedUsers {
                 message: user.to_string(),
             });
         }
-        Ok(())
-    }
 
-    pub fn ensure_amount_within_limit(
-        &self,
-        token_name: &str,
-        value: u128,
-    ) -> Result<(), BshError> {
-        if let Some(token_limit) = self.token_limits.get(token_name) {
-            if token_limit > value {
-                return Err(BshError::LimitExceed);
-            }
-        }
         Ok(())
     }
 

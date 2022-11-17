@@ -166,7 +166,7 @@ impl BtpTokenService {
         assets: &[TransferableAsset],
     ) {
         assets.iter().for_each(|asset| {
-            let token_id = Self::hash_token_id(asset.name());
+            let token_id = *self.token_ids.get(&self.native_coin_name).unwrap();
             let token = self.tokens.get(&token_id).unwrap();
             let mut token_fee = self.token_fees.get(&token_id).unwrap().to_owned();
 
@@ -208,7 +208,7 @@ impl BtpTokenService {
         assets: &[TransferableAsset],
     ) {
         assets.iter().for_each(|asset| {
-            let token_id = Self::hash_token_id(asset.name());
+            let token_id = *self.token_ids.get(&self.native_coin_name).unwrap();
             let mut token_fee = self.token_fees.get(&token_id).unwrap().to_owned();
             let mut sender_balance = self.balances.get(sender_id, &token_id).unwrap();
             sender_balance
@@ -252,10 +252,10 @@ impl BtpTokenService {
 
         let token_ids: Vec<(usize, TokenId)> = assets
             .iter()
-            .map(|asset| Self::hash_token_id(asset.name()))
+            .map(|asset| *self.token_ids.get(&asset.name()).unwrap_or_default())
             .enumerate()
-            .filter(|(index, token_id)| {
-                return if !self.tokens.contains(token_id) {
+            .filter(|(index, token)| {
+                return if !self.ensure_token_exists(assets[index.to_owned()].name()).is_ok() {
                     unregistered_tokens.push(assets[index.to_owned()].name().to_owned());
                     false
                 } else {
@@ -284,8 +284,6 @@ impl BtpTokenService {
                 message: format!("Coins not transferable: {}", transferable.unwrap_err()),
             });
         }
-
-        self.check_for_transfer_restriction(&receiver_id, assets)?;
 
         tokens.iter().for_each(|(index, token_id, token)| {
             if token.network() != &self.network {
@@ -317,19 +315,29 @@ impl BtpTokenService {
         &self,
         sender_id: &AccountId,
         receiver_id: &AccountId,
-        tokens: &[(usize, TokenId, Asset<WrappedNativeCoin>)],
+        tokens: &[(usize, TokenId, Asset<FungibleToken>)],
         assets: &[TransferableAsset],
     ) -> Result<(), String> {
         tokens
             .iter()
             .map(|(index, token_id, token)| -> Result<(), String> {
+                self.ensure_user_not_blacklisted(receiver_id)?;
+                
                 let mut sender_balance = self.balances.get(sender_id, token_id).unwrap();
+
+                if &Some(token_limit) = token.metadata().token_limit() {
+                    if assets[index.to_owned()].amount() > token_limit {
+                        return Err("limit exceeded".to_string())
+                    }
+                };
+
                 if token.network() != &self.network {
                     self.verify_mint(token_id, assets[index.to_owned()].amount())?;
                     sender_balance
                         .deposit_mut()
                         .add(assets[index.to_owned()].amount())?;
                 }
+
                 self.verify_internal_transfer(
                     &env::current_account_id(),
                     receiver_id,
@@ -337,6 +345,7 @@ impl BtpTokenService {
                     assets[index.to_owned()].amount(),
                     &mut sender_balance,
                 )?;
+
                 Ok(())
             })
             .collect()
@@ -378,20 +387,5 @@ impl BtpTokenService {
         }
 
         U128::from(0)
-    }
-
-    fn check_for_transfer_restriction(
-        &self,
-        user: &AccountId,
-        assets: &[TransferableAsset],
-    ) -> Result<(), BshError> {
-        self.ensure_user_not_blacklisted(user)?;
-
-        assets
-            .iter()
-            .map(|asset| self.ensure_amount_within_limit(asset.name(), asset.amount()))
-            .collect::<Result<(), BshError>>()?;
-
-        Ok(())
     }
 }

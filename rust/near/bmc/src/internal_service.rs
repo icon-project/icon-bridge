@@ -1,12 +1,6 @@
 use super::*;
 
 impl BtpMessageCenter {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * Interval Services * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
     pub fn handle_init(
         &mut self,
         source: &BTPAddress,
@@ -28,6 +22,7 @@ impl BtpMessageCenter {
                 )
             }
             self.links.set(source, &link);
+
             Ok(())
         } else {
             Err(BmcError::LinkNotExist)
@@ -55,6 +50,7 @@ impl BtpMessageCenter {
             }
 
             self.links.set(source, &link);
+
             Ok(())
         } else {
             Err(BmcError::LinkNotExist)
@@ -82,6 +78,7 @@ impl BtpMessageCenter {
             }
 
             self.links.set(source, &link);
+
             Ok(())
         } else {
             Err(BmcError::LinkNotExist)
@@ -103,11 +100,11 @@ impl BtpMessageCenter {
         services.iter().for_each(|service| {
             //TODO: Handle Services that are not available
             if let Some(account_id) = self.services.get(service) {
-                #[cfg(not(feature = "testable"))]
                 bsh_contract::ext(account_id)
                     .handle_fee_gathering(fee_aggregator.clone(), service.clone());
             }
         });
+
         Ok(())
     }
 }

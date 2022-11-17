@@ -2,12 +2,6 @@ use super::*;
 
 #[near_bindgen]
 impl BtpTokenService {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * Transactions  * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
     pub fn ft_on_transfer(
         &mut self,
         sender_id: AccountId,
@@ -27,13 +21,12 @@ impl BtpTokenService {
             Some(balance) => balance,
             None => AccountBalance::default(),
         };
-        self.process_deposit(amount, &mut balance);
 
+        self.process_deposit(amount, &mut balance);
         self.balances.set(&sender_id, &token_id, balance);
 
         // calculate storage cost for the account
         let total_storage_cost = self.calculate_storage_cost(initial_storage_usage);
-
         self.storage_balances
             .set(&sender_id, &token_id, total_storage_cost.into());
 
@@ -44,18 +37,21 @@ impl BtpTokenService {
     pub fn deposit(&mut self) {
         let account = env::predecessor_account_id();
         let amount = env::attached_deposit();
+
         self.assert_have_minimum_amount(amount);
-        let token_id = Self::hash_token_id(&self.native_coin_name);
+        let token_id = *self.token_ids.get(&self.native_coin_name).unwrap();
 
         let initial_storage_usage = env::storage_usage();
         let mut balance = match self.balances.get(&account, &token_id) {
             Some(balance) => balance,
             None => AccountBalance::default(),
         };
+
         self.process_deposit(amount, &mut balance);
         self.balances.set(&account, &token_id, balance);
 
         let total_storage_cost = self.calculate_storage_cost(initial_storage_usage);
+
         self.storage_balances
             .set(&account, &token_id, total_storage_cost.into());
     }
@@ -64,6 +60,7 @@ impl BtpTokenService {
     pub fn withdraw(&mut self, token_name: String, amount: U128) {
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
+
         let token_id = self
             .token_id(&token_name)
             .map_err(|err| format!("{}", err))
@@ -71,8 +68,8 @@ impl BtpTokenService {
 
         self.assert_have_minimum_amount(amount);
         self.assert_have_sufficient_deposit(&account, &token_id, amount, None);
-
         self.assert_minimum_one_yocto();
+
         // Check for attached storage usage cost
         self.assert_have_sufficient_storage_deposit(&account, &token_id);
 

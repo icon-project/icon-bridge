@@ -13,6 +13,8 @@ pub trait AssetMetadata {
     fn fixed_fee_mut(&mut self) -> &mut u128;
     fn metadata(&self) -> &Self;
     fn extras(&self) -> &Option<AssetMetadataExtras>;
+    fn token_limit(&self) -> &Option<u128>;
+    fn token_limit_mut(&mut self) -> &mut Option<u128>;
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]

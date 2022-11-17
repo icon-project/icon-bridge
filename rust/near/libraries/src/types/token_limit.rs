@@ -40,10 +40,8 @@ impl TokenLimits {
     }
 
     pub fn contains(&self, coin_name: &str) -> bool {
-        if let Some(_) = self.0.keys().into_iter().find(|s| s == coin_name) {
-            return true;
-        }
-        false
+        #[allow(clippy::search_is_some)]
+        self.0.keys().into_iter().find(|s| s == coin_name).is_some()
     }
 
     pub fn to_vec(&self) -> Vec<TokenLimit> {

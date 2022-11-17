@@ -29,6 +29,7 @@ pub struct FungibleToken {
     )]
     fixed_fee: u128,
     extras: Option<AssetMetadataExtras>,
+    token_limit: Option<u128>
 }
 
 fn deserialize_u128<'de, D>(deserializer: D) -> Result<u128, D::Error>
@@ -56,6 +57,7 @@ impl FungibleToken {
         fee_numerator: u128,
         fixed_fee: u128,
         extras: Option<AssetMetadataExtras>,
+        token_limit: Option<u128>,
     ) -> FungibleToken {
         Self {
             name,
@@ -66,6 +68,7 @@ impl FungibleToken {
             fee_numerator,
             fixed_fee,
             extras,
+            token_limit
         }
     }
 }
@@ -119,5 +122,13 @@ impl AssetMetadata for FungibleToken {
 
     fn fixed_fee_mut(&mut self) -> &mut u128 {
         &mut self.fixed_fee
+    }
+
+    fn token_limit(&self) -> &Option<u128> {
+        &self.token_limit
+    }
+
+    fn token_limit_mut(&mut self) -> &mut Option<u128> {
+        &mut self.token_limit
     }
 }

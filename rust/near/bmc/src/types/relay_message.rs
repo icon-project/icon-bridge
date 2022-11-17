@@ -1,4 +1,14 @@
-use super::*;
+use super::Receipt;
+use btp_common::errors::BmcError;
+use libraries::rlp::{self, Decodable};
+
+use near_sdk::{
+    base64::{self, URL_SAFE_NO_PAD},
+    serde::{de, Deserialize, Serialize},
+};
+
+use std::convert::TryFrom;
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RelayMessage {
     receipts: Vec<Receipt>,
@@ -35,7 +45,9 @@ impl TryFrom<String> for RelayMessage {
                 message: format!("base64: {}", error),
             }
         })?;
+
         let rlp = rlp::Rlp::new(&decoded);
+
         Self::decode(&rlp).map_err(|error| BmcError::DecodeFailed {
             message: format!("rlp: {}", error),
         })
@@ -50,7 +62,9 @@ impl TryFrom<Vec<u8>> for RelayMessage {
                 message: format!("base64: {}", error),
             }
         })?;
+
         let rlp = rlp::Rlp::new(&decoded);
+
         Self::decode(&rlp).map_err(|error| BmcError::DecodeFailed {
             message: format!("rlp: {}", error),
         })
@@ -69,11 +83,9 @@ impl<'de> Deserialize<'de> for RelayMessage {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryInto;
-
-    use libraries::types::messages::BtpMessage;
-
     use super::*;
+    use libraries::types::messages::BtpMessage;
+    use std::convert::TryInto;
 
     #[test]
     fn deserialize_relay_message1() {

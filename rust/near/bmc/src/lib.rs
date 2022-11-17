@@ -1,5 +1,4 @@
 //! BTP Message Center
-//!
 mod assertion;
 mod estimate;
 mod external;
@@ -14,17 +13,15 @@ mod types;
 
 #[cfg(feature = "testable")]
 use libraries::types::{BtpError, HashedCollection};
+
 #[cfg(feature = "testable")]
 use near_sdk::{
     collections::LazyOption,
     json_types::{Base64VecU8, U128, U64},
 };
 
-use crate::types::Event;
-use std::convert::TryInto;
-pub use types::RelayMessage;
-
 use btp_common::errors::{BmcError, BshError, BtpException, Exception};
+use std::convert::TryInto;
 
 use libraries::{
     emit_error, emit_message,
@@ -37,6 +34,7 @@ use libraries::{
         Owners, RelayStatus, Routes, Service, Services, WrappedI128,
     },
 };
+
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     env, near_bindgen, require, serde_json,
@@ -44,7 +42,10 @@ use near_sdk::{
     AccountId, Balance, Gas, PanicOnDefault, PromiseResult,
 };
 
-use external::*;
+use crate::{
+    external::*,
+    types::{Event, RelayMessage},
+};
 
 const SERVICE: &str = "bmc";
 
@@ -66,8 +67,10 @@ impl BtpMessageCenter {
     #[init]
     pub fn new(network: String, block_interval: u64) -> Self {
         require!(!env::state_exists(), "Already initialized");
+        
         let mut owners = Owners::new();
         owners.add(&env::current_account_id());
+
         Self {
             block_interval,
             btp_address: BTPAddress::new(format!(

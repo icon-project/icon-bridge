@@ -1,23 +1,8 @@
-mod relay_message;
-pub use relay_message::RelayMessage;
-mod receipts;
-pub(super) use receipts::Receipt;
 mod events;
 pub(super) use events::{Event, Events};
 
-use btp_common::errors::BmcError;
-use libraries::{
-    rlp::{self, Decodable},
-    types::{
-        messages::{BtpMessage, SerializedMessage},
-        BTPAddress,
-    },
-    BytesMut,
-};
+mod receipts;
+pub(super) use receipts::Receipt;
 
-use near_sdk::{
-    base64::{self, URL_SAFE_NO_PAD},
-    serde::{de, Deserialize, Serialize},
-};
-
-use std::{convert::TryFrom, ops::Deref};
+mod relay_message;
+pub(super) use relay_message::RelayMessage;

@@ -2,17 +2,12 @@ use super::*;
 
 #[near_bindgen]
 impl BtpMessageCenter {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * Owner Management  * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
     /// Add another owner
     /// Caller must be an owner of BTP network
     pub fn add_owner(&mut self, account: AccountId) {
         self.assert_have_permission();
         self.assert_owner_does_not_exists(&account);
+        
         self.owners.add(&account);
     }
 
@@ -22,6 +17,7 @@ impl BtpMessageCenter {
         self.assert_have_permission();
         self.assert_owner_exists(&account);
         self.assert_owner_is_not_last_owner();
+
         self.owners.remove(&account)
     }
 

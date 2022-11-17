@@ -20,17 +20,13 @@ use libraries::types::{
     AccountBalance, AccumulatedAssetFees, Asset, AssetFees, AssetId, AssetMetadata, Assets,
     BTPAddress, Balances, BlackListedAccounts, FungibleToken, Math, Network, Owners, Request,
     Requests, StorageBalances, TokenIds, TokenLimit, TokenLimits, TransferableAsset, WrappedI128,
-    WrappedNativeCoin,
 };
-
-use std::str::FromStr;
-
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
 #[cfg(feature = "testable")]
 use near_sdk::{collections::LazyOption, json_types::Base64VecU8};
 
 use near_sdk::{
+    borsh::{self, BorshDeserialize, BorshSerialize},
     env,
     json_types::U128,
     log, near_bindgen, require,
@@ -38,15 +34,18 @@ use near_sdk::{
     AccountId, Balance, Gas, PanicOnDefault, Promise, PromiseOrValue, PromiseResult,
 };
 
-use std::convert::{TryFrom, TryInto};
+use std::{
+    convert::{TryFrom, TryInto},
+    str::FromStr,
+};
 
 use external::*;
 
 pub use types::RegisteredTokens;
 pub type TokenFees = AssetFees;
 pub type TokenId = AssetId;
-pub type Token = Asset<WrappedNativeCoin>;
-pub type Tokens = Assets<WrappedNativeCoin>;
+pub type Token = Asset<FungibleToken>;
+pub type Tokens = Assets<FungibleToken>;
 
 pub static NEP141_CONTRACT: &[u8] = include_bytes!("../res/NEP141_CONTRACT.wasm");
 pub static FEE_DENOMINATOR: u128 = 10_u128.pow(4);

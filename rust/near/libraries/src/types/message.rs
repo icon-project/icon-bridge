@@ -1,4 +1,5 @@
 use super::*;
+
 #[derive(Debug, Serialize, Deserialize, BorshDeserialize, BorshSerialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Message {
