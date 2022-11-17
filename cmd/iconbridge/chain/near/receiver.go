@@ -26,12 +26,13 @@ type ReceiverConfig struct {
 }
 
 type Receiver struct {
-	clients     []IClient
-	source      chain.BTPAddress
-	destination chain.BTPAddress
-	logger      log.Logger
-	verifier    *Verifier
-	options     types.ReceiverOptions
+	clients      []IClient
+	source       chain.BTPAddress
+	destination  chain.BTPAddress
+	logger       log.Logger
+	verifier     *Verifier
+	options      types.ReceiverOptions
+	closeMonitor bool
 }
 
 func receiverFactory(source, destination chain.BTPAddress, urls []string, opt json.RawMessage, logger log.Logger) (chain.Receiver, error) {
@@ -53,13 +54,14 @@ func NewReceiver(config ReceiverConfig, logger log.Logger, clients ...IClient) (
 	if len(clients) == 0 {
 		return nil, fmt.Errorf("nil clients")
 	}
-	
+
 	r := &Receiver{
 		clients:     clients,
 		logger:      logger,
 		source:      config.source,
 		destination: config.destination,
 		options:     config.options,
+		closeMonitor: false,
 	}
 
 	return r, nil
@@ -95,7 +97,9 @@ func (r *Receiver) ReceiveBlocks(height uint64, source string, processBlockNotif
 
 				return blockNotification, nil
 			},
-		).Observe()
+		).TakeUntil(func(_ interface{}) bool {
+			return r.closeMonitor
+		}).Observe()
 
 		for item := range result {
 			if err := item.E; err != nil {
@@ -198,5 +202,5 @@ func (r *Receiver) client() IClient {
 }
 
 func (r *Receiver) StopReceivingBlocks() {
-	r.client().CloseMonitor()
+	r.closeMonitor = true
 }

@@ -80,7 +80,7 @@ func init() {
 				Seq:         0,
 				Offset:      377825,
 				Source:      chain.BTPAddress("btp://0x1.near/dev-20211206025826-24100687319598"),
-				Destination: chain.BTPAddress("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315"),
+				Destination: chain.BTPAddress("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38314"),
 				Options:     types.ReceiverOptions{},
 			},
 			MockApi: func() *mock.MockApi {

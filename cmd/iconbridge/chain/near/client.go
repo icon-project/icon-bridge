@@ -27,7 +27,6 @@ type Source struct{}
 type Client struct {
 	api             IApi
 	logger          log.Logger
-	isMonitorClosed bool
 }
 
 type Wallet interface {
@@ -52,7 +51,6 @@ type IApi interface {
 
 type IClient interface {
 	Api() IApi
-	CloseMonitor()
 	FetchReceipts(context.Context, interface{}) (interface{}, error)
 	FilterUnknownBlocks(interface{}) bool
 	GetBalance(types.AccountId) (*big.Int, error)
@@ -65,16 +63,11 @@ type IClient interface {
 	GetReceipts(block *types.Block, accountId string) ([]*chain.Receipt, error)
 	GetTransactionResult(types.CryptoHash, types.AccountId) (types.TransactionResult, error)
 	GetBlockProducers(types.CryptoHash) (types.BlockProducers, error)
-	IsMonitorClosed() bool
 	Logger() log.Logger
 	MonitorBlocks(height uint64, target uint64, concurrency int, callback func(observable rxgo.Observable) error) error
 	MonitorBlockHeight(offset int64) rxgo.Observable
 	SendTransaction(payload string) (*types.CryptoHash, error)
 	SerializeBlocks(interface{}) int
-}
-
-func (c *Client) CloseMonitor() {
-	c.isMonitorClosed = true
 }
 
 func (c *Client) Api() IApi {
@@ -323,10 +316,6 @@ func (c *Client) Logger() log.Logger {
 	return c.logger
 }
 
-func (c *Client) IsMonitorClosed() bool {
-	return c.isMonitorClosed
-}
-
 func (c *Client) MonitorBlockHeight(offset int64) rxgo.Observable {
 	channel := make(chan rxgo.Item)
 	go func(offset int64) {
@@ -385,9 +374,7 @@ func (c *Client) MonitorBlocks(height uint64, target uint64, concurrency int, ca
 		}
 
 		return nil, fmt.Errorf("error casting offset to int64")
-	}, rxgo.WithPool(concurrency), rxgo.WithErrorStrategy(rxgo.ContinueOnError)).TakeUntil(func(bn interface{}) bool {
-		return c.isMonitorClosed
-	}))
+	}, rxgo.WithPool(concurrency), rxgo.WithErrorStrategy(rxgo.ContinueOnError)))
 }
 
 func NewClient(endpoint string, logger log.Logger) (IClient, error) {
@@ -399,7 +386,6 @@ func NewClient(endpoint string, logger log.Logger) (IClient, error) {
 
 	return &Client{
 		logger:          logger,
-		isMonitorClosed: false,
 		api: &api{
 			host: url.Host,
 			Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: transport}, url.String()).SetErrFunc(func(buffer json.RawMessage) error {
