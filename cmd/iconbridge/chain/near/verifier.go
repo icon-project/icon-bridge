@@ -57,7 +57,7 @@ func NewVerifier(blockHeight uint64, previousBlockHash, currentEpochId, nextEpoc
 func (v *Verifier) SyncHeader(wg *sync.WaitGroup, target uint64) error {
 	defer wg.Done()
 
-	err := v.client.MonitorBlocks(v.blockHeight, target, v.SyncConcurrency, func(observable rxgo.Observable) error {
+	err := v.client.MonitorBlocks(v.blockHeight, v.SyncConcurrency, func(observable rxgo.Observable) error {
 		result := observable.Serialize(int(v.blockHeight),
 			func(bn interface{}) int {
 				return int(bn.(*types.BlockNotification).Offset())

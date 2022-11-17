@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"math/rand"
 	"reflect"
 	"sync"
@@ -14,10 +13,6 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/reactivex/rxgo/v2"
 )
-
-type ReceiverOptions struct {
-	SyncConcurrency uint `json:"syncConcurrency"`
-}
 
 type ReceiverConfig struct {
 	source      chain.BTPAddress
@@ -37,6 +32,7 @@ type Receiver struct {
 
 func receiverFactory(source, destination chain.BTPAddress, urls []string, opt json.RawMessage, logger log.Logger) (chain.Receiver, error) {
 	var options types.ReceiverOptions
+
 	clients, err := newClients(urls, logger)
 	if err != nil {
 		return nil, err
@@ -56,11 +52,11 @@ func NewReceiver(config ReceiverConfig, logger log.Logger, clients ...IClient) (
 	}
 
 	r := &Receiver{
-		clients:     clients,
-		logger:      logger,
-		source:      config.source,
-		destination: config.destination,
-		options:     config.options,
+		clients:      clients,
+		logger:       logger,
+		source:       config.source,
+		destination:  config.destination,
+		options:      config.options,
 		closeMonitor: false,
 	}
 
@@ -68,6 +64,7 @@ func NewReceiver(config ReceiverConfig, logger log.Logger, clients ...IClient) (
 }
 
 func (r *Receiver) MapReceipts(height types.Height, source string, observable rxgo.Observable) rxgo.Observable {
+	
 	return observable.Map(
 		r.client().FetchReceipts,
 		rxgo.WithPool(r.options.SyncConcurrency),
@@ -82,7 +79,7 @@ func (r *Receiver) MapReceipts(height types.Height, source string, observable rx
 
 func (r *Receiver) ReceiveBlocks(height uint64, source string, processBlockNotification func(blockNotification *types.BlockNotification)) error {
 
-	return r.client().MonitorBlocks(height, math.MaxInt64, r.options.SyncConcurrency, func(observable rxgo.Observable) error {
+	return r.client().MonitorBlocks(height, r.options.SyncConcurrency, func(observable rxgo.Observable) error {
 		result := r.MapReceipts(types.Height(height), source, observable).Scan(
 			func(_ context.Context, acc interface{}, bn interface{}) (interface{}, error) {
 				blockNotification, _ := bn.(*types.BlockNotification)

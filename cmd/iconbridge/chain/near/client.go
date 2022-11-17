@@ -64,7 +64,7 @@ type IClient interface {
 	GetTransactionResult(types.CryptoHash, types.AccountId) (types.TransactionResult, error)
 	GetBlockProducers(types.CryptoHash) (types.BlockProducers, error)
 	Logger() log.Logger
-	MonitorBlocks(height uint64, target uint64, concurrency int, callback func(observable rxgo.Observable) error) error
+	MonitorBlocks(height uint64, concurrency int, callback func(observable rxgo.Observable) error) error
 	MonitorBlockHeight(offset int64) rxgo.Observable
 	SendTransaction(payload string) (*types.CryptoHash, error)
 	SerializeBlocks(interface{}) int
@@ -357,7 +357,7 @@ func (c *Client) MonitorBlockHeight(offset int64) rxgo.Observable {
 	return rxgo.FromChannel(channel, rxgo.WithCPUPool())
 }
 
-func (c *Client) MonitorBlocks(height uint64, target uint64, concurrency int, callback func(observable rxgo.Observable) error) error {
+func (c *Client) MonitorBlocks(height uint64, concurrency int, callback func(observable rxgo.Observable) error) error {
 	return callback(c.MonitorBlockHeight(int64(height)).Map(func(_ context.Context, offset interface{}) (interface{}, error) {
 		if offset, Ok := (offset).(int64); Ok {
 			block, err := c.GetBlockByHeight(offset)
