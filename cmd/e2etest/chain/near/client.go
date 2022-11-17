@@ -92,6 +92,10 @@ func (c *client) IsMonitorClosed() bool {
 	return c.MonitorClosed
 }
 
+func (c *client) CloseMonitor() {
+	c.MonitorClosed = true
+}
+
 func NewClient(url string, logger log.Logger) (*client, error) {
 	c, err := near.NewClient(url, logger)
 	if err != nil {
