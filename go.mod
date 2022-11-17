@@ -3,6 +3,7 @@ module github.com/icon-project/icon-bridge
 go 1.13
 
 require (
+	github.com/MuhammedIrfan/testify-mock v0.0.0-20220912121829-185fc90cd1b6
 	github.com/aws/aws-sdk-go v1.44.76
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/bshuster-repo/logrus-logstash-hook v0.4.1
@@ -35,7 +36,5 @@ require (
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
-
-replace github.com/stretchr/testify => github.com/hugobyte/testify v0.0.0-20221114133753-0ed77b12de1c
 
 replace github.com/near/borsh-go => github.com/hugobyte/borsh-go v0.0.0-20221114132807-5ad0a63babe6

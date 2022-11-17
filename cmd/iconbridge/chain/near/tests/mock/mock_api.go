@@ -2,7 +2,7 @@ package mock
 
 import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
-	"github.com/stretchr/testify/mock"
+	"github.com/MuhammedIrfan/testify-mock/mock"
 )
 
 const (
