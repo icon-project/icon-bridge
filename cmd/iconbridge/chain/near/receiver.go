@@ -81,7 +81,7 @@ func (r *Receiver) MapReceipts(height types.Height, source string, observable rx
 func (r *Receiver) ReceiveBlocks(height uint64, source string, processBlockNotification func(blockNotification *types.BlockNotification)) error {
 
 	return r.client().MonitorBlocks(height, math.MaxInt64, r.options.SyncConcurrency, func(observable rxgo.Observable) error {
-		result := r.MapReceipts(height, source, observable).Scan(
+		result := r.MapReceipts(types.Height(height), source, observable).Scan(
 			func(_ context.Context, acc interface{}, bn interface{}) (interface{}, error) {
 				blockNotification, _ := bn.(*types.BlockNotification)
 
