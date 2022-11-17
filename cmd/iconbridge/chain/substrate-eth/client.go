@@ -3,6 +3,7 @@ package substrate_eth
 import (
 	"context"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/abi"
 	"math"
 	"math/big"
 
@@ -19,7 +20,7 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-func newClients(urls []string, bmc string, l log.Logger) (cls []IClient, bmcs []*BMC, err error) {
+func newClients(urls []string, bmc string, l log.Logger) (cls []IClient, bmcs []*abi.BMC, err error) {
 	for _, url := range urls {
 		clrpc, err := rpc.Dial(url)
 		if err != nil {
@@ -27,7 +28,7 @@ func newClients(urls []string, bmc string, l log.Logger) (cls []IClient, bmcs []
 			return nil, nil, err
 		}
 		cleth := ethclient.NewClient(clrpc)
-		clbmc, err := NewBMC(common.HexToAddress(bmc), cleth)
+		clbmc, err := abi.NewBMC(common.HexToAddress(bmc), cleth)
 		if err != nil {
 			l.Errorf("failed to create bmc binding to snow ethclient: url=%v, %v", url, err)
 			return nil, nil, err
