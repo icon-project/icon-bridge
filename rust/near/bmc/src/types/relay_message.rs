@@ -84,7 +84,7 @@ impl<'de> Deserialize<'de> for RelayMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libraries::types::messages::BtpMessage;
+    use libraries::types::messages::{BtpMessage, SerializedMessage};
     use std::convert::TryInto;
 
     #[test]

@@ -42,10 +42,8 @@ use near_sdk::{
     AccountId, Balance, Gas, PanicOnDefault, PromiseResult,
 };
 
-use crate::{
-    external::*,
-    types::{Event, RelayMessage},
-};
+use crate::{external::*, types::Event};
+pub use types::RelayMessage;
 
 const SERVICE: &str = "bmc";
 
@@ -67,7 +65,7 @@ impl BtpMessageCenter {
     #[init]
     pub fn new(network: String, block_interval: u64) -> Self {
         require!(!env::state_exists(), "Already initialized");
-        
+
         let mut owners = Owners::new();
         owners.add(&env::current_account_id());
 

@@ -11,14 +11,6 @@ impl BtpTokenService {
             .map_err(|err| format!("{}", err))
             .unwrap();
 
-        self.check_restriction(
-            token_name.clone(),
-            sender_id.to_string(),
-            destination.contract_address().unwrap().to_string(),
-            amount,
-        )
-        .map_err(|err| format!("{}", err))
-        .unwrap();
         //check for enough attached deposit to bear storage cost
         self.assert_have_sufficient_storage_deposit(&sender_id, &token_id);
         let asset = self
@@ -248,7 +240,6 @@ impl BtpTokenService {
 
     pub fn handle_token_transfer(
         &mut self,
-        message_source: &BTPAddress,
         receiver_id: &String,
         assets: &[TransferableAsset],
     ) -> Result<Option<TokenServiceMessage>, BshError> {
@@ -295,13 +286,8 @@ impl BtpTokenService {
             })
             .collect::<Vec<(usize, TokenId, Token)>>();
 
-        let transferable = self.is_tokens_transferable(
-            &message_source,
-            &env::current_account_id(),
-            &receiver_id,
-            &tokens,
-            assets,
-        );
+        let transferable =
+            self.is_tokens_transferable(&env::current_account_id(), &receiver_id, &tokens, assets);
         if transferable.is_err() {
             return Err(BshError::Reverted {
                 message: format!("Coins not transferable: {}", transferable.unwrap_err()),
@@ -336,7 +322,6 @@ impl BtpTokenService {
 
     fn is_tokens_transferable(
         &self,
-        source: &BTPAddress,
         sender_id: &AccountId,
         receiver_id: &AccountId,
         tokens: &[(usize, TokenId, Asset<FungibleToken>)],
@@ -345,16 +330,16 @@ impl BtpTokenService {
         tokens
             .iter()
             .map(|(index, token_id, token)| -> Result<(), String> {
+                self.ensure_user_not_blacklisted(receiver_id)
+                    .map_err(|e| format!("{}", e))?;
+
                 let mut sender_balance = self.balances.get(sender_id, token_id).unwrap();
 
-                // self.check_restriction(
-                //     token.name().to_string(),
-                //     sender_id.to_string(),
-                //     receiver_id.to_string(),
-                //     assets[index.to_owned()].amount().into(),
-                // )
-                // ?;
-
+                if let &Some(token_limit) = token.metadata().token_limit() {
+                    if assets[index.to_owned()].amount() > token_limit {
+                        return Err("limit exceeded".to_string());
+                    }
+                };
                 if token.network() != &self.network {
                     self.verify_mint(token_id, assets[index.to_owned()].amount())?;
                     sender_balance

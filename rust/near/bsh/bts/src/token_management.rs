@@ -360,22 +360,4 @@ impl BtpTokenService {
             },
         )))
     }
-
-    pub fn validate_transfer_restrictions(
-        &self,
-        network: &str,
-        token: &Asset<FungibleToken>,
-        value: u128,
-        to_address: &str,
-    ) -> Result<(), BshError> {
-        self.ensure_user_not_blacklisted(&to_address, &network)?;
-
-        if let Some(limit) = token.metadata().token_limit() {
-            if value > *limit {
-                return Err(BshError::LimitExceed);
-            }
-        }
-
-        Ok(())
-    }
 }

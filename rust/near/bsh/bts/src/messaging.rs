@@ -137,7 +137,7 @@ impl BtpTokenService {
                     sender: _,
                     ref receiver,
                     ref assets,
-                } => self.handle_token_transfer(btp_message.source(), receiver, assets),
+                } => self.handle_token_transfer(receiver, assets),
                 TokenServiceType::ResponseHandleService {
                     ref code,
                     ref message,

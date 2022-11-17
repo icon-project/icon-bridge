@@ -5,4 +5,4 @@ mod receipts;
 pub(super) use receipts::Receipt;
 
 mod relay_message;
-pub(super) use relay_message::RelayMessage;
+pub use relay_message::RelayMessage;

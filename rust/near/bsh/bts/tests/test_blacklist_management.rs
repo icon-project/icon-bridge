@@ -12,7 +12,7 @@ use btp_common::errors::BshError;
 use bts::{BtpTokenService, Token};
 use libraries::types::{
     messages::{BtpMessage, ErrorMessage, SerializedMessage},
-    BTPAddress, BlackList, WrappedI128,
+    BTPAddress, WrappedI128,
 };
 use near_sdk::{
     env, serde_json::to_value, test_utils::test_env::alice, test_utils::VMContextBuilder,
@@ -53,15 +53,12 @@ fn add_user_to_blacklist() {
         nativecoin.clone(),
     );
 
-    let users = vec![chuck().to_string(), charlie().to_string()];
+    let users = vec![chuck(), charlie()];
 
-    contract.add_to_blacklist(users, "0x1.near");
+    contract.add_to_blacklist(users);
     let users = contract.get_blacklisted_users();
     let result: HashSet<_> = users.iter().collect();
-    let expected_users: Vec<BlackList> = vec![
-        BlackList::new(charlie().to_string(), "0x1.near".to_string()),
-        BlackList::new(chuck().to_string(), "0x1.near".to_string()),
-    ];
+    let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
     let expected: HashSet<_> = expected_users.iter().collect();
     assert_eq!(expected, result)
 }
@@ -78,23 +75,20 @@ fn remove_blacklisted_user_from_blacklist() {
         nativecoin.clone(),
     );
 
-    let users = vec![chuck().to_string(), charlie().to_string()];
+    let users = vec![chuck(), charlie()];
 
-    contract.add_to_blacklist(users, "0x1.near");
+    contract.add_to_blacklist(users);
     let users = contract.get_blacklisted_users();
     let result: HashSet<_> = users.iter().collect();
-    let expected_users: Vec<BlackList> = vec![
-        BlackList::new(charlie().to_string(), "0x1.near".to_string()),
-        BlackList::new(chuck().to_string(), "0x1.near".to_string()),
-    ];
+    let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
     let expected: HashSet<_> = expected_users.iter().collect();
     assert_eq!(expected, result);
 
-    let users = vec![chuck().to_string()];
-    let result = contract.remove_from_blacklist(users.clone(), "0x1.near");
+    let users = vec![chuck()];
+    let result = contract.remove_from_blacklist(users.clone());
     match result {
         Ok(()) => {
-            let result = contract.is_user_black_listed(chuck().to_string(), "0x1.near".to_string());
+            let result = contract.is_user_black_listed(chuck());
 
             assert_eq!(false, result)
         }
@@ -114,20 +108,17 @@ fn remove_non_blacklisted_user_from_blacklist() {
         nativecoin.clone(),
     );
 
-    let users = vec![chuck().to_string(), charlie().to_string()];
+    let users = vec![chuck(), charlie()];
 
-    contract.add_to_blacklist(users.clone(), "0x1.near");
+    contract.add_to_blacklist(users.clone());
     let users = contract.get_blacklisted_users();
     let result: HashSet<_> = users.iter().collect();
-    let expected_users: Vec<BlackList> = vec![
-        BlackList::new(charlie().to_string(), "0x1.near".to_string()),
-        BlackList::new(chuck().to_string(), "0x1.near".to_string()),
-    ];
+    let expected_users: Vec<AccountId> = vec![charlie(), chuck()];
     let expected: HashSet<_> = expected_users.iter().collect();
     assert_eq!(expected, result);
 
-    let users = vec![carol().to_string()];
-    let result = contract.remove_from_blacklist(users.clone(), "0x1.near");
+    let users = vec![carol()];
+    let result = contract.remove_from_blacklist(users.clone());
     match result {
         Ok(()) => {}
         Err(err) => {
@@ -163,10 +154,7 @@ fn handle_btp_message_to_add_user_to_blacklist() {
 
     assert_eq!(
         blacklisted_user,
-        vec![BlackList::new(
-            AccountId::from_str("alice.testnet").unwrap().to_string(),
-            "0x1.near".to_string()
-        )]
+        vec![AccountId::from_str("alice.testnet").unwrap()]
     )
 }
 
@@ -213,12 +201,11 @@ fn is_user_blacklisted() {
         nativecoin.clone(),
     );
 
-    let users = vec![chuck().to_string(), charlie().to_string()];
+    let users = vec![chuck(), charlie()];
 
-    contract.add_to_blacklist(users, "0x1.near");
+    contract.add_to_blacklist(users);
 
-    let is_user_blacklisted =
-        contract.is_user_black_listed(charlie().to_string(), "0x1.near".to_string());
+    let is_user_blacklisted = contract.is_user_black_listed(charlie());
 
     assert_eq!(true, is_user_blacklisted)
 }
