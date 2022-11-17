@@ -13,6 +13,7 @@ import (
 type client struct {
 	near.IClient
 	concurrency int
+	MonitorClosed bool
 }
 
 type BlockNotification struct {
@@ -85,6 +86,10 @@ func (c *client) MonitorTransactions(height uint64, callback func(rxgo.Observabl
 	}, rxgo.WithPool(c.concurrency), rxgo.WithErrorStrategy(rxgo.ContinueOnError)).TakeUntil(func(i interface{}) bool {
 		return c.IsMonitorClosed()
 	}))
+}
+
+func (c *client) IsMonitorClosed() bool {
+	return c.MonitorClosed
 }
 
 func NewClient(url string, logger log.Logger) (*client, error) {
