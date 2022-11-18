@@ -23,7 +23,7 @@ pub static NATIVE_COIN_BSH_NAME_IS_PROVIDED_AS_REMOVE_SERVICE_PARAM: fn(Context)
         context.add_method_params(
             "remove_service",
             json!({
-                "name":format!("nativecoin"),
+                "name":format!("bts"),
             }),
         );
         context
@@ -35,7 +35,20 @@ pub static BMC_SHOULD_THROW_SERVICE_DOES_NOT_EXIST_ERROR_ON_REMOVING_SERVICE: fn
         assert!(error.to_string().contains("BMCRevertNotExistBSH"));
     };
 
-pub static NATIVE_COIN_BSH_IS_REGISTERED_IN_BMC: fn(Context) -> Context = |context: Context| -> Context {
+pub static NATIVE_COIN_BSH_NAME_AND_ACCOUNT_ID_ARE_PROVIDED_AS_ADD_SERVICE_PARAM: fn(
+    Context,
+) -> Context = |mut context: Context| {
+    context.add_method_params(
+        "add_service",
+        json!({
+            "name":format!("bts"),
+            "service": context.contracts().get("bts").id()
+        }),
+    );
+    context
+};
+
+pub static NATIVE_COIN_BSH_IS_REGISTERED: fn(Context) -> Context = |context: Context| -> Context {
     context
         .pipe(NATIVE_COIN_BSH_NAME_AND_ACCOUNT_ID_ARE_PROVIDED_AS_ADD_SERVICE_PARAM)
         .pipe(BMC_OWNER_INVOKES_ADD_SERVICE_IN_BMC)
@@ -61,8 +74,8 @@ pub static USER_SHOULD_GET_THE_EXISITING_LIST_OF_SERVICES: fn(Context) = |contex
     let result = context.method_responses("get_services");
     let expected = json!([
         {
-            "name": "nativecoin",
-            "service": context.contracts().get("nativecoin").id()
+            "name": "bts",
+            "service": context.contracts().get("bts").id()
         }
     ]);
 
@@ -75,8 +88,8 @@ pub static NATIVE_COIN_BSH_SHOULD_BE_ADDED_TO_THE_LIST_OF_SERVICES: fn(Context) 
         let result = context.method_responses("get_services");
         let expected = json!([
             {
-                "name": "nativecoin",
-                "service": context.contracts().get("nativecoin").id()
+                "name": "bts",
+                "service": context.contracts().get("bts").id()
             }
         ]);
 

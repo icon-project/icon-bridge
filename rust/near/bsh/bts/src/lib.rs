@@ -1,67 +1,53 @@
-use btp_common::btp_address::Address;
-use btp_common::errors::BshError;
-use libraries::types::{
-    Account, AccountBalance, AccumulatedAssetFees, AssetId, BTPAddress, CoinIds, TransferableAsset,
-    WrappedNativeCoin,
-};
-use libraries::{
-    types::messages::BlackListType,
-    types::messages::SerializedMessage,
-    types::messages::TokenServiceMessage,
-    types::messages::TokenServiceType,
-    types::messages::{BtpMessage, ErrorMessage},
-    types::Asset,
-    types::AssetFees,
-    types::AssetMetadata,
-    types::Assets,
-    types::Balances,
-    types::BlackListedAccounts,
-    types::Math,
-    types::Network,
-    types::Owners,
-    types::Request,
-    types::Requests,
-    types::StorageBalances,
-    types::TokenLimits,
-    types::WrappedI128,
-};
-
-use std::str::FromStr;
-
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LazyOption;
-use near_sdk::serde_json::json;
-use near_sdk::serde_json::{to_value, Value};
-use near_sdk::PromiseOrValue;
-use near_sdk::{assert_one_yocto, AccountId};
-use near_sdk::{
-    env,
-    json_types::{Base64VecU8, U128},
-    log, near_bindgen, require, Gas, PanicOnDefault, Promise, PromiseResult,
-};
-use std::collections::HashSet;
-use std::convert::TryFrom;
-use std::convert::TryInto;
-mod external;
-use external::*;
 mod accounting;
 mod assertion;
 mod blacklist_management;
-mod coin_management;
 mod estimate;
+mod external;
 mod fee_management;
 mod messaging;
 mod owner_management;
+mod token_management;
 mod transfer;
 mod types;
 mod util;
-pub use types::RegisteredCoins;
-pub type CoinFees = AssetFees;
-pub type CoinId = AssetId;
-pub type Coin = Asset<WrappedNativeCoin>;
-pub type Coins = Assets<WrappedNativeCoin>;
 
-pub static NEP141_CONTRACT: &'static [u8] = include_bytes!("../res/NEP141_CONTRACT.wasm");
+use btp_common::{btp_address::Address, errors::BshError};
+use libraries::types::{
+    messages::{
+        BlackListType, BtpMessage, ErrorMessage, SerializedMessage, TokenServiceMessage,
+        TokenServiceType,
+    },
+    AccountBalance, AccumulatedAssetFees, Asset, AssetFees, AssetId, AssetMetadata, Assets,
+    BTPAddress, Balances, BlacklistedAccounts, FungibleToken, Math, Network, Owners, Request,
+    Requests, StorageBalances, TokenIds, TokenLimit, TransferableAsset, WrappedI128,
+};
+
+#[cfg(feature = "testable")]
+use near_sdk::{collections::LazyOption, json_types::Base64VecU8};
+
+use near_sdk::{
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    env,
+    json_types::U128,
+    log, near_bindgen, require,
+    serde_json::{json, to_value, Value},
+    AccountId, Balance, Gas, PanicOnDefault, Promise, PromiseOrValue, PromiseResult,
+};
+
+use std::{
+    convert::{TryFrom, TryInto},
+    str::FromStr,
+};
+
+use external::*;
+
+pub use types::RegisteredTokens;
+pub type TokenFees = AssetFees;
+pub type TokenId = AssetId;
+pub type Token = Asset<FungibleToken>;
+pub type Tokens = Assets<FungibleToken>;
+
+pub static NEP141_CONTRACT: &[u8] = include_bytes!("../res/NEP141_CONTRACT.wasm");
 pub static FEE_DENOMINATOR: u128 = 10_u128.pow(4);
 
 pub static RC_ERROR: u8 = 1;
@@ -73,18 +59,17 @@ pub struct BtpTokenService {
     native_coin_name: String,
     network: Network,
     owners: Owners,
-    coins: Coins,
+    tokens: Tokens,
     balances: Balances,
     storage_balances: StorageBalances,
-    coin_fees: CoinFees,
+    token_fees: TokenFees,
     requests: Requests,
     serial_no: i128,
     bmc: AccountId,
     name: String,
-    blacklisted_accounts: BlackListedAccounts,
-    token_limits: TokenLimits,
-    coin_ids: CoinIds,
-    registered_coins: RegisteredCoins,
+    blacklisted_accounts: BlacklistedAccounts,
+    token_ids: TokenIds,
+    registered_tokens: RegisteredTokens,
 
     #[cfg(feature = "testable")]
     pub message: LazyOption<Base64VecU8>,
@@ -93,38 +78,41 @@ pub struct BtpTokenService {
 #[near_bindgen]
 impl BtpTokenService {
     #[init]
-    pub fn new(service_name: String, bmc: AccountId, network: String, native_coin: Coin) -> Self {
+    pub fn new(service_name: String, bmc: AccountId, network: String, native_coin: Token) -> Self {
         require!(!env::state_exists(), "Already initialized");
         let mut owners = Owners::new();
-        owners.add(&env::current_account_id());
 
-        let mut coins = <Coins>::new();
+        owners.add(&env::current_account_id());
+        let mut tokens = <Tokens>::new();
+
         let mut balances = Balances::new();
-        let native_coin_id = Self::hash_coin_id(native_coin.name());
+        let native_coin_id = Self::hash_token_id(native_coin.name());
 
         balances.add(&env::current_account_id(), &native_coin_id);
-        coins.add(&native_coin_id, &native_coin);
-        let blacklisted_accounts = BlackListedAccounts::new();
-        let mut coin_fees = CoinFees::new();
-        coin_fees.add(&native_coin_id);
-        let mut coin_ids = CoinIds::new();
-        coin_ids.add(native_coin.name(), native_coin_id);
+        tokens.add(&native_coin_id, &native_coin);
+
+        let blacklisted_accounts = BlacklistedAccounts::new();
+        let mut token_fees = TokenFees::new();
+
+        token_fees.add(&native_coin_id);
+        let mut token_ids = TokenIds::new();
+        token_ids.add(native_coin.name(), native_coin_id);
+
         Self {
             native_coin_name: native_coin.name().to_owned(),
             network,
             owners,
-            coins,
+            tokens,
             balances,
             storage_balances: StorageBalances::new(),
-            coin_fees,
+            token_fees,
             serial_no: Default::default(),
             requests: Requests::new(),
             bmc,
             name: service_name,
             blacklisted_accounts,
-            registered_coins: RegisteredCoins::new(),
-            token_limits: TokenLimits::new(),
-            coin_ids,
+            registered_tokens: RegisteredTokens::new(),
+            token_ids,
 
             #[cfg(feature = "testable")]
             message: LazyOption::new(b"message".to_vec(), None),
@@ -148,8 +136,15 @@ impl BtpTokenService {
     }
 
     fn process_deposit(&mut self, amount: u128, balance: &mut AccountBalance) {
-        let storage_cost = 0;
-        balance.deposit_mut().add(amount - storage_cost).unwrap();
+        balance.deposit_mut().add(amount).unwrap();
+    }
+
+    fn calculate_storage_cost(&self, initial_storage_usage: u64) -> U128 {
+        let total_storage_usage = env::storage_usage() - initial_storage_usage;
+        let storage_cost =
+            total_storage_usage as u128 * env::storage_byte_cost() + 669547687500000000;
+
+        U128(storage_cost)
     }
 }
 

@@ -13,7 +13,6 @@ mod manage_relays {
         async fn bmc_owner_can_add_bmr_as_list_and_overwrite_an_existing_bmr() {
           Kitten::given(NEW_CONTEXT)
             .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-            .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
             .and(BMC_CONTRACT_IS_OWNED_BY_ALICE)
             .and(ICON_LINK_IS_PRESENT_IN_BMC)
             .and(RELAY_1_IS_REGISTERED_FOR_ICON_LINK)
@@ -27,7 +26,6 @@ mod manage_relays {
         async fn non_bmc_owner_cannot_delete_a_registered_bmr() {
             Kitten::given(NEW_CONTEXT)
                 .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-                .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
                 .and(CHUCKS_ACCOUNT_IS_CREATED)
                 .and(ICON_LINK_IS_PRESENT_IN_BMC)
                 .and(RELAY_1_IS_REGISTERED_FOR_ICON_LINK)
@@ -40,7 +38,6 @@ mod manage_relays {
         async fn bmc_owner_cannot_register_bmr_as_list_for_non_existing_link() {
             Kitten::given(NEW_CONTEXT)
                 .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-                .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
                 .and(BMC_CONTRACT_IS_OWNED_BY_ALICE)
                 .and(ICON_LINK_IS_PRESENT_IN_BMC)
                 .and(RELAY_1_ACCOUNT_IS_CREATED)
@@ -53,9 +50,7 @@ mod manage_relays {
         async fn non_bmc_owner_cannot_add_bmr_as_list() {
             Kitten::given(NEW_CONTEXT)
                 .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-                .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
                 .and(CHUCKS_ACCOUNT_IS_CREATED)
-                .and(VERIFIER_FOR_ICON_IS_PRESENT_IN_BMC)
                 .and(ICON_LINK_IS_PRESENT_IN_BMC)
                 .and(RELAY_1_ACCOUNT_IS_CREATED)
                 .and(ICON_LINK_ADDRESS_AND_RELAY_1_ACCOUNT_ID_ARE_PROVIDED_AS_ADD_RELAYS_PARAM)
@@ -67,7 +62,7 @@ mod manage_relays {
         async fn users_can_get_list_of_registered_relays_for_the_given_link() {
             Kitten::given(NEW_CONTEXT)
                 .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-                .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
+                .and(BMC_CONTRACT_IS_OWNED_BY_ALICE)
                 .and(ICON_LINK_IS_PRESENT_IN_BMC)
                 .and(RELAY_1_IS_REGISTERED_FOR_ICON_LINK)
                 .and(ICON_LINK_ADDRESS_IS_PROVIDED_AS_GET_RELAYS_PARAM)
@@ -79,7 +74,6 @@ mod manage_relays {
         async fn bmc_owner_cannot_delete_a_non_existing_bmr() {
             Kitten::given(NEW_CONTEXT)
                 .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-                .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
                 .and(BMC_CONTRACT_IS_OWNED_BY_ALICE)
                 .and(ICON_LINK_IS_PRESENT_IN_BMC)
                 .and(RELAY_1_ACCOUNT_IS_CREATED)
@@ -92,7 +86,6 @@ mod manage_relays {
         async fn bmc_owner_can_add_bmr_as_list() {
             Kitten::given(NEW_CONTEXT)
                 .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-                .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
                 .and(BMC_CONTRACT_IS_OWNED_BY_ALICE)
                 .and(ICON_LINK_IS_PRESENT_IN_BMC)
                 .and(RELAY_1_ACCOUNT_IS_CREATED)
@@ -106,7 +99,6 @@ mod manage_relays {
         async fn non_bmc_owner_cannot_add_a_bmr() {
             Kitten::given(NEW_CONTEXT)
                 .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-                .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
                 .and(CHUCKS_ACCOUNT_IS_CREATED)
                 .and(BMC_CONTRACT_IS_NOT_OWNED_BY_CHUCK)
                 .and(ICON_LINK_IS_PRESENT_IN_BMC)
@@ -119,7 +111,6 @@ mod manage_relays {
         async fn bmc_owner_cannot_register_bmr_for_non_existing_link() {
             Kitten::given(NEW_CONTEXT)
                 .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-                .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
                 .and(BMC_CONTRACT_IS_OWNED_BY_ALICE)
                 .and(RELAY_1_IS_REGISTERED_FOR_ICON_LINK)
                 .and(ICON_LINK_ADDRESS_AND_RELAY_1_ARE_PROVIDED_AS_ADD_RELAY_PARAM)
@@ -131,7 +122,6 @@ mod manage_relays {
         async fn bmc_owner_can_remove_a_registered_bmr() {
             Kitten::given(NEW_CONTEXT)
                 .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-                .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
                 .and(BMC_CONTRACT_IS_OWNED_BY_ALICE)
                 .and(ICON_LINK_IS_PRESENT_IN_BMC)
                 .and(RELAY_1_IS_REGISTERED_FOR_ICON_LINK)
@@ -144,7 +134,6 @@ mod manage_relays {
         async fn bmc_owner_can_register_a_bmr() {
             Kitten::given(NEW_CONTEXT)
                 .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-                .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
                 .and(BMC_CONTRACT_IS_OWNED_BY_ALICE)
                 .and(ICON_LINK_IS_PRESENT_IN_BMC)
                 .and(RELAY_1_ACCOUNT_IS_CREATED)
@@ -157,7 +146,6 @@ mod manage_relays {
         async fn users_cannot_get_list_of_relays_if_link_does_not_exist() {
             Kitten::given(NEW_CONTEXT)
               .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-              .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
               .and(ICON_LINK_IS_PRESENT_IN_BMC)
               .and(RELAY_1_IS_REGISTERED_FOR_ICON_LINK)
               .and(NON_EXISTING_LINK_ADDRESS_IS_PROVIDED_AS_GET_RELAY_PARAM)
@@ -169,7 +157,6 @@ mod manage_relays {
           async fn bmc_owner_cannot_delete_bmr_for_non_existing_link(){
             Kitten::given(NEW_CONTEXT)
             .and(BMC_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
-            .and(BMV_CONTRACT_IS_DEPLOYED_AND_INITIALIZED)
             .and(ICON_LINK_IS_PRESENT_IN_BMC)
             .and(RELAY_1_IS_REGISTERED_FOR_ICON_LINK)
             .and(NON_EXISTING_LINK_ADDRESS_AND_RELAY_1_ARE_PROVIDED_AS_REMOVE_RELAY_PARAM)

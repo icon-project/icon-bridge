@@ -14,9 +14,6 @@ pub use account_management::*;
 mod service_management;
 pub use service_management::*;
 
-mod verifier_management;
-pub use verifier_management::*;
-
 mod relay_management;
 pub use relay_management::*;
 
@@ -29,18 +26,5 @@ pub use route_management::*;
 mod messaging;
 pub use messaging::*;
 
-mod fee_management;
-pub use fee_management::*;
-
-mod nativecoin_management;
-pub use nativecoin_management::*;
-
-// mod token_management;
-// pub use token_management::*;
-
-mod transfer_nativecoin;
-pub use transfer_nativecoin::*;
-
-
-mod transfer_token;
-pub use transfer_token::*;
+mod token_management;
+pub use token_management::*;

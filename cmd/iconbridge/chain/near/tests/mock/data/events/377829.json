@@ -1,0 +1,17 @@
+{
+    "block_hash": "DDbjZ12VbmV36trcJDPxAAHsDWTtGEC9DB6ZSVLE9N1c",
+    "changes": [
+        {
+            "cause": {
+                "receipt_hash": "2VWWEfyg5BzyDBVRsHRXApQJdZ37Bdtj8GtkH7UvNm7G",
+                "type": "receipt_processing"
+            },
+            "change": {
+                "account_id": "alice.node1",
+                "key_base64": "bWVzc2FnZQ==",
+                "value_base64": "iAEAAHsibmV4dCI6ImJ0cDovLzB4Ny5pY29uL2N4MWFkNmZjYzQ2NWQxYjg2NDRjYTM3NWY5ZTEwYmFiZWVhNGMzODMxNSIsInNlcXVlbmNlIjoiMSIsIm1lc3NhZ2UiOiIrTnU0VDJKMGNEb3ZMekI0TWk1dVpXRnlMemN5TnpCaE56bGlaVGM0T1dRM056Qm1NbVJsTURFMU1EUTNOamcwWlRJNE1EWTFPVGRsWldWbE9UWmxaVE5qWVRnM1lqRTNPV00yTXprNVpHVmhZV2E0T1dKMGNEb3ZMekI0Tnk1cFkyOXVMMk40TVdGa05tWmpZelEyTldReFlqZzJORFJqWVRNM05XWTVaVEV3WW1GaVpXVmhOR016T0RNeE5ZTmliV01BdUVqNFJvUkpibWwwdUQvNFBmZzd1RGxpZEhBNkx5OHdlRGN1YVdOdmJpOWplREZoWkRabVkyTTBOalZrTVdJNE5qUTBZMkV6TnpWbU9XVXhNR0poWW1WbFlUUmpNemd6TVRVPSJ9"
+            },
+            "type": "data_update"
+        }
+    ]
+}

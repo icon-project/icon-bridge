@@ -304,3 +304,16 @@ The following must be installed on your PC to run Section 1.2 and Section 2
 
  
     `go get github.com/ethereum/go-ethereum/cmd/ethkey`
+
+------------------------------------------------------------------------------------------------
+ICON-SNOW Deployment
+1. If you are looking to run a fresh ICON-SNOW deployment. linkfromarg should not be supplied. End result will be ICON-SNOW pair connected to each other only.
+
+    make buildsc buildsuffix=arctic
+    make deployscarctic
+
+2. If you are looking to merge SNOW deployment with existing deployment (e.g. ICON-BSC). The linkfrom arg will use an absolute path to reference needed values (e.g. contract addresses of existing icon-bsc deployment). End result will be linked smart contracts from ICON-BSC-SNOW; thus BSC<=>SNOW transfer will also be possible.
+
+    make buildsc buildsuffix=arctic
+    make deployscarctic linkfrom=<absolute_path_to_ixh_folder_of_icon_bsc_deployment>
+

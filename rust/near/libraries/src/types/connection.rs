@@ -1,7 +1,4 @@
-use super::BTPAddress;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LookupMap;
-use std::collections::HashSet;
+use super::*;
 
 #[derive(BorshDeserialize, BorshSerialize, Eq, PartialEq, PartialOrd, Hash, Clone)]
 pub enum Connection {
@@ -15,13 +12,13 @@ pub struct Connections(LookupMap<Connection, HashSet<BTPAddress>>);
 
 impl Connections {
     pub fn new() -> Self {
-        Self(LookupMap::new(b"connections".to_vec()))
+        Self(LookupMap::new(StorageKey::Connections))
     }
 
     pub fn add(&mut self, connection: &Connection, link: &BTPAddress) {
         let mut list = self.0.get(connection).unwrap_or_default();
         list.insert(link.to_owned());
-        self.0.insert(&connection, &list);
+        self.0.insert(connection, &list);
     }
 
     pub fn remove(&mut self, connection: &Connection, link: &BTPAddress) {
@@ -48,6 +45,12 @@ impl Connections {
     }
 }
 
+impl Default for Connections {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -55,7 +58,6 @@ mod tests {
 
     #[test]
     fn add_connection() {
-
         let destination = BTPAddress::new(
             "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -80,7 +82,6 @@ mod tests {
 
     #[test]
     fn remove_connection() {
-
         let destination = BTPAddress::new(
             "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -105,17 +106,16 @@ mod tests {
             &Connection::LinkReachable(destination.network_address().unwrap()),
             &link_2,
         );
-        connections.remove(&Connection::Route(destination.network_address().unwrap()), &link_1);
-        let link = connections.get(&Connection::Route(destination.network_address().unwrap()));
-        assert_eq!(
-            link,
-            None
+        connections.remove(
+            &Connection::Route(destination.network_address().unwrap()),
+            &link_1,
         );
+        let link = connections.get(&Connection::Route(destination.network_address().unwrap()));
+        assert_eq!(link, None);
     }
 
     #[test]
     fn contains_connection() {
-
         let destination = BTPAddress::new(
             "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -140,18 +140,26 @@ mod tests {
             &Connection::LinkReachable(destination.network_address().unwrap()),
             &link_2,
         );
-        connections.remove(&Connection::Route(destination.network_address().unwrap()), &link_1);
-        let result = connections.contains(&Connection::Route(destination.network_address().unwrap()));
+        connections.remove(
+            &Connection::Route(destination.network_address().unwrap()),
+            &link_1,
+        );
+        let result =
+            connections.contains(&Connection::Route(destination.network_address().unwrap()));
         assert_eq!(result, false);
 
-        connections.remove(&Connection::LinkReachable(destination.network_address().unwrap()), &link_1);
-        let result = connections.contains(&Connection::LinkReachable(destination.network_address().unwrap()));
+        connections.remove(
+            &Connection::LinkReachable(destination.network_address().unwrap()),
+            &link_1,
+        );
+        let result = connections.contains(&Connection::LinkReachable(
+            destination.network_address().unwrap(),
+        ));
         assert_eq!(result, true);
     }
 
     #[test]
     fn get_connection() {
-
         let destination = BTPAddress::new(
             "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -181,7 +189,9 @@ mod tests {
             ))
         );
 
-        let link = connections.get(&Connection::LinkReachable(destination.network_address().unwrap()));
+        let link = connections.get(&Connection::LinkReachable(
+            destination.network_address().unwrap(),
+        ));
         assert_eq!(
             link,
             Some(BTPAddress::new(
@@ -190,5 +200,4 @@ mod tests {
             ))
         );
     }
-
 }

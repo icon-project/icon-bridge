@@ -1,7 +1,4 @@
-use super::{error::MptError, MerklePatriciaTree};
-use crate::rlp::{self, encode, Decodable};
-use crate::types::{Hash, Hasher};
-
+use super::*;
 pub trait Prove<T>
 where
     T: Hasher,
@@ -20,7 +17,7 @@ where
             self.mpt_proofs()
                 .map_err(|message| MptError::DecodeFailed { message })?,
         )?;
-        
+
         rlp::decode::<Self::Output>(&serialized).map_err(|error| MptError::DecodeFailed {
             message: format!("rlp error: {}", error),
         })

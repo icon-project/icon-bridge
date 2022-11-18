@@ -5,7 +5,6 @@ use test_helper::types::Context;
 
 pub static ICON_LINK_IS_ADDED: fn(Context) -> Context = |context: Context| {
     context
-        .pipe(VERIFIER_FOR_ICON_IS_PRESENT_IN_BMC)
         .pipe(ICON_LINK_ADDRESS_IS_PROVIDED_AS_ADD_LINK_PARAM)
         .pipe(BMC_OWNER_INVOKES_ADD_LINK_IN_BMC)
 };
@@ -77,7 +76,7 @@ pub static ICON_LINK_SHOULD_BE_ADDED_TO_THE_LIST_OF_LINKS: fn(Context) = |contex
         .into_iter()
         .collect();
     let expected: HashSet<_> =
-        vec!["btp://0x1.icon/0xc294b1A62E82d3f135A8F9b2f9cAEAA23fbD6Cf5".to_string()]
+        vec!["btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315".to_string()]
             .into_iter()
             .collect();
 
@@ -117,11 +116,6 @@ pub static USER_SHOULD_GET_THE_ICON_LINK_STATUS: fn(Context) = |context: Context
         .pipe(USER_INVOKES_GET_STATUS_IN_BMC);
     let result: LinkStatus = from_value(context.method_responses("get_status")).unwrap();
     assert_eq!(result.delay_limit(), 4);
-};
-
-pub static BMC_SHOULD_THROW_VERIFIER_NOT_EXISITING_ERROR: fn(Context) = |context: Context| {
-    let error = context.method_errors("add_link");
-    assert!(error.to_string().contains("BMCRevertNotExistBMV"));
 };
 
 pub static BMC_SHOULD_THROW_LINK_DOES_NOT_EXIST_ERROR_ON_SETTING_LINK: fn(Context) =
@@ -274,58 +268,4 @@ pub static BMC_SHOULD_THROW_LINK_ALREADY_EXISTS_ERROR_ON_ADDING_LINK: fn(Context
         let error = context.method_errors("add_link");
 
         assert!(error.to_string().contains("BMCRevertAlreadyExistsLink"));
-    };
-
-pub static ICON_LINK_IS_ADDED_AND_INITIALIZED_IN_BMC: fn(Context) -> Context =
-    |context: Context| {
-        context
-            .pipe(ICON_LINK_IS_ADDED_IN_BMC)
-            .pipe(ICON_LINK_IS_INITIALIZED_IN_BMC)
-    };
-
-pub static ICON_LINK_IS_ADDED_IN_BMC: fn(Context) -> Context = |context: Context| {
-    context
-        .pipe(VERIFIER_FOR_ICON_IS_PRESENT_IN_BMC)
-        .pipe(LINK_ADDRESS_IS_PROVIDED_AS_ADD_LINK_PARAM)
-        .pipe(BMC_OWNER_INVOKES_ADD_LINK_IN_BMC)
-};
-
-pub static LINK_ADDRESS_IS_PROVIDED_AS_ADD_LINK_PARAM: fn(Context) -> Context =
-    |mut context: Context| {
-        context.add_method_params(
-            "add_link",
-            json!({ "link": "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b" }),
-        );
-
-        context
-    };
-
-pub static ICON_LINK_IS_INITIALIZED_IN_BMC: fn(Context) -> Context = |context: Context| {
-    context
-        .pipe(ICON_LINK_ADDRESS_IS_PROVIDED_AS_SET_LINK_PARAM_IN_BMC)
-        .pipe(BMC_OWNER_INVOKES_SET_LINK_IN_BMC)
-};
-
-pub static ICON_LINK_ADDRESS_IS_PROVIDED_AS_SET_LINK_PARAM_IN_BMC: fn(Context) -> Context =
-    |mut context: Context| {
-        context.add_method_params(
-            "set_link",
-            json!({
-                "link": "btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b",
-                "block_interval": 15000,
-                "max_aggregation": 5,
-                "delay_limit": 4
-            }),
-        );
-
-        context
-    };
-
-    pub static ICON_LINK_STATUS_SHOULD_BE_UPDATED: fn(Context) = |context: Context| {
-        let context = context
-            .pipe(ICON_LINK_ADDRESS_IS_PROVIDED_AS_GET_STATUS_PARAM)
-            .pipe(USER_INVOKES_GET_STATUS_IN_BMC);
-        let result: LinkStatus = from_value(context.method_responses("get_status")).unwrap();
-        // assert_eq!(result.delay_limit(), 4);
-        println!("{:?}",result);
     };

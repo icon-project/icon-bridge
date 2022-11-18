@@ -29,12 +29,8 @@ pub struct Contract<'a, T> {
 #[duplicate(
     contract_type;
     [ Bmc ];
-    [ Bmv ];
-    [ NativeCoinBsh ];
-    [ TokenBsh ];
+    [ Bts ];
     [ Nep141 ];
-    [ WNear ];
-    [ Nep141Testable ];
   )]
 impl Contract<'_, contract_type> {
     fn new(name: &'static str, source: &'static str) -> Contract<'static, contract_type> {
@@ -56,11 +52,9 @@ impl Contract<'_, contract_type> {
 
 pub struct Bmc {}
 
-pub struct Bmv {}
+pub struct Bts {}
 
-pub struct NativeCoinBsh {}
-
-pub struct TokenBsh {}
+pub struct Nep141 {}
 
 pub struct BmcContract {}
 
@@ -70,27 +64,19 @@ impl BmcContract {
     }
 }
 
-pub struct BmvContract {}
+pub struct BtsContract {}
 
-impl BmvContract {
-    pub fn new(name: &'static str, source: &'static str) -> Contract<'static, Bmv> {
-        Contract::<Bmv>::new(name, source)
+impl BtsContract {
+    pub fn new(name: &'static str, source: &'static str) -> Contract<'static, Bts> {
+        Contract::<Bts>::new(name, source)
     }
 }
 
-pub struct NativeCoinBshContract {}
+pub struct Nep141Contract {}
 
-impl NativeCoinBshContract {
-    pub fn new(name: &'static str, source: &'static str) -> Contract<'static, NativeCoinBsh> {
-        Contract::<NativeCoinBsh>::new(name, source)
-    }
-}
-
-pub struct TokenBshContract {}
-
-impl TokenBshContract {
-    pub fn new(name: &'static str, source: &'static str) -> Contract<'static, TokenBsh> {
-        Contract::<TokenBsh>::new(name, source)
+impl Nep141Contract {
+    pub fn new(name: &'static str, source: &'static str) -> Contract<'static, Nep141> {
+        Contract::<Nep141>::new(name, source)
     }
 }
 

@@ -18,6 +18,15 @@ build_bts() {
     echo "build bts complete"
 }
 
+build_bmc() {
+    echo "building bmc jar"
+    cd $ROOT_DIR/javascore
+    gradle clean
+    gradle bmc:optimizedJar
+    cp bmc/build/libs/bmc-optimized.jar $CONTRACTS_DIR/javascore/bmc.jar
+    echo "build bmc complete"
+}
+
 upgrade_javascore_bts() {
     echo "upgrading javascore bts"
     cd $CONFIG_DIR
@@ -45,7 +54,39 @@ upgrade_javascore_bts() {
         cat icon.addr.bts.upgrade
     fi
 }
-echo "Start Upgrade "
-build_bts
-upgrade_javascore_bts "${ICON_NATIVE_COIN_FIXED_FEE[0]}" "${ICON_NATIVE_COIN_FEE_NUMERATOR[0]}" "${ICON_NATIVE_COIN_DECIMALS[0]}"
-echo "Done"
+
+upgrade_javascore_bmc() {
+    echo "upgrading javascore bmc"
+    cd $CONFIG_DIR
+    if [ ! -f icon.addr.bmc ]; then
+        echo "BMC address file icon.addr.bmc does not exist"
+        exit
+    fi
+    if [ ! -f icon.addr.bmc.upgrade ]; then
+        goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bmc.jar \
+        --content_type application/java \
+        --to $(cat icon.addr.bmc) \
+        --param _net=$1 | jq -r . > tx/tx.icon.bmc.upgrade
+        sleep 5
+        extract_scoreAddress tx/tx.icon.bmc.upgrade icon.addr.bmc.upgrade
+        echo "Upgraded Address: "
+        cat icon.addr.bmc.upgrade
+    fi
+}
+
+
+if [ $# -eq 0 ]; then
+    echo "No arguments supplied: Pass --bmc to upgrade javascore bmc, --bts tp upgrade javascore bts"
+elif [ $1 == "--bts" ]; then
+    echo "Start Upgrade"
+    build_bts
+    upgrade_javascore_bts "${ICON_NATIVE_COIN_FIXED_FEE[0]}" "${ICON_NATIVE_COIN_FEE_NUMERATOR[0]}" "${ICON_NATIVE_COIN_DECIMALS[0]}"
+    echo "Done"
+elif [ $1 == "--bmc" ]; then
+    echo "Start Upgrade"
+    build_bmc
+    upgrade_javascore_bmc "${ICON_BMC_NET}"
+    echo "Done"
+else
+    echo "Invalid argument: Pass --bmc to upgrade javascore bmc, --bts tp upgrade javascore bts"
+fi

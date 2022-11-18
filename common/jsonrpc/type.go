@@ -55,3 +55,10 @@ func (e *Error) Error() string {
 
 	return fmt.Sprintf("jsonrpc: code: %d, message: %s, data: %+v", e.Code, e.Message, e.Data)
 }
+
+type Response2 struct {
+	Version string          `json:"jsonrpc"`
+	Result  interface{}     `json:"result,omitempty"`
+	Error   json.RawMessage `json:"error,omitempty"`
+	ID      interface{}     `json:"id,omitempty"`
+}

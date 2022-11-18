@@ -293,7 +293,7 @@ get_coinID() {
     --method coinId --coinName "$1")
   coinId=$(echo "$tx" | grep "coinId:" | sed -e "s/^coinId: //")
   exists=$(echo $coinId | wc -l | awk '{$1=$1;print}')
-  if [ "$exists" != "1" ]; 
+  if [ "$exists" != "1" ] || [ "$coinId" == "0x0000000000000000000000000000000000000000" ]; 
   then
     echo "Error getting coinID " $2
     return 1

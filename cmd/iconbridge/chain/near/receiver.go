@@ -12,6 +12,10 @@ import (
 	"github.com/reactivex/rxgo/v2"
 )
 
+type ReceiverOptions struct {
+	SyncConcurrency uint `json:"syncConcurrency"`
+}
+
 type ReceiverConfig struct {
 	source      chain.BTPAddress
 	destination chain.BTPAddress
@@ -23,9 +27,7 @@ type Receiver struct {
 	source      chain.BTPAddress
 	destination chain.BTPAddress
 	logger      log.Logger
-	options     struct {
-		SyncConcurrency uint `json:"syncConcurrency"`
-	}
+	options     ReceiverOptions
 }
 
 func receiverFactory(source, destination chain.BTPAddress, urls []string, options json.RawMessage, logger log.Logger) (chain.Receiver, error) {
@@ -41,12 +43,13 @@ func NewReceiver(config ReceiverConfig, logger log.Logger, clients ...IClient) (
 	if len(clients) == 0 {
 		return nil, fmt.Errorf("nil clients")
 	}
-
+	
 	r := &Receiver{
-		clients:     clients,
-		logger:      logger,
-		source:      config.source,
-		destination: config.destination,
+		clients,
+		config.source,
+		config.destination,
+		logger,
+		ReceiverOptions{},
 	}
 
 	if err := json.Unmarshal(config.options, &r.options); err != nil && config.options != nil {

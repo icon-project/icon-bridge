@@ -2,6 +2,7 @@ package relay
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/wallet"
@@ -51,16 +52,20 @@ type DstConfig struct {
 func (cfg *DstConfig) Wallet() (wallet.Wallet, error) {
 	keyStore, password, err := cfg.resolveKeyStore()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolveKeyStore %v", err)
 	}
-	return wallet.DecryptKeyStore(keyStore, password)
+	w, err := wallet.DecryptKeyStore(keyStore, password)
+	if err != nil {
+		return nil, fmt.Errorf("DecryptKeystore %v", err)
+	}
+	return w, err
 }
 
 func (cfg *DstConfig) resolveKeyStore() (json.RawMessage, []byte, error) {
 	if cfg.AWSSecretName != "" && cfg.AWSRegion != "" {
 		result, err := wallet.GetSecret(cfg.AWSSecretName, cfg.AWSRegion)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("wallet.GetSecret %v", err)
 		}
 		if result != "" {
 			var w struct {
@@ -69,7 +74,7 @@ func (cfg *DstConfig) resolveKeyStore() (json.RawMessage, []byte, error) {
 			}
 			err = json.Unmarshal([]byte(result), &w)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, fmt.Errorf("unmarshalWallet %v", err)
 			}
 			return w.KeyStore, []byte(w.Secret), nil
 		}

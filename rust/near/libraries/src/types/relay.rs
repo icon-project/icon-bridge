@@ -1,9 +1,4 @@
-use super::BTPAddress;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{UnorderedMap, Vector};
-use near_sdk::env::keccak256;
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
+use super::*;
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Relays(Vec<AccountId>, UnorderedMap<AccountId, RelayStatus>);
@@ -30,16 +25,18 @@ impl std::fmt::Debug for Relays {
     }
 }
 
+impl AsMut<Relays> for Relays {
+    fn as_mut(&mut self) -> &mut Self {
+        self
+    }
+}
+
 impl Relays {
     pub fn new(link: &BTPAddress) -> Self {
         Self(
             Vec::new(),
             UnorderedMap::new(keccak256(format!("{}_relay_status", link).as_bytes())),
         )
-    }
-
-    pub fn as_mut(&mut self) -> &mut Self {
-        self
     }
 
     pub fn add(&mut self, account_id: &AccountId) {
@@ -73,13 +70,13 @@ impl Relays {
     }
 
     pub fn contains(&self, account_id: &AccountId) -> bool {
-        self.0.contains(&account_id)
+        self.0.contains(account_id)
     }
 
     pub fn remove(&mut self, account_id: &AccountId) {
         let index = self.0.iter().position(|item| item == account_id);
-        if index.is_some() {
-            self.0.swap_remove(index.unwrap());
+        if let Some(index) = index {
+            self.0.swap_remove(index);
         }
     }
 
@@ -105,6 +102,9 @@ impl Relays {
                 }
             })
             .collect()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -151,7 +151,6 @@ mod tests {
 
     #[test]
     fn add_relay() {
-
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -166,7 +165,6 @@ mod tests {
 
     #[test]
     fn add_existing_relay() {
-
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -190,7 +188,6 @@ mod tests {
 
     #[test]
     fn remove_relay() {
-
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -206,7 +203,6 @@ mod tests {
 
     #[test]
     fn remove_relay_non_existing() {
-
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -225,7 +221,6 @@ mod tests {
 
     #[test]
     fn clear_relays() {
-
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -242,7 +237,6 @@ mod tests {
 
     #[test]
     fn to_vec_relays() {
-
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );

@@ -1,12 +1,6 @@
 use super::*;
 
 impl BtpTokenService {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * Internal Validations  * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
     pub fn assert_predecessor_is_bmc(&self) {
         require!(
             env::predecessor_account_id() == *self.bmc(),
@@ -14,13 +8,17 @@ impl BtpTokenService {
         )
     }
 
-    pub fn assert_coin_id_len_match_amount_len(&self, coin_ids: &Vec<CoinId>, amounts: &Vec<U128>) {
+    pub fn assert_token_id_len_match_amount_len(
+        &self,
+        token_ids: &Vec<TokenId>,
+        amounts: &Vec<U128>,
+    ) {
         require!(
-            coin_ids.len() == amounts.len(),
+            token_ids.len() == amounts.len(),
             format!(
                 "{}",
                 BshError::InvalidCount {
-                    message: "Coin Ids and amounts".to_string()
+                    message: "Token Ids and amounts".to_string()
                 }
             ),
         );
@@ -39,18 +37,6 @@ impl BtpTokenService {
                     message: "Transfer amounts and returned amounts".to_string()
                 }
             ),
-        );
-    }
-
-    pub fn assert_valid_fee_ratio(&self, fee_numerator: u128, fixed_fee: u128) {
-        require!(
-            fee_numerator <= FEE_DENOMINATOR,
-            format!("{}", BshError::InvalidSetting),
-        );
-
-        require!(
-            fee_numerator >= 0 && fixed_fee >= 0,
-            format!("{}", BshError::LessThanZero),
         );
     }
 
@@ -88,12 +74,18 @@ impl BtpTokenService {
     pub fn assert_have_sufficient_deposit(
         &self,
         account: &AccountId,
-        coin_id: &CoinId,
+        token_id: &TokenId,
         amount: u128,
         fees: Option<u128>,
     ) {
+        require!(
+            amount >= fees.unwrap_or_default(),
+            format!("{}", BshError::NotMinimumAmount)
+        );
+
         let amount = std::cmp::max(amount, fees.unwrap_or_default());
-        if let Some(balance) = self.balances.get(&account, &coin_id) {
+
+        if let Some(balance) = self.balances.get(account, token_id) {
             require!(
                 balance.deposit() >= amount,
                 format!("{}", BshError::NotMinimumDeposit)
@@ -106,10 +98,10 @@ impl BtpTokenService {
     pub fn assert_have_sufficient_refundable(
         &self,
         account: &AccountId,
-        coin_id: &CoinId,
+        token_id: &TokenId,
         amount: u128,
     ) {
-        if let Some(balance) = self.balances.get(&account, &coin_id) {
+        if let Some(balance) = self.balances.get(account, token_id) {
             require!(
                 balance.refundable() >= amount,
                 format!("{}", BshError::NotMinimumRefundable)
@@ -128,7 +120,7 @@ impl BtpTokenService {
 
     pub fn assert_owner_exists(&self, account: &AccountId) {
         require!(
-            self.owners.contains(&account),
+            self.owners.contains(account),
             format!("{}", BshError::OwnerNotExist)
         );
     }
@@ -144,14 +136,15 @@ impl BtpTokenService {
         require!(self.owners.len() > 1, format!("{}", BshError::LastOwner));
     }
 
-    pub fn assert_coin_does_not_exists(&self, coin: &Coin) {
-        let coin = self.coins.get(&Self::hash_coin_id(coin.name()));
-        require!(coin.is_none(), format!("{}", BshError::TokenExist))
+    pub fn assert_token_does_not_exists(&self, token: &Token) {
+        let token_id = self.token_ids.get(token.name());
+
+        require!(token_id.is_none(), format!("{}", BshError::TokenExist))
     }
 
-    pub fn assert_coin_registered(&self, coin_account: &AccountId) {
+    pub fn assert_token_registered(&self, token_account: &AccountId) {
         require!(
-            self.registered_coins.contains(coin_account),
+            self.registered_tokens.contains(token_account),
             format!("{}", BshError::TokenNotRegistered)
         )
     }
@@ -162,40 +155,63 @@ impl BtpTokenService {
                 message: user.to_string(),
             });
         }
+
         Ok(())
     }
 
     pub fn ensure_length_matches(
         &self,
-        coin_names: &Vec<String>,
-        token_limits: &Vec<u128>,
+        token_names: &[String],
+        token_limits: &[u128],
     ) -> Result<(), BshError> {
-        if coin_names.len() != token_limits.len() {
+        if token_names.len() != token_limits.len() {
             return Err(BshError::InvalidParams);
         }
+
         Ok(())
     }
 
-    pub fn ensure_coin_exists(&self, coin_name: &String) -> bool {
-        match self.coin_ids.get(coin_name) {
-            Some(coin) => true,
-            None => false,
+    pub fn ensure_token_exists(&self, token_name: &str) -> Result<(), BshError> {
+        if self.token_ids.get(token_name).is_none() {
+            return Err(BshError::TokenNotExist {
+                message: token_name.to_owned(),
+            });
         }
+
+        Ok(())
     }
+
     pub fn ensure_user_not_blacklisted(&self, user: &AccountId) -> Result<(), BshError> {
         if self.blacklisted_accounts.contains(user) {
             return Err(BshError::BlacklistedUsers {
                 message: user.to_string(),
             });
         }
+
         Ok(())
     }
-    pub fn ensure_value_within_limit(&self, coin_name: &str, value: &u128) -> Result<(), BshError> {
-        if let Some(token_limit) = self.token_limits.get(coin_name) {
-            if token_limit > value {
-                return Err(BshError::LimitExceed);
-            }
+
+    pub fn assert_have_sufficient_storage_deposit(&self, account: &AccountId, asset_id: &AssetId) {
+        if let Some(storage_balance) = self.storage_balances.get(account, asset_id) {
+            let attached_deposit = env::attached_deposit();
+            require!(
+                attached_deposit > storage_balance,
+                format!("{}", BshError::NotMinimumDeposit)
+            );
         }
-        Ok(())
+    }
+
+    pub fn assert_have_sufficient_storage_deposit_for_batch(&self, storage_balance: u128) {
+        require!(
+            env::attached_deposit() > storage_balance,
+            format!("{}", BshError::NotMinimumDeposit)
+        );
+    }
+
+    pub fn assert_minimum_one_yocto(&self) {
+        require!(
+            env::attached_deposit() >= 1,
+            format!("{}", BshError::RequiredMinimumOneYoctoNear)
+        );
     }
 }

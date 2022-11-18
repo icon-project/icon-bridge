@@ -1,10 +1,4 @@
-use std::ops::Deref;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSchema, BorshSerialize};
-use near_sdk::serde::{Deserialize, Serialize, de};
-use rustc_hex::FromHex;
-use near_sdk::base64::{self, URL_SAFE_NO_PAD};
-use std::convert::TryFrom;
-use crate::rlp::{Decodable, Encodable};
+use super::*;
 
 pub trait Hasher {
     fn hash(input: &[u8]) -> [u8; 32];
@@ -36,14 +30,13 @@ impl Hash {
 
     /// Create Hash for any serializable data
     pub fn serialize<S: BorshSerialize + BorshSchema, H: Hasher>(d: &S) -> Result<Self, String> {
-        let ser = borsh::try_to_vec_with_schema(d)
-            .map_err(|err| format!("{}", err))?;
+        let ser = borsh::try_to_vec_with_schema(d).map_err(|err| format!("{}", err))?;
         Ok(Self(Self::hash::<H>(&ser[..])))
     }
 
     pub fn from_hash(hash: &[u8]) -> Self {
         let mut slice = [0u8; 32];
-        slice.clone_from_slice(&hash);
+        slice.clone_from_slice(hash);
         Self(slice)
     }
 
@@ -93,12 +86,13 @@ impl TryFrom<String> for Hash {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let decoded = match value.starts_with("0x") {
-            true => value.strip_prefix("0x").unwrap().from_hex().map_err(|error| {
-                format!("Failed to decode hash from Hex: {}", error)
-            })?,
-            _ => base64::decode_config(value, URL_SAFE_NO_PAD).map_err(|error| {
-                format!("Failed to decode hash from Base 64: {}", error)
-            })?,
+            true => value
+                .strip_prefix("0x")
+                .unwrap()
+                .from_hex()
+                .map_err(|error| format!("Failed to decode hash from Hex: {}", error))?,
+            _ => base64::decode_config(value, URL_SAFE_NO_PAD)
+                .map_err(|error| format!("Failed to decode hash from Base 64: {}", error))?,
         };
 
         Ok(Hash::from_hash(&decoded))

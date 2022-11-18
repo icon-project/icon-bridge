@@ -1,406 +1,162 @@
+use super::BTS_CONTRACT;
 use super::*;
-use libraries::types::{HashedCollection, HashedValue};
-use serde_json::{from_value, json, Value};
+use libraries::types::messages::{BtpMessage, SerializedMessage, TokenServiceMessage};
+use near_sdk::json_types::U128;
+use serde_json::json;
 use test_helper::types::Context;
-
-pub static BOB_IS_BSH_CONTRACT_OWNER: fn(Context) -> Context = |mut context: Context| {
-    let bsh_signer = context.contracts().get("bsh").to_owned();
-    context.accounts_mut().add("bob", &bsh_signer);
+pub static BOB_IS_BTS_CONTRACT_OWNER: fn(Context) -> Context = |mut context: Context| {
+    let bsh_signer = context.contracts().get("bts").as_account().clone();
+    context.accounts_mut().add("bob", bsh_signer);
     context
-};
-
-pub static BOB_INVOKES_TRANSFER_NATIVE_COIN_FORM_BSH: fn(Context) -> Context =
-    |mut context: Context| {
-        let signer = context.accounts().get("bob").to_owned();
-        context.set_signer(&signer);
-        BSH_CONTRACT.transfer_native_coin(context)
-    };
-
-pub static BOB_INVOKES_GET_BALANCE_FORM_BSH: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.accounts().get("bob").to_owned();
-    context.set_signer(&signer);
-    BSH_CONTRACT.get_balance_of(context)
 };
 
 pub static BOB_INVOKES_REGISTER_NEW_COIN_FORM_BSH: fn(Context) -> Context =
     |mut context: Context| {
         let signer = context.accounts().get("bob").to_owned();
         context.set_signer(&signer);
-        BSH_CONTRACT.register(context)
+        BTS_CONTRACT.register(context)
     };
 
-pub static CHUCK_INVOKES_REGISTER_NEW_COIN_FORM_BSH: fn(Context) -> Context =
-    |mut context: Context| {
-        let signer = context.accounts().get("bob").to_owned();
-        context.set_signer(&signer);
-        BSH_CONTRACT.register(context)
-    };
-
-pub static BOB_INVOKES_ADD_OWNER: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.accounts().get("bob").to_owned();
-    context.set_signer(&signer);
-    BSH_CONTRACT.add_owner(context)
-};
-
-pub static BOB_INVOKES_REMOVE_OWNER: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.accounts().get("bob").to_owned();
-    context.set_signer(&signer);
-    BSH_CONTRACT.remove_owner(context)
-};
-
-pub static BSH_OWNER_REGISTERS_NEW_COIN: fn(Context) -> Context = |mut context: Context| {
+pub static BSH_OWNER_REGISTERS_BNUSD: fn(Context) -> Context = |mut context: Context| {
     BOBS_ACCOUNT_IS_CREATED(context)
-        .pipe(BOB_IS_BSH_CONTRACT_OWNER)
-        .pipe(NEW_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM)
+        .pipe(BOB_IS_BTS_CONTRACT_OWNER)
+        .pipe(BNUSD_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM)
         .pipe(BOB_INVOKES_REGISTER_NEW_COIN_FORM_BSH)
 };
 
-pub static NEW_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM: fn(Context) -> Context =
+pub static BNUSD_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM: fn(Context) -> Context =
     |mut context: Context| {
+        let uri = format!("bnusd.{}", context.contracts().get("bts").id());
+        let mut context = register_token_account("bnusd", &uri, context);
         context.add_method_params(
-            "register",
-            json!({
-                "name":"coin1"
-            }),
-        );
+        "register",
+        json!({
+            "token": {
+                "metadata": {
+                    "name": format!("btp-{}-bnUSD", ICON_NETWORK),
+                    "label": "Wrapped bnUSD From ICON",
+                    "symbol": "bnUSD",
+                    "uri": uri,
+                    "network": ICON_NETWORK,
+                    "fee_numerator": "100",
+                    "fixed_fee": "1500000000000000000",
+                    "extras": {
+                        "spec": "ft-1.0.0",
+                        "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAMAAABHPGVmAAABTVBMVEUMKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0wwqAyyaQYYGcuu5saa20VVWEkkoMSSFoPOlQiiX0ddnIoo40mmogff3gss5Yqq5L26tYlAAAAXnRSTlMA8+/uphQB4/v98RVrJ1wg4S0428iVbpDLJnMoZde/nD6y8PckpxPKmvaZIwfcM2xDyfJEpTSRiRybRbEahBIG9N0s4MCLsGTfGSJwCBY3XRhjlu0plNhypOQXiuK+gdXRMQAAA25JREFUeF692ldzGkkUBeDDgAAJEBJCgEDBcsBJsmKwvJLTOqxz3rxnhhwk+/8/bgF2F1BjcXvS9zZPp6Z77q2e7oZUYjuXf5bdDIfIUHgz+yyf207AS1eTkTnamIskr8ITpdMFXmDhtASX7m9lOVF26z6cS926QpErt1JwZunPaYpN7y9B39RinFrii1PQE/1gUJvxPAoN6VU6spqG2OwMHZqZhczGMV043oDA++t05foLTPR4ji7NPcYEmTBdC2dwoUsheiB0CRd4G6Indt/ip+Yv0yOX52EPJzF6JnYXth5k6aHsA9g5pqfWYGOWHrPpMOkZemwmjTHR/+i51ShGPacPljGi/Ik+CJcx7Atl2lZfmzKLGLIU9yckvgQF+/QnhBEoqWm/QqZLKuQG/QrhDbXEuulfyM0pDPxB/0JYxMAKhepnVavPPKtTaAV9dyjTaliKxsvcQc+RMOOrNaJBmSP0LFCka42pUWQBAG5TpGKNq1LmNoCk7osoHYokAVyjREtNeKXyI69LkWsA/tUarfOhtzIpEgMSFDm3BtjTVA8iCWxrlXr1e2S7jzL3kNMKsehADnmK1NSc6MvjF4rULecp6yhQxlQ12KGmAn4TN3nFbNSp41cYlGmZ1pCvHcoZ2CV1ZkWpVigVAsUqpmavV0C55pk1ok0h7FJDszHyNnXpcBnUU+tayhlFDPUJOxk1U/oJF6ivpjdeBbu2Iq/MirCt5OlASyvkUNjqvw2oOtcKyWGPEmP119QKuYcEJX4sT1tqTjQm/m8gRoHuSGV0tD7hmHRJ1FF98bxSU3XSFS+JkvLxUrSmZEu8TK3ZZHyTL1OxSYmGNc6sU2ITPf/QUYpZo8iR1k9QbaTNV+uUOdD7nWu1qyqi3aLM7xgoUqyhKl+qGMgvdpCbBSj5t+3xGUrEr5BIEFtRKQxZ9CfkI4aVwxRpVvqaFDHKGLEcwEYnoqt+bNkGsfkcwDb6O9hYC+BAABs79FBhA7bu+nRIE/xxE5AJ0ROhTJBHgPYyBl0zMphg3v2x7DwmeuH2gPkEAq9dVeXaa/8P/d9B7OUTOvLkJTRElw1qM5ajQV4pkUvt61yOiaT8v+ZTgnOJ4gonWikm4NLB04uvXj098OwSWYw2/pJdIpN7s/fqcH3nUfgh+TD8aGf98NXeGwj9D4eiMfXOYUaZAAAAAElFTkSuQmCC",
+                        "decimals": 18
+                    }
+                }
+            }
+        }),
+    );
         context
     };
 
-pub static NEW_BSH_PERIPHERY_ADDRESS_IS_PROVIDED_AS_UPDATE_PERIPHERY_PARAM: fn(Context) -> Context =
-    |mut context: Context| {
-        context.add_method_params(
-            "update_bsh_periphery",
-            json!({
-                "bsh_periphery":"Addresss"
-            }),
-        );
-        context
-    };
-
-pub static NEW_URI_IS_PROVIDED_AS_UPDATE_URI_PARAM: fn(Context) -> Context =
-    |mut context: Context| {
-        context.add_method_params(
-            "update_uri",
-            json!({
-                "new_uri":"Addresss"
-            }),
-        );
-        context
-    };
-
-pub static FIXED_FEE_IS_PROVIDED_AS_SET_FIXED_PARAM: fn(Context) -> Context =
-    |mut context: Context| {
-        context.add_method_params(
-            "set_fixed_fee",
-            json!({
-                "fixed_fee":"valueinu64"
-            }),
-        );
-        context
-    };
-
-pub static COIN_NAME_IS_PROVIDED_AS_GET_BALANCE_PARAM: fn(Context) -> Context =
-    |mut context: Context| {
-        context.add_method_params(
-            "get_balance_of",
-            json!({
-                "owner":"accountId",
-                "coin_name":"coin1"
-            }),
-        );
-        context
-    };
-
-pub static TOADDRESS_IS_PROVIDED_AS_TRANSFER_NATIVE_COIN_PARAM: fn(Context) -> Context =
-    |mut context: Context| {
-        context.add_method_params(
-            "transfer_native_coin",
-            json!({
-                "to":"accountId"
-            }),
-        );
-        context
-    };
-
-pub static INVALID_TOADDRESS_IS_PROVIDED_AS_TRANSFER_NATIVE_COIN_PARAM: fn(Context) -> Context =
-    |mut context: Context| {
-        context.add_method_params(
-            "transfer_native_coin",
-            json!({
-                "to":"invalidaccountId"
-            }),
-        );
-        context
-    };
-
-pub static COIN_NAMES_ARE_QURIED_IN_BSH: fn(Context) -> Context =
-    |context: Context| BSH_CONTRACT.get_coin_names(context);
-
-pub static COIN_REGISTERED_SHOULD_BE_PRESENT: fn(Context) = |context: Context| {
-    let coins = context.method_responses("get_coin_names");
-    let result: HashSet<_> = from_value::<Vec<String>>(coins)
-        .unwrap()
-        .into_iter()
-        .collect();
-    let expected: HashSet<_> = vec!["coin1".to_string()].into_iter().collect();
-    assert_eq!(result, expected);
-};
-
-pub static NON_BSH_OWNER_REGISTERS_NEW_COIN: fn(Context) -> Context = |mut context: Context| {
-    CHUCKS_ACCOUNT_IS_CREATED(context)
-        .pipe(CHUCK_IS_NOT_A_BSH_OWNER)
-        .pipe(NEW_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM)
-        .pipe(CHUCK_INVOKES_REGISTER_NEW_COIN_FORM_BSH)
-};
-
-pub static BSH_OWNER_REGISTERS_EXISTING_COIN: fn(Context) -> Context = |mut context: Context| {
-    BOBS_ACCOUNT_IS_CREATED(context)
-        .pipe(BOB_IS_BSH_CONTRACT_OWNER)
-        .pipe(NEW_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM)
-        .pipe(BOB_INVOKES_REGISTER_NEW_COIN_FORM_BSH)
-        .pipe(NEW_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM)
-        .pipe(BOB_INVOKES_REGISTER_NEW_COIN_FORM_BSH)
-};
-
-pub static BSH_OWNER_INVOKES_NATIVE_COIN_TRANSFER_TO_VALID_ADDRESS: fn(Context) -> Context =
-    |mut context: Context| {
-        BOBS_ACCOUNT_IS_CREATED(context)
-            .pipe(BOB_IS_BSH_CONTRACT_OWNER)
-            .pipe(TOADDRESS_IS_PROVIDED_AS_TRANSFER_NATIVE_COIN_PARAM)
-            .pipe(BOB_INVOKES_TRANSFER_NATIVE_COIN_FORM_BSH)
-    };
-
-pub static COIN_BALANCES_ARE_QURIED: fn(Context) -> Context = |mut context: Context| {
-    COIN_NAME_IS_PROVIDED_AS_GET_BALANCE_PARAM(context).pipe(BOB_INVOKES_GET_BALANCE_FORM_BSH)
-};
-
-pub static COIN_VALUE_SENT_SHOULD_BE_EQUAL_TO_COIN_VALUE_DEDUCTED: fn(Context) =
+pub static BNUSD_CONTRACT_SHOULD_BE_REGISTERED_WITH_PROVIDED_METADATA: fn(Context) =
     |context: Context| {
-        let coins = context.method_responses("get_balance_of");
-        let result: HashSet<_> = from_value::<Vec<String>>(coins)
-            .unwrap()
-            .into_iter()
-            .collect();
-        let expected: HashSet<_> = vec!["coin1".to_string()].into_iter().collect();
+        let expected = json!({
+            "spec": "ft-1.0.0",
+            "name": "Wrapped bnUSD From ICON",
+            "symbol": "bnUSD",
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAMAAABHPGVmAAABTVBMVEUMKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0wwqAyyaQYYGcuu5saa20VVWEkkoMSSFoPOlQiiX0ddnIoo40mmogff3gss5Yqq5L26tYlAAAAXnRSTlMA8+/uphQB4/v98RVrJ1wg4S0428iVbpDLJnMoZde/nD6y8PckpxPKmvaZIwfcM2xDyfJEpTSRiRybRbEahBIG9N0s4MCLsGTfGSJwCBY3XRhjlu0plNhypOQXiuK+gdXRMQAAA25JREFUeF692ldzGkkUBeDDgAAJEBJCgEDBcsBJsmKwvJLTOqxz3rxnhhwk+/8/bgF2F1BjcXvS9zZPp6Z77q2e7oZUYjuXf5bdDIfIUHgz+yyf207AS1eTkTnamIskr8ITpdMFXmDhtASX7m9lOVF26z6cS926QpErt1JwZunPaYpN7y9B39RinFrii1PQE/1gUJvxPAoN6VU6spqG2OwMHZqZhczGMV043oDA++t05foLTPR4ji7NPcYEmTBdC2dwoUsheiB0CRd4G6Indt/ip+Yv0yOX52EPJzF6JnYXth5k6aHsA9g5pqfWYGOWHrPpMOkZemwmjTHR/+i51ShGPacPljGi/Ik+CJcx7Atl2lZfmzKLGLIU9yckvgQF+/QnhBEoqWm/QqZLKuQG/QrhDbXEuulfyM0pDPxB/0JYxMAKhepnVavPPKtTaAV9dyjTaliKxsvcQc+RMOOrNaJBmSP0LFCka42pUWQBAG5TpGKNq1LmNoCk7osoHYokAVyjREtNeKXyI69LkWsA/tUarfOhtzIpEgMSFDm3BtjTVA8iCWxrlXr1e2S7jzL3kNMKsehADnmK1NSc6MvjF4rULecp6yhQxlQ12KGmAn4TN3nFbNSp41cYlGmZ1pCvHcoZ2CV1ZkWpVigVAsUqpmavV0C55pk1ok0h7FJDszHyNnXpcBnUU+tayhlFDPUJOxk1U/oJF6ivpjdeBbu2Iq/MirCt5OlASyvkUNjqvw2oOtcKyWGPEmP119QKuYcEJX4sT1tqTjQm/m8gRoHuSGV0tD7hmHRJ1FF98bxSU3XSFS+JkvLxUrSmZEu8TK3ZZHyTL1OxSYmGNc6sU2ITPf/QUYpZo8iR1k9QbaTNV+uUOdD7nWu1qyqi3aLM7xgoUqyhKl+qGMgvdpCbBSj5t+3xGUrEr5BIEFtRKQxZ9CfkI4aVwxRpVvqaFDHKGLEcwEYnoqt+bNkGsfkcwDb6O9hYC+BAABs79FBhA7bu+nRIE/xxE5AJ0ROhTJBHgPYyBl0zMphg3v2x7DwmeuH2gPkEAq9dVeXaa/8P/d9B7OUTOvLkJTRElw1qM5ajQV4pkUvt61yOiaT8v+ZTgnOJ4gonWikm4NLB04uvXj098OwSWYw2/pJdIpN7s/fqcH3nUfgh+TD8aGf98NXeGwj9D4eiMfXOYUaZAAAAAElFTkSuQmCC",
+            "decimals": 18,
+            "reference": null,
+            "reference_hash": null
+        });
+
+        let result = nep141_contract("bnusd")
+            .get_metadata(context)
+            .method_responses("ft_metadata");
+
         assert_eq!(result, expected);
     };
 
-pub static BSH_OWNER_INVOKES_NATIVE_COIN_TRANSFER_TO_INVALID_ADDRESS: fn(Context) -> Context =
+pub static BSH_OWNER_REGISTERS_ICX: fn(Context) -> Context = |mut context: Context| {
+    BOBS_ACCOUNT_IS_CREATED(context)
+        .pipe(BOB_IS_BTS_CONTRACT_OWNER)
+        .pipe(ICX_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM)
+        .pipe(BOB_INVOKES_REGISTER_NEW_COIN_FORM_BSH)
+};
+
+pub static ICX_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM: fn(Context) -> Context =
     |mut context: Context| {
-        INVALID_TOADDRESS_IS_PROVIDED_AS_TRANSFER_NATIVE_COIN_PARAM(context)
-            .pipe(BOB_INVOKES_TRANSFER_NATIVE_COIN_FORM_BSH)
+        let uri = format!("icx.{}", context.contracts().get("bts").id());
+        let mut context = register_token_account("icx", &uri, context);
+        context.add_method_params(
+        "register",
+        json!({
+            "token": {
+                "metadata": {
+                    "name": format!("btp-{}-icx", ICON_NETWORK),
+                    "label": "Wrapped icx From ICON",
+                    "symbol": "ICX",
+                    "uri": uri,
+                    "network": ICON_NETWORK,
+                    "fee_numerator": "100",
+                    "fixed_fee": "1500000000000000000",
+                    "extras": {
+                        "spec": "ft-1.0.0",
+                        "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAMAAABHPGVmAAABTVBMVEUMKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0MKk0wwqAyyaQYYGcuu5saa20VVWEkkoMSSFoPOlQiiX0ddnIoo40mmogff3gss5Yqq5L26tYlAAAAXnRSTlMA8+/uphQB4/v98RVrJ1wg4S0428iVbpDLJnMoZde/nD6y8PckpxPKmvaZIwfcM2xDyfJEpTSRiRybRbEahBIG9N0s4MCLsGTfGSJwCBY3XRhjlu0plNhypOQXiuK+gdXRMQAAA25JREFUeF692ldzGkkUBeDDgAAJEBJCgEDBcsBJsmKwvJLTOqxz3rxnhhwk+/8/bgF2F1BjcXvS9zZPp6Z77q2e7oZUYjuXf5bdDIfIUHgz+yyf207AS1eTkTnamIskr8ITpdMFXmDhtASX7m9lOVF26z6cS926QpErt1JwZunPaYpN7y9B39RinFrii1PQE/1gUJvxPAoN6VU6spqG2OwMHZqZhczGMV043oDA++t05foLTPR4ji7NPcYEmTBdC2dwoUsheiB0CRd4G6Indt/ip+Yv0yOX52EPJzF6JnYXth5k6aHsA9g5pqfWYGOWHrPpMOkZemwmjTHR/+i51ShGPacPljGi/Ik+CJcx7Atl2lZfmzKLGLIU9yckvgQF+/QnhBEoqWm/QqZLKuQG/QrhDbXEuulfyM0pDPxB/0JYxMAKhepnVavPPKtTaAV9dyjTaliKxsvcQc+RMOOrNaJBmSP0LFCka42pUWQBAG5TpGKNq1LmNoCk7osoHYokAVyjREtNeKXyI69LkWsA/tUarfOhtzIpEgMSFDm3BtjTVA8iCWxrlXr1e2S7jzL3kNMKsehADnmK1NSc6MvjF4rULecp6yhQxlQ12KGmAn4TN3nFbNSp41cYlGmZ1pCvHcoZ2CV1ZkWpVigVAsUqpmavV0C55pk1ok0h7FJDszHyNnXpcBnUU+tayhlFDPUJOxk1U/oJF6ivpjdeBbu2Iq/MirCt5OlASyvkUNjqvw2oOtcKyWGPEmP119QKuYcEJX4sT1tqTjQm/m8gRoHuSGV0tD7hmHRJ1FF98bxSU3XSFS+JkvLxUrSmZEu8TK3ZZHyTL1OxSYmGNc6sU2ITPf/QUYpZo8iR1k9QbaTNV+uUOdD7nWu1qyqi3aLM7xgoUqyhKl+qGMgvdpCbBSj5t+3xGUrEr5BIEFtRKQxZ9CfkI4aVwxRpVvqaFDHKGLEcwEYnoqt+bNkGsfkcwDb6O9hYC+BAABs79FBhA7bu+nRIE/xxE5AJ0ROhTJBHgPYyBl0zMphg3v2x7DwmeuH2gPkEAq9dVeXaa/8P/d9B7OUTOvLkJTRElw1qM5ajQV4pkUvt61yOiaT8v+ZTgnOJ4gonWikm4NLB04uvXj098OwSWYw2/pJdIpN7s/fqcH3nUfgh+TD8aGf98NXeGwj9D4eiMfXOYUaZAAAAAElFTkSuQmCC",
+                        "decimals": 18
+                    }
+                }
+            }
+        }),
+    );
+        context
     };
 
-pub static BSH_OWNER_INVOKES_NATIVE_COIN_WITH_NOVALUE: fn(Context) -> Context =
-    |mut context: Context| context;
-
-pub static BSH_SHOULD_THROW_FAIL_TO_TRANSFER_ERROR: fn(Context) -> Context =
-    |mut context: Context| context;
-
-pub static BSH_OWNER_INVOKES_NATIVE_COIN_TRANSFER_TO_UNSUPPORTED_NETWORK: fn(Context) -> Context =
-    |mut context: Context| context;
-
-pub static ACCOUNT_ID_IS_PROVIDED_AS_REMOVE_OWNER_PARAM: fn(Context) -> Context =
+pub static STROAGE_BALANCE_FOR_ICX_WITH_CHUCK_ACCOUNT_SHOULD_BE_ZERO: fn(Context) =
     |mut context: Context| {
-        let charlie = context.accounts().get("charlie").to_owned();
+        assert_eq!(
+            Some("0"),
+            context.method_responses("get_storage_balance").as_str()
+        );
+    };
+
+pub static GET_STROAGE_COST: fn(Context) -> Context =
+    |context: Context| BTS_CONTRACT.storage_balance(context);
+
+pub static ACCOUNT_ID_AND_TOKEN_ID_IS_PROVIDED_AS_STORAGE_COST_PARAM: fn(Context) -> Context =
+    |mut context: Context| {
+        let account = context.accounts().get("chuck").to_owned();
         context.add_method_params(
-            "remove_owner",
+            "get_storage_balance",
             json!({
-                "owner": charlie.account_id()
+               "account":account.id(),
+               "token_name": format!("btp-{}-icx", ICON_NETWORK),
             }),
         );
         context
     };
-pub static BSH_OWNER_ADDS_NEW_OWNER: fn(Context) -> Context = |mut context: Context| {
-    BOBS_ACCOUNT_IS_CREATED(context)
-        .pipe(BOB_IS_BSH_CONTRACT_OWNER)
-        .pipe(ACCOUNT_ID_IS_PROVIDED_AS_ADD_OWNER_PARAM)
-        .pipe(BOB_INVOKES_ADD_OWNER)
+
+pub static STROAGE_BALANCE_IS_INVOKED: fn(Context) -> Context = |mut context: Context| {
+    ACCOUNT_ID_AND_TOKEN_ID_IS_PROVIDED_AS_STORAGE_COST_PARAM(context).pipe(GET_STROAGE_COST)
 };
 
-pub static ONWERS_ARE_QURIED_IN_BSH: fn(Context) -> Context =
-    |context: Context| BSH_CONTRACT.get_owners(context);
-
-pub static ADDED_OWNER_SHOULD_BE_PRESENT: fn(Context) = |context: Context| {
-    let owners = context.method_responses("get_owners");
-
-    let result: HashSet<_> = from_value::<Vec<String>>(owners)
-        .unwrap()
-        .into_iter()
-        .collect();
-    let expected: HashSet<_> = vec![
-        context.accounts().get("bob").account_id().to_string(),
-        context.accounts().get("charlie").account_id().to_string(),
-    ]
-    .into_iter()
-    .collect();
-    assert_eq!(result, expected);
-};
-
-pub static BSH_OWNER_ADD_EXSISTING_OWNER: fn(Context) -> Context = |mut context: Context| {
-    BSH_OWNER_ADDS_NEW_OWNER(context)
-        .pipe(ACCOUNT_ID_IS_PROVIDED_AS_ADD_OWNER_PARAM)
-        .pipe(BOB_INVOKES_ADD_OWNER)
-};
-
-pub static CHUCK_INVOKES_ADD_OWNER_IN_BSH: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.accounts().get("chucks").to_owned();
-    context.set_signer(&signer);
-    BMC_CONTRACT.add_owner(context)
-};
-
-pub static CHUCK_INVOKES_REMOVE_OWNER_IN_BSH: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.accounts().get("chucks").to_owned();
-    context.set_signer(&signer);
-    BMC_CONTRACT.remove_owner(context)
-};
-
-pub static NON_BSH_OWNER_INVOKES_ADD_OWNER: fn(Context) -> Context = |mut context: Context| {
-    CHUCKS_ACCOUNT_IS_CREATED(context)
-        .pipe(ACCOUNT_ID_IS_PROVIDED_AS_ADD_OWNER_PARAM)
-        .pipe(CHUCK_INVOKES_ADD_OWNER_IN_BSH)
-};
-
-pub static NON_BSH_OWNER_INVOKES_REMOVE_OWNER: fn(Context) -> Context = |mut context: Context| {
-    BSH_OWNER_ADDS_NEW_OWNER(context)
-        .pipe(CHUCKS_ACCOUNT_IS_CREATED)
-        .pipe(ACCOUNT_ID_IS_PROVIDED_AS_REMOVE_OWNER_PARAM)
-        .pipe(CHUCK_INVOKES_REMOVE_OWNER_IN_BSH)
-};
-
-pub static BSH_OWNER_INVOKES_REMOVE_OWNER: fn(Context) -> Context = |mut context: Context| {
-    BSH_OWNER_ADDS_NEW_OWNER(context)
-        .pipe(ACCOUNT_ID_IS_PROVIDED_AS_REMOVE_OWNER_PARAM)
-        .pipe(BOB_INVOKES_REMOVE_OWNER)
-};
-
-pub static BSH_OWNER_TRIES_TO_REMOVE_NON_EXSISTING_OWNER: fn(Context) -> Context =
+pub static ACCOUNT_ID_AND_AMONT_IS_GIVEN_AS_WITHDRAW_PARAM: fn(Context) -> Context =
     |mut context: Context| {
-        BSH_OWNER_INVOKES_REMOVE_OWNER(context).pipe(BSH_OWNER_INVOKES_REMOVE_OWNER)
+        context.add_method_params(
+            "withdraw",
+            json!({
+                "token_name": format!("btp-{}-icx", ICON_NETWORK),
+                "amount": "100000000"
+            }),
+        );
+
+        context
     };
 
-pub static REMOVE_ONWER_SHOULD_NOT_BE_PRESENT: fn(Context) = |context: Context| {
-    let owners = context.method_responses("get_owners");
-
-    let result: HashSet<_> = from_value::<Vec<String>>(owners)
-        .unwrap()
-        .into_iter()
-        .collect();
-    let expected: HashSet<_> = vec![
-        context.accounts().get("bob").account_id().to_string(),
-        context.accounts().get("charlie").account_id().to_string(),
-    ]
-    .into_iter()
-    .collect();
-    assert_ne!(result, expected);
+pub static WITHDRAW_IS_INVOKED: fn(Context) -> Context = |context: Context| {
+    let deposit: String =
+        serde_json::from_value(context.method_responses("get_storage_balance")).unwrap();
+    let deposit: u128 = deposit.parse().unwrap();
+    BTS_CONTRACT.withdraw(context, deposit + 1)
 };
 
-pub static CHUCK_INVOKES_UPDATE_BSH_PERIPHERY_FORM_BSH: fn(Context) -> Context =
-    |mut context: Context| {
-        let signer = context.accounts().get("chuck").to_owned();
-        context.set_signer(&signer);
-        BSH_CONTRACT.update_bsh_periphery(context)
-    };
-
-pub static BOB_INVOKES_UPDATE_BSH_PERIPHERY_FORM_BSH: fn(Context) -> Context =
-    |mut context: Context| {
-        let signer = context.accounts().get("bob").to_owned();
-        context.set_signer(&signer);
-        BSH_CONTRACT.update_bsh_periphery(context)
-    };
-
-pub static UPDATE_BSH_PERIPHERY_INVOKED_BY_BSH_OWNER: fn(Context) -> Context =
-    |mut context: Context| {
-        BOBS_ACCOUNT_IS_CREATED(context)
-            .pipe(BOB_IS_BSH_CONTRACT_OWNER)
-            .pipe(FEE_NUMERATOR_IS_PROVIDED_AS_SET_FEE_RATIO_PARAM)
-            .pipe(BOB_INVOKES_UPDATE_BSH_PERIPHERY_FORM_BSH)
-    };
-
-pub static UPDATE_BSH_PERIPHERY_INVOKED_BY_NON_BSH_OWNER: fn(Context) -> Context =
-    |mut context: Context| {
-        CHUCKS_ACCOUNT_IS_CREATED(context)
-            .pipe(CHUCK_IS_NOT_A_BSH_OWNER)
-            .pipe(FEE_NUMERATOR_IS_PROVIDED_AS_SET_FEE_RATIO_PARAM)
-            .pipe(CHUCK_INVOKES_UPDATE_BSH_PERIPHERY_FORM_BSH)
-    };
-
-pub static BOB_INVOKES_UPDATE_URI_FORM_BSH: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.accounts().get("bob").to_owned();
-    context.set_signer(&signer);
-    BSH_CONTRACT.update_uri(context)
+pub static WITHDRAW_IS_INVOKED_BY_CHUCK: fn(Context) -> Context = |mut context: Context| {
+    STROAGE_BALANCE_IS_INVOKED(context)
+        .pipe(ACCOUNT_ID_AND_AMONT_IS_GIVEN_AS_WITHDRAW_PARAM)
+        .pipe(THE_TRANSACTION_IS_SIGNED_BY_CHUCK)
+        .pipe(WITHDRAW_IS_INVOKED)
 };
-
-pub static CHCUK_INVOKES_UPDATE_URI_FORM_BSH: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.accounts().get("chuck").to_owned();
-    context.set_signer(&signer);
-    BSH_CONTRACT.update_uri(context)
-};
-
-pub static UPDATE_URI_INVOKED_BY_BSH_OWNER: fn(Context) -> Context = |mut context: Context| {
-    BOBS_ACCOUNT_IS_CREATED(context)
-        .pipe(BOB_IS_BSH_CONTRACT_OWNER)
-        .pipe(NEW_URI_IS_PROVIDED_AS_UPDATE_URI_PARAM)
-        .pipe(BOB_INVOKES_UPDATE_URI_FORM_BSH)
-};
-
-pub static UPDATE_URI_INVOKED_BY_NON_BSH_OWNER: fn(Context) -> Context = |mut context: Context| {
-    CHUCKS_ACCOUNT_IS_CREATED(context)
-        .pipe(CHUCK_IS_NOT_A_BSH_OWNER)
-        .pipe(NEW_URI_IS_PROVIDED_AS_UPDATE_URI_PARAM)
-        .pipe(CHCUK_INVOKES_UPDATE_URI_FORM_BSH)
-};
-
-pub static BOB_INVOKES_SET_FEE_RATIO_FORM_BSH: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.accounts().get("bob").to_owned();
-    context.set_signer(&signer);
-    BSH_CONTRACT.set_fee_ratio(context)
-};
-
-pub static CHCUK_INVOKES_SET_FEE_RATIO_FORM_BSH: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.accounts().get("chuck").to_owned();
-    context.set_signer(&signer);
-    BSH_CONTRACT.set_fee_ratio(context)
-};
-
-pub static SET_FEE_RATIO_INVOKED_BY_BSH_OWNER: fn(Context) -> Context = |mut context: Context| {
-    BOBS_ACCOUNT_IS_CREATED(context)
-        .pipe(BOB_IS_BSH_CONTRACT_OWNER)
-        .pipe(FEE_NUMERATOR_IS_PROVIDED_AS_SET_FEE_RATIO_PARAM)
-        .pipe(BOB_INVOKES_SET_FEE_RATIO_FORM_BSH)
-};
-
-pub static SET_FEE_RATIO_INVOKED_BY_NON_BSH_OWNER: fn(Context) -> Context =
-    |mut context: Context| {
-        CHUCK_ACCOUNT_IS_CREATED(context)
-            .pipe(CHUCK_IS_NOT_A_BSH_OWNER)
-            .pipe(FEE_NUMERATOR_IS_PROVIDED_AS_SET_FEE_RATIO_PARAM)
-            .pipe(CHCUK_INVOKES_SET_FEE_RATIO_FORM_BSH)
-    };
-
-pub static BOB_INVOKES_SET_FIXED_FEE_FORM_BSH: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.accounts().get("bob").to_owned();
-    context.set_signer(&signer);
-    BSH_CONTRACT.set_fixed_fee(context)
-};
-
-pub static CHCUK_INVOKES_SET_FIXED_FEE_FORM_BSH: fn(Context) -> Context = |mut context: Context| {
-    let signer = context.accounts().get("chuck").to_owned();
-    context.set_signer(&signer);
-    BSH_CONTRACT.set_fixed_fee(context)
-};
-
-pub static SET_FIXED_FEE_INVOKED_BY_BSH_OWNER: fn(Context) -> Context = |mut context: Context| {
-    BOBS_ACCOUNT_IS_CREATED(context)
-        .pipe(BOB_IS_BSH_CONTRACT_OWNER)
-        .pipe(FIXED_FEE_IS_PROVIDED_AS_SET_FIXED_PARAM)
-        .pipe(BOB_INVOKES_SET_FIXED_FEE_FORM_BSH)
-};
-
-pub static SET_FIXED_FEE_INVOKED_BY_NON_BSH_OWNER: fn(Context) -> Context =
-    |mut context: Context| {
-        CHUCKS_ACCOUNT_IS_CREATED(context)
-            .pipe(CHUCK_IS_NOT_A_BSH_OWNER)
-            .pipe(FIXED_FEE_IS_PROVIDED_AS_SET_FIXED_PARAM)
-            .pipe(CHCUK_INVOKES_SET_FIXED_FEE_FORM_BSH)
-    };
