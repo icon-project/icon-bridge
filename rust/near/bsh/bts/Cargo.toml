@@ -5,7 +5,6 @@ authors = ["Icon Foundation<foo@icon.foundation>"]
 edition = "2018"
 
 [lib]
-name = "BTS_CONTRACT"
 crate-type = ["cdylib", "rlib"]
 
 [features]

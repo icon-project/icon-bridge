@@ -4,7 +4,7 @@ use test_helper::types::{Bmc, BmcContract, Context, Contract};
 
 lazy_static! {
     pub static ref BMC_CONTRACT: Contract<'static, Bmc> =
-        BmcContract::new("bmc", "res/BMC_CONTRACT.wasm");
+        BmcContract::new("bmc", "res/bmc.wasm");
 }
 
 pub static BMC_CONTRACT_IS_DEPLOYED: fn(Context) -> Context =
