@@ -1,4 +1,8 @@
-use bts::{BtpTokenService, Coin};
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+
+use bts::{BtpTokenService, Token};
 use near_sdk::{
     env, json_types::U128, test_utils::VMContextBuilder, testing_env, AccountId, Gas,
     PromiseResult, RuntimeFeesConfig, VMConfig, VMContext,
@@ -16,7 +20,6 @@ use std::convert::TryInto;
 use token::*;
 
 pub type TokenFee = AssetItem;
-pub type Token = Asset<WrappedFungibleToken>;
 
 fn get_context(
     is_view: bool,
@@ -49,7 +52,7 @@ fn deposit_wnear() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
@@ -57,8 +60,11 @@ fn deposit_wnear() {
         nativecoin.clone(),
     );
 
-    let w_near = <Coin>::new(WNEAR.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     testing_env!(
         context(wnear(), 0),
@@ -88,16 +94,18 @@ fn withdraw_wnear() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let w_near = <Coin>::new(WNEAR.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name()).unwrap();
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     testing_env!(
         context(wnear(), 0),
@@ -107,6 +115,8 @@ fn withdraw_wnear() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
+
+    let token_id = contract.token_id(w_near.name()).unwrap();
 
     testing_env!(context(chuck(), 0));
     let result = contract.balance_of(chuck(), w_near.name().to_string());
@@ -149,15 +159,18 @@ fn withdraw_wnear_higher_amount() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let w_near = <Coin>::new(WNEAR.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     testing_env!(context(wnear(), 0));
     contract.ft_on_transfer(chuck(), U128::from(1000), "".to_string());
@@ -187,17 +200,20 @@ fn external_transfer() {
     );
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let w_near = <Coin>::new(WNEAR.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
 
-    let token_id = contract.coin_id(w_near.name()).unwrap();
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
+    let token_id = contract.token_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -255,17 +271,21 @@ fn handle_success_response_wnear_external_transfer() {
     );
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let w_near = <Coin>::new(WNEAR.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
 
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name()).unwrap();
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
+    let token_id = contract.token_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -360,7 +380,7 @@ fn handle_success_response_baln_external_transfer() {
     );
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
@@ -368,10 +388,10 @@ fn handle_success_response_baln_external_transfer() {
         nativecoin.clone(),
     );
 
-    let baln = <Coin>::new(BALN.to_owned());
+    let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
     let token_id = env::sha256(baln.name().to_owned().as_bytes());
-    contract.register_coin_callback(baln.clone(), token_id.clone().try_into().unwrap());
+    contract.register_token_callback(baln.clone(), token_id.clone().try_into().unwrap());
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -401,7 +421,6 @@ fn handle_success_response_baln_external_transfer() {
     contract.on_mint(
         900,
         token_id.clone().try_into().unwrap(),
-        baln.symbol().to_string(),
         chuck(),
         Ok(U128::from(700000)),
     );
@@ -453,11 +472,7 @@ fn handle_success_response_baln_external_transfer() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    contract.on_burn(
-        719,
-        token_id.clone().try_into().unwrap(),
-        baln.symbol().to_string(),
-    );
+    contract.on_burn(719, token_id.clone().try_into().unwrap());
 
     let result = contract.balance_of(alice(), baln.name().to_string());
     assert_eq!(result, U128::from(81));
@@ -504,16 +519,20 @@ fn handle_failure_response_wnear_external_transfer() {
     );
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let w_near = <Coin>::new(WNEAR.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name()).unwrap();
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
+    let token_id = contract.token_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -612,7 +631,7 @@ fn handle_failure_response_baln_coin_external_transfer() {
     );
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
@@ -620,10 +639,10 @@ fn handle_failure_response_baln_coin_external_transfer() {
         nativecoin.clone(),
     );
 
-    let baln = <Coin>::new(BALN.to_owned());
+    let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
     let token_id = env::sha256(baln.name().to_owned().as_bytes());
-    contract.register_coin_callback(baln.clone(), token_id.clone().try_into().unwrap());
+    contract.register_token_callback(baln.clone(), token_id.clone().try_into().unwrap());
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -652,7 +671,6 @@ fn handle_failure_response_baln_coin_external_transfer() {
     contract.on_mint(
         900,
         token_id.clone().try_into().unwrap(),
-        baln.symbol().to_string(),
         chuck(),
         Ok(U128::from(700000)),
     );
@@ -739,7 +757,7 @@ fn reclaim_baln_coin() {
     );
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
@@ -747,12 +765,12 @@ fn reclaim_baln_coin() {
         nativecoin.clone(),
     );
 
-    let baln = <Coin>::new(BALN.to_owned());
+    let baln = <Token>::new(BALN.to_owned());
     contract.register(baln.clone());
-    let coin_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
+    let token_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
         .try_into()
         .unwrap();
-    contract.register_coin_callback(baln.clone(), coin_id.clone());
+    contract.register_token_callback(baln.clone(), token_id.clone());
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -777,13 +795,7 @@ fn reclaim_baln_coin() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     contract.handle_btp_message(btp_message.try_into().unwrap());
-    contract.on_mint(
-        899,
-        coin_id.clone(),
-        baln.symbol().to_string(),
-        chuck(),
-        Ok(U128::from(700000)),
-    );
+    contract.on_mint(899, token_id.clone(), chuck(), Ok(U128::from(700000)));
 
     let storage_cost = contract
         .get_storage_balance(chuck(), baln.name().to_string())
@@ -841,7 +853,7 @@ fn external_transfer_higher_amount() {
     );
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
@@ -849,8 +861,11 @@ fn external_transfer_higher_amount() {
         nativecoin.clone(),
     );
 
-    let w_near = <Coin>::new(WNEAR.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     testing_env!(
         context(wnear(), 0),
@@ -878,10 +893,10 @@ fn external_transfer_unregistered_coin() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let w_near = <Coin>::new(WNEAR.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
@@ -906,10 +921,10 @@ fn external_transfer_nil_balance() {
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let w_near = <Coin>::new(WNEAR.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "TokenBSH".to_string(),
         bmc(),
@@ -918,6 +933,9 @@ fn external_transfer_nil_balance() {
     );
 
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     testing_env!(
         context(wnear(), 0),
@@ -946,10 +964,10 @@ fn external_transfer_batch() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
 
-    let w_near = <Coin>::new(WNEAR.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
@@ -957,7 +975,11 @@ fn external_transfer_batch() {
         nativecoin.clone(),
     );
     contract.register(w_near.clone());
-    let token_id = contract.coin_id(w_near.name()).unwrap();
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
+
+    let token_id = contract.token_id(w_near.name()).unwrap();
 
     testing_env!(
         context(wnear(), 0),
@@ -1007,15 +1029,18 @@ fn external_transfer_batch_higher_amount() {
 
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let w_near = <Coin>::new(WNEAR.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     testing_env!(
         context(wnear(), 0),
@@ -1050,16 +1075,19 @@ fn external_transfer_batch_unregistered_coin() {
 
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let w_near = <Coin>::new(WNEAR.to_owned());
-    let baln = <Coin>::new(BALN.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
+    let baln = <Token>::new(BALN.to_owned());
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     testing_env!(
         context(wnear(), 0),
@@ -1094,7 +1122,7 @@ fn external_transfer_batch_nil_balance() {
     );
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    let nativecoin = <Coin>::new(NATIVE_COIN.to_owned());
+    let nativecoin = <Token>::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
@@ -1102,9 +1130,12 @@ fn external_transfer_batch_nil_balance() {
         nativecoin.clone(),
     );
 
-    let w_near = <Coin>::new(WNEAR.to_owned());
-    let baln = <Coin>::new(BALN.to_owned());
+    let w_near = <Token>::new(WNEAR.to_owned());
+    let baln = <Token>::new(BALN.to_owned());
     contract.register(w_near.clone());
+
+    let token_id = env::sha256(w_near.name().to_owned().as_bytes());
+    contract.register_token_callback(w_near.clone(), token_id.try_into().unwrap());
 
     testing_env!(
         context(alice(), 1_000_000_000_000_000_000_000_000),
@@ -1114,10 +1145,10 @@ fn external_transfer_batch_nil_balance() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     contract.register(baln.clone());
-    let coin_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
+    let token_id: [u8; 32] = env::sha256(baln.name().to_owned().as_bytes())
         .try_into()
         .unwrap();
-    contract.register_coin_callback(baln.clone(), coin_id.clone());
+    contract.register_token_callback(baln.clone(), token_id.clone());
 
     testing_env!(
         context(wnear(), 0),

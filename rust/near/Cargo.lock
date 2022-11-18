@@ -1467,6 +1467,7 @@ dependencies = [
  "kitten",
  "lazy_static",
  "libraries",
+ "near-sdk",
  "serde_json",
  "test-helper",
  "tokio",

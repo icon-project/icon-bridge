@@ -9,7 +9,7 @@ pub trait Math<T> {
 impl Math<u128> for u128 {
     fn add(&mut self, rhs: u128) -> Result<&mut Self, String> {
         self.clone_from(
-            &&self
+            &self
                 .checked_add(rhs)
                 .ok_or_else(|| "overflow occured".to_string())?,
         );
@@ -18,7 +18,7 @@ impl Math<u128> for u128 {
 
     fn sub(&mut self, rhs: u128) -> Result<&mut Self, String> {
         self.clone_from(
-            &&self
+            &self
                 .checked_sub(rhs)
                 .ok_or_else(|| "underflow occured".to_string())?,
         );
@@ -36,7 +36,7 @@ impl Math<u128> for u128 {
 
     fn div(&mut self, rhs: u128) -> Result<&mut Self, String> {
         self.clone_from(
-            &&self
+            &self
                 .checked_div(rhs)
                 .ok_or_else(|| "underflow occured".to_string())?,
         );
@@ -56,7 +56,7 @@ impl Math<u128> for u128 {
 impl Math<u64> for u64 {
     fn add(&mut self, rhs: u64) -> Result<&mut Self, String> {
         self.clone_from(
-            &&self
+            &self
                 .checked_add(rhs)
                 .ok_or_else(|| "overflow occured".to_string())?,
         );
@@ -65,7 +65,7 @@ impl Math<u64> for u64 {
 
     fn sub(&mut self, rhs: u64) -> Result<&mut Self, String> {
         self.clone_from(
-            &&self
+            &self
                 .checked_sub(rhs)
                 .ok_or_else(|| "underflow occured".to_string())?,
         );
@@ -83,7 +83,7 @@ impl Math<u64> for u64 {
 
     fn div(&mut self, rhs: u64) -> Result<&mut Self, String> {
         self.clone_from(
-            &&self
+            &self
                 .checked_div(rhs)
                 .ok_or_else(|| "underflow occured".to_string())?,
         );
@@ -100,11 +100,10 @@ impl Math<u64> for u64 {
     }
 }
 
-
 impl Math<usize> for usize {
     fn add(&mut self, rhs: usize) -> Result<&mut Self, String> {
         self.clone_from(
-            &&self
+            &self
                 .checked_add(rhs)
                 .ok_or_else(|| "overflow occured".to_string())?,
         );
@@ -113,7 +112,7 @@ impl Math<usize> for usize {
 
     fn sub(&mut self, rhs: usize) -> Result<&mut Self, String> {
         self.clone_from(
-            &&self
+            &self
                 .checked_sub(rhs)
                 .ok_or_else(|| "underflow occured".to_string())?,
         );
@@ -131,7 +130,7 @@ impl Math<usize> for usize {
 
     fn div(&mut self, rhs: usize) -> Result<&mut Self, String> {
         self.clone_from(
-            &&self
+            &self
                 .checked_div(rhs)
                 .ok_or_else(|| "underflow occured".to_string())?,
         );

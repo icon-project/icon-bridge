@@ -1,3 +1,7 @@
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+
 use bts::BtpTokenService;
 use near_sdk::{
     env, json_types::U128, test_utils::VMContextBuilder, testing_env, AccountId, Gas, VMContext,
@@ -13,7 +17,7 @@ use libraries::types::{Request, TransferableAsset};
 use std::convert::TryInto;
 use token::*;
 
-pub type Coin = Asset<WrappedNativeCoin>;
+pub type Token = Asset<WrappedNativeCoin>;
 
 fn get_context(
     is_view: bool,
@@ -40,7 +44,7 @@ fn handle_fee_gathering() {
 
     let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -53,7 +57,7 @@ fn handle_fee_gathering() {
 
     contract.deposit();
 
-    let coin_id = contract.coin_id(nativecoin.name()).unwrap();
+    let token_id = contract.token_id(nativecoin.name()).unwrap();
 
     let storage_cost = contract
         .get_storage_balance(chuck(), nativecoin.name().to_string())
@@ -141,7 +145,7 @@ fn get_fee() {
     let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
 
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),

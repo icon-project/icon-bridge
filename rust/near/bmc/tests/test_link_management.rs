@@ -1,5 +1,7 @@
 use bmc::BtpMessageCenter;
-use near_sdk::{env, serde_json::json, testing_env, AccountId, VMContext, Gas, test_utils::VMContextBuilder};
+use near_sdk::{
+    env, serde_json::json, test_utils::VMContextBuilder, testing_env, AccountId, Gas, VMContext,
+};
 pub mod accounts;
 use accounts::*;
 use libraries::types::BTPAddress;

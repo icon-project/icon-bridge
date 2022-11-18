@@ -1,12 +1,4 @@
-use super::relay::BmrStatus;
-use super::{BTPAddress, Math, Relays};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LookupMap, UnorderedMap, UnorderedSet};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{env, AccountId, BlockHeight};
-use std::collections::HashSet;
-use std::convert::TryInto;
-use std::ops::{Deref, DerefMut};
+use super::{relay::BmrStatus, *};
 
 #[derive(Debug, Default, BorshDeserialize, BorshSerialize, Eq, PartialEq)]
 pub struct Link {
@@ -160,9 +152,9 @@ impl Link {
                             guess_height - self.rotate_height
                         };
                         let rotate_count = count.div_ceil(rotate_term);
-                        rotate_count.deref().clone()
+                        *rotate_count.deref()
                     };
-
+                    #[allow(unused)]
                     let mut base_height: u64 = 0;
                     if rotate_count > 0_u64 {
                         base_height = self.rotate_height + ((rotate_count - 1) * rotate_term);
@@ -175,7 +167,7 @@ impl Link {
                         .deref()
                         .to_owned();
                     if skip_count > 0 {
-                        skip_count = skip_count - 1;
+                        skip_count -= 1;
                         rotate_count.add(skip_count).unwrap();
                         base_height = current_height;
                     }
@@ -190,6 +182,7 @@ impl Link {
                         current_height - self.rotate_height
                     };
                     let rotate_count = count.div_ceil(rotate_term);
+                    #[allow(unused)]
                     let mut base_height: u64 = 0;
                     if *rotate_count > 0_u64 {
                         base_height = self.rotate_height + ((*rotate_count - 1) * rotate_term);
@@ -302,13 +295,13 @@ impl DerefMut for Links {
 impl Links {
     pub fn new() -> Self {
         Self {
-            keys: UnorderedSet::new(b"link_keys".to_vec()),
-            values: LookupMap::new(b"link_values".to_vec()),
+            keys: UnorderedSet::new(StorageKey::Links(KeyType::Key)),
+            values: LookupMap::new(StorageKey::Links(KeyType::Value)),
         }
     }
 
     pub fn add(&mut self, link: &BTPAddress, block_interval_src: u64) {
-        self.keys.insert(&link);
+        self.keys.insert(link);
         self.values.insert(
             link,
             &Link {
@@ -325,8 +318,8 @@ impl Links {
     }
 
     pub fn remove(&mut self, link: &BTPAddress) {
-        self.keys.remove(&link);
-        self.values.remove(&link);
+        self.keys.remove(link);
+        self.values.remove(link);
     }
 
     pub fn to_vec(&self) -> Vec<BTPAddress> {
@@ -341,7 +334,13 @@ impl Links {
     }
 
     pub fn contains(&self, link: &BTPAddress) -> bool {
-        return self.keys.contains(link);
+        self.keys.contains(link)
+    }
+}
+
+impl Default for Links {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

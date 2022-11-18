@@ -1,8 +1,4 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LookupMap, UnorderedSet};
-use near_sdk::AccountId;
-
-use super::AssetId;
+use super::*;
 
 type StorageBalance = u128;
 #[derive(BorshDeserialize, BorshSerialize)]
@@ -14,8 +10,8 @@ pub struct StorageBalances {
 impl StorageBalances {
     pub fn new() -> Self {
         Self {
-            keys: UnorderedSet::new(b"storage_keys".to_vec()),
-            values: LookupMap::new(b"storage_values".to_vec()),
+            keys: UnorderedSet::new(StorageKey::StorageBalances(KeyType::Key)),
+            values: LookupMap::new(StorageKey::StorageBalances(KeyType::Value)),
         }
     }
 
@@ -63,6 +59,12 @@ impl StorageBalances {
         };
 
         vec![]
+    }
+}
+
+impl Default for StorageBalances {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

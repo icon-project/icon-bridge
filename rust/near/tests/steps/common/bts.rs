@@ -4,7 +4,7 @@ use test_helper::types::{Context, Contract, BtsContract, Bts};
 
 lazy_static! {
     pub static ref BTS_CONTRACT: Contract<'static, Bts> =
-        BtsContract::new("bts", "res/BTS_CONTRACT.wasm");
+        BtsContract::new("bts", "res/bts.wasm");
 }
 
 pub static BTS_CONTRACT_IS_DEPLOYED: fn(Context) -> Context =

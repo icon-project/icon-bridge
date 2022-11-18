@@ -1,9 +1,4 @@
-use crate::types::BTPAddress;
-use near_sdk::json_types::{Base64VecU8, U128};
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    serde::{Deserialize, Serialize},
-};
+use super::*;
 
 #[derive(Debug, Serialize, Deserialize, BorshDeserialize, BorshSerialize)]
 #[serde(crate = "near_sdk::serde")]

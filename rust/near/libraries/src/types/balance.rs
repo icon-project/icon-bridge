@@ -1,11 +1,4 @@
-use std::collections::HashMap;
-
-use crate::types::AssetId;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{self, LookupMap, UnorderedSet};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
-use near_sdk::Balance;
+use super::*;
 
 #[derive(
     Debug, Default, BorshDeserialize, BorshSerialize, PartialEq, Eq, Clone, Serialize, Deserialize,
@@ -53,8 +46,8 @@ pub struct Balances {
 impl Balances {
     pub fn new() -> Self {
         Self {
-            keys: UnorderedSet::new(b"balances_keys".to_vec()),
-            values: LookupMap::new(b"balance_values".to_vec()),
+            keys: UnorderedSet::new(StorageKey::Balances(KeyType::Key)),
+            values: LookupMap::new(StorageKey::Balances(KeyType::Value)),
         }
     }
 
@@ -76,15 +69,14 @@ impl Balances {
 
     pub fn get(&self, account: &AccountId, asset_id: &AssetId) -> Option<AccountBalance> {
         if let Some(balance) = self.values.get(&(account.to_owned(), asset_id.to_owned())) {
-            return Some(balance.to_owned());
+            return Some(balance);
         }
         None
     }
 
     pub fn contains(&self, account: &AccountId, asset_id: &AssetId) -> bool {
-        return self
-            .keys
-            .contains(&(account.to_owned(), asset_id.to_owned()));
+        self.keys
+            .contains(&(account.to_owned(), asset_id.to_owned()))
     }
 
     pub fn set(
@@ -115,13 +107,18 @@ impl Balances {
     }
 }
 
+impl Default for Balances {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::types::Math;
     use near_sdk::{env, AccountId};
     use std::convert::TryInto;
-    use std::vec;
 
     #[test]
     fn add_balance() {

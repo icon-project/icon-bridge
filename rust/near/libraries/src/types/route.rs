@@ -1,10 +1,4 @@
-use super::{Address, BTPAddress};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LookupMap, UnorderedMap, UnorderedSet};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::serde_json::{json, Value};
-use std::collections::HashMap;
-use std::collections::HashSet;
+use super::*;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Hash)]
 pub struct Route {
@@ -30,8 +24,8 @@ pub struct Routes {
 impl Routes {
     pub fn new() -> Self {
         Self {
-            keys: UnorderedSet::new(b"route_keys".to_vec()),
-            values: LookupMap::new(b"route_values".to_vec()),
+            keys: UnorderedSet::new(StorageKey::Routes(KeyType::Key)),
+            values: LookupMap::new(StorageKey::Routes(KeyType::Value)),
         }
     }
 
@@ -52,7 +46,7 @@ impl Routes {
             .values
             .get(&destination.network_address().unwrap())
             .unwrap_or_default();
-        list.remove(&destination);
+        list.remove(destination);
 
         if list.is_empty() {
             self.values.remove(&destination.network_address().unwrap());
@@ -93,6 +87,12 @@ impl Routes {
             });
         }
         routes.into_iter().collect()
+    }
+}
+
+impl Default for Routes {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -1,16 +1,10 @@
 use super::*;
 
 impl BtpMessageCenter {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * Interval Services * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
     pub fn handle_init(
         &mut self,
         source: &BTPAddress,
-        links: &Vec<BTPAddress>,
+        links: &[BTPAddress],
     ) -> Result<(), BmcError> {
         if let Some(mut link) = self.links.get(source) {
             for source_link in links.iter() {
@@ -28,6 +22,7 @@ impl BtpMessageCenter {
                 )
             }
             self.links.set(source, &link);
+
             Ok(())
         } else {
             Err(BmcError::LinkNotExist)
@@ -55,6 +50,7 @@ impl BtpMessageCenter {
             }
 
             self.links.set(source, &link);
+
             Ok(())
         } else {
             Err(BmcError::LinkNotExist)
@@ -82,6 +78,7 @@ impl BtpMessageCenter {
             }
 
             self.links.set(source, &link);
+
             Ok(())
         } else {
             Err(BmcError::LinkNotExist)
@@ -92,7 +89,7 @@ impl BtpMessageCenter {
         &self,
         source: &BTPAddress,
         fee_aggregator: &BTPAddress,
-        services: &Vec<String>,
+        services: &[String],
     ) -> Result<(), BmcError> {
         if source.network_address() != fee_aggregator.network_address() {
             return Err(BmcError::FeeAggregatorNotAllowed {
@@ -102,15 +99,12 @@ impl BtpMessageCenter {
 
         services.iter().for_each(|service| {
             //TODO: Handle Services that are not available
-            #[allow(unused_variables)]
             if let Some(account_id) = self.services.get(service) {
-                #[cfg(not(feature = "testable"))]
-                bsh_contract::ext(account_id.clone()).handle_fee_gathering(
-                    fee_aggregator.clone(),
-                    service.clone(),
-                );
+                bsh_contract::ext(account_id)
+                    .handle_fee_gathering(fee_aggregator.clone(), service.clone());
             }
         });
+
         Ok(())
     }
 }

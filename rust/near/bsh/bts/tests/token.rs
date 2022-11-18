@@ -13,6 +13,7 @@ lazy_static! {
         "0x1.near".into(),
         1000,
         1,
+        None,
         None
     );
     pub static ref ICON_COIN: WrappedNativeCoin = WrappedNativeCoin::new(
@@ -29,7 +30,8 @@ lazy_static! {
             reference: None,
             reference_hash: None,
             decimals: 24
-        })
+        }),
+        None
     );
     pub static ref WNEAR: WrappedNativeCoin = WrappedNativeCoin::new(
         "WNEAR".into(),
@@ -45,7 +47,8 @@ lazy_static! {
             reference: None,
             reference_hash: None,
             spec: "ft-1.0.0".to_string()
-        })
+        }),
+        None
     );
     pub static ref BALN: WrappedNativeCoin = WrappedNativeCoin::new(
         "BALN".into(),
@@ -61,7 +64,8 @@ lazy_static! {
             reference: None,
             reference_hash: None,
             spec: "ft-1.0.0".to_string()
-        })
+        }),
+        None
     );
     pub static ref NEAR_NATIVE_COIN: WrappedNativeCoin = WrappedNativeCoin::new(
         "btp-0x1.near-NEAR".into(),
@@ -71,6 +75,7 @@ lazy_static! {
         "0x1.near".into(),
         1000,
         1,
+        None,
         None
     );
 }

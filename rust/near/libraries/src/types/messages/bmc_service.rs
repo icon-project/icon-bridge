@@ -82,29 +82,29 @@ impl Decodable for BmcServiceMessage {
 impl Encodable for BmcServiceMessage {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
         stream.begin_unbounded_list();
-        match self.service_type() {
-            &BmcServiceType::Init { ref links } => {
+        match *self.service_type() {
+            BmcServiceType::Init { ref links } => {
                 let mut params = rlp::RlpStream::new_list(1);
                 params.append_list(links);
                 stream
                     .append::<String>(&"Init".to_string())
                     .append(&params.out());
             }
-            &BmcServiceType::Link { ref link } => {
+            BmcServiceType::Link { ref link } => {
                 let mut params = rlp::RlpStream::new_list(1);
                 params.append(link);
                 stream
                     .append::<String>(&"Link".to_string())
                     .append(&params.out());
             }
-            &BmcServiceType::Unlink { ref link } => {
+            BmcServiceType::Unlink { ref link } => {
                 let mut params = rlp::RlpStream::new_list(1);
                 params.append(link);
                 stream
                     .append::<String>(&"Unlink".to_string())
                     .append(&params.out());
             }
-            &BmcServiceType::FeeGathering {
+            BmcServiceType::FeeGathering {
                 ref services,
                 ref fee_aggregator,
             } => {

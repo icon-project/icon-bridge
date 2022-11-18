@@ -31,7 +31,7 @@ pub static BNUSD_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM: fn(Context) -> Context
         context.add_method_params(
         "register",
         json!({
-            "coin": {
+            "token": {
                 "metadata": {
                     "name": format!("btp-{}-bnUSD", ICON_NETWORK),
                     "label": "Wrapped bnUSD From ICON",
@@ -85,7 +85,7 @@ pub static ICX_COIN_NAME_IS_PROVIDED_AS_REGISTER_PARAM: fn(Context) -> Context =
         context.add_method_params(
         "register",
         json!({
-            "coin": {
+            "token": {
                 "metadata": {
                     "name": format!("btp-{}-icx", ICON_NETWORK),
                     "label": "Wrapped icx From ICON",
@@ -124,7 +124,7 @@ pub static ACCOUNT_ID_AND_TOKEN_ID_IS_PROVIDED_AS_STORAGE_COST_PARAM: fn(Context
             "get_storage_balance",
             json!({
                "account":account.id(),
-               "coin_name": format!("btp-{}-icx", ICON_NETWORK),
+               "token_name": format!("btp-{}-icx", ICON_NETWORK),
             }),
         );
         context
@@ -139,7 +139,7 @@ pub static ACCOUNT_ID_AND_AMONT_IS_GIVEN_AS_WITHDRAW_PARAM: fn(Context) -> Conte
         context.add_method_params(
             "withdraw",
             json!({
-                "coin_name": format!("btp-{}-icx", ICON_NETWORK),
+                "token_name": format!("btp-{}-icx", ICON_NETWORK),
                 "amount": "100000000"
             }),
         );

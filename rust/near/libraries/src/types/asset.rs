@@ -1,8 +1,5 @@
-use crate::types::btp_address::Network;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde::{Deserialize, Serialize};
+use super::*;
 
-use super::fungible_token::AssetMetadataExtras;
 pub type AssetId = [u8; 32];
 
 pub trait AssetMetadata {
@@ -16,9 +13,11 @@ pub trait AssetMetadata {
     fn fixed_fee_mut(&mut self) -> &mut u128;
     fn metadata(&self) -> &Self;
     fn extras(&self) -> &Option<AssetMetadataExtras>;
+    fn token_limit(&self) -> &Option<u128>;
+    fn token_limit_mut(&mut self) -> &mut Option<u128>;
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize, Debug, PartialEq)]
+#[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Asset<T: AssetMetadata> {
     pub metadata: T,
@@ -54,6 +53,6 @@ impl<T: AssetMetadata> Asset<T> {
     }
 
     pub fn extras(&self) -> &Option<AssetMetadataExtras> {
-        &self.metadata.extras()
+        self.metadata.extras()
     }
 }

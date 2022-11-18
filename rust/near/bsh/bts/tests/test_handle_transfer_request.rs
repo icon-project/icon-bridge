@@ -1,3 +1,7 @@
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+
 use bts::BtpTokenService;
 use near_sdk::{
     env, json_types::U128, test_utils::VMContextBuilder, testing_env, AccountId, Gas,
@@ -15,7 +19,7 @@ mod token;
 use std::convert::TryFrom;
 use token::*;
 
-pub type Coin = Asset<WrappedNativeCoin>;
+pub type Token = Asset<WrappedNativeCoin>;
 
 fn get_context(is_view: bool, signer_account_id: AccountId, attached_deposit: u128) -> VMContext {
     VMContextBuilder::new()
@@ -45,7 +49,7 @@ fn handle_transfer_mint_registered_icx() {
         vec![PromiseResult::Successful(vec![1_u8])]
     );
 
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
@@ -56,12 +60,12 @@ fn handle_transfer_mint_registered_icx() {
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    let icx_coin = <Coin>::new(ICON_COIN.to_owned());
+    let icx_coin = <Token>::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    let coin_id = env::sha256(icx_coin.name().to_owned().as_bytes());
-    contract.register_coin_callback(icx_coin.clone(), coin_id.try_into().unwrap());
+    let token_id = env::sha256(icx_coin.name().to_owned().as_bytes());
+    contract.register_token_callback(icx_coin.clone(), token_id.try_into().unwrap());
 
-    let coin_id = contract.coin_id(icx_coin.name()).unwrap();
+    let token_id = contract.token_id(icx_coin.name()).unwrap();
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -90,8 +94,7 @@ fn handle_transfer_mint_registered_icx() {
     );
     contract.on_mint(
         900,
-        coin_id,
-        icx_coin.symbol().to_string(),
+        token_id,
         destination.account_id(),
         Ok(U128::from(700000)),
     );
@@ -102,7 +105,7 @@ fn handle_transfer_mint_registered_icx() {
 
 #[test]
 fn message_generator() {
-    let icx = <Coin>::new(ICON_COIN.to_owned());
+    let icx = <Token>::new(ICON_COIN.to_owned());
 
     let btp_message = BtpMessage::new(
         BTPAddress::new("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315".to_string()),

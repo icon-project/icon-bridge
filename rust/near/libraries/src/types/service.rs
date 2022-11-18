@@ -1,7 +1,4 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{TreeMap, UnorderedMap};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
+use super::*;
 
 #[derive(Serialize, Debug, Eq, PartialEq, Hash, Deserialize)]
 pub struct Service {
@@ -14,7 +11,7 @@ pub struct Services(TreeMap<String, AccountId>);
 
 impl Services {
     pub fn new() -> Self {
-        Self(TreeMap::new(b"services".to_vec()))
+        Self(TreeMap::new(StorageKey::Services))
     }
 
     pub fn add(&mut self, name: &str, service: &AccountId) {
@@ -32,10 +29,7 @@ impl Services {
     }
 
     pub fn get(&self, name: &str) -> Option<AccountId> {
-        match self.0.get(&name.to_string()) {
-            Some(service) => Some(service),
-            None => None,
-        }
+        self.0.get(&name.to_string())
     }
 
     pub fn to_vec(&self) -> Vec<Service> {
@@ -51,6 +45,12 @@ impl Services {
                 .collect();
         }
         vec![]
+    }
+}
+
+impl Default for Services {
+    fn default() -> Self {
+        Self::new()        
     }
 }
 

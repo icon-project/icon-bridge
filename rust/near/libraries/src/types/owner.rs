@@ -1,30 +1,27 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::UnorderedSet;
-use near_sdk::AccountId;
-use std::collections::HashSet;
+use super::*;
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Owners(UnorderedSet<AccountId>);
 
 impl Owners {
     pub fn new() -> Self {
-        Self(UnorderedSet::new(b"owners".to_vec()))
+        Self(UnorderedSet::new(StorageKey::Owners))
     }
 
     pub fn len(&self) -> usize {
         self.0.len() as usize
     }
 
-    pub fn add(&mut self, address: &AccountId) {
-        self.0.insert(address);
+    pub fn add(&mut self, account_id: &AccountId) {
+        self.0.insert(account_id);
     }
 
-    pub fn remove(&mut self, address: &AccountId) {
-        self.0.remove(&address);
+    pub fn remove(&mut self, account_id: &AccountId) {
+        self.0.remove(account_id);
     }
 
-    pub fn contains(&self, address: &AccountId) -> bool {
-        self.0.contains(&address)
+    pub fn contains(&self, account_id: &AccountId) -> bool {
+        self.0.contains(account_id)
     }
 
     pub fn to_vec(&self) -> Vec<AccountId> {
@@ -32,6 +29,15 @@ impl Owners {
             return self.0.to_vec();
         }
         vec![]
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl Default for Owners {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

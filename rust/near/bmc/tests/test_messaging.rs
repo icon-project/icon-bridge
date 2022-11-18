@@ -1,14 +1,16 @@
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+
 use bmc::{BtpMessageCenter, RelayMessage};
 use libraries::types::{Account, BtpError};
 use near_sdk::{
-    VMConfig,
-    RuntimeFeesConfig,
     borsh::{try_to_vec_with_schema, BorshSerialize},
     env,
     json_types::U128,
     serde_json::{from_value, json},
-    testing_env, AccountId, PromiseResult, VMContext,
-    Gas, test_utils::VMContextBuilder
+    test_utils::VMContextBuilder,
+    testing_env, AccountId, Gas, PromiseResult, RuntimeFeesConfig, VMConfig, VMContext,
 };
 use std::convert::TryFrom;
 pub mod accounts;

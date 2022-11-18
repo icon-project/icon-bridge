@@ -1,14 +1,4 @@
-use crate::rlp::{self, Decodable, Encodable};
-use crate::types::{messages::Message, BTPAddress, WrappedI128};
-use btp_common::errors::BmcError;
-use near_sdk::{
-    base64::{self, URL_SAFE_NO_PAD}, // TODO: Confirm
-    borsh::{self, maybestd::io, BorshDeserialize, BorshSerialize},
-    serde::{de, ser, Deserialize, Deserializer, Serialize, Serializer},
-};
-use std::convert::TryFrom;
-use std::convert::TryInto;
-use std::vec::IntoIter;
+use super::*;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct BtpMessage<T: Message> {
@@ -86,7 +76,8 @@ impl Message for SerializedMessage {}
 
 impl Encodable for BtpMessage<SerializedMessage> {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
-        stream.begin_list(5)
+        stream
+            .begin_list(5)
             .append(self.source())
             .append(self.destination())
             .append(self.service())
@@ -109,7 +100,7 @@ impl TryFrom<String> for SerializedMessage {
 
 impl Decodable for BtpMessage<SerializedMessage> {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-       Ok(Self {
+        Ok(Self {
             source: rlp.val_at::<BTPAddress>(0)?,
             destination: rlp.val_at::<BTPAddress>(1)?,
             service: rlp.val_at::<String>(2)?,
@@ -186,7 +177,7 @@ mod base64_bytes {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&base64::encode_config(&bytes, URL_SAFE_NO_PAD))
+        serializer.serialize_str(&base64::encode_config(bytes, URL_SAFE_NO_PAD))
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>

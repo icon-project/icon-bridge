@@ -1,11 +1,4 @@
-use crate::types::{AssetId, Math};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LookupMap;
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
-use near_sdk::Balance;
-use std::clone;
-use std::collections::HashMap;
+use super::*;
 
 type AssetFee = u128;
 
@@ -14,11 +7,11 @@ pub struct AssetFees(LookupMap<AssetId, AssetFee>);
 
 impl AssetFees {
     pub fn new() -> Self {
-        Self(LookupMap::new(b"asset_fees".to_vec()))
+        Self(LookupMap::new(StorageKey::AssetFees))
     }
 
     pub fn add(&mut self, asset_id: &AssetId) {
-        self.0.insert(&asset_id, &u128::default());
+        self.0.insert(asset_id, &u128::default());
     }
 
     pub fn remove(&mut self, asset_id: &AssetId) {
@@ -33,6 +26,12 @@ impl AssetFees {
     }
 
     pub fn set(&mut self, asset_id: &AssetId, asset_fee: AssetFee) {
-        self.0.insert(&asset_id.clone(), &asset_fee);
+        self.0.insert(asset_id, &asset_fee);
+    }
+}
+
+impl Default for AssetFees {
+    fn default() -> Self {
+        Self::new()
     }
 }

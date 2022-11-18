@@ -1,7 +1,4 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::UnorderedMap;
-
-use super::TransferableAsset;
+use super::*;
 
 #[derive(Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct Request {
@@ -37,7 +34,7 @@ pub struct Requests(UnorderedMap<i128, Request>);
 
 impl Requests {
     pub fn new() -> Self {
-        Self(UnorderedMap::new(b"requests".to_vec()))
+        Self(UnorderedMap::new(StorageKey::Requests))
     }
 
     pub fn add(&mut self, serial_no: i128, request: &Request) {
@@ -56,20 +53,23 @@ impl Requests {
     }
 
     pub fn contains(&self, serial_no: i128) -> bool {
-        return self.0.get(&serial_no).is_some();
+        self.0.get(&serial_no).is_some()
+    }
+}
+
+impl Default for Requests {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{
-        TransferableAsset,
-    };
+    use crate::types::TransferableAsset;
 
     #[test]
     fn add_request() {
-
         let mut requests = Requests::new();
         let request = Request::new(
             "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4".to_string(),
@@ -83,7 +83,6 @@ mod tests {
 
     #[test]
     fn add_request_existing() {
-
         let mut requests = Requests::new();
         let request = Request::new(
             "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4".to_string(),
@@ -98,7 +97,6 @@ mod tests {
 
     #[test]
     fn remove_request() {
-
         let mut requests = Requests::new();
         let request = Request::new(
             "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4".to_string(),
@@ -113,7 +111,6 @@ mod tests {
 
     #[test]
     fn remove_request_non_existing() {
-
         let mut requests = Requests::new();
         requests.remove(1);
         let result = requests.get(1);

@@ -2,12 +2,6 @@ use super::*;
 
 #[near_bindgen]
 impl BtpMessageCenter {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * Link Management * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
     pub fn add_link(&mut self, link: BTPAddress) {
         self.assert_have_permission();
         self.assert_link_does_not_exists(&link);
@@ -51,6 +45,7 @@ impl BtpMessageCenter {
                 .into_iter()
                 .collect::<HashedCollection<BTPAddress>>();
         }
+
         HashedCollection::new()
     }
 
@@ -68,6 +63,7 @@ impl BtpMessageCenter {
         self.assert_have_permission();
         self.assert_link_exists(&link);
         self.assert_valid_set_link_param(max_aggregation, delay_limit);
+
         if let Some(link_property) = self.links.get(&link).as_mut() {
             let previous_rotate_term = link_property.rotate_term();
 
@@ -85,6 +81,7 @@ impl BtpMessageCenter {
                     .rotate_height_mut()
                     .clone_from(&(env::block_height() + current_rotate_term));
             }
+
             self.links.set(&link, link_property);
         }
     }
@@ -100,7 +97,8 @@ impl BtpMessageCenter {
 
         if let Some(link_property) = self.links.get(&link).as_mut() {
             link_property.rx_height_mut().clone_from(&height);
-            self.links.set(&link, &link_property);
+
+            self.links.set(&link, link_property);
         }
     }
 }
@@ -109,7 +107,8 @@ impl BtpMessageCenter {
     pub fn increment_link_rx_seq(&mut self, link: &BTPAddress) {
         if let Some(link_property) = self.links.get(link).as_mut() {
             link_property.rx_seq_mut().add(1).unwrap();
-            self.links.set(&link, &link_property);
+
+            self.links.set(link, link_property);
         }
     }
 

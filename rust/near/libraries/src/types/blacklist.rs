@@ -1,29 +1,27 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::UnorderedSet;
-use near_sdk::AccountId;
+use super::*;
 
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct BlackListedAccounts(UnorderedSet<AccountId>);
+pub struct BlacklistedAccounts(UnorderedSet<AccountId>);
 
-impl BlackListedAccounts {
+impl BlacklistedAccounts {
     pub fn new() -> Self {
-        Self(UnorderedSet::new(b"blacklist".to_vec()))
+        Self(UnorderedSet::new(StorageKey::BlacklistedAccounts))
     }
 
     pub fn len(&self) -> usize {
         self.0.len() as usize
     }
 
-    pub fn add(&mut self, user: &AccountId) {
-        self.0.insert(&user.to_owned());
+    pub fn add(&mut self, account_id: &AccountId) {
+        self.0.insert(account_id);
     }
 
-    pub fn remove(&mut self, user: &AccountId) {
-        self.0.remove(&user);
+    pub fn remove(&mut self, account_id: &AccountId) {
+        self.0.remove(account_id);
     }
 
-    pub fn contains(&self, user: &AccountId) -> bool {
-        self.0.contains(&user)
+    pub fn contains(&self, account_id: &AccountId) -> bool {
+        self.0.contains(account_id)
     }
 
     pub fn to_vec(&self) -> Vec<AccountId> {
@@ -31,6 +29,16 @@ impl BlackListedAccounts {
             return self.0.to_vec();
         }
         vec![]
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl Default for BlacklistedAccounts {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -41,7 +49,7 @@ mod tests {
 
     #[test]
     fn add_user() {
-        let mut blacklisted_user = BlackListedAccounts::new();
+        let mut blacklisted_user = BlacklistedAccounts::new();
         blacklisted_user.add(
             &"88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
                 .parse::<AccountId>()
@@ -57,7 +65,7 @@ mod tests {
 
     #[test]
     fn add_already_blacklisted_user() {
-        let mut blacklisted_user = BlackListedAccounts::new();
+        let mut blacklisted_user = BlacklistedAccounts::new();
         let user1 = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
             .unwrap();
@@ -78,7 +86,7 @@ mod tests {
 
     #[test]
     fn remove_user() {
-        let mut blacklisted_user = BlackListedAccounts::new();
+        let mut blacklisted_user = BlacklistedAccounts::new();
         let user = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
             .unwrap();
@@ -90,7 +98,7 @@ mod tests {
 
     #[test]
     fn remove_user_non_existing() {
-        let mut blacklisted_user = BlackListedAccounts::new();
+        let mut blacklisted_user = BlacklistedAccounts::new();
         let user1 = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e8"
             .parse::<AccountId>()
             .unwrap();
@@ -105,7 +113,7 @@ mod tests {
 
     #[test]
     fn to_vec_users() {
-        let mut blacklisted_user = BlackListedAccounts::new();
+        let mut blacklisted_user = BlacklistedAccounts::new();
         let user1 = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
             .unwrap();
