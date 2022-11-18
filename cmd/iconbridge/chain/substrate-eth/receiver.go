@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"math/rand"
 	"sort"
+	"strings"
 	"time"
 
 	subEthTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/types"
@@ -514,7 +515,7 @@ func (r *receiver) getRelayReceipts(v *BlockNotification) []*chain.Receipt {
 			msg, err := r.bmcClient().ParseMessage(ethTypes.Log{
 				Data: log.Data, Topics: log.Topics,
 			})
-			if err == nil {
+			if err == nil && strings.EqualFold(msg.Next, r.dst.String()) {
 				events = append(events, &chain.Event{
 					Next:     chain.BTPAddress(msg.Next),
 					Sequence: msg.Seq.Uint64(),

@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"math/rand"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -528,7 +529,7 @@ func (r *receiver) getRelayReceipts(v *BlockNotification) []*chain.Receipt {
 			msg, err := r.client().ParseMessage(ethTypes.Log{
 				Data: log.Data, Topics: log.Topics,
 			})
-			if err == nil {
+			if err == nil && strings.EqualFold(msg.Next, r.dst.String()) {
 				events = append(events, &chain.Event{
 					Next:     chain.BTPAddress(msg.Next),
 					Sequence: msg.Seq.Uint64(),
