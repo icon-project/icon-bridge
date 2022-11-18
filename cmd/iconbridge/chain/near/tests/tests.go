@@ -3,7 +3,7 @@ package tests
 import (
 	"fmt"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests/mock"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -35,6 +35,6 @@ func GetTest(module string, t *testing.T) (Test, error) {
 		return test, nil
 	}
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return nil, err
 }

@@ -1,11 +1,18 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
+	"crypto/sha256"
+	"encoding/json"
+	"github.com/near/borsh-go"
 )
 
-type ValidatorStakeStructVersion []byte
+type ValidatorStakeStructVersion borsh.Enum
+
+const (
+	ValidatorStakeStructVersion1 ValidatorStakeStructVersion = iota
+	ValidatorStakeStructVersion2
+  )
 
 func (vs *ValidatorStakeStructVersion) UnmarshalJSON(p []byte) error {
 	var validatorStakeStructVersion string
@@ -15,13 +22,13 @@ func (vs *ValidatorStakeStructVersion) UnmarshalJSON(p []byte) error {
 	}
 
 	if validatorStakeStructVersion == "" {
-		*vs = nil
+		*vs = ValidatorStakeStructVersion1
 		return nil
 	}
 
 	switch validatorStakeStructVersion {
 	case "V1":
-		*vs = []byte{0}
+		*vs = ValidatorStakeStructVersion1
 	default:
 		return fmt.Errorf("not supported validator struct")
 	}
@@ -35,17 +42,18 @@ type BlockProducer struct {
 	Stake                       BigInt                      `json:"stake"`
 }
 
-type NextBlockProducers []BlockProducer
+type BlockProducers []BlockProducer
 
-func (nbps *NextBlockProducers) UnmarshalJSON(p []byte) error {
-	var response struct {
-		BlockProducers []BlockProducer `json:"next_bps"`
-	}
-	err := json.Unmarshal(p, &response)
+func (bps *BlockProducers) BorshSerialize() ([]byte, error) {
+	return borsh.Serialize(*bps)
+}
+
+func (bps *BlockProducers) Hash() (CryptoHash, error) {
+	serializedBps, err := bps.BorshSerialize()
+
 	if err != nil {
-		return err
+		return CryptoHash{}, err
 	}
 
-	*nbps = NextBlockProducers(response.BlockProducers)
-	return nil
+	return sha256.Sum256(serializedBps), nil
 }

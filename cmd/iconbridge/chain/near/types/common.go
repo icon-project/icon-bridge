@@ -4,20 +4,33 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"math"
+	"strconv"
+	"strings"
+
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/near/borsh-go"
 	"github.com/shopspring/decimal"
-	"math/big"
-	"strconv"
-	"strings"
 )
 
 const (
 	ED25519   = 0
 	SECP256K1 = 1
 )
+
+type Height uint64
+
+func (h *Height) Int() int {
+	if *h > math.MaxInt {
+		panic("overflow")
+	}
+
+	return int(*h)
+}
 
 type AccountId string
 
@@ -79,35 +92,20 @@ type PublicKey struct {
 }
 
 func (pk *PublicKey) UnmarshalJSON(p []byte) error {
-	var publicKey string
-	var data [32]byte
+	var s string
 
-	err := json.Unmarshal(p, &publicKey)
+	err := json.Unmarshal(p, &s)
 	if err != nil {
 		return err
 	}
 
-	if publicKey == "" {
+	if s == "" {
 		pk = nil
 		return nil
 	}
 
-	if strings.Contains(publicKey, "ed25519:") {
-		copy(data[:], base58.Decode(publicKey[len("ed25519:"):]))
-		pk = &PublicKey{
-			KeyType: ED25519,
-			Data:    data,
-		}
-	} else if strings.Contains(publicKey, "secp256k1:") {
-		copy(data[:], base58.Decode(publicKey[len("secp256k1:"):]))
+	*pk = NewPublicKeyFromString(s)
 
-		pk = &PublicKey{
-			KeyType: SECP256K1,
-			Data:    data,
-		}
-	} else {
-		pk = nil
-	}
 	return nil
 }
 
@@ -116,6 +114,23 @@ func (pk *PublicKey) Base58Encode() string {
 		return "ed25519:" + base58.Encode(pk.Data[:])
 	} else {
 		return "secp256k1:" + base58.Encode(pk.Data[:])
+	}
+}
+
+func NewPublicKeyFromString(s string) PublicKey {
+	var data [32]byte
+	var keyType uint8
+	if strings.Contains(s, "ed25519:") {
+		copy(data[:], base58.Decode(s[len("ed25519:"):]))
+		keyType = ED25519
+	} else if strings.Contains(s, "secp256k1:") {
+		copy(data[:], base58.Decode(s[len("secp256k1:"):]))
+		keyType = SECP256K1
+	}
+
+	return PublicKey{
+		KeyType: keyType,
+		Data:    data,
 	}
 }
 
@@ -134,6 +149,24 @@ type Signature struct {
 	Data    [64]byte
 }
 
+func NewSignatureFromString(s string) Signature {
+	var data [64]byte
+	var keyType uint8
+
+	if strings.Contains(s, "ed25519:") {
+		copy(data[:], base58.Decode(s[len("ed25519:"):]))
+		keyType = ED25519
+	} else if strings.Contains(s, "secp256k1:") {
+		copy(data[:], base58.Decode(s[len("secp256k1:"):]))
+		keyType = SECP256K1
+	}
+
+	return Signature{
+		KeyType: keyType,
+		Data:    data,
+	}
+}
+
 func (s Signature) Base58Encode() string {
 	if s.KeyType == ED25519 {
 		return "ed25519:" + base58.Encode(s.Data[:])
@@ -146,37 +179,21 @@ func (s *Signature) Bytes() []byte {
 	return append([]byte{s.KeyType}, s.Data[:]...)
 }
 
-func (s *Signature) UnmarshalJSON(p []byte) error {
-	var signature string
-	var data [64]byte
+func (sig *Signature) UnmarshalJSON(p []byte) error {
+	var s string
 
-	err := json.Unmarshal(p, &signature)
+	err := json.Unmarshal(p, &s)
 	if err != nil {
 		return err
 	}
 
-	if signature == "" {
-		s = nil
+	if s == "" {
+		sig = nil
 		return nil
 	}
 
-	if strings.Contains(signature, "ed25519:") {
-		copy(data[:], base58.Decode(signature[len("ed25519:"):]))
+	*sig = NewSignatureFromString(s)
 
-		s = &Signature{
-			KeyType: ED25519,
-			Data:    data,
-		}
-	} else if strings.Contains(signature, "secp256k1:") {
-		copy(data[:], base58.Decode(signature[len("secp256k1:"):]))
-
-		s = &Signature{
-			KeyType: SECP256K1,
-			Data:    data,
-		}
-	} else {
-		s = nil
-	}
 	return nil
 }
 
@@ -189,7 +206,7 @@ func NewBigInt(bigInt string) BigInt {
 	}
 
 	return BigInt(*dec.BigInt())
-} 
+}
 
 func (b *BigInt) UnmarshalJSON(p []byte) error {
 	var bigInt string
@@ -212,14 +229,43 @@ func (b *BigInt) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
-func CombineHash(hash1 []byte, hash2 []byte) []byte {
+func (b BigInt) Serialize() ([]byte, error) {
+	return borsh.Serialize(big.Int(b))
+}
+
+type SuccessValue []byte
+
+func (s *SuccessValue) UnmarshalJSON(p []byte) error {
+	var v string
+
+	err := json.Unmarshal(p, &v)
+	if err != nil {
+		return err
+	}
+
+	if v == "" {
+		s = nil
+		return nil
+	}
+
+	data, err := base64.URLEncoding.Strict().DecodeString(v)
+	if err != nil {
+		return err
+	}
+
+	*s = data
+
+	return nil
+}
+
+func CombineHash(hash1 [32]byte, hash2 [32]byte) [32]byte {
 	combined := new(bytes.Buffer)
 	combined.Write(hash1[:])
 	combined.Write(hash2[:])
 
 	hash := sha256.Sum256(combined.Bytes())
 
-	return hash[:]
+	return hash
 }
 
 type MerklePathItem struct {
@@ -230,10 +276,46 @@ type MerklePathItem struct {
 type MerklePath []MerklePathItem
 
 type ExecutionStatus struct {
-	SuccessValue     string     `json:"SuccessValue"`
-	SuccessReceiptId CryptoHash `json:"SuccessReceiptId"`
-	Failure          Failure    `json:"Failure"`
-	Unknown          string     `json:"Unknown"`
+	Unknown          string       `json:"Unknown"`
+	Failure          Failure      `json:"Failure"`
+	SuccessValue     SuccessValue `json:"SuccessValue"`
+	SuccessReceiptId CryptoHash   `json:"SuccessReceiptId"`
+}
+
+func (e ExecutionStatus) Serialize() ([]byte, error) {
+	if e.Failure != *new(Failure) {
+		return borsh.Serialize(struct {
+			Enum    uint8
+			Failure Failure
+		}{
+			Enum:    1,
+			Failure: e.Failure,
+		})
+	} else if e.SuccessValue != nil {
+		return borsh.Serialize(struct {
+			Enum         uint8
+			SuccessValue SuccessValue
+		}{
+			Enum:         2,
+			SuccessValue: e.SuccessValue,
+		})
+	} else if e.SuccessReceiptId != [32]byte{} {
+		return borsh.Serialize(struct {
+			Enum             uint8
+			SuccessReceiptId CryptoHash
+		}{
+			Enum:             3,
+			SuccessReceiptId: e.SuccessReceiptId,
+		})
+	} else {
+		return borsh.Serialize(struct {
+			Enum    uint8
+			Unknown string
+		}{
+			Enum:    0,
+			Unknown: e.Unknown,
+		})
+	}
 }
 
 // TODO: Add More Errors
@@ -267,19 +349,28 @@ type ExecutionOutcomeWithIdView struct {
 }
 
 type ExecutionOutcomeView struct {
-	Logs        []string        `json:"logs"`
 	ReceiptIds  []CryptoHash    `json:"receipt_ids"`
 	GasBurnt    uint64          `json:"gas_burnt"`
-	TokensBurnt string          `json:"tokens_burnt"`
-	ExecutorId  string          `json:"executor_id"`
+	TokensBurnt BigInt          `json:"tokens_burnt"`
+	ExecutorId  AccountId       `json:"executor_id"`
 	Status      ExecutionStatus `json:"status"`
+	Logs        []string        `json:"logs"`
 }
 
-type ApprovalMessage struct {
-	Type                []byte
-	PreviousBlockHash   CryptoHash
-	PreviousBlockHeight int64
-	TargetHeight        int64
+func (e ExecutionOutcomeView) Serialize() ([]byte, error) {
+	return borsh.Serialize(struct {
+		ReceiptIds  []CryptoHash
+		GasBurnt    uint64
+		TokensBurnt BigInt
+		ExecutorId  AccountId
+		Status      ExecutionStatus
+	}{
+		ReceiptIds: e.ReceiptIds,
+		GasBurnt: e.GasBurnt,
+		TokensBurnt: e.TokensBurnt,
+		ExecutorId: e.ExecutorId,
+		Status: e.Status,
+	})
 }
 
 type Action struct {
@@ -361,4 +452,9 @@ type FunctionCallPermission struct {
 	Allowance   *big.Int
 	ReceiverId  string
 	MethodNames []string
+}
+
+type SlashedValidator struct {
+	AccountId    AccountId
+	IsDoubleSign bool
 }

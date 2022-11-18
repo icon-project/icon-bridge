@@ -2,11 +2,10 @@ package types
 
 import "github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 
-
 type BlockNotification struct {
-	offset int64
-	block Block
-	receipts []*chain.Receipt
+	offset          int64
+	block           Block
+	receipts        []*chain.Receipt
 }
 
 func NewBlockNotification(offset int64) *BlockNotification {
@@ -19,7 +18,7 @@ func (bn *BlockNotification) Offset() int64 {
 	return bn.offset
 }
 
-func(bn *BlockNotification) Block() *Block {
+func (bn *BlockNotification) Block() *Block {
 	return &bn.block
 }
 

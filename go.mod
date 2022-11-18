@@ -36,3 +36,5 @@ require (
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
+
+replace github.com/near/borsh-go => github.com/hugobyte/borsh-go v0.0.0-20221114132807-5ad0a63babe6

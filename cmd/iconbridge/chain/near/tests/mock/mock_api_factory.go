@@ -57,6 +57,30 @@ func (m *MockApi) BlockFactory() func(args mock.Arguments) mock.Arguments {
 	}
 }
 
+func (m *MockApi) BlockProducersFactory() func(args mock.Arguments) mock.Arguments {
+	return func(args mock.Arguments) mock.Arguments {
+		var blockProducers types.BlockProducers
+		param, Ok := args.Get(0).([]string)
+
+		if Ok && m.BlockProducersMap[param[0]] != emptyResponse {
+			if m.BlockProducersMap[param[0]].Error != nil {
+				return []interface{}{blockProducers, m.BlockProducersMap[param[0]].Error}
+			}
+
+			if response, Ok := (m.BlockProducersMap[param[0]].Reponse).([]byte); Ok {
+				err := json.Unmarshal(response, &blockProducers)
+				if err != nil {
+					return []interface{}{blockProducers, err}
+				}
+
+				return []interface{}{blockProducers, nil}
+			}
+		}
+
+		return []interface{}{types.BlockProducers{}, errors.New("invalid Param")}
+	}
+}
+
 func (m *MockApi) BroadcastTxAsyncFactory() func(args mock.Arguments) mock.Arguments {
 	return func(args mock.Arguments) mock.Arguments {
 		var response types.CryptoHash
