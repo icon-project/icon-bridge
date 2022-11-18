@@ -46,8 +46,8 @@ pub struct Balances {
 impl Balances {
     pub fn new() -> Self {
         Self {
-            keys: UnorderedSet::new(b"balances_keys".to_vec()),
-            values: LookupMap::new(b"balance_values".to_vec()),
+            keys: UnorderedSet::new(StorageKey::Balances(KeyType::Key)),
+            values: LookupMap::new(StorageKey::Balances(KeyType::Value)),
         }
     }
 
@@ -104,6 +104,12 @@ impl Balances {
         }
 
         vec![]
+    }
+}
+
+impl Default for Balances {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -6,18 +6,20 @@ impl BtpTokenService {
     pub fn transfer(&mut self, token_name: String, destination: BTPAddress, amount: U128) {
         let sender_id = env::predecessor_account_id();
         self.assert_have_minimum_amount(amount.into());
+
         let token_id = self
             .token_id(&token_name)
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
 
         //check for enough attached deposit to bear storage cost
         self.assert_have_sufficient_storage_deposit(&sender_id, &token_id);
+
         let asset = self
             .process_external_transfer(&token_id, &sender_id, amount.into())
             .unwrap();
-
         self.send_request(sender_id.clone(), destination, vec![asset]);
+
         self.storage_balances.set(&sender_id, &token_id, 0)
     }
 
@@ -34,7 +36,7 @@ impl BtpTokenService {
             .iter()
             .map(|token_name| self.token_id(token_name))
             .collect::<Result<Vec<TokenId>, BshError>>()
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
 
         let mut storage_cost = u128::default();
@@ -44,8 +46,10 @@ impl BtpTokenService {
                 Some(balance) => balance,
                 None => u128::default(),
             };
+
             storage_cost.add(storage_balance).unwrap();
         });
+
         //check for enough attached deposit to bear storage cost
         self.assert_have_sufficient_storage_deposit_for_batch(storage_cost);
 
@@ -60,6 +64,7 @@ impl BtpTokenService {
             .collect::<Vec<TransferableAsset>>();
 
         self.send_request(sender_id.clone(), destination, assets);
+
         token_ids
             .into_iter()
             .for_each(|token_id| self.storage_balances.set(&sender_id, &token_id, 0));
@@ -121,6 +126,7 @@ impl BtpTokenService {
         };
 
         self.balances.set(sender_id, token_id, sender_balance);
+
         self.balances.set(receiver_id, token_id, receiver_balance);
     }
 
@@ -146,6 +152,7 @@ impl BtpTokenService {
                 balance
             }
         };
+
         Ok(())
     }
 
@@ -169,9 +176,10 @@ impl BtpTokenService {
         assets.iter().for_each(|asset| {
             let token_id = self.token_id(asset.name()).unwrap();
             let token = self.tokens.get(&token_id).unwrap();
-            let mut token_fee = self.token_fees.get(&token_id).unwrap().to_owned();
 
+            let mut token_fee = self.token_fees.get(&token_id).unwrap().to_owned();
             let mut sender_balance = self.balances.get(sender_id, &token_id).unwrap();
+
             sender_balance
                 .locked_mut()
                 .sub(asset.amount() + asset.fees())
@@ -183,6 +191,7 @@ impl BtpTokenService {
                 .balances
                 .get(&env::current_account_id(), &token_id)
                 .unwrap();
+
             current_account_balance
                 .deposit_mut()
                 .add(asset.amount() + asset.fees())
@@ -212,10 +221,12 @@ impl BtpTokenService {
             let token_id = self.token_id(asset.name()).unwrap();
             let mut token_fee = self.token_fees.get(&token_id).unwrap().to_owned();
             let mut sender_balance = self.balances.get(sender_id, &token_id).unwrap();
+
             sender_balance
                 .locked_mut()
                 .sub(asset.amount() + asset.fees())
                 .unwrap();
+
             sender_balance.refundable_mut().add(asset.amount()).unwrap();
             self.balances.set(sender_id, &token_id, sender_balance);
 
@@ -223,10 +234,12 @@ impl BtpTokenService {
                 .balances
                 .get(&env::current_account_id(), &token_id)
                 .unwrap();
+
             current_account_balance
                 .deposit_mut()
                 .add(asset.fees())
                 .unwrap();
+
             self.balances.set(
                 &env::current_account_id(),
                 &token_id,
@@ -234,6 +247,7 @@ impl BtpTokenService {
             );
 
             token_fee.add(asset.fees()).unwrap();
+
             self.token_fees.set(&token_id, token_fee);
         });
     }
@@ -255,15 +269,15 @@ impl BtpTokenService {
             .iter()
             .map(|asset| {
                 self.token_ids
-                    .get(&asset.name())
-                    .map(|id| *id)
+                    .get(asset.name())
+                    .copied()
                     .unwrap_or_default()
             })
             .enumerate()
             .filter(|(index, _)| {
-                return if !self
+                return if self
                     .ensure_token_exists(assets[index.to_owned()].name())
-                    .is_ok()
+                    .is_err()
                 {
                     unregistered_tokens.push(assets[index.to_owned()].name().to_owned());
                     false
@@ -288,6 +302,7 @@ impl BtpTokenService {
 
         let transferable =
             self.is_tokens_transferable(&env::current_account_id(), &receiver_id, &tokens, assets);
+
         if transferable.is_err() {
             return Err(BshError::Reverted {
                 message: format!("Coins not transferable: {}", transferable.unwrap_err()),
@@ -331,7 +346,7 @@ impl BtpTokenService {
             .iter()
             .map(|(index, token_id, token)| -> Result<(), String> {
                 self.ensure_user_not_blacklisted(receiver_id)
-                    .map_err(|e| format!("{}", e))?;
+                    .map_err(|error| error.to_string())?;
 
                 let mut sender_balance = self.balances.get(sender_id, token_id).unwrap();
 
@@ -340,12 +355,14 @@ impl BtpTokenService {
                         return Err("limit exceeded".to_string());
                     }
                 };
+
                 if token.network() != &self.network {
                     self.verify_mint(token_id, assets[index.to_owned()].amount())?;
+
                     sender_balance
                         .deposit_mut()
                         .add(assets[index.to_owned()].amount())?;
-                }
+                };
 
                 self.verify_internal_transfer(
                     &env::current_account_id(),
@@ -358,43 +375,5 @@ impl BtpTokenService {
                 Ok(())
             })
             .collect()
-    }
-
-    pub fn refund_balance_amount(
-        &mut self,
-        index: usize,
-        amounts: &[U128],
-        returned_amount: u128,
-        token_ids: &[TokenId],
-        sender_id: &AccountId,
-        receiver_id: &AccountId,
-    ) -> U128 {
-        if returned_amount == 0 {
-            return U128::from(0);
-        }
-        let unused_amount = std::cmp::min(amounts[index].into(), returned_amount);
-        let token_id = &token_ids[index];
-
-        let mut receiver_balance = self
-            .balances
-            .get(receiver_id, token_id)
-            .expect("Token receiver no longer exists");
-
-        if receiver_balance.deposit() > 0 {
-            let refund_amount = std::cmp::min(receiver_balance.deposit(), unused_amount); // TODO: Revisit
-            receiver_balance.deposit_mut().sub(refund_amount).unwrap();
-            self.balances
-                .set(&receiver_id.clone(), token_id, receiver_balance);
-
-            if let Some(mut sender_balance) = self.balances.get(sender_id, token_id) {
-                sender_balance.deposit_mut().add(refund_amount).unwrap();
-                self.balances
-                    .set(&sender_id.clone(), token_id, sender_balance);
-                let amount: u128 = amounts[index].into();
-                return U128::from(amount - refund_amount);
-            }
-        }
-
-        U128::from(0)
     }
 }

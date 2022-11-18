@@ -6,7 +6,7 @@ impl BtpTokenService {
         self.blacklisted_accounts.to_vec()
     }
 
-    pub fn is_user_black_listed(&self, user: AccountId) -> bool {
+    pub fn is_user_blacklisted(&self, user: AccountId) -> bool {
         self.blacklisted_accounts.contains(&user)
     }
 }

@@ -1,4 +1,5 @@
 use super::*;
+use crate::types::{BmcEventType, StorageKey};
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct BmcEvent {
@@ -9,8 +10,8 @@ pub struct BmcEvent {
 impl BmcEvent {
     pub fn new() -> Self {
         Self {
-            message: LazyOption::new(b"message".to_vec(), None),
-            error: LazyOption::new(b"error".to_vec(), None),
+            message: LazyOption::new(StorageKey::BmcEvent(BmcEventType::Message), None),
+            error: LazyOption::new(StorageKey::BmcEvent(BmcEventType::Error), None),
         }
     }
 
@@ -62,5 +63,11 @@ impl BmcEvent {
 
     pub fn get_error(&self) -> Result<BtpError, String> {
         from_str(&self.error.get().ok_or("Not Found")?).map_err(|e| format!("{}", e))
+    }
+}
+
+impl Default for BmcEvent {
+    fn default() -> Self {
+        Self::new()
     }
 }

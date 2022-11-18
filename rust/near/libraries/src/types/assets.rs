@@ -10,15 +10,15 @@ pub struct AssetItem {
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Assets<T: AssetMetadata> {
-    list: UnorderedSet<AssetId>,
-    metadata: Metadata<T>,
+    keys: UnorderedSet<AssetId>,
+    values: Metadata<T>,
 }
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Metadata<T: AssetMetadata>(LookupMap<AssetId, Asset<T>>);
 
 impl<T: BorshDeserialize + BorshSerialize + AssetMetadata> Metadata<T> {
     fn new() -> Self {
-        Self(LookupMap::new(b"tokens_metadata".to_vec()))
+        Self(LookupMap::new(StorageKey::Assets(KeyType::Value)))
     }
 
     fn add(&mut self, asset_id: &AssetId, asset: &Asset<T>) {
@@ -40,40 +40,39 @@ impl<T: BorshDeserialize + BorshSerialize + AssetMetadata> Metadata<T> {
 impl<T: BorshDeserialize + BorshSerialize + AssetMetadata> Assets<T> {
     pub fn new() -> Self {
         Self {
-            list: UnorderedSet::new(b"tokens_list".to_vec()),
-            metadata: Metadata::new(),
-            // supply: HashMap::new(),
+            keys: UnorderedSet::new(StorageKey::Assets(KeyType::Key)),
+            values: Metadata::new(),
         }
     }
 
     pub fn add(&mut self, asset_id: &AssetId, asset: &Asset<T>) {
-        self.list.insert(asset_id);
-        self.metadata.add(asset_id, asset);
+        self.keys.insert(asset_id);
+        self.values.add(asset_id, asset);
     }
 
     pub fn remove(&mut self, asset_id: &AssetId) {
-        self.list.remove(asset_id);
-        self.metadata.remove(asset_id);
+        self.keys.remove(asset_id);
+        self.values.remove(asset_id);
     }
 
     pub fn contains(&self, asset_id: &AssetId) -> bool {
-        self.list.contains(asset_id)
+        self.keys.contains(asset_id)
     }
 
     pub fn get(&self, asset_id: &AssetId) -> Option<Asset<T>> {
-        self.metadata.get(asset_id)
+        self.values.get(asset_id)
     }
 
     pub fn set(&mut self, asset_id: &AssetId, asset: &Asset<T>) {
-        self.metadata.add(asset_id, asset)
+        self.values.add(asset_id, asset)
     }
 
     pub fn to_vec(&self) -> Vec<AssetItem> {
-        self.list
+        self.keys
             .to_vec()
             .iter()
             .map(|asset_id| {
-                let metdata = self.metadata.get(asset_id).unwrap();
+                let metdata = self.values.get(asset_id).unwrap();
                 AssetItem {
                     name: metdata.name().clone(),
                     network: metdata.network().clone(),
@@ -81,6 +80,12 @@ impl<T: BorshDeserialize + BorshSerialize + AssetMetadata> Assets<T> {
                 }
             })
             .collect::<Vec<AssetItem>>()
+    }
+}
+
+impl<T: BorshDeserialize + BorshSerialize + AssetMetadata> Default for Assets<T>  {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

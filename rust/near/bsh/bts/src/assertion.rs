@@ -172,7 +172,7 @@ impl BtpTokenService {
     }
 
     pub fn ensure_token_exists(&self, token_name: &str) -> Result<(), BshError> {
-        if !self.token_ids.get(token_name).is_some() {
+        if self.token_ids.get(token_name).is_none() {
             return Err(BshError::TokenNotExist {
                 message: token_name.to_owned(),
             });

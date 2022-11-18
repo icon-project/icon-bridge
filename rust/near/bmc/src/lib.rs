@@ -14,12 +14,6 @@ mod types;
 #[cfg(feature = "testable")]
 use libraries::types::{BtpError, HashedCollection};
 
-#[cfg(feature = "testable")]
-use near_sdk::{
-    collections::LazyOption,
-    json_types::{Base64VecU8, U128, U64},
-};
-
 use btp_common::errors::{BmcError, BshError, BtpException, Exception};
 use std::convert::TryInto;
 

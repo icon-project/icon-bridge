@@ -88,7 +88,7 @@ fn remove_blacklisted_user_from_blacklist() {
     let result = contract.remove_from_blacklist(users.clone());
     match result {
         Ok(()) => {
-            let result = contract.is_user_black_listed(chuck());
+            let result = contract.is_user_blacklisted(chuck());
 
             assert_eq!(false, result)
         }
@@ -184,7 +184,7 @@ fn handle_btp_message_to_change_token_limit() {
         token_limits,
         vec![TokenLimit::new(
             "btp-0x1.near-NEAR".to_string(),
-            10000000000000000000000
+            Some(10000000000000000000000)
         )]
     )
 }
@@ -205,7 +205,7 @@ fn is_user_blacklisted() {
 
     contract.add_to_blacklist(users);
 
-    let is_user_blacklisted = contract.is_user_black_listed(charlie());
+    let is_user_blacklisted = contract.is_user_blacklisted(charlie());
 
     assert_eq!(true, is_user_blacklisted)
 }

@@ -7,7 +7,7 @@ pub struct AssetFees(LookupMap<AssetId, AssetFee>);
 
 impl AssetFees {
     pub fn new() -> Self {
-        Self(LookupMap::new(b"asset_fees".to_vec()))
+        Self(LookupMap::new(StorageKey::AssetFees))
     }
 
     pub fn add(&mut self, asset_id: &AssetId) {
@@ -27,5 +27,11 @@ impl AssetFees {
 
     pub fn set(&mut self, asset_id: &AssetId, asset_fee: AssetFee) {
         self.0.insert(asset_id, &asset_fee);
+    }
+}
+
+impl Default for AssetFees {
+    fn default() -> Self {
+        Self::new()
     }
 }

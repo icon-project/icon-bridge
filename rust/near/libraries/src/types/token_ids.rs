@@ -56,6 +56,13 @@ impl TokenIds {
         vec![]
     }
 }
+
+impl Default for TokenIds {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

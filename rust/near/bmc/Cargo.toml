@@ -5,6 +5,7 @@ authors = ["Icon Foundation<foo@icon.foundation>"]
 edition = "2018"
 
 [lib]
+name = "BMC_CONTRACT"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
@@ -15,7 +16,6 @@ near-sdk = "4.1.0-pre.3"
 
 [features]
 testable = []
-mockable = []
 
 [[test]]
 name = "test_link_management"

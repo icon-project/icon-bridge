@@ -161,6 +161,7 @@ impl BtpTokenService {
                         #[cfg(feature = "testable")]
                         env::panic_str(error.to_string().as_str());
 
+                        #[cfg(not(feature = "testable"))]
                         Ok(None)
                     }),
                 TokenServiceType::RequestChangeTokenLimit {
@@ -182,6 +183,7 @@ impl BtpTokenService {
                         #[cfg(feature = "testable")]
                         env::panic_str(error.to_string().as_str());
 
+                        #[cfg(not(feature = "testable"))]
                         Ok(None)
                     }),
                 TokenServiceType::UnknownType => {
@@ -190,9 +192,9 @@ impl BtpTokenService {
                         btp_message.source(),
                         btp_message.serial_no().get()
                     );
+
                     Ok(None)
                 }
-
                 _ => Ok(Some(TokenServiceMessage::new(
                     TokenServiceType::UnknownType,
                 ))),
@@ -225,6 +227,7 @@ impl BtpTokenService {
                 assets,
             ),
         );
+
         self.send_message(serial_no, destination.network_address().unwrap(), message);
     }
 
@@ -249,11 +252,13 @@ impl BtpTokenService {
     ) -> Result<Option<TokenServiceMessage>, BshError> {
         if let Some(request) = self.requests().get(*serial_no.get()) {
             let sender_id = AccountId::try_from(request.sender().to_owned()).unwrap();
+
             if code == RC_OK {
                 self.finalize_external_transfer(&sender_id, request.assets());
             } else if code == RC_ERROR {
                 self.rollback_external_transfer(&sender_id, request.assets());
             }
+
             self.requests_mut().remove(*serial_no.get());
 
             let log = json!({
@@ -262,6 +267,7 @@ impl BtpTokenService {
                 "serial_number": serial_no.get().to_string(),
                 "message": message,
             });
+
             log!(near_sdk::serde_json::to_string(&log).unwrap())
         }
 

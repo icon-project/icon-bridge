@@ -23,9 +23,11 @@ impl BtpTokenService {
             let promise = env::promise_batch_create(
                 &token.metadata().uri_deref().expect("Token Account Missing"),
             );
+
             env::promise_batch_action_create_account(promise);
             env::promise_batch_action_transfer(promise, env::attached_deposit());
             env::promise_batch_action_deploy_contract(promise, NEP141_CONTRACT);
+
             env::promise_batch_action_function_call(
                 promise,
                 "new",
@@ -84,6 +86,7 @@ impl BtpTokenService {
                         .balances
                         .get(&env::current_account_id(), &token_id)
                         .unwrap();
+
                     balance.deposit_mut().add(amount).unwrap();
                     self.balances
                         .set(&env::current_account_id(), &token_id, balance);
@@ -96,8 +99,10 @@ impl BtpTokenService {
                         &token_id,
                         amount,
                     );
+
                     // calculate storage cost for the account
                     let total_storage_cost = self.calculate_storage_cost(inital_storage_used);
+
                     let mut storage_balance =
                         match self.storage_balances.get(&receiver_id.clone(), &token_id) {
                             Some(balance) => balance,
@@ -114,6 +119,7 @@ impl BtpTokenService {
                         .set(&receiver_id, &token_id, storage_balance);
 
                     let token_name = self.tokens.get(&token_id).unwrap().name().to_string();
+
                     let log = json!(
                     {
                         "event": "Mint",
@@ -123,6 +129,7 @@ impl BtpTokenService {
                         "token_account": env::signer_account_id().to_string()
 
                     });
+
                     log!(near_sdk::serde_json::to_string(&log).unwrap());
                 } else {
                     let token_name = self.tokens.get(&token_id).unwrap().name().to_string();
@@ -167,10 +174,13 @@ impl BtpTokenService {
                     .balances
                     .get(&env::current_account_id(), &token_id)
                     .unwrap();
+
                 balance.deposit_mut().sub(amount).unwrap();
                 self.balances
                     .set(&env::current_account_id(), &token_id, balance);
+
                 let token_name = self.tokens.get(&token_id).unwrap().name().to_string();
+
                 let log = json!(
                 {
                     "event": "Burn",
@@ -179,11 +189,13 @@ impl BtpTokenService {
                     "token_name": token_name,
                     "token_account": env::signer_account_id().to_string()
                 });
+
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
             PromiseResult::NotReady => log!("Not Ready"),
             PromiseResult::Failed => {
                 let token_name = self.tokens.get(&token_id).unwrap().name().to_string();
+
                 let log = json!(
                 {
                     "event": "Burn",
@@ -192,6 +204,7 @@ impl BtpTokenService {
                     "token_name": token_name,
                     "token_account": env::signer_account_id().to_string()
                 });
+
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
         }
@@ -214,8 +227,9 @@ impl BtpTokenService {
     pub fn token(&self, token_name: String) -> Asset<FungibleToken> {
         let token_id = self
             .token_id(&token_name)
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
+
         self.tokens.get(&token_id).unwrap()
     }
 
@@ -225,10 +239,8 @@ impl BtpTokenService {
             .into_iter()
             .map(|x| {
                 let token = self.tokens.get(x.get_token_id()).unwrap();
-                TokenLimit::new(
-                    token.name().to_string(),
-                    token.metadata.token_limit().unwrap().clone(),
-                )
+
+                TokenLimit::new(token.name().to_string(), *token.metadata.token_limit())
             })
             .collect()
     }
@@ -236,7 +248,7 @@ impl BtpTokenService {
     pub fn get_token_limit(&self, token_name: String) -> U128 {
         let token_id = self.token_ids.get(&token_name).unwrap();
         self.tokens
-            .get(&token_id)
+            .get(token_id)
             .map(|token| U128(token.metadata().token_limit().unwrap()))
             .unwrap_or_else(|| env::panic_str(&format!("{}", BshError::LimitNotSet)))
     }
@@ -301,19 +313,19 @@ impl BtpTokenService {
         let mut unregistered_tokens: Vec<String> = Vec::new();
 
         let token_ids = token_names
-            .into_iter()
-            .map(|token| self.token_ids.get(token).unwrap().clone())
+            .iter()
+            .map(|token| *self.token_ids.get(token).unwrap())
             .enumerate()
             .filter(|(index, _)| {
-                return if !self
+                if self
                     .ensure_token_exists(&token_names[index.to_owned()])
-                    .is_ok()
+                    .is_err()
                 {
                     unregistered_tokens.push(token_names[index.to_owned()].to_owned());
                     false
                 } else {
                     true
-                };
+                }
             })
             .collect::<Vec<(usize, AssetId)>>();
 
@@ -340,7 +352,7 @@ impl BtpTokenService {
     pub fn token_id(&self, token_name: &str) -> Result<TokenId, BshError> {
         self.token_ids
             .get(token_name)
-            .map(|token_id| token_id.to_owned())
+            .copied()
             .ok_or(BshError::TokenNotExist {
                 message: token_name.to_string(),
             })
@@ -351,7 +363,7 @@ impl BtpTokenService {
         token_names: &[String],
         token_limits: &[u128],
     ) -> Result<Option<TokenServiceMessage>, BshError> {
-        self.set_token_limit(token_names.clone(), token_limits.clone())?;
+        self.set_token_limit(token_names, token_limits)?;
 
         Ok(Some(TokenServiceMessage::new(
             TokenServiceType::ResponseChangeTokenLimit {

@@ -11,7 +11,7 @@ pub struct Services(TreeMap<String, AccountId>);
 
 impl Services {
     pub fn new() -> Self {
-        Self(TreeMap::new(b"services".to_vec()))
+        Self(TreeMap::new(StorageKey::Services))
     }
 
     pub fn add(&mut self, name: &str, service: &AccountId) {
@@ -45,6 +45,12 @@ impl Services {
                 .collect();
         }
         vec![]
+    }
+}
+
+impl Default for Services {
+    fn default() -> Self {
+        Self::new()        
     }
 }
 

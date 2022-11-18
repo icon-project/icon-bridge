@@ -34,7 +34,7 @@ pub struct Requests(UnorderedMap<i128, Request>);
 
 impl Requests {
     pub fn new() -> Self {
-        Self(UnorderedMap::new(b"requests".to_vec()))
+        Self(UnorderedMap::new(StorageKey::Requests))
     }
 
     pub fn add(&mut self, serial_no: i128, request: &Request) {
@@ -54,6 +54,12 @@ impl Requests {
 
     pub fn contains(&self, serial_no: i128) -> bool {
         self.0.get(&serial_no).is_some()
+    }
+}
+
+impl Default for Requests {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

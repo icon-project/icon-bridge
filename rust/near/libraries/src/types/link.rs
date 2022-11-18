@@ -295,8 +295,8 @@ impl DerefMut for Links {
 impl Links {
     pub fn new() -> Self {
         Self {
-            keys: UnorderedSet::new(b"link_keys".to_vec()),
-            values: LookupMap::new(b"link_values".to_vec()),
+            keys: UnorderedSet::new(StorageKey::Links(KeyType::Key)),
+            values: LookupMap::new(StorageKey::Links(KeyType::Value)),
         }
     }
 
@@ -335,6 +335,12 @@ impl Links {
 
     pub fn contains(&self, link: &BTPAddress) -> bool {
         self.keys.contains(link)
+    }
+}
+
+impl Default for Links {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

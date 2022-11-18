@@ -18,6 +18,12 @@ impl<T: PartialEq + HASH + Eq> PartialEq for HashedCollection<T> {
     }
 }
 
+impl<T: PartialEq + HASH + Eq> Default for HashedCollection<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug)]
 pub struct HashedValue(Value);
 

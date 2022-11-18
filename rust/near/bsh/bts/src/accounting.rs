@@ -63,7 +63,7 @@ impl BtpTokenService {
 
         let token_id = self
             .token_id(&token_name)
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
 
         self.assert_have_minimum_amount(amount);
@@ -101,13 +101,15 @@ impl BtpTokenService {
         let amount: u128 = amount.into();
         let account = env::predecessor_account_id();
         self.assert_have_minimum_amount(amount);
+
         let token_id = self
             .token_id(&token_name)
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
-        self.assert_have_sufficient_refundable(&account, &token_id, amount);
 
+        self.assert_have_sufficient_refundable(&account, &token_id, amount);
         let mut balance = self.balances.get(&account, &token_id).unwrap();
+
         balance.refundable_mut().sub(amount).unwrap();
         balance.deposit_mut().add(amount).unwrap();
 
@@ -117,26 +119,28 @@ impl BtpTokenService {
     pub fn locked_balance_of(&self, account_id: AccountId, token_name: String) -> U128 {
         let token_id = self
             .token_id(&token_name)
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
 
         let balance = self
             .balances
             .get(&account_id, &token_id)
             .unwrap_or_else(|| env::panic_str(format!("{}", BshError::AccountNotExist).as_str()));
+
         balance.locked().into()
     }
 
     pub fn refundable_balance_of(&self, account_id: AccountId, token_name: String) -> U128 {
         let token_id = self
             .token_id(&token_name)
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
 
         let balance = self
             .balances
             .get(&account_id, &token_id)
             .unwrap_or_else(|| env::panic_str(format!("{}", BshError::AccountNotExist).as_str()));
+
         balance.refundable().into()
     }
 
@@ -148,21 +152,23 @@ impl BtpTokenService {
     ) -> Option<AccountBalance> {
         let token_id = self
             .token_id(&token_name)
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
+
         self.balances.get(&owner_id, &token_id)
     }
 
     pub fn balance_of(&self, account_id: AccountId, token_name: String) -> U128 {
         let token_id = self
             .token_id(&token_name)
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
 
         let balance = self
             .balances
             .get(&account_id, &token_id)
             .unwrap_or_else(|| env::panic_str(format!("{}", BshError::AccountNotExist).as_str()));
+
         balance.deposit().into()
     }
 
@@ -179,6 +185,7 @@ impl BtpTokenService {
                 let mut balance = self.balances.get(&account, &token_id).unwrap();
                 balance.deposit_mut().sub(amount).unwrap();
                 self.balances.set(&account.clone(), &token_id, balance);
+
                 let log = json!(
                 {
                     "event": "Withdraw",
@@ -187,6 +194,7 @@ impl BtpTokenService {
                     "amount": amount.to_string(),
                     "token_name": token_name
                 });
+
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
 
                 self.storage_balances.set(&account, &token_id, 0)
@@ -203,6 +211,7 @@ impl BtpTokenService {
                     "amount": amount.to_string(),
                     "token_name": token_name
                 });
+
                 log!(near_sdk::serde_json::to_string(&log).unwrap());
             }
         }
@@ -210,6 +219,7 @@ impl BtpTokenService {
 
     pub fn get_storage_balance(&self, account: AccountId, token_name: String) -> U128 {
         let token_id = self.token_id(&token_name).unwrap();
+
         match self.storage_balances.get(&account, &token_id) {
             Some(storage_cost) => U128::from(storage_cost),
             None => U128::from(0),
@@ -219,8 +229,9 @@ impl BtpTokenService {
     pub fn get_fee_ratio(&self, token_name: String) -> (U128, U128) {
         let token_id = self
             .token_id(&token_name)
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
+
         let token = self
             .tokens
             .get(&token_id)

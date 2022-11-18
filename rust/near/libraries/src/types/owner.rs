@@ -5,7 +5,7 @@ pub struct Owners(UnorderedSet<AccountId>);
 
 impl Owners {
     pub fn new() -> Self {
-        Self(UnorderedSet::new(b"owners".to_vec()))
+        Self(UnorderedSet::new(StorageKey::Owners))
     }
 
     pub fn len(&self) -> usize {
@@ -32,6 +32,12 @@ impl Owners {
     }
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+}
+
+impl Default for Owners {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

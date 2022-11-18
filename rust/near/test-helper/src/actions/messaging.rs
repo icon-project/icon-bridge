@@ -21,22 +21,6 @@ impl Contract<'_, contract_type> {
         context
     }
 
-    pub fn handle_relay_message_bmv_callback_mockable(
-        &self,
-        mut context: Context,
-        gas: Gas,
-    ) -> Context {
-        invoke_call!(
-            self,
-            context,
-            "handle_relay_message_bmv_callback_mockable",
-            method_params,
-            None,
-            Some(gas)
-        );
-        context
-    }
-
     pub fn handle_btp_message(&self, mut context: Context, gas: Gas) -> Context {
         invoke_call!(
             self,

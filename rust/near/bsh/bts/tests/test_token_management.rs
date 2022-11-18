@@ -133,7 +133,7 @@ fn get_non_exist_token_id() {
     );
     let token_id = contract
         .token_id("ICON")
-        .map_err(|err| format!("{}", err))
+        .map_err(|error| error.to_string())
         .unwrap();
 }
 

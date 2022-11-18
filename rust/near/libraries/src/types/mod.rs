@@ -1,5 +1,6 @@
 #![allow(unstable_name_collisions)]
 #![allow(unused_imports)]
+
 mod asset;
 mod asset_fee;
 mod assets;
@@ -27,17 +28,19 @@ mod storage_balance;
 mod token_ids;
 mod token_limit;
 mod transferable_asset;
-mod verifier;
 mod wrapped_fungible_token;
 mod wrapped_i128;
 mod wrapped_nativecoin;
 mod wrapper;
 
+mod storage_keys;
+pub use storage_keys::{BmcEventType, KeyType, StorageKey};
+
 pub use asset::*;
 pub use asset_fee::AssetFees;
 pub use assets::{AssetItem, Assets};
 pub use balance::{AccountBalance, Balances};
-pub use blacklist::BlackListedAccounts;
+pub use blacklist::BlacklistedAccounts;
 pub use btp_address::{Account, Address, BTPAddress, Network};
 pub use btp_errors::BtpError;
 pub use connection::{Connection, Connections};
@@ -60,7 +63,6 @@ pub use storage_balance::StorageBalances;
 pub use token_ids::{TokenIds, TokenProperty};
 pub use token_limit::{TokenLimit, TokenLimits};
 pub use transferable_asset::{AccumulatedAssetFees, TransferableAsset};
-pub use verifier::{Bmv, Verifier, VerifierResponse, VerifierStatus};
 pub use wrapped_fungible_token::*;
 pub use wrapped_i128::WrappedI128;
 pub use wrapped_nativecoin::*;
@@ -76,7 +78,7 @@ use near_sdk::{
     json_types::{Base64VecU8, U128},
     serde::{de, Deserialize, Deserializer, Serialize, Serializer},
     serde_json::{from_value, json, to_value, Value},
-    AccountId, Balance, BlockHeight,
+    AccountId, Balance, BlockHeight, BorshStorageKey,
 };
 use rustc_hex::FromHex;
 

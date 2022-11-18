@@ -18,8 +18,8 @@ use libraries::types::{
         TokenServiceType,
     },
     AccountBalance, AccumulatedAssetFees, Asset, AssetFees, AssetId, AssetMetadata, Assets,
-    BTPAddress, Balances, BlackListedAccounts, FungibleToken, Math, Network, Owners, Request,
-    Requests, StorageBalances, TokenIds, TokenLimit, TokenLimits, TransferableAsset, WrappedI128,
+    BTPAddress, Balances, BlacklistedAccounts, FungibleToken, Math, Network, Owners, Request,
+    Requests, StorageBalances, TokenIds, TokenLimit, TransferableAsset, WrappedI128,
 };
 
 #[cfg(feature = "testable")]
@@ -67,8 +67,7 @@ pub struct BtpTokenService {
     serial_no: i128,
     bmc: AccountId,
     name: String,
-    blacklisted_accounts: BlackListedAccounts,
-    token_limits: TokenLimits,
+    blacklisted_accounts: BlacklistedAccounts,
     token_ids: TokenIds,
     registered_tokens: RegisteredTokens,
 
@@ -82,19 +81,23 @@ impl BtpTokenService {
     pub fn new(service_name: String, bmc: AccountId, network: String, native_coin: Token) -> Self {
         require!(!env::state_exists(), "Already initialized");
         let mut owners = Owners::new();
-        owners.add(&env::current_account_id());
 
+        owners.add(&env::current_account_id());
         let mut tokens = <Tokens>::new();
+
         let mut balances = Balances::new();
         let native_coin_id = Self::hash_token_id(native_coin.name());
 
         balances.add(&env::current_account_id(), &native_coin_id);
         tokens.add(&native_coin_id, &native_coin);
-        let blacklisted_accounts = BlackListedAccounts::new();
+
+        let blacklisted_accounts = BlacklistedAccounts::new();
         let mut token_fees = TokenFees::new();
+
         token_fees.add(&native_coin_id);
         let mut token_ids = TokenIds::new();
         token_ids.add(native_coin.name(), native_coin_id);
+
         Self {
             native_coin_name: native_coin.name().to_owned(),
             network,
@@ -109,7 +112,6 @@ impl BtpTokenService {
             name: service_name,
             blacklisted_accounts,
             registered_tokens: RegisteredTokens::new(),
-            token_limits: TokenLimits::new(),
             token_ids,
 
             #[cfg(feature = "testable")]
@@ -141,6 +143,7 @@ impl BtpTokenService {
         let total_storage_usage = env::storage_usage() - initial_storage_usage;
         let storage_cost =
             total_storage_usage as u128 * env::storage_byte_cost() + 669547687500000000;
+
         U128(storage_cost)
     }
 }

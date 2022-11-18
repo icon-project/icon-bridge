@@ -32,7 +32,7 @@ impl BtpTokenService {
 
         let token_id = self
             .token_id(&token_name)
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
 
         let mut token = self.tokens.get(&token_id).unwrap();
@@ -53,7 +53,7 @@ impl BtpTokenService {
     pub fn get_fee(&self, token_name: String, amount: U128) -> U128 {
         let token_id = self
             .token_id(&token_name)
-            .map_err(|err| format!("{}", err))
+            .map_err(|error| error.to_string())
             .unwrap();
 
         let token = self.tokens.get(&token_id).unwrap();
@@ -99,6 +99,6 @@ impl BtpTokenService {
     ) -> Result<u128, String> {
         let mut fee = (amount * token.metadata().fee_numerator()) / FEE_DENOMINATOR;
 
-        fee.add(token.metadata().fixed_fee()).map(|fee| *fee)
+        fee.add(token.metadata().fixed_fee()).copied()
     }
 }

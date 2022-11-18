@@ -6,11 +6,11 @@ pub struct TokenLimits(UnorderedMap<String, u128>);
 #[derive(Serialize, Debug, Eq, PartialEq, Hash, Deserialize, Clone)]
 pub struct TokenLimit {
     coin_name: String,
-    token_limit: u128,
+    token_limit: Option<u128>,
 }
 
 impl TokenLimit {
-    pub fn new(coin_name: String, token_limit: u128) -> Self {
+    pub fn new(coin_name: String, token_limit: Option<u128>) -> Self {
         TokenLimit {
             coin_name,
             token_limit,
@@ -50,10 +50,16 @@ impl TokenLimits {
                 .0
                 .to_vec()
                 .into_iter()
-                .map(|values| TokenLimit::new(values.0, values.1))
+                .map(|values| TokenLimit::new(values.0, Some(values.1)))
                 .collect::<Vec<TokenLimit>>();
         }
         vec![]
+    }
+}
+
+impl Default for TokenLimits {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -74,9 +80,9 @@ mod tests {
 
         let result: HashSet<_> = token_limits.to_vec().into_iter().collect();
         let actual = vec![
-            TokenLimit::new("ICX".to_string(), 1000000000_u128),
-            TokenLimit::new("NEAR".to_string(), 100000002),
-            TokenLimit::new("sIcx".to_string(), 1000000003),
+            TokenLimit::new("ICX".to_string(), Some(1000000000_u128)),
+            TokenLimit::new("NEAR".to_string(), Some(100000002)),
+            TokenLimit::new("sIcx".to_string(), Some(1000000003)),
         ];
         let actual: HashSet<_> = actual.into_iter().collect();
         assert_eq!(result, actual);
@@ -126,8 +132,8 @@ mod tests {
 
         token_limits.remove("ICX");
         let actual: HashSet<_> = vec![
-            TokenLimit::new("NEAR".to_string(), 100000002_u128),
-            TokenLimit::new("sIcx".to_string(), 1000000003_u128),
+            TokenLimit::new("NEAR".to_string(), Some(100000002_u128)),
+            TokenLimit::new("sIcx".to_string(), Some(1000000003_u128)),
         ]
         .into_iter()
         .collect();

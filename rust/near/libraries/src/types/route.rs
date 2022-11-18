@@ -24,8 +24,8 @@ pub struct Routes {
 impl Routes {
     pub fn new() -> Self {
         Self {
-            keys: UnorderedSet::new(b"route_keys".to_vec()),
-            values: LookupMap::new(b"route_values".to_vec()),
+            keys: UnorderedSet::new(StorageKey::Routes(KeyType::Key)),
+            values: LookupMap::new(StorageKey::Routes(KeyType::Value)),
         }
     }
 
@@ -87,6 +87,12 @@ impl Routes {
             });
         }
         routes.into_iter().collect()
+    }
+}
+
+impl Default for Routes {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

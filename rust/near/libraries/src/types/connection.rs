@@ -12,7 +12,7 @@ pub struct Connections(LookupMap<Connection, HashSet<BTPAddress>>);
 
 impl Connections {
     pub fn new() -> Self {
-        Self(LookupMap::new(b"connections".to_vec()))
+        Self(LookupMap::new(StorageKey::Connections))
     }
 
     pub fn add(&mut self, connection: &Connection, link: &BTPAddress) {
@@ -42,6 +42,12 @@ impl Connections {
 
     pub fn contains(&self, connection: &Connection) -> bool {
         self.0.contains_key(connection)
+    }
+}
+
+impl Default for Connections {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
