@@ -1,7 +1,5 @@
 module github.com/icon-project/icon-bridge
 
-go 1.13
-
 require (
 	github.com/MuhammedIrfan/testify-mock v0.0.0-20220912121829-185fc90cd1b6
 	github.com/aws/aws-sdk-go v1.44.76
