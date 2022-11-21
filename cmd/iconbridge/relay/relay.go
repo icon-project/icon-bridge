@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -239,9 +240,14 @@ func (r *relay) Start(ctx context.Context) error {
 				default:
 					time.Sleep(relayTxReceiptWaitInterval) // wait before asking for receipt
 					if retryCount > retryWarnThreshold {
-						r.log.WithFields(log.Fields{"error": err, "retry": retryCount + 1}).Warn("tx.Receipt: retry")
+						r.log.WithFields(log.Fields{"error": err, "retry": retryCount + 1}).Warn("tx.Receipt: ")
 					} else {
-						r.log.WithFields(log.Fields{"error": err, "retry": retryCount + 1}).Debug("tx.Receipt: retry")
+						if strings.Contains(err.Error(), "not found") {
+							r.log.WithFields(log.Fields{"retry": retryCount + 1}).Debug("tx.Receipt: ")
+						} else {
+							r.log.WithFields(log.Fields{"error": err, "retry": retryCount + 1}).Debug("tx.Receipt: ")
+						}
+
 					}
 				}
 				retryCount++

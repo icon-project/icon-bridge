@@ -1,29 +1,24 @@
-use crate::types::{AssetId, Math};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
-use near_sdk::Balance;
-use std::collections::HashMap;
+use super::*;
 
 type AssetFee = u128;
 
-#[derive(Clone, BorshDeserialize, BorshSerialize)]
-pub struct AssetFees(HashMap<AssetId, AssetFee>);
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct AssetFees(LookupMap<AssetId, AssetFee>);
 
 impl AssetFees {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self(LookupMap::new(StorageKey::AssetFees))
     }
 
     pub fn add(&mut self, asset_id: &AssetId) {
-        self.0.insert(asset_id.clone(), u128::default());
+        self.0.insert(asset_id, &u128::default());
     }
 
     pub fn remove(&mut self, asset_id: &AssetId) {
         self.0.remove(asset_id);
     }
 
-    pub fn get(&self, asset_id: &AssetId) -> Option<&AssetFee> {
+    pub fn get(&self, asset_id: &AssetId) -> Option<AssetFee> {
         if let Some(asset_fee) = self.0.get(asset_id) {
             return Some(asset_fee);
         }
@@ -31,6 +26,12 @@ impl AssetFees {
     }
 
     pub fn set(&mut self, asset_id: &AssetId, asset_fee: AssetFee) {
-        self.0.insert(asset_id.clone(), asset_fee);
+        self.0.insert(asset_id, &asset_fee);
+    }
+}
+
+impl Default for AssetFees {
+    fn default() -> Self {
+        Self::new()
     }
 }

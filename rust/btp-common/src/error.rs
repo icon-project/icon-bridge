@@ -39,6 +39,17 @@ pub mod errors {
         }
     }
 
+    impl From<(u32, &Option<String>)> for Box<dyn Exception> {
+        fn from((code, message): (u32, &Option<String>)) -> Self {
+            match code {
+                0..=9 => todo!(),
+                10..=24 => Box::new(BtpException::Bmc(BmcError::from((code - 10, message)))),
+                25..=39 => todo!(),
+                _ => Box::new(BtpException::Bsh(BshError::from((code - 40, message)))),
+            }
+        }
+    }
+
     #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
     #[serde(tag = "error")]
     pub enum BmvError {
@@ -76,6 +87,47 @@ pub mod errors {
             match bsh_error {
                 BmvError::Unknown { message: _ } => 0,
                 _ => 0,
+            }
+        }
+    }
+
+    impl From<(u32, &Option<String>)> for BshError {
+        fn from((code, _): (u32, &Option<String>)) -> BshError {
+            match code {
+                1 => BshError::PermissionNotExist,
+                _ => BshError::Unknown,
+            }
+        }
+    }
+
+    impl From<(u32, &Option<String>)> for BmcError {
+        fn from((code, message): (u32, &Option<String>)) -> BmcError {
+            match code {
+                0 => BmcError::Unknown {
+                    message: message.clone().unwrap_or("Undefined".to_string()),
+                },
+                1 => BmcError::PermissionNotExist,
+                2 => BmcError::InvalidSerialNo,
+                3 => BmcError::VerifierExist,
+                4 => BmcError::VerifierNotExist,
+                5 => BmcError::ServiceExist,
+                6 => BmcError::ServiceNotExist,
+                7 => BmcError::LinkExist,
+                8 => BmcError::LinkNotExist,
+                9 => BmcError::RelayExist {
+                    link: message.clone().unwrap_or("Undefined".to_string()),
+                },
+                10 => BmcError::RelayNotExist {
+                    link: message.clone().unwrap_or("Undefined".to_string()),
+                },
+                11 => BmcError::Unreachable {
+                    destination: message.clone().unwrap_or("Undefined".to_string()),
+                },
+                12 => BmcError::ErrorDrop,
+                13 => BmcError::InvalidSequence,
+                _ => BmcError::Unknown {
+                    message: message.clone().unwrap_or("Undefined".to_string()),
+                },
             }
         }
     }
@@ -194,6 +246,8 @@ pub mod errors {
         NonBlacklistedUsers { message: String },
         InvalidParams,
         LimitExceed,
+        LimitNotSet,
+        RequiredMinimumOneYoctoNear,
     }
 
     impl Exception for BshError {
@@ -283,28 +337,34 @@ pub mod errors {
                     write!(f, "{}{}", label, "TokenNotRegistered")
                 }
                 BshError::Unknown => {
-                    write!(f, "{}", "Unknown")
+                    write!(f, "{}{}", label, "Unknown")
                 }
                 BshError::LessThanZero => {
-                    write!(f, "{}", "LessThanZero")
+                    write!(f, "{}{}", label, "LessThanZero")
                 }
                 BshError::Failure => {
-                    write!(f, "{}", "Failure")
+                    write!(f, "{}{}", label, "Failure")
                 }
                 BshError::UserAlreadyBlacklisted => {
-                    write!(f, "{}", "AlreadyBlacklisted")
+                    write!(f, "{}{}", label, "AlreadyBlacklisted")
                 }
                 BshError::NonBlacklistedUsers { message } => {
                     write!(f, "{}{} for {}", label, "UsersNotBlacklisted", message)
                 }
                 BshError::InvalidParams => {
-                    write!(f, "{}", "InvalidParams")
+                    write!(f, "{}{}", label, "InvalidParams")
                 }
                 BshError::LimitExceed => {
-                    write!(f, "{}", "LimitExceed")
+                    write!(f, "{}{}", label, "LimitExceed")
                 }
                 BshError::BlacklistedUsers { message } => {
                     write!(f, "{}{} for {}", label, "UsersBlacklisted", message)
+                }
+                BshError::LimitNotSet => {
+                    write!(f, "{}{}", label, "LimitNotSet")
+                }
+                BshError::RequiredMinimumOneYoctoNear => {
+                    write!(f, "{}{}", label, "RequiredMinimumOneYoctoNear")
                 }
             }
         }
@@ -343,6 +403,8 @@ pub mod errors {
         Unauthorized { message: &'static str },
         InvalidSequence,
         InternalEventHandleNotExists,
+        UnknownHandleBtpError,
+        UnkownHandleBtpMessage,
     }
 
     impl Exception for BmcError {
@@ -439,6 +501,13 @@ pub mod errors {
                 }
                 BmcError::InternalEventHandleNotExists => {
                     write!(f, "{}{}", label, "NotExistInternalEventHandle")
+                }
+
+                BmcError::UnknownHandleBtpError => {
+                    write!(f, "{}{}", label, "UnknownHandleBtpError")
+                }
+                BmcError::UnkownHandleBtpMessage => {
+                    write!(f, "{}{}", label, "UnkownHandleBtpMessage")
                 }
             }
         }

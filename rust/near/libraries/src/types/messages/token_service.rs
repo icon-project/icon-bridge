@@ -1,12 +1,4 @@
-use crate::rlp::{self, Decodable, Encodable};
-use crate::types::{
-    messages::BtpMessage, messages::Message, messages::SerializedMessage, TransferableAsset,
-};
-use btp_common::errors::BshError;
-use near_sdk::base64::{self, URL_SAFE_NO_PAD};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
-use std::convert::TryFrom;
+use super::*;
 
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 pub enum TokenServiceType {
@@ -17,7 +9,7 @@ pub enum TokenServiceType {
     },
     RequestTokenRegister,
     ResponseHandleService {
-        code: u128,
+        code: u8,
         message: String,
     },
     RequestBlacklist {
@@ -26,7 +18,7 @@ pub enum TokenServiceType {
         network: String,
     },
     RequestChangeTokenLimit {
-        coin_names: Vec<String>,
+        token_names: Vec<String>,
         token_limits: Vec<u128>,
         network: String,
     },
@@ -78,8 +70,8 @@ impl Encodable for BlackListType {
 impl Encodable for TokenServiceMessage {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
         stream.begin_unbounded_list();
-        match self.service_type() {
-            &TokenServiceType::RequestTokenTransfer {
+        match *self.service_type() {
+            TokenServiceType::RequestTokenTransfer {
                 ref sender,
                 ref receiver,
                 ref assets,
@@ -91,15 +83,15 @@ impl Encodable for TokenServiceMessage {
                     .append_list(assets);
                 stream.append::<u128>(&0).append(&params.out());
             }
-            &TokenServiceType::ResponseHandleService {
+            TokenServiceType::ResponseHandleService {
                 ref code,
                 ref message,
             } => {
                 let mut params = rlp::RlpStream::new_list(2);
-                params.append::<u128>(code).append::<String>(message);
+                params.append::<u8>(code).append::<String>(message);
                 stream.append::<u128>(&2).append(&params.out());
             }
-            &TokenServiceType::ResponseBlacklist {
+            TokenServiceType::ResponseBlacklist {
                 ref code,
                 ref message,
             } => {
@@ -107,7 +99,7 @@ impl Encodable for TokenServiceMessage {
                 params.append::<u128>(code).append::<String>(message);
                 stream.append::<u128>(&3).append(&params.out());
             }
-            &TokenServiceType::ResponseChangeTokenLimit {
+            TokenServiceType::ResponseChangeTokenLimit {
                 ref code,
                 ref message,
             } => {
@@ -159,7 +151,7 @@ impl TryFrom<(u128, &Vec<u8>)> for TokenServiceType {
                 network: payload.val_at::<String>(2)?,
             }),
             4 => Ok(Self::RequestChangeTokenLimit {
-                coin_names: payload.list_at(0)?,
+                token_names: payload.list_at(0)?,
                 token_limits: payload.list_at(1)?,
                 network: payload.val_at::<String>(2)?,
             }),
@@ -263,7 +255,6 @@ pub struct TokenServiceMessage {
 
 #[cfg(test)]
 mod tests {
-    use btp_common::errors::BshError;
 
     use super::{
         BlackListType, BtpMessage, SerializedMessage, TokenServiceMessage, TokenServiceType,
@@ -277,7 +268,7 @@ mod tests {
         let service: BtpMessage<TokenServiceMessage> = service_message.clone().try_into().unwrap();
         let change_token_limit = TokenServiceMessage {
             service_type: TokenServiceType::RequestChangeTokenLimit {
-                coin_names: vec!["btp-0x1.near-NEAR".to_string()],
+                token_names: vec!["btp-0x1.near-NEAR".to_string()],
                 token_limits: vec![10000000000000000000000],
                 network: "0x1.near".to_string(),
             },
@@ -349,6 +340,6 @@ mod tests {
 
     #[test]
     fn deserialize_transfer_request_message_btp_message() {
-        let btp_message = <BtpMessage<SerializedMessage>>::try_from("-QEfuDlidHA6Ly8weDIuaWNvbi9jeDY3ZTIzOGQ4YjFiY2Q4MTVmMzI0ZWQ3ZjU4NWExYWExODhkZDYzZDm4T2J0cDovLzB4MS5uZWFyLzQzODI3ZGZjMDZiZTZiNmQ2ZGEwNDhlYWIyOTdmOWEzNWJhZjIyYjJjZmE1MTFiNDZiMzk1ZTRiODkxNTFmZjODYnRzB7iM-IoAuIf4hapoeGRlYjY5Yjg0YjhjNGY5ZmZhNmU2MWJiNmM3MzMxMTBmMjRlODU0NGO4QDE2YTEyNTVhMDViMTAyZGQzMTY1NDJiODc4MGNmZWRmN2M2M2ZhYjJlODNjYzEyMmIwMWJmYzRiYzQyMDBlMWbX1otidHAtMHgyLUlDWIkAwcP4n1QPcKM".to_string()).unwrap();
+        let _btp_message = <BtpMessage<SerializedMessage>>::try_from("-QEfuDlidHA6Ly8weDIuaWNvbi9jeDY3ZTIzOGQ4YjFiY2Q4MTVmMzI0ZWQ3ZjU4NWExYWExODhkZDYzZDm4T2J0cDovLzB4MS5uZWFyLzQzODI3ZGZjMDZiZTZiNmQ2ZGEwNDhlYWIyOTdmOWEzNWJhZjIyYjJjZmE1MTFiNDZiMzk1ZTRiODkxNTFmZjODYnRzB7iM-IoAuIf4hapoeGRlYjY5Yjg0YjhjNGY5ZmZhNmU2MWJiNmM3MzMxMTBmMjRlODU0NGO4QDE2YTEyNTVhMDViMTAyZGQzMTY1NDJiODc4MGNmZWRmN2M2M2ZhYjJlODNjYzEyMmIwMWJmYzRiYzQyMDBlMWbX1otidHAtMHgyLUlDWIkAwcP4n1QPcKM".to_string()).unwrap();
     }
 }

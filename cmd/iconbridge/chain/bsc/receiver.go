@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"math/rand"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,9 +25,8 @@ import (
 
 const (
 	BlockInterval              = 3 * time.Second
-	BlockHeightPollInterval    = 15 * time.Second
+	BlockHeightPollInterval    = BlockInterval * 5
 	BlockFinalityConfirmations = 10
-	// TODO: adapt BlockHeightPollInterval depending on the value of BlockInterval or BlockFinalityConfirmations to avoid drift
 	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
 	RPCCallRetry               = 5
 )
@@ -92,11 +92,13 @@ type BnOptions struct {
 
 func (r *receiver) newVerifier(ctx context.Context, opts *VerifierOptions) (vri IVerifier, err error) {
 	vr := &Verifier{
-		mu:         sync.RWMutex{},
-		next:       big.NewInt(int64(opts.BlockHeight)),
-		parentHash: common.HexToHash(opts.BlockHash.String()),
-		validators: map[ethCommon.Address]bool{},
-		chainID:    r.client().GetChainID(),
+		mu:                         sync.RWMutex{},
+		next:                       big.NewInt(int64(opts.BlockHeight)),
+		parentHash:                 common.HexToHash(opts.BlockHash.String()),
+		validators:                 map[ethCommon.Address]bool{},
+		prevValidators:             map[ethCommon.Address]bool{},
+		useNewValidatorsFromHeight: big.NewInt(int64(opts.BlockHeight)),
+		chainID:                    r.client().GetChainID(),
 	}
 
 	// cross check input parent hash
@@ -527,7 +529,7 @@ func (r *receiver) getRelayReceipts(v *BlockNotification) []*chain.Receipt {
 			msg, err := r.client().ParseMessage(ethTypes.Log{
 				Data: log.Data, Topics: log.Topics,
 			})
-			if err == nil {
+			if err == nil && strings.EqualFold(msg.Next, r.dst.String()) {
 				events = append(events, &chain.Event{
 					Next:     chain.BTPAddress(msg.Next),
 					Sequence: msg.Seq.Uint64(),

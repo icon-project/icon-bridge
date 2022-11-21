@@ -1,12 +1,7 @@
-use super::HashedCollection;
-pub use btp_common::btp_address::{validate_btp_address, Address};
-use near_sdk::{
-    borsh::{self, maybestd::io, BorshDeserialize, BorshSerialize},
-    serde::{de, Deserialize, Serialize},
-    serde_json::Value,
-    AccountId,
-};
+use super::*;
+
 use crate::rlp::{self, Decodable, Encodable};
+pub use btp_common::btp_address::{validate_btp_address, Address};
 use std::convert::TryFrom;
 use std::fmt::{self, Error, Formatter};
 use std::iter::FromIterator;
@@ -68,7 +63,8 @@ impl BorshDeserialize for BTPAddress {
 impl TryFrom<String> for BTPAddress {
     type Error = String;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        validate_btp_address(value.as_str()).map_err(|err| format!("InvalidBtpAddress: {}", err))?;
+        validate_btp_address(value.as_str())
+            .map_err(|err| format!("InvalidBtpAddress: {}", err))?;
         Ok(Self(value))
     }
 }

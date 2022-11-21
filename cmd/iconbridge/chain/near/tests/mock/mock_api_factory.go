@@ -53,7 +53,31 @@ func (m *MockApi) BlockFactory() func(args mock.Arguments) mock.Arguments {
 
 		}
 
-		return []interface{}{block, errors.New("invalid Param")}
+		return []interface{}{block, errors.New("invalid Block API Params")}
+	}
+}
+
+func (m *MockApi) BlockProducersFactory() func(args mock.Arguments) mock.Arguments {
+	return func(args mock.Arguments) mock.Arguments {
+		var blockProducers types.BlockProducers
+		param, Ok := args.Get(0).([]string)
+
+		if Ok && m.BlockProducersMap[param[0]] != emptyResponse {
+			if m.BlockProducersMap[param[0]].Error != nil {
+				return []interface{}{blockProducers, m.BlockProducersMap[param[0]].Error}
+			}
+
+			if response, Ok := (m.BlockProducersMap[param[0]].Reponse).([]byte); Ok {
+				err := json.Unmarshal(response, &blockProducers)
+				if err != nil {
+					return []interface{}{blockProducers, err}
+				}
+
+				return []interface{}{blockProducers, nil}
+			}
+		}
+
+		return []interface{}{types.BlockProducers{}, errors.New("invalid Param")}
 	}
 }
 
@@ -70,7 +94,7 @@ func (m *MockApi) BroadcastTxAsyncFactory() func(args mock.Arguments) mock.Argum
 			}
 		}
 
-		return []interface{}{response, errors.New("invalid Param")}
+		return []interface{}{response, errors.New("invalid BroadcastTxAsync API Param")}
 	}
 }
 
@@ -111,7 +135,7 @@ func (m *MockApi) CallFunctionFactory() func(args mock.Arguments) mock.Arguments
 
 		}
 
-		return []interface{}{response, errors.New("invalid Param")}
+		return []interface{}{response, errors.New("invalid CallFunction API Param")}
 	}
 }
 
@@ -141,7 +165,7 @@ func (m *MockApi) ChangesFactory() func(args mock.Arguments) mock.Arguments {
 			}
 		}
 
-		return []interface{}{changes, errors.New("invalid Param")}
+		return []interface{}{changes, errors.New("invalid Changes API Param")}
 	}
 }
 
@@ -164,7 +188,7 @@ func (m *MockApi) StatusFactory() func(args mock.Arguments) mock.Arguments {
 			}
 		}
 
-		return []interface{}{chainStatus, errors.New("invalid Param")}
+		return []interface{}{chainStatus, errors.New("invalid Status API Param")}
 	}
 }
 
@@ -189,7 +213,7 @@ func (m *MockApi) TransactionFactory() func(args mock.Arguments) mock.Arguments 
 			}
 		}
 
-		return []interface{}{transactionResult, errors.New("invalid Param")}
+		return []interface{}{transactionResult, errors.New("invalid Transaction API Param")}
 	}
 }
 
@@ -219,7 +243,7 @@ func (m *MockApi) ViewAccessKeyFactory() func(args mock.Arguments) mock.Argument
 			}
 		}
 
-		return []interface{}{accessKeyResponse, errors.New("invalid Param")}
+		return []interface{}{accessKeyResponse, errors.New("invalid ViewAccessKey API Param")}
 	}
 }
 
@@ -248,6 +272,6 @@ func (m *MockApi) ViewAccountFactory() func(args mock.Arguments) mock.Arguments 
 			}
 
 		}
-		return []interface{}{account, errors.New("invalid Param")}
+		return []interface{}{account, errors.New("invalid ViewAccount API Param")}
 	}
 }

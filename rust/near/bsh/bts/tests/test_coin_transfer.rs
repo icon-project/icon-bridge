@@ -1,5 +1,12 @@
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+
 use bts::BtpTokenService;
-use near_sdk::{env, json_types::U128, testing_env, AccountId, PromiseResult, VMContext};
+use near_sdk::{
+    env, json_types::U128, test_utils::VMContextBuilder, testing_env, AccountId, Gas,
+    PromiseResult, RuntimeFeesConfig, VMConfig, VMContext,
+};
 pub mod accounts;
 use accounts::*;
 use libraries::types::{
@@ -11,43 +18,31 @@ mod token;
 use libraries::types::{Request, TransferableAsset};
 use std::convert::TryInto;
 use token::*;
-pub type Coin = Asset<WrappedNativeCoin>;
+pub type Token = Asset<WrappedNativeCoin>;
 
 fn get_context(
-    input: Vec<u8>,
     is_view: bool,
     signer_account_id: AccountId,
     attached_deposit: u128,
-    storage_usage: u64,
     account_balance: u128,
 ) -> VMContext {
-    VMContext {
-        current_account_id: alice().to_string(),
-        signer_account_id: signer_account_id.to_string(),
-        signer_account_pk: vec![0, 1, 2],
-        predecessor_account_id: signer_account_id.to_string(),
-        input,
-        block_index: 0,
-        block_timestamp: 0,
-        account_balance,
-        account_locked_balance: 0,
-        storage_usage,
-        attached_deposit,
-        prepaid_gas: 10u64.pow(18),
-        random_seed: vec![0, 1, 2],
-        is_view,
-        output_data_receivers: vec![],
-        epoch_height: 19,
-    }
+    VMContextBuilder::new()
+        .current_account_id(alice())
+        .is_view(is_view)
+        .signer_account_id(signer_account_id.clone())
+        .predecessor_account_id(signer_account_id)
+        .storage_usage(env::storage_usage())
+        .prepaid_gas(Gas(10u64.pow(18)))
+        .attached_deposit(attached_deposit)
+        .account_balance(account_balance)
+        .build()
 }
 
 #[test]
 fn deposit_native_coin() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
@@ -66,25 +61,17 @@ fn deposit_native_coin() {
 
 #[test]
 fn withdraw_native_coin() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(
-            vec![],
-            false,
-            account_id,
-            deposit,
-            env::storage_usage(),
-            1000,
-        )
-    };
+    let context =
+        |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 1000);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let coin_id = contract.coin_id(nativecoin.name()).unwrap();
+    let token_id = contract.token_id(nativecoin.name()).unwrap();
     testing_env!(context(chuck(), 1000));
 
     contract.deposit();
@@ -94,17 +81,27 @@ fn withdraw_native_coin() {
     expected.deposit_mut().add(1000).unwrap();
     assert_eq!(result, U128::from(expected.deposit()));
 
-    testing_env!(context(chuck(), 1));
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
+
+    testing_env!(context(chuck(), storage_cost));
     contract.withdraw(nativecoin.name().to_string(), U128::from(999));
 
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    contract.on_withdraw(chuck(), 999, nativecoin.name().to_string(), coin_id.clone());
+    contract.on_withdraw(
+        chuck(),
+        999,
+        nativecoin.name().to_string(),
+        token_id.clone(),
+    );
 
     let result = contract.balance_of(chuck(), nativecoin.name().to_string());
     let mut expected = AccountBalance::default();
@@ -115,25 +112,17 @@ fn withdraw_native_coin() {
 #[test]
 #[should_panic(expected = "BSHRevertNotMinimumDeposit")]
 fn withdraw_native_coin_higher_amount() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(
-            vec![],
-            false,
-            account_id,
-            deposit,
-            env::storage_usage(),
-            1000,
-        )
-    };
+    let context =
+        |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 1000);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
         nativecoin.clone(),
     );
-    let coin_id = contract.coin_id(nativecoin.name()).unwrap();
+    let token_id = contract.token_id(nativecoin.name()).unwrap();
     testing_env!(context(chuck(), 100));
 
     contract.deposit();
@@ -156,11 +145,9 @@ fn withdraw_native_coin_higher_amount() {
 fn external_transfer() {
     use btp_common::btp_address::Address;
 
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -172,13 +159,22 @@ fn external_transfer() {
 
     testing_env!(
         context(chuck(), 10000000000000000000000000),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
 
     contract.deposit();
+
+    let token_id = contract.token_id(nativecoin.name()).unwrap();
+
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
+
+    testing_env!(context(chuck(), storage_cost));
 
     contract.transfer(
         nativecoin.name().to_string(),
@@ -186,16 +182,22 @@ fn external_transfer() {
         U128::from(9000000000000000000000000),
     );
 
-    let message = TokenServiceMessage::new(
-        TokenServiceType::RequestTokenTransfer {
-            sender: chuck().to_string(),
-            receiver: destination.account_id().to_string(),
-            assets: vec![TransferableAsset::new(
-                nativecoin.name().to_owned(),
-                8099999999999999999999999,
-                900000000000000000000001
-            )],
-        },
+    let message = TokenServiceMessage::new(TokenServiceType::RequestTokenTransfer {
+        sender: chuck().to_string(),
+        receiver: destination.account_id().to_string(),
+        assets: vec![TransferableAsset::new(
+            nativecoin.name().to_owned(),
+            8099999999999999999999999,
+            900000000000000000000001,
+        )],
+    });
+
+    testing_env!(
+        context(chuck(), 0),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
+        Default::default(),
+        vec![PromiseResult::Successful(vec![1_u8])]
     );
 
     contract.send_service_message_callback(destination.network_address().unwrap(), message, 1);
@@ -203,8 +205,14 @@ fn external_transfer() {
     let result = contract.account_balance(chuck(), nativecoin.name().to_string());
     let mut expected = AccountBalance::default();
 
-    expected.deposit_mut().add(1000000000000000000000000).unwrap();
-    expected.locked_mut().add(9000000000000000000000000).unwrap();
+    expected
+        .deposit_mut()
+        .add(1000000000000000000000000)
+        .unwrap();
+    expected
+        .locked_mut()
+        .add(9000000000000000000000000)
+        .unwrap();
 
     assert_eq!(result, Some(expected));
 
@@ -226,11 +234,9 @@ fn external_transfer() {
 #[test]
 #[cfg(feature = "testable")]
 fn handle_success_response_native_coin_external_transfer() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -242,6 +248,16 @@ fn handle_success_response_native_coin_external_transfer() {
     testing_env!(context(chuck(), 1000));
 
     contract.deposit();
+
+    let token_id = contract.token_id(nativecoin.name()).unwrap();
+
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
+
+    testing_env!(context(chuck(), storage_cost));
+
     contract.transfer(
         nativecoin.name().to_string(),
         destination.clone(),
@@ -301,17 +317,15 @@ fn handle_success_response_native_coin_external_transfer() {
 #[test]
 #[cfg(feature = "testable")]
 fn handle_success_response_icx_coin_external_transfer() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
@@ -322,12 +336,12 @@ fn handle_success_response_icx_coin_external_transfer() {
         nativecoin.clone(),
     );
 
-    let icx_coin = Coin::new(ICON_COIN.to_owned());
+    let icx_coin = Token::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+    let token_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
         .try_into()
         .unwrap();
-    contract.register_coin_callback(icx_coin.clone(), coin_id);
+    contract.register_token_callback(icx_coin.clone(), token_id);
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -349,20 +363,26 @@ fn handle_success_response_icx_coin_external_transfer() {
 
     testing_env!(
         context(chuck(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let coin_id = contract.coin_id(icx_coin.name()).unwrap();
+    let token_id = contract.token_id(icx_coin.name()).unwrap();
 
     contract.on_mint(
         900,
-        coin_id.clone(),
-        icx_coin.symbol().to_string(),
+        token_id.clone(),
         chuck().clone(),
+        Ok(U128::from(700000)),
     );
 
+    let storage_cost = contract
+        .get_storage_balance(chuck(), icx_coin.name().to_string())
+        .0
+        + 1;
+
+    testing_env!(context(chuck(), storage_cost));
     contract.transfer(
         icx_coin.name().to_string(),
         destination.clone(),
@@ -398,12 +418,12 @@ fn handle_success_response_icx_coin_external_transfer() {
 
     testing_env!(
         context(chuck(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    contract.on_burn(720, coin_id.clone(), icx_coin.symbol().to_string());
+    contract.on_burn(720, token_id.clone());
 
     let result = contract.balance_of(alice(), icx_coin.name().to_string());
     assert_eq!(result, U128::from(80));
@@ -438,11 +458,9 @@ fn handle_success_response_icx_coin_external_transfer() {
 fn handle_failure_response_native_coin_external_transfer() {
     use libraries::types::AccumulatedAssetFees;
 
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -452,9 +470,16 @@ fn handle_failure_response_native_coin_external_transfer() {
         nativecoin.clone(),
     );
     testing_env!(context(chuck(), 1000));
-    let coin_id = contract.coin_id(nativecoin.name()).unwrap();
+    let token_id = contract.token_id(nativecoin.name()).unwrap();
 
     contract.deposit();
+
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
+
+    testing_env!(context(chuck(), storage_cost));
     contract.transfer(
         nativecoin.name().to_string(),
         destination.clone(),
@@ -517,17 +542,15 @@ fn handle_failure_response_native_coin_external_transfer() {
 fn handle_failure_response_icx_coin_external_transfer() {
     use libraries::types::AccumulatedAssetFees;
 
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -537,12 +560,12 @@ fn handle_failure_response_icx_coin_external_transfer() {
         nativecoin.clone(),
     );
 
-    let icx_coin = Coin::new(ICON_COIN.to_owned());
+    let icx_coin = Token::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+    let token_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
         .try_into()
         .unwrap();
-    contract.register_coin_callback(icx_coin.clone(), coin_id);
+    contract.register_token_callback(icx_coin.clone(), token_id);
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -560,23 +583,29 @@ fn handle_failure_response_icx_coin_external_transfer() {
     );
     testing_env!(
         context(bmc(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
     contract.handle_btp_message(btp_message.try_into().unwrap());
 
-    let coin_id = contract.coin_id(icx_coin.name()).unwrap();
+    let token_id = contract.token_id(icx_coin.name()).unwrap();
 
     contract.on_mint(
         900,
-        coin_id.clone(),
-        icx_coin.symbol().to_string(),
+        token_id.clone(),
         chuck().clone(),
+        Ok(U128::from(700000)),
     );
 
-    testing_env!(context(chuck(), 0));
+    let storage_cost = contract
+        .get_storage_balance(chuck(), icx_coin.name().to_string())
+        .0
+        + 1;
+
+    testing_env!(context(chuck(), storage_cost));
+
     contract.transfer(
         icx_coin.name().to_string(),
         destination.clone(),
@@ -643,17 +672,15 @@ fn handle_failure_response_icx_coin_external_transfer() {
 #[test]
 #[cfg(feature = "testable")]
 fn reclaim_icx_coin() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -663,12 +690,12 @@ fn reclaim_icx_coin() {
         nativecoin.clone(),
     );
 
-    let icx_coin = Coin::new(ICON_COIN.to_owned());
+    let icx_coin = Token::new(ICON_COIN.to_owned());
     contract.register(icx_coin.clone());
-    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+    let token_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
         .try_into()
         .unwrap();
-    contract.register_coin_callback(icx_coin.clone(), coin_id);
+    contract.register_token_callback(icx_coin.clone(), token_id);
 
     let btp_message = &BtpMessage::new(
         BTPAddress::new("btp://0x1.icon/0x12345678".to_string()),
@@ -690,15 +717,19 @@ fn reclaim_icx_coin() {
 
     testing_env!(
         context(chuck(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let coin_id = contract.coin_id(icx_coin.name()).unwrap();
-    contract.on_mint(900, coin_id.clone(), icx_coin.symbol().to_string(), chuck());
+    let token_id = contract.token_id(icx_coin.name()).unwrap();
+    contract.on_mint(900, token_id.clone(), chuck(), Ok(U128::from(700000)));
+    let storage_cost = contract
+        .get_storage_balance(chuck(), icx_coin.name().to_string())
+        .0
+        + 1;
 
-    testing_env!(context(chuck(), 0));
+    testing_env!(context(chuck(), storage_cost));
     contract.transfer(
         icx_coin.name().to_string(),
         destination.clone(),
@@ -736,11 +767,9 @@ fn reclaim_icx_coin() {
 #[test]
 #[should_panic(expected = "BSHRevertNotMinimumDeposit")]
 fn external_transfer_higher_amount() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -758,12 +787,10 @@ fn external_transfer_higher_amount() {
 #[test]
 #[should_panic(expected = "BSHRevertNotExistsToken: ICON")]
 fn external_transfer_unregistered_coin() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
-    let icx_coin = Coin::new(ICON_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
+    let icx_coin = Token::new(ICON_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -781,18 +808,16 @@ fn external_transfer_unregistered_coin() {
 #[test]
 #[should_panic(expected = "BSHRevertNotMinimumDeposit")]
 fn external_transfer_nil_balance() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
-    let icx_coin = Coin::new(ICON_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
+    let icx_coin = Token::new(ICON_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -803,10 +828,10 @@ fn external_transfer_nil_balance() {
     );
 
     contract.register(icx_coin.clone());
-    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+    let token_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
         .try_into()
         .unwrap();
-    contract.register_coin_callback(icx_coin.clone(), coin_id);
+    contract.register_token_callback(icx_coin.clone(), token_id);
     testing_env!(context(chuck(), 1000));
 
     contract.deposit();
@@ -816,11 +841,9 @@ fn external_transfer_nil_balance() {
 #[test]
 #[cfg(feature = "testable")]
 fn external_transfer_batch() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -830,9 +853,18 @@ fn external_transfer_batch() {
         nativecoin.clone(),
     );
     testing_env!(context(chuck(), 1000));
-    let coin_id = contract.coin_id(nativecoin.name()).unwrap();
+    let token_id = contract.token_id(nativecoin.name()).unwrap();
 
     contract.deposit();
+
+    let token_id = contract.token_id(nativecoin.name()).unwrap();
+
+    let storage_cost = contract
+        .get_storage_balance(chuck(), nativecoin.name().to_string())
+        .0
+        + 1;
+
+    testing_env!(context(chuck(), storage_cost));
     contract.transfer_batch(
         vec![nativecoin.name().to_string()],
         destination,
@@ -852,11 +884,9 @@ fn external_transfer_batch() {
 #[test]
 #[should_panic(expected = "BSHRevertNotMinimumDeposit")]
 fn external_transfer_batch_higher_amount() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -878,12 +908,10 @@ fn external_transfer_batch_higher_amount() {
 #[test]
 #[should_panic(expected = "BSHRevertNotExistsToken")]
 fn external_transfer_batch_unregistered_coin() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(context(alice(), 0));
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
-    let icx_coin = Coin::new(ICON_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
+    let icx_coin = Token::new(ICON_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -905,18 +933,16 @@ fn external_transfer_batch_unregistered_coin() {
 #[test]
 #[should_panic(expected = "BSHRevertNotMinimumDeposit")]
 fn external_transfer_batch_nil_balance() {
-    let context = |account_id: AccountId, deposit: u128| {
-        get_context(vec![], false, account_id, deposit, env::storage_usage(), 0)
-    };
+    let context = |account_id: AccountId, deposit: u128| get_context(false, account_id, deposit, 0);
     testing_env!(
         context(alice(), 0),
-        Default::default(),
-        Default::default(),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
         Default::default(),
         vec![PromiseResult::Successful(vec![1_u8])]
     );
-    let nativecoin = Coin::new(NATIVE_COIN.to_owned());
-    let icx_coin = Coin::new(ICON_COIN.to_owned());
+    let nativecoin = Token::new(NATIVE_COIN.to_owned());
+    let icx_coin = Token::new(ICON_COIN.to_owned());
     let destination =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
     let mut contract = BtpTokenService::new(
@@ -927,10 +953,10 @@ fn external_transfer_batch_nil_balance() {
     );
 
     contract.register(icx_coin.clone());
-    let coin_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
+    let token_id: [u8; 32] = env::sha256(icx_coin.name().to_owned().as_bytes())
         .try_into()
         .unwrap();
-    contract.register_coin_callback(icx_coin.clone(), coin_id);
+    contract.register_token_callback(icx_coin.clone(), token_id);
     testing_env!(context(chuck(), 1000));
 
     contract.deposit();

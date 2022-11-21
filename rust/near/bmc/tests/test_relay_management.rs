@@ -1,29 +1,31 @@
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+
 use bmc::BtpMessageCenter;
-use near_sdk::{env, serde_json::json, testing_env, AccountId, VMContext};
+use near_sdk::{
+    env, serde_json::json, test_utils::VMContextBuilder, testing_env, AccountId, Gas, VMContext,
+};
 pub mod accounts;
 use accounts::*;
-use libraries::types::{Address, BTPAddress, VerifierResponse, VerifierStatus};
+use libraries::types::BTPAddress;
 
-//TODO
-fn get_context(input: Vec<u8>, is_view: bool, signer_account_id: AccountId, storage_usage: u64, block_index: u64) -> VMContext {
-    VMContext {
-        current_account_id: alice().to_string(),
-        signer_account_id: signer_account_id.to_string(),
-        signer_account_pk: vec![0, 1, 2],
-        predecessor_account_id: signer_account_id.to_string(),
-        input,
-        block_index,
-        block_timestamp: 0,
-        account_balance: 0,
-        account_locked_balance: 0,
-        storage_usage,
-        attached_deposit: 0,
-        prepaid_gas: 10u64.pow(18),
-        random_seed: vec![0, 1, 2],
-        is_view,
-        output_data_receivers: vec![],
-        epoch_height: 19,
-    }
+fn get_context(
+    input: Vec<u8>,
+    is_view: bool,
+    signer_account_id: AccountId,
+    storage_usage: u64,
+    block_index: u64,
+) -> VMContext {
+    VMContextBuilder::new()
+        .current_account_id(alice())
+        .storage_usage(storage_usage)
+        .is_view(is_view)
+        .signer_account_id(signer_account_id.clone())
+        .predecessor_account_id(signer_account_id)
+        .prepaid_gas(Gas(10u64.pow(18)))
+        .block_index(block_index)
+        .build()
 }
 
 #[test]
@@ -34,7 +36,6 @@ fn add_relay_new_relay() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -56,7 +57,6 @@ fn add_relays_new_relay() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -85,7 +85,6 @@ fn add_relay_existing_relay() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -125,7 +124,7 @@ fn get_relays() {
     let mut contract = BtpMessageCenter::new("0x1.near".into(), 1500);
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
-    
+
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -155,7 +154,6 @@ fn add_relays_permission() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    
     contract.add_link(link.clone());
     testing_env!(context(chuck()));
     contract.add_relays(
@@ -176,7 +174,6 @@ fn add_relay_permission() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -200,7 +197,6 @@ fn remove_relay_existing_relay() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-    
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -240,7 +236,6 @@ fn remove_relay_permission() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-  
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -266,7 +261,6 @@ fn remove_relay_non_existing_relay() {
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-  
     contract.add_link(link.clone());
     contract.add_relays(
         link.clone(),
@@ -283,13 +277,14 @@ fn remove_relay_non_existing_relay() {
 
 #[test]
 fn rotate_relay() {
-    let context = |v: AccountId, block_index: u64| (get_context(vec![], false, v, env::storage_usage(), block_index));
+    let context = |v: AccountId, block_index: u64| {
+        get_context(vec![], false, v, env::storage_usage(), block_index)
+    };
     testing_env!(context(alice(), 0));
     let mut contract = BtpMessageCenter::new("0x1.near".into(), 1500);
     let link =
         BTPAddress::new("btp://0x1.icon/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string());
 
-  
     contract.add_link(link.clone());
     contract.set_link(link.clone(), 2000, 50, 1);
     contract.add_relays(
@@ -312,5 +307,4 @@ fn rotate_relay() {
     let mut link = contract.get_link(link);
     let account_id = link.rotate_relay(1200, true);
     let account_id = link.rotate_relay(3200, true);
-
 }

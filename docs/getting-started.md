@@ -21,13 +21,10 @@ Get familiar with some terminologies used in icon-bridge [here.](terminologies.m
 | /devnet/docker/goloop | Scripts to build ICON Chain docker image|
 | /devnet/docker/icon-bsc | Scripts to build iconbridge between icon and bsc chains|
 | /devnet/docker/icon-hmny | Scripts to build iconbridge between icon and harmony chains|
-| /doc | Documentation(Obsolete) |
 | /docs | Documentation |
-| /docker and /docker-compose | Scripts to create docker containers (Some of it Obsolete) |
+| /docker | Scripts to create docker containers (Some of it Obsolete) |
 | /javascore | javascore smart contracts |
 | /solidity | solidity smart contracts |
-| /pyscore | Python Smart Contracts (Obsolete) |
-| /testnet |-- (Obsolete) |
 
 >TLDR version of deployment is available [here](#tdlr)
 
@@ -372,7 +369,8 @@ Deployment Involves the following steps:
  
 * ###  Deploy on local machine
  
-    - #### Single Step Deployment 
+    - #### Single Step Deployment
+    > Note: The single step deployment process requires node docker images to be built. See [setting up blockchain nodes](https://github.com/icon-project/icon-bridge/blob/main/docs/getting-started.md#setting-up-blockchain-nodes) for more information. 
     
         ```sh 
         make cleanimglocal          # Clean Previous build & deployment artifacts if present

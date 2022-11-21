@@ -160,22 +160,22 @@ macro_rules! impl_encodable_for_u {
     ($name: ident) => {
         impl Encodable for $name {
             fn rlp_append(&self, s: &mut RlpStream) {
-                let bytes = |mut v: $name | -> Vec<u8> {
-					if v == 0 {
-						vec![0]
-					} else {
-						let mut buffer: Vec<u8> = vec![0_u8; 16];
-						for i in (0..=15).rev() {
-							let b: u8 = (v & 0xff) as u8;
-							buffer[i] = b;
-							v = v >> 8;
-							if v == 0 && (b & 0x80) == 0 {
-								return buffer[i..].to_vec();
-							}
-						}
-						buffer
-					}
-				}(*self);
+                let bytes = |mut v: $name| -> Vec<u8> {
+                    if v == 0 {
+                        vec![0]
+                    } else {
+                        let mut buffer: Vec<u8> = vec![0_u8; 16];
+                        for i in (0..=15).rev() {
+                            let b: u8 = (v & 0xff) as u8;
+                            buffer[i] = b;
+                            v >>= 8;
+                            if v == 0 && (b & 0x80) == 0 {
+                                return buffer[i..].to_vec();
+                            }
+                        }
+                        buffer
+                    }
+                }(*self);
                 s.encoder().encode_value(&bytes);
             }
         }

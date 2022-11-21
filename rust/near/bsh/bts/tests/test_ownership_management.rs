@@ -1,43 +1,33 @@
 use bts::BtpTokenService;
-use near_sdk::{testing_env, AccountId, VMContext};
+use near_sdk::{env, test_utils::VMContextBuilder, testing_env, AccountId, Gas, VMContext};
 use std::collections::HashSet;
 pub mod accounts;
 use accounts::*;
 use libraries::types::{Asset, WrappedNativeCoin};
 mod token;
 use token::*;
-pub type Coin = Asset<WrappedNativeCoin>;
+pub type Token = Asset<WrappedNativeCoin>;
 
-fn get_context(input: Vec<u8>, is_view: bool, signer_account_id: AccountId) -> VMContext {
-    VMContext {
-        current_account_id: alice().to_string(),
-        signer_account_id: signer_account_id.to_string(),
-        signer_account_pk: vec![0, 1, 2],
-        predecessor_account_id: signer_account_id.to_string(),
-        input,
-        block_index: 0,
-        block_timestamp: 0,
-        account_balance: 0,
-        account_locked_balance: 0,
-        storage_usage: 0,
-        attached_deposit: 0,
-        prepaid_gas: 10u64.pow(18),
-        random_seed: vec![0, 1, 2],
-        is_view,
-        output_data_receivers: vec![],
-        epoch_height: 19,
-    }
+fn get_context(is_view: bool, signer_account_id: AccountId) -> VMContext {
+    VMContextBuilder::new()
+        .current_account_id(alice())
+        .is_view(is_view)
+        .signer_account_id(signer_account_id.clone())
+        .predecessor_account_id(signer_account_id)
+        .storage_usage(env::storage_usage())
+        .prepaid_gas(Gas(10u64.pow(18)))
+        .build()
 }
 
 #[test]
 fn add_owner_new_owner() {
-    let context = |v: AccountId| (get_context(vec![], false, v));
+    let context = |v: AccountId| (get_context(false, v));
     testing_env!(context(alice()));
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
-        <Coin>::new(NATIVE_COIN.to_owned()),
+        <Token>::new(NATIVE_COIN.to_owned()),
     );
 
     contract.add_owner(carol());
@@ -52,13 +42,13 @@ fn add_owner_new_owner() {
 #[test]
 #[should_panic(expected = "BSHRevertAlreadyExistsOwner")]
 fn add_owner_existing_owner() {
-    let context = |v: AccountId| (get_context(vec![], false, v));
+    let context = |v: AccountId| (get_context(false, v));
     testing_env!(context(alice()));
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
-        <Coin>::new(NATIVE_COIN.to_owned()),
+        <Token>::new(NATIVE_COIN.to_owned()),
     );
 
     contract.add_owner(alice());
@@ -67,13 +57,13 @@ fn add_owner_existing_owner() {
 #[test]
 #[should_panic(expected = "BSHRevertNotExistsPermission")]
 fn add_owner_permission() {
-    let context = |v: AccountId| (get_context(vec![], false, v));
+    let context = |v: AccountId| (get_context(false, v));
     testing_env!(context(alice()));
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
-        <Coin>::new(NATIVE_COIN.to_owned()),
+        <Token>::new(NATIVE_COIN.to_owned()),
     );
     testing_env!(context(chuck()));
     contract.add_owner(carol());
@@ -81,13 +71,13 @@ fn add_owner_permission() {
 
 #[test]
 fn remove_owner_existing_owner() {
-    let context = |v: AccountId| (get_context(vec![], false, v));
+    let context = |v: AccountId| (get_context(false, v));
     testing_env!(context(alice()));
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
-        <Coin>::new(NATIVE_COIN.to_owned()),
+        <Token>::new(NATIVE_COIN.to_owned()),
     );
 
     contract.add_owner(carol());
@@ -104,13 +94,13 @@ fn remove_owner_existing_owner() {
 #[test]
 #[should_panic(expected = "BSHRevertNotExistsPermission")]
 fn remove_owner_permission() {
-    let context = |v: AccountId| (get_context(vec![], false, v));
+    let context = |v: AccountId| (get_context(false, v));
     testing_env!(context(alice()));
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
-        <Coin>::new(NATIVE_COIN.to_owned()),
+        <Token>::new(NATIVE_COIN.to_owned()),
     );
 
     contract.add_owner(carol());
@@ -122,13 +112,13 @@ fn remove_owner_permission() {
 #[test]
 #[should_panic(expected = "BSHRevertLastOwner")]
 fn remove_owner_last_owner() {
-    let context = |v: AccountId| (get_context(vec![], false, v));
+    let context = |v: AccountId| (get_context(false, v));
     testing_env!(context(alice()));
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
-        <Coin>::new(NATIVE_COIN.to_owned()),
+        <Token>::new(NATIVE_COIN.to_owned()),
     );
 
     contract.remove_owner(alice());
@@ -137,13 +127,13 @@ fn remove_owner_last_owner() {
 #[test]
 #[should_panic(expected = "BSHRevertNotExistsOwner")]
 fn remove_owner_non_existing_owner() {
-    let context = |v: AccountId| (get_context(vec![], false, v));
+    let context = |v: AccountId| (get_context(false, v));
     testing_env!(context(alice()));
     let mut contract = BtpTokenService::new(
         "nativecoin".to_string(),
         bmc(),
         "0x1.near".into(),
-        <Coin>::new(NATIVE_COIN.to_owned()),
+        <Token>::new(NATIVE_COIN.to_owned()),
     );
 
     contract.remove_owner(carol());

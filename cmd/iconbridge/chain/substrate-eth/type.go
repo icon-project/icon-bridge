@@ -19,6 +19,7 @@ package substrate_eth
 import (
 	"encoding/hex"
 	"fmt"
+	subEthTypes "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/types"
 	"math/big"
 	"strconv"
 	"strings"
@@ -26,42 +27,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/icon-project/icon-bridge/common/jsonrpc"
-)
-
-const (
-	JsonrpcApiVersion                                = 3
-	JsonrpcErrorCodeSystem         jsonrpc.ErrorCode = -31000
-	JsonrpcErrorCodeTxPoolOverflow jsonrpc.ErrorCode = -31001
-	JsonrpcErrorCodePending        jsonrpc.ErrorCode = -31002
-	JsonrpcErrorCodeExecuting      jsonrpc.ErrorCode = -31003
-	JsonrpcErrorCodeNotFound       jsonrpc.ErrorCode = -31004
-	JsonrpcErrorLackOfResource     jsonrpc.ErrorCode = -31005
-	JsonrpcErrorCodeTimeout        jsonrpc.ErrorCode = -31006
-	JsonrpcErrorCodeSystemTimeout  jsonrpc.ErrorCode = -31007
-	JsonrpcErrorCodeScore          jsonrpc.ErrorCode = -30000
-)
-
-const (
-	DuplicateTransactionError = iota + 2000
-	TransactionPoolOverflowError
-	ExpiredTransactionError
-	FutureTransactionError
-	TransitionInterruptedError
-	InvalidTransactionError
-	InvalidQueryError
-	InvalidResultError
-	NoActiveContractError
-	NotContractAddressError
-	InvalidPatchDataError
-	CommittedTransactionError
-)
-
-const (
-	ResultStatusSuccess           = "0x1"
-	ResultStatusFailureCodeRevert = 32
-	ResultStatusFailureCodeEnd    = 99
 )
 
 type EventLog struct {
@@ -141,7 +106,7 @@ type EventFilter struct {
 type BlockNotification struct {
 	Hash          common.Hash
 	Height        *big.Int
-	Header        *types.Header
+	Header        *subEthTypes.Header
 	Receipts      types.Receipts
 	HasBTPMessage *bool
 }

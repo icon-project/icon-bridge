@@ -1,44 +1,40 @@
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+
 use bmc::{BtpMessageCenter, RelayMessage};
+use libraries::types::{Account, BtpError};
 use near_sdk::{
-    base64, env,
-    json_types::Base64VecU8,
-    serde::Deserialize,
-    serde_json::{self, from_value, json},
-    testing_env, AccountId, VMContext,
+    borsh::{try_to_vec_with_schema, BorshSerialize},
+    env,
+    json_types::U128,
+    serde_json::{from_value, json},
+    test_utils::VMContextBuilder,
+    testing_env, AccountId, Gas, PromiseResult, RuntimeFeesConfig, VMConfig, VMContext,
 };
-use std::{collections::HashSet, convert::TryFrom};
+use std::convert::TryFrom;
 pub mod accounts;
 use accounts::*;
-use libraries::rlp::Encodable;
+
+use libraries::types::messages::ErrorMessage;
+use libraries::types::HashedCollection;
 use libraries::types::{
     messages::BmcServiceMessage, messages::BmcServiceType, messages::BtpMessage,
-    messages::ErrorMessage, messages::SerializedBtpMessages, messages::SerializedMessage,
-    messages::TokenServiceMessage, messages::TokenServiceType, Account, Address, BTPAddress,
-    HashedCollection, LinkStatus, WrappedI128,
+    messages::SerializedBtpMessages, messages::SerializedMessage, messages::TokenServiceMessage,
+    messages::TokenServiceType, BTPAddress, WrappedI128,
 };
-use libraries::BytesMut;
 
 use std::convert::TryInto;
 
 fn get_context(input: Vec<u8>, is_view: bool, signer_account_id: AccountId) -> VMContext {
-    VMContext {
-        current_account_id: alice().to_string(),
-        signer_account_id: signer_account_id.to_string(),
-        signer_account_pk: vec![0, 1, 2],
-        predecessor_account_id: signer_account_id.to_string(),
-        input,
-        block_index: 0,
-        block_timestamp: 0,
-        account_balance: 0,
-        account_locked_balance: 0,
-        storage_usage: env::storage_usage(),
-        attached_deposit: 0,
-        prepaid_gas: 10u64.pow(18),
-        random_seed: vec![0, 1, 2],
-        is_view,
-        output_data_receivers: vec![],
-        epoch_height: 19,
-    }
+    VMContextBuilder::new()
+        .current_account_id(alice())
+        .is_view(is_view)
+        .signer_account_id(signer_account_id.clone())
+        .predecessor_account_id(signer_account_id)
+        .storage_usage(env::storage_usage())
+        .prepaid_gas(Gas(10u64.pow(18)))
+        .build()
 }
 
 #[test]
@@ -252,7 +248,6 @@ fn deserialize_serialized_btp_messages_from_json() {
         None,
     );
     assert_eq!(serialized_btp_messages, vec![btp_message_2])
-    // TODO: Add;
 }
 
 #[ignore]
@@ -339,7 +334,6 @@ fn handle_external_service_message_existing_service() {
     );
 }
 
-// #[ignore]
 #[test]
 #[cfg(feature = "testable")]
 fn handle_external_service_message_non_existing_service() {
@@ -389,4 +383,55 @@ fn handle_external_service_message_non_existing_service() {
             Some(error_message)
         )
     );
+}
+
+#[test]
+#[cfg(feature = "testable")]
+fn handle_external_service_error_message() {
+    use near_sdk::json_types::Base64VecU8;
+
+    let message = "-P_4_bj7-PkBuPH47_jtuE9idHA6Ly8weDIubmVhci83MjcwYTc5YmU3ODlkNzcwZjJkZTAxNTA0NzY4NGUyODA2NTk3ZWVlZTk2ZWUzY2E4N2IxNzljNjM5OWRlYWFmNriZ-Je4OWJ0cDovLzB4Ny5pY29uL2N4MWFkNmZjYzQ2NWQxYjg2NDRjYTM3NWY5ZTEwYmFiZWVhNGMzODMxNbhPYnRwOi8vMHgyLm5lYXIvNzI3MGE3OWJlNzg5ZDc3MGYyZGUwMTUwNDc2ODRlMjgwNjU5N2VlZWU5NmVlM2NhODdiMTc5YzYzOTlkZWFhZoNidHOB3ITDKPgAhADNaJY=";
+    let btp_message: BtpMessage<SerializedMessage> = RelayMessage::try_from(message.to_string())
+        .unwrap()
+        .receipts()[0]
+        .events()[0]
+        .message()
+        .clone()
+        .try_into()
+        .unwrap();
+
+    let context = |v: AccountId| (get_context(vec![], false, v));
+    testing_env!(context(alice()));
+    let mut contract = BtpMessageCenter::new("0x1.near".into(), 1500);
+
+    let link =
+        BTPAddress::new("btp://0x7.icon/cx1ad6fcc465d1b8644ca375f9e10babeea4c38315".to_string());
+    let destination = BTPAddress::new(
+        "btp://0x2.near/7270a79be789d770f2de015047684e2806597eeee96ee3ca87b179c6399deaaf"
+            .to_string(),
+    );
+
+    contract.add_link(link.clone());
+    contract.add_relays(link.clone(), vec![charlie()]);
+    testing_env!(
+        context(charlie()),
+        VMConfig::test(),
+        RuntimeFeesConfig::test(),
+        Default::default(),
+        vec![PromiseResult::Failed]
+    );
+    contract.handle_btp_error_callback(btp_message);
+
+    let result = contract.get_error().unwrap();
+
+    let actual = BtpError::new(
+        "bts".to_string(),
+        U128(36),
+        40,
+        Base64VecU8(vec![]),
+        40,
+        "BSHRevertUnknown".to_string(),
+    );
+
+    assert_eq!(actual.try_to_vec().unwrap(), result.try_to_vec().unwrap());
 }

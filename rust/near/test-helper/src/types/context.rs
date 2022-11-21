@@ -1,7 +1,17 @@
 use super::*;
+use near_primitives::borsh::de;
 use serde_json::Value;
-use std::collections::HashMap;
-use workspaces::{Worker, Account as WorkspaceAccount, Sandbox, sandbox};
+use std::{
+    collections::HashMap,
+    convert::TryFrom,
+    ops::{Add, AddAssign},
+};
+use tokio::runtime::Handle;
+use workspaces::{
+    network::{Sandbox, Testnet},
+    sandbox, Account as WorkspaceAccount, Contract as WorkspaceContract, DevNetwork, Network,
+    Worker,
+};
 
 pub struct Context {
     worker: Worker<Sandbox>,
@@ -15,14 +25,19 @@ pub struct Context {
 
 impl Context {
     pub fn new() -> Context {
+        let handle = Handle::current();
+        let worker = tokio::task::block_in_place(move || {
+            handle.block_on(async { sandbox().await.unwrap() })
+        });
+
         Context {
-            worker: sandbox(),
+            worker,
             contracts: Contracts::default(),
             accounts: Accounts::default(),
             signer: None,
             method_params: HashMap::default(),
             method_responses: HashMap::default(),
-            method_errors: HashMap::default()
+            method_errors: HashMap::default(),
         }
     }
 

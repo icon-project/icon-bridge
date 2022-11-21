@@ -7,14 +7,18 @@ goloop_lastblock() {
   goloop rpc lastblock
 }
 
-deploy_javascore_bmc() {
-  cd $CONFIG_DIR
-
-  if [ ! -f icon.addr.bmcbtp ]; then
-    echo "deploying javascore BMC"
+extract_chain_height_and_validator() {
+    cd $CONFIG_DIR
     local icon_block_height=$(goloop_lastblock | jq -r .height)
     echo $icon_block_height > icon.chain.height
     echo $(URI=$ICON_ENDPOINT HEIGHT=$(decimal2Hex $(($icon_block_height - 1))) $ICONBRIDGE_BIN_DIR/iconvalidators | jq -r .hash) > icon.chain.validators
+}
+
+deploy_javascore_bmc() {
+  cd $CONFIG_DIR
+  if [ ! -f icon.addr.bmcbtp ]; then
+    echo "deploying javascore BMC"
+    extract_chain_height_and_validator
     goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bmc.jar \
       --content_type application/java \
       --param _net=$(cat net.btp.icon) | jq -r . >tx/tx.icon.bmc
@@ -173,6 +177,9 @@ configure_javascore_setLinkHeight() {
 configure_bmc_javascore_addRelay() {
   echo "Adding bsc Relay"
   local icon_bmr_owner=$(cat $CONFIG_DIR/keystore/icon.bmr.wallet.json | jq -r .address)
+  echo $icon_bmr_owner
+  sleep 5
+  echo "Starting"
   cd $CONFIG_DIR
   if [ ! -f icon.configure.addRelay ]; then
     goloop rpc sendtx call --to $(cat icon.addr.bmc) \
@@ -182,6 +189,23 @@ configure_bmc_javascore_addRelay() {
     sleep 3
     ensure_txresult tx/addRelay.icon
     echo "addRelay" > icon.configure.addRelay
+  fi
+}
+
+configure_bmc_javascore_removeRelay() {
+  cd $CONFIG_DIR
+  echo "BMC BTP Address"
+  cat bsc.addr.bmcbtp
+  sleep 5
+  echo "Starting.."
+  if [ ! -f icon.configure.removeRelay ]; then
+    goloop rpc sendtx call --to $(cat icon.addr.bmc) \
+      --method removeRelay \
+      --param _link=$(cat bsc.addr.bmcbtp) \
+      --param _addr=$1 | jq -r . >tx/removeRelay.icon
+    sleep 3
+    ensure_txresult tx/removeRelay.icon
+    echo "removeRelay" > icon.configure.removeRelay
   fi
 }
 

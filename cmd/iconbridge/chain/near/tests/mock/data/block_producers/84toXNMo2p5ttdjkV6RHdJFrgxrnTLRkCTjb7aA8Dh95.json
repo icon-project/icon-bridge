@@ -1,0 +1,20 @@
+[
+    {
+        "validator_stake_struct_version": "V1",
+        "account_id": "node2",
+        "public_key": "ed25519:GkDv7nSMS3xcqA45cpMvFmfV1o4fRF6zYo1JRR6mNqg5",
+        "stake": "50902386756263328030239719089112"
+    },
+    {
+        "validator_stake_struct_version": "V1",
+        "account_id": "node1",
+        "public_key": "ed25519:6DSjZ8mvsRZDvFqFxo8tCKePG96omXW7eVYVSySmDk8e",
+        "stake": "50879053856734837790009183916723"
+    },
+    {
+        "validator_stake_struct_version": "V1",
+        "account_id": "node0",
+        "public_key": "ed25519:7PGseFbWxvYVgZ89K1uTJKYoKetWs7BJtbyXDzfbAcqX",
+        "stake": "50868735427469424893279346843466"
+    }
+]

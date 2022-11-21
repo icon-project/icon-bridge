@@ -1,7 +1,4 @@
-use std::ops::Neg;
-
-use super::Wrapper;
-use crate::rlp::{self, Decodable, Encodable};
+use super::*;
 
 pub type WrappedI128 = Wrapper<i128>;
 
@@ -10,6 +7,7 @@ impl WrappedI128 {
         WrappedI128::new(self.get().neg())
     }
 }
+
 impl Decodable for WrappedI128 {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         let value = rlp.as_val::<u128>()?;

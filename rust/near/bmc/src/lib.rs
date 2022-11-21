@@ -1,32 +1,4 @@
 //! BTP Message Center
-
-use btp_common::errors::{BmcError, BtpException, Exception, BshError};
-use libraries::{
-    emit_message,
-    types::{
-        messages::{
-            BmcServiceMessage, BmcServiceType, BtpMessage, ErrorMessage, SerializedBtpMessages,
-            SerializedMessage,
-        },
-        Service,
-
-        HashedCollection,
-        Address, BTPAddress, BmcEvent, Connection, Connections, Links, RelayStatus,
-        Network, Owners, Routes, Services, Math, LinkStatus, Link
-    },
-};
-
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde_json::{to_value, Value};
-use near_sdk::AccountId;
-use near_sdk::{
-    PromiseResult,
-    env,
-    json_types::{Base64VecU8, U128, U64},
-    log, near_bindgen, require, serde_json, Gas, PanicOnDefault,
-};
-use std::convert::TryInto;
-
 mod assertion;
 mod estimate;
 mod external;
@@ -38,8 +10,34 @@ mod relay_management;
 mod route_management;
 mod service_management;
 mod types;
+
+#[cfg(feature = "testable")]
+use libraries::types::{BtpError, HashedCollection};
+
+use btp_common::errors::{BmcError, BshError, BtpException, Exception};
+use std::convert::TryInto;
+
+use libraries::{
+    emit_error, emit_message,
+    types::{
+        messages::{
+            BmcServiceMessage, BmcServiceType, BtpMessage, ErrorMessage, SerializedBtpMessages,
+            SerializedMessage,
+        },
+        Address, BTPAddress, BmcEvent, Connection, Connections, Link, LinkStatus, Links, Math,
+        Owners, RelayStatus, Routes, Service, Services, WrappedI128,
+    },
+};
+
+use near_sdk::{
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    env, near_bindgen, require, serde_json,
+    serde_json::{to_value, Value},
+    AccountId, Balance, Gas, PanicOnDefault, PromiseResult,
+};
+
+use crate::{external::*, types::Event};
 pub use types::RelayMessage;
-use external::*;
 
 const SERVICE: &str = "bmc";
 
@@ -61,8 +59,10 @@ impl BtpMessageCenter {
     #[init]
     pub fn new(network: String, block_interval: u64) -> Self {
         require!(!env::state_exists(), "Already initialized");
+
         let mut owners = Owners::new();
         owners.add(&env::current_account_id());
+
         Self {
             block_interval,
             btp_address: BTPAddress::new(format!(

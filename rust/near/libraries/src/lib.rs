@@ -1,5 +1,5 @@
-pub mod types;
 pub mod mta;
+pub mod types;
 pub use mta::MerkleTreeAccumulator;
 pub mod rlp;
 pub use bytes::BytesMut;

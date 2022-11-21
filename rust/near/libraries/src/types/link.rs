@@ -1,12 +1,4 @@
-use super::relay::BmrStatus;
-use super::{BTPAddress, Math, Relays};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::UnorderedMap;
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{env, AccountId, BlockHeight};
-use std::collections::HashSet;
-use std::convert::TryInto;
-use std::ops::{Deref, DerefMut};
+use super::{relay::BmrStatus, *};
 
 #[derive(Debug, Default, BorshDeserialize, BorshSerialize, Eq, PartialEq)]
 pub struct Link {
@@ -160,9 +152,9 @@ impl Link {
                             guess_height - self.rotate_height
                         };
                         let rotate_count = count.div_ceil(rotate_term);
-                        rotate_count.deref().clone()
+                        *rotate_count.deref()
                     };
-
+                    #[allow(unused)]
                     let mut base_height: u64 = 0;
                     if rotate_count > 0_u64 {
                         base_height = self.rotate_height + ((rotate_count - 1) * rotate_term);
@@ -175,7 +167,7 @@ impl Link {
                         .deref()
                         .to_owned();
                     if skip_count > 0 {
-                        skip_count = skip_count - 1;
+                        skip_count -= 1;
                         rotate_count.add(skip_count).unwrap();
                         base_height = current_height;
                     }
@@ -190,6 +182,7 @@ impl Link {
                         current_height - self.rotate_height
                     };
                     let rotate_count = count.div_ceil(rotate_term);
+                    #[allow(unused)]
                     let mut base_height: u64 = 0;
                     if *rotate_count > 0_u64 {
                         base_height = self.rotate_height + ((*rotate_count - 1) * rotate_term);
@@ -279,29 +272,37 @@ impl LinkStatus {
 }
 
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct Links(UnorderedMap<BTPAddress, Link>);
+
+pub struct Links {
+    keys: UnorderedSet<BTPAddress>,
+    values: LookupMap<BTPAddress, Link>,
+}
 
 impl Deref for Links {
-    type Target = UnorderedMap<BTPAddress, Link>;
+    type Target = LookupMap<BTPAddress, Link>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.values
     }
 }
 
 impl DerefMut for Links {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.values
     }
 }
 
 impl Links {
     pub fn new() -> Self {
-        Self(UnorderedMap::new(b"links".to_vec()))
+        Self {
+            keys: UnorderedSet::new(StorageKey::Links(KeyType::Key)),
+            values: LookupMap::new(StorageKey::Links(KeyType::Value)),
+        }
     }
 
     pub fn add(&mut self, link: &BTPAddress, block_interval_src: u64) {
-        self.0.insert(
+        self.keys.insert(link);
+        self.values.insert(
             link,
             &Link {
                 relays: Relays::new(link),
@@ -313,26 +314,33 @@ impl Links {
     }
 
     pub fn set(&mut self, link: &BTPAddress, property: &Link) {
-        self.0.insert(link, property);
+        self.values.insert(link, property);
     }
 
     pub fn remove(&mut self, link: &BTPAddress) {
-        self.0.remove(&link);
+        self.keys.remove(link);
+        self.values.remove(link);
     }
 
     pub fn to_vec(&self) -> Vec<BTPAddress> {
-        self.0.keys_as_vector().to_vec()
+        self.keys.to_vec()
     }
 
     pub fn get(&self, link: &BTPAddress) -> Option<Link> {
-        if let Some(value) = self.0.get(link) {
+        if let Some(value) = self.values.get(link) {
             return Some(value);
         }
         None
     }
 
     pub fn contains(&self, link: &BTPAddress) -> bool {
-        return self.0.get(link).is_some();
+        self.keys.contains(link)
+    }
+}
+
+impl Default for Links {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -342,33 +350,9 @@ mod tests {
 
     use super::*;
     use near_sdk::AccountId;
-    use near_sdk::{testing_env, VMContext};
-
-    fn get_context(input: Vec<u8>, is_view: bool) -> VMContext {
-        VMContext {
-            current_account_id: "alice.testnet".to_string(),
-            signer_account_id: "robert.testnet".to_string(),
-            signer_account_pk: vec![0, 1, 2],
-            predecessor_account_id: "jane.testnet".to_string(),
-            input,
-            block_index: 0,
-            block_timestamp: 0,
-            account_balance: 0,
-            account_locked_balance: 0,
-            storage_usage: 0,
-            attached_deposit: 0,
-            prepaid_gas: 10u64.pow(18),
-            random_seed: vec![0, 1, 2],
-            is_view,
-            output_data_receivers: vec![],
-            epoch_height: 19,
-        }
-    }
 
     #[test]
     fn add_link() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -383,8 +367,6 @@ mod tests {
 
     #[test]
     fn add_link_relays_pass() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -413,8 +395,6 @@ mod tests {
 
     #[test]
     fn set_link_block_interval_dst() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -434,8 +414,6 @@ mod tests {
 
     #[test]
     fn set_link_max_aggregation_src() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -455,8 +433,6 @@ mod tests {
 
     #[test]
     fn set_link_delay_limit_src() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -476,8 +452,6 @@ mod tests {
 
     #[test]
     fn set_link_relays_pass() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
         );
@@ -518,8 +492,6 @@ mod tests {
 
     #[test]
     fn remove_link() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let mut links = Links::new();
         let link = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
@@ -532,8 +504,6 @@ mod tests {
 
     #[test]
     fn remove_link_non_existing() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let mut links = Links::new();
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),
@@ -549,8 +519,6 @@ mod tests {
 
     #[test]
     fn to_vec_links() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let mut links = Links::new();
         let link_1 = BTPAddress::new(
             "btp://0x1.near/cx87ed9048b594b95199f326fc76e76a9d33dd665b".to_string(),

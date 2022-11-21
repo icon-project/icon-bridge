@@ -5,6 +5,7 @@ __pycache__
 **/.DS_Store
 **/*.iml
 build/
+buildarctic/
 bin/
 **/*/node_modules/
 abigenBindings/
@@ -17,6 +18,7 @@ docker-compose/logs
 **/**.profraw
 **/lcov.info
 rust/**/coverage
+rust/near/res
 
 devnet/docker/icon-bsc/local/
 devnet/docker/icon-bsc/data/

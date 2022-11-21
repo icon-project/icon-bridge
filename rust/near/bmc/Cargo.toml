@@ -10,12 +10,11 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 btp-common = { path = "../../btp-common" }
 libraries = { path = "../libraries" }
-near-sdk = { git = "https://github.com/near/near-sdk-rs.git" }
+near-sdk = "4.1.0-pre.3"
 
 
 [features]
 testable = []
-mockable = []
 
 [[test]]
 name = "test_link_management"

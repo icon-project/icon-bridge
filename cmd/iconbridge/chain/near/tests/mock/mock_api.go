@@ -1,8 +1,8 @@
 package mock
 
 import (
-	"github.com/MuhammedIrfan/testify-mock/mock"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
+	"github.com/MuhammedIrfan/testify-mock/mock"
 )
 
 const (
@@ -23,6 +23,26 @@ func (m *MockApi) Block(param interface{}) (types.Block, error) {
 		r0 = rf(param)
 	} else {
 		r0 = ret.Get(0).(types.Block)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(interface{}) error); ok {
+		r1 = rf(param)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+func (m *MockApi) BlockProducers(param interface{}) (types.BlockProducers, error) {
+	ret := m.Called(param)
+
+	var r0 types.BlockProducers
+	if rf, ok := ret.Get(0).(func(interface{}) types.BlockProducers); ok {
+		r0 = rf(param)
+	} else {
+		r0 = ret.Get(0).(types.BlockProducers)
 	}
 
 	var r1 error
@@ -282,6 +302,12 @@ func NewMockApi(storage Storage) *MockApi {
 		defaults.AccountMap[key] = value
 	}
 	storage.AccountMap = defaults.AccountMap
+
+
+	for key, value := range storage.BlockProducersMap {
+		defaults.BlockProducersMap[key] = value
+	}
+	storage.BlockProducersMap = defaults.BlockProducersMap
 
 	mockApi := &MockApi{
 		Storage: &storage,

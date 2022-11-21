@@ -1,10 +1,4 @@
-use btp_common::errors::BmvError;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::UnorderedMap;
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
-
-use super::messages::SerializedBtpMessages;
+use super::*;
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Bmv(UnorderedMap<String, AccountId>);
@@ -95,34 +89,10 @@ impl Bmv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use near_sdk::{testing_env, VMContext};
     use std::collections::HashSet;
-
-    fn get_context(input: Vec<u8>, is_view: bool) -> VMContext {
-        VMContext {
-            current_account_id: "alice.testnet".to_string(),
-            signer_account_id: "robert.testnet".to_string(),
-            signer_account_pk: vec![0, 1, 2],
-            predecessor_account_id: "jane.testnet".to_string(),
-            input,
-            block_index: 0,
-            block_timestamp: 0,
-            account_balance: 0,
-            account_locked_balance: 0,
-            storage_usage: 0,
-            attached_deposit: 0,
-            prepaid_gas: 10u64.pow(18),
-            random_seed: vec![0, 1, 2],
-            is_view,
-            output_data_receivers: vec![],
-            epoch_height: 19,
-        }
-    }
 
     #[test]
     fn add_verifier() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let network = "icon";
         let verifier = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -135,8 +105,6 @@ mod tests {
 
     #[test]
     fn get_verifier() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let network_1 = "icon";
         let verifier_1 = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -166,8 +134,6 @@ mod tests {
 
     #[test]
     fn remove_verifier() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let network_1 = "icon";
         let verifier_1 = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -191,8 +157,6 @@ mod tests {
 
     #[test]
     fn contains_verifier() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let network = "binance";
         let verifier = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()
@@ -205,8 +169,6 @@ mod tests {
 
     #[test]
     fn to_vec_verifier() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
         let network_1 = "icon";
         let verifier_1 = "88bd05442686be0a5df7da33b6f1089ebfea3769b19dbb2477fe0cd6e0f126e4"
             .parse::<AccountId>()

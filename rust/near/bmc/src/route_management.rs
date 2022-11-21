@@ -11,8 +11,10 @@ impl BtpMessageCenter {
     pub fn add_route(&mut self, destination: BTPAddress, link: BTPAddress) {
         self.assert_have_permission();
         self.assert_route_does_not_exists(&destination);
+
         self.assert_link_exists(&link);
         self.routes.add(&destination, &link);
+
         self.connections.add(
             &Connection::Route(destination.network_address().unwrap()),
             &link,
@@ -22,8 +24,10 @@ impl BtpMessageCenter {
     pub fn remove_route(&mut self, destination: BTPAddress) {
         self.assert_have_permission();
         self.assert_route_exists(&destination);
+
         let link = self.routes.get(&destination).unwrap_or_default();
         self.routes.remove(&destination);
+        
         self.connections.remove(
             &Connection::Route(destination.network_address().unwrap()),
             &link,

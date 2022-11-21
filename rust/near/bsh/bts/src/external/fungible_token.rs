@@ -1,6 +1,4 @@
-use near_sdk::ext_contract;
-use near_sdk::json_types::U128;
-
+use super::*;
 
 #[ext_contract(ext_ft)]
 pub trait FungibleToken {

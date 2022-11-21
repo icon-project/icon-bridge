@@ -3,13 +3,6 @@ use crate::types::Event;
 use super::*;
 
 impl BtpMessageCenter {
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * Internal Validations  * *
-    // * * * * * * * * * * * * * * * * *
-    // * * * * * * * * * * * * * * * * *
-
-    /// Check whether signer account id is an owner
     pub fn assert_have_permission(&self) {
         require!(
             self.owners.contains(&env::predecessor_account_id()),
@@ -42,7 +35,7 @@ impl BtpMessageCenter {
 
     pub fn assert_owner_exists(&self, account: &AccountId) {
         require!(
-            self.owners.contains(&account),
+            self.owners.contains(account),
             format!("{}", BmcError::OwnerNotExist)
         );
     }
@@ -60,6 +53,7 @@ impl BtpMessageCenter {
 
     pub fn assert_relay_is_registered(&self, link: &BTPAddress) {
         let link = self.links.get(link).unwrap();
+
         require!(
             link.relays().contains(&env::predecessor_account_id()),
             format!(
@@ -99,7 +93,7 @@ impl BtpMessageCenter {
 
     pub fn assert_sender_is_authorized_service(&self, service: &str) {
         require!(
-            self.services.get(service) == Some(&env::predecessor_account_id()),
+            self.services.get(service) == Some(env::predecessor_account_id()),
             format!("{}", BmcError::PermissionNotExist)
         );
     }
@@ -126,9 +120,9 @@ impl BtpMessageCenter {
     }
 
     pub fn assert_relay_not_exists(&self, link: &BTPAddress, relay: &AccountId) {
-        if let Some(link_property) = self.links.get(&link) {
+        if let Some(link_property) = self.links.get(link) {
             require!(
-                !link_property.relays().contains(&relay),
+                !link_property.relays().contains(relay),
                 format!(
                     "{}",
                     BmcError::RelayExist {
@@ -140,9 +134,9 @@ impl BtpMessageCenter {
     }
 
     pub fn assert_relay_exists(&self, link: &BTPAddress, relay: &AccountId) {
-        if let Some(link_property) = self.links.get(&link).as_mut() {
+        if let Some(link_property) = self.links.get(link).as_mut() {
             require!(
-                link_property.relays().contains(&relay),
+                link_property.relays().contains(relay),
                 format!(
                     "{}",
                     BmcError::RelayNotExist {
@@ -157,12 +151,15 @@ impl BtpMessageCenter {
         if !self.services.contains(name) {
             return Err(BmcError::ServiceNotExist);
         }
+
         Ok(())
     }
+
     pub fn ensure_valid_sequence(&self, link: &Link, event: &Event) -> Result<(), BmcError> {
         if link.rx_seq() != event.sequence() {
             return Err(BmcError::InvalidSequence);
         }
+        
         Ok(())
     }
 }

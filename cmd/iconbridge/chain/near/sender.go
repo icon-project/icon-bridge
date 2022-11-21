@@ -199,7 +199,7 @@ func (relayTx *RelayTransaction) Receipt(ctx context.Context) (blockHeight uint6
 		return 0, fmt.Errorf("no pending tx")
 	}
 
-	for i, isPending := 0, true; i < 5 && (isPending || err == errors.ErrUnknownTransaction); i++ {
+	for i, isPending := 0, true; i < 5 && (isPending || errors.Is(err, errors.ErrUnknownTransaction)); i++ {
 		time.Sleep(time.Second)
 		_, cancel := context.WithTimeout(ctx, defaultGetTxTimeout)
 		defer cancel()

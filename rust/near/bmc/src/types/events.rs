@@ -1,12 +1,13 @@
 use libraries::{
+    BytesMut,
     rlp::{self, Decodable},
     types::{
         messages::{BtpMessage, SerializedMessage},
         BTPAddress,
-    }, BytesMut,
+    },
 };
-use std::{ops::Deref, convert::TryFrom};
-use near_sdk::base64::{self, URL_SAFE_NO_PAD};
+
+use std::ops::Deref;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Event {
@@ -27,21 +28,14 @@ impl Event {
     pub fn message(&self) -> &BtpMessage<SerializedMessage> {
         &self.message
     }
-
-    pub fn btp_message(&self) -> Option<BtpMessage<SerializedMessage>> {
-        match BtpMessage::try_from(self.message.clone()) { // TODO : OPTIMIZE
-            Ok(message) => {
-                return Some(message)
-            },
-            Err(_) => return None,
-        }
-    }
 }
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Events(Vec<Event>);
 
 impl Deref for Events {
     type Target = Vec<Event>;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -50,7 +44,7 @@ impl Deref for Events {
 impl Decodable for Event {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         let data = rlp.val_at::<BytesMut>(2).unwrap();
-        
+
         Ok(Self {
             next: rlp.val_at(0)?,
             sequence: rlp.val_at(1)?,
@@ -63,6 +57,7 @@ impl Decodable for Events {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         let data = rlp.as_val::<Vec<u8>>()?;
         let rlp = rlp::Rlp::new(&data);
+
         Ok(Self(rlp.as_list()?))
     }
 }

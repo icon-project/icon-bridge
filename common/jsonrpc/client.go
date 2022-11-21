@@ -17,6 +17,13 @@ type Client struct {
 	Endpoint     string
 	CustomHeader map[string]string
 	Pre          func(req *http.Request) error
+	ErrFunc      func(json.RawMessage) error
+}
+
+func (c *Client) SetErrFunc(fn func(json.RawMessage) error) *Client {
+	c.ErrFunc = fn
+
+	return c
 }
 
 func NewJsonRpcClient(hc *http.Client, endpoint string) *Client {
@@ -40,8 +47,10 @@ func (c *Client) _do(req *http.Request) (resp *http.Response, err error) {
 	return
 }
 
-//Supported Parameter Structures only 'by-name through an Object'
-//refer https://www.jsonrpc.org/specification#parameter_structures
+// Supported Parameter Structures only 'by-name through an Object'
+// refer https://www.jsonrpc.org/specification#parameter_structures
+//
+// Deprecated: Use Dov2 to support handling custom errors    
 func (c *Client) Do(method string, reqPtr, respPtr interface{}) (jrResp *Response, err error) {
 	jrReq := &Request{
 		ID:      time.Now().UnixNano() / int64(time.Millisecond),
@@ -128,5 +137,87 @@ func (c *Client) Raw(reqB []byte) (resp *http.Response, err error) {
 func decodeResponseBody(resp *http.Response) (jrResp *Response, err error) {
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&jrResp)
+	return
+}
+
+func decodeResponseBody2(resp *http.Response) (jrResp *Response2, err error) {
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&jrResp)
+	return
+}
+
+// Version 2
+func (c *Client) Dov2(method string, reqPtr, respPtr interface{}) (jrResp *Response2, err error) {
+	jrReq := &Request{
+		ID:      time.Now().UnixNano() / int64(time.Millisecond),
+		Version: Version,
+		Method:  method,
+	}
+	if reqPtr != nil {
+		b, mErr := json.Marshal(reqPtr)
+		if mErr != nil {
+			err = mErr
+			return
+		}
+		jrReq.Params = json.RawMessage(b)
+	}
+	reqB, err := json.Marshal(jrReq)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest("POST", c.Endpoint, bytes.NewReader(reqB))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	for k, v := range c.CustomHeader {
+		req.Header.Set(k, v)
+	}
+
+	var resp *http.Response
+	var response2 Response2
+	resp, err = c._do(req)
+	if err != nil {
+		if hErr, ok := err.(*common.HttpError); ok && len(hErr.Response()) > 0 {
+			if resp != nil && common.HasContentType(resp.Header, echo.MIMEApplicationJSON) {
+				if dErr := json.Unmarshal(hErr.Response(), &response2); dErr != nil {
+					
+					jrResp.ID = response2.ID
+					jrResp.Result = response2.Result
+					jrResp.Version = response2.Version
+					jrResp.Error = response2.Error
+					
+					err = fmt.Errorf("fail to decode response body err:%+v, httpErr:%+v, httpResp:%+v, responseBody:%s",
+						dErr, err, resp, string(hErr.Response()))
+				} else {
+					err = c.ErrFunc(response2.Error)
+				}
+			}
+			return
+		}
+		return
+	}
+
+	if jrResp, err = decodeResponseBody2(resp); err != nil {
+		err = fmt.Errorf("fail to decode response body err:%+v, jsonrpcResp:%+v",
+			err, resp)
+		return
+	}
+	if jrResp.Error != nil {
+		err = c.ErrFunc(jrResp.Error)
+		return
+	}
+	if respPtr != nil {
+		rb, mErr := json.Marshal(jrResp.Result)
+		if mErr != nil {
+			err = mErr
+			return
+		}
+		err = json.Unmarshal(rb, respPtr)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
