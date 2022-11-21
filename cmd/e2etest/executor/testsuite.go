@@ -209,9 +209,10 @@ func (ts *testSuite) Fund(chainName chain.ChainType, addr string, amount *big.In
 func (ts *testSuite) ValidateTransactionResult(ctx context.Context, chainName chain.ChainType, hash string) (res *chain.TxnResult, err error) {
 	srcCl, ok := ts.clsPerChain[chainName]
 	if !ok {
-		err = fmt.Errorf("Chain %v not found", chainName)
+		err = fmt.Errorf("chain %v not found", chainName)
 		return
 	}
+	fmt.Println(chainName)
 	tctx, cancel := context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
 	res, err = srcCl.WaitForTxnResult(tctx, hash)

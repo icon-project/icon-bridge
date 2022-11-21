@@ -24,7 +24,7 @@ func main() {
 	flag.StringVar(&cfgFile, "config", "", "e2e.config.json file")
 	flag.IntVar(&maxTasks, "maxTasks", 0, "maximum number of tasks to run")
 	flag.Parse()
-	cfg, err := executor.LoadConfig(cfgFile)
+	cfg, err := executor.LoadConfig("/home/dell/Icon_Bridge/icon_bridge/cmd/e2etest/example-config-copy.json")
 	if err != nil {
 		log.Error(errors.Wrap(err, "loadConfig "))
 		return

@@ -16,6 +16,6 @@ type Chunk struct {
 }
 
 type ChunkHeader struct {
-	Header       Chunk         `json:"header"`
+	// Header       Chunk         `json:"header"`
 	Transactions []Transaction `json:"transactions"`
 }

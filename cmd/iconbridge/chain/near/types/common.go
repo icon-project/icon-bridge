@@ -6,12 +6,13 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/btcsuite/btcutil/base58"
-	"github.com/near/borsh-go"
-	"github.com/shopspring/decimal"
 	"math/big"
 	"strconv"
 	"strings"
+
+	"github.com/btcsuite/btcutil/base58"
+	"github.com/near/borsh-go"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -189,7 +190,7 @@ func NewBigInt(bigInt string) BigInt {
 	}
 
 	return BigInt(*dec.BigInt())
-} 
+}
 
 func (b *BigInt) UnmarshalJSON(p []byte) error {
 	var bigInt string
@@ -314,7 +315,7 @@ type FunctionCall struct {
 	MethodName string
 	Args       []byte
 	Gas        uint64
-	Deposit    big.Int
+	Deposit    BigInt
 }
 
 type FunctionCallView struct {
@@ -325,7 +326,7 @@ type FunctionCallView struct {
 }
 
 type Transfer struct {
-	Deposit big.Int
+	Deposit BigInt
 }
 
 type Stake struct {

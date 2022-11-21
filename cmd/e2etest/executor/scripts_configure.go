@@ -212,7 +212,7 @@ func watchFeeGatheringInBackground(ctx context.Context, stopCtx context.Context,
 		return
 	} else {
 		if _, err := ts.ValidateTransactionResult(ctx, ts.FullConfigAPIChain(), setFeeHash); err != nil {
-			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v", err)
+			errs = errors.Wrapf(err, "ValidateTransactionResultAndEvents %v txnHash %v", err, setFeeHash)
 			ts.logger.Error(errs)
 			return
 		}

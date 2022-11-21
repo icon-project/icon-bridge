@@ -61,6 +61,12 @@ type coinNames struct {
 	Network string `json:"network"`
 }
 
+type AccumulatedFees struct {
+	Name            string `json:"name"`
+	Network         string `json:"network"`
+	AccumulatedFees int64  `json:"accumulated_fees"`
+}
+
 func newRequestAPI(cl *client, cfg *chain.Config) (req *requestAPI, err error) {
 	var defaultMapForDifferentGasLimits = map[chain.GasLimitType]uint64{
 		chain.DefaultGasLimit: 300000000000000,
@@ -342,7 +348,7 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 				MethodName: "transfer",
 				Args:       args,
 				Gas:        r.gasLimit[chain.DefaultGasLimit],
-				Deposit:    *big.NewInt(0),
+				Deposit:    types.NewBigInt("0"),
 			},
 		},
 	}
@@ -424,7 +430,7 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 	}
 	dstAddr := args["_to"]
 	data := map[string]interface{}{
-		"coin_name":   "btp-0x1.near-NEAR",
+		"coin_name":   "btp-0x2.near-NEAR",
 		"destination": dstAddr,
 		"amount":      amount.String(),
 	}
@@ -437,7 +443,7 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 				MethodName: "transfer",
 				Args:       args1,
 				Gas:        r.gasLimit[chain.DefaultGasLimit],
-				Deposit:    *big.NewInt(0),
+				Deposit:    types.NewBigInt("0"),
 			},
 		},
 	}
@@ -461,20 +467,17 @@ func (r *requestAPI) getAccumulatedFees() (ret map[string]*big.Int, err error) {
 		return nil, errors.Wrap(err, "callContract getAccumulatedFees ")
 	} else if res == nil {
 		return nil, errors.New("callContract getAccumulatedFees returned nil value ")
+
 	}
-	resMap, ok := res.(map[string]interface{})
+	accum := []AccumulatedFees{}
+	err = json.Unmarshal(res.(types.CallFunctionResponse).Result, &accum)
 	if !ok {
 		return nil, fmt.Errorf("expected type map[string]interface{} Got %T", res)
 	}
 	ret = map[string]*big.Int{}
-	for k, v := range resMap {
-		tmpStr, ok := v.(string)
-		if !ok {
-			return nil, fmt.Errorf("expected type string Got %T", v)
-		}
-		bal := new(big.Int)
-		bal.SetString(tmpStr[2:], 16)
-		ret[k] = bal
+	for _, v := range accum {
+
+		ret[v.Name] = big.NewInt(v.AccumulatedFees)
 	}
 	return
 }

@@ -11,26 +11,19 @@
       "name": "ICON",
       "url": "https://lisbon.net.solidwallet.io/api/v3/icon_dex",
       "contract_addresses": {
-        "BTS": "cxcbf71f5d90a8dc6c586d0a6939bef4e8c95c263d",
-        "BMC": "cxfa5b7b8d71bf6355bf230ff22e1d4777a630c7ec"
+        "BTS": "cxf291e11bbda428c01a0b060387a2f042a3652313",
+        "BMC": "cxb35daa6cdffc1c3646db658345ed5e53e409b305"
       },
       "native_coin": "btp-0x2.icon-ICX",
       "native_tokens": [
-        "btp-0x2.icon-sICX",
-        "btp-0x2.icon-bnUSD"
       ],
       "wrapped_coins": [
-        "btp-0x61.bsc-BNB",
-        "btp-0x61.bsc-BUSD",
-        "btp-0x61.bsc-USDT",
-        "btp-0x61.bsc-USDC",
-        "btp-0x61.bsc-BTCB",
-        "btp-0x61.bsc-ETH"
+        "btp-0x2.near-NEAR"
       ],
-      "god_wallet_keystore_path": "../path/icon.keystore.json",
-      "god_wallet_secret_path": "../path/icon.god.wallet.secret",
-      "bts_owner_keystore_path": "../path/icon.keystore.json",
-      "bts_owner_secret_path": "../path/icon.god.wallet.secret",
+      "god_wallet_keystore_path": "/home/dell/Icon_Bridge/icon_bridge/cmd/e2etest/path/icon.keystore.json",
+      "god_wallet_secret_path": "/home/dell/Icon_Bridge/icon_bridge/cmd/e2etest/path/icon.god.wallet.secret",
+      "bts_owner_keystore_path": "/home/dell/Icon_Bridge/icon_bridge/cmd/e2etest/path/icon.keystore.json",
+      "bts_owner_secret_path": "/home/dell/Icon_Bridge/icon_bridge/cmd/e2etest/path/near_keysecret",
       "network_id": "0x2.icon",
       "gas_limit": {
         "TransferNativeCoinIntraChainGasLimit": 150000,
@@ -43,8 +36,9 @@
     },
     {
       "name": "NEAR",
-      "url": "https://rpc.testnet.near.org",
+      "url": "https://archival-rpc.testnet.near.org",
       "contract_addresses": {
+        "BMC": "7270a79be789d770f2de015047684e2806597eeee96ee3ca87b179c6399deaaf",
         "BTS": "bts.iconbridge-6.testnet"
       },
       "native_coin": "btp-0x2.near-NEAR",
@@ -52,10 +46,10 @@
       "wrapped_coins": [
         "btp-0x7.icon-ICX"
       ],
-      "god_wallet_keystore_path": "../path/near_master_key.json",
-      "god_wallet_secret_path": "../path/icon.god.wallet.secret",
-      "bts_owner_keystore_path": "../path/near_master_key.json",
-      "bts_owner_secret_path": "../path/icon.god.wallet.secret",
+      "god_wallet_keystore_path": "/home/dell/Icon_Bridge/icon_bridge/cmd/e2etest/path/near_keystore.json",
+      "god_wallet_secret_path": "/home/dell/Icon_Bridge/icon_bridge/cmd/e2etest/path/near_keysecret",
+      "bts_owner_keystore_path": "/home/dell/Icon_Bridge/icon_bridge/cmd/e2etest/path/near_keystore.json",
+      "bts_owner_secret_path": "/home/dell/Icon_Bridge/icon_bridge/cmd/e2etest/path/near_keysecret",
       "network_id": "0x2.near",
       "gas_limit": {
         "TransferNativeCoinIntraChainGasLimit": 25000,

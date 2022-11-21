@@ -50,21 +50,21 @@ func TestTransferIntraChain(t *testing.T) {
 	dstaddr := DemoDstAddr
 	btpaddr := _api.GetBTPAddress(srckey)
 
-	go func() {
-		if sinkChan, errChan, err := _api.Subscribe(context.Background()); err != nil {
-			panic(err)
-		} else {
-			for {
-				select {
-				case err := <-errChan:
-					panic(err)
-				case msg := <-sinkChan:
-					t.Logf("\nMessage %+v\n", msg)
-					_api.(*api).StopSubscriptionMethod()
-				}
-			}
-		}
-	}()
+	// go func() {
+	// 	if sinkChan, errChan, err := _api.Subscribe(context.Background()); err != nil {
+	// 		panic(err)
+	// 	} else {
+	// 		for {
+	// 			select {
+	// 			case err := <-errChan:
+	// 				panic(err)
+	// 			case msg := <-sinkChan:
+	// 				t.Logf("\nMessage %+v\n", msg)
+	// 				_api.(*api).StopSubscriptionMethod()
+	// 			}
+	// 		}
+	// 	}
+	// }()
 
 	for _, coinName := range []string{"btp-0x2.near-NEAR"} {
 		txnHash, err := _api.Transfer(coinName, privKey, dstaddr, amount)
@@ -96,7 +96,7 @@ func TestGetCoinBalance(t *testing.T) {
 	if err := showBalance(DemoSrcAddr); err != nil {
 		t.Fatalf(" %+v", err)
 	}
-	// assert.Equal(t, 1, 0)
+	//assert.Equal(t, 1, 0)
 
 }
 
@@ -115,32 +115,32 @@ func showBalance(addr string) error {
 	return nil
 }
 
-func TestReceiver(t *testing.T) {
-	recv, err := getNewApi()
-	if err != nil {
-		panic(err)
-	}
-	// recv.WatchForTransferStart(1, "ICX", 10)
-	// recv.WatchForTransferReceived(1, "TONE", 8)
-	// recv.WatchForTransferEnd(1, "ICX", 10)
+// func TestReceiver(t *testing.T) {
+// 	recv, err := getNewApi()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	// recv.WatchForTransferStart(1, "ICX", 10)
+// 	// recv.WatchForTransferReceived(1, "TONE", 8)
+// 	// recv.WatchForTransferEnd(1, "ICX", 10)
 
-	go func() {
-		if sinkChan, errChan, err := recv.Subscribe(context.Background()); err != nil {
-			panic(err)
-		} else {
-			for {
-				select {
-				case err := <-errChan:
-					panic(err)
-				case msg := <-sinkChan:
-					t.Logf("\nMessage %+v\n", msg)
-					recv.(*api).StopSubscriptionMethod()
-				}
-			}
-		}
-	}()
-	time.Sleep(time.Second * 3000)
-}
+// 	go func() {
+// 		if sinkChan, errChan, err := recv.Subscribe(context.Background()); err != nil {
+// 			panic(err)
+// 		} else {
+// 			for {
+// 				select {
+// 				case err := <-errChan:
+// 					panic(err)
+// 				case msg := <-sinkChan:
+// 					t.Logf("\nMessage %+v\n", msg)
+// 					recv.(*api).StopSubscriptionMethod()
+// 				}
+// 			}
+// 		}
+// 	}()
+// 	time.Sleep(time.Second * 3000)
+// }
 
 func TestGetKeyPair(t *testing.T) {
 	api, err := getNewApi()
@@ -161,12 +161,12 @@ func TestGetBlackListedUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	res, err := rpi.GetBlackListedUsers("0x61.bsc", 0, 100)
+	res, err := rpi.GetBlackListedUsers("0x2.near", 0, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Println("Res ", res)
-	assert.Equal(t, 1, 0)
+	// assert.Equal(t, 1, 0)
 }
 
 // Same as GetBlackListedUsers, type conversion is not working
@@ -175,14 +175,26 @@ func TestIsUserBlackListed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	res, err := rpi.IsUserBlackListed("0x61.bsc", "0x94ACCD1f12cF6FF25Aaeb483605536918D7760b5")
+	res, err := rpi.IsUserBlackListed("0x2.near", "e072b70f2caa18b9e8e795ce970ec48f67368055d489f14174b779594dd6a5aa")
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Println("Res ", res)
 }
 
-// Same as above type conversion is not working
+func TestGetFeeRatio(t *testing.T) {
+	rpi, err := getNewApi()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	fn, ff, err := rpi.GetFeeRatio("btp-0x2.near-NEAR")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	fmt.Println(fn, ff)
+	// assert.Equal(t, 1, 0)
+}
+
 func TestGetAccumulatedFees(t *testing.T) {
 	rpi, err := getNewApi()
 	if err != nil {
@@ -193,6 +205,7 @@ func TestGetAccumulatedFees(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 	fmt.Println(fees)
+	// assert.Equal(t, 1, 0)
 }
 
 // type conversion fails

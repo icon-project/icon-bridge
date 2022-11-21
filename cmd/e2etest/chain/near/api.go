@@ -2,8 +2,13 @@ package near
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -13,6 +18,7 @@ import (
 
 	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/pkg/errors"
 )
 
@@ -38,6 +44,7 @@ func NewApi(l log.Logger, cfg *chain.Config) (chain.ChainAPI, error) {
 	}
 
 	recvr := &api{
+		cfg:      cfg,
 		sinkChan: make(chan *chain.EventLogInfo),
 		errChan:  make(chan error),
 		fd:       NewFinder(l, cfg.ContractAddresses),
@@ -81,45 +88,46 @@ func (a *api) GetCoinBalance(coinName string, addr string) (*chain.CoinBalance, 
 
 // GetKeyPairFromKeystore implements chain.ChainAPI
 func (a *api) GetKeyPairFromKeystore(keystoreFile, secretFile string) (priv string, pub string, err error) {
-	// readFile := func(file string) (string, error) {
-	// 	f, err := os.Open(file)
-	// 	if err != nil {
-	// 		return "", err
-	// 	}
-	// 	defer f.Close()
+	readFile := func(file string) (string, error) {
+		f, err := os.Open(file)
+		if err != nil {
+			return "", err
+		}
+		defer f.Close()
 
-	// 	b, err := ioutil.ReadAll(f)
-	// 	if err != nil {
-	// 		return "", err
-	// 	}
-	// 	return strings.TrimSpace(string(b)), nil
-	// }
+		b, err := ioutil.ReadAll(f)
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(string(b)), nil
+	}
 
-	// secret, err := readFile(secretFile)
-	// if err != nil {
-	// 	err = errors.Wrapf(err, "readPassFromFile(%v) %v", secretFile, err)
-	// 	return
-	// }
-	// wal, err := readFile(keystoreFile)
-	// if err != nil {
-	// 	err = errors.Wrapf(err, "readKeystoreFromFile(%v) %v", keystoreFile, err)
-	// 	return
-	// }
+	secret, err := readFile(secretFile)
+	if err != nil {
+		err = errors.Wrapf(err, "readPassFromFile(%v) %v", secretFile, err)
+		return
+	}
+	wal, err := readFile(keystoreFile)
+	if err != nil {
+		err = errors.Wrapf(err, "readKeystoreFromFile(%v) %v", keystoreFile, err)
+		return
+	}
 
-	// privKey, err := wallet.DecryptNearKeyStore([]byte(wal), []byte(secret))
-	// if err != nil {
-	// 	err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
-	// }
+	privKey, err := wallet.DecryptNearKeyStore([]byte(wal), []byte(secret))
+	if err != nil {
+		err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
+		return
+	}
 
-	// w, err := wallet.NewNearwalletFromPrivateKey(privKey)
-	// if err != nil {
-	// 	err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
-	// }
+	w, err := wallet.NewNearwalletFromPrivateKey(privKey)
+	if err != nil {
+		err = errors.Wrapf(err, "wallet.DecryptKeyStore %v", err)
+	}
 
-	// priv = hex.EncodeToString([]byte(*privKey))
-	// pub = hex.EncodeToString(w.PublicKey())
-	priv = "3woMwMD5VRBGS8HAqrGxNaMDgzb61V9hUTRYUytyG3JEFB3LeJXsCthC3af4hiQznyPduNByGWeupmEbRZmDC2nk"
-	pub = "8CJtBg2W4S71Sedz3SodmjX4YgVcUqjmu992N4Qq1Rse"
+	priv = hex.EncodeToString([]byte(*privKey))
+	pub = hex.EncodeToString(w.PublicKey())
+	// priv = "3woMwMD5VRBGS8HAqrGxNaMDgzb61V9hUTRYUytyG3JEFB3LeJXsCthC3af4hiQznyPduNByGWeupmEbRZmDC2nk"
+	// pub = "8CJtBg2W4S71Sedz3SodmjX4YgVcUqjmu992N4Qq1Rse"
 	return
 }
 
@@ -166,7 +174,6 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 	height, _ := a.requester.cl.GetLatestBlockHeight()
 
 	go func() {
-		defer close(errChan)
 		if err := a.receiveTransactions(uint64(height), func(blockNotification *BlockNotification) error {
 			log.WithFields(log.Fields{"height": blockNotification.Block().Height()}).Debug("block notification")
 			for _, tx := range blockNotification.transactions {
@@ -193,19 +200,7 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 				}
 
 			}
-			for _, receipt := range blockNotification.Receipts() {
-				for _, event := range receipt.Events {
-					res, evtType, err := a.par.ParseMessage(event.Message)
-					if err != nil {
-						err = nil
-						continue
-					}
-					nel := &chain.EventLogInfo{ContractAddress: a.cfg.ContractAddresses[chain.BMC], EventType: evtType, EventLog: res}
-					if a.fd.Match(nel) {
-						a.sinkChan <- nel
-					}
-				}
-			}
+
 			return nil
 		}); err != nil {
 			a.requester.cl.Logger().Errorf("receiveTransactions terminated: %v", err)
@@ -213,7 +208,7 @@ func (a *api) Subscribe(ctx context.Context) (sinkChan chan *chain.EventLogInfo,
 		}
 	}()
 
-	return sinkChan, errChan, nil
+	return a.sinkChan, a.errChan, nil
 }
 
 // Transfer implements chain.ChainAPI
@@ -273,7 +268,7 @@ func (a *api) WaitForTxnResult(ctx context.Context, hash string) (*chain.TxnResu
 		}
 	}
 
-	return &chain.TxnResult{StatusCode: 200, ElInfo: eventLogs, Raw: txRes}, nil
+	return &chain.TxnResult{StatusCode: 1, ElInfo: eventLogs, Raw: txRes}, nil
 }
 
 // WatchForTransferEnd implements chain.ChainAPI
@@ -340,24 +335,21 @@ func (a *api) GetBlackListedUsers(net string, startCursor int, endCursor int) (u
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_net": net, "_start": "0x0", "_end": "0x64"}, "get_blacklisted_user")
+	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_net": net, "_start": "0x0", "_end": "0x64"}, "get_blacklisted_users")
 	if err != nil {
 		return nil, err
 	} else if res == nil {
 		return nil, errors.New("getBlackListedUsers result is nil")
 	}
-	intArr, ok := res.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("getBlackListedUsers Response Expected []interface Got %T", res)
-	} else if ok && len(intArr) == 0 {
-		return
+	var blacklistedUsers []string
+	err = json.Unmarshal(res.(types.CallFunctionResponse).Result, &blacklistedUsers)
+	users = make([]string, len(blacklistedUsers))
+	empty := []string{"No users in blacklist"}
+	if len(blacklistedUsers) == 0 {
+		return empty, nil
 	}
-	users = make([]string, len(intArr))
-	for i, v := range intArr {
-		users[i], ok = v.(string)
-		if !ok {
-			return nil, fmt.Errorf("getBlackListedUsers; response element Expected string Got %T", v)
-		}
+	for i, v := range blacklistedUsers {
+		users[i] = v
 	}
 	return
 }
@@ -433,7 +425,7 @@ func (a *api) GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
-	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_name": coinName}, "feeRatio")
+	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_name": coinName}, "get_fee")
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "callContract feeRatio ")
 	} else if res == nil {
@@ -469,13 +461,13 @@ func (a *api) GetFeeRatio(coinName string) (feeNumerator *big.Int, fixedFee *big
 
 // GetTokenLimit implements chain.ChainAPI
 func (a *api) GetTokenLimit(coinName string) (tokenLimit *big.Int, err error) {
+	var token string
 	btsAddr, ok := a.requester.contractNameToAddress[chain.BTS]
 	if !ok {
 		err = fmt.Errorf("contractNameToAddress doesn't include name %v", chain.BTS)
 		return
 	}
 	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_name": coinName}, "get_token_limit")
-	res = res.(types.CallFunctionResponse).Result
 	if err != nil {
 		err = errors.Wrapf(err, "CallContract %v", err)
 		return
@@ -483,13 +475,12 @@ func (a *api) GetTokenLimit(coinName string) (tokenLimit *big.Int, err error) {
 		err = errors.New("getTokenLimit result is nil")
 		return
 	}
-	tmpStr, ok := res.(string)
-	if !ok {
-		err = fmt.Errorf("expected type string Got %T", res)
-		return
+	err = json.Unmarshal(res.(types.CallFunctionResponse).Result, &token)
+	if token == "" {
+		return nil, fmt.Errorf("token limit is not set")
 	}
-	tokenLimit = new(big.Int)
-	tokenLimit.SetString(tmpStr[2:], 16)
+	i, _ := strconv.ParseInt(token, 10, 64)
+	tokenLimit = big.NewInt(i)
 	return
 }
 
@@ -556,7 +547,7 @@ func (a *api) IsUserBlackListed(net string, addr string) (response bool, err err
 		splts := strings.Split(addr, "/")
 		addr = splts[len(splts)-1]
 	}
-	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"_net": net, "_address": addr}, "isUserBlackListed")
+	res, err := a.requester.callContract(btsAddr, map[string]interface{}{"user": addr}, "is_user_black_listed")
 	if err != nil {
 		err = errors.Wrapf(err, "CallContract %v", err)
 		return
@@ -564,15 +555,10 @@ func (a *api) IsUserBlackListed(net string, addr string) (response bool, err err
 		err = errors.New("isUserBlackListed result is nil")
 		return
 	}
-	resStr, ok := res.(string)
-	if !ok {
-		return false, fmt.Errorf("isUserBlackListed Response Expected string Got %T", res)
-	}
-	response = true
-	if resStr == "0x0" {
-		response = false
-	}
-	return
+	var resp bool
+	err = json.Unmarshal(res.(types.CallFunctionResponse).Result, &resp)
+	fmt.Println(resp)
+	return resp, err
 }
 
 // RemoveBlackListAddress implements chain.ChainAPI

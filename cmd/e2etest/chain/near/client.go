@@ -47,15 +47,16 @@ func (c *client) getChunk(id types.CryptoHash) (types.ChunkHeader, error) {
 
 func (c *client) fetchBlockTransactions(context context.Context, bn interface{}) (interface{}, error) {
 	if bn, Ok := (bn).(*BlockNotification); Ok {
-		for _, chunk := range bn.Block().Chunks {
-			chunk, err := c.getChunk(chunk.ChunkHash)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get chunk for block %v", bn.Offset())
+		if *bn.Block().Hash() != [32]byte{} {
+			for _, chunk := range bn.Block().Chunks {
+				chunk, err := c.getChunk(chunk.ChunkHash)
+				if err != nil {
+					return nil, fmt.Errorf("failed to get chunk for block %v", bn.Offset())
+				}
+
+				bn.AddTransactions(chunk.Transactions)
 			}
-
-			bn.AddTransactions(chunk.Transactions)
 		}
-
 		return bn, nil
 	}
 
@@ -69,8 +70,7 @@ func (c *client) MonitorTransactions(height uint64, callback func(rxgo.Observabl
 			bn := NewBlockNotification(offset)
 
 			if err != nil {
-				fmt.Println(err)
-				return bn, nil // TODO: Handle Error
+				return &bn, nil // TODO: Handle Error
 			}
 
 			bn.SetBlock(block)

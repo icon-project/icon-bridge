@@ -1,1 +1,5 @@
-{"account_id":"btp-26.testnet","public_key":"ed25519:8CJtBg2W4S71Sedz3SodmjX4YgVcUqjmu992N4Qq1Rse","private_key":"ed25519:3woMwMD5VRBGS8HAqrGxNaMDgzb61V9hUTRYUytyG3JEFB3LeJXsCthC3af4hiQznyPduNByGWeupmEbRZmDC2nk"}
+{
+    "account_id": "bts.iconbridge-6.testnet",
+    "public_key": "ed25519:39Me8tkm6WgpveFvt7SUXKhcUkX5LRuppHgnXAwsBx93",
+    "private_key": "ed25519:3YD7EFQtm5x196q3GPzkWaaCM6BYAtr6ouvau6BjwAmSyfWercvjYAsV3Lau49Rc8c5KrRZ621zZKe5cK7UAq8DT"
+}

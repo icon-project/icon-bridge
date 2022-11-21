@@ -152,7 +152,7 @@ func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message [
 					MethodName: functionCallMethod,
 					Args:       data,
 					Gas:        gas,
-					Deposit:    *big.NewInt(0),
+					Deposit:    types.NewBigInt("0"),
 				},
 			},
 		}

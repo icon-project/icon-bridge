@@ -36,17 +36,17 @@ type configureReq struct {
 }
 
 var transferScripts = []*Script{
-	//&TransferUniDirectionNear,
+	// &TransferUniDirectionNear,
 	&TransferUniDirection,
-	// &TransferBiDirection,
-	// &TransferBatchBiDirection,
-	// &TransferFromBlackListedSrcAddress,
-	// &TransferToBlackListedDstAddress,
-	// &TransferEqualToFee,
-	// &TransferLessThanFee,
-	// &TransferToZeroAddress,
-	// &TransferToUnknownNetwork,
-	// &TransferWithoutApprove,
+	&TransferBiDirection,
+	&TransferBatchBiDirection,
+	&TransferFromBlackListedSrcAddress,
+	&TransferToBlackListedDstAddress,
+	&TransferEqualToFee,
+	&TransferLessThanFee,
+	&TransferToZeroAddress,
+	&TransferToUnknownNetwork,
+	&TransferWithoutApprove,
 }
 
 var configScripts = []*ConfigureScript{
@@ -489,7 +489,7 @@ func (ex *executor) getAggregatedFees() (aggregatedAmountPerCoin map[string]*big
 
 func (ex *executor) startBackgroundJob(ctx context.Context, ts *testSuite, cb func(txn *txnErrPlusRecord)) (context.CancelFunc, func(), error) {
 	newCtx, newCancel := context.WithCancel(context.Background())
-	waitForPendingMsg, err := watchFeeGatheringInBackground(ctx, newCtx, ts, cb, 90)
+	waitForPendingMsg, err := watchFeeGatheringInBackground(ctx, newCtx, ts, cb, 43200) // Interval value updated to 43200 from 90
 	if err != nil {
 		newCancel()
 		return nil, nil, errors.Wrapf(err, "watchFeeGatheringInBackground %v", err)

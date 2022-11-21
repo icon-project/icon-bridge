@@ -32,7 +32,7 @@ func TestExecutor(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	ex.Subscribe(ctx)
-	time.Sleep(5 * time.Second)
+	// time.Sleep(4000 * time.Second)
 	err = ex.RunFlowTest(ctx, 0)
 	if err != nil {
 		t.Error(err)
