@@ -150,62 +150,6 @@ func (c *Client) Call(p *types.CallParam, r interface{}) error {
 	return err
 }
 
-func (c *Client) SendTransactionAndGetResult(p *types.TransactionParam) (*types.HexBytes, *types.TransactionResult, error) {
-	thp := &types.TransactionHashParam{}
-txLoop:
-	for {
-		txh, err := c.SendTransaction(p)
-		if err != nil {
-			switch err {
-			case ErrSendFailByOverflow:
-				//TODO Retry max
-				time.Sleep(DefaultSendTransactionRetryInterval)
-				c.log.Debugf("Retry SendTransaction")
-				continue txLoop
-			default:
-				switch re := err.(type) {
-				case *jsonrpc.Error:
-					switch re.Code {
-					case types.JsonrpcErrorCodeSystem:
-						if subEc, err := strconv.ParseInt(re.Message[1:5], 0, 32); err == nil {
-							switch subEc {
-							case 2000: //DuplicateTransactionError
-								//Ignore
-								c.log.Debugf("DuplicateTransactionError txh:%v", txh)
-								thp.Hash = *txh
-								break txLoop
-							}
-						}
-					}
-				}
-			}
-			c.log.Debugf("fail to SendTransaction hash:%v, err:%+v", txh, err)
-			return &thp.Hash, nil, err
-		}
-		thp.Hash = *txh
-		break txLoop
-	}
-
-txrLoop:
-	for {
-		time.Sleep(DefaultGetTransactionResultPollingInterval)
-		txr, err := c.GetTransactionResult(thp)
-		if err != nil {
-			switch re := err.(type) {
-			case *jsonrpc.Error:
-				switch re.Code {
-				case types.JsonrpcErrorCodePending, types.JsonrpcErrorCodeExecuting:
-					//TODO Retry max
-					c.log.Debugln("Retry GetTransactionResult", thp)
-					continue txrLoop
-				}
-			}
-		}
-		c.log.Debugf("GetTransactionResult hash:%v, txr:%+v, err:%+v", thp.Hash, txr, err)
-		return &thp.Hash, txr, err
-	}
-}
-
 func (c *Client) WaitForResults(ctx context.Context, thp *types.TransactionHashParam) (txh *types.HexBytes, txr *types.TransactionResult, err error) {
 	ticker := time.NewTicker(time.Duration(DefaultGetTransactionResultPollingInterval) * time.Nanosecond)
 	retryLimit := 10

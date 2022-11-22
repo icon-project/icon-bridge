@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth/abi"
 	"math/big"
 	"math/rand"
 	"time"
@@ -61,11 +62,11 @@ type sender struct {
 	dst          chain.BTPAddress
 	opts         senderOptions
 	cls          []IClient
-	bmcs         []*BMC
+	bmcs         []*abi.BMC
 	prevGasPrice *big.Int
 }
 
-func (s *sender) jointClient() (IClient, *BMC) {
+func (s *sender) jointClient() (IClient, *abi.BMC) {
 	randInt := rand.Intn(len(s.cls))
 	return s.cls[randInt], s.bmcs[randInt]
 }
@@ -243,7 +244,7 @@ type relayTx struct {
 	opts      *bind.TransactOpts
 	pendingTx *ethtypes.Transaction
 	cl        IClient
-	bmcCl     *BMC
+	bmcCl     *abi.BMC
 }
 
 func (tx *relayTx) ID() interface{} {

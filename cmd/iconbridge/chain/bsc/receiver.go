@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc/types"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
@@ -141,7 +141,7 @@ func (r *receiver) syncVerifier(ctx context.Context, vr IVerifier, height int64)
 
 	type res struct {
 		Height int64
-		Header *types.Header
+		Header *ethTypes.Header
 	}
 
 	type req struct {
@@ -153,7 +153,7 @@ func (r *receiver) syncVerifier(ctx context.Context, vr IVerifier, height int64)
 
 	r.log.WithFields(log.Fields{"height": vr.Next().String(), "target": height}).Info("syncVerifier: start")
 
-	var prevHeader *types.Header
+	var prevHeader *ethTypes.Header
 	cursor := vr.Next().Int64()
 	for cursor <= height {
 		rqch := make(chan *req, r.opts.SyncConcurrency)
@@ -238,7 +238,7 @@ func (r *receiver) syncVerifier(ctx context.Context, vr IVerifier, height int64)
 	return nil
 }
 
-func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback func(v *BlockNotification) error) (err error) {
+func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback func(v *types.BlockNotification) error) (err error) {
 
 	if opts == nil {
 		return errors.New("receiveLoop: invalid options: <nil>")
@@ -259,7 +259,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 	// block notification channel
 	// (buffered: to avoid deadlock)
 	// increase concurrency parameter for faster sync
-	bnch := make(chan *BlockNotification, r.opts.SyncConcurrency)
+	bnch := make(chan *types.BlockNotification, r.opts.SyncConcurrency)
 
 	heightTicker := time.NewTicker(BlockInterval)
 	defer heightTicker.Stop()
@@ -278,7 +278,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 	next, latest := opts.StartHeight, latestHeight()
 
 	// last unverified block notification
-	var lbn *BlockNotification
+	var lbn *types.BlockNotification
 	// start monitor loop
 
 	for {
@@ -342,7 +342,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 
 			type bnq struct {
 				h     uint64
-				v     *BlockNotification
+				v     *types.BlockNotification
 				err   error
 				retry int
 			}
@@ -355,7 +355,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				r.log.Error("Fatal: Zero length of query channel. Avoiding deadlock")
 				continue
 			}
-			bns := make([]*BlockNotification, 0, len(qch))
+			bns := make([]*types.BlockNotification, 0, len(qch))
 			for q := range qch {
 				switch {
 				case q.err != nil:
@@ -384,7 +384,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						}()
 
 						if q.v == nil {
-							q.v = &BlockNotification{}
+							q.v = &types.BlockNotification{}
 						}
 
 						q.v.Height = (&big.Int{}).SetUint64(q.h)
@@ -475,7 +475,7 @@ func (r *receiver) Subscribe(
 				StartHeight: opts.Height,
 				Concurrency: r.opts.SyncConcurrency,
 			},
-			func(v *BlockNotification) error {
+			func(v *types.BlockNotification) error {
 				r.log.WithFields(log.Fields{"height": v.Height}).Debug("block notification")
 
 				if v.Height.Uint64() != lastHeight+1 {
@@ -516,7 +516,7 @@ func (r *receiver) Subscribe(
 	return _errCh, nil
 }
 
-func (r *receiver) getRelayReceipts(v *BlockNotification) []*chain.Receipt {
+func (r *receiver) getRelayReceipts(v *types.BlockNotification) []*chain.Receipt {
 	sc := common.HexToAddress(r.src.ContractAddress())
 	var receipts []*chain.Receipt
 	var events []*chain.Event
