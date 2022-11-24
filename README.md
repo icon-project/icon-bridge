@@ -1,4 +1,16 @@
-# ICON Bridge
+<!-- HEADER SECTION -->
+<p align="left">
+    <img src="./docs/img/iconbridge_350x80.png" alt="ICON Bridge Logo" width="350px"></img>
+</p>
+<h3 align="left">
+    ICON Bridge is an early iteration of ICON’s cutting-edge interoperability product, BTP, which allows cross-chain transfers and integration with any blockchain that supports smart contracts. <a href="https://icon.community/learn/icon-bridge/"> Visit "What is ICON Bridge?"</a>
+</h3>
+<p align="left">
+    <a href="https://twitter.com/helloiconworld"><img src="https://img.shields.io/twitter/follow/helloiconworld?style=social"></a>
+    &nbsp;
+    <a href="https://www.youtube.com/channel/UCI7Z_1sTKN-kCVgFD2a0GXQ"><img src="https://img.shields.io/youtube/channel/views/UCI7Z_1sTKN-kCVgFD2a0GXQ?style=social"></a>  
+</p>
+
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
@@ -8,7 +20,6 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![OpenSSF
 Scorecard](https://api.securityscorecards.dev/projects/github.com/icon-project/icon-bridge/badge)](https://api.securityscorecards.dev/projects/github.com/icon-project/icon-bridge)
-
 
 This repository contains the smart contracts source code and relay source code for ICON bridge. 
 ## Project Overview
