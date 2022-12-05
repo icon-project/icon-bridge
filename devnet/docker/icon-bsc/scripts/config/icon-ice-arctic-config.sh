@@ -14,10 +14,10 @@ export SCRIPTS_DIR=${SCRIPTS_DIR:-${ICONBRIDGE_SCRIPTS_DIR}}
 ###################################################################################
 
 # testnet: begin
-export BSC_BMC_NET="0x228.snow"
+export BSC_BMC_NET="0x229.snow"
 export ICON_BMC_NET="0x2.icon"
 export GOLOOP_RPC_NID="0x2"
-export BSC_NID="552"
+export BSC_NID="553"
 
 export ICON_ENDPOINT="https://lisbon.net.solidwallet.io/api/v3/icon_dex"
 export ICON_NATIVE_COIN_SYM=("ICX")
@@ -61,10 +61,10 @@ export BSC_WRAPPED_COIN_DECIMALS=(18 18 18 18 18 18 18 18 18)
 
 
 # # mainnet: begin
-# export BSC_BMC_NET=${BSC_BMC_NET:-"0x229.snow"}
+# export BSC_BMC_NET=${BSC_BMC_NET:-"0x228.snow"}
 # export ICON_BMC_NET=${ICON_BMC_NET:-"0x1.icon"}
 # export GOLOOP_RPC_NID="0x1"
-# export BSC_NID="553"
+# export BSC_NID="552"
 
 # export ICON_ENDPOINT="https://ctz.solidwallet.io/api/v3/icon_dex"
 # export ICON_NATIVE_COIN_SYM=("ICX")
