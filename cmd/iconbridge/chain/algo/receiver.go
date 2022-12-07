@@ -143,7 +143,7 @@ func (r *receiver) inspectBlock(round uint64, subOpts *chain.SubscribeOptions,
 		_errCh <- err
 		return
 	}
-	bmcTxns := r.GetBMCTxns(&newBlock)
+	bmcTxns := r.GetBMCTxns(newBlock)
 	if len(*bmcTxns) <= 0 {
 		fmt.Println("new block doesnt have SC txns")
 

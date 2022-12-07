@@ -1,42 +1,50 @@
 package wallet
 
 import (
-	"crypto/ecdsa"
-	"errors"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
+	"crypto"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/hex"
+	"log"
 )
 
-//TODO find which cryptography protocol Algorand uses
-
 type AvmWallet struct {
-	Skey *ecdsa.PrivateKey
-	Pkey *ecdsa.PublicKey
+	Skey *ed25519.PrivateKey
+	Pkey *ed25519.PublicKey
+}
+
+func (w *AvmWallet) PublicKey() []byte {
+	pubKey := w.Skey.Public().(ed25519.PublicKey)
+	return pubKey
 }
 
 func (w *AvmWallet) Address() string {
 	pubBytes := w.PublicKey()
-	return common.BytesToAddress(crypto.Keccak256(pubBytes[1:])[12:]).Hex()
+	if len(pubBytes) != 32 {
+		log.Panic("pubkey is incorrect size")
+	}
+	address := hex.EncodeToString(pubBytes)
+	return address
+
 }
 
 func (w *AvmWallet) Sign(data []byte) ([]byte, error) {
-	//TODO: Not implemented yet
-	return nil, errors.New("Not implemented yet")
+	signature, err := w.Skey.Sign(rand.Reader, data, crypto.Hash(0))
+	if err != nil {
+		return nil, err
+	}
+	return signature, nil
 }
 
-func (w *AvmWallet) PublicKey() []byte {
-	return crypto.FromECDSAPub(w.Pkey)
-}
-
-func (w *AvmWallet) ECDH(pubKey []byte) ([]byte, error) {
-	//TODO: Not implemented yet
+func (w *AvmWallet) ECDH(pubkey []byte) ([]byte, error) {
+	//Need to be implemnted
 	return nil, nil
 }
 
-func NewAvmWalletFromPrivateKey(sk *ecdsa.PrivateKey) (*AvmWallet, error) {
+func NewAvmWalletFromPrivateKey(sk *ed25519.PrivateKey) (*AvmWallet, error) {
+	pkey := sk.Public().(ed25519.PublicKey)
 	return &AvmWallet{
 		Skey: sk,
-		Pkey: &sk.PublicKey,
+		Pkey: &pkey,
 	}, nil
 }

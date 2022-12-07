@@ -41,7 +41,7 @@ type IClient interface {
 	GetBlockHash(round uint64) (hash string, err error)
 	//bmc
 	GetBmcStatus(ctx context.Context) (*chain.BMCLinkStatus, error)
-	HandleRelayMessage(ctx context.Context, _prev []byte, _msg []byte, _from types.Address) (types.Transaction, string, error)
+	HandleRelayMessage(ctx context.Context, _prev []byte, _msg []byte, _from types.Address) ([]byte, string, error)
 	DecodeBtpMsg(log string) (*chain.Event, error)
 }
 
@@ -123,17 +123,17 @@ func (cl *Client) GetLatestRound() (uint64, error) {
 }
 
 // get latest block number
-func (cl *Client) GetBlockbyRound(round uint64) (block types.Block, err error) {
+func (cl *Client) GetBlockbyRound(round uint64) (*types.Block, error) {
 	for i := 1; i <= BlockRetryLimit; i++ {
-		block, err = cl.algod.Block(round).Do(context.Background())
+		block, err := cl.algod.Block(round).Do(context.Background())
 		if err != nil {
 			time.Sleep(AlgoBlockRate * time.Second)
 			continue
 		}
-		return
+		return &block, nil
 	}
-	err = fmt.Errorf("GetBlock reached retry limit: %v", err)
-	return
+	err := fmt.Errorf("GetBlock reached retry limit")
+	return nil, err
 }
 
 // get latest block number

@@ -33,10 +33,10 @@ func NewSender(
 	algodAccess []string, w wallet.Wallet,
 	rawOpts json.RawMessage, l log.Logger) (chain.Sender, error) {
 	s := &sender{
-		log: l,
-		w:   w.(*wallet.AvmWallet),
-		src: src,
-		dst: dst,
+		log:    l,
+		wallet: w,
+		src:    src,
+		dst:    dst,
 	}
 	if len(algodAccess) < 2 {
 		return nil, fmt.Errorf("Invalid algorand credentials")
@@ -62,21 +62,20 @@ type senderOptions struct {
 }
 
 type sender struct {
-	log  log.Logger
-	w    *wallet.AvmWallet
-	src  chain.BTPAddress
-	dst  chain.BTPAddress
-	opts senderOptions
-	cl   *Client
+	log    log.Logger
+	wallet wallet.Wallet
+	src    chain.BTPAddress
+	dst    chain.BTPAddress
+	opts   senderOptions
+	cl     *Client
 }
 
+// TODO review relayTx and all the methods using it
 type relayTx struct {
-	Prev    string `json:"_prev"` //TODO can this change from str to []byte?
-	Message []byte `json:"_msg"`  // contains ALL receipts appended and rlp encoded
-
-	txn  types.Transaction
-	txId string
-	cl   IClient
+	wallet *wallet.AvmWallet
+	txn    types.Transaction
+	txId   string
+	cl     IClient
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
@@ -92,7 +91,7 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 }
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
-	bal, err := s.cl.GetBalance(ctx, s.w.Address())
+	bal, err := s.cl.GetBalance(ctx, s.wallet.Address())
 	return bal, &s.opts.BalanceThreshold.Int, err
 }
 
@@ -134,24 +133,14 @@ func (s *sender) Segment(
 		msgSize = newMsgSize
 		rm.Receipts = append(rm.Receipts, rlpReceipt)
 	}
-	message, err := codec.RLP.MarshalToBytes(rm)
+	_, err = codec.RLP.MarshalToBytes(rm)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	str_sender, err := types.EncodeAddress(s.w.PublicKey())
-	address_sender, err := types.DecodeAddress(str_sender)
-
-	var txn types.Transaction
-	txn.Header.Sender = address_sender
-
-	var iCli IClient
-
 	newTx := &relayTx{
-		Prev:    msg.From.String(),
-		Message: message,
-		txn:     txn,
-		cl:      iCli,
+		wallet: (s.wallet).(*wallet.AvmWallet),
+		cl:     s.cl,
 	}
 
 	return newTx, newMsg, nil
@@ -159,7 +148,7 @@ func (s *sender) Segment(
 
 func (tx *relayTx) Send(ctx context.Context) (err error) {
 	tx.cl.Log().WithFields(log.Fields{
-		"prev": tx.Prev}).Debug("handleRelayMessage: send tx")
+		"prev": tx.wallet.Pkey}).Debug("handleRelayMessage: send tx")
 
 	ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeout)
 	defer func() {
@@ -172,7 +161,7 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	}()
 
 	/* this func should make bmc call to execute its HRM method and get new tx and txId */
-	tx.txn, tx.txId, err = tx.cl.HandleRelayMessage(ctx, []byte(tx.Prev), tx.Message, tx.txn.Header.Sender)
+	_, tx.txId, err = tx.cl.HandleRelayMessage(ctx, []byte(tx.wallet.Address()), tx.txn.Header.Note, tx.txn.Header.Sender)
 	if err != nil {
 		tx.cl.Log().WithFields(log.Fields{
 			"error": err}).Debug("handleRelayMessage: send tx")
