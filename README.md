@@ -1,4 +1,19 @@
-# ICON Bridge
+<p align="center">
+    <img src="./docs/img/iconbridge_350x80.png" alt="ICON Bridge Logo" width="350px"></img>
+</p>
+<div align="center">
+    <a align="center" href='https://icon.community/learn/icon-bridge/'><button type='button' style='font-weight:semibold; background:#30AAAE; border-radius:5px; border:0px; box-shadow:1px; padding:4px 6px; color:white; cursor:pointer; '>What is ICON Bridge?</button></a>
+</div>
+<h3 align="center">
+    ICON Bridge is an early iteration of ICON's cutting-edge interoperability product, BTP, which allows cross-chain transfers and integration with any blockchain that suppots smart contracts.    
+</h3>
+<p align="center">
+    <a href="https://twitter.com/iconfoundation_"><img src="https://img.shields.io/twitter/follow/iconfoundation_?style=social"></a>
+    &nbsp;
+   <a href="https://twitter.com/helloiconworld"><img src="https://img.shields.io/twitter/follow/helloiconworld?style=social"></a>
+</p>
+
+## ICON Bridge
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
