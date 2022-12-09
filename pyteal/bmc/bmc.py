@@ -4,6 +4,7 @@ from pyteal import *
 is_creator = Txn.sender() == Global.creator_address()
 
 global_bsh_app_address = Bytes("bsh_app_address")
+global_relayer_acc_address = Bytes("relayer_acc_address")
 
 # Main router class
 router = Router(
@@ -30,6 +31,13 @@ router = Router(
 def registerBSHContract(bsh_app_address: abi.Address): 
     return Seq(
         App.globalPut(global_bsh_app_address, bsh_app_address.get()),
+        Approve()
+    )
+    
+@router.method
+def registerRelayer(relayer_account: abi.Address): 
+    return Seq(
+        App.globalPut(global_relayer_acc_address, relayer_account.get()),
         Approve()
     )
 

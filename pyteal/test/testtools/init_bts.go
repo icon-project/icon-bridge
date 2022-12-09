@@ -18,6 +18,6 @@ func BtsTestInit(t *testing.T, client *algod.Client, btsTealDir string, deployer
 	btsCreationTxId := SendTransaction(t, client, deployer.PrivateKey, btsAppCreationTx)
 	deployRes := WaitForConfirmationsT(t, client, []string{btsCreationTxId})
 
-	fmt.Printf("App ID: %d \n", deployRes[0].ApplicationIndex)
+	fmt.Printf("BTS App ID: %d \n", deployRes[0].ApplicationIndex)
 	return deployRes[0].ApplicationIndex
 }

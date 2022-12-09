@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"log"
+	"bytes"
 	"path/filepath"
 	"testing"
 
@@ -20,7 +20,7 @@ var txParams types.SuggestedParams
 var bts_app_id uint64
 var bmc_app_id uint64
 
-func TestCallSendMessageFromOutsideOfBts(t *testing.T) {
+func Test_CallSendMessageFromOutsideOfBts(t *testing.T) {
 	client, deployer, txParams = tools.Init(t)
 
 	bts_app_id = tools.BtsTestInit(t, client, config.BtsTealDir, deployer, txParams)
@@ -29,18 +29,40 @@ func TestCallSendMessageFromOutsideOfBts(t *testing.T) {
 	contract, mcp, err := internalABI.InitABIContract(client, deployer, filepath.Join(config.BmcTealDir, "contract.json"), bmc_app_id)
 
 	if err != nil {
-		log.Fatalf("Failed to init ABI contract: %+v", err)
+		t.Fatalf("Failed to init ABI contract: %+v", err)
 	}
 
 	_, err = bmcMethods.RegisterBSHContract(client, bts_app_id, contract, mcp)
 
 	if err != nil {
-		log.Fatalf("Failed to add method call: %+v", err)
+		t.Fatalf("Failed to add method call: %+v", err)
 	}
 
 	_, err = bmcMethods.SendMessage(client, contract, mcp)
 
 	if err == nil {
-		log.Fatal("SendMessage should throw error, as it's not been called from BTS contract")
+		t.Fatal("SendMessage should throw error, as it's not been called from BTS contract")
+	}
+}
+
+func Test_RegisterRelayer(t *testing.T) {
+	relayer := crypto.GenerateAccount()
+
+	contract, mcp, err := internalABI.InitABIContract(client, deployer, filepath.Join(config.BmcTealDir, "contract.json"), bmc_app_id)
+
+	if err != nil {
+		t.Fatalf("Failed to init ABI contract: %+v", err)
+	}
+
+	_, err = bmcMethods.RegisterRelayer(client, relayer.Address, contract, mcp)
+
+	if err != nil {
+		t.Fatalf("Failed to add method call: %+v", err)
+	}
+
+	appRelayerAddress := tools.GetGlobalStateByKey(t, client, bmc_app_id, "relayer_acc_address")
+
+	if !bytes.Equal(appRelayerAddress, relayer.Address[:]) {
+		t.Fatal("Failed to align relayer address to address in global state of BMC application")
 	}
 }
