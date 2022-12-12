@@ -8,7 +8,7 @@ import (
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
 )
 
-func GetGlobalStateByKey(t *testing.T,client *algod.Client, appId uint64, key string) []byte {
+func GetGlobalStateByKey(t *testing.T, client *algod.Client, appId uint64, key string) []byte {
 	app, err := client.GetApplicationByID(appId).Do(context.Background())
 
 	if err != nil {

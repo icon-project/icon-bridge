@@ -6,7 +6,7 @@ is_creator = Txn.sender() == Global.creator_address()
 # Main router class
 router = Router(
     # Name of the contract
-    "bts-handler",
+    "bsh-handler",
     # What to do for each on-complete type when no arguments are passed (bare call)
     BareCallActions(
         # On create only, just approve

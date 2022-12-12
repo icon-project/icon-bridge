@@ -15,9 +15,9 @@ import (
 func RegisterBSHContract(client *algod.Client, bsh_id uint64, bmc_contract *abi.Contract, mcp future.AddMethodCallParams) (ret future.ExecuteResult, err error) {
 	var atc = future.AtomicTransactionComposer{}
 
-	bts_address := crypto.GetApplicationAddress(bsh_id)
+	bsh_address := crypto.GetApplicationAddress(bsh_id)
 
-	err = atc.AddMethodCall(toolsABI.CombineMethod(mcp, toolsABI.GetMethod(bmc_contract, "registerBSHContract"), []interface{}{bts_address}))
+	err = atc.AddMethodCall(toolsABI.CombineMethod(mcp, toolsABI.GetMethod(bmc_contract, "registerBSHContract"), []interface{}{bsh_address}))
 
 	if err != nil {
 		fmt.Printf("Failed to add method registerBSHContract call into BMC contract: %+v \n", err)

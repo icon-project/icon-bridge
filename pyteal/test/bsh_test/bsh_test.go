@@ -20,19 +20,19 @@ import (
 var client *algod.Client
 var deployer crypto.Account
 var txParams types.SuggestedParams
-var bts_app_id uint64
+var bsh_app_id uint64
 var bmc_app_id uint64
 
-func Test_BtsSendServiceMessage(t *testing.T) {
+func Test_BshSendServiceMessage(t *testing.T) {
 	client, deployer, txParams = tools.Init(t)
 
-	bts_app_id = tools.BtsTestInit(t, client, config.BtsTealDir, deployer, txParams)
+	bsh_app_id = tools.BshTestInit(t, client, config.BshTealDir, deployer, txParams)
 	bmc_app_id = tools.BmcTestInit(t, client, config.BmcTealDir, deployer, txParams)
 
-	bts_contract, bts_mcp, err := internalABI.InitABIContract(client, deployer, filepath.Join(config.BtsTealDir, "contract.json"), bts_app_id)
+	bsh_contract, bsh_mcp, err := internalABI.InitABIContract(client, deployer, filepath.Join(config.BshTealDir, "contract.json"), bsh_app_id)
 
 	if err != nil {
-		t.Fatalf("Failed to init BTS ABI contract: %+v", err)
+		t.Fatalf("Failed to init BSH ABI contract: %+v", err)
 	}
 
 	bmc_contract, bmc_mcp, err := internalABI.InitABIContract(client, deployer, filepath.Join(config.BmcTealDir, "contract.json"), bmc_app_id)
@@ -47,13 +47,13 @@ func Test_BtsSendServiceMessage(t *testing.T) {
 		t.Fatalf("Failed to get BMC contract application id: %+v", err)
 	}
 
-	_, err = bmcMethods.RegisterBSHContract(client, bts_app_id, bmc_contract, bmc_mcp)
+	_, err = bmcMethods.RegisterBSHContract(client, bsh_app_id, bmc_contract, bmc_mcp)
 
 	if err != nil {
 		t.Fatalf("Failed to execute RegisterBSHContract: %+v", err)
 	}
 
-	_, err = bshMethods.SendServiceMessage(client, bmcApp.Id, bts_contract, bts_mcp)
+	_, err = bshMethods.SendServiceMessage(client, bmcApp.Id, bsh_contract, bsh_mcp)
 
 	if err != nil {
 		t.Fatalf("Failed to execute SendServiceMessage: %+v", err)
@@ -65,7 +65,7 @@ func Test_GetMessagePushedFromBmcToRelayer(t *testing.T) {
 
 	newBlock := tools.GetBlock(t, client, round)
 
-	txns := algorand.GetTxns(&newBlock, bts_app_id)
+	txns := algorand.GetTxns(&newBlock, bsh_app_id)
 
 	if txns == nil {
 		t.Fatalf("No txns containing btp msgs")

@@ -10,7 +10,7 @@ import (
 	"github.com/algorand/go-algorand-sdk/types"
 )
 
-func MakeBtsDeployTx(
+func MakeBshDeployTx(
 	t *testing.T,
 	client *algod.Client,
 	tealDirPath string,
@@ -41,7 +41,7 @@ func MakeBtsDeployTx(
 	)
 
 	if err != nil {
-		t.Fatalf("Failed to make BTS application creation transaction: %s\n", err)
+		t.Fatalf("Failed to make BSH application creation transaction: %s\n", err)
 	}
 	return
 }

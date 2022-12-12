@@ -20,7 +20,7 @@ import (
 var client *algod.Client
 var deployer crypto.Account
 var txParams types.SuggestedParams
-var bts_app_id uint64
+var bsh_app_id uint64
 var bmc_app_id uint64
 var bmc_contract *abi.Contract
 var bmc_mcp future.AddMethodCallParams
@@ -28,12 +28,12 @@ var err error
 
 const dummyBTPMessage = "btp message"
 
-func Test_Init (t *testing.T) {
+func Test_Init(t *testing.T) {
 	client, deployer, txParams = tools.Init(t)
 
-	bts_app_id = tools.BtsTestInit(t, client, config.BtsTealDir, deployer, txParams)
+	bsh_app_id = tools.BshTestInit(t, client, config.BshTealDir, deployer, txParams)
 	bmc_app_id = tools.BmcTestInit(t, client, config.BmcTealDir, deployer, txParams)
-	
+
 	bmc_contract, bmc_mcp, err = internalABI.InitABIContract(client, deployer, filepath.Join(config.BmcTealDir, "contract.json"), bmc_app_id)
 
 	if err != nil {
@@ -41,8 +41,8 @@ func Test_Init (t *testing.T) {
 	}
 }
 
-func Test_CallSendMessageFromOutsideOfBts(t *testing.T) {
-	_, err = bmcMethods.RegisterBSHContract(client, bts_app_id, bmc_contract, bmc_mcp)
+func Test_CallSendMessageFromOutsideOfBsh(t *testing.T) {
+	_, err = bmcMethods.RegisterBSHContract(client, bsh_app_id, bmc_contract, bmc_mcp)
 
 	if err != nil {
 		t.Fatalf("Failed to add method call: %+v", err)
@@ -51,7 +51,7 @@ func Test_CallSendMessageFromOutsideOfBts(t *testing.T) {
 	_, err = bmcMethods.SendMessage(client, bmc_contract, bmc_mcp)
 
 	if err == nil {
-		t.Fatal("SendMessage should throw error, as it's not been called from BTS contract")
+		t.Fatal("SendMessage should throw error, as it's not been called from BSH contract")
 	}
 }
 
@@ -70,7 +70,7 @@ func Test_RegisterRelayer(t *testing.T) {
 }
 
 func Test_CallHandleRelayMessageUsingRelayerAsSender(t *testing.T) {
-	ret, err := bmcMethods.HandleRelayMessage(client, bts_app_id, dummyBTPMessage, bmc_contract, bmc_mcp)
+	ret, err := bmcMethods.HandleRelayMessage(client, bsh_app_id, dummyBTPMessage, bmc_contract, bmc_mcp)
 
 	if err != nil {
 		t.Fatalf("Failed to add method call: %+v", err)
