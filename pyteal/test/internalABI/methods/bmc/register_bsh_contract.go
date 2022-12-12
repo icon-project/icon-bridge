@@ -20,14 +20,14 @@ func RegisterBSHContract(client *algod.Client, bsh_id uint64, bmc_contract *abi.
 	err = atc.AddMethodCall(toolsABI.CombineMethod(mcp, toolsABI.GetMethod(bmc_contract, "registerBSHContract"), []interface{}{bts_address}))
 
 	if err != nil {
-		fmt.Printf("Failed to add method registerBSHContract call into BMC contract: %+v", err)
+		fmt.Printf("Failed to add method registerBSHContract call into BMC contract: %+v \n", err)
 		return
 	}
 
 	ret, err = atc.Execute(client, context.Background(), config.TransactionWaitRounds)
 
 	if err != nil {
-		fmt.Printf("Failed to execute call: %+v", err)
+		fmt.Printf("Failed to execute call: %+v \n", err)
 		return
 	}
 

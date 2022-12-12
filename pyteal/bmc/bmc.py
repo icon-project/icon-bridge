@@ -45,5 +45,22 @@ def registerRelayer(relayer_account: abi.Address):
 def sendMessage (to: abi.String, svc: abi.String, sn: abi.Uint64,  *, output: abi.String) -> Expr:
     return Seq(
         Assert(Txn.sender() == App.globalGet(global_bsh_app_address)),
-        output.set("btp:message")
+        output.set("event:btp message")
+    )
+
+@router.method
+def handleRelayMessage (bsh_app: abi.Application, msg: abi.String,  *, output: abi.String) -> Expr:
+    return Seq(
+        Assert(Txn.sender() == App.globalGet(global_relayer_acc_address)),
+        InnerTxnBuilder.Begin(),
+        InnerTxnBuilder.MethodCall(
+            app_id=bsh_app.application_id(),
+            method_signature="handleBTPMessage(string)string",
+            args=[msg],
+            extra_fields={
+                TxnField.fee: Int(0)
+            }
+        ),
+        InnerTxnBuilder.Submit(),
+        output.set("event:start handleBTPMessage")
     )

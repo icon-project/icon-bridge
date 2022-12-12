@@ -18,14 +18,14 @@ func RegisterRelayer(client *algod.Client, relayer_address types.Address, bmc_co
 	err = atc.AddMethodCall(toolsABI.CombineMethod(mcp, toolsABI.GetMethod(bmc_contract, "registerRelayer"), []interface{}{relayer_address}))
 
 	if err != nil {
-		fmt.Printf("Failed to add method registerRelayer call into BMC contract: %+v", err)
+		fmt.Printf("Failed to add method registerRelayer call into BMC contract: %+v \n", err)
 		return
 	}
 
 	ret, err = atc.Execute(client, context.Background(), config.TransactionWaitRounds)
 
 	if err != nil {
-		fmt.Printf("Failed to execute call: %+v", err)
+		fmt.Printf("Failed to execute call: %+v \n", err)
 		return
 	}
 

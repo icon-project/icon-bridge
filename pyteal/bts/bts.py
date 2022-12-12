@@ -38,3 +38,10 @@ def sendServiceMessage(bmc_app: abi.Application, to: abi.String, svc: abi.String
         ),
         InnerTxnBuilder.Submit(),
     )
+
+@router.method
+def handleBTPMessage(msg: abi.String, *, output: abi.String) -> Expr:
+    return Seq(
+        output.set("start:handle BTP Message")
+    )
+
