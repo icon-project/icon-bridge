@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"appliedblockchain.com/icon-bridge/algorand"
 	"appliedblockchain.com/icon-bridge/config"
 	"appliedblockchain.com/icon-bridge/internalABI"
 	bmcMethods "appliedblockchain.com/icon-bridge/internalABI/methods/bmc"
@@ -24,6 +25,8 @@ var bmc_app_id uint64
 var bmc_contract *abi.Contract
 var bmc_mcp future.AddMethodCallParams
 var err error
+
+const dummyBTPMessage = "btp message"
 
 func Test_Init (t *testing.T) {
 	client, deployer, txParams = tools.Init(t)
@@ -67,7 +70,7 @@ func Test_RegisterRelayer(t *testing.T) {
 }
 
 func Test_CallHandleRelayMessageUsingRelayerAsSender(t *testing.T) {
-	ret, err := bmcMethods.HandleRelayMessage(client, bts_app_id, "btp message", bmc_contract, bmc_mcp)
+	ret, err := bmcMethods.HandleRelayMessage(client, bts_app_id, dummyBTPMessage, bmc_contract, bmc_mcp)
 
 	if err != nil {
 		t.Fatalf("Failed to add method call: %+v", err)
@@ -76,6 +79,26 @@ func Test_CallHandleRelayMessageUsingRelayerAsSender(t *testing.T) {
 	for _, r := range ret.MethodResults {
 		if r.ReturnValue != "event:start handleBTPMessage" {
 			t.Fatal("Failed to get event after running handleBTPMessage")
+		}
+	}
+}
+
+func Test_GetMessagePushedFromRelayerToBmc(t *testing.T) {
+	round := tools.GetLatestRound(t, client)
+
+	newBlock := tools.GetBlock(t, client, round)
+
+	txns := algorand.GetTxns(&newBlock, bmc_app_id)
+
+	if txns == nil {
+		t.Fatalf("No txns containing btp msgs")
+	}
+
+	for _, txn := range *txns {
+		for _, innerTxn := range txn.EvalDelta.InnerTxns {
+			if innerTxn.EvalDelta.Logs[0] != dummyBTPMessage {
+				t.Fatal("Failed to get BTP message pushed from relayer to BMC")
+			}
 		}
 	}
 }

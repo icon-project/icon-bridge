@@ -55,7 +55,7 @@ def handleRelayMessage (bsh_app: abi.Application, msg: abi.String,  *, output: a
         InnerTxnBuilder.Begin(),
         InnerTxnBuilder.MethodCall(
             app_id=bsh_app.application_id(),
-            method_signature="handleBTPMessage(string)string",
+            method_signature="handleBTPMessage(string)void",
             args=[msg],
             extra_fields={
                 TxnField.fee: Int(0)

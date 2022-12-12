@@ -40,8 +40,8 @@ def sendServiceMessage(bmc_app: abi.Application, to: abi.String, svc: abi.String
     )
 
 @router.method
-def handleBTPMessage(msg: abi.String, *, output: abi.String) -> Expr:
+def handleBTPMessage(msg: abi.String) -> Expr:
     return Seq(
-        output.set("start:handle BTP Message")
+        Log(msg.get()),
     )
 
