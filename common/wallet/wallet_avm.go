@@ -1,39 +1,32 @@
 package wallet
 
 import (
-	"crypto"
 	"crypto/ed25519"
-	"crypto/rand"
-	"encoding/hex"
 	"log"
+
+	"github.com/algorand/go-algorand-sdk/crypto"
 )
 
 type AvmWallet struct {
-	Skey *ed25519.PrivateKey
-	Pkey *ed25519.PublicKey
+	account crypto.Account
 }
 
 func (w *AvmWallet) PublicKey() []byte {
-	pubKey := w.Skey.Public().(ed25519.PublicKey)
+	pubKey := w.account.PrivateKey.Public().(ed25519.PublicKey)
 	return pubKey
 }
 
 func (w *AvmWallet) Address() string {
-	pubBytes := w.PublicKey()
-	if len(pubBytes) != 32 {
-		log.Panic("pubkey is incorrect size")
-	}
-	address := hex.EncodeToString(pubBytes)
-	return address
-
+	return w.account.Address.String()
 }
 
 func (w *AvmWallet) Sign(data []byte) ([]byte, error) {
-	signature, err := w.Skey.Sign(rand.Reader, data, crypto.Hash(0))
+
+	signedTxn, err := crypto.SignBytes(w.account.PrivateKey, data)
 	if err != nil {
-		return nil, err
+		log.Fatalf("Cannot sign transaction: %s", err)
 	}
-	return signature, nil
+	return signedTxn, nil
 }
 
 func (w *AvmWallet) ECDH(pubkey []byte) ([]byte, error) {
@@ -42,9 +35,11 @@ func (w *AvmWallet) ECDH(pubkey []byte) ([]byte, error) {
 }
 
 func NewAvmWalletFromPrivateKey(sk *ed25519.PrivateKey) (*AvmWallet, error) {
-	pkey := sk.Public().(ed25519.PublicKey)
+	acc, err := crypto.AccountFromPrivateKey(*sk)
+	if err != nil {
+		log.Fatalf("Cannot create wallet from SK: %s", err)
+	}
 	return &AvmWallet{
-		Skey: sk,
-		Pkey: &pkey,
+		acc,
 	}, nil
 }
