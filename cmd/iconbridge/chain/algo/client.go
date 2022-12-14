@@ -24,7 +24,6 @@ const (
 type Client struct {
 	log   log.Logger
 	algod *algod.Client
-	bmc   *Bmc
 }
 
 // TODO create bmc interface w/ methods to compile, deploy and interact with the smart contract
@@ -73,7 +72,7 @@ func (cl *Client) HandleRelayMessage(ctx context.Context, _prev []byte, _msg []b
 
 	//TODO update this to make an ABI call instead to send the relaymsg for the dst bmc
 	txn, err := future.MakeApplicationNoOpTx(
-		cl.bmc.appID,
+		100,
 		nil,
 		nil,
 		nil,

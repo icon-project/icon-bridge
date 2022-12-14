@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"time"
 
+	"github.com/algorand/go-algorand-sdk/abi"
+	"github.com/algorand/go-algorand-sdk/future"
 	"github.com/algorand/go-algorand-sdk/types"
 	"github.com/icon-project/icon-bridge/common/codec"
 
@@ -32,9 +35,10 @@ func NewSender(
 	src, dst chain.BTPAddress,
 	algodAccess []string, w wallet.Wallet,
 	rawOpts json.RawMessage, l log.Logger) (chain.Sender, error) {
+
 	s := &sender{
 		log:    l,
-		wallet: w,
+		wallet: w.(*wallet.AvmWallet),
 		src:    src,
 		dst:    dst,
 	}
@@ -55,19 +59,20 @@ func NewSender(
 }
 
 type senderOptions struct {
-	GasLimit         uint64         `json:"gas_limit"`
-	BoostGasPrice    float64        `json:"boost_gas_price"`
+	AppId            uint64         `json:"app_id"`
 	TxDataSizeLimit  uint64         `json:"tx_data_size_limit"`
 	BalanceThreshold intconv.BigInt `json:"balance_threshold"`
 }
 
 type sender struct {
 	log    log.Logger
-	wallet wallet.Wallet
+	wallet *wallet.AvmWallet
 	src    chain.BTPAddress
 	dst    chain.BTPAddress
 	opts   senderOptions
 	cl     *Client
+	bmc    *abi.Contract
+	mcp    *future.AddMethodCallParams
 }
 
 // TODO review relayTx and all the methods using it
@@ -76,6 +81,47 @@ type relayTx struct {
 	txn    types.Transaction
 	txId   string
 	cl     IClient
+}
+
+func (s *sender) initAbi() error {
+	rawBmc, err := ioutil.ReadFile(contractDir)
+	if err != nil {
+		return fmt.Errorf("Failed to open contract file: %w", err)
+	}
+	abiBmc := &abi.Contract{}
+	if err = json.Unmarshal(rawBmc, abiBmc); err != nil {
+		return fmt.Errorf("Failed to marshal abi contract: %w", err)
+	}
+	sp, err := s.cl.algod.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return fmt.Errorf("Failed to get suggeted params: %w", err)
+	}
+	s.mcp = &future.AddMethodCallParams{
+		AppID:           s.opts.AppId,
+		Sender:          s.wallet.TypedAddress(),
+		SuggestedParams: sp,
+		OnComplete:      types.NoOpOC,
+		Signer:          s.wallet,
+	}
+	return nil
+}
+
+func (s *sender) callAbi(name string, args []interface{}) (future.ExecuteResult, error) {
+	var atc = future.AtomicTransactionComposer{}
+	method, err := getMethod(s.bmc, name)
+	if err != nil {
+		return future.ExecuteResult{}, fmt.Errorf("Failed to get %s method from json contract: %w",
+			name, err)
+	}
+	err = atc.AddMethodCall(combine(*s.mcp, method, args))
+	if err != nil {
+		return future.ExecuteResult{}, fmt.Errorf("Failed to add %s method to atc: %w", name, err)
+	}
+	ret, err := atc.Execute(s.cl.algod, context.Background(), 2)
+	if err != nil {
+		return future.ExecuteResult{}, fmt.Errorf("Failed to execute atc: %w", err)
+	}
+	return ret, nil
 }
 
 func (opts *senderOptions) Unmarshal(v map[string]interface{}) error {
@@ -139,16 +185,16 @@ func (s *sender) Segment(
 	}
 
 	newTx := &relayTx{
-		wallet: (s.wallet).(*wallet.AvmWallet),
+		wallet: s.wallet,
 		cl:     s.cl,
 	}
 
 	return newTx, newMsg, nil
 }
 
-func (tx *relayTx) Send(ctx context.Context) (err error) {
+func (tx relayTx) Send(ctx context.Context) (err error) {
 	tx.cl.Log().WithFields(log.Fields{
-		"prev": tx.wallet.Pkey}).Debug("handleRelayMessage: send tx")
+		"prev": tx.wallet}).Debug("handleRelayMessage: send tx")
 
 	ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeout)
 	defer func() {
@@ -161,7 +207,7 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	}()
 
 	/* this func should make bmc call to execute its HRM method and get new tx and txId */
-	_, tx.txId, err = tx.cl.HandleRelayMessage(ctx, []byte(tx.wallet.Address()), tx.txn.Header.Note, tx.txn.Header.Sender)
+	//_, tx.txId, err = tx.cl.HandleRelayMessage(ctx, []byte(tx.wallet.Address() ), tx.txn.Header.Note, tx.txn.Header.Sender)
 	if err != nil {
 		tx.cl.Log().WithFields(log.Fields{
 			"error": err}).Debug("handleRelayMessage: send tx")
