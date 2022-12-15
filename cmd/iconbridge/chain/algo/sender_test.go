@@ -1,106 +1,113 @@
 package algo
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
-	"time"
 
-	"github.com/algorand/go-algorand-sdk/client/v2/algod"
+	"github.com/algorand/go-algorand-sdk/client/kmd"
 	"github.com/algorand/go-algorand-sdk/crypto"
-	"github.com/algorand/go-algorand-sdk/mnemonic"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
 const _algodAddress = "http://localhost:4001"
 const _algodToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-var (
-	block_height = 28070290
-	algo_bmc     = "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8"
-	icon_bmc     = "btp://0x1.icon/cx06f42ea934731b4867fca00d37c25aa30bc3e3d7"
+const (
+	KMD_ADDRESS         = "http://localhost:4002"
+	KMD_TOKEN           = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	KMD_WALLET_NAME     = "unencrypted-default-wallet"
+	KMD_WALLET_PASSWORD = ""
 )
 
-func createAccount() {
-	account := crypto.GenerateAccount()
-	passphrase, err := mnemonic.FromPrivateKey(account.PrivateKey)
-	myAddress := account.Address.String()
+func GetAccounts() ([]crypto.Account, error) {
+	client, err := kmd.MakeClient(KMD_ADDRESS, KMD_TOKEN)
 	if err != nil {
-		fmt.Printf("Error creating transaction: %s\n", err)
-	} else {
-		fmt.Printf("My address: %s\n", myAddress)
-		fmt.Printf("My passphrase: %s\n", passphrase)
-		fmt.Println("--> Copy down your address and passphrase for future use.")
-		fmt.Println("--> Once secured, press ENTER key to continue...")
-		fmt.Scanln()
+		return nil, fmt.Errorf("Failed to create client: %+v", err)
 	}
 
-	algodClient, err := algod.MakeClient(algodAddress, algodToken)
+	resp, err := client.ListWallets()
 	if err != nil {
-		fmt.Printf("Issue with creating algod client: %s\n", err)
-		return
+		return nil, fmt.Errorf("Failed to list wallets: %+v", err)
 	}
+
+	var walletId string
+	for _, wallet := range resp.Wallets {
+		if wallet.Name == KMD_WALLET_NAME {
+			walletId = wallet.ID
+		}
+	}
+
+	if walletId == "" {
+		return nil, fmt.Errorf("No wallet named %s", KMD_WALLET_NAME)
+	}
+
+	whResp, err := client.InitWalletHandle(walletId, KMD_WALLET_PASSWORD)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to init wallet handle: %+v", err)
+	}
+
+	addrResp, err := client.ListKeys(whResp.WalletHandleToken)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to list keys: %+v", err)
+	}
+
+	var accts []crypto.Account
+	for _, addr := range addrResp.Addresses {
+		expResp, err := client.ExportKey(whResp.WalletHandleToken, KMD_WALLET_PASSWORD, addr)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to export key: %+v", err)
+		}
+
+		acct, err := crypto.AccountFromPrivateKey(expResp.PrivateKey)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to create account from private key: %+v", err)
+		}
+
+		accts = append(accts, acct)
+	}
+
+	return accts, nil
 }
+func Test_NewSender(t *testing.T) {
 
-// This function should receive a msg chanel as input, to which it shall forward a new msg as soon
-// as it detects valid events in txn from new blocks
-func Test_Subscribe(t *testing.T) {
-	algodAccess := []string{algodAddress, algodToken}
-	opts := map[string]interface{}{"syncConcurrency": 2}
+	accts, err := GetAccounts()
+	if err != nil {
+		t.Logf("Error generating KMD account: %v", err)
+		t.FailNow()
+	}
+	account := accts[0]
+
+	algodAccess := []string{_algodAddress, _algodToken}
+
+	appId, err := deployBmc(algodAccess, account)
+
+	opts := map[string]interface{}{"app_id": appId}
 	rawOpts, err := json.Marshal(opts)
 	if err != nil {
 		t.Logf("Marshalling opts: %v", err)
 		t.FailNow()
 	}
-
-	rcv, err := NewReceiver(chain.BTPAddress(icon_bmc), chain.BTPAddress(algo_bmc),
-		algodAccess, rawOpts, log.New())
+	w, err := wallet.NewAvmWalletFromPrivateKey(&account.PrivateKey)
 	if err != nil {
-		t.Logf("NewReceiver error: %v", err)
+		t.Logf("Couldn't create wallet: %v", err)
 		t.FailNow()
 	}
 
-	msgCh := make(chan *chain.Message)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-
-	c, err := newClient(algodAccess, log.New())
-
-	curRound, err := c.GetLatestRound()
-
+	s, err := NewSender(
+		chain.BTPAddress(icon_bmc), chain.BTPAddress(algo_bmc),
+		algodAccess, w,
+		rawOpts, log.New())
 	if err != nil {
-		t.Log("Couldn't retrieve latest round")
+		t.Logf("Error creating new sender: %v", err)
 		t.FailNow()
 	}
-
-	subOpts := chain.SubscribeOptions{
-		Seq:    777,
-		Height: curRound,
-	}
-
-	errCh, err := rcv.Subscribe(ctx, msgCh, subOpts)
-
+	_, err = s.(*sender).CallAbi("concat_strings", []interface{}{[]string{"this", "string", "is", "joined"}})
 	if err != nil {
-		t.Log("Couldn't Subscribe")
+		t.Logf("Error using abi: %v", err)
 		t.FailNow()
 	}
 
-	//Expect receive error msg when a block with an ApplicationTxCall does not contain receipts
-	select {
-	case <-ctx.Done():
-		t.Error("Test timed out with no blocks")
-		t.FailNow()
-	case err := <-errCh:
-		t.Log(err)
-	}
-	cancel()
-
-	//Expect goroutine to close error chanel after its ctx aborts
-	select {
-	case err := <-errCh:
-		t.Log(err)
-	}
-	//TODO add case for successful message once BMC is working
 }

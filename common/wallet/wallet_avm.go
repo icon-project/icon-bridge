@@ -74,8 +74,8 @@ func (w AvmWallet) SignTransactions(txGroup []types.Transaction, indexesToSign [
 	return stxs, nil
 }
 
-func (w AvmWallet) Equals(other future.TransactionSigner) bool {
-	if castedSigner, ok := other.(AvmWallet); ok {
+func (w *AvmWallet) Equals(other future.TransactionSigner) bool {
+	if castedSigner, ok := other.(*AvmWallet); ok {
 		otherJson, err := json.Marshal(castedSigner)
 		if err != nil {
 			return false

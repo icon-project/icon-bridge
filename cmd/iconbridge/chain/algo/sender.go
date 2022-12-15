@@ -55,6 +55,11 @@ func NewSender(
 	if err != nil {
 		return nil, err
 	}
+
+	err = s.initAbi()
+	if err != nil {
+		return nil, err
+	}
 	return s, nil
 }
 
@@ -92,10 +97,12 @@ func (s *sender) initAbi() error {
 	if err = json.Unmarshal(rawBmc, abiBmc); err != nil {
 		return fmt.Errorf("Failed to marshal abi contract: %w", err)
 	}
+	s.bmc = abiBmc
 	sp, err := s.cl.algod.SuggestedParams().Do(context.Background())
 	if err != nil {
 		return fmt.Errorf("Failed to get suggeted params: %w", err)
 	}
+	sp.Fee = 0
 	s.mcp = &future.AddMethodCallParams{
 		AppID:           s.opts.AppId,
 		Sender:          s.wallet.TypedAddress(),
@@ -106,7 +113,7 @@ func (s *sender) initAbi() error {
 	return nil
 }
 
-func (s *sender) callAbi(name string, args []interface{}) (future.ExecuteResult, error) {
+func (s *sender) CallAbi(name string, args []interface{}) (future.ExecuteResult, error) {
 	var atc = future.AtomicTransactionComposer{}
 	method, err := getMethod(s.bmc, name)
 	if err != nil {
@@ -117,7 +124,7 @@ func (s *sender) callAbi(name string, args []interface{}) (future.ExecuteResult,
 	if err != nil {
 		return future.ExecuteResult{}, fmt.Errorf("Failed to add %s method to atc: %w", name, err)
 	}
-	ret, err := atc.Execute(s.cl.algod, context.Background(), 2)
+	ret, err := atc.Execute(s.cl.algod, context.Background(), 5)
 	if err != nil {
 		return future.ExecuteResult{}, fmt.Errorf("Failed to execute atc: %w", err)
 	}
