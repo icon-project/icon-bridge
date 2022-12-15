@@ -2,14 +2,12 @@ package algo
 
 import (
 	"context"
-	"crypto/ed25519"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/client/v2/common/models"
-	"github.com/algorand/go-algorand-sdk/crypto"
 	"github.com/algorand/go-algorand-sdk/future"
 	"github.com/algorand/go-algorand-sdk/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -38,10 +36,6 @@ type IClient interface {
 	GetLatestRound() (uint64, error)
 	GetBlockbyRound(round uint64) (block *types.Block, err error)
 	GetBlockHash(round uint64) (hash string, err error)
-	//bmc
-	GetBmcStatus(ctx context.Context) (*chain.BMCLinkStatus, error)
-	HandleRelayMessage(ctx context.Context, _prev []byte, _msg []byte, _from types.Address) ([]byte, string, error)
-	DecodeBtpMsg(log string) (*chain.Event, error)
 }
 
 func newClient(algodAccess []string, l log.Logger) (cli *Client, err error) {
@@ -51,50 +45,12 @@ func newClient(algodAccess []string, l log.Logger) (cli *Client, err error) {
 	if err != nil {
 		l.Fatalf("Algod client could not be created: %s\n", err)
 	}
-	//TODO init BMC
+
 	cli = &Client{
 		log:   l,
 		algod: algodClient,
 	}
 	return
-}
-
-func (cl *Client) HandleRelayMessage(ctx context.Context, _prev []byte, _msg []byte, _from types.Address) ([]byte, string, error) {
-
-	txParams, err := cl.algod.SuggestedParams().Do(context.Background())
-	if err != nil {
-		return nil, "", err
-	}
-
-	if err != nil {
-		return nil, "", err
-	}
-
-	//TODO update this to make an ABI call instead to send the relaymsg for the dst bmc
-	txn, err := future.MakeApplicationNoOpTx(
-		100,
-		nil,
-		nil,
-		nil,
-		nil,
-		txParams,
-		_from,
-		nil,
-		types.Digest{},
-		[32]byte{},
-		types.Address{},
-	)
-
-	var dummyPk ed25519.PrivateKey
-
-	txID, signedTxn, _ := crypto.SignTransaction(dummyPk, txn)
-
-	txID, err = cl.algod.SendRawTransaction(signedTxn).Do(context.Background())
-	if err != nil {
-		return nil, "", err
-	}
-
-	return signedTxn, txID, nil
 }
 
 func (cl *Client) WaitForTransaction(ctx context.Context, txId string) (models.PendingTransactionInfoResponse, error) {

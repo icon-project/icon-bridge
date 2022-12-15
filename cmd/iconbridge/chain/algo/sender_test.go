@@ -14,13 +14,14 @@ import (
 
 const _algodAddress = "http://localhost:4001"
 const _algodToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-
 const (
 	KMD_ADDRESS         = "http://localhost:4002"
 	KMD_TOKEN           = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	KMD_WALLET_NAME     = "unencrypted-default-wallet"
 	KMD_WALLET_PASSWORD = ""
 )
+const approvalPath = "bmc/approval.teal"
+const clearPath = "bmc/clear.teal"
 
 func GetAccounts() ([]crypto.Account, error) {
 	client, err := kmd.MakeClient(KMD_ADDRESS, KMD_TOKEN)
@@ -71,8 +72,8 @@ func GetAccounts() ([]crypto.Account, error) {
 
 	return accts, nil
 }
-func Test_NewSender(t *testing.T) {
 
+func Test_NewSender(t *testing.T) {
 	accts, err := GetAccounts()
 	if err != nil {
 		t.Logf("Error generating KMD account: %v", err)
@@ -82,8 +83,11 @@ func Test_NewSender(t *testing.T) {
 
 	algodAccess := []string{_algodAddress, _algodToken}
 
-	appId, err := deployBmc(algodAccess, account)
-
+	appId, err := deployContract(algodAccess, [2]string{approvalPath, clearPath}, account)
+	if err != nil {
+		t.Logf("Error deploying BMC: %v", err)
+		t.FailNow()
+	}
 	opts := map[string]interface{}{"app_id": appId}
 	rawOpts, err := json.Marshal(opts)
 	if err != nil {
@@ -104,10 +108,12 @@ func Test_NewSender(t *testing.T) {
 		t.Logf("Error creating new sender: %v", err)
 		t.FailNow()
 	}
-	_, err = s.(*sender).CallAbi("concat_strings", []interface{}{[]string{"this", "string", "is", "joined"}})
+	kk, err := s.(*sender).callAbi("concat_strings",
+		[]interface{}{[]string{"this", "string", "is", "joined"}})
 	if err != nil {
 		t.Logf("Error using abi: %v", err)
 		t.FailNow()
 	}
+	fmt.Print(kk)
 
 }
