@@ -1,21 +1,21 @@
-package internalABI
+package contracts
 
 import (
 	"context"
 	"fmt"
 
 	"appliedblockchain.com/icon-bridge/config"
-	toolsABI "appliedblockchain.com/icon-bridge/internalABI/tools"
+	tools "appliedblockchain.com/icon-bridge/contracts/tools"
 	"github.com/algorand/go-algorand-sdk/abi"
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/future"
 	"github.com/algorand/go-algorand-sdk/types"
 )
 
-func RegisterRelayer(client *algod.Client, relayer_address types.Address, bmc_contract *abi.Contract, mcp future.AddMethodCallParams) (ret future.ExecuteResult, err error) {
+func RegisterRelayer(client *algod.Client, relayerAddress types.Address, bmcContract *abi.Contract, mcp future.AddMethodCallParams) (ret future.ExecuteResult, err error) {
 	var atc = future.AtomicTransactionComposer{}
 
-	err = atc.AddMethodCall(toolsABI.CombineMethod(mcp, toolsABI.GetMethod(bmc_contract, "registerRelayer"), []interface{}{relayer_address}))
+	err = atc.AddMethodCall(tools.CombineMethod(mcp, tools.GetMethod(bmcContract, "registerRelayer"), []interface{}{relayerAddress}))
 
 	if err != nil {
 		fmt.Printf("Failed to add method registerRelayer call into BMC contract: %+v \n", err)

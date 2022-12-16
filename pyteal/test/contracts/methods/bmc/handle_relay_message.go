@@ -1,20 +1,20 @@
-package internalABI
+package contracts
 
 import (
 	"context"
 	"fmt"
 
 	"appliedblockchain.com/icon-bridge/config"
-	toolsABI "appliedblockchain.com/icon-bridge/internalABI/tools"
+	tools "appliedblockchain.com/icon-bridge/contracts/tools"
 	"github.com/algorand/go-algorand-sdk/abi"
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/future"
 )
 
-func HandleRelayMessage(client *algod.Client, bsh_id uint64, msg string, bmc_contract *abi.Contract, mcp future.AddMethodCallParams) (ret future.ExecuteResult, err error) {
+func HandleRelayMessage(client *algod.Client, bshId uint64, msg string, bmcContract *abi.Contract, mcp future.AddMethodCallParams) (ret future.ExecuteResult, err error) {
 	var atc = future.AtomicTransactionComposer{}
 
-	err = atc.AddMethodCall(toolsABI.CombineMethod(mcp, toolsABI.GetMethod(bmc_contract, "handleRelayMessage"), []interface{}{bsh_id, msg}))
+	err = atc.AddMethodCall(tools.CombineMethod(mcp, tools.GetMethod(bmcContract, "handleRelayMessage"), []interface{}{bshId, msg}))
 
 	if err != nil {
 		fmt.Printf("Failed to add method handleRelayMessage call into BMC contract: %+v \n", err)

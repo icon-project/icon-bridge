@@ -1,10 +1,10 @@
 from pyteal import *
 
 # Create a simple Expression to use later
+# Creator assume to be the relayer
 is_creator = Txn.sender() == Global.creator_address()
 
 global_bsh_app_address = Bytes("bsh_app_address")
-global_relayer_acc_address = Bytes("relayer_acc_address")
 
 # Main router class
 router = Router(
@@ -30,17 +30,11 @@ router = Router(
 @router.method
 def registerBSHContract(bsh_app_address: abi.Address): 
     return Seq(
+        Assert(is_creator),
         App.globalPut(global_bsh_app_address, bsh_app_address.get()),
         Approve()
     )
     
-@router.method
-def registerRelayer(relayer_account: abi.Address): 
-    return Seq(
-        App.globalPut(global_relayer_acc_address, relayer_account.get()),
-        Approve()
-    )
-
 @router.method
 def sendMessage (to: abi.String, svc: abi.String, sn: abi.Uint64,  *, output: abi.String) -> Expr:
     return Seq(
@@ -51,7 +45,7 @@ def sendMessage (to: abi.String, svc: abi.String, sn: abi.Uint64,  *, output: ab
 @router.method
 def handleRelayMessage (bsh_app: abi.Application, msg: abi.String,  *, output: abi.String) -> Expr:
     return Seq(
-        Assert(Txn.sender() == App.globalGet(global_relayer_acc_address)),
+        Assert(is_creator),
         InnerTxnBuilder.Begin(),
         InnerTxnBuilder.MethodCall(
             app_id=bsh_app.application_id(),

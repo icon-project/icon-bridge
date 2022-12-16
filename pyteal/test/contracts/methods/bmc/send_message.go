@@ -1,20 +1,20 @@
-package internalABI
+package contracts
 
 import (
 	"context"
 	"fmt"
 
 	"appliedblockchain.com/icon-bridge/config"
-	toolsABI "appliedblockchain.com/icon-bridge/internalABI/tools"
+	tools "appliedblockchain.com/icon-bridge/contracts/tools"
 	"github.com/algorand/go-algorand-sdk/abi"
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/future"
 )
 
-func SendMessage(client *algod.Client, bmc_contract *abi.Contract, mcp future.AddMethodCallParams) (ret future.ExecuteResult, err error) {
+func SendMessage(client *algod.Client, bmcContract *abi.Contract, mcp future.AddMethodCallParams) (ret future.ExecuteResult, err error) {
 	var atc = future.AtomicTransactionComposer{}
 
-	err = atc.AddMethodCall(toolsABI.CombineMethod(mcp, toolsABI.GetMethod(bmc_contract, "sendMessage"), []interface{}{"ICON", "TOKEN_TRANSFER_SERVICE", 3}))
+	err = atc.AddMethodCall(tools.CombineMethod(mcp, tools.GetMethod(bmcContract, "sendMessage"), []interface{}{"ICON", "TOKEN_TRANSFER_SERVICE", 3}))
 
 	if err != nil {
 		fmt.Printf("Failed to add method SendMessage call into BMC contract: %+v \n", err)
