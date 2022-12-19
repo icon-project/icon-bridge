@@ -1,5 +1,5 @@
 # global owners: used as fallback if nobody owns the code
-* @CyrusVorwald-ICON
+* @CyrusVorwald
 
 # solidity
 /solidity/ @sdpisreddevil @izyak
@@ -23,10 +23,10 @@
 /cmd/e2etest/chain/near/ @MuhammedIrfan
 
 # docs
-/docs/ @CyrusVorwald-ICON @pragyanshrestha-ibriz @MuhammedIrfan @andrii-kl
+/docs/ @CyrusVorwald @pragyanshrestha-ibriz @MuhammedIrfan @andrii-kl
 
 # devops
-.github/ @CyrusVorwald-ICON
+.github/ @CyrusVorwald
 
 #rust
 /rust/ @MuhammedIrfan

@@ -1,7 +1,19 @@
-# ICON Bridge
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
+<p align="center">
+    <img src="./docs/img/iconbridge_350x80.png" alt="ICON Bridge Logo" width="350px"></img>
+</p>
+<div align="center">
+    <a align="center" href='https://icon.community/learn/icon-bridge/'><button type='button' style='font-weight:semibold; background:#30AAAE; border-radius:5px; border:0px; box-shadow:1px; padding:4px 6px; color:white; cursor:pointer; '>What is ICON Bridge?</button></a>
+</div>
+<h3 align="center">
+    ICON Bridge is an early iteration of ICON's cutting-edge interoperability product, BTP, which allows cross-chain transfers and integration with any blockchain that suppots smart contracts.    
+</h3>
+<p align="center">
+    <a href="https://twitter.com/iconfoundation_"><img src="https://img.shields.io/twitter/follow/iconfoundation_?style=social"></a>
+    &nbsp;
+   <a href="https://twitter.com/helloiconworld"><img src="https://img.shields.io/twitter/follow/helloiconworld?style=social"></a>
+</p>
+
+## ICON Bridge
 ![release](https://img.shields.io/github/v/release/icon-project/icon-bridge)
 [![codecov](https://codecov.io/gh/icon-project/icon-bridge/branch/main/graph/badge.svg?token=YXV6EE5KB5)](https://codecov.io/gh/icon-project/icon-bridge)
 
@@ -49,34 +61,3 @@ For the testnet contract addresses, please check [Testnet Contract Addresses](./
 ## Roadmap
 
 Please see our quarterly roadmap [here](https://github.com/orgs/icon-project/projects/4).
-
-## Contributors
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tbody>
-    <tr>
-      <td align="center"><a href="https://github.com/izyak"><img src="https://avatars.githubusercontent.com/u/76203436?v=4?s=100" width="100px;" alt="izyak"/><br /><sub><b>izyak</b></sub></a><br /><a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Tests">⚠️</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Documentation">📖</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=izyak" title="Code">💻</a></td>
-      <td align="center"><a href="https://github.com/andrii-kl"><img src="https://avatars.githubusercontent.com/u/18900364?v=4?s=100" width="100px;" alt="Andrii"/><br /><sub><b>Andrii</b></sub></a><br /><a href="https://github.com/icon-project/icon-bridge/commits?author=andrii-kl" title="Documentation">📖</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=andrii-kl" title="Tests">⚠️</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=andrii-kl" title="Code">💻</a></td>
-      <td align="center"><a href="https://github.com/CyrusVorwald-ICON"><img src="https://avatars.githubusercontent.com/u/90732384?v=4?s=100" width="100px;" alt="CyrusVorwald-ICON"/><br /><sub><b>CyrusVorwald-ICON</b></sub></a><br /><a href="#business-CyrusVorwald-ICON" title="Business development">💼</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=CyrusVorwald-ICON" title="Documentation">📖</a> <a href="#ideas-CyrusVorwald-ICON" title="Ideas, Planning, & Feedback">🤔</a> <a href="#maintenance-CyrusVorwald-ICON" title="Maintenance">🚧</a> <a href="#projectManagement-CyrusVorwald-ICON" title="Project Management">📆</a></td>
-      <td align="center"><a href="http://themissingsemicolon.in"><img src="https://avatars.githubusercontent.com/u/35568964?v=4?s=100" width="100px;" alt="Shreyas S Bhat"/><br /><sub><b>Shreyas S Bhat</b></sub></a><br /><a href="https://github.com/icon-project/icon-bridge/commits?author=shreyasbhat0" title="Documentation">📖</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=shreyasbhat0" title="Tests">⚠️</a> <a href="https://github.com/icon-project/icon-bridge/commits?author=shreyasbhat0" title="Code">💻</a></td>
-    </tr>
-  </tbody>
-</table>
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-
-This project follows the [all-contributors](https://allcontributors.org) specification.
-Contributions of any kind are welcome!
