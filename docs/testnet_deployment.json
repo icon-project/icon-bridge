@@ -14,31 +14,48 @@
          }
     },
     "contracts": {
-         "icon": {
-              "sICX": "cxc7b869d97a567044a2a5acea180ecd9071cd20b0",
-              "bnUSD": "cxcadcaf77d8e46089fd3d98fcf71eabee1700f148",
-              "BNB": "cx55b835590d43af7bf6f5be3c3d50982264d24e5d",
-              "BUSD": "cx39a7fefbe48ca7984e036abb1fab16f25fa641bb",
-              "USDT": "cxdb7e556a7fd5441bead5d7c5403d414223d51132",
-              "USDC": "cxf021731307d9f382935ac4bda81ee03946e1e4bd",
-              "BTCB": "cx7c1ef7b631a64e33e35565b81e669a05cdd0d968",
-              "ETH": "cx4663c5f1d955207c5718aedb11ff029f08b50036",
-              "bmc": "cx053b96e2de3b9e6fc06db7b390d96ebf5fe82892",
-              "bts": "cxa843db0a27750230559f997bafaeb7f8739afc81"
-         },
-         "bsc": {
-              "BUSD": "0x119344c4354AcD401Ffb7Ed58e2B03fBA6759a87",
-              "USDT": "0x51C59A4453e26c1DC46E282cbC6FFDD72ceC16DA",
-              "USDC": "0x2f84D2Eeac14e2d02aaf00eB25801721D4233d19",
-              "BTCB": "0xd5d707da717cf4771Ed995f16E976C711890F118",
-              "ETH": "0xE3471f58314332502Be2B0681a66D674D98763D6",
-              "ICX": "0x7d8c52A23FD7e3ca1342797baE7caF6d7b8036BA",
-              "sICX": "0x0a7792fe75548b26b287871081Aa6b05f48D9e89",
-              "bnUSD": "0xc0c1aA22F99bb6724dC4159C256A5989D90A659C",
-              "BMCManagement": "0x5B9733113745F87A790321e2a84e73CbDa628B95",
-              "BMCPeriphery": "0x853CceE29C20331DB18937E6bEdb8ab477ebe691",
-              "BTSCore": "0x1a2aDf985D6c2700fdAf72A9c1e2b39e3B647F7e",
-              "BTSPeriphery": "0x69555E113279b3d3805492a829DD765ED394A669"
-         }
+        "icon": {
+             "sICX" : "cx3044ad389267b50eb3c57103eade0c5a72261c1a",
+             "bnUSD" : "cx7f45afe9d8ce95e80c1be7c4eef2ea0dd843c4e3",
+             "BNB" : "cxcea1078c39e8b887692d3ccdd81bd711a6260ea5",
+             "BUSD" : "cxea67f5fe1d1f7e1d29d54f185f0585b8262c788e",
+             "USDT" : "cxac717247714a0b8e2b9038fdadfdcc0f033e325b",
+             "USDC" : "cxd840ae3c79c1366895747aa8c228bd7e3459032f",
+             "BTCB" : "cx63be8619af9cdf1cb053ccde7642ae974648a8c1",
+             "ETH" : "cx4b9cd9bb520b08d14c19c5035295f7e44003e42f",
+             "ICZ" : "cx29e69bd4b79096dc6e07a4f3c22c1ef45675ff34",
+             "bmc": "cxcc165238ae0e894835e88f549f22e520c7ad740f",
+             "bts": "cx949e9e242305309ed234c19183e9ed6e8f44ee73"
+        },
+        "bsc": {
+             "BUSD" : "0xED41B3B136a96c867Ee265cC8a79a8ea39eeC9C4",
+             "USDT" : "0x8dE8FaF129d5BD9844dbc92024907d48B415987C",
+             "USDC" : "0x9DDBcf279D1D01C32A2c13efCB6415f37416857F",
+             "BTCB" : "0x299Fb600FB51A208d3c268Da187539a59bE40041",
+             "ETH" : "0xd49a76cF9a79F13deaAcB789039e3ef76C4c1c5F",
+             "ICX" : "0x0C8773fa9A67291e089cB8136Abb1bcb0Aae220F",
+             "sICX" : "0xBBE70cE3dAe164a188a47e6Be898F09D29AFdF74",
+             "bnUSD" : "0x4F6f26967a882c12a03DAe27272Ed0fd85A94443",
+             "ICZ" : "0xe3CdBBEE28f7EbB0E2b81764a6E71ce7C681C0E9",
+             "BMCManagement": "0x9Ab68EB48423AF80d7BDAffd7Ad976f69aa67e37",
+             "BMCPeriphery": "0x99B22952e4D37d46046c46cD9F91cE1cdfB0605B",
+             "BTSCore": "0x9fCBAD6F4C9dC2C0b109408E39cf042B9b2aE65A",
+             "BTSPeriphery": "0xd75A671A5196459b13c97424B0C275D51D2C3488"
+        },
+        "snow": {
+             "BNB" : "0x3EBbc0C7a5aB3e16c629e01050d8d98aB439C9E0",
+             "BUSD" : "0x093Bdf882d40Bc02A21D1785f26F01609DA06428",
+             "USDT" : "0x91f65858E905E3Ece94601eD8981FeF24dce7048",
+             "USDC" : "0x7a648017B0341dA04D981B9b4Ec509B0042eCA73",
+             "BTCB" : "0x75DD8B810B9777b55651D5ce4634C4df9bCF8222",
+             "ETH" : "0xc8106C7FFa216A561273877F8e3359D630D23370",
+             "ICX" : "0x032A0A189b8e2Ef6A3e3FE747746823d969038a7",
+             "sICX" : "0xD26FEF4F8Bfc9655e99699019D76F003B58338bB",
+             "bnUSD" : "0x40684101a294782108D12d5abD0FEd76C7B4cF59",
+             "BMCManagement": "0xF54797CF988dc6Df41a0e79C79475D80aBbFE2c6",
+             "BMCPeriphery": "0x819EAf583A73C4556E9f8bF843EdE46cc0Db552C",
+             "BTSCore": "0x5eD4502a60d6A0Fc6377b54e26916Eb44a3D4B24",
+             "BTSPeriphery": "0x55c783F26986F4152203036E5C17AE9ad3bD3974"
+        }
     }
 }
