@@ -4,14 +4,20 @@
               "uri": "https://lisbon.net.solidwallet.io/api/v3/icon_dex",
               "network_id": "0x2",
               "btp_network_id": "0x2.icon",
-              "block_height": 11273953
+              "block_height": 16561180
          },
          "bsc": {
               "uri": "https://data-seed-prebsc-1-s1.binance.org:8545",
               "network_id": "0x61",
               "btp_network_id": "0x61.bsc",
-              "block_height": 21985565
-         }
+              "block_height": 25592555
+         },
+         "snow": {
+          "uri": "https://arctic-rpc.icenetwork.io:9933",
+          "network_id": "0x229",
+          "btp_network_id": "0x229.snow",
+          "block_height": 191853
+     }
     },
     "contracts": {
         "icon": {
