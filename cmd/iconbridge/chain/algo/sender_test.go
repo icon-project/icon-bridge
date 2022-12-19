@@ -1,9 +1,11 @@
 package algo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/algorand/go-algorand-sdk/client/kmd"
 	"github.com/algorand/go-algorand-sdk/crypto"
@@ -82,8 +84,9 @@ func Test_NewSender(t *testing.T) {
 	account := accts[0]
 
 	algodAccess := []string{_algodAddress, _algodToken}
+	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 
-	appId, err := deployContract(algodAccess, [2]string{approvalPath, clearPath}, account)
+	appId, err := deployContract(ctx, algodAccess, [2]string{approvalPath, clearPath}, account)
 	if err != nil {
 		t.Logf("Error deploying BMC: %v", err)
 		t.FailNow()
@@ -108,12 +111,11 @@ func Test_NewSender(t *testing.T) {
 		t.Logf("Error creating new sender: %v", err)
 		t.FailNow()
 	}
-	kk, err := s.(*sender).callAbi("concat_strings",
+	_, err = s.(*sender).callAbi(ctx, "concat_strings",
 		[]interface{}{[]string{"this", "string", "is", "joined"}})
 	if err != nil {
 		t.Logf("Error using abi: %v", err)
 		t.FailNow()
 	}
-	fmt.Print(kk)
 
 }

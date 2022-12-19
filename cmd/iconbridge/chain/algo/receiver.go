@@ -93,7 +93,7 @@ func (r *receiver) Subscribe(
 	//TODO add verifier logic
 
 	curRound := subOpts.Height
-	latestRound, err := r.cl.GetLatestRound()
+	latestRound, err := r.cl.GetLatestRound(ctx)
 	if err != nil {
 		r.log.WithFields(log.Fields{"error": err}).Error("receiveLoop: error failed to getLatestRound-")
 		return _errCh, err
@@ -119,7 +119,7 @@ func (r *receiver) Subscribe(
 				if curRound >= latestRound {
 					time.Sleep(500 * time.Millisecond)
 
-					latestRound, err = r.cl.GetLatestRound()
+					latestRound, err = r.cl.GetLatestRound(ctx)
 					if err != nil {
 						r.log.WithFields(log.Fields{"error": err}).Error("receiveLoop: error failed to getLatestRound-")
 						_errCh <- err
@@ -127,7 +127,7 @@ func (r *receiver) Subscribe(
 					continue
 				}
 				//Check the latest block for txns addressed to this BMC
-				r.inspectBlock(curRound, &subOpts, msgCh, _errCh)
+				r.inspectBlock(ctx, curRound, &subOpts, msgCh, _errCh)
 				curRound++
 			}
 		}
@@ -136,9 +136,9 @@ func (r *receiver) Subscribe(
 }
 
 // Inspects the latest block created for new relay messages
-func (r *receiver) inspectBlock(round uint64, subOpts *chain.SubscribeOptions,
+func (r *receiver) inspectBlock(ctx context.Context, round uint64, subOpts *chain.SubscribeOptions,
 	msgCh chan<- *chain.Message, _errCh chan error) {
-	newBlock, err := r.cl.GetBlockbyRound(round)
+	newBlock, err := r.cl.GetBlockbyRound(ctx, round)
 	if err != nil {
 		_errCh <- err
 		return

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"time"
 
 	"github.com/algorand/go-algorand-sdk/abi"
 	"github.com/algorand/go-algorand-sdk/future"
@@ -12,6 +13,7 @@ import (
 )
 
 const contractDir = "bmc/contract.json"
+const waitRounds = 5
 
 func getMethod(c *abi.Contract, name string) (abi.Method, error) {
 	m, err := c.GetMethodByName(name)
@@ -38,11 +40,12 @@ func (s *sender) initAbi() error {
 		return fmt.Errorf("Failed to marshal abi contract: %w", err)
 	}
 	s.bmc = abiBmc
-	sp, err := s.cl.algod.SuggestedParams().Do(context.Background())
+
+	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
+	sp, err := s.cl.algod.SuggestedParams().Do(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to get suggeted params: %w", err)
 	}
-	sp.Fee = 0
 	s.mcp = &future.AddMethodCallParams{
 		AppID:           s.opts.AppId,
 		Sender:          s.wallet.TypedAddress(),
@@ -53,7 +56,7 @@ func (s *sender) initAbi() error {
 	return nil
 }
 
-func (s *sender) callAbi(name string, args []interface{}) (future.ExecuteResult, error) {
+func (s *sender) callAbi(ctx context.Context, name string, args []interface{}) (future.ExecuteResult, error) {
 	var atc = future.AtomicTransactionComposer{}
 	method, err := getMethod(s.bmc, name)
 	if err != nil {
@@ -64,7 +67,7 @@ func (s *sender) callAbi(name string, args []interface{}) (future.ExecuteResult,
 	if err != nil {
 		return future.ExecuteResult{}, fmt.Errorf("Failed to add %s method to atc: %w", name, err)
 	}
-	ret, err := atc.Execute(s.cl.algod, context.Background(), 5)
+	ret, err := atc.Execute(s.cl.algod, ctx, waitRounds)
 	if err != nil {
 		return future.ExecuteResult{}, fmt.Errorf("Failed to execute atc: %w", err)
 	}

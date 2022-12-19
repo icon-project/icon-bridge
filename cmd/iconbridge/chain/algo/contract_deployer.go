@@ -12,20 +12,20 @@ import (
 	"github.com/algorand/go-algorand-sdk/types"
 )
 
-func deployContract(algodAccess []string, tealPath [2]string, account crypto.Account) (uint64, error) {
+func deployContract(ctx context.Context, algodAccess []string, tealPath [2]string, account crypto.Account) (uint64, error) {
 	client, err := algod.MakeClient(algodAccess[0], algodAccess[1])
 	if err != nil {
 		return 0, fmt.Errorf("Bmc couldn't create algod: %w", err)
 	}
-	params, err := client.SuggestedParams().Do(context.Background())
+	params, err := client.SuggestedParams().Do(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("Error getting params: %w", err)
 	}
-	approvalProgram, err := compileTeal(client, tealPath[0])
+	approvalProgram, err := compileTeal(ctx, client, tealPath[0])
 	if err != nil {
 		return 0, fmt.Errorf("Approval compile err: %w", err)
 	}
-	clearProgram, err := compileTeal(client, tealPath[1])
+	clearProgram, err := compileTeal(ctx, client, tealPath[1])
 	if err != nil {
 		return 0, fmt.Errorf("Clear compile err: %w", err)
 	}
@@ -53,23 +53,23 @@ func deployContract(algodAccess []string, tealPath [2]string, account crypto.Acc
 	if err != nil {
 		return 0, fmt.Errorf("Failed to sign transaction: %w", err)
 	}
-	_, err = client.SendRawTransaction(signedTxn).Do(context.Background())
+	_, err = client.SendRawTransaction(signedTxn).Do(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("Failed to send transaction: %w", err)
 	}
-	deployRes, err := future.WaitForConfirmation(client, txID, 4, context.Background())
+	deployRes, err := future.WaitForConfirmation(client, txID, waitRounds, ctx)
 	if err != nil {
 		return 0, fmt.Errorf("Error waiting for confirmation: %w", err)
 	}
 	return deployRes.ApplicationIndex, nil
 }
 
-func compileTeal(client *algod.Client, filePath string) ([]byte, error) {
+func compileTeal(ctx context.Context, client *algod.Client, filePath string) ([]byte, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return []byte{}, err
 	}
-	compileResponse, err := client.TealCompile(content).Do(context.Background())
+	compileResponse, err := client.TealCompile(content).Do(ctx)
 	if err != nil {
 		return []byte{}, err
 	}

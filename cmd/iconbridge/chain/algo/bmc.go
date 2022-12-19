@@ -1,20 +1,37 @@
-/* package algo
+package algo
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+)
 
 func (s *sender) HandleRelayMessage(ctx context.Context, _prev []byte, _msg []byte) (
-	*types.Transaction, error) {
-
-	s.callAbi("HandleRelayMessage", []interface{[]struct{_prev, _msg ,}})
-
-	var dummyPk ed25519.PrivateKey
-
-	txID, signedTxn, _ := crypto.SignTransaction(dummyPk, txn)
-
-	txID, err = cl.algod.SendRawTransaction(signedTxn).Do(context.Background())
+	string, error) {
+	res, err := s.callAbi(ctx, "HandleRelayMessage", []interface{}{_prev, _msg})
 	if err != nil {
-		return nil, "", err
+		return "", fmt.Errorf("Error calling Bmc Handle Relay Message: %w", err)
 	}
-
-	return signedTxn, txID, nil
+	return res.TxIDs[0], nil
 }
 
-*/
+func (s *sender) GetBmcStatus(ctx context.Context) (*chain.BMCLinkStatus, error) {
+	res, err := s.callAbi(ctx, "GetStatus", []interface{}{})
+	if err != nil {
+		return nil, fmt.Errorf("Error calling Bmc Handle Relay Message: %w", err)
+	}
+	bmcStatus := res.MethodResults[0].ReturnValue
+
+	switch bmcStatus := bmcStatus.(type) {
+	case [4]uint64:
+		ls := &chain.BMCLinkStatus{
+			TxSeq:         bmcStatus[0],
+			RxSeq:         bmcStatus[1],
+			RxHeight:      bmcStatus[2],
+			CurrentHeight: bmcStatus[3],
+		}
+		return ls, nil
+	}
+	return nil, fmt.Errorf("BmcStatus - Couldnt parse abi's return interface")
+}

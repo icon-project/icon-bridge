@@ -9,7 +9,6 @@ import (
 
 	"github.com/algorand/go-algorand-sdk/abi"
 	"github.com/algorand/go-algorand-sdk/future"
-	"github.com/algorand/go-algorand-sdk/types"
 	"github.com/icon-project/icon-bridge/common/codec"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -20,14 +19,9 @@ import (
 
 // TODO review consts
 const (
-	txMaxDataSize        = 8 * 1024 // 8 KB
-	txOverheadScale      = 0.01     // base64 encoding overhead 0.36, rlp and other fields 0.01
-	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale)
+	blockSizeLimit       = 1000000
 	defaultSendTxTimeout = 15 * time.Second
-	defaultGasPrice      = 18000000000
-	maxGasPriceBoost     = 10.0
 	defaultReadTimeout   = 50 * time.Second //
-	DefaultGasLimit      = 25000000
 )
 
 func NewSender(
@@ -64,7 +58,7 @@ func NewSender(
 
 type senderOptions struct {
 	AppId            uint64         `json:"app_id"`
-	TxDataSizeLimit  uint64         `json:"tx_data_size_limit"`
+	BlockSizeLimit   uint64         `json:"tx_data_size_limit"`
 	BalanceThreshold intconv.BigInt `json:"balance_threshold"`
 }
 
@@ -79,12 +73,10 @@ type sender struct {
 	mcp    *future.AddMethodCallParams
 }
 
-// TODO review relayTx and all the methods using it
 type relayTx struct {
-	wallet *wallet.AvmWallet
-	txn    types.Transaction
-	txId   string
-	cl     IClient
+	s    *sender
+	txId string
+	msg  []byte
 }
 
 func (opts *senderOptions) unmarshal(v map[string]interface{}) error {
@@ -96,7 +88,7 @@ func (opts *senderOptions) unmarshal(v map[string]interface{}) error {
 }
 
 func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
-	return s.cl.GetBmcStatus(ctx)
+	return s.GetBmcStatus(ctx)
 }
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
@@ -111,9 +103,9 @@ func (s *sender) Segment(
 		return nil, msg, ctx.Err()
 	}
 
-	if s.opts.TxDataSizeLimit == 0 {
-		limit := defaultTxSizeLimit
-		s.opts.TxDataSizeLimit = uint64(limit)
+	if s.opts.BlockSizeLimit == 0 {
+		limit := blockSizeLimit
+		s.opts.BlockSizeLimit = uint64(limit)
 	}
 	if len(msg.Receipts) == 0 {
 		return nil, msg, nil
@@ -135,48 +127,37 @@ func (s *sender) Segment(
 		var rlpReceipt []byte
 
 		newMsgSize := msgSize + uint64(len(rlpReceipt))
-		if newMsgSize > s.opts.TxDataSizeLimit {
+		if newMsgSize > s.opts.BlockSizeLimit {
 			newMsg.Receipts = msg.Receipts[i:]
 			break
 		}
 		msgSize = newMsgSize
 		rm.Receipts = append(rm.Receipts, rlpReceipt)
 	}
-	_, err = codec.RLP.MarshalToBytes(rm)
+	message, err := codec.RLP.MarshalToBytes(rm)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	newTx := &relayTx{
-		wallet: s.wallet,
-		cl:     s.cl,
+		s:    s,
+		txId: "",
+		msg:  message,
 	}
 
 	return newTx, newMsg, nil
 }
 
 func (tx relayTx) Send(ctx context.Context) (err error) {
-	tx.cl.Log().WithFields(log.Fields{
-		"prev": tx.wallet}).Debug("handleRelayMessage: send tx")
-
+	tx.s.cl.Log().WithFields(log.Fields{
+		"prev": tx.s.wallet}).Debug("handleRelayMessage: send tx")
 	ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeout)
-	defer func() {
-		cancel()
-		if !tx.txn.Empty() {
-			txBytes := tx.txn.Note
-			tx.cl.Log().WithFields(log.Fields{
-				"tx": string(txBytes)}).Debug("handleRelayMessage: tx sent")
-		}
-	}()
-
+	defer cancel()
 	/* this func should make bmc call to execute its HRM method and get new tx and txId */
-	//_, tx.txId, err = tx.cl.HandleRelayMessage(ctx, []byte(tx.wallet.Address() ), tx.txn.Header.Note, tx.txn.Header.Sender)
+	tx.txId, err = tx.s.HandleRelayMessage(ctx, []byte(tx.s.wallet.Address()), tx.msg)
 	if err != nil {
-		tx.cl.Log().WithFields(log.Fields{
+		tx.s.cl.Log().WithFields(log.Fields{
 			"error": err}).Debug("handleRelayMessage: send tx")
-		if err.Error() == "insufficient funds for gas * price + value" {
-			return chain.ErrInsufficientBalance
-		}
 		return err
 	}
 	return nil
@@ -184,27 +165,20 @@ func (tx relayTx) Send(ctx context.Context) (err error) {
 
 // Waits for txn to be confirmed and gets its receipt
 func (tx *relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) {
-
 	ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 	defer cancel()
-	if tx.txn.Empty() {
-		return 0, fmt.Errorf("no pending tx")
+	if tx.msg == nil {
+		return 0, fmt.Errorf("Can't get receipt from tx: Empty relay message")
 	}
-
-	confirmedTxn, err := tx.cl.WaitForTransaction(ctx, tx.txId)
-
+	confirmedTxn, err := tx.s.cl.WaitForTransaction(ctx, tx.txId)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("Can't get receipt from tx: %w", err)
+
 	} else {
 		return confirmedTxn.ConfirmedRound, nil
 	}
 }
 
 func (tx *relayTx) ID() interface{} {
-	if !tx.txn.Empty() {
-		//TODO check if lease is the same as transaction id
-		return tx.txn.Lease
-	} else {
-		return nil
-	}
+	return tx.txId
 }

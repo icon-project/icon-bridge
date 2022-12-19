@@ -24,33 +24,26 @@ type Client struct {
 	algod *algod.Client
 }
 
-// TODO create bmc interface w/ methods to compile, deploy and interact with the smart contract
-
 type IClient interface {
 	Log() log.Logger
-
-	//algod
 	GetBalance(ctx context.Context, hexAddr string) (*big.Int, error)
-	PendingTransactionsByAddress(address string) ([]types.SignedTxn, error)
 	WaitForTransaction(ctx context.Context, txId string) (models.PendingTransactionInfoResponse, error)
-	GetLatestRound() (uint64, error)
-	GetBlockbyRound(round uint64) (block *types.Block, err error)
-	GetBlockHash(round uint64) (hash string, err error)
+	GetLatestRound(ctx context.Context) (uint64, error)
+	GetBlockbyRound(ctx context.Context, round uint64) (block *types.Block, err error)
+	GetBlockHash(ctx context.Context, round uint64) (hash string, err error)
+	DecodeBtpMsg(log string) (*chain.Event, error)
 }
 
-func newClient(algodAccess []string, l log.Logger) (cli *Client, err error) {
-
+func newClient(algodAccess []string, l log.Logger) (*Client, error) {
 	algodClient, err := algod.MakeClient(algodAccess[0], algodAccess[1])
-
 	if err != nil {
-		l.Fatalf("Algod client could not be created: %s\n", err)
+		return nil, err
 	}
-
-	cli = &Client{
+	cli := &Client{
 		log:   l,
 		algod: algodClient,
 	}
-	return
+	return cli, nil
 }
 
 func (cl *Client) WaitForTransaction(ctx context.Context, txId string) (models.PendingTransactionInfoResponse, error) {
@@ -58,7 +51,7 @@ func (cl *Client) WaitForTransaction(ctx context.Context, txId string) (models.P
 }
 
 func (cl *Client) GetBalance(ctx context.Context, walletAddr string) (*big.Int, error) {
-	accountInfo, err := cl.algod.AccountInformation(walletAddr).Do(context.Background())
+	accountInfo, err := cl.algod.AccountInformation(walletAddr).Do(ctx)
 	if err != nil {
 		return nil, err
 	} else {
@@ -71,16 +64,15 @@ func (c *Client) Log() log.Logger {
 }
 
 // get latest block round
-func (cl *Client) GetLatestRound() (uint64, error) {
-	sta, err := cl.algod.Status().Do(context.Background())
-
+func (cl *Client) GetLatestRound(ctx context.Context) (uint64, error) {
+	sta, err := cl.algod.Status().Do(ctx)
 	return sta.LastRound, err
 }
 
 // get latest block number
-func (cl *Client) GetBlockbyRound(round uint64) (*types.Block, error) {
+func (cl *Client) GetBlockbyRound(ctx context.Context, round uint64) (*types.Block, error) {
 	for i := 1; i <= BlockRetryLimit; i++ {
-		block, err := cl.algod.Block(round).Do(context.Background())
+		block, err := cl.algod.Block(round).Do(ctx)
 		if err != nil {
 			time.Sleep(AlgoBlockRate * time.Second)
 			continue
@@ -92,9 +84,9 @@ func (cl *Client) GetBlockbyRound(round uint64) (*types.Block, error) {
 }
 
 // get latest block number
-func (cl *Client) GetBlockHash(round uint64) (hash string, err error) {
+func (cl *Client) GetBlockHash(ctx context.Context, round uint64) (hash string, err error) {
 	for i := 1; i <= BlockRetryLimit; i++ {
-		hashResponse, err := cl.algod.GetBlockHash(round).Do(context.Background())
+		hashResponse, err := cl.algod.GetBlockHash(round).Do(ctx)
 		if err != nil {
 			time.Sleep(AlgoBlockRate * time.Second)
 			continue
@@ -108,21 +100,4 @@ func (cl *Client) GetBlockHash(round uint64) (hash string, err error) {
 func (cl *Client) DecodeBtpMsg(log string) (*chain.Event, error) {
 	//TODO this func should use ABI logic to go through the log string and decode it into a BTP message event
 	return &chain.Event{}, nil
-}
-
-func (cl *Client) GetBmcStatus(ctx context.Context) (*chain.BMCLinkStatus, error) {
-	//TODO replace hardocded struct with value from BMC contract call
-	ls := &chain.BMCLinkStatus{}
-	ls.TxSeq = uint64(19)
-	ls.RxSeq = uint64(17)
-	ls.RxHeight = uint64(12341332)
-	ls.CurrentHeight = uint64(100432121)
-	return ls, nil
-}
-
-// not used atm
-func (cl *Client) PendingTransactionsByAddress(address string) ([]types.SignedTxn, error) {
-	_, tx, err := cl.algod.PendingTransactionsByAddress(address).Do(context.Background())
-
-	return tx, err
 }

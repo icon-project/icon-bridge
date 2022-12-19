@@ -40,7 +40,7 @@ func Test_Subscribe(t *testing.T) {
 
 	c, err := newClient(algodAccess, log.New())
 
-	curRound, err := c.GetLatestRound()
+	curRound, err := c.GetLatestRound(ctx)
 
 	if err != nil {
 		t.Log("Couldn't retrieve latest round")
