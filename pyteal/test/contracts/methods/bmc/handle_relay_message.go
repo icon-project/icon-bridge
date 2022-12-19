@@ -13,7 +13,7 @@ import (
 
 func HandleRelayMessage(client *algod.Client, bshId uint64, msg string, bmcContract *abi.Contract, mcp future.AddMethodCallParams) (ret future.ExecuteResult, err error) {
 	var atc = future.AtomicTransactionComposer{}
-
+	
 	err = atc.AddMethodCall(tools.CombineMethod(mcp, tools.GetMethod(bmcContract, "handleRelayMessage"), []interface{}{bshId, msg}))
 
 	if err != nil {

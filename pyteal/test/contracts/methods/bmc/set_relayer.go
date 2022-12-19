@@ -12,13 +12,13 @@ import (
 	"github.com/algorand/go-algorand-sdk/types"
 )
 
-func RegisterRelayer(client *algod.Client, relayerAddress types.Address, bmcContract *abi.Contract, mcp future.AddMethodCallParams) (ret future.ExecuteResult, err error) {
+func SetRelayer(client *algod.Client, relayerAddress types.Address, bmcContract *abi.Contract, mcp future.AddMethodCallParams) (ret future.ExecuteResult, err error) {
 	var atc = future.AtomicTransactionComposer{}
 
-	err = atc.AddMethodCall(tools.CombineMethod(mcp, tools.GetMethod(bmcContract, "registerRelayer"), []interface{}{relayerAddress}))
+	err = atc.AddMethodCall(tools.CombineMethod(mcp, tools.GetMethod(bmcContract, "setRelayer"), []interface{}{relayerAddress}))
 
 	if err != nil {
-		fmt.Printf("Failed to add method registerRelayer call into BMC contract: %+v \n", err)
+		fmt.Printf("Failed to add method setRelayer call into BMC contract: %+v \n", err)
 		return
 	}
 

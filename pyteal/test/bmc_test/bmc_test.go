@@ -41,6 +41,30 @@ func Test_Init(t *testing.T) {
 	}
 }
 
+func Test_RelayerAsDeployer(t *testing.T) {
+	appRelayerAddress := tools.GetGlobalStateByKey(t, client, bmcAppId, "relayer_acc_address")
+
+	if !bytes.Equal(appRelayerAddress, deployer.Address[:]) {
+		t.Fatal("Failed to align relayer address to address in global state of BMC application")
+	}
+}
+
+func Test_SetRelayer(t *testing.T) {
+	relayer := crypto.GenerateAccount()
+
+	_, err = bmcmethods.SetRelayer(client, relayer.Address, bmcContract, bmcMcp)
+
+	if err != nil {
+		t.Fatalf("Failed to add method call: %+v", err)
+	}
+
+	appRelayerAddress := tools.GetGlobalStateByKey(t, client, bmcAppId, "relayer_acc_address")
+
+	if !bytes.Equal(appRelayerAddress, relayer.Address[:]) {
+		t.Fatal("Failed to align relayer address to address in global state of BMC application")
+	}
+}
+
 func Test_RegisterBSHContract(t *testing.T) {
 	_, err = bmcmethods.RegisterBSHContract(client, bshAppId, bmcContract, bmcMcp)
 
@@ -65,6 +89,12 @@ func Test_CallSendMessageFromOutsideOfBsh(t *testing.T) {
 }
 
 func Test_CallHandleRelayMessageUsingRelayerAsSender(t *testing.T) {
+	_, err = bmcmethods.SetRelayer(client, deployer.Address, bmcContract, bmcMcp)
+
+	if err != nil {
+		t.Fatalf("Failed to add method call: %+v", err)
+	}
+
 	ret, err := bmcmethods.HandleRelayMessage(client, bshAppId, dummyBTPMessage, bmcContract, bmcMcp)
 
 	if err != nil {

@@ -1,10 +1,10 @@
 from pyteal import *
 
 # Create a simple Expression to use later
-# Creator assume to be the relayer
 is_creator = Txn.sender() == Global.creator_address()
 
 global_bsh_app_address = Bytes("bsh_app_address")
+global_relayer_acc_address = Bytes("relayer_acc_address")
 
 # Main router class
 router = Router(
@@ -13,7 +13,12 @@ router = Router(
     # What to do for each on-complete type when no arguments are passed (bare call)
     BareCallActions(
         # On create only, just approve
-        no_op=OnCompleteAction.create_only(Approve()),
+        no_op=OnCompleteAction.create_only(
+            Seq(
+                App.globalPut(global_relayer_acc_address, Global.creator_address()),
+                Approve()
+            )
+        ),
         # Always let creator update/delete but only by the creator of this contract
         update_application=OnCompleteAction.always(Return(is_creator)),
         delete_application=OnCompleteAction.always(Return(is_creator)),
@@ -34,6 +39,14 @@ def registerBSHContract(bsh_app_address: abi.Address):
         App.globalPut(global_bsh_app_address, bsh_app_address.get()),
         Approve()
     )
+
+@router.method
+def setRelayer(relayer_account: abi.Address): 
+    return Seq(
+        Assert(is_creator),
+        App.globalPut(global_relayer_acc_address, relayer_account.get()),
+        Approve()
+    )
     
 @router.method
 def sendMessage (to: abi.String, svc: abi.String, sn: abi.Uint64,  *, output: abi.String) -> Expr:
@@ -45,7 +58,7 @@ def sendMessage (to: abi.String, svc: abi.String, sn: abi.Uint64,  *, output: ab
 @router.method
 def handleRelayMessage (bsh_app: abi.Application, msg: abi.String,  *, output: abi.String) -> Expr:
     return Seq(
-        Assert(is_creator),
+        Assert(Txn.sender() == App.globalGet(global_relayer_acc_address)),
         InnerTxnBuilder.Begin(),
         InnerTxnBuilder.MethodCall(
             app_id=bsh_app.application_id(),
