@@ -2,7 +2,6 @@ package algo
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -10,25 +9,10 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-var (
-	block_height = 28070290
-	algo_bmc     = "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8"
-	icon_bmc     = "btp://0x1.icon/cx06f42ea934731b4867fca00d37c25aa30bc3e3d7"
-)
-
 // This function should receive a msg chanel as input, to which it shall forward a new msg as soon
 // as it detects valid events in txn from new blocks
 func Test_Subscribe(t *testing.T) {
-	algodAccess := []string{algodAddress, algodToken}
-	opts := map[string]interface{}{"syncConcurrency": 2}
-	rawOpts, err := json.Marshal(opts)
-	if err != nil {
-		t.Logf("Marshalling opts: %v", err)
-		t.FailNow()
-	}
-
-	rcv, err := NewReceiver(chain.BTPAddress(icon_bmc), chain.BTPAddress(algo_bmc),
-		algodAccess, rawOpts, log.New())
+	rcv, err := createTestReceiver()
 	if err != nil {
 		t.Logf("NewReceiver error: %v", err)
 		t.FailNow()
@@ -38,7 +22,7 @@ func Test_Subscribe(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 
-	c, err := newClient(algodAccess, log.New())
+	c, err := newClient([]string{sandboxAddress, sandboxToken}, log.New())
 
 	curRound, err := c.GetLatestRound(ctx)
 

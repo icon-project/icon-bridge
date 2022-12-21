@@ -1,7 +1,6 @@
 package algo
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -9,13 +8,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-var (
-	algodAddress = os.Getenv("ALGO_TEST_ADR")
-	algodToken   = os.Getenv("ALGO_TEST_TOK")
-)
-
 func Test_GetLatestBlock(t *testing.T) {
-	urls := []string{algodAddress, algodToken}
+	urls := []string{sandboxAddress, sandboxToken}
 	c, err := newClient(urls, log.New())
 	if err != nil {
 		t.Logf("Error creating algorand client: %v", err)
