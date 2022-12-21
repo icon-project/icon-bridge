@@ -2,14 +2,15 @@ package algo
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/algorand/go-algorand-sdk/abi"
+	"github.com/algorand/go-algorand-sdk/encoding/msgpack"
 	"github.com/algorand/go-algorand-sdk/future"
-	"github.com/icon-project/icon-bridge/common/codec"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/intconv"
@@ -102,7 +103,6 @@ func (s *sender) Segment(
 	if ctx.Err() != nil {
 		return nil, msg, ctx.Err()
 	}
-
 	if s.opts.BlockSizeLimit == 0 {
 		limit := blockSizeLimit
 		s.opts.BlockSizeLimit = uint64(limit)
@@ -111,38 +111,36 @@ func (s *sender) Segment(
 		return nil, msg, nil
 	}
 
-	rm := &chain.RelayMessage{
-		Receipts: make([][]byte, 0),
-	}
-
+	tmpReceipts := make([][]byte, 0)
 	var msgSize uint64
 
 	newMsg = &chain.Message{
 		From:     msg.From,
 		Receipts: msg.Receipts,
 	}
-	for i, _ := range msg.Receipts {
+	for i, receipt := range msg.Receipts {
+		var encReceipt = make([]byte, 1e3)
+		base64.StdEncoding.Encode(encReceipt, msgpack.Encode(receipt))
 
-		//TODO create decoding methad similar to RLP to convert relay receipts into a byte array
-		var rlpReceipt []byte
-
-		newMsgSize := msgSize + uint64(len(rlpReceipt))
-		if newMsgSize > s.opts.BlockSizeLimit {
+		msgSize += uint64(len(encReceipt))
+		if msgSize > s.opts.BlockSizeLimit {
 			newMsg.Receipts = msg.Receipts[i:]
 			break
 		}
-		msgSize = newMsgSize
-		rm.Receipts = append(rm.Receipts, rlpReceipt)
+
+		tmpReceipts = append(tmpReceipts, encReceipt)
 	}
-	message, err := codec.RLP.MarshalToBytes(rm)
-	if err != nil {
-		return nil, nil, err
+	rm := &chain.RelayMessage{
+		Receipts: tmpReceipts,
 	}
+
+	var encMessage = make([]byte, 10000)
+	base64.StdEncoding.Encode(encMessage, msgpack.Encode(rm))
 
 	newTx := &relayTx{
 		s:    s,
 		txId: "",
-		msg:  message,
+		msg:  encMessage,
 	}
 
 	return newTx, newMsg, nil
@@ -153,7 +151,6 @@ func (tx relayTx) Send(ctx context.Context) (err error) {
 		"prev": tx.s.wallet}).Debug("handleRelayMessage: send tx")
 	ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeout)
 	defer cancel()
-	/* this func should make bmc call to execute its HRM method and get new tx and txId */
 	tx.txId, err = tx.s.HandleRelayMessage(ctx, []byte(tx.s.wallet.Address()), tx.msg)
 	if err != nil {
 		tx.s.cl.Log().WithFields(log.Fields{
@@ -164,7 +161,7 @@ func (tx relayTx) Send(ctx context.Context) (err error) {
 }
 
 // Waits for txn to be confirmed and gets its receipt
-func (tx *relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) {
+func (tx relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) {
 	ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 	defer cancel()
 	if tx.msg == nil {
@@ -179,6 +176,6 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) 
 	}
 }
 
-func (tx *relayTx) ID() interface{} {
+func (tx relayTx) ID() interface{} {
 	return tx.txId
 }

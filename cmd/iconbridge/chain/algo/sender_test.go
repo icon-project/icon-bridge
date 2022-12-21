@@ -2,6 +2,7 @@ package algo
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -9,13 +10,15 @@ import (
 
 	"github.com/algorand/go-algorand-sdk/client/kmd"
 	"github.com/algorand/go-algorand-sdk/crypto"
+	"github.com/algorand/go-algorand-sdk/encoding/msgpack"
+	"github.com/bmizerany/assert"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
-const _algodAddress = "http://localhost:4001"
-const _algodToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+const sandboxAddress = "http://localhost:4001"
+const sandboxToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 const (
 	KMD_ADDRESS         = "http://localhost:4002"
 	KMD_TOKEN           = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -25,7 +28,7 @@ const (
 const approvalPath = "bmc/approval.teal"
 const clearPath = "bmc/clear.teal"
 
-func GetAccounts() ([]crypto.Account, error) {
+func getAccounts() ([]crypto.Account, error) {
 	client, err := kmd.MakeClient(KMD_ADDRESS, KMD_TOKEN)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create client: %+v", err)
@@ -75,32 +78,28 @@ func GetAccounts() ([]crypto.Account, error) {
 	return accts, nil
 }
 
-func Test_NewSender(t *testing.T) {
-	accts, err := GetAccounts()
+func createTestSender() (chain.Sender, error) {
+	accts, err := getAccounts()
 	if err != nil {
-		t.Logf("Error generating KMD account: %v", err)
-		t.FailNow()
+		return nil, fmt.Errorf("Error generating KMD account: %v", err)
 	}
 	account := accts[0]
 
-	algodAccess := []string{_algodAddress, _algodToken}
+	algodAccess := []string{sandboxAddress, sandboxToken}
 	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 
 	appId, err := deployContract(ctx, algodAccess, [2]string{approvalPath, clearPath}, account)
 	if err != nil {
-		t.Logf("Error deploying BMC: %v", err)
-		t.FailNow()
+		return nil, fmt.Errorf("Error deploying BMC: %v", err)
 	}
 	opts := map[string]interface{}{"app_id": appId}
 	rawOpts, err := json.Marshal(opts)
 	if err != nil {
-		t.Logf("Marshalling opts: %v", err)
-		t.FailNow()
+		return nil, fmt.Errorf("Marshalling opts: %v", err)
 	}
 	w, err := wallet.NewAvmWalletFromPrivateKey(&account.PrivateKey)
 	if err != nil {
-		t.Logf("Couldn't create wallet: %v", err)
-		t.FailNow()
+		return nil, fmt.Errorf("Couldn't create wallet: %v", err)
 	}
 
 	s, err := NewSender(
@@ -108,14 +107,93 @@ func Test_NewSender(t *testing.T) {
 		algodAccess, w,
 		rawOpts, log.New())
 	if err != nil {
-		t.Logf("Error creating new sender: %v", err)
-		t.FailNow()
+		return nil, fmt.Errorf("Error creating new sender: %v", err)
 	}
-	_, err = s.(*sender).callAbi(ctx, "concat_strings",
-		[]interface{}{[]string{"this", "string", "is", "joined"}})
+	return s, nil
+}
+
+func Test_Abi(t *testing.T) {
+	s, err := createTestSender()
 	if err != nil {
-		t.Logf("Error using abi: %v", err)
+		t.Logf("Failed creting new sender:%v", err)
 		t.FailNow()
 	}
+	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
+
+	ret, err := s.(*sender).callAbi(ctx, "concat_strings",
+		[]interface{}{[]string{"this", "string", "is", "joined"}})
+
+	if err != nil {
+		t.Logf("Failed calling abi:%v", err)
+		t.FailNow()
+	}
+	fmt.Println(ret)
+	concatString := ret.MethodResults[0].ReturnValue.(string)
+	assert.Equal(t, concatString, "thisstringisjoined")
+}
+
+func Test_Segment(t *testing.T) {
+	s, err := createTestSender()
+	if err != nil {
+		t.Logf("Failed creting new sender:%v", err)
+		t.FailNow()
+	}
+	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
+
+	msg := &chain.Message{
+		From: chain.BTPAddress(icon_bmc),
+		Receipts: []*chain.Receipt{{
+			Index:  0,
+			Height: 1,
+			Events: []*chain.Event{
+				{
+					Message: []byte{97, 98, 99, 100, 101, 102},
+				},
+				{
+					Message: []byte{44, 32, 33, 4, 101, 255},
+				},
+			},
+		},
+			{
+				Index:  0,
+				Height: 2,
+				Events: []*chain.Event{
+					{
+						Message: []byte{55, 56, 222, 34, 6, 3},
+					},
+					{
+						Message: []byte{64, 2, 4, 111, 55, 23},
+					},
+				},
+			}},
+	}
+	tx, newmsg, err := s.Segment(ctx, msg)
+
+	if err != nil {
+		t.Logf("Couldn't segment message:%v", err)
+		t.FailNow()
+	}
+	fmt.Println(tx)
+	fmt.Println("......................")
+	fmt.Println(newmsg)
+
+	sss := tx.(*relayTx).msg
+
+	recovered_pay_bytes := make([]byte, 1000000)
+	base64.StdEncoding.Decode(recovered_pay_bytes, sss)
+	rm := &chain.RelayMessage{}
+	msgpack.Decode(recovered_pay_bytes, &rm)
+
+	recSli := make([]chain.Receipt, 0)
+	for _, r := range rm.Receipts {
+		decodedReceipt := make([]byte, 1000)
+		base64.StdEncoding.Decode(decodedReceipt, r)
+
+		var finalRcp chain.Receipt
+		msgpack.Decode(decodedReceipt, &finalRcp)
+
+		recSli = append(recSli, finalRcp)
+	}
+	fmt.Println("......................")
 
 }
