@@ -1,0 +1,199 @@
+#pragma version 6
+txn NumAppArgs
+int 0
+==
+bnz main_l10
+txna ApplicationArgs 0
+method "registerBSHContract(address)void"
+==
+bnz main_l9
+txna ApplicationArgs 0
+method "setRelayer(address)void"
+==
+bnz main_l8
+txna ApplicationArgs 0
+method "sendMessage(string,string,uint64)string"
+==
+bnz main_l7
+txna ApplicationArgs 0
+method "handleRelayMessage(application,string)string"
+==
+bnz main_l6
+err
+main_l6:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+txna ApplicationArgs 1
+int 0
+getbyte
+store 7
+txna ApplicationArgs 2
+store 8
+load 7
+load 8
+callsub handleRelayMessage_3
+store 9
+byte 0x151f7c75
+load 9
+concat
+log
+int 1
+return
+main_l7:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+txna ApplicationArgs 1
+store 0
+txna ApplicationArgs 2
+store 1
+txna ApplicationArgs 3
+btoi
+store 2
+load 0
+load 1
+load 2
+callsub sendMessage_2
+store 3
+byte 0x151f7c75
+load 3
+concat
+log
+int 1
+return
+main_l8:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+txna ApplicationArgs 1
+callsub setRelayer_1
+int 1
+return
+main_l9:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+txna ApplicationArgs 1
+callsub registerBSHContract_0
+int 1
+return
+main_l10:
+txn OnCompletion
+int NoOp
+==
+bnz main_l16
+txn OnCompletion
+int UpdateApplication
+==
+bnz main_l15
+txn OnCompletion
+int DeleteApplication
+==
+bnz main_l14
+err
+main_l14:
+txn Sender
+global CreatorAddress
+==
+return
+main_l15:
+txn Sender
+global CreatorAddress
+==
+return
+main_l16:
+txn ApplicationID
+int 0
+==
+assert
+byte "relayer_acc_address"
+global CreatorAddress
+app_global_put
+int 1
+return
+
+// registerBSHContract
+registerBSHContract_0:
+store 12
+txn Sender
+global CreatorAddress
+==
+assert
+byte "bsh_app_address"
+load 12
+app_global_put
+int 1
+return
+
+// setRelayer
+setRelayer_1:
+store 13
+txn Sender
+byte "relayer_acc_address"
+app_global_get
+==
+assert
+byte "relayer_acc_address"
+load 13
+app_global_put
+int 1
+return
+
+// sendMessage
+sendMessage_2:
+store 6
+store 5
+store 4
+txn Sender
+byte "bsh_app_address"
+app_global_get
+==
+assert
+byte 0x00116576656e743a627470206d657373616765
+retsub
+
+// handleRelayMessage
+handleRelayMessage_3:
+store 11
+store 10
+txn Sender
+byte "relayer_acc_address"
+app_global_get
+==
+assert
+itxn_begin
+int appl
+itxn_field TypeEnum
+load 10
+txnas Applications
+itxn_field ApplicationID
+method "handleBTPMessage(string)void"
+itxn_field ApplicationArgs
+load 11
+itxn_field ApplicationArgs
+int 0
+itxn_field Fee
+itxn_submit
+byte 0x001c6576656e743a73746172742068616e646c654254504d657373616765
+retsub

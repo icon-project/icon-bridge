@@ -1,0 +1,66 @@
+{
+  "name": "bmc-handler",
+  "methods": [
+    {
+      "name": "registerBSHContract",
+      "args": [
+        {
+          "type": "address",
+          "name": "bsh_app_address"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "setRelayer",
+      "args": [
+        {
+          "type": "address",
+          "name": "relayer_account"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "sendMessage",
+      "args": [
+        {
+          "type": "string",
+          "name": "to"
+        },
+        {
+          "type": "string",
+          "name": "svc"
+        },
+        {
+          "type": "uint64",
+          "name": "sn"
+        }
+      ],
+      "returns": {
+        "type": "string"
+      }
+    },
+    {
+      "name": "handleRelayMessage",
+      "args": [
+        {
+          "type": "application",
+          "name": "bsh_app"
+        },
+        {
+          "type": "string",
+          "name": "msg"
+        }
+      ],
+      "returns": {
+        "type": "string"
+      }
+    }
+  ],
+  "networks": {}
+}
