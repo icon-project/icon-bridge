@@ -15,8 +15,7 @@ import (
 
 // TODO adjust settings for algo
 const (
-	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
-	RPCCallRetry               = 5
+	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks
 )
 
 func NewReceiver(
@@ -93,9 +92,10 @@ func (r *receiver) Subscribe(
 	//TODO add verifier logic
 
 	curRound := subOpts.Height
-	latestRound, err := r.cl.GetLatestRound()
+	latestRound, err := r.cl.GetLatestRound(ctx)
 	if err != nil {
-		r.log.WithFields(log.Fields{"error": err}).Error("receiveLoop: error failed to getLatestRound-")
+		r.log.WithFields(log.Fields{"error": err}).Error(
+			"receiveLoop: error failed to getLatestRound-")
 		return _errCh, err
 	}
 
@@ -119,15 +119,16 @@ func (r *receiver) Subscribe(
 				if curRound >= latestRound {
 					time.Sleep(500 * time.Millisecond)
 
-					latestRound, err = r.cl.GetLatestRound()
+					latestRound, err = r.cl.GetLatestRound(ctx)
 					if err != nil {
-						r.log.WithFields(log.Fields{"error": err}).Error("receiveLoop: error failed to getLatestRound-")
+						r.log.WithFields(log.Fields{"error": err}).Error(
+							"receiveLoop: error failed to getLatestRound-")
 						_errCh <- err
 					}
 					continue
 				}
 				//Check the latest block for txns addressed to this BMC
-				r.inspectBlock(curRound, &subOpts, msgCh, _errCh)
+				r.inspectBlock(ctx, curRound, &subOpts, msgCh, _errCh)
 				curRound++
 			}
 		}
@@ -136,14 +137,14 @@ func (r *receiver) Subscribe(
 }
 
 // Inspects the latest block created for new relay messages
-func (r *receiver) inspectBlock(round uint64, subOpts *chain.SubscribeOptions,
+func (r *receiver) inspectBlock(ctx context.Context, round uint64, subOpts *chain.SubscribeOptions,
 	msgCh chan<- *chain.Message, _errCh chan error) {
-	newBlock, err := r.cl.GetBlockbyRound(round)
+	newBlock, err := r.cl.GetBlockbyRound(ctx, round)
 	if err != nil {
 		_errCh <- err
 		return
 	}
-	bmcTxns := r.GetBMCTxns(&newBlock)
+	bmcTxns := r.getBMCTxns(newBlock)
 	if len(*bmcTxns) <= 0 {
 		fmt.Println("new block doesnt have SC txns")
 
@@ -165,9 +166,7 @@ func (r *receiver) inspectBlock(round uint64, subOpts *chain.SubscribeOptions,
 }
 
 // Check if the new block has any transaction meant to be sent across the relayer
-func (r *receiver) GetBMCTxns(block *types.Block) *[]types.SignedTxnWithAD {
-	fmt.Println("READIN TXNS FROM NEW BLOCK")
-
+func (r *receiver) getBMCTxns(block *types.Block) *[]types.SignedTxnWithAD {
 	txns := make([]types.SignedTxnWithAD, 0)
 	for _, signedTxnInBlock := range block.Payset {
 		signedTxnWithAD := signedTxnInBlock.SignedTxnWithAD
@@ -185,7 +184,8 @@ func (r *receiver) GetBMCTxns(block *types.Block) *[]types.SignedTxnWithAD {
 	return &txns
 }
 
-func (r *receiver) getRelayReceipts(txns *[]types.SignedTxnWithAD, round uint64) ([]*chain.Receipt, error) {
+func (r *receiver) getRelayReceipts(txns *[]types.SignedTxnWithAD, round uint64) (
+	[]*chain.Receipt, error) {
 	var receipts []*chain.Receipt
 	var events []*chain.Event
 	for i, txn := range *txns {
