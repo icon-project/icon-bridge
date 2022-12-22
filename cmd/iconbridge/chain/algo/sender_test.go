@@ -12,7 +12,7 @@ import (
 )
 
 func Test_Abi(t *testing.T) {
-	s, err := createTestSender()
+	s, err := createTestSender(sandboxAccess)
 	if err != nil {
 		t.Logf("Failed creting new sender:%v", err)
 		t.FailNow()
@@ -31,7 +31,7 @@ func Test_Abi(t *testing.T) {
 }
 
 func Test_Segment(t *testing.T) {
-	s, err := createTestSender()
+	s, err := createTestSender(sandboxAccess)
 	if err != nil {
 		t.Logf("Failed creting new sender:%v", err)
 		t.FailNow()

@@ -9,8 +9,7 @@ import (
 )
 
 func Test_GetLatestBlock(t *testing.T) {
-	urls := []string{sandboxAddress, sandboxToken}
-	c, err := newClient(urls, log.New())
+	c, err := newClient(sandboxAccess, log.New())
 	if err != nil {
 		t.Logf("Error creating algorand client: %v", err)
 		t.FailNow()

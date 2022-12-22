@@ -12,7 +12,7 @@ import (
 // This function should receive a msg chanel as input, to which it shall forward a new msg as soon
 // as it detects valid events in txn from new blocks
 func Test_Subscribe(t *testing.T) {
-	rcv, err := createTestReceiver()
+	rcv, err := createTestReceiver(testnetAccess)
 	if err != nil {
 		t.Logf("NewReceiver error: %v", err)
 		t.FailNow()
@@ -22,7 +22,12 @@ func Test_Subscribe(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 
-	c, err := newClient([]string{sandboxAddress, sandboxToken}, log.New())
+	c, err := newClient(testnetAccess, log.New())
+
+	if err != nil {
+		t.Log("Couldn't create client %w", err)
+		t.FailNow()
+	}
 
 	curRound, err := c.GetLatestRound(ctx)
 
