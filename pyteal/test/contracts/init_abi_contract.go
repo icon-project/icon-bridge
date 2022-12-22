@@ -1,4 +1,4 @@
-package internalABI
+package contracts
 
 import (
 	"context"

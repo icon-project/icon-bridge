@@ -2,7 +2,7 @@ package config
 
 const MaxExternalServiceCallAttempts = 10
 
-const	BtsTealDir = "../../build/bts";
+const	BshTealDir = "../../build/bsh";
 const BmcTealDir = "../../build/bmc";
 
 const TransactionWaitRounds = 2;

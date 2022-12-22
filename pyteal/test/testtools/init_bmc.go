@@ -18,6 +18,6 @@ func BmcTestInit(t *testing.T, client *algod.Client, bmcTealDir string, deployer
 	bmcCreationTxId := SendTransaction(t, client, deployer.PrivateKey, bmcAppCreationTx)
 	deployRes := WaitForConfirmationsT(t, client, []string{bmcCreationTxId})
 
-	fmt.Printf("App ID: %d \n", deployRes[0].ApplicationIndex)
+	fmt.Printf("BMC App ID: %d \n", deployRes[0].ApplicationIndex)
 	return deployRes[0].ApplicationIndex
 }
