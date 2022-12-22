@@ -9,15 +9,15 @@ import (
 	"github.com/algorand/go-algorand-sdk/types"
 )
 
-func BtsTestInit(t *testing.T, client *algod.Client, btsTealDir string, deployer crypto.Account,
+func BshTestInit(t *testing.T, client *algod.Client, bshTealDir string, deployer crypto.Account,
 	txParams types.SuggestedParams,
 ) uint64 {
 	t.Helper()
 
-	btsAppCreationTx := MakeBtsDeployTx(t, client, btsTealDir, deployer, txParams)
-	btsCreationTxId := SendTransaction(t, client, deployer.PrivateKey, btsAppCreationTx)
-	deployRes := WaitForConfirmationsT(t, client, []string{btsCreationTxId})
+	bshAppCreationTx := MakeBshDeployTx(t, client, bshTealDir, deployer, txParams)
+	bshCreationTxId := SendTransaction(t, client, deployer.PrivateKey, bshAppCreationTx)
+	deployRes := WaitForConfirmationsT(t, client, []string{bshCreationTxId})
 
-	fmt.Printf("App ID: %d \n", deployRes[0].ApplicationIndex)
+	fmt.Printf("BSH App ID: %d \n", deployRes[0].ApplicationIndex)
 	return deployRes[0].ApplicationIndex
 }
