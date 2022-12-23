@@ -21,8 +21,6 @@ const (
 	KMD_TOKEN           = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	KMD_WALLET_NAME     = "unencrypted-default-wallet"
 	KMD_WALLET_PASSWORD = ""
-	approvalPath        = "bmc/approval.teal"
-	clearPath           = "bmc/clear.teal"
 	algo_bmc            = "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8"
 	icon_bmc            = "btp://0x1.icon/cx06f42ea934731b4867fca00d37c25aa30bc3e3d7"
 )
@@ -108,7 +106,7 @@ func createTestSender(algodAccess []string) (chain.Sender, error) {
 
 	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 
-	appId, err := deployContract(ctx, algodAccess, [2]string{approvalPath, clearPath}, account)
+	appId, err := deployContract(ctx, algodAccess, [2]string{"approval.teal", "clear.teal"}, account)
 	if err != nil {
 		return nil, fmt.Errorf("Error deploying BMC: %v", err)
 	}
