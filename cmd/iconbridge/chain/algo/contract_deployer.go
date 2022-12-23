@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/crypto"
@@ -21,14 +22,25 @@ func deployContract(ctx context.Context, algodAccess []string, tealPath [2]strin
 	if err != nil {
 		return 0, fmt.Errorf("Error getting params: %w", err)
 	}
-	approvalProgram, err := compileTeal(ctx, client, tealPath[0])
+
+	approvalFile, err := filepath.Abs(tealPath[0])
+	if err != nil {
+		return 0, fmt.Errorf("Couldn't find approval file: %w", err)
+	}
+	approvalProgram, err := compileTeal(ctx, client, approvalFile)
 	if err != nil {
 		return 0, fmt.Errorf("Approval compile err: %w", err)
 	}
-	clearProgram, err := compileTeal(ctx, client, tealPath[1])
+
+	clearFile, err := filepath.Abs(tealPath[1])
+	if err != nil {
+		return 0, fmt.Errorf("Couldn't find clear file: %w", err)
+	}
+	clearProgram, err := compileTeal(ctx, client, clearFile)
 	if err != nil {
 		return 0, fmt.Errorf("Clear compile err: %w", err)
 	}
+
 	txn, err := future.MakeApplicationCreateTx(
 		false,
 		approvalProgram,
@@ -49,6 +61,7 @@ func deployContract(ctx context.Context, algodAccess []string, tealPath [2]strin
 	if err != nil {
 		return 0, fmt.Errorf("Failed to make bmc: %w", err)
 	}
+
 	txID, signedTxn, err := crypto.SignTransaction(account.PrivateKey, txn)
 	if err != nil {
 		return 0, fmt.Errorf("Failed to sign transaction: %w", err)

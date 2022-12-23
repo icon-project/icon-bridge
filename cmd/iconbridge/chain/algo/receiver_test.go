@@ -1,17 +1,7 @@
 package algo
 
-import (
-	"context"
-	"testing"
-	"time"
-
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/common/log"
-)
-
-// This function should receive a msg chanel as input, to which it shall forward a new msg as soon
-// as it detects valid events in txn from new blocks
-func Test_Subscribe(t *testing.T) {
+//Commneting this test for now as it relies on github secrets
+/* func Test_Subscribe(t *testing.T) {
 	rcv, err := createTestReceiver(testnetAccess)
 	if err != nil {
 		t.Logf("NewReceiver error: %v", err)
@@ -64,4 +54,4 @@ func Test_Subscribe(t *testing.T) {
 		t.Log(err)
 	}
 	//TODO add case for successful message once BMC is working
-}
+} */
