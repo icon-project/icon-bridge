@@ -13,7 +13,7 @@ import (
 	"github.com/algorand/go-algorand-sdk/types"
 )
 
-const contractDir = "../../../../pyteal/bmc/contract.json"
+const contractDir = "../../../../pyteal/teal/bmc/"
 const waitRounds = 5
 
 func getMethod(c *abi.Contract, name string) (abi.Method, error) {
@@ -32,7 +32,7 @@ func combine(mcp future.AddMethodCallParams, m abi.Method,
 }
 
 func (s *sender) initAbi() error {
-	abiPath, err := filepath.Abs(contractDir)
+	abiPath, err := filepath.Abs(contractDir + "contract.json")
 	if err != nil {
 		return fmt.Errorf("Couldn't retrieve abi file: %w", err)
 	}

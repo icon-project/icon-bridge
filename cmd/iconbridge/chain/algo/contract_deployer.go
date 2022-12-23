@@ -23,7 +23,7 @@ func deployContract(ctx context.Context, algodAccess []string, tealPath [2]strin
 		return 0, fmt.Errorf("Error getting params: %w", err)
 	}
 
-	approvalFile, err := filepath.Abs(tealPath[0])
+	approvalFile, err := filepath.Abs(contractDir + tealPath[0])
 	if err != nil {
 		return 0, fmt.Errorf("Couldn't find approval file: %w", err)
 	}
@@ -32,7 +32,7 @@ func deployContract(ctx context.Context, algodAccess []string, tealPath [2]strin
 		return 0, fmt.Errorf("Approval compile err: %w", err)
 	}
 
-	clearFile, err := filepath.Abs(tealPath[1])
+	clearFile, err := filepath.Abs(contractDir + tealPath[1])
 	if err != nil {
 		return 0, fmt.Errorf("Couldn't find clear file: %w", err)
 	}

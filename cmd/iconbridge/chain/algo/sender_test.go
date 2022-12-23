@@ -3,8 +3,6 @@ package algo
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -95,10 +93,4 @@ func Test_Segment(t *testing.T) {
 	for i := range recSli {
 		assert.Equal(t, *msg.Receipts[i], recSli[i])
 	}
-}
-
-func Test_file(t *testing.T) {
-
-	absPath, _ := filepath.Abs("../../../../pyteal/build/bmc")
-	fmt.Println(absPath)
 }
