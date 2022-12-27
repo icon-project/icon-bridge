@@ -1,6 +1,6 @@
 package algo
 
-import (
+/* import (
 	"testing"
 	"time"
 
@@ -34,3 +34,4 @@ func Test_GetLatestBlock(t *testing.T) {
 		t.Fail()
 	}
 }
+*/

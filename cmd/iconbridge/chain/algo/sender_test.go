@@ -1,6 +1,6 @@
 package algo
 
-import (
+/* import (
 	"context"
 	"encoding/base64"
 	"testing"
@@ -12,7 +12,7 @@ import (
 )
 
 func Test_Abi(t *testing.T) {
-	s, err := createTestSender(sandboxAccess)
+	s, err := createTestSender(testnetAccess)
 	if err != nil {
 		t.Logf("Failed creting new sender:%v", err)
 		t.FailNow()
@@ -20,18 +20,18 @@ func Test_Abi(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 
 	_, err = s.(*sender).callAbi(ctx, "sendMessage",
-		[]interface{}{"this", "string", 19})
+		[]interface{}{"this", "string", 19}) */
 
-	/* if err != nil {
-		t.Logf("Failed calling abi:%v", err)
-		t.FailNow()
-	}
-	concatString := ret.MethodResults[0].ReturnValue.(string)
-	assert.Equal(t, concatString, "thisstringisjoined") */
+/* if err != nil {
+	t.Logf("Failed calling abi:%v", err)
+	t.FailNow()
 }
+concatString := ret.MethodResults[0].ReturnValue.(string)
+assert.Equal(t, concatString, "thisstringisjoined") */
+/* }
 
 func Test_Segment(t *testing.T) {
-	s, err := createTestSender(sandboxAccess)
+	s, err := createTestSender(testnetAccess)
 	if err != nil {
 		t.Logf("Failed creting new sender:%v", err)
 		t.FailNow()
@@ -94,3 +94,4 @@ func Test_Segment(t *testing.T) {
 		assert.Equal(t, *msg.Receipts[i], recSli[i])
 	}
 }
+*/

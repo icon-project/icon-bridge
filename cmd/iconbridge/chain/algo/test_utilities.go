@@ -33,7 +33,7 @@ var (
 )
 
 func getAccounts() ([]crypto.Account, error) {
-	client, err := kmd.MakeClient(KMD_ADDRESS, KMD_TOKEN)
+	client, err := kmd.MakeClient(testnetAddress, testnetToken)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create client: %+v", err)
 	}
