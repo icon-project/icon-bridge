@@ -295,7 +295,7 @@ func (vr *Verifier) verifySeal(header *types.Header, chainID *big.Int) error {
 }
 
 // ecrecover extracts the Ethereum account address from a signed header.
-func ecrecover(header *types.Header, chainId *big.Int) (ethCommon.Address, error) {
+func ecrecover(header *types.Header,   *big.Int) (ethCommon.Address, error) {
 	if len(header.Extra) < extraSeal {
 		return ethCommon.Address{}, errMissingSignature
 	}

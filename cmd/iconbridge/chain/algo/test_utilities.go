@@ -82,8 +82,13 @@ func getAccounts() ([]crypto.Account, error) {
 	return accts, nil
 }
 
-func createTestReceiver(algodAccess []string) (chain.Receiver, error) {
-	opts := map[string]interface{}{"syncConcurrency": 2}
+func createTestReceiver(algodAccess []string, round uint64, hash [32]byte) (chain.Receiver, error) {
+	opts := map[string]interface{}{"syncConcurrency": 2,
+		"Verifier": Verifier{
+			round,
+			hash,
+		},
+	}
 	rawOpts, err := json.Marshal(opts)
 	if err != nil {
 		return nil, fmt.Errorf("Error marshalling options: %v", err)

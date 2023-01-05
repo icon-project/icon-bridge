@@ -1,6 +1,7 @@
 package algo
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/algorand/go-algorand-sdk/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/common"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
@@ -17,6 +17,25 @@ import (
 const (
 	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks
 )
+
+type receiver struct {
+	log  log.Logger
+	src  chain.BTPAddress
+	dst  chain.BTPAddress
+	opts ReceiverOptions
+	cl   *Client
+	vr   Verifier
+}
+
+type VerifierOptions struct {
+	Round     uint64   `json:"Round"`
+	BlockHash [32]byte `json:"BlockHash"`
+}
+
+type Verifier struct {
+	Round     uint64
+	BlockHash [32]byte
+}
 
 func NewReceiver(
 	src, dst chain.BTPAddress,
@@ -42,6 +61,10 @@ func NewReceiver(
 		r.opts.SyncConcurrency = MonitorBlockMaxConcurrency
 	}
 
+	r.vr = Verifier{
+		Round:     r.opts.Verifier.Round,
+		BlockHash: r.opts.Verifier.BlockHash,
+	}
 	r.cl, err = newClient(algodAccess, r.log)
 	if err != nil {
 		return nil, err
@@ -55,13 +78,6 @@ type ReceiverOptions struct {
 	Verifier        *VerifierOptions `json:"verifier"`
 }
 
-// TODO move struct to verifier.go
-type VerifierOptions struct {
-	BlockHeight   uint64          `json:"blockHeight"`
-	BlockHash     common.HexBytes `json:"parentHash"`
-	ValidatorData common.HexBytes `json:"validatorData"`
-}
-
 func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
 	b, err := json.Marshal(v)
 	if err != nil {
@@ -70,28 +86,23 @@ func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
 	return json.Unmarshal(b, opts)
 }
 
-type receiver struct {
-	log  log.Logger
-	src  chain.BTPAddress
-	dst  chain.BTPAddress
-	opts ReceiverOptions
-	cl   *Client
-}
-
 func (r *receiver) Subscribe(
 	ctx context.Context, msgCh chan<- *chain.Message,
 	subOpts chain.SubscribeOptions) (errCh <-chan error, err error) {
 
 	subOpts.Seq++
 	_errCh := make(chan error)
+	curRound := subOpts.Height
 
-	if subOpts.Seq <= 0 || subOpts.Height <= 0 {
+	if subOpts.Seq <= 0 || curRound <= 0 {
 		return _errCh, errors.New("receiveLoop: invalid options: <nil>")
 	}
 
-	//TODO add verifier logic
+	err = r.syncVerifier(ctx, curRound)
+	if err != nil {
+		return _errCh, err
+	}
 
-	curRound := subOpts.Height
 	latestRound, err := r.cl.GetLatestRound(ctx)
 	if err != nil {
 		r.log.WithFields(log.Fields{"error": err}).Error(
@@ -113,7 +124,6 @@ func (r *receiver) Subscribe(
 		for {
 			select {
 			case <-ctx.Done():
-				fmt.Println("ctx canceled aborting")
 				break receiveLoop
 			default:
 				if curRound >= latestRound {
@@ -122,14 +132,15 @@ func (r *receiver) Subscribe(
 					latestRound, err = r.cl.GetLatestRound(ctx)
 					if err != nil {
 						r.log.WithFields(log.Fields{"error": err}).Error(
-							"receiveLoop: error failed to getLatestRound-")
+							"receiveLoop: error failed to getLatestRound")
 						_errCh <- err
 					}
 					continue
 				}
 				//Check the latest block for txns addressed to this BMC
-				r.inspectBlock(ctx, curRound, &subOpts, msgCh, _errCh)
 				curRound++
+				r.inspectBlock(ctx, curRound, &subOpts, msgCh, _errCh)
+
 			}
 		}
 	}()
@@ -144,10 +155,21 @@ func (r *receiver) inspectBlock(ctx context.Context, round uint64, subOpts *chai
 		_errCh <- err
 		return
 	}
+
+	if bytes.Equal(newBlock.BlockHeader.Branch[:], r.vr.BlockHash[:]) {
+		r.vr.BlockHash = EncodeHash(newBlock)
+		r.vr.Round++
+	} else {
+		_errCh <- fmt.Errorf("Block at round %d does not have a valid parent hash.", round)
+		return
+	}
+	if err != nil {
+		_errCh <- err
+		return
+	}
+
 	bmcTxns := r.getBMCTxns(newBlock)
 	if len(*bmcTxns) <= 0 {
-		fmt.Println("new block doesnt have SC txns")
-
 		return
 	}
 
@@ -228,6 +250,32 @@ func (r *receiver) validateEvents(rcps *[]*chain.Receipt, subOpts *chain.Subscri
 			}
 		}
 		receipt.Events = events
+	}
+	return nil
+}
+
+func (r *receiver) syncVerifier(ctx context.Context, targetRound uint64) error {
+	if r.vr.Round == targetRound {
+		return nil
+	}
+	if r.vr.Round > targetRound {
+		return fmt.Errorf(
+			"invalid target height: verifier height (%d) > target height (%d)",
+			r.vr.Round, targetRound)
+	}
+
+	for cursor := r.vr.Round; cursor <= targetRound; cursor++ {
+		block, err := r.cl.GetBlockbyRound(ctx, cursor)
+		if err != nil {
+			return err
+		}
+		if bytes.Equal(block.BlockHeader.Branch[:], r.vr.BlockHash[:]) {
+			r.vr.BlockHash = EncodeHash(block)
+			r.vr.Round++
+			r.log.Printf("validated %x at round %d\n", r.vr.BlockHash, r.vr.Round)
+			continue
+		}
+		return fmt.Errorf("Failed to sync validator. Block at round %d broke the chain.", cursor)
 	}
 	return nil
 }

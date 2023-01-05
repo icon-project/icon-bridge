@@ -2,12 +2,14 @@ package algo
 
 import (
 	"context"
+	"crypto/sha512"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/client/v2/common/models"
+	"github.com/algorand/go-algorand-sdk/encoding/msgpack"
 	"github.com/algorand/go-algorand-sdk/future"
 	"github.com/algorand/go-algorand-sdk/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -30,7 +32,6 @@ type IClient interface {
 	WaitForTransaction(ctx context.Context, txId string) (models.PendingTransactionInfoResponse, error)
 	GetLatestRound(ctx context.Context) (uint64, error)
 	GetBlockbyRound(ctx context.Context, round uint64) (block *types.Block, err error)
-	GetBlockHash(ctx context.Context, round uint64) (hash string, err error)
 	DecodeBtpMsg(log string) (*chain.Event, error)
 }
 
@@ -83,21 +84,15 @@ func (cl *Client) GetBlockbyRound(ctx context.Context, round uint64) (*types.Blo
 	return nil, err
 }
 
-// get latest block number
-func (cl *Client) GetBlockHash(ctx context.Context, round uint64) (hash string, err error) {
-	for i := 1; i <= BlockRetryLimit; i++ {
-		hashResponse, err := cl.algod.GetBlockHash(round).Do(ctx)
-		if err != nil {
-			time.Sleep(AlgoBlockRate * time.Second)
-			continue
-		}
-		hash = hashResponse.Blockhash
-		return hash, nil
-	}
-	return "", err
-}
-
 func (cl *Client) DecodeBtpMsg(log string) (*chain.Event, error) {
 	//TODO this func should use ABI logic to go through the log string and decode it into a BTP message event
 	return &chain.Event{}, nil
+}
+
+func EncodeHash(block *types.Block) [32]byte {
+	blockHeaderBytes := msgpack.Encode(block.BlockHeader)
+	toBeHashed := []byte("BH")
+	toBeHashed = append(toBeHashed, blockHeaderBytes...)
+	hash := sha512.Sum512_256(toBeHashed)
+	return hash
 }
