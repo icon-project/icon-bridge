@@ -40,8 +40,8 @@ We’ll briefly touch upon these steps so that the commands to run these process
 * ### Setting up Blockchain Nodes
     This requires blockchain nodes, usually available as docker images, to be run. Each node has some configuration parameters, which we require later in the process. For example, rpc endpoint, network-id and god-wallet are required to communicate and execute transactions on the network.
     ```sh
-    make cleanimglocal          # Clean Previous build & deployment artifacts if present
-    make buildimglocal          # Build BMR,BSC,ICON images
+    make icon-clean     # Clean Previous build & deployment artifacts if present
+    ./build.sh          # Build BMR,BSC,ICON contracts
     ```
 
 * ### Deploying smart contracts
