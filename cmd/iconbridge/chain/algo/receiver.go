@@ -157,7 +157,7 @@ func (r *receiver) inspectBlock(ctx context.Context, round uint64, subOpts *chai
 	}
 
 	if bytes.Equal(newBlock.BlockHeader.Branch[:], r.vr.BlockHash[:]) {
-		r.vr.BlockHash = EncodeHash(newBlock)
+		r.vr.BlockHash = BlockHash(newBlock)
 		r.vr.Round++
 	} else {
 		_errCh <- fmt.Errorf("Block at round %d does not have a valid parent hash.", round)
@@ -254,6 +254,7 @@ func (r *receiver) validateEvents(rcps *[]*chain.Receipt, subOpts *chain.Subscri
 	return nil
 }
 
+// Get the verifier up to date with the target round, validating each block in between
 func (r *receiver) syncVerifier(ctx context.Context, targetRound uint64) error {
 	if r.vr.Round == targetRound {
 		return nil
@@ -270,7 +271,7 @@ func (r *receiver) syncVerifier(ctx context.Context, targetRound uint64) error {
 			return err
 		}
 		if bytes.Equal(block.BlockHeader.Branch[:], r.vr.BlockHash[:]) {
-			r.vr.BlockHash = EncodeHash(block)
+			r.vr.BlockHash = BlockHash(block)
 			r.vr.Round++
 			r.log.Printf("validated %x at round %d\n", r.vr.BlockHash, r.vr.Round)
 			continue

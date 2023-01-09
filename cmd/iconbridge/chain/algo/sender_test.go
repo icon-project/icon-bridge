@@ -32,7 +32,7 @@ func xTest_Segment(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 
 	msg := &chain.Message{
-		From: chain.BTPAddress(icon_bmc),
+		From: chain.BTPAddress(iconBmc),
 		Receipts: []*chain.Receipt{{
 			Index:  0,
 			Height: 1,

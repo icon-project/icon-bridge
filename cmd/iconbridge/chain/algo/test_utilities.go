@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	sandboxAddress  = "http://localhost:4001"
-	sandboxToken    = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	TEST_ACCOUNT_SK = "Vfscmda+xG0c9OQGVAgTd6mny016riYjml/RW5AkhkKP12Aujgpm7kCRGgYaColPK8PRRCibwWuJldYelaHo+Q=="
-	algo_bmc        = "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8"
-	icon_bmc        = "btp://0x1.icon/cx06f42ea934731b4867fca00d37c25aa30bc3e3d7"
+	sandboxAddress = "http://localhost:4001"
+	sandboxToken   = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	testAccountSk  = "Vfscmda+xG0c9OQGVAgTd6mny016riYjml/RW5AkhkKP12Aujgpm7kCRGgYaColPK8PRRCibwWuJldYelaHo+Q=="
+	algoBmc        = "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8"
+	iconBmc        = "btp://0x1.icon/cx06f42ea934731b4867fca00d37c25aa30bc3e3d7"
 )
 
 var (
@@ -41,7 +41,7 @@ func createTestReceiver(algodAccess []string, round uint64, hash [32]byte) (chai
 		return nil, fmt.Errorf("Error marshalling options: %v", err)
 	}
 
-	rcv, err := NewReceiver(chain.BTPAddress(icon_bmc), chain.BTPAddress(algo_bmc),
+	rcv, err := NewReceiver(chain.BTPAddress(iconBmc), chain.BTPAddress(algoBmc),
 		algodAccess, rawOpts, log.New())
 	if err != nil {
 		return nil, fmt.Errorf("Error creating new receiver: %v", err)
@@ -50,7 +50,7 @@ func createTestReceiver(algodAccess []string, round uint64, hash [32]byte) (chai
 }
 
 func createTestSender(algodAccess []string) (chain.Sender, error) {
-	privateKey, err := base64.StdEncoding.DecodeString(TEST_ACCOUNT_SK)
+	privateKey, err := base64.StdEncoding.DecodeString(testAccountSk)
 	if err != nil {
 		return nil, fmt.Errorf("Error decoding private key: %s", err)
 	}
@@ -76,7 +76,7 @@ func createTestSender(algodAccess []string) (chain.Sender, error) {
 	}
 
 	s, err := NewSender(
-		chain.BTPAddress(icon_bmc), chain.BTPAddress(algo_bmc),
+		chain.BTPAddress(iconBmc), chain.BTPAddress(algoBmc),
 		algodAccess, w,
 		rawOpts, log.New())
 	if err != nil {

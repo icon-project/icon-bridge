@@ -2,14 +2,12 @@ package algo
 
 import (
 	"context"
-	"crypto/sha512"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/client/v2/common/models"
-	"github.com/algorand/go-algorand-sdk/encoding/msgpack"
 	"github.com/algorand/go-algorand-sdk/future"
 	"github.com/algorand/go-algorand-sdk/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -87,12 +85,4 @@ func (cl *Client) GetBlockbyRound(ctx context.Context, round uint64) (*types.Blo
 func (cl *Client) DecodeBtpMsg(log string) (*chain.Event, error) {
 	//TODO this func should use ABI logic to go through the log string and decode it into a BTP message event
 	return &chain.Event{}, nil
-}
-
-func EncodeHash(block *types.Block) [32]byte {
-	blockHeaderBytes := msgpack.Encode(block.BlockHeader)
-	toBeHashed := []byte("BH")
-	toBeHashed = append(toBeHashed, blockHeaderBytes...)
-	hash := sha512.Sum512_256(toBeHashed)
-	return hash
 }
