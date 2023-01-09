@@ -1,6 +1,6 @@
 package algo
 
-/* import (
+import (
 	"bytes"
 	"context"
 	"testing"
@@ -67,7 +67,7 @@ func Test_Subscribe(t *testing.T) {
 	//TODO add case for successful message once BMC is working
 }
 
-func Test_GetHash(t *testing.T) {
+func xTest_GetHash(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 	cl, err := newClient(testnetAccess, log.New())
 	if err != nil {
@@ -98,4 +98,3 @@ func Test_GetHash(t *testing.T) {
 		t.Errorf("Error: expected %v, got %v", prvHash, curHash)
 	}
 }
-*/

@@ -1,6 +1,6 @@
 package algo
 
-/* import (
+import (
 	"context"
 	"encoding/base64"
 	"testing"
@@ -11,7 +11,7 @@ package algo
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 )
 
-func Test_Abi(t *testing.T) {
+func xTest_Abi(t *testing.T) {
 	s, err := createTestSender(testnetAccess)
 	if err != nil {
 		t.Logf("Failed creting new sender:%v", err)
@@ -20,17 +20,10 @@ func Test_Abi(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 
 	_, err = s.(*sender).callAbi(ctx, "sendMessage",
-		[]interface{}{"this", "string", 19}) */
-
-/* if err != nil {
-	t.Logf("Failed calling abi:%v", err)
-	t.FailNow()
+		[]interface{}{"this", "string", 19})
 }
-concatString := ret.MethodResults[0].ReturnValue.(string)
-assert.Equal(t, concatString, "thisstringisjoined") */
-/* }
 
-func Test_Segment(t *testing.T) {
+func xTest_Segment(t *testing.T) {
 	s, err := createTestSender(testnetAccess)
 	if err != nil {
 		t.Logf("Failed creting new sender:%v", err)
@@ -94,4 +87,3 @@ func Test_Segment(t *testing.T) {
 		assert.Equal(t, *msg.Receipts[i], recSli[i])
 	}
 }
-*/

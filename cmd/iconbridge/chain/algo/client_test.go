@@ -1,6 +1,6 @@
 package algo
 
-/* import (
+import (
 	"testing"
 	"time"
 
@@ -8,7 +8,7 @@ package algo
 	"golang.org/x/net/context"
 )
 
-func Test_GetLatestBlock(t *testing.T) {
+func xTest_GetLatestBlock(t *testing.T) {
 	c, err := newClient(sandboxAccess, log.New())
 	if err != nil {
 		t.Logf("Error creating algorand client: %v", err)
@@ -34,4 +34,3 @@ func Test_GetLatestBlock(t *testing.T) {
 		t.Fail()
 	}
 }
-*/
