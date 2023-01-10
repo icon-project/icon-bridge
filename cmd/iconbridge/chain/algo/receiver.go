@@ -92,15 +92,9 @@ func (r *receiver) Subscribe(
 
 	subOpts.Seq++
 	_errCh := make(chan error)
-	curRound := subOpts.Height
 
-	if subOpts.Seq <= 0 || curRound <= 0 {
+	if subOpts.Seq <= 0 || subOpts.Height <= 0 {
 		return _errCh, errors.New("receiveLoop: invalid options: <nil>")
-	}
-
-	err = r.syncVerifier(ctx, curRound)
-	if err != nil {
-		return _errCh, err
 	}
 
 	latestRound, err := r.cl.GetLatestRound(ctx)
@@ -126,7 +120,7 @@ func (r *receiver) Subscribe(
 			case <-ctx.Done():
 				break receiveLoop
 			default:
-				if curRound >= latestRound {
+				if r.vr.Round >= latestRound {
 					time.Sleep(500 * time.Millisecond)
 
 					latestRound, err = r.cl.GetLatestRound(ctx)
@@ -138,8 +132,7 @@ func (r *receiver) Subscribe(
 					continue
 				}
 				//Check the latest block for txns addressed to this BMC
-				curRound++
-				r.inspectBlock(ctx, curRound, &subOpts, msgCh, _errCh)
+				r.inspectBlock(ctx, r.vr.Round, &subOpts, msgCh, _errCh)
 
 			}
 		}
@@ -163,8 +156,9 @@ func (r *receiver) inspectBlock(ctx context.Context, round uint64, subOpts *chai
 		_errCh <- fmt.Errorf("Block at round %d does not have a valid parent hash.", round)
 		return
 	}
-	if err != nil {
-		_errCh <- err
+
+	// Don't start inspecting blocks until the subscribed round
+	if round <= subOpts.Height {
 		return
 	}
 
@@ -250,33 +244,6 @@ func (r *receiver) validateEvents(rcps *[]*chain.Receipt, subOpts *chain.Subscri
 			}
 		}
 		receipt.Events = events
-	}
-	return nil
-}
-
-// Get the verifier up to date with the target round, validating each block in between
-func (r *receiver) syncVerifier(ctx context.Context, targetRound uint64) error {
-	if r.vr.Round == targetRound {
-		return nil
-	}
-	if r.vr.Round > targetRound {
-		return fmt.Errorf(
-			"invalid target height: verifier height (%d) > target height (%d)",
-			r.vr.Round, targetRound)
-	}
-
-	for cursor := r.vr.Round; cursor <= targetRound; cursor++ {
-		block, err := r.cl.GetBlockbyRound(ctx, cursor)
-		if err != nil {
-			return err
-		}
-		if bytes.Equal(block.BlockHeader.Branch[:], r.vr.BlockHash[:]) {
-			r.vr.BlockHash = BlockHash(block)
-			r.vr.Round++
-			r.log.Printf("validated %x at round %d\n", r.vr.BlockHash, r.vr.Round)
-			continue
-		}
-		return fmt.Errorf("Failed to sync validator. Block at round %d broke the chain.", cursor)
 	}
 	return nil
 }
