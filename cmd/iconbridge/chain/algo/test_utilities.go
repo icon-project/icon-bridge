@@ -2,12 +2,12 @@ package algo
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/algorand/go-algorand-sdk/client/kmd"
 	"github.com/algorand/go-algorand-sdk/crypto"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/log"
@@ -15,14 +15,11 @@ import (
 )
 
 const (
-	sandboxAddress      = "http://localhost:4001"
-	sandboxToken        = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	KMD_ADDRESS         = "http://localhost:4002"
-	KMD_TOKEN           = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	KMD_WALLET_NAME     = "unencrypted-default-wallet"
-	KMD_WALLET_PASSWORD = ""
-	algo_bmc            = "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8"
-	icon_bmc            = "btp://0x1.icon/cx06f42ea934731b4867fca00d37c25aa30bc3e3d7"
+	sandboxAddress = "http://localhost:4001"
+	sandboxToken   = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	testAccountSk  = "Vfscmda+xG0c9OQGVAgTd6mny016riYjml/RW5AkhkKP12Aujgpm7kCRGgYaColPK8PRRCibwWuJldYelaHo+Q=="
+	algoBmc        = "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8"
+	iconBmc        = "btp://0x1.icon/cx06f42ea934731b4867fca00d37c25aa30bc3e3d7"
 )
 
 var (
@@ -32,64 +29,19 @@ var (
 	sandboxAccess  = []string{sandboxAddress, sandboxToken}
 )
 
-func getAccounts() ([]crypto.Account, error) {
-	client, err := kmd.MakeClient(testnetAddress, testnetToken)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create client: %+v", err)
+func createTestReceiver(algodAccess []string, round uint64, hash [32]byte) (chain.Receiver, error) {
+	opts := map[string]interface{}{"syncConcurrency": 2,
+		"Verifier": Verifier{
+			round,
+			hash,
+		},
 	}
-
-	resp, err := client.ListWallets()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to list wallets: %+v", err)
-	}
-
-	var walletId string
-	for _, wallet := range resp.Wallets {
-		if wallet.Name == KMD_WALLET_NAME {
-			walletId = wallet.ID
-		}
-	}
-
-	if walletId == "" {
-		return nil, fmt.Errorf("No wallet named %s", KMD_WALLET_NAME)
-	}
-
-	whResp, err := client.InitWalletHandle(walletId, KMD_WALLET_PASSWORD)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to init wallet handle: %+v", err)
-	}
-
-	addrResp, err := client.ListKeys(whResp.WalletHandleToken)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to list keys: %+v", err)
-	}
-
-	var accts []crypto.Account
-	for _, addr := range addrResp.Addresses {
-		expResp, err := client.ExportKey(whResp.WalletHandleToken, KMD_WALLET_PASSWORD, addr)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to export key: %+v", err)
-		}
-
-		acct, err := crypto.AccountFromPrivateKey(expResp.PrivateKey)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to create account from private key: %+v", err)
-		}
-
-		accts = append(accts, acct)
-	}
-
-	return accts, nil
-}
-
-func createTestReceiver(algodAccess []string) (chain.Receiver, error) {
-	opts := map[string]interface{}{"syncConcurrency": 2}
 	rawOpts, err := json.Marshal(opts)
 	if err != nil {
 		return nil, fmt.Errorf("Error marshalling options: %v", err)
 	}
 
-	rcv, err := NewReceiver(chain.BTPAddress(icon_bmc), chain.BTPAddress(algo_bmc),
+	rcv, err := NewReceiver(chain.BTPAddress(iconBmc), chain.BTPAddress(algoBmc),
 		algodAccess, rawOpts, log.New())
 	if err != nil {
 		return nil, fmt.Errorf("Error creating new receiver: %v", err)
@@ -98,11 +50,14 @@ func createTestReceiver(algodAccess []string) (chain.Receiver, error) {
 }
 
 func createTestSender(algodAccess []string) (chain.Sender, error) {
-	accts, err := getAccounts()
+	privateKey, err := base64.StdEncoding.DecodeString(testAccountSk)
 	if err != nil {
-		return nil, fmt.Errorf("Error generating KMD account: %v", err)
+		return nil, fmt.Errorf("Error decoding private key: %s", err)
 	}
-	account := accts[0]
+	account, err := crypto.AccountFromPrivateKey(privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("Can't get account from private key: %s", err)
+	}
 
 	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 
@@ -121,11 +76,17 @@ func createTestSender(algodAccess []string) (chain.Sender, error) {
 	}
 
 	s, err := NewSender(
-		chain.BTPAddress(icon_bmc), chain.BTPAddress(algo_bmc),
+		chain.BTPAddress(iconBmc), chain.BTPAddress(algoBmc),
 		algodAccess, w,
 		rawOpts, log.New())
 	if err != nil {
 		return nil, fmt.Errorf("Error creating new sender: %v", err)
 	}
 	return s, nil
+}
+
+func genAlgoAccount() {
+	acc := crypto.GenerateAccount()
+	log.Printf("Private key: %s\n", base64.StdEncoding.EncodeToString(acc.PrivateKey))
+	log.Printf("Address:     %s\n", acc.Address)
 }

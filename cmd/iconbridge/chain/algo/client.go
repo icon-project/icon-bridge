@@ -30,7 +30,6 @@ type IClient interface {
 	WaitForTransaction(ctx context.Context, txId string) (models.PendingTransactionInfoResponse, error)
 	GetLatestRound(ctx context.Context) (uint64, error)
 	GetBlockbyRound(ctx context.Context, round uint64) (block *types.Block, err error)
-	GetBlockHash(ctx context.Context, round uint64) (hash string, err error)
 	DecodeBtpMsg(log string) (*chain.Event, error)
 }
 
@@ -81,20 +80,6 @@ func (cl *Client) GetBlockbyRound(ctx context.Context, round uint64) (*types.Blo
 	}
 	err := fmt.Errorf("GetBlock reached retry limit")
 	return nil, err
-}
-
-// get latest block number
-func (cl *Client) GetBlockHash(ctx context.Context, round uint64) (hash string, err error) {
-	for i := 1; i <= BlockRetryLimit; i++ {
-		hashResponse, err := cl.algod.GetBlockHash(round).Do(ctx)
-		if err != nil {
-			time.Sleep(AlgoBlockRate * time.Second)
-			continue
-		}
-		hash = hashResponse.Blockhash
-		return hash, nil
-	}
-	return "", err
 }
 
 func (cl *Client) DecodeBtpMsg(log string) (*chain.Event, error) {
