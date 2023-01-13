@@ -15,13 +15,13 @@ import "./interfaces/IERC20Tradable.sol";
 import "./interfaces/IBTSOwnerManager.sol";
 
 /**
-   @title BTSCore contract
+   @title BTSCoreV3 contract
    @dev This contract is used to handle coin transferring service
    Note: The coin of following contract can be:
    Native Coin : The native coin of this chain
    Wrapped Native Coin : A tokenized ERC20 version of another native coin like ICX
 */
-contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
+contract BTSCoreV3 is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
     using SafeMathUpgradeable for uint256;
     using String for string;
 

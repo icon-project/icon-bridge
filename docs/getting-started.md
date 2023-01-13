@@ -157,9 +157,9 @@ The steps for testnet/mainnet deployment can be listed as follows:
     ```sh
     make buildsc
     ```
-- Deploys smart contract. Will prompt you to fund deployer wallet if not already present in the required path. Blockchain’s parameters are used from a config file (scripts/config.sh)
+- Deploys smart contract. Will prompt you to fund deployer wallet if not already present in the required path. Specify net=testnet or mainnet to deploy on respective environment. Config is taken accordingly from `scripts/config/*`
     ```sh
-    make deploysctestnet
+    make deploysc net=testnet
     ```
 - Run relay from source
     ```sh
@@ -424,7 +424,7 @@ Deployment Involves the following steps:
     ```sh
     make buildsc                    # Builds smart contracts
  
-    make deploysctestnet            # Deploy smart contracts on Testnet. Using scripts/config.sh
+    make deploysc net=testnet       # Deploy smart contracts on Testnet/Mainnet. Using scripts/config/
  
     make runrelaysrc                # Run relay from source
  

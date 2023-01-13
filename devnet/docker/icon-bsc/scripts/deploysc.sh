@@ -8,166 +8,153 @@ source rpc.sh
 source generate_e2e_config.sh
 
 setup_account() {
-      echo "check god keys..."
-    if [ ! -f "${ICON_KEY_STORE}" ]; then
-        ensure_key_store $ICON_KEY_STORE $ICON_SECRET
-        echo "Do not Panic..."
-        echo "Missing ICON God Wallet on the required path. One has been created "$ICON_KEY_STORE
-        echo "Fund this newly created wallet and rerun the same command again" 
-        exit 0
-    fi
-    if [ ! -f "${BSC_KEY_STORE}" ]; then
-        ensure_bsc_key_store $BSC_KEY_STORE $BSC_SECRET
-        echo "Do not Panic..."
-        echo "Missing BSC God Wallet on the required path. One has been created "$BSC_KEY_STORE
-        echo "Fund this newly created wallet and rerun again " 
-        exit 0
-    fi
-    export PRIVATE_KEY="[\""$(cat $BSC_KEY_STORE.priv)"\"]"
-    # add owners
-    echo "List/Create user accounts"
-    ensure_key_store $CONFIG_DIR/keystore/icon.bts.wallet.json $CONFIG_DIR/keystore/icon.bts.wallet.secret
-    ensure_key_store $CONFIG_DIR/keystore/icon.bmc.wallet.json $CONFIG_DIR/keystore/icon.bmc.wallet.secret
-    ensure_key_store $CONFIG_DIR/keystore/icon.bmr.wallet.json $CONFIG_DIR/keystore/icon.bmr.wallet.secret
-    ensure_key_store $CONFIG_DIR/keystore/icon.fa.wallet.json $CONFIG_DIR/keystore/icon.fa.wallet.secret
+  echo "check god keys..."
+  if [ ! -f "${ICON_KEY_STORE}" ]; then
+    ensure_key_store $ICON_KEY_STORE $ICON_SECRET
+    echo "Do not Panic..."
+    echo "Missing ICON God Wallet on the required path. One has been created "$ICON_KEY_STORE
+    echo "Fund this newly created wallet and rerun the same command again"
+    exit 0
+  fi
+  if [ ! -f "${BSC_KEY_STORE}" ]; then
+    ensure_bsc_key_store $BSC_KEY_STORE $BSC_SECRET
+    echo "Do not Panic..."
+    echo "Missing BSC God Wallet on the required path. One has been created "$BSC_KEY_STORE
+    echo "Fund this newly created wallet and rerun again "
+    exit 0
+  fi
+  export PRIVATE_KEY="[\""$(cat $BSC_KEY_STORE.priv)"\"]"
+  # add owners
+  echo "List/Create user accounts"
+  ensure_key_store $CONFIG_DIR/keystore/icon.bts.wallet.json $CONFIG_DIR/keystore/icon.bts.wallet.secret
+  ensure_key_store $CONFIG_DIR/keystore/icon.bmc.wallet.json $CONFIG_DIR/keystore/icon.bmc.wallet.secret
+  ensure_key_store $CONFIG_DIR/keystore/icon.bmr.wallet.json $CONFIG_DIR/keystore/icon.bmr.wallet.secret
+  ensure_key_store $CONFIG_DIR/keystore/icon.fa.wallet.json $CONFIG_DIR/keystore/icon.fa.wallet.secret
 
-    ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bts.wallet.json $CONFIG_DIR/keystore/bsc.bts.wallet.secret
-    ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bmc.wallet.json $CONFIG_DIR/keystore/bsc.bmc.wallet.secret
-    ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bmr.wallet.json $CONFIG_DIR/keystore/bsc.bmr.wallet.secret
+  ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bts.wallet.json $CONFIG_DIR/keystore/bsc.bts.wallet.secret
+  ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bmc.wallet.json $CONFIG_DIR/keystore/bsc.bmc.wallet.secret
+  ensure_bsc_key_store $CONFIG_DIR/keystore/bsc.bmr.wallet.json $CONFIG_DIR/keystore/bsc.bmr.wallet.secret
 }
 
 deploysc() {
-    if [ ! -d $BUILD_DIR ]; then 
-      echo "Do not Panic..."
-      echo "Build Artifacts have not been created. Expected on path "$BUILD_DIR 
-      echo "Run make buildsc to do so. Check README.md for more"
-      exit 0
-    fi
-    echo "Start "
-    sleep 15
-    echo "$GOLOOP_RPC_NID.icon" >$CONFIG_DIR/net.btp.icon #0x240fa7.icon
-    mkdir -p $CONFIG_DIR/tx
+  if [ ! -d $BUILD_DIR ]; then
+    echo "Do not Panic..."
+    echo "Build Artifacts have not been created. Expected on path "$BUILD_DIR
+    echo "Run make buildsc to do so. Check README.md for more"
+    exit 0
+  fi
+  echo "Start "
+  sleep 15
+  echo "$GOLOOP_RPC_NID.icon" >$CONFIG_DIR/net.btp.icon #0x240fa7.icon
+  mkdir -p $CONFIG_DIR/tx
 
-    source token.javascore.sh
-    source token.solidity.sh
+  source token.javascore.sh
+  source token.solidity.sh
 
+  if [ ! -f $CONFIG_DIR/bsc.deploy.all ]; then
+    echo "Deploy solidity"
+    sleep 2
+    deploy_solidity_bmc
+    deploy_solidity_bts "${BSC_NATIVE_COIN_FIXED_FEE[0]}" "${BSC_NATIVE_COIN_FEE_NUMERATOR[0]}" "${BSC_NATIVE_COIN_DECIMALS[0]}"
 
-    if [ ! -f $CONFIG_DIR/bsc.deploy.all ]; then
-      echo "Deploy solidity"
-      sleep 2
-      deploy_solidity_bmc
-      deploy_solidity_bts "${BSC_NATIVE_COIN_FIXED_FEE[0]}" "${BSC_NATIVE_COIN_FEE_NUMERATOR[0]}" "${BSC_NATIVE_COIN_DECIMALS[0]}"
-
-      if [ -n "${INIT_ADDRESS_PATH}" ];
-      then
-        if [ ! -f $INIT_ADDRESS_PATH ]; then
-          echo "No file found on "$INIT_ADDRESS_PATH
+    if [ -n "${INIT_ADDRESS_PATH}" ]; then
+      if [ ! -f $INIT_ADDRESS_PATH ]; then
+        echo "No file found on "$INIT_ADDRESS_PATH
+        return 1
+      fi
+      for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"; do
+        addr=$(cat $INIT_ADDRESS_PATH | jq -r .solidity.${BSC_NATIVE_TOKEN_SYM[$i]})
+        if [ "$addr" != "null" ]; then
+          echo -n $addr >$CONFIG_DIR/bsc.addr.${BSC_NATIVE_TOKEN_SYM[$i]}
+        else
+          echo "BSC Token does not exist on address file" ${BSC_NATIVE_TOKEN_SYM[$i]}
           return 1
         fi
-        for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
-        do
-          addr=$(cat $INIT_ADDRESS_PATH | jq -r .solidity.${BSC_NATIVE_TOKEN_SYM[$i]})
-          if [ "$addr" != "null" ]; 
-          then
-            echo -n $addr > $CONFIG_DIR/bsc.addr.${BSC_NATIVE_TOKEN_SYM[$i]}
-          else 
-            echo "BSC Token does not exist on address file" ${BSC_NATIVE_TOKEN_SYM[$i]}
-            return 1
-          fi
-        done
-      else 
-        for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
-        do
-            deploy_solidity_token "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}"
-        done              
-      fi
-      echo "CONFIGURE BSC"
-      configure_solidity_add_bmc_owner
-      configure_solidity_add_bts_service
-      configure_solidity_set_fee_ratio "${BSC_NATIVE_COIN_FIXED_FEE[0]}" "${BSC_NATIVE_COIN_FEE_NUMERATOR[0]}"
-      configure_solidity_add_bts_owner
-      echo "Register BSC Tokens"
-      for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"
-      do
-          bsc_register_native_token "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}" "${BSC_NATIVE_TOKEN_FIXED_FEE[$i]}" "${BSC_NATIVE_TOKEN_FEE_NUMERATOR[$i]}" "${BSC_NATIVE_TOKEN_DECIMALS[$i]}"
-          get_coinID "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}"
       done
-      for i in "${!BSC_WRAPPED_COIN_SYM[@]}"
-      do
-          bsc_register_wrapped_coin "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}" "${BSC_WRAPPED_COIN_FIXED_FEE[$i]}" "${BSC_WRAPPED_COIN_FEE_NUMERATOR[$i]}" "${BSC_WRAPPED_COIN_DECIMALS[$i]}"
-          get_coinID "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}"
+    else
+      for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"; do
+        deploy_solidity_token "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}"
       done
-      echo "deployedSol" > $CONFIG_DIR/bsc.deploy.all 
     fi
+    echo "CONFIGURE BSC"
+    configure_solidity_add_bmc_owner
+    configure_solidity_add_bts_service
+    configure_solidity_set_fee_ratio "${BSC_NATIVE_COIN_FIXED_FEE[0]}" "${BSC_NATIVE_COIN_FEE_NUMERATOR[0]}"
+    configure_solidity_add_bts_owner
+    echo "Register BSC Tokens"
+    for i in "${!BSC_NATIVE_TOKEN_SYM[@]}"; do
+      bsc_register_native_token "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}" "${BSC_NATIVE_TOKEN_FIXED_FEE[$i]}" "${BSC_NATIVE_TOKEN_FEE_NUMERATOR[$i]}" "${BSC_NATIVE_TOKEN_DECIMALS[$i]}"
+      get_coinID "${BSC_NATIVE_TOKEN_NAME[$i]}" "${BSC_NATIVE_TOKEN_SYM[$i]}"
+    done
+    for i in "${!BSC_WRAPPED_COIN_SYM[@]}"; do
+      bsc_register_wrapped_coin "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}" "${BSC_WRAPPED_COIN_FIXED_FEE[$i]}" "${BSC_WRAPPED_COIN_FEE_NUMERATOR[$i]}" "${BSC_WRAPPED_COIN_DECIMALS[$i]}"
+      get_coinID "${BSC_WRAPPED_COIN_NAME[$i]}" "${BSC_WRAPPED_COIN_SYM[$i]}"
+    done
+    echo "deployedSol" >$CONFIG_DIR/bsc.deploy.all
+  fi
 
-    if [ ! -f $CONFIG_DIR/icon.deploy.all ]; then
-      echo "Deploy Javascore"
-      sleep 2
-      deploy_javascore_bmc
-      deploy_javascore_bts "${ICON_NATIVE_COIN_FIXED_FEE[0]}" "${ICON_NATIVE_COIN_FEE_NUMERATOR[0]}" "${ICON_NATIVE_COIN_DECIMALS[0]}"
+  if [ ! -f $CONFIG_DIR/icon.deploy.all ]; then
+    echo "Deploy Javascore"
+    sleep 2
+    deploy_javascore_bmc
+    deploy_javascore_bts "${ICON_NATIVE_COIN_FIXED_FEE[0]}" "${ICON_NATIVE_COIN_FEE_NUMERATOR[0]}" "${ICON_NATIVE_COIN_DECIMALS[0]}"
 
-      if [ -n "${INIT_ADDRESS_PATH}" ];
-      then
-        if [ ! -f $INIT_ADDRESS_PATH ]; then
-          echo "No file found on "$INIT_ADDRESS_PATH
+    if [ -n "${INIT_ADDRESS_PATH}" ]; then
+      if [ ! -f $INIT_ADDRESS_PATH ]; then
+        echo "No file found on "$INIT_ADDRESS_PATH
+        return 1
+      fi
+      for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"; do
+        addr=$(cat $INIT_ADDRESS_PATH | jq -r .javascore.${ICON_NATIVE_TOKEN_SYM[$i]})
+        if [ "$addr" != "null" ]; then
+          echo -n $addr >$CONFIG_DIR/icon.addr.${ICON_NATIVE_TOKEN_SYM[$i]}
+        else
+          echo "ICON Token ${ICON_NATIVE_TOKEN_SYM[$i]} does not exist on address file"
           return 1
         fi
-        for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
-        do
-          addr=$(cat $INIT_ADDRESS_PATH | jq -r .javascore.${ICON_NATIVE_TOKEN_SYM[$i]})
-          if [ "$addr" != "null" ]; 
-          then
-            echo -n $addr > $CONFIG_DIR/icon.addr.${ICON_NATIVE_TOKEN_SYM[$i]}
-          else 
-            echo "ICON Token ${ICON_NATIVE_TOKEN_SYM[$i]} does not exist on address file"
-            return 1
-          fi
-        done
-      else 
-        for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
-        do
-            deploy_javascore_token "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}"
-        done           
-      fi
-      echo "CONFIGURE ICON"
-      configure_javascore_add_bmc_owner
-      configure_javascore_bmc_setFeeAggregator
-      configure_javascore_add_bts
-      configure_javascore_add_bts_owner
-      configure_javascore_bts_setICXFee "${ICON_NATIVE_COIN_FIXED_FEE[0]}" "${ICON_NATIVE_COIN_FEE_NUMERATOR[0]}"
-      echo "Register ICON Tokens"
-      for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"
-      do
-          configure_javascore_register_native_token "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}" "${ICON_NATIVE_TOKEN_FIXED_FEE[$i]}" "${ICON_NATIVE_TOKEN_FEE_NUMERATOR[$i]}" "${ICON_NATIVE_TOKEN_DECIMALS[$i]}"
-          get_btp_icon_coinId "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}"
       done
-      for i in "${!ICON_WRAPPED_COIN_SYM[@]}"
-      do
-          configure_javascore_register_wrapped_coin "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}" "${ICON_WRAPPED_COIN_FIXED_FEE[$i]}" "${ICON_WRAPPED_COIN_FEE_NUMERATOR[$i]}" "${ICON_WRAPPED_COIN_DECIMALS[$i]}"
-          get_btp_icon_coinId "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}"
+    else
+      for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"; do
+        deploy_javascore_token "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}"
       done
-      echo "deployedJavascore" > $CONFIG_DIR/icon.deploy.all 
     fi
+    echo "CONFIGURE ICON"
+    configure_javascore_add_bmc_owner
+    configure_javascore_bmc_setFeeAggregator
+    configure_javascore_add_bts
+    configure_javascore_add_bts_owner
+    configure_javascore_bts_setICXFee "${ICON_NATIVE_COIN_FIXED_FEE[0]}" "${ICON_NATIVE_COIN_FEE_NUMERATOR[0]}"
+    echo "Register ICON Tokens"
+    for i in "${!ICON_NATIVE_TOKEN_SYM[@]}"; do
+      configure_javascore_register_native_token "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}" "${ICON_NATIVE_TOKEN_FIXED_FEE[$i]}" "${ICON_NATIVE_TOKEN_FEE_NUMERATOR[$i]}" "${ICON_NATIVE_TOKEN_DECIMALS[$i]}"
+      get_btp_icon_coinId "${ICON_NATIVE_TOKEN_NAME[$i]}" "${ICON_NATIVE_TOKEN_SYM[$i]}"
+    done
+    for i in "${!ICON_WRAPPED_COIN_SYM[@]}"; do
+      configure_javascore_register_wrapped_coin "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}" "${ICON_WRAPPED_COIN_FIXED_FEE[$i]}" "${ICON_WRAPPED_COIN_FEE_NUMERATOR[$i]}" "${ICON_WRAPPED_COIN_DECIMALS[$i]}"
+      get_btp_icon_coinId "${ICON_WRAPPED_COIN_NAME[$i]}" "${ICON_WRAPPED_COIN_SYM[$i]}"
+    done
+    echo "deployedJavascore" >$CONFIG_DIR/icon.deploy.all
+  fi
 
-    if [ ! -f $CONFIG_DIR/link.all ]; then
-      echo "LINK ICON"
-      configure_javascore_addLink
-      configure_javascore_setLinkHeight
-      configure_bmc_javascore_addRelay
-      echo "LINK BSC"
-      add_icon_link
-      set_link_height
-      add_icon_relay
-      echo "linked" > $CONFIG_DIR/link.all
-    fi
+  if [ ! -f $CONFIG_DIR/link.all ]; then
+    echo "LINK ICON"
+    configure_javascore_addLink
+    configure_javascore_setLinkHeight
+    configure_bmc_javascore_addRelay
+    echo "LINK BSC"
+    add_icon_link
+    set_link_height
+    add_icon_relay
+    echo "linked" >$CONFIG_DIR/link.all
+  fi
 
-    generate_addresses_json >$CONFIG_DIR/addresses.json  
-    generate_relay_config >$CONFIG_DIR/bmr.config.json
-    generate_e2e_config >$CONFIG_DIR/e2e.config.json
-    wait_for_file $CONFIG_DIR/bmr.config.json
-    
-    echo "Smart contracts have been deployed "
-    echo "You can now run the relay with make runrelaysrc OR make runrelayimg"
+  generate_addresses_json >$CONFIG_DIR/addresses.json
+  generate_relay_config >$CONFIG_DIR/bmr.config.json
+  generate_e2e_config >$CONFIG_DIR/e2e.config.json
+  wait_for_file $CONFIG_DIR/bmr.config.json
+
+  echo "Smart contracts have been deployed "
+  echo "You can now run the relay with make runrelaysrc OR make runrelayimg"
 }
 
 wait_for_file() {
@@ -184,8 +171,6 @@ wait_for_file() {
     echo "waiting for the output file: $FILE_NAME"
   done
 }
-
-
 
 generate_relay_config() {
   jq -n '
@@ -259,5 +244,15 @@ generate_relay_config() {
 #wait-for-it.sh $GOLOOP_RPC_ADMIN_URI
 # run provisioning
 echo "start..."
-setup_account
-deploysc
+echo "Load Configuration Files For : $TAG"
+
+read -p "Confirm? [y/N]: " proceed
+
+if [[ $proceed == "y" ]]; then
+  setup_account
+  deploysc
+  echo "Done deploying smart contracts"
+else
+  echo "Exit"
+  exit 0
+fi

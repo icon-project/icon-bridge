@@ -10,11 +10,27 @@ runnodes:
 deploysclocalnet:
 	./build.sh deploysclocalnet
 	
-deploysctestnet:
-	./build.sh deploysctestnet
+# Usage: make deploysc net=mainnet/testnet
+deploysc:
+	./build.sh deploysc ${net}
 
+# Usage: make deployscarctic net=mainnet/testnet
 deployscarctic:
-	./build.sh deployscarctic
+	./build.sh deployscarctic ${net}
+
+############## AUDIT FIXES ############## 
+
+# Usage: make auditfixbsc net=mainnet
+auditfixbsc:
+	./build.sh bscaudit ${net}
+
+auditfixarctic:
+	./build.sh arcticaudit ${net}
+
+auditfixicon:
+	./build.sh iconaudit ${net}
+
+#########################################
 
 runrelaysrc:
 	./build.sh runrelaysrc

@@ -1,8 +1,10 @@
-const BTSCore = artifacts.require("BTSCore");
+const BTSCore = artifacts.require("BTSCoreV3");
+const BTSOwnerManager = artifacts.require("BTSOwnerManager");
 module.exports = async function (callback) {
     try {
       var argv = require('minimist')(process.argv.slice(2), { string: ['addr'] });
       const btsCore = await BTSCore.deployed();
+      const btsOwnerManager = await BTSOwnerManager.deployed();
       switch (argv["method"]) {
         case "setFeeRatio":
             tx = await btsCore.setFeeRatio(argv.name, argv.feeNumerator, `${argv.fixedFee}`);
@@ -15,6 +17,15 @@ module.exports = async function (callback) {
         case "coinId":
             tx = await btsCore.coinId(argv.coinName);
             console.log("coinId:",tx);
+            break;      
+        case "addBTSOwnerManager":
+            console.log("Add BTSOwnerManager")
+            tx = await btsCore.setBTSOwnerManager(argv.addr)
+            console.log(tx)
+            break;
+        case "updateCoinDb":
+            tx = await btsCore.updateCoinDb()
+            console.log(tx)
             break;
         case "addOwner":
             console.log("Add bts owner ", argv.addr)
@@ -28,12 +39,12 @@ module.exports = async function (callback) {
             break;
         case "getOwners":
             console.log("Fetch current bts owners ")
-            tx = await btsCore.getOwners()
+            tx = await btsOwnerManager.getOwners()
             console.log("BTS Contract owners are: ",tx)
             break;
         case "isOwner":
             console.log("Addr ", argv.addr)
-            tx = await btsCore.isOwner(argv.addr)
+            tx = await btsOwnerManager.isOwner(argv.addr)
             console.log("IsOwner:",tx)
             break;
         default:

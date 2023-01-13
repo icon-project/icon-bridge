@@ -13,14 +13,14 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
-   @title BTSPeriphery contract
+   @title BTSPeripheryV1 contract
    @dev This contract is used to handle communications among BMCService and BTSCore contract
    @dev OwnerUpgradeable has been removed. This contract does not have its own Owners
         Instead, BTSCore manages ownership roles.
         Thus, BTSPeriphery should call btsCore.isOwner() and pass an address for verification
         in case of implementing restrictions, if needed, in the future. 
 */
-contract BTSPeriphery is Initializable, IBTSPeriphery {
+contract BTSPeripheryV1 is Initializable, IBTSPeriphery {
     using RLPEncodeStruct for Types.TransferCoin;
     using RLPEncodeStruct for Types.ServiceMessage;
     using RLPEncodeStruct for Types.Response;
@@ -85,7 +85,6 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
 
     mapping(address => bool) public blacklist;
     mapping(string => uint) public tokenLimit;
-    uint256 private constant MAX_BATCH_SIZE = 15;
 
     modifier onlyBMC() {
         require(msg.sender == address(bmc), "Unauthorized");
@@ -117,7 +116,6 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
     */
     function addToBlacklist(string[] memory _address) external {
         require(msg.sender == address(this), "Unauthorized");
-        require(_address.length <= MAX_BATCH_SIZE, "BatchMaxSizeExceed");
         for (uint i = 0; i < _address.length; i++) {
             try this.checkParseAddress(_address[i]) {
                 blacklist[_address[i].parseAddress()] = true;
@@ -133,7 +131,6 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
     */
     function removeFromBlacklist(string[] memory _address) external {
         require(msg.sender == address(this), "Unauthorized");
-        require(_address.length <= MAX_BATCH_SIZE, "BatchMaxSizeExceed");
         for (uint i = 0; i < _address.length; i++) {
             try this.checkParseAddress(_address[i]) {
                 address addr = _address[i].parseAddress();
@@ -156,7 +153,6 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
     ) external override {
         require(msg.sender == address(this) || msg.sender == address(btsCore), "Unauthorized");
         require(_coinNames.length == _tokenLimits.length,"InvalidParams");
-        require(_coinNames.length <= MAX_BATCH_SIZE, "BatchMaxSizeExceed");
         for(uint i = 0; i < _coinNames.length; i++) {
             tokenLimit[_coinNames[i]] = _tokenLimits[i];
         }
@@ -402,7 +398,6 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
     ) private {
         address _caller = requests[_sn].from.parseAddress();
         uint256 loop = requests[_sn].coinNames.length;
-        require(loop <= MAX_BATCH_SIZE, "BatchNaxSizeExceed");
         for (uint256 i = 0; i < loop; i++) {
             btsCore.handleResponseService(
                 _caller,
@@ -428,7 +423,6 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         Types.Asset[] memory _assets
     ) external {
         require(msg.sender == address(this), "Unauthorized");
-        require(_assets.length <= MAX_BATCH_SIZE, "BatchMaxSizeExceed");
         for (uint256 i = 0; i < _assets.length; i++) {
             require(
                 btsCore.isValidCoin(_assets[i].coinName) == true,
@@ -508,6 +502,6 @@ contract BTSPeriphery is Initializable, IBTSPeriphery {
         uint256 _value
     ) public view override {
         require(!blacklist[_user],"Blacklisted");
-        require(tokenLimit[_coinName] >= _value ,"LimitExceed");
+        require(tokenLimit[_coinName] > _value ,"LimitExceed");
     }
 }

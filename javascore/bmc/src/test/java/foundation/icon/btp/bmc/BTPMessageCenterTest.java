@@ -304,7 +304,10 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
         expectErrorMessage(call, REQUIRE_OWNER_ACCESS);
 
         call = () -> score.invoke(owner, SET_RELAYER_MIN_BOND, BigInteger.ONE.negate());
-        expectErrorMessage(call, "minBond must be positive");
+        expectErrorMessage(call, "minBond must be greater than zero");
+
+        call = () -> score.invoke(owner, SET_RELAYER_MIN_BOND, BigInteger.ZERO);
+        expectErrorMessage(call, "minBond must be greater than zero");
 
         score.invoke(owner, SET_RELAYER_MIN_BOND, bond);
         assertEquals(bond, score.call("getRelayerMinBond"));
