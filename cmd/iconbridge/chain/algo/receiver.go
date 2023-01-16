@@ -186,14 +186,8 @@ func (r *receiver) getBMCTxns(block *types.Block) *[]types.SignedTxnWithAD {
 	txns := make([]types.SignedTxnWithAD, 0)
 	for _, signedTxnInBlock := range block.Payset {
 		signedTxnWithAD := signedTxnInBlock.SignedTxnWithAD
-		//TODO review the way of properly identify a bmc txn once we have a proper BMC
-		//This block is now only adding txns with payload to test the receiveloop
-		/* 		if signedTxnWithAD.SignedTxn.Txn.Type == types.ApplicationCallTx &&
-		signedTxnWithAD.SignedTxn.Txn.ApplicationID == types.AppIndex(r.cl.bmc.appID) &&
-		signedTxnWithAD.SignedTxn.AuthAddr.String() == r.src.ContractAddress() &&
-		string(signedTxnWithAD.SignedTxn.Txn.ApplicationArgs[0]) == r.dst.ContractAddress() { */
 
-		if signedTxnWithAD.SignedTxn.Txn.Type == types.ApplicationCallTx {
+		if signedTxnWithAD.SignedTxn.AuthAddr.String() == r.src.ContractAddress() {
 			txns = append(txns, signedTxnWithAD)
 		}
 	}

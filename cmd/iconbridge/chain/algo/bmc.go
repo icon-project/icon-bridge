@@ -7,17 +7,22 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 )
 
-func (s *sender) HandleRelayMessage(ctx context.Context, _prev []byte, _msg []byte) (
-	string, error) {
-	res, err := s.callAbi(ctx, "HandleRelayMessage", []interface{}{_prev, _msg})
-	if err != nil {
-		return "", fmt.Errorf("Error calling Bmc Handle Relay Message: %w", err)
+func (s *sender) HandleRelayMessage(ctx context.Context, receipts [][]byte) (
+	[]string, error) {
+	abiFuncs := make([]AbiFunc, atomicTxnLimit)
+	for _, receipt := range receipts {
+		abiFuncs = append(abiFuncs, AbiFunc{"HandleRelayMessage", []interface{}{receipt}})
 	}
-	return res.TxIDs[0], nil
+
+	res, err := s.callAbi(ctx, abiFuncs...)
+	if err != nil {
+		return nil, fmt.Errorf("Error calling Bmc Handle Relay Message: %w", err)
+	}
+	return res.TxIDs, nil
 }
 
 func (s *sender) GetBmcStatus(ctx context.Context) (*chain.BMCLinkStatus, error) {
-	res, err := s.callAbi(ctx, "GetStatus", []interface{}{})
+	res, err := s.callAbi(ctx, AbiFunc{"GetStatus", []interface{}{}})
 	if err != nil {
 		return nil, fmt.Errorf("Error calling Bmc Handle Relay Message: %w", err)
 	}
