@@ -697,8 +697,41 @@ class BTPMessageCenterTest extends AbstractBTPMessageCenterTest {
                 .thenReturn(null);
         // successful sendFeeGathering
         score.invoke(owner, "sendFeeGathering");
+    }
 
+    @Test
+    public void handleRelayMessageMultipleChain() {
+        String arcticLink = getDestinationBTPAddress("0x228.arctic", "0x1111111111111111111111111111111111111111");
+        String bscLink = getDestinationBTPAddress("0x38.bsc", "0x0000000000000000000000000000000000000004");
+        Account relay = registerRelayer();
 
+        addLink(arcticLink);
+        addLink(bscLink);
+
+        score.invoke(owner, "addRelay", arcticLink, relay.getAddress());
+
+        // for confirmation in eventLog
+        BTPAddress d = new BTPAddress("0x38.bsc", "0x0000000000000000000000000000000000000004");
+        BTPAddress s = new BTPAddress("0x228.arctic", "0x1111111111111111111111111111111111111111");
+
+        BTPMessage m = new BTPMessage();
+        m.setSrc(s);
+        m.setDst(d);
+        m.setSn(BigInteger.valueOf(10));
+        m.setSvc("bts");
+        m.setPayload("messageToBTS".getBytes());
+        byte[] byt = m.toBytes();
+
+        /* This base64 message was generated from the BTP Message above */
+        String base64 = "-N743Lja-NhVuND4zvjMuDlidHA6Ly8weDEuaWNvbi9jeDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDQBuI74jLg9YnRwOi8vMHgyMjguYXJjdGljLzB4MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMbg5YnRwOi8vMHgzOC5ic2MvMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA0g2J0cwqMbWVzc2FnZVRvQlRThAFK_nM=";
+
+        score.invoke(relay, "handleRelayMessage", arcticLink, base64);
+
+        // though the service type is "bts", bts does not need to be registered as service on ICON
+        // as it is intended for bts of destination BSC chain
+        // ICON just forwards the message to BSC using Message event with required data
+
+        verify(scoreSpy).Message(eq(bscLink), eq(BigInteger.TWO), eq(byt));
     }
 
     @Test
