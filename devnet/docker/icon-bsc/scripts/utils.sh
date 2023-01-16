@@ -101,6 +101,7 @@ done
 echo "        " \"BMCManagement\": \"$(cat $CONFIG_DIR/bsc.addr.bmcmanagement)\",
 echo "        " \"BMCPeriphery\": \"$(cat $CONFIG_DIR/bsc.addr.bmcperiphery)\",
 echo "        " \"BTSCore\": \"$(cat $CONFIG_DIR/bsc.addr.btscore)\",
+echo "        " \"BTSOwnerManager\": \"$(cat $CONFIG_DIR/bsc.addr.btsownermanager)\",
 echo "        " \"BTSPeriphery\": \"$(cat $CONFIG_DIR/bsc.addr.btsperiphery)\"
 echo "    }"
 echo "}"

@@ -327,6 +327,8 @@ generate_metadata() {
     wait_for_file $CONFIG_DIR/bsc.addr.btscore
     jq -r '.networks[] | .address' build/contracts/BTSPeriphery.json >$CONFIG_DIR/bsc.addr.btsperiphery
     wait_for_file $CONFIG_DIR/bsc.addr.btsperiphery
+    jq -r '.networks[] | .address' build/contracts/BTSOwnerManager.json >$CONFIG_DIR/bsc.addr.btsownermanager
+    wait_for_file $CONFIG_DIR/bsc.addr.btsownermanager
     echo "DONE."
     ;;
   *)
