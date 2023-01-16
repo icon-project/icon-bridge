@@ -1,4 +1,4 @@
-const BTSCore = artifacts.require("BTSCoreV3");
+const BTSCore = artifacts.require("BTSCore");
 const BTSOwnerManager = artifacts.require("BTSOwnerManager");
 module.exports = async function (callback) {
     try {
@@ -29,12 +29,12 @@ module.exports = async function (callback) {
             break;
         case "addOwner":
             console.log("Add bts owner ", argv.addr)
-            tx = await btsCore.addOwner(argv.addr)
+            tx = await btsOwnerManager.addOwner(argv.addr)
             console.log(tx)
             break;
         case "removeOwner":
             console.log("Remove bts owner ", argv.addr)
-            tx = await btsCore.removeOwner(argv.addr)
+            tx = await btsOwnerManager.removeOwner(argv.addr)
             console.log(tx)
             break;
         case "getOwners":
