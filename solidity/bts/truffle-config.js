@@ -21,6 +21,7 @@ module.exports = {
       timeoutBlocks: 200,
       gasPrice: 20000000000,
     },
+
     hmny: {
       provider: () =>
           new HDWalletProvider({

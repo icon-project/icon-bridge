@@ -19,7 +19,7 @@ npm install @openzeppelin/contracts-upgradeable
 ```
 Install dependencies
 ```
-$ yarn
+$ npm install
 ```
 
 ## Test
@@ -39,4 +39,45 @@ $ yarn test
 ```
 $ yarn test:unit
 $ yarn test:integration
+```
+
+### Deploy contracts
+
+1. Compile contracts
+```
+$ npx hardhat compile
+```
+
+2. Deploy all BTS contracts
+
+Network by default is Local. List of networks in the hardhat.config.js
+
+```
+$ npx hardhat deploy-bts --bmcaddress <BMC Address 0x........>
+```
+or
+```
+$ npx hardhat deploy-bts --network arctic --bmcaddress <BMC Address 0x........>
+```
+
+3. Deploy only one contract (Don't do it if you deploy every thing on the step 2)
+
+Deploy only BTS core contract
+
+```
+$ npx hardhat deploy-bts --bmcaddress <BMC Address 0x........>
+```
+or
+```
+$ npx hardhat deploy-bts --network arctic --bmcaddress <BMC Address 0x........>
+```
+
+Deploy only BTS periphery contract
+
+```
+$ npx hardhat deploy-bts-periphery --bmcaddress <BMC management address 0x........> --btscoreaddr <BTS core address 0x........>
+```
+or
+```
+$ npx hardhat deploy-bts-periphery --network arctic --bmcaddress <BMC management address 0x........> --btscoreaddr <BTS core address 0x........>
 ```

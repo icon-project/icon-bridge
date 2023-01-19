@@ -17,7 +17,8 @@ cd cmd/iconvalidators
 go build .
 cd $ROOT_DIR
 
-# build contracts
+echo "Build contracts"
+
 cd $ROOT_DIR/javascore
 gradle clean
 gradle bmc:optimizedJar
@@ -29,9 +30,16 @@ cp bts/build/libs/bts-optimized.jar $JAVASCORE_DIR/bts.jar
 cp irc2Tradeable/build/libs/irc2Tradeable-optimized.jar $JAVASCORE_DIR/irc2Tradeable.jar
 cp irc2-token/build/libs/irc2-token-optimized.jar $JAVASCORE_DIR/irc2.jar
 
-# copy solidity
+echo "Copy solidity"
+
+rm -rf $ROOT_DIR/solidity/bmc/build
+rm -rf $ROOT_DIR/solidity/bmc/node_modules
 cp -r $ROOT_DIR/solidity/bmc $SOLIDITY_DIR/
+
+rm -rf $ROOT_DIR/solidity/bts/build
+rm -rf $ROOT_DIR/solidity/bts/node_modules
 cp -r $ROOT_DIR/solidity/bts $SOLIDITY_DIR/
+
 cd $SOLIDITY_DIR
 cd bmc && yarn install
 cd ..
