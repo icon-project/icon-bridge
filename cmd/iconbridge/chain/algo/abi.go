@@ -124,12 +124,12 @@ func encodeReceipt(relayMsg *chain.Receipt) ([]byte, error) {
 
 	receipt, err := abi.MakeTupleType([]abi.Type{index, msg, height})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to encode receipt: %w", err)
+		return nil, fmt.Errorf("Failed to create type of receipt: %w", err)
 	}
 
 	encMessage, err := receipt.Encode([]interface{}{relayMsg.Index, encEvent, relayMsg.Height})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create type of relay message: %w", err)
+		return nil, fmt.Errorf("Failed to encode relay message: %w", err)
 	}
 	return encMessage, nil
 }

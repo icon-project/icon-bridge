@@ -150,7 +150,7 @@ func (r *receiver) inspectBlock(ctx context.Context, round uint64, subOpts *chai
 	}
 
 	if bytes.Equal(newBlock.BlockHeader.Branch[:], r.vr.BlockHash[:]) {
-		r.vr.BlockHash = BlockHash(newBlock)
+		r.vr.BlockHash = EncodeBlockHash(newBlock)
 		r.vr.Round++
 	} else {
 		_errCh <- fmt.Errorf("Block at round %d does not have a valid parent hash.", round)

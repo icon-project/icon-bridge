@@ -29,7 +29,7 @@ func Test_Subscribe(t *testing.T) {
 		t.FailNow()
 	}
 
-	rcv, err := createTestReceiver(testnetAccess, curRound-10, BlockHash(blk))
+	rcv, err := createTestReceiver(testnetAccess, curRound-10, EncodeBlockHash(blk))
 	if err != nil {
 		t.Logf("NewReceiver error: %v", err)
 		t.FailNow()
@@ -92,7 +92,7 @@ func xTest_GetHash(t *testing.T) {
 		t.FailNow()
 	}
 
-	prvHash := BlockHash(prvBlock)
+	prvHash := EncodeBlockHash(prvBlock)
 	curHash := curBlock.Branch
 	if !bytes.Equal(prvHash[:], curHash[:]) {
 		t.Errorf("Error: expected %v, got %v", prvHash, curHash)
