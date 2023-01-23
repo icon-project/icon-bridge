@@ -51,7 +51,12 @@ $ npx hardhat compile
 2. Deploy all BTS contracts
 
 Network by default is Local. List of networks in the hardhat.config.js
+The bmc address you can put as a command parameter 'bmcaddress' or in the env file 'PERIPHERY_ADDRESS'
 
+```
+$ npx hardhat deploy-bts
+```
+or
 ```
 $ npx hardhat deploy-bts --bmcaddress <BMC Address 0x........>
 ```

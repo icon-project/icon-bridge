@@ -1,7 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter");
-require('dotenv').config({path:__dirname+'/.env'})
-
+require('dotenv').config({path: process.env.DOTENV_CONFIG_PATH || "../../.env"})
 
 
 // This is a sample Hardhat task. To learn how to create your own go to
@@ -18,8 +17,8 @@ task("balances", "Prints the list of AVAX account balances", async () => {
   const accounts = await ethers.getSigners();
 
   for (const account of accounts) {
-    balance = await ethers.provider.getBalance(account.address);
-    console.log(account.address, "has balance", balance.toString());
+      const balance = await ethers.provider.getBalance(account.address);
+      console.log(account.address, "has balance", balance.toString());
   }
 });
 
@@ -75,7 +74,7 @@ task("deploy-bmc-periphery", "Deploy bmc periphery contract")
 
 
 
-const { RPC_URL, PRIVATE_KEY } = process.env;
+
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -85,6 +84,7 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
+        // Do not increase the number of runs, this will increase the contract artifact and cause an error.
         runs: 10
       },
       evmVersion: "petersburg"
@@ -96,37 +96,30 @@ module.exports = {
       //wei
       gasPrice: 100000000000,
       chainId: 553,
-      network_id: process.env.BSC_NID,
       // allowUnlimitedContractSize: true,
       mining: {
         auto: true,
         interval: [3000, 6000]
-      }
+      },
+
+      //Bridge specific
+      chainNetworkId:'0x01',
     },
 
     arctic: {
-      url: RPC_URL,
+      url: process.env.ARCTIC_RPC_URI || "",
       //wei
       gasPrice: 100000000000,
       blockGasLimit: 60000000000,
       chainId: 553,
       // allowUnlimitedContractSize: true,
-      accounts: PRIVATE_KEY,
+      accounts: [`0x${process.env.ARCTIC_PRIVATE_KEY_1}`],
       timeout:250000,
 
-      //Chain specific
+      //Bridge specific
       chainNetworkId:'0x61.bsc',
     },
 
-    moonAlpha: {
-      url: RPC_URL,
-      //wei
-      gasPrice: 1000000000,
-      blockGasLimit: 30000000000,
-      chainId: 1287,
-      accounts: PRIVATE_KEY,
-      timeout:250000
-    }
   },
 
   gasReporter: {

@@ -12,6 +12,7 @@
     },
     "dependencies": {
         "@openzeppelin/contracts": "^4.4.1",
+        "dotenv": "^16.0.3",
         "hardhat-gas-reporter": "^1.0.9"
     },
     "engines": {

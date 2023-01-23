@@ -1,5 +1,5 @@
 const HDWalletProvider = require('@truffle/hdwallet-provider');
-require('dotenv').config()
+require('dotenv').config({path: process.env.DOTENV_CONFIG_PATH || "../../.env"})
 
 console.log('BSC_RPC_URI: ' + process.env.BSC_RPC_URI);
 
