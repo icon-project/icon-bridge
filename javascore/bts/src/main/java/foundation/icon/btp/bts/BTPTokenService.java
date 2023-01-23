@@ -53,6 +53,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     public static final BigInteger NATIVE_COIN_ID = BigInteger.ZERO;
     public static final BigInteger FEE_DENOMINATOR = BigInteger.valueOf(10000);
 
+    public static final int BATCH_LIMIT_SIZE = 15;
+
     public static final int NATIVE_COIN_TYPE = 0;
     public static final int NATIVE_WRAPPED_COIN_TYPE = 1;
     public static final int NON_NATIVE_TOKEN_TYPE = 2;
@@ -182,6 +184,12 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         require(!isRegistered(_name), "already existed");
 
+        Context.require(_feeNumerator.compareTo(BigInteger.ZERO) >= 0 &&
+                        _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
+                "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
+        Context.require(_fixedFee.compareTo(BigInteger.ZERO) >= 0, "Fixed fee cannot be less than zero");
+
+
         coinNames.add(_name);
         if (_addr == null || _addr.equals(ZERO_SCORE_ADDRESS)) {
             Address irc2Address = Context.deploy(serializedIrc2, _name, _symbol, _decimals);
@@ -190,6 +198,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             coinDb.set(_name, new Coin(irc2Address, _name, _symbol, _decimals, _feeNumerator, _fixedFee,
                     NATIVE_WRAPPED_COIN_TYPE));
         } else {
+            require(coinAddressName.get(_addr) == null, "coin with that address already registered");
             coinAddresses.set(_name, _addr);
             coinDb.set(_name,
                     new Coin(_addr, _name, _symbol, _decimals, _feeNumerator, _fixedFee, NON_NATIVE_TOKEN_TYPE));
@@ -213,6 +222,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         int size = _coinNames.length;
         require(size == _tokenLimits.length, "Invalid arguments");
         require(size > 0, "Array can't be empty.");
+        require(size <= BATCH_LIMIT_SIZE, "Array  Exceed.");
+
         for (int i = 0; i < size; i++) {
             String coinName = _coinNames[i];
             BigInteger coinLimit = _tokenLimits[i];
@@ -270,6 +281,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void addBlacklistAddress(String _net, String[] _addresses) {
         requireOwnerAccess();
+        require(_addresses.length <= BATCH_LIMIT_SIZE, "Exceed Batch Limit Size");
 
         // check for valid link
         require(isValidLink(_net) || _net.equals(net), "Invalid link");
@@ -315,6 +327,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External
     public void removeBlacklistAddress(String _net, String[] _addresses) {
         requireOwnerAccess();
+        require(_addresses.length <= BATCH_LIMIT_SIZE, "Exceed Batch Limit Size");
 
         // check for valid link
         require(isValidLink(_net) || _net.equals(net), "Invalid link");
@@ -412,15 +425,16 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External(readonly = true)
     public Map<String, BigInteger> balanceOf(Address _owner, String _coinName) {
         Balance balance = getBalance(_coinName, _owner);
-        Address _addr = coinAddresses.get(_coinName);
-        if (_addr == null && !_coinName.equals(name)) {
-            return balance.addUserBalance(BigInteger.ZERO);
-        }
-        Coin _coin = coinDb.get(_coinName);
         if (_coinName.equals(name)) {
             BigInteger icxBalance = Context.getBalance(_owner);
             return balance.addUserBalance(icxBalance);
-        } else if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
+        }
+        Address _addr = coinAddresses.get(_coinName);
+        if (_addr == null) {
+            return balance.addUserBalance(BigInteger.ZERO);
+        }
+        Coin _coin = coinDb.get(_coinName);
+        if (_coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE) {
             IRC2SupplierScoreInterface _irc2 = new IRC2SupplierScoreInterface(_coin.getAddress());
             BigInteger allowance = _irc2.allowance(_owner, Context.getAddress());
             BigInteger tokenBalance = _irc2.balanceOf(_owner);
@@ -462,6 +476,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      */
     @External
     public void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
+        require( _value.compareTo(BigInteger.ZERO) >= 0, "value should be positive");
         checkUintLimit(_value);
         String _coinName = coinAddressName.get(Context.getCaller());
         if (_coinName != null && !Context.getAddress().equals(_from)) {
@@ -493,9 +508,19 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         Balance balance = getBalance(_coinName, owner);
         require(balance.getRefundable().add(balance.getUsable()).compareTo(_value) > -1, "invalid value");
         require(isRegistered(_coinName), "Not registered");
-        balance.setRefundable(balance.getRefundable().add(balance.getUsable()));
-        balance.setUsable(BigInteger.ZERO);
-        balance.setRefundable(balance.getRefundable().subtract(_value));
+
+        BigInteger refundable = BigInteger.ZERO;
+        BigInteger usable;
+
+        if (_value.compareTo(balance.getRefundable()) > 0) {
+            usable = balance.getUsable().subtract(_value.subtract(balance.getRefundable()));
+        } else  { 
+            refundable = balance.getRefundable().subtract(_value);
+            usable = balance.getUsable();
+        }
+
+        balance.setUsable(usable);
+        balance.setRefundable(refundable);
         setBalance(_coinName, owner, balance);
 
         if (name.equals(_coinName)) {
@@ -538,6 +563,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      */
     @External
     public void transfer(String _coinName, BigInteger _value, String _to) {
+        require(!_coinName.equals(name), "Only for IRC2 Token");
         require(_value != null && _value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
         checkUintLimit(_value);
         require(isRegistered(_coinName), "Not supported Token");
@@ -562,11 +588,24 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @Payable
     @External
     public void transferBatch(String[] _coinNames, BigInteger[] _values, String _to) {
+        int len = _coinNames.length;
+        require(len > 0, "Zero length arguments");
         require(_coinNames.length == _values.length, "Invalid arguments");
         List<String> coinNameList = new ArrayList<>();
         List<BigInteger> values = new ArrayList<>();
-        int len = _coinNames.length;
-        require(len > 0, "Zero length arguments");
+
+        BigInteger icxValue = Context.getValue();
+
+        int tempLen = len;
+        if (icxValue != null && icxValue.compareTo(BigInteger.ZERO) > 0) {
+            tempLen = tempLen + 1;
+            checkTokenLimit(name, icxValue);
+            coinNameList.add(name);
+            values.add(icxValue);
+        }
+
+        require(BATCH_LIMIT_SIZE >= tempLen, "Cannot transfer over "+ BATCH_LIMIT_SIZE + " tokens at once");
+
         Address owner = Context.getCaller();
         BTPAddress to = BTPAddress.valueOf(_to);
         checkBlacklist(net, owner.toString(), to.account());
@@ -576,6 +615,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             String coinName = _coinNames[i];
             BigInteger value = _values[i];
             require(!name.equals(coinName) && this.coinNames.contains(coinName), "Not supported Token");
+            require(value != null && value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
             checkUintLimit(value);
             coinNameList.add(coinName);
             values.add(_values[i]);
@@ -584,12 +624,6 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         transferFromBatch(owner, Context.getAddress(), _coinNames, _values);
 
-        BigInteger value = Context.getValue();
-        if (value != null && value.compareTo(BigInteger.ZERO) > 0) {
-            checkTokenLimit(name, value);
-            coinNameList.add(name);
-            values.add(value);
-        }
         sendRequest(owner, to, coinNameList, values);
     }
     
@@ -836,7 +870,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         }
     }
 
-    public Balance getBalance(String coinName, Address owner) {
+    private Balance getBalance(String coinName, Address owner) {
         Balance balance = balances.at(coinName).get(owner);
         if (balance == null) {
             balance = new Balance();
@@ -879,6 +913,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         Balance balance = getBalance(coinName, owner);
         BigInteger value = locked.subtract(fee);
         balance.setLocked(balance.getLocked().subtract(locked));
+        setBalance(coinName, owner, balance);
         try {
             if (name.equals(coinName)) {
                 Context.transfer(owner, value);
@@ -888,9 +923,10 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         } catch (Exception e) {
             if (!owner.equals(Context.getAddress())) {
                 balance.setRefundable(balance.getRefundable().add(value));
+                setBalance(coinName, owner, balance);
             }
         }
-        setBalance(coinName, owner, balance);
+        addFee(coinName, fee);
     }
 
     private void addFee(String coinName, BigInteger amount) {
@@ -917,6 +953,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         BigInteger nativeCoinTransferAmount = null;
         Asset[] assets = request.getAssets();
+        require(assets.length <= BATCH_LIMIT_SIZE, "Exceed Batch Limit Size");
         List<String> coinNamesList = new ArrayList<>();
         List<BigInteger> amounts = new ArrayList<>();
         for (Asset asset : assets) {
@@ -965,6 +1002,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             BigInteger code = response.getCode();
             Address owner = Address.fromString(transaction.getFrom());
             AssetTransferDetail[] assets = transaction.getAssets();
+            require(assets.length <= BATCH_LIMIT_SIZE, "Exceed Batch Limit Size");
 
             logger.println("handleResponse", "code:", code);
             if (TransferResponse.RC_OK.equals(code)) {
@@ -1063,7 +1101,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         TokenLimitTransaction txn = tokenLimitTxn.get(sn);
         if (txn != null) {
             BigInteger code = response.getCode();
-            if (BlacklistResponse.RC_OK.equals(code)) {
+            if (TokenLimitResponse.RC_OK.equals(code)) {
                 String[] newNetworks = removeFromArray(txn.getNet(), net);
                 txn.setNet(newNetworks);
                 String[] coinNames = txn.getCoinName();

@@ -5,7 +5,7 @@ __pycache__
 **/.DS_Store
 **/*.iml
 build/
-buildarctic/
+devnet/docker/icon-bsc/build*/
 bin/
 **/*/node_modules/
 abigenBindings/

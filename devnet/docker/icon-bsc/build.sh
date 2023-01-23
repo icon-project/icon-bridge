@@ -1,17 +1,17 @@
 #!/bin/bash
-set -e 
+set -e
 
 ########################################################
 
 build_all_images_for_local_deployment() {
-    if [ -f local/goloop ] || [ -f local/log ] || [ -f local/artifacts ]; then 
+    if [ -f local/goloop ] || [ -f local/log ] || [ -f local/artifacts ]; then
         echo "Previous deployment artifacts exist on local/{goloop,log,artifacts}. Clean using sudo make cleaimglocal. Then runimglocal"
         exit 0
     fi
     echo "Start building docker containers for iconbridge, bsc and icon nodes"
     #make -C ../../../ dist-javascore dist-sol iconbridge-image
-	mkdir -p ./data/bsc/node1
-    
+    mkdir -p ./data/bsc/node1
+
     export DOCKER_DEFAULT_PLATFORM=linux/amd64
     echo "Build BMR"
     cd ../../..
@@ -28,7 +28,7 @@ build_all_images_for_local_deployment() {
 }
 
 run_all_images_for_local_deployment() {
-    if [ -f local/goloop ] || [ -f local/log ] || [ -f local/artifacts ]; then 
+    if [ -f local/goloop ] || [ -f local/log ] || [ -f local/artifacts ]; then
         echo "Previous deployment artifacts exist on local/{goloop,log,artifacts}. Clean using sudo make cleaimglocal. Then runimglocal"
         exit 0
     fi
@@ -41,24 +41,24 @@ clean_artifacts_of_local_deployment() {
     echo "Cleaning Artifacts. Might require sudo privilege if not used i.e. sudo make cleanimglocal"
     sleep 2
     docker-compose down -v --remove-orphans
-	rm -rf local/artifacts
-	rm -rf local/goloop
-	rm -rf local/log
-	rm -rf data/bsc/node1
+    rm -rf local/artifacts
+    rm -rf local/goloop
+    rm -rf local/log
+    rm -rf data/bsc/node1
 }
 
 remove_artifacts_of_local_deployment() {
     echo "Removing Artifacts. Might require sudo privilege if not used i.e. sudo make removeimglocal"
     sleep 2
-	docker-compose down -v --remove-orphans	
-	docker rmi -f icon-bsc_btp
-	docker rm -f javascore-dist
-	docker rmi -f iconbridge
-	docker rmi -f btp/javascore
-	rm -rf local/artifacts 
-	rm -rf local/log 
-	rm -rf local/goloop
-	rm -rf data/bsc/node1
+    docker-compose down -v --remove-orphans
+    docker rmi -f icon-bsc_btp
+    docker rm -f javascore-dist
+    docker rmi -f iconbridge
+    docker rmi -f btp/javascore
+    rm -rf local/artifacts
+    rm -rf local/log
+    rm -rf local/goloop
+    rm -rf data/bsc/node1
 }
 
 ########################################################
@@ -67,11 +67,14 @@ build_smart_contracts() {
     echo "Creating build artifacts on PC"
     #Run the script from icon-bridge/devnet/docker/icon-bsc
     local ICON_BSC_DIR=${PWD}
-    local ROOT_DIR=$(echo "$(cd "$(dirname "../../../../")"; pwd)")
+    local ROOT_DIR=$(echo "$(
+        cd "$(dirname "../../../../")"
+        pwd
+    )")
     local BUILD_DIR=$ICON_BSC_DIR/build
     local KEYSTORE_DIR=$ICON_BSC_DIR/_ixh/keystore
-    if [ ${#buildsuffix} != 0 ]; then 
-        if [ ${buildsuffix} != "arctic" ]; then 
+    if [ ${#buildsuffix} != 0 ]; then
+        if [ ${buildsuffix} != "arctic" ]; then
             echo "Accepted buildsuffix: arctic. Got ${buildsuffix}"
             exit 0
         fi
@@ -130,8 +133,8 @@ build_smart_contracts() {
 build_chain_nodes() {
     echo "Start building docker containers for bsc and icon nodes"
     #make -C ../../../ dist-javascore dist-sol iconbridge-image
-	mkdir -p ./data/bsc/node1
-    
+    mkdir -p ./data/bsc/node1
+
     export DOCKER_DEFAULT_PLATFORM=linux/amd64
     cd ../../..
     echo "Build BSC"
@@ -149,7 +152,7 @@ run_chain_nodes() {
     docker-compose -f docker-compose-nodes.yml up -d
     sleep 5
     local ICON_BSC_DIR=${PWD}
-    if [ -d $ICON_BSC_DIR/_ixh ]; then 
+    if [ -d $ICON_BSC_DIR/_ixh ]; then
         echo "Save Previous Deployment Artifacts"
         local suffix=$(date +%s)
         mv $ICON_BSC_DIR/_ixh $ICON_BSC_DIR/_ixh_${suffix}
@@ -160,8 +163,8 @@ run_chain_nodes() {
     docker cp goloop:/goloop/config/goloop.keysecret $ICON_BSC_DIR/_ixh/keystore/icon.god.wallet.secret
     docker cp goloop:/goloop/config/nid.icon $ICON_BSC_DIR/_ixh/nid.icon
     docker cp binancesmartchain:/bsc/keystore/UTC--2021-07-14T19-55-36.108252000Z--70e789d2f5d469ea30e0525dbfdd5515d6ead30d $ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.json
-    echo -n "Perlia0" > $ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.secret
-    ethkey inspect --json --private --passwordfile $ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.secret $ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.json | jq -r .PrivateKey > $ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.json.priv
+    echo -n "Perlia0" >$ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.secret
+    ethkey inspect --json --private --passwordfile $ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.secret $ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.json | jq -r .PrivateKey >$ICON_BSC_DIR/_ixh/keystore/bsc.god.wallet.json.priv
     echo "Nodes running"
     docker ps --filter name=goloop --filter name=binancesmartchain
     echo "Wait 1 minute before deploying smart contracts to ensure nodes have initialized"
@@ -170,7 +173,7 @@ run_chain_nodes() {
 clean_deployment_artifacts() {
     echo "cleaning deployment artifacts. Move _ixh folder but retain _ixh/keystore"
     ICON_BSC_DIR=${PWD}
-    if [ -d $ICON_BSC_DIR/_ixh ]; then 
+    if [ -d $ICON_BSC_DIR/_ixh ]; then
         echo "Save Previous Deployment Artifacts"
         local suffix=$(date +%s)
         mv $ICON_BSC_DIR/_ixh $ICON_BSC_DIR/_ixh_${suffix}
@@ -183,36 +186,130 @@ clean_deployment_artifacts() {
     echo "Finished cleaning. Deploy new set of contracts with make runsc"
 }
 
-deploy_smart_contracts_on_testnet() {
+deploy_smart_contracts() {
     echo "Deploying contracts. ./deploysc.sh"
-	cd scripts
-	./deploysc.sh
+    cd scripts
+    if [[ $1 == "mainnet" || $1 == "testnet" ]]; then
+        if [ ! -f config_temp.sh ]; then
+            cp config.sh config_temp.sh
+            cp config/icon-bsc.config.$1.sh config.sh
+        fi
+    else
+        echo "Invalid network. Specify net=mainnet or testnet."
+        exit 0
+    fi
+    exists=$(cat config.sh | grep TAG | grep BSC | grep -i ${1} | wc -l)
+    if [ $exists == "0" ]; then
+        echo "Invalid Configuration. Check TAG of config file."
+        exit
+    fi
+    ./deploysc.sh
+    if [ -f config_temp.sh ]; then
+        mv config_temp.sh config.sh
+    fi
 }
 
 deploy_smart_contracts_on_localnet() {
     echo "Deploying contracts. ./deploysc.sh"
-	cd scripts
+    cd scripts
     if [ ! -f config_testnet.sh ]; then
         cp config.sh config_testnet.sh
         cp config_local.sh config.sh
     fi
-	./deploysc.sh
+    ./deploysc.sh
     if [ -f config_testnet.sh ]; then
         mv config_testnet.sh config.sh
     fi
 }
 
-deploy_smart_contracts_on_testnet_arctic() {
-    cd scripts 
-    if [ ! -f config_temp.sh ]; then 
-        cp config.sh config_temp.sh 
-        cp config/icon-ice-arctic-config.sh config.sh 
-    fi 
+deploy_smart_contracts_on_arctic() {
+    cd scripts
+    if [[ $1 == "mainnet" || $1 == "testnet" ]]; then
+        if [ ! -f config_temp.sh ]; then
+            cp config.sh config_temp.sh
+            cp config/icon-snow.config.$1.sh config.sh
+        fi
+    else
+        echo "Invalid network. Specify net=mainnet or testnet."
+        exit 0
+    fi
+    exists=$(cat config.sh | grep TAG | grep SNOW | grep -i ${1} | wc -l)
+    if [ $exists == "0" ]; then
+        echo "Invalid Configuration. Check TAG of config file."
+        exit
+    fi
     ./deploy_arctic.sh
-    if [ -f config_temp.sh ]; then 
-        mv config_temp.sh config.sh 
-    fi 
-    echo "Done deploying smart contracts"
+    if [ -f config_temp.sh ]; then
+        mv config_temp.sh config.sh
+    fi
+}
+
+########################################################
+
+########################################################
+
+audit_fixes_bsc() {
+    cd scripts
+    if [[ $1 == "mainnet" || $1 == "testnet" ]]; then
+        if [ ! -f config_temp.sh ]; then
+            cp config.sh config_temp.sh
+            cp config/icon-bsc.config.$1.sh config.sh
+        fi
+    else
+        echo "Invalid network. Specify net=mainnet or testnet."
+        exit 0
+    fi
+    exists=$(cat config.sh | grep TAG | grep BSC | grep -i ${1} | wc -l)
+    if [ $exists == "0" ]; then
+        echo "Invalid Configuration. Check TAG of config file."
+        exit
+    fi
+    ./solidity_audit_fixes.sh
+    if [ -f config_temp.sh ]; then
+        mv config_temp.sh config.sh
+    fi
+}
+
+audit_fixes_arctic() {
+    cd scripts
+    if [[ $1 == "mainnet" || $1 == "testnet" ]]; then
+        if [ ! -f config_temp.sh ]; then
+            cp config.sh config_temp.sh
+            cp config/icon-snow.config.$1.sh config.sh
+        fi
+    else
+        echo "Invalid network. Specify net=mainnet or testnet."
+        exit 0
+    fi
+    exists=$(cat config.sh | grep TAG | grep SNOW | grep -i ${1} | wc -l)
+    if [ $exists == "0" ]; then
+        echo "Invalid Configuration. Check TAG of config file."
+        exit
+    fi
+    ./solidity_audit_fixes.sh
+    if [ -f config_temp.sh ]; then
+        mv config_temp.sh config.sh
+    fi
+}
+
+audit_fixes_icon() {
+    cd scripts
+    if [[ $1 == "mainnet" || $1 == "testnet" ]]; then
+        if [ ! -f config_temp.sh ]; then
+            cp config.sh config_temp.sh
+            cp config/icon-bsc.config.$1.sh config.sh
+        fi
+    else
+        echo "Invalid network. Specify net=mainnet or testnet."
+        exit 0
+    fi
+    # upgrade both BTS and BMC contract
+    ./upgrade.javascore.sh --bmc
+    ./upgrade.javascore.sh --bts
+    if [ -f config_temp.sh ]; then
+        mv config_temp.sh config.sh
+    fi
+    echo "Done deploying ICON Audit Fixes"
 }
 
 ########################################################
@@ -230,8 +327,8 @@ run_relay_img() {
         exit 0
     fi
     cp $relayConfigPath ./bmr.config.json
-    docker-compose -f docker-compose-bmr.yml up -d 
-    sleep 5 
+    docker-compose -f docker-compose-bmr.yml up -d
+    sleep 5
     rm bmr.config.json
     echo "Relay Running"
     docker ps --filter name=bmr
@@ -266,8 +363,6 @@ stop_chain_nodes() {
 }
 ########################################################
 
-
-
 if [ $# -eq 0 ]; then
     echo "No arguments supplied. Check README for details"
 elif [ $1 == "buildimglocal" ]; then
@@ -280,28 +375,34 @@ elif [ $1 == "removeimglocal" ]; then
     remove_artifacts_of_local_deployment
 elif [ $1 == "buildsc" ]; then
     build_smart_contracts
-elif [ $1 == "buildnodes" ]; then 
+elif [ $1 == "buildnodes" ]; then
     build_chain_nodes
-elif [ $1 == "runnodes" ]; then 
+elif [ $1 == "runnodes" ]; then
     run_chain_nodes
-elif [ $1 == "stopnodes" ]; then 
+elif [ $1 == "stopnodes" ]; then
     stop_chain_nodes
-elif [ $1 == "deploysctestnet" ]; then 
-    deploy_smart_contracts_on_testnet
-elif [ $1 == "deploysclocalnet" ]; then 
+elif [ $1 == "deploysc" ]; then
+    deploy_smart_contracts $2
+elif [ $1 == "deploysclocalnet" ]; then
     deploy_smart_contracts_on_localnet
-elif [ $1 == "runrelaysrc" ]; then 
+elif [ $1 == "runrelaysrc" ]; then
     run_relay_from_source
-elif [ $1 == "rune2etests" ]; then 
+elif [ $1 == "rune2etests" ]; then
     run_e2e_tests
-elif [ $1 == "cleanartifacts" ]; then 
+elif [ $1 == "cleanartifacts" ]; then
     clean_deployment_artifacts
-elif [ $1 == "buildrelayimg" ]; then 
+elif [ $1 == "buildrelayimg" ]; then
     build_relay_img
-elif [ $1 == "runrelayimg" ]; then 
+elif [ $1 == "runrelayimg" ]; then
     run_relay_img
-elif [ $1 == "stoprelayimg" ]; then 
+elif [ $1 == "stoprelayimg" ]; then
     stop_relay_img
-elif [ $1 == "deployscarctic" ]; then 
-    deploy_smart_contracts_on_testnet_arctic
+elif [ $1 == "deployscarctic" ]; then
+    deploy_smart_contracts_on_arctic $2
+elif [ $1 == "bscaudit" ]; then
+    audit_fixes_bsc $2
+elif [ $1 == "iconaudit" ]; then
+    audit_fixes_icon $2
+elif [ $1 == "arcticaudit" ]; then
+    audit_fixes_arctic $2
 fi

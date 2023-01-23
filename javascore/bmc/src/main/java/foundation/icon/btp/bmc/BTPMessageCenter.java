@@ -471,9 +471,9 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
                 feeGatheringNext <= currentHeight) {
             String[] svcs = ArrayUtil.toStringArray(services.keySet());
             sendFeeGathering(feeAggregator, svcs);
-            while (feeGatheringNext <= currentHeight) {
-                feeGatheringNext += feeGatheringTerm;
-            }
+            long remainder = feeGatheringTerm * (1 + (currentHeight - feeGatheringNext) /
+                    feeGatheringTerm);
+            feeGatheringNext = feeGatheringNext + remainder;
             properties.setFeeGatheringNext(feeGatheringNext);
             setProperties(properties);
         }
@@ -1266,12 +1266,12 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
         if (reward.compareTo(BigInteger.ZERO) < 1) {
             throw BMCException.unknown("reward is not remained");
         }
-        Context.transfer(addr, reward);
         relayer.setReward(BigInteger.ZERO);
         relayers.put(addr, relayer);
         RelayersProperties properties = relayers.getProperties();
         properties.setDistributed(properties.getDistributed().subtract(reward));
         relayers.setProperties(properties);
+        Context.transfer(addr, reward);
     }
 
     @External(readonly = true)
@@ -1287,8 +1287,8 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
     @External
     public void setRelayerMinBond(BigInteger _value) {
         requireOwnerAccess();
-        if (_value.compareTo(BigInteger.ZERO) < 0) {
-            throw BMCException.unknown("minBond must be positive");
+        if (_value.compareTo(BigInteger.ZERO) <= 0) {
+            throw BMCException.unknown("minBond must be greater than zero");
         }
         RelayersProperties properties = relayers.getProperties();
         properties.setRelayerMinBond(_value);

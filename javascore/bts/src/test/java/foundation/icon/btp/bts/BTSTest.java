@@ -11,6 +11,7 @@ import foundation.icon.btp.lib.BTPAddress;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
@@ -207,16 +208,17 @@ public class BTSTest extends AbstractBTPTokenService {
     @Order(4)
     @DisplayName("register wrapped coin")
     public void registerWrappedToken() {
+        Address ZERO_SCORE = Address.fromString("cx0000000000000000000000000000000000000000");
 
         Verification deployWrappedToken = () -> Context.deploy(any(), eq(PARA), eq(PARA), eq(18));
         contextMock.when(deployWrappedToken).thenReturn(wrappedIRC2.getAddress());
 
         Executable call = () -> score.invoke(nonOwner, "register", PARA, PARA, 18, BigInteger.ZERO, BigInteger.ZERO,
-                Address.fromString("cx0000000000000000000000000000000000000000"));
+                ZERO_SCORE);
         expectErrorMessage(call, "require owner access");
 
         score.invoke(owner, "register", PARA, PARA, 18, BigInteger.ZERO, BigInteger.ZERO,
-                Address.fromString("cx0000000000000000000000000000000000000000"));
+                ZERO_SCORE);
 
         assertEquals(1, score.call("getRegisteredTokensCount"));
 
@@ -224,6 +226,24 @@ public class BTSTest extends AbstractBTPTokenService {
         assertEquals(registered, score.call("coinNames"));
         assertEquals(wrappedIRC2.getAddress(), score.call("coinId", PARA));
         assertEquals(UINT_CAP, score.call("getTokenLimit", PARA));
+
+        call = () -> score.invoke(owner, "register", "COIN", "COIN", 18, BigInteger.ONE.negate(), BigInteger.ZERO,
+                ZERO_SCORE);
+        expectErrorMessageIn(call, "The feeNumerator should be less than FEE_DENOMINATOR "
+                + "and feeNumerator should be greater than 1");
+
+        call = () -> score.invoke(owner, "register", "COIN", "COIN", 18, BigInteger.valueOf(100000L), BigInteger.ZERO,
+                ZERO_SCORE);
+        expectErrorMessageIn(call, "The feeNumerator should be less than FEE_DENOMINATOR "
+                + "and feeNumerator should be greater than 1");
+
+        call = () -> score.invoke(owner, "register", "COIN", "COIN", 18, BigInteger.ZERO, BigInteger.TEN.negate(),
+                ZERO_SCORE);
+        expectErrorMessageIn(call, "Fixed fee cannot be less than zero");
+        
+        call = () -> score.invoke(owner, "register", "META", "META", 18, BigInteger.ZERO, BigInteger.ZERO,
+                wrappedIRC2.getAddress());
+        expectErrorMessage(call, "coin with that address already registered");
     }
 
     @Test
@@ -235,10 +255,10 @@ public class BTSTest extends AbstractBTPTokenService {
         expectErrorMessage(call, "require owner access");
 
         // owner registers new coin (Scenario 1)
-        score.invoke(owner, "register", TEST_TOKEN, "TTK", 18, ICX.divide(BigInteger.TEN), ICX, irc2.getAddress());
+        score.invoke(owner, "register", TEST_TOKEN, "TTK", 18, BigInteger.TEN, ICX, irc2.getAddress());
 
         // owner registers coin that exists (Scenario 3)
-        call = () -> score.invoke(owner, "register", TEST_TOKEN, "TTK", 18, ICX.divide(BigInteger.TEN), ICX,
+        call = () -> score.invoke(owner, "register", TEST_TOKEN, "TTK", 18, BigInteger.TEN, ICX,
                 irc2.getAddress());
         expectErrorMessage(call, "already existed");
 
@@ -270,6 +290,10 @@ public class BTSTest extends AbstractBTPTokenService {
         Map<String, BigInteger> balance = (Map<String, BigInteger>) score.call("balanceOf", owner.getAddress(),
                 TEST_TOKEN);
         assertEquals(balance.get("usable"), BigInteger.valueOf(10));
+
+        Executable call = () -> score.invoke(irc2, "tokenFallback", owner.getAddress(), BigInteger.ONE.negate(),
+                "0".getBytes());
+        expectErrorMessage(call, "value should be positive");
     }
 
     @Test
@@ -294,17 +318,19 @@ public class BTSTest extends AbstractBTPTokenService {
 
         Map<String, BigInteger> balance = (Map<String, BigInteger>) score.call("balanceOf", owner.getAddress(),
                 TEST_TOKEN);
-        assertEquals(BigInteger.valueOf(5), balance.get("refundable"));
+        assertEquals(BigInteger.valueOf(0), balance.get("refundable"));
         assertEquals(BigInteger.valueOf(0), balance.get("locked"));
-        assertEquals(BigInteger.valueOf(0), balance.get("usable"));
+        assertEquals(BigInteger.valueOf(5), balance.get("usable"));
 
         // still 5 left to reclaim
-        score.invoke(owner, "reclaim", TEST_TOKEN, BigInteger.valueOf(5));
+        contextMock.when(() -> Context.call(eq(irc2.getAddress()), eq("transfer"), eq(owner.getAddress()),
+                eq(BigInteger.valueOf(2)), any())).thenReturn(null);
+        score.invoke(owner, "reclaim", TEST_TOKEN, BigInteger.valueOf(2));
 
         balance = (Map<String, BigInteger>) score.call("balanceOf", owner.getAddress(), TEST_TOKEN);
         assertEquals(BigInteger.valueOf(0), balance.get("refundable"));
         assertEquals(BigInteger.valueOf(0), balance.get("locked"));
-        assertEquals(BigInteger.valueOf(0), balance.get("usable"));
+        assertEquals(BigInteger.valueOf(3), balance.get("usable"));
 
         // wrapped IRC2 tradable is not directly transferred
 
@@ -454,6 +480,10 @@ public class BTSTest extends AbstractBTPTokenService {
         // currently, still in locked state
         // will be updated once response comes from relayer via bmc
         assertEquals(BigInteger.valueOf(10), balance.get("locked"));
+
+        // should not transfer native-coin
+        call = () -> score.invoke(nonOwner, "transfer", ICON, BigInteger.TEN, btpaddr);
+        expectErrorMessage(call, "Only for IRC2 Token");
     }
 
     @Test
@@ -544,6 +574,16 @@ public class BTSTest extends AbstractBTPTokenService {
 
         call = () -> score.invoke(nonOwner, "transferBatch", coinNames, wrongValues, destination);
         expectErrorMessage(call, "Invalid arguments");
+
+        String[] coinNamesBatch = new String[20];
+        BigInteger[] coinValuesBatch = new BigInteger[20];
+        Random rand = new Random();
+        for (int i = 0; i < 20; i++) {
+            coinNamesBatch[i] = String.valueOf(rand.nextInt());
+            coinValuesBatch[i] = new BigInteger(String.valueOf(rand.nextInt()));
+        }
+        call = () -> score.invoke(nonOwner, "transferBatch", coinNamesBatch, coinValuesBatch, destination);
+        expectErrorMessage(call,  "Cannot transfer over 15 tokens at once");
 
         // add native coin as well in batch
         contextMock.when(sendICX()).thenReturn(BigInteger.valueOf(100));
@@ -813,6 +853,7 @@ public class BTSTest extends AbstractBTPTokenService {
         Address user1 = sm.createAccount(20).getAddress();
 
         Account token1 = Account.newScoreAccount(50);
+        Account token2 = Account.newScoreAccount(51);
 
         Executable call;
 
@@ -917,7 +958,7 @@ public class BTSTest extends AbstractBTPTokenService {
         // any amount should be able to be transferred off chain
         String TOKEN2 = "Token 2";
         BigInteger MILLION = BigInteger.valueOf(10_000_000L).multiply(ICX);
-        score.invoke(owner, "register", TOKEN2, TOKEN2, 18, BigInteger.valueOf(10), ICX, token1.getAddress());
+        score.invoke(owner, "register", TOKEN2, TOKEN2, 18, BigInteger.valueOf(10), ICX, token2.getAddress());
 
         assertEquals(UINT_CAP, score.call("getTokenLimit", TOKEN2));
 
@@ -937,7 +978,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
         byte[] _msg3 = message3.toBytes();
 
-        contextMock.when(() -> Context.call(eq(token1.getAddress()), eq("transfer"), eq(user1), eq(MILLION), any()))
+        contextMock.when(() -> Context.call(eq(token2.getAddress()), eq("transfer"), eq(user1), eq(MILLION), any()))
                 .thenReturn(null);
 
         // change token limit

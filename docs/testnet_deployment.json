@@ -46,9 +46,10 @@
              "BMCManagement": "0x9Ab68EB48423AF80d7BDAffd7Ad976f69aa67e37",
              "BMCPeriphery": "0x99B22952e4D37d46046c46cD9F91cE1cdfB0605B",
              "BTSCore": "0x9fCBAD6F4C9dC2C0b109408E39cf042B9b2aE65A",
-             "BTSPeriphery": "0xd75A671A5196459b13c97424B0C275D51D2C3488"
-        },
-        "snow": {
+             "BTSPeriphery": "0xd75A671A5196459b13c97424B0C275D51D2C3488",
+             "BTSOwnerManager": "0xa49Cd5E485d63b5A271759DbAa17Fe05d14DAeDe"
+          },
+          "snow": {
              "BNB" : "0x3EBbc0C7a5aB3e16c629e01050d8d98aB439C9E0",
              "BUSD" : "0x093Bdf882d40Bc02A21D1785f26F01609DA06428",
              "USDT" : "0x91f65858E905E3Ece94601eD8981FeF24dce7048",
@@ -61,7 +62,8 @@
              "BMCManagement": "0xF54797CF988dc6Df41a0e79C79475D80aBbFE2c6",
              "BMCPeriphery": "0x819EAf583A73C4556E9f8bF843EdE46cc0Db552C",
              "BTSCore": "0x5eD4502a60d6A0Fc6377b54e26916Eb44a3D4B24",
-             "BTSPeriphery": "0x55c783F26986F4152203036E5C17AE9ad3bD3974"
-        }
-    }
+             "BTSPeriphery": "0x55c783F26986F4152203036E5C17AE9ad3bD3974",
+             "BTSOwnerManager": "0x32607910D30C85FC2Ab4eDE907eCc967461bD570"
+          }
+     }
 }
