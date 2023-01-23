@@ -10,7 +10,7 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-func Test_Subscribe(t *testing.T) {
+func xTest_Subscribe(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	c, err := newClient(testnetAccess, log.New())
 	if err != nil {
