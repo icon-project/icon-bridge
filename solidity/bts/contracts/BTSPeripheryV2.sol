@@ -13,14 +13,14 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
-   @title BTSPeriphery contract
+   @title BTSPeripheryV2 contract
    @dev This contract is used to handle communications among BMCService and BTSCore contract
    @dev OwnerUpgradeable has been removed. This contract does not have its own Owners
         Instead, BTSCore manages ownership roles.
         Thus, BTSPeriphery should call btsCore.isOwner() and pass an address for verification
         in case of implementing restrictions, if needed, in the future. 
 */
-contract BTSPeriphery is Initializable, IBTSPeriphery {
+contract BTSPeripheryV2 is Initializable, IBTSPeriphery {
     using RLPEncodeStruct for Types.TransferCoin;
     using RLPEncodeStruct for Types.ServiceMessage;
     using RLPEncodeStruct for Types.Response;

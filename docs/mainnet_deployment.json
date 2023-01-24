@@ -46,7 +46,8 @@
                "BMCManagement": "0xe221e50fbe2Ba54b1898b4c02F66bf9598fbD1dB",
                "BMCPeriphery": "0x034AaDE86BF402F023Aa17E5725fABC4ab9E9798",
                "BTSCore": "0x7A4341Af4995884546Bcf7e09eB98beD3eD26D28",
-               "BTSPeriphery": "0x556CA2d717d366A448c118D14e94a744b3c6578c"
+               "BTSPeriphery": "0x556CA2d717d366A448c118D14e94a744b3c6578c",
+               "BTSOwnerManager": "0x030d1c1B98d15b4d1F9c7C57068E3dAfCFb73dC4"
           },
           "snow": {
                "BNB" : "0x11c6d7F2CEaf0abFCf65B7b2d6ad8F33e4d3E2dB",
@@ -61,7 +62,8 @@
                "BMCManagement": "0xe4c6161200bbBe5CDE23D1E7606C82632c0eb930",
                "BMCPeriphery": "0xf808Fbb55CFDDa37D051B962b7918a8D3981feD5",
                "BTSCore": "0x3814DDe28CBED096721336AB5C9aE547FcbB4Cae",
-               "BTSPeriphery": "0xf3f6A41FA0436A9ba4b3da599B72023f15EFE12b"
+               "BTSPeriphery": "0xf3f6A41FA0436A9ba4b3da599B72023f15EFE12b",
+               "BTSOwnerManager": "0x59E74dD59a429b2DaBeBF56C42D14A1d3E300137"
           }
       }
 }
