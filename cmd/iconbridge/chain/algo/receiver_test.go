@@ -11,8 +11,8 @@ import (
 )
 
 func Test_Subscribe(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	c, err := newClient(testnetAccess, log.New())
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	c, err := newClient(sandboxAccess, log.New())
 	if err != nil {
 		t.Log("Couldn't create client %w", err)
 		t.FailNow()
@@ -29,7 +29,7 @@ func Test_Subscribe(t *testing.T) {
 		t.FailNow()
 	}
 
-	rcv, err := createTestReceiver(testnetAccess, curRound-10, BlockHash(blk))
+	rcv, err := createTestReceiver(sandboxAccess, curRound-10, BlockHash(blk))
 	if err != nil {
 		t.Logf("NewReceiver error: %v", err)
 		t.FailNow()
@@ -46,6 +46,20 @@ func Test_Subscribe(t *testing.T) {
 
 	if err != nil {
 		t.Logf("Couldn't Subscribe. Error: %v", err)
+		t.FailNow()
+	}
+
+	s, err := createTestSender(sandboxAccess)
+	if err != nil {
+		t.Logf("Failed creting new sender:%v", err)
+		t.FailNow()
+	}
+
+	_, err = s.(*sender).callAbi(ctx, "sendMessage",
+		[]interface{}{"this", "string", 19})
+
+	if err != nil {
+		t.Logf("Couldn't call sendMessage. Error: %v", err)
 		t.FailNow()
 	}
 

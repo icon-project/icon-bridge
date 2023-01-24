@@ -70,7 +70,6 @@ func NewReceiver(
 		return nil, err
 	}
 	return r, nil
-
 }
 
 type ReceiverOptions struct {
@@ -140,7 +139,6 @@ func (r *receiver) Subscribe(
 				//Check the latest block for txns addressed to this BMC
 				curRound++
 				r.inspectBlock(ctx, curRound, &subOpts, msgCh, _errCh)
-
 			}
 		}
 	}()
