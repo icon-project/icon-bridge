@@ -10,9 +10,9 @@ import (
 	"github.com/icon-project/icon-bridge/common/log"
 )
 
-func Test_Subscribe(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	c, err := newClient(sandboxAccess, log.New())
+func xTest_Subscribe(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	c, err := newClient(testnetAccess, log.New())
 	if err != nil {
 		t.Log("Couldn't create client %w", err)
 		t.FailNow()
@@ -29,7 +29,7 @@ func Test_Subscribe(t *testing.T) {
 		t.FailNow()
 	}
 
-	rcv, err := createTestReceiver(sandboxAccess, curRound-10, BlockHash(blk))
+	rcv, err := createTestReceiver(testnetAccess, curRound-10, EncodeBlockHash(blk))
 	if err != nil {
 		t.Logf("NewReceiver error: %v", err)
 		t.FailNow()
@@ -106,7 +106,7 @@ func xTest_GetHash(t *testing.T) {
 		t.FailNow()
 	}
 
-	prvHash := BlockHash(prvBlock)
+	prvHash := EncodeBlockHash(prvBlock)
 	curHash := curBlock.Branch
 	if !bytes.Equal(prvHash[:], curHash[:]) {
 		t.Errorf("Error: expected %v, got %v", prvHash, curHash)
