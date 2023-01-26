@@ -2,14 +2,12 @@ package algo
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/algorand/go-algorand-sdk/abi"
-	"github.com/algorand/go-algorand-sdk/encoding/msgpack"
 	"github.com/algorand/go-algorand-sdk/future"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
@@ -23,6 +21,7 @@ const (
 	blockSizeLimit       = 1000000
 	defaultSendTxTimeout = 15 * time.Second
 	defaultReadTimeout   = 50 * time.Second //
+	atomicTxnLimit       = 16
 )
 
 func NewSender(
@@ -76,8 +75,8 @@ type sender struct {
 
 type relayTx struct {
 	s    *sender
-	txId string
-	msg  []byte
+	txId []string
+	msg  *chain.RelayMessage
 }
 
 func (opts *senderOptions) unmarshal(v map[string]interface{}) error {
@@ -111,47 +110,44 @@ func (s *sender) Segment(
 		return nil, msg, nil
 	}
 
-	tmpReceipts := make([][]byte, 0)
-	var msgSize uint64
-
 	newMsg = &chain.Message{
 		From:     msg.From,
 		Receipts: msg.Receipts,
 	}
-	for i, receipt := range msg.Receipts {
-		var encReceipt = make([]byte, 1e3)
-		base64.StdEncoding.Encode(encReceipt, msgpack.Encode(receipt))
 
-		msgSize += uint64(len(encReceipt))
-		if msgSize > s.opts.BlockSizeLimit {
+	var encReceiptsSize uint64
+	receiptSli := make([][]byte, atomicTxnLimit)
+	for i, receipt := range msg.Receipts {
+		encReceipt, err := encodeReceipt(receipt)
+		if err != nil {
+			return nil, nil, err
+		}
+		encReceiptsSize += uint64(len(encReceipt))
+
+		if encReceiptsSize > s.opts.BlockSizeLimit || len(receiptSli) >= cap(receiptSli) {
 			newMsg.Receipts = msg.Receipts[i:]
 			break
 		}
-
-		tmpReceipts = append(tmpReceipts, encReceipt)
+		receiptSli = append(receiptSli, encReceipt)
 	}
 	rm := &chain.RelayMessage{
-		Receipts: tmpReceipts,
+		Receipts: receiptSli,
 	}
-
-	var encMessage = make([]byte, 10000)
-	base64.StdEncoding.Encode(encMessage, msgpack.Encode(rm))
 
 	newTx := &relayTx{
 		s:    s,
-		txId: "",
-		msg:  encMessage,
+		txId: nil,
+		msg:  rm,
 	}
-
 	return newTx, newMsg, nil
 }
 
 func (tx relayTx) Send(ctx context.Context) (err error) {
-	tx.s.cl.Log().WithFields(log.Fields{
-		"prev": tx.s.wallet}).Debug("handleRelayMessage: send tx")
+	tx.s.cl.Log().WithFields(log.Fields{"prev": tx.s.wallet}).Debug("handleRelayMessage: send tx")
+
 	ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeout)
 	defer cancel()
-	tx.txId, err = tx.s.HandleRelayMessage(ctx, []byte(tx.s.wallet.Address()), tx.msg)
+	tx.txId, err = tx.s.HandleRelayMessage(ctx, tx.msg.Receipts)
 	if err != nil {
 		tx.s.cl.Log().WithFields(log.Fields{
 			"error": err}).Debug("handleRelayMessage: send tx")
@@ -167,7 +163,7 @@ func (tx relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) {
 	if tx.msg == nil {
 		return 0, fmt.Errorf("Can't get receipt from tx: Empty relay message")
 	}
-	confirmedTxn, err := tx.s.cl.WaitForTransaction(ctx, tx.txId)
+	confirmedTxn, err := tx.s.cl.WaitForTransaction(ctx, tx.txId[0]) //TODO adjust array
 	if err != nil {
 		return 0, fmt.Errorf("Can't get receipt from tx: %w", err)
 
