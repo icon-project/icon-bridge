@@ -2,6 +2,7 @@ package algo
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -18,9 +19,8 @@ import (
 
 // TODO review consts
 const (
-	blockSizeLimit       = 1000000
 	defaultSendTxTimeout = 15 * time.Second
-	defaultReadTimeout   = 50 * time.Second //
+	defaultReadTimeout   = 50 * time.Second
 	atomicTxnLimit       = 16
 )
 
@@ -58,7 +58,6 @@ func NewSender(
 
 type senderOptions struct {
 	AppId            uint64         `json:"app_id"`
-	BlockSizeLimit   uint64         `json:"tx_data_size_limit"`
 	BalanceThreshold intconv.BigInt `json:"balance_threshold"`
 }
 
@@ -74,9 +73,10 @@ type sender struct {
 }
 
 type relayTx struct {
-	s    *sender
-	txId []string
-	msg  *chain.RelayMessage
+	s     *sender
+	round uint64
+	svcs  []AbiFunc
+	txIDs []string
 }
 
 func (opts *senderOptions) unmarshal(v map[string]interface{}) error {
@@ -88,7 +88,23 @@ func (opts *senderOptions) unmarshal(v map[string]interface{}) error {
 }
 
 func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
-	return s.GetBmcStatus(ctx)
+	res, err := s.callAbi(ctx, AbiFunc{"GetStatus", []interface{}{}})
+	if err != nil {
+		return nil, fmt.Errorf("Error calling Bmc Handle Relay Message: %w", err)
+	}
+	bmcStatus := res.MethodResults[0].ReturnValue
+
+	switch bmcStatus := bmcStatus.(type) {
+	case [4]uint64:
+		ls := &chain.BMCLinkStatus{
+			TxSeq:         bmcStatus[0],
+			RxSeq:         bmcStatus[1],
+			RxHeight:      bmcStatus[2],
+			CurrentHeight: bmcStatus[3],
+		}
+		return ls, nil
+	}
+	return nil, fmt.Errorf("BmcStatus - Couldnt parse abi's return interface")
 }
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
@@ -102,10 +118,7 @@ func (s *sender) Segment(
 	if ctx.Err() != nil {
 		return nil, msg, ctx.Err()
 	}
-	if s.opts.BlockSizeLimit == 0 {
-		limit := blockSizeLimit
-		s.opts.BlockSizeLimit = uint64(limit)
-	}
+
 	if len(msg.Receipts) == 0 {
 		return nil, msg, nil
 	}
@@ -115,29 +128,25 @@ func (s *sender) Segment(
 		Receipts: msg.Receipts,
 	}
 
-	var encReceiptsSize uint64
-	receiptSli := make([][]byte, atomicTxnLimit)
-	for i, receipt := range msg.Receipts {
-		encReceipt, err := encodeReceipt(receipt)
-		if err != nil {
-			return nil, nil, err
-		}
-		encReceiptsSize += uint64(len(encReceipt))
+	abiFuncs := make([]AbiFunc, atomicTxnLimit)
 
-		if encReceiptsSize > s.opts.BlockSizeLimit || len(receiptSli) >= cap(receiptSli) {
+	// egment messages to fit the 16 atc limit and process all events in the same abi call
+	for i, receipt := range msg.Receipts {
+		if len(abiFuncs)+len(receipt.Events) >= cap(abiFuncs) {
 			newMsg.Receipts = msg.Receipts[i:]
 			break
 		}
-		receiptSli = append(receiptSli, encReceipt)
+		for _, event := range receipt.Events {
+			svcName, svcArgs, err := DecodeRelayMessage(hex.EncodeToString(event.Message))
+			if err != nil {
+				return nil, nil, fmt.Errorf("Error decoding event message: %w", err)
+			}
+			abiFuncs = append(abiFuncs, AbiFunc{svcName, []interface{}{svcArgs}})
+		}
 	}
-	rm := &chain.RelayMessage{
-		Receipts: receiptSli,
-	}
-
 	newTx := &relayTx{
 		s:    s,
-		txId: nil,
-		msg:  rm,
+		svcs: abiFuncs,
 	}
 	return newTx, newMsg, nil
 }
@@ -147,31 +156,21 @@ func (tx relayTx) Send(ctx context.Context) (err error) {
 
 	ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeout)
 	defer cancel()
-	tx.txId, err = tx.s.HandleRelayMessage(ctx, tx.msg.Receipts)
+
+	res, err := tx.s.callAbi(ctx, tx.svcs...)
 	if err != nil {
-		tx.s.cl.Log().WithFields(log.Fields{
-			"error": err}).Debug("handleRelayMessage: send tx")
-		return err
+		return fmt.Errorf("Error calling abi to execute relay txn: %w", err)
 	}
+	tx.round = res.ConfirmedRound
+	tx.txIDs = res.TxIDs
 	return nil
 }
 
-// Waits for txn to be confirmed and gets its receipt
+// Implement to respect interface, but txn was already confirmed on abi call
 func (tx relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) {
-	ctx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
-	defer cancel()
-	if tx.msg == nil {
-		return 0, fmt.Errorf("Can't get receipt from tx: Empty relay message")
-	}
-	confirmedTxn, err := tx.s.cl.WaitForTransaction(ctx, tx.txId[0]) //TODO adjust array
-	if err != nil {
-		return 0, fmt.Errorf("Can't get receipt from tx: %w", err)
-
-	} else {
-		return confirmedTxn.ConfirmedRound, nil
-	}
+	return tx.round, nil
 }
 
 func (tx relayTx) ID() interface{} {
-	return tx.txId
+	return tx.txIDs
 }

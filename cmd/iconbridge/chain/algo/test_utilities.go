@@ -15,12 +15,13 @@ import (
 )
 
 const (
-	sandboxAddress = "http://localhost:4001"
-	sandboxToken   = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	testAddress    = "R7LWALUOBJTO4QERDIDBUCUJJ4V4HUKEFCN4C24JSXLB5FNB5D4WLPEP2U"
-	testAccountSk  = "Vfscmda+xG0c9OQGVAgTd6mny016riYjml/RW5AkhkKP12Aujgpm7kCRGgYaColPK8PRRCibwWuJldYelaHo+Q=="
-	algoBmc        = "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8"
-	iconBmc        = "btp://0x1.icon/cx06f42ea934731b4867fca00d37c25aa30bc3e3d7"
+	sandboxAddress   = "http://localhost:4001"
+	sandboxToken     = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	testAddress      = "5SOSEYHUIAGIFPOHCV6ANF7KYSAU5AXHF5TNM4BQMIVU4DNWZOQJ427XRE"
+	testAccountSk    = "5pw5+iRVb91t/RfIHF4c1RDMiIQ434PPVDN+Vv2qv9LsnSJg9EAMgr3HFXwGl+rEgU6C5y9m1nAwYitODbbLoA=="
+	algoBmc          = "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8"
+	iconBmc          = "btp://0x1.icon/cx06f42ea934731b4867fca00d37c25aa30bc3e3d7"
+	bmcCompilePyPath = "../../../../pyteal/bmc/builder.py"
 )
 
 var (

@@ -18,6 +18,7 @@ func Test_DecodeRelayMessage(t *testing.T) {
 	svcName, svcArgs, err := DecodeRelayMessage(feeGathering)
 	if err != nil {
 		t.Error(err)
+		t.FailNow()
 	}
 	if svcName != "FeeGathering" {
 		t.Error("Wrong service name, expected 'FeeGathering', got %w", svcName)
@@ -38,7 +39,7 @@ func Test_DecodeRelayMessage(t *testing.T) {
 	}
 }
 
-func xTest_Abi(t *testing.T) {
+func Test_Abi(t *testing.T) {
 	s, err := createTestSender(testnetAccess)
 	if err != nil {
 		t.Logf("Failed creting new sender:%v", err)
@@ -47,7 +48,7 @@ func xTest_Abi(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 
 	abiCall, err := s.(*sender).callAbi(ctx, AbiFunc{"sendMessage",
-		[]interface{}{"this", "string", 19}})
+		[]interface{}{"this", "string", "hhll", []byte{0x01, 0x02, 0x03}}})
 
 	if err != nil {
 		t.Logf("Failed to call abi:%v", err)
