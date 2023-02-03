@@ -3,6 +3,7 @@ package algo
 import (
 	"bytes"
 	"context"
+	"encoding/base32"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -30,8 +31,8 @@ type receiver struct {
 }
 
 type VerifierOptions struct {
-	Round     uint64   `json:"Round"`
-	BlockHash [32]byte `json:"BlockHash"`
+	Round     uint64 `json:"round"`
+	BlockHash string `json:"blockHash"`
 }
 
 type Verifier struct {
@@ -63,9 +64,17 @@ func NewReceiver(
 		r.opts.SyncConcurrency = MonitorBlockMaxConcurrency
 	}
 
+	blockHash, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(r.opts.Verifier.BlockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	var arr [32]byte
+	copy(arr[:], blockHash)
+
 	r.vr = Verifier{
 		Round:     r.opts.Verifier.Round,
-		BlockHash: r.opts.Verifier.BlockHash,
+		BlockHash: arr,
 	}
 	r.cl, err = newClient(algodAccess, r.log)
 	if err != nil {
