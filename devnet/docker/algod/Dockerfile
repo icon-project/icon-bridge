@@ -11,18 +11,16 @@ RUN apt-get update && \
 
 COPY ./template.json /tmp/template.json
 
-RUN goal network create -r /tmp/algotestnet -t /tmp/template.json
+RUN goal network create -r /testnet -t /tmp/template.json
 
-COPY ./config.json /tmp/algotestnet/Node
-COPY ./algod.token /tmp/algotestnet/Node
-COPY ./kmd_config.json /tmp/algotestnet/Node/kmd-v0.5/kmd_config.json
-COPY ./kmd.token /tmp/algotestnet/Node/kmd-v0.5/kmd.token
+COPY ./config.json /testnet/Node
+COPY ./algod.token /testnet/Node
+COPY ./kmd_config.json /testnet/Node/kmd-v0.5/kmd_config.json
+COPY ./kmd.token /testnet/Node/kmd-v0.5/kmd.token
+
+RUN rm -r /tmp
 
 COPY ./scripts /scripts
-
-WORKDIR /
-
-RUN chmod +x /scripts/run_algorand_testnet.sh
 
 EXPOSE 4001
 EXPOSE 4002
