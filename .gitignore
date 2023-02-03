@@ -22,3 +22,4 @@ rust/near/res
 
 devnet/docker/icon-bsc/local/
 devnet/docker/icon-bsc/data/
+devnet/docker/icon-algorand/local/
