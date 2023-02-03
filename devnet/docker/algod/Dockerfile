@@ -7,7 +7,8 @@ RUN apt-get update && \
     cd /tmp/algorand && \
     tar xf algorand.tar.gz && \
     cd bin && \
-    mv algod goal kmd /usr/local/bin
+    mv algod goal kmd /usr/local/bin && \
+    rm -rf /tmp/algorand*
 
 COPY ./template.json /tmp/template.json
 
@@ -17,8 +18,6 @@ COPY ./config.json /testnet/Node
 COPY ./algod.token /testnet/Node
 COPY ./kmd_config.json /testnet/Node/kmd-v0.5/kmd_config.json
 COPY ./kmd.token /testnet/Node/kmd-v0.5/kmd.token
-
-RUN rm -r /tmp
 
 COPY ./scripts /scripts
 
