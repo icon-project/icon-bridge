@@ -1,0 +1,43 @@
+{
+  "node_sock": "",
+  "p2p": "127.0.0.1:8080",
+  "p2p_listen": ":8080",
+  "rpc_addr": ":9080",
+  "rpc_dump": false,
+  "ee_socket": "",
+  "engines": "python,java",
+  "backup_dir": "",
+  "node_dir": "../data",
+  "key_store": {
+    "address": "hx1f3b6f636b3c7867b6a4c1d29f20a19255e713e7",
+    "id": "e58c3927-0bc8-42da-8e20-d09b48e5d129",
+    "version": 3,
+    "coinType": "icx",
+    "crypto": {
+      "cipher": "aes-128-ctr",
+      "cipherparams": {
+        "iv": "2f0f03949944f1312627a5c7db4d7ad2"
+      },
+      "ciphertext": "66e4e06bb3d9e59cc70d25bf77cdcaaee626cc1b73a41abec0fe17c2838d05a0",
+      "kdf": "scrypt",
+      "kdfparams": {
+        "dklen": 32,
+        "n": 65536,
+        "r": 8,
+        "p": 1,
+        "salt": "206ca5a68f6ee0f0"
+      },
+      "mac": "14a640a0952696a24aff29dae8c83200ca705728ebdae1045da9fe7a8b1df2fa"
+    }
+  },
+  "log_level": "debug",
+  "console_level": "trace",
+  "log_writer": {
+    "filename": "../goloop.log",
+    "maxsize": 100,
+    "maxage": 0,
+    "maxbackups": 0,
+    "localtime": false,
+    "compress": false
+  }
+}
