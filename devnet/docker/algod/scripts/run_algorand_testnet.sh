@@ -9,6 +9,6 @@ set -x
 chmod -R 700 /tmp/algotestnet
 
 goal network start -r /tmp/algotestnet
-goal kmd start -d /tmp/algotestnet/Node
+goal kmd start -d /tmp/algotestnet
 
 while true; do sleep 1; done

@@ -22,9 +22,9 @@ COPY ./scripts /scripts
 
 WORKDIR /
 
-RUN chmod +x /scripts/create_algorand_testnet.sh
+RUN chmod +x /scripts/run_algorand_testnet.sh
 
 EXPOSE 4001
 EXPOSE 4002
 
-ENTRYPOINT ["/scripts/create_algorand_testnet.sh"]
+ENTRYPOINT ["/scripts/run_algorand_testnet.sh"]
