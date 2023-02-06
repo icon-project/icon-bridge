@@ -11,7 +11,6 @@ import (
 	"github.com/algorand/go-algorand-sdk/abi"
 	"github.com/algorand/go-algorand-sdk/future"
 	"github.com/algorand/go-algorand-sdk/types"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 )
 
 const contractDir = "../../../../pyteal/teal/bmc/"
@@ -87,9 +86,10 @@ func (s *sender) callAbi(ctx context.Context, abiFuncs ...AbiFunc) (future.Execu
 	return ret, nil
 }
 
+// not needed for current design
 // EncodeMessage encodes a receipt into a byte array,
 // to then be decoded inside the bmc
-func encodeReceipt(relayMsg *chain.Receipt) ([]byte, error) {
+/* func encodeReceipt(relayMsg *chain.Receipt) ([]byte, error) {
 	next, err := abi.TypeOf("string")
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create type of next bmc: %w", err)
@@ -132,4 +132,4 @@ func encodeReceipt(relayMsg *chain.Receipt) ([]byte, error) {
 		return nil, fmt.Errorf("Failed to encode relay message: %w", err)
 	}
 	return encMessage, nil
-}
+} */

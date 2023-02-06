@@ -3,17 +3,20 @@ package algo
 import (
 	"bytes"
 	"context"
+	"encoding/base32"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
+	"github.com/algorand/go-algorand-sdk/abi"
 	"github.com/algorand/go-algorand-sdk/types"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/pkg/errors"
 )
 
-// TODO adjust settings for algo
 const (
 	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks
 )
@@ -28,8 +31,8 @@ type receiver struct {
 }
 
 type VerifierOptions struct {
-	Round     uint64   `json:"Round"`
-	BlockHash [32]byte `json:"BlockHash"`
+	Round     uint64 `json:"round"`
+	BlockHash string `json:"blockHash"`
 }
 
 type Verifier struct {
@@ -61,16 +64,23 @@ func NewReceiver(
 		r.opts.SyncConcurrency = MonitorBlockMaxConcurrency
 	}
 
+	blockHash, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(r.opts.Verifier.BlockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	var arr [32]byte
+	copy(arr[:], blockHash)
+
 	r.vr = Verifier{
 		Round:     r.opts.Verifier.Round,
-		BlockHash: r.opts.Verifier.BlockHash,
+		BlockHash: arr,
 	}
 	r.cl, err = newClient(algodAccess, r.log)
 	if err != nil {
 		return nil, err
 	}
 	return r, nil
-
 }
 
 type ReceiverOptions struct {
@@ -93,16 +103,11 @@ func (r *receiver) Subscribe(
 	subOpts.Seq++
 	_errCh := make(chan error)
 
-	if subOpts.Seq <= 0 || subOpts.Height <= 0 {
+	if subOpts.Seq < 0 || subOpts.Height < 0 {
 		return _errCh, errors.New("receiveLoop: invalid options: <nil>")
 	}
 
 	latestRound, err := r.cl.GetLatestRound(ctx)
-	if err != nil {
-		r.log.WithFields(log.Fields{"error": err}).Error(
-			"receiveLoop: error failed to getLatestRound-")
-		return _errCh, err
-	}
 
 	if err != nil {
 		r.log.WithFields(log.Fields{"error": err}).Error("receiveLoop: failed to GetLatestRound")
@@ -120,9 +125,9 @@ func (r *receiver) Subscribe(
 			case <-ctx.Done():
 				break receiveLoop
 			default:
+				//Wait for new blocks to be created
 				if r.vr.Round >= latestRound {
 					time.Sleep(500 * time.Millisecond)
-
 					latestRound, err = r.cl.GetLatestRound(ctx)
 					if err != nil {
 						r.log.WithFields(log.Fields{"error": err}).Error(
@@ -162,82 +167,95 @@ func (r *receiver) inspectBlock(ctx context.Context, round uint64, subOpts *chai
 		return
 	}
 
-	bmcTxns := r.getBMCTxns(newBlock)
-	if len(*bmcTxns) <= 0 {
-		return
-	}
-
-	relayRcps, err := r.getRelayReceipts(bmcTxns, round)
+	receipts, err := r.getRelayReceipts(newBlock, &subOpts.Seq)
 	if err != nil {
-		_errCh <- err
-		return
+		_errCh <- fmt.Errorf("Error getting relay receipts: %s", err)
+	} else if len(receipts) > 0 {
+		msgCh <- &chain.Message{Receipts: receipts}
 	}
-
-	err = r.validateEvents(&relayRcps, subOpts)
-	if err != nil {
-		_errCh <- err
-		return
-	}
-	msgCh <- &chain.Message{Receipts: relayRcps}
 }
 
 // Check if the new block has any transaction meant to be sent across the relayer
-func (r *receiver) getBMCTxns(block *types.Block) *[]types.SignedTxnWithAD {
-	txns := make([]types.SignedTxnWithAD, 0)
-	for _, signedTxnInBlock := range block.Payset {
-		signedTxnWithAD := signedTxnInBlock.SignedTxnWithAD
-
-		if signedTxnWithAD.SignedTxn.AuthAddr.String() == r.src.ContractAddress() {
-			txns = append(txns, signedTxnWithAD)
-		}
-	}
-	return &txns
-}
-
-func (r *receiver) getRelayReceipts(txns *[]types.SignedTxnWithAD, round uint64) (
+// If so read its logs to produce an event to be forwarded
+func (r *receiver) getRelayReceipts(block *types.Block, seq *uint64) (
 	[]*chain.Receipt, error) {
-	var receipts []*chain.Receipt
-	var events []*chain.Event
-	for i, txn := range *txns {
-		events := events[:0]
-		for _, log := range txn.ApplyData.EvalDelta.Logs {
-			if txn.Txn.Header.Sender.String() != r.src.ContractAddress() {
-				continue
+	receipts := make([]*chain.Receipt, 0)
+	events := make([]*chain.Event, 0)
+	var index uint64
+	for _, signedTxnInBlock := range block.Payset {
+		// identify transactions sent from the algorand BMC
+		if signedTxnInBlock.SignedTxnWithAD.SignedTxn.Txn.Header.Sender.String() == testAddress &&
+			signedTxnInBlock.EvalDelta.Logs != nil {
+			// there could be multiple logs sent from each transaction
+			for _, txnLog := range signedTxnInBlock.EvalDelta.Logs {
+				bmcMsg, err := extractMsg(txnLog)
+				if err != nil {
+					return nil, fmt.Errorf("Error extracting message from log: %s", err)
+				}
+				if chain.BTPAddress(bmcMsg.Dst) != r.dst {
+					return nil, fmt.Errorf("Unexpected destination %s, expected %s. - Block %d",
+						bmcMsg.Dst, r.dst, block.Round)
+				}
+				var sn uint64
+				binary.Read(bytes.NewReader(bmcMsg.Sn), binary.BigEndian, &sn)
+				events = append(events, &chain.Event{
+					Next:     chain.BTPAddress(bmcMsg.Dst),
+					Sequence: sn,
+					Message:  bmcMsg.Message,
+				})
 			}
-			decodedMsg, err := r.cl.DecodeBtpMsg(log)
-			if err == nil {
-				events = append(events, decodedMsg)
+			// sort txn events in case they came out of order
+			sort.Slice(events, func(i, j int) bool {
+				return events[i].Sequence < events[j].Sequence
+			})
+			// check if event sequece of each event increments starting at the current sequence
+			for _, event := range events {
+				if event.Sequence != *seq {
+					return nil, fmt.Errorf("Unexpected sequece, got %d, expected %d. - Block %d",
+						event.Sequence, *seq, block.Round)
+				}
+				*seq++
 			}
+			receipts = append(receipts, &chain.Receipt{
+				Index:  index,
+				Events: events,
+				Height: uint64(block.Round),
+			})
+			events = nil
+			index++
 		}
-		if len(events) > 0 {
-			rcp := &chain.Receipt{}
-			rcp.Index, rcp.Height = uint64(i), round
-			rcp.Events = append(rcp.Events, events...)
-			receipts = append(receipts, rcp)
-		}
-	}
-	if len(receipts) <= 0 {
-		return receipts, errors.New("Couldn't retrieve any receipt from the new block")
 	}
 	return receipts, nil
 }
 
-func (r *receiver) validateEvents(rcps *[]*chain.Receipt, subOpts *chain.SubscribeOptions) error {
-	for _, receipt := range *rcps {
-		events := receipt.Events[:0]
-		for _, event := range receipt.Events {
-			switch {
-			case event.Sequence == subOpts.Seq:
-				events = append(events, event)
-				subOpts.Seq++
-			case event.Sequence > subOpts.Seq:
-				r.log.WithFields(log.Fields{
-					"seq": log.Fields{"got": event.Sequence, "expected": subOpts.Seq},
-				}).Error("invalid event seq")
-				return fmt.Errorf("invalid event seq")
-			}
-		}
-		receipt.Events = events
+func extractMsg(txnLog string) (BMCMessage, error) {
+	var bmcMessage BMCMessage
+
+	tupleType, err := abi.TypeOf("(string,string,string,uint64,byte[])")
+
+	if err != nil {
+		return bmcMessage, fmt.Errorf("Failed to get tuple type: %+v", err)
 	}
-	return nil
+	decoded, err := tupleType.Decode([]byte(txnLog))
+	if err != nil {
+		return bmcMessage, fmt.Errorf("Failed to decode tuple type: %+v", err)
+	}
+
+	if val, ok := decoded.([]interface{}); ok {
+		var msgBytes []byte
+		for _, v := range val[4].([]interface{}) {
+			msgBytes = append(msgBytes, byte(v.(uint8)))
+		}
+		buf := new(bytes.Buffer)
+		binary.Write(buf, binary.BigEndian, val[3].(uint64))
+
+		bmcMessage.Src = val[0].(string)
+		bmcMessage.Dst = val[1].(string)
+		bmcMessage.Svc = val[2].(string)
+		bmcMessage.Sn = buf.Bytes()
+		bmcMessage.Message = msgBytes
+	} else {
+		return bmcMessage, fmt.Errorf("Decoded tuple had unexpected type %+v", err)
+	}
+	return bmcMessage, nil
 }

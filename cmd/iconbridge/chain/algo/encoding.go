@@ -37,6 +37,15 @@ func RlpDecodeHex(str string, out interface{}) error {
 	return nil
 }
 
+func RlpEncodeHex(in interface{}) (string, error) {
+	var buf bytes.Buffer
+	err := rlp.Encode(&buf, in)
+	if err != nil {
+		return "", errors.Wrap(err, "rlp.Encode ")
+	}
+	return fmt.Sprintf("0x%x", buf.Bytes()), nil
+}
+
 // Decode receiving rlp encoded msg to identify which service is it requesting
 // Return the name of the abi call implementing this service and its input parameters
 func DecodeRelayMessage(rlpMsg string) (string, interface{}, error) {
@@ -91,12 +100,6 @@ func DecodeRelayMessage(rlpMsg string) (string, interface{}, error) {
 				return "", nil, err
 			}
 			return "CoinTransfer", svcArgs, nil
-			/* 		case REQUEST_COIN_REGISTER:
-			svcArgs := CoinRegisterSvc{}
-			if err := rlpDecodeHex(hex.EncodeToString(svcMessage.Payload), &svcArgs); err != nil {
-				err = errors.Wrapf(err, "Failed to decode coin register: %v", err)
-				return "", nil, err
-			} */
 		case BLACKLIST_MESSAGE:
 			svcArgs := BlacklistSvc{}
 			if err := RlpDecodeHex(hex.EncodeToString(svcMessage.Payload), &svcArgs); err != nil {
