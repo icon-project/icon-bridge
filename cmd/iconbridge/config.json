@@ -14,8 +14,8 @@
             "src": {
                 "address": "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8",
                 "endpoint": [
-                    "https://",
-                    ""
+                    "http://localhost:4001",
+                    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 ],
                 "offset": 27470276,
                 "options": {
@@ -29,7 +29,7 @@
             "dst": {
                 "address": "btp://0x2.icon/cxcc165238ae0e894835e88f549f22e520c7ad740f",
                 "endpoint": [
-                    "https://lisbon.net.solidwallet.io/api/v3/icon_dex"
+                    "http://localhost:9080/api/v3"
                 ],
                 "options": {
                     "step_limit": 13610920010,
