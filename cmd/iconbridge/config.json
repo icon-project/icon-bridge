@@ -1,0 +1,64 @@
+{
+    "base_dir": "bmr",
+    "log_level": "debug",
+    "console_level": "trace",
+    "log_writer": {
+        "filename": "bmr/bmr.log"
+    },
+    "stat_collector": {
+        "verbose": false
+    },
+    "relays": [
+        {
+            "name": "a2i",
+            "src": {
+                "address": "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8",
+                "endpoint": [
+                    "https://",
+                    ""
+                ],
+                "offset": 27470276,
+                "options": {
+                    "syncConcurrency": 3,
+                    "verifier": {
+                        "round": 27470276,
+                        "blockHash": "SNF2Z5Z73LATSL5Y2RKBRJY4HPNDRAHPKCGZE4ITUISZ5XZC3XKQ"
+                    }
+                }
+            },
+            "dst": {
+                "address": "btp://0x2.icon/cxcc165238ae0e894835e88f549f22e520c7ad740f",
+                "endpoint": [
+                    "https://lisbon.net.solidwallet.io/api/v3/icon_dex"
+                ],
+                "options": {
+                    "step_limit": 13610920010,
+                    "tx_data_size_limit": 65536
+                },
+                "key_store": {
+                    "address": "hx4263c6c85788d5560a4d12920aa125326be53c17",
+                    "id": "63a4a63d-b82b-4efa-9b85-c5378e3143a0",
+                    "version": 3,
+                    "coinType": "icx",
+                    "crypto": {
+                        "cipher": "aes-128-ctr",
+                        "cipherparams": {
+                            "iv": "cd97c16c945415bc1336e8c3d7451d8f"
+                        },
+                        "ciphertext": "be594e68d59602025663650105940812d3b9fcfef0a84c6b62ba3558c7da7e23",
+                        "kdf": "scrypt",
+                        "kdfparams": {
+                            "dklen": 32,
+                            "n": 65536,
+                            "r": 8,
+                            "p": 1,
+                            "salt": "76d888aadbefd014"
+                        },
+                        "mac": "d624e7aa031fed5e7dd071d47152b055a52d673f9c93dc30cc8a349deeb0ed9e"
+                    }
+                },
+                "key_password": "gochain"
+            }
+        }
+    ]
+}
