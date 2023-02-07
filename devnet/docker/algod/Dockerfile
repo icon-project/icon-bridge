@@ -1,10 +1,8 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
-RUN apt-get update && \
-    apt-get install -y wget && \
-    mkdir /tmp/algorand && \
-    wget -O /tmp/algorand/algorand.tar.gz https://github.com/algorand/go-algorand/releases/download/v3.13.3-stable/node_stable_linux-amd64_3.13.3.tar.gz && \
-    cd /tmp/algorand && \
+ADD https://github.com/algorand/go-algorand/releases/download/v3.13.3-stable/node_stable_linux-amd64_3.13.3.tar.gz /tmp/algorand/algorand.tar.gz
+
+RUN cd /tmp/algorand && \
     tar xf algorand.tar.gz && \
     cd bin && \
     mv algod goal kmd /usr/local/bin && \

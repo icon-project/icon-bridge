@@ -1,0 +1,23 @@
+name: Icon-Algorand CI
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Start containers
+        run: |
+          cd devnet/docker/icon-algorand
+          docker-compose -f "docker-compose.yml" up -d --build
+
+      - name: Run Test
+        run: |
+          export ALGOD_ADDRESS=http://$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' algorand):4001
+          go test -v pyteal/test/lifecheck_test/lifecheck_test.go
