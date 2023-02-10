@@ -1,21 +1,23 @@
-#!/bin/env bash
+#!/bin/bash
 
 export PATH=$PATH:~/go/bin
 
-DEPLOY_TXN_ID=$1
-end_time=$(($(date +%s) + 30))
+TXN_ID=$1
+FIELD=$2
 
-while [[ $(date +%s) -lt $end_time ]]; do
-  ICON_BMC_ADDR=$(goloop rpc txresult $(echo $DEPLOY_TXN_ID | cut -d '"' -f 2) --uri http://localhost:9080/api/v3 | grep '"scoreAddress"' | cut -d '"' -f 4)
-  if [ -n "$ICON_BMC_ADDR" ]; then
+END_TIME=$(($(date +%s) + 30))
+
+while [[ $(date +%s) -lt $END_TIME ]]; do
+  TXN_RESULT=$(goloop rpc txresult $(echo $TXN_ID | cut -d '"' -f 2) --uri http://localhost:9080/api/v3 | jq .$FIELD)
+  if [ -n "$TXN_RESULT" ]; then
     break
   fi
   sleep 1
 done
 
-if [ -z "$ICON_BMC_ADDR" ]; then
-  echo "The ICON_BMC_ADDR environment variable is empty, there was an error deploying the BMC."
+if [ -z "$TXN_RESULT" ]; then
+  echo "The transaction was not confirmed after 30 seconds."
   exit 1
 fi
 
-echo $ICON_BMC_ADDR
+echo $TXN_RESULT

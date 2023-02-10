@@ -6,6 +6,7 @@ __pycache__
 **/*.iml
 build/
 devnet/docker/icon-bsc/build*/
+devnet/docker/icon-algorand/build*/
 bin/
 **/*/node_modules/
 abigenBindings/
@@ -23,3 +24,5 @@ rust/near/res
 devnet/docker/icon-bsc/local/
 devnet/docker/icon-bsc/data/
 devnet/docker/icon-algorand/local/
+devnet/docker/icon-algorand/iconvalidators
+devnet/docker/icon-algorand/*keystore.json

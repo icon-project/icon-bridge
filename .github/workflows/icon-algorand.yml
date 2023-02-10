@@ -45,25 +45,52 @@ jobs:
             --key_store goloop.keystore.json --key_password $PASSWORD \
             --to $KS_ADDRESS --value=2001
 
-      - name: Build javascore bmc optimized jar
+      - name: Build ICON smart contracts
         working-directory: ./javascore
         run: |
+          gradle clean
+          gradle dummyBSH:optimizedJar
           gradle bmc:optimizedJar
 
-      - name: Deploy javascore bmc optimized jar
+      - name: Deploy BMC on ICON
         working-directory: ./devnet/docker/icon-algorand
         run: |
           export PATH=$PATH:~/go/bin
           NID=$(docker compose exec goloop goloop chain ls | jq -r '.[0] | .nid')
+          CONTRACT=../../../javascore/bmc/build/libs/bmc-optimized.jar
 
-          DEPLOY_TXN_ID=$(goloop rpc sendtx deploy ../../../javascore/bmc/build/libs/bmc-optimized.jar \
-          --uri http://localhost:9080/api/v3 \
-          --key_store ./icon.keystore.json --key_password gochain \
-          --nid $NID \
-          --content_type application/java \
-          --step_limit 3000000000 \
-          --param _net="$NID.icon")
+          TXN_ID=$(
+            goloop rpc sendtx deploy $CONTRACT \
+              --uri http://localhost:9080/api/v3 \
+              --key_store icon.keystore.json --key_password gochain \
+              --nid $NID --step_limit 10000000000 \
+              --content_type application/java \
+              --param _net="$NID.icon"
+          )
 
-          echo ICON_BMC_ADDR=$(./../algod/scripts/wait_javascore_deploy.sh $DEPLOY_TXN_ID)
+          CONTRACT_ADDR=$(../algod/scripts/wait_javascore_deploy.sh $TXN_ID scoreAddress)
 
+      - name: Deploy dummy BSH on ICON
+        working-directory: ./devnet/docker/icon-algorand
+        run: |
+          export PATH=$PATH:~/go/bin
+          NID=$(docker compose exec goloop goloop chain ls | jq -r '.[0] | .nid')
+          CONTRACT=../../../javascore/dummyBSH/build/libs/dummyBSH-optimized.jar
 
+          TXN_ID=$(
+            goloop rpc sendtx deploy $CONTRACT \
+              --uri http://localhost:9080/api/v3 \
+              --key_store icon.keystore.json --key_password gochain \
+              --nid $NID --step_limit 10000000000 \
+              --content_type application/java
+          )
+
+          CONTRACT_ADDR=$(../algod/scripts/wait_javascore_deploy.sh $TXN_ID scoreAddress)
+
+          msg=$(
+            goloop rpc call --to $(echo $CONTRACT_ADDR | cut -d '"' -f 2) \
+              --uri http://localhost:9080/api/v3 \
+              --method getLastReceivedMessage
+          )
+
+          echo -n $msg | xxd -r -p

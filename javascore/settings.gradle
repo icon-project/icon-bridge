@@ -4,5 +4,6 @@ include (
         'lib',
         'bmc',
         'bts',
+        'dummyBSH',
         'irc2Tradeable'
 )
