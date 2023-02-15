@@ -57,7 +57,7 @@ func Test_Abi(t *testing.T) {
 	fmt.Println(abiCall)
 }
 
-func xTest_Segment(t *testing.T) {
+func Test_Segment(t *testing.T) {
 	s, err := createTestSender(testnetAccess)
 	if err != nil {
 		t.Logf("Failed creting new sender:%v", err)

@@ -8,6 +8,8 @@ RUN cd /tmp/algorand && \
     mv algod goal kmd /usr/local/bin && \
     rm -rf /tmp/algorand*
 
+ENV ALGORAND_DATA=/testnet/Node
+
 COPY ./template.json /tmp/template.json
 
 RUN goal network create -r /testnet -t /tmp/template.json
@@ -20,5 +22,7 @@ COPY ./kmd.token /testnet/Node/kmd-v0.5/kmd.token
 COPY ./scripts /scripts
 
 EXPOSE 4001
+
+WORKDIR /testnet/Node
 
 ENTRYPOINT ["/scripts/run_algorand_testnet.sh"]

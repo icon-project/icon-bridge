@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
@@ -24,11 +23,11 @@ func deployContract(ctx context.Context, algodAccess []string, tealPath [2]strin
 		return 0, fmt.Errorf("Error getting params: %w", err)
 	}
 
-	// call python script to compile bmc
-	_, err = exec.Command(bmcCompilePyPath).Output()
-	if err != nil {
-		return 0, fmt.Errorf("Failed to compile bmc.py: %w", err)
-	}
+	/* 	// call python script to compile bmc
+	   	_, err = exec.Command(bmcCompilePyPath).Output()
+	   	if err != nil {
+	   		return 0, fmt.Errorf("Failed to compile bmc.py: %w", err)
+	   	} */
 
 	approvalFile, err := filepath.Abs(contractDir + tealPath[0])
 	if err != nil {

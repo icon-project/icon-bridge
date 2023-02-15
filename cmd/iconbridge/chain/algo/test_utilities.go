@@ -15,12 +15,13 @@ import (
 )
 
 const (
-	sandboxAddress   = "http://localhost:4001"
-	sandboxToken     = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	algodAddress     = "http://localhost:4001"
+	kmdAddress       = "http://localhost:4002"
+	algoToken        = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	testAddress      = "5SOSEYHUIAGIFPOHCV6ANF7KYSAU5AXHF5TNM4BQMIVU4DNWZOQJ427XRE"
 	testAccountSk    = "5pw5+iRVb91t/RfIHF4c1RDMiIQ434PPVDN+Vv2qv9LsnSJg9EAMgr3HFXwGl+rEgU6C5y9m1nAwYitODbbLoA=="
 	algoBmc          = "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8"
-	iconBmc          = "btp://0x1.icon/cx06f42ea934731b4867fca00d37c25aa30bc3e3d7"
+	iconBmc          = "btp://0x2.icon/cx04d4cc5ee639aa2fc5f2ededa7b50df6044dd325"
 	bmcCompilePyPath = "../../../../pyteal/bmc/builder.py"
 )
 
@@ -28,12 +29,12 @@ var (
 	testnetAddress = os.Getenv("ALGO_TEST_ADR")
 	testnetToken   = os.Getenv("ALGO_TEST_TOK")
 	testnetAccess  = []string{testnetAddress, testnetToken}
-	sandboxAccess  = []string{sandboxAddress, sandboxToken}
+	sandboxAccess  = []string{algodAddress, algoToken}
 )
 
-func createTestReceiver(algodAccess []string, round uint64, hash [32]byte) (chain.Receiver, error) {
+func createTestReceiver(algodAccess []string, round uint64, hash string) (chain.Receiver, error) {
 	opts := map[string]interface{}{"syncConcurrency": 2,
-		"Verifier": Verifier{
+		"Verifier": VerifierOptions{
 			round,
 			hash,
 		},
@@ -43,7 +44,7 @@ func createTestReceiver(algodAccess []string, round uint64, hash [32]byte) (chai
 		return nil, fmt.Errorf("Error marshalling options: %v", err)
 	}
 
-	rcv, err := NewReceiver(chain.BTPAddress(iconBmc), chain.BTPAddress(algoBmc),
+	rcv, err := NewReceiver(chain.BTPAddress(algoBmc), chain.BTPAddress(iconBmc),
 		algodAccess, rawOpts, log.New())
 	if err != nil {
 		return nil, fmt.Errorf("Error creating new receiver: %v", err)
@@ -60,6 +61,7 @@ func createTestSender(algodAccess []string) (chain.Sender, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Can't get account from private key: %s", err)
 	}
+	fmt.Println(account.Address)
 
 	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 
@@ -78,7 +80,7 @@ func createTestSender(algodAccess []string) (chain.Sender, error) {
 	}
 
 	s, err := NewSender(
-		chain.BTPAddress(iconBmc), chain.BTPAddress(algoBmc),
+		chain.BTPAddress(algoBmc), chain.BTPAddress(iconBmc),
 		algodAccess, w,
 		rawOpts, log.New())
 	if err != nil {

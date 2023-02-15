@@ -82,7 +82,11 @@ func (cl *Client) GetBlockbyRound(ctx context.Context, round uint64) (*types.Blo
 	return nil, err
 }
 
-func (cl *Client) DecodeBtpMsg(log string) (*chain.Event, error) {
-	//TODO this func should use ABI logic to go through the log string and decode it into a BTP message event
-	return &chain.Event{}, nil
+// get latest block round
+func (cl *Client) GetBlockHash(ctx context.Context, round uint64) (string, error) {
+	hash, err := cl.algod.GetBlockHash(round).Do(ctx)
+	if err != nil {
+		return "", fmt.Errorf("Failed to get block hash: %v", err)
+	}
+	return hash.Blockhash, nil
 }

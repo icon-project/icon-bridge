@@ -9,8 +9,6 @@ services:
         GOLOOP_IMAGE: iconloop/goloop-icon:latest
     ports:
       - "9080:9080"
-    volumes:
-      - ./local/artifacts:/goloop/config
     environment:
       - GOLOOP_NODE_DIR=/goloop/data/goloop
       - GOLOOP_LOG_WRITER_FILENAME=/goloop/data/log/goloop.log

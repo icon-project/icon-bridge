@@ -12,7 +12,7 @@ import (
 
 func Test_Subscribe(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	c, err := newClient(testnetAccess, log.New())
+	c, err := newClient(sandboxAccess, log.New())
 	if err != nil {
 		t.Log("Couldn't create client %w", err)
 		t.FailNow()
@@ -22,15 +22,15 @@ func Test_Subscribe(t *testing.T) {
 		t.Log("Couldn't retrieve latest round: %w", err)
 		t.FailNow()
 	}
-	blk, err := c.GetBlockbyRound(ctx, curRound-11)
+	hash, err := c.GetBlockHash(ctx, curRound-11)
 
 	if err != nil {
-		t.Log("Couldn't retrieve block: %w", err)
+		t.Log("Couldn't retrieve hash: %w", err)
 		t.FailNow()
 	}
 
 	// start receiver 10 rounds late to test that it can update until the current round
-	rcv, err := createTestReceiver(testnetAccess, curRound-10, EncodeBlockHash(blk))
+	rcv, err := createTestReceiver(sandboxAccess, curRound-10, hash)
 	if err != nil {
 		t.Logf("NewReceiver error: %v", err)
 		t.FailNow()
@@ -51,14 +51,16 @@ func Test_Subscribe(t *testing.T) {
 	}
 
 	// create a sender to send a call from the bmc that the receiver will be monotoring
-	s, err := createTestSender(testnetAccess)
+	s, err := createTestSender(sandboxAccess)
 	if err != nil {
 		t.Logf("Failed creting new sender:%v", err)
 		t.FailNow()
 	}
 
 	_, err = s.(*sender).callAbi(ctx, AbiFunc{"sendMessage",
-		[]interface{}{"this", "string", "hhll", []byte{0x01, 0x02, 0x03}}})
+		[]interface{}{"btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8",
+			"btp://0x2.icon/cx04d4cc5ee639aa2fc5f2ededa7b50df6044dd325",
+			"tokentransfer", 778, []byte{0x01, 0x02, 0x03}}})
 
 	if err != nil {
 		t.Logf("Couldn't call sendMessage. Error: %v", err)
@@ -85,7 +87,7 @@ func Test_Subscribe(t *testing.T) {
 	}
 }
 
-func xTest_GetHash(t *testing.T) {
+func Test_GetHash(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 	cl, err := newClient(testnetAccess, log.New())
 	if err != nil {

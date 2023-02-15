@@ -30,6 +30,10 @@ type receiver struct {
 	vr   Verifier
 }
 
+type ReceiverOptions struct {
+	SyncConcurrency uint64           `json:"syncConcurrency"`
+	Verifier        *VerifierOptions `json:"verifier"`
+}
 type VerifierOptions struct {
 	Round     uint64 `json:"round"`
 	BlockHash string `json:"blockHash"`
@@ -81,11 +85,6 @@ func NewReceiver(
 		return nil, err
 	}
 	return r, nil
-}
-
-type ReceiverOptions struct {
-	SyncConcurrency uint64           `json:"syncConcurrency"`
-	Verifier        *VerifierOptions `json:"verifier"`
 }
 
 func (opts *ReceiverOptions) Unmarshal(v map[string]interface{}) error {
