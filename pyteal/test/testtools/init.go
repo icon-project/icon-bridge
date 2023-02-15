@@ -13,6 +13,7 @@ func Init(t *testing.T) (client *algod.Client, deployer crypto.Account, txParams
 	client = MakeAlgodClient(t)
 
 	fundingAccounts, err := GetAccounts()
+
 	if err != nil {
 		log.Fatalf("Failed to get accounts: %+v", err)
 	}

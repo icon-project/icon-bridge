@@ -94,3 +94,48 @@ jobs:
           )
 
           echo -n $msg | xxd -r -p
+
+      - name: Install PyTeal
+        working-directory: ./pyteal
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip
+          pip install pyteal
+
+      - name: Build Algorand smart contracts
+        working-directory: pyteal
+        run: |
+          ./build.sh bmc.bmc bmc
+          ./build.sh bsh.bsh bsh
+
+      - name: Install KMD
+        run: |
+          sudo mkdir /tmp/algorand
+          sudo wget -O /tmp/algorand/algorand.tar.gz https://github.com/algorand/go-algorand/releases/download/v3.13.3-stable/node_stable_linux-amd64_3.13.3.tar.gz
+          cd /tmp/algorand
+          sudo tar xf algorand.tar.gz
+          cd bin
+          sudo mv kmd /usr/local/bin
+
+      - name: Compile golang tools
+        working-directory: cmd/tools/algorand
+        run: ./install-tools.sh
+
+      - name: Deploy BMC on Algorand
+        working-directory: ./devnet/docker/icon-algorand
+        run: |
+          export PATH=$PATH:~/go/bin
+          ALGOD_ADDRESS=http://localhost:4001
+          ALGOD_TOKEN=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          KMD_ADDRESS=http://localhost:4002
+          KMD_TOKEN=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+          docker cp algorand:/testnet/Node/kmd-v0.5 /tmp/kmd
+          kmd -d /tmp/kmd &
+
+          sleep 5
+
+          PRIVATE_KEY=$(KMD_ADDRESS=$KMD_ADDRESS KMD_TOKEN=$KMD_TOKEN kmd-extract-private-key 1)
+          TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN deploy-bmc ../../../pyteal/teal/bmc)
+          APP_ID=$(ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN get-app-id $TX_ID)
+          echo $APP_ID

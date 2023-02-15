@@ -21,4 +21,3 @@ services:
       context: ../algod
     ports:
       - 4001:4001
-      - 4002:4002

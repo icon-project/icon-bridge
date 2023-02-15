@@ -32,4 +32,3 @@ def handleBTPMessage(msg: abi.String) -> Expr:
     return Seq(
         Log(msg.get()),
     )
-

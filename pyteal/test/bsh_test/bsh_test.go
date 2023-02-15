@@ -53,7 +53,7 @@ func Test_BshSendServiceMessage(t *testing.T) {
 		t.Fatalf("Failed to execute RegisterBSHContract: %+v", err)
 	}
 
-	_, err = bshmethods.SendServiceMessage(client, bmcApp.Id, bshContract, bshMcp)
+	_, err = bshmethods.SendServiceMessage(client, bshContract, bshMcp, []interface{}{bmcApp.Id, "ICON", "TOKEN_TRANSFER_SERVICE", 3})
 
 	if err != nil {
 		t.Fatalf("Failed to execute SendServiceMessage: %+v", err)

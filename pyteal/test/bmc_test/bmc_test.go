@@ -65,7 +65,7 @@ func Test_RegisterBSHContract(t *testing.T) {
 }
 
 func Test_CallSendMessageFromOutsideOfBsh(t *testing.T) {
-	_, err = bmcmethods.SendMessage(client, bmcContract, bmcMcp)
+	_, err = bmcmethods.SendMessage(client, bmcContract, bmcMcp, []interface{}{"ICON", "TOKEN_TRANSFER_SERVICE", 3})
 
 	if err == nil {
 		t.Fatal("SendMessage should throw error, as it's not been called from BSH contract")

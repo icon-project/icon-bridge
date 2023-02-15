@@ -20,6 +20,5 @@ COPY ./kmd.token /testnet/Node/kmd-v0.5/kmd.token
 COPY ./scripts /scripts
 
 EXPOSE 4001
-EXPOSE 4002
 
 ENTRYPOINT ["/scripts/run_algorand_testnet.sh"]

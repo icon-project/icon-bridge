@@ -4,9 +4,6 @@ import os
 import json
 from pyteal import *
 
-def application(pyteal: Expr) -> str:
-    return compileTeal(pyteal, mode=Mode.Application, version=MAX_TEAL_VERSION)
-
 if __name__ == "__main__":
     mod = sys.argv[1]
 
@@ -27,7 +24,7 @@ if __name__ == "__main__":
     contract = importlib.import_module(mod)
 
     approval, clear, contract = contract.router.compile_program(
-        version=6, optimize=OptimizeOptions(scratch_slots=True)
+        version=7, optimize=OptimizeOptions(scratch_slots=True)
     )
 
     # Dump out the contract as json that can be read in by any of the SDKs
