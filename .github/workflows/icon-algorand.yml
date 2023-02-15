@@ -136,7 +136,7 @@ jobs:
           ./build.sh bmc.bmc bmc
           ./build.sh bsh.bsh bsh
 
-      - name: Deploy BMC on Algorand
+      - name: Deploy BMC and DummyBSH on Algorand
         working-directory: ./devnet/docker/icon-algorand
         run: |
           export PATH=$PATH:~/go/bin
@@ -151,39 +151,42 @@ jobs:
           sleep 5
 
           PRIVATE_KEY=$(KMD_ADDRESS=$KMD_ADDRESS KMD_TOKEN=$KMD_TOKEN kmd-extract-private-key 1)
-          TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN deploy-bmc ../../../pyteal/teal/bmc)
-          APP_ID=$(ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN get-app-id $TX_ID)
-          echo $APP_ID
+          BMC_TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN deploy-contract ../../../pyteal/teal/bmc)
+          DUMMY_BSH_TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN deploy-contract ../../../pyteal/teal/bsh)
+          BMC_APP_ID=$(ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN get-app-id $BMC_TX_ID)
+          DUMMY_BSH_APP_ID=$(ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN get-app-id $DUMMY_BSH_TX_ID)
+          echo $BMC_APP_ID
+          echo $DUMMY_BSH_APP_ID
 
       - name: Link Algorand BMC on Icon BMC
         working-directory: ./devnet/docker/icon-algorand
         run: |
-            export PATH=$PATH:~/go/bin
-            echo btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8 > cache/algo_btp_addr
+          export PATH=$PATH:~/go/bin
+          echo btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8 > cache/algo_btp_addr
 
-            LINK_TXN_ID=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) \
-            --method addLink --param _link=$(cat cache/algo_btp_addr) \
-            --key_store ./icon.keystore.json --key_password gochain \
-            --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3)
+          LINK_TXN_ID=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) \
+          --method addLink --param _link=$(cat cache/algo_btp_addr) \
+          --key_store ./icon.keystore.json --key_password gochain \
+          --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3)
 
-            ./../algod/scripts/wait_for_transaction.sh $LINK_TXN_ID
+          ./../algod/scripts/wait_for_transaction.sh $LINK_TXN_ID
 
-            ALGO_ROUND=$(docker compose exec algod goal node lastround)
+          ALGO_ROUND=$(docker compose exec algod goal node lastround)
 
-            ADD_ROUND=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) --method setLinkRxHeight \
-            --param _link=$(cat cache/algo_btp_addr) --param _height=$ALGO_ROUND \
-            --key_store ./icon.keystore.json --key_password gochain \
-            --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3)
+          ADD_ROUND=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) --method setLinkRxHeight \
+          --param _link=$(cat cache/algo_btp_addr) --param _height=$ALGO_ROUND \
+          --key_store ./icon.keystore.json --key_password gochain \
+          --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3)
 
-            ./../algod/scripts/wait_for_transaction.sh $ADD_ROUND
+          ./../algod/scripts/wait_for_transaction.sh $ADD_ROUND
 
-            ADD_RELAY=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) --method addRelay \
-            --param _link=$(cat cache/algo_btp_addr) \
-            --param _addr=$(cat icon.keystore.json | jq .address) \
-            --key_store ./icon.keystore.json --key_password gochain \
-            --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3) \
+          ADD_RELAY=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) --method addRelay \
+          --param _link=$(cat cache/algo_btp_addr) \
+          --param _addr=$(cat icon.keystore.json | jq .address) \
+          --key_store ./icon.keystore.json --key_password gochain \
+          --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3) \
 
-            ./../algod/scripts/wait_for_transaction.sh $ADD_RELAY
+          ./../algod/scripts/wait_for_transaction.sh $ADD_RELAY
 
       - name: Update config file and start relayer
         working-directory: ./cmd/iconbridge

@@ -37,7 +37,7 @@ func main () {
 	algodToken := helpers.GetEnvVar("ALGOD_TOKEN")
 	privateKeyStr := helpers.GetEnvVar("PRIVATE_KEY")
 	
-	bmcTealDir := os.Args[1]
+	tealDir := os.Args[1]
 
 	privateKey, err := base64.StdEncoding.DecodeString(privateKeyStr)
 	if err != nil {
@@ -49,12 +49,12 @@ func main () {
 		log.Fatalf("Cannot create deployer account: %s", err)
 	}
 
-	approvalSourceCode, err := os.ReadFile(filepath.Join(bmcTealDir, "approval.teal"))
+	approvalSourceCode, err := os.ReadFile(filepath.Join(tealDir, "approval.teal"))
 	if err != nil {
 		log.Fatalf("Failed to read file: %s\n", err)
 	}
 
-	clearStateSourceCode, err := os.ReadFile(filepath.Join(bmcTealDir, "clear.teal"))
+	clearStateSourceCode, err := os.ReadFile(filepath.Join(tealDir, "clear.teal"))
 	if err != nil {
 		log.Fatalf("Failed to read file: %s\n", err)
 	}
@@ -98,7 +98,7 @@ func main () {
 	)
 
 	if err != nil {
-		log.Fatalf("Failed to make BMC application creation transaction: %s\n", err)
+		log.Fatalf("Failed to make application creation transaction: %s\n", err)
 	}
 
 	_, stx, err := crypto.SignTransaction(privateKey, tx)
