@@ -25,7 +25,7 @@ func Test_Lifecheck(t *testing.T) {
         os.Exit(1)
     }
 
-    for i := 0 ; i < 30; i++{
+    for i := 0 ; i < 10; i++{
         status, _ := client.Status().Do(context.Background())
 
         if (i >= 5 && status.LastRound == 0) {

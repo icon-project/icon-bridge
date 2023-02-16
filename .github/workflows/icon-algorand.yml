@@ -10,15 +10,44 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - name: Start containers
-        working-directory: ./devnet/docker/icon-algorand
+
+      - name: Build Goloop container
+        working-directory: ./devnet/docker/goloop
+        run: docker build -t icon-algorand_goloop .
+
+      - name: Run Goloop container
+        working-directory: ./devnet/docker/goloop
         run: |
-          mkdir cache
-          docker-compose -f "docker-compose.yml" up -d --build
+          docker run -d \
+            --name goloop \
+            -p 9080:9080 \
+            -e GOLOOP_NODE_DIR=/goloop/data/goloop \
+            -e GOLOOP_LOG_WRITER_FILENAME=/goloop/data/log/goloop.log \
+            -t icon-algorand_goloop
+
+      - name: Install Algod and friends
+        run: |
+          sudo mkdir /tmp/algorand
+          sudo wget -O /tmp/algorand/algorand.tar.gz https://github.com/algorand/go-algorand/releases/download/v3.13.3-stable/node_stable_linux-amd64_3.13.3.tar.gz
+          cd /tmp/algorand
+          sudo tar xf algorand.tar.gz
+          cd bin
+          sudo mv algod goal kmd /usr/local/bin
+
+      - name: Run Algod
+        working-directory: ./devnet/algorand
+        run: |
+          goal network create -r /tmp/testnet -t ./template.json
+
+          cp ./config.json /tmp/testnet/Node
+          cp ./algod.token /tmp/testnet/Node
+          cp ./kmd_config.json /tmp/testnet/Node/kmd-v0.5/kmd_config.json
+          cp ./kmd.token /tmp/testnet/Node/kmd-v0.5/kmd.token
+
+          goal network start -r /tmp/testnet
 
       - name: Run Algorand lifecheck test
         run: |
-          export ALGOD_ADDRESS=http://$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' algorand):4001
           go test -v pyteal/test/lifecheck_test/lifecheck_test.go
 
       - name: Install goloop
@@ -38,28 +67,21 @@ jobs:
           sudo apt install -y python3-pip
           pip install pyteal
 
-      - name: Install KMD
-        run: |
-          sudo mkdir /tmp/algorand
-          sudo wget -O /tmp/algorand/algorand.tar.gz https://github.com/algorand/go-algorand/releases/download/v3.13.3-stable/node_stable_linux-amd64_3.13.3.tar.gz
-          cd /tmp/algorand
-          sudo tar xf algorand.tar.gz
-          cd bin
-          sudo mv kmd /usr/local/bin
-
       - name: Compile golang tools
         working-directory: cmd/tools/algorand
         run: ./install-tools.sh
+
       - name: Create and fund keystore wallet
         working-directory: ./devnet/docker/icon-algorand
         run: |
+          mkdir cache
           export PATH=$PATH:~/go/bin
           goloop ks gen --out icon.keystore.json
           KS_ADDRESS=$(cat icon.keystore.json | jq -r '.address')
-          PASSWORD=$(docker compose exec goloop cat goloop.keysecret)
-          docker compose exec goloop goloop chain ls | jq -r '.[0] | .nid' > cache/nid
+          PASSWORD=$(docker exec goloop cat goloop.keysecret)
+          docker exec goloop goloop chain ls | jq -r '.[0] | .nid' > cache/nid
 
-          docker compose exec goloop goloop rpc sendtx transfer \
+          docker exec goloop goloop rpc sendtx transfer \
             --uri http://localhost:9080/api/v3  \
             --nid $(cat cache/nid) \
             --step_limit=3000000000 \
@@ -87,7 +109,7 @@ jobs:
           --step_limit 3000000000 \
           --param _net="$(cat cache/nid).icon")
 
-          ./../algod/scripts/wait_for_transaction.sh $DEPLOY_TXN_ID scoreAddress \
+          ./../../algorand/scripts/wait_for_transaction.sh $DEPLOY_TXN_ID scoreAddress \
           > cache/icon_bmc_addr
 
       - name: Deploy dummy BSH on ICON
@@ -104,7 +126,7 @@ jobs:
               --content_type application/java
           )
 
-          ./../algod/scripts/wait_for_transaction.sh $TXN_ID scoreAddress > cache/icon_dbsh_addr
+          ./../../algorand/scripts/wait_for_transaction.sh $TXN_ID scoreAddress > cache/icon_dbsh_addr
 
           msg=$(
             goloop rpc call --to $(echo $(cat cache/icon_dbsh_addr) | cut -d '"' -f 2) \
@@ -128,7 +150,7 @@ jobs:
                 --key_store icon.keystore.json --key_password gochain \
                 --nid=$(cat cache/nid))
 
-          ./../algod/scripts/wait_for_transaction.sh $TXN_ID
+          ./../../algorand/scripts/wait_for_transaction.sh $TXN_ID
 
       - name: Build Algorand smart contracts
         working-directory: pyteal
@@ -145,9 +167,7 @@ jobs:
           KMD_ADDRESS=http://localhost:4002
           KMD_TOKEN=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
-          docker cp algorand:/testnet/Node/kmd-v0.5 /tmp/kmd
-          kmd -d /tmp/kmd &
-
+          kmd -d /tmp/testnet/Node/kmd-v0.5 &
           sleep 5
 
           PRIVATE_KEY=$(KMD_ADDRESS=$KMD_ADDRESS KMD_TOKEN=$KMD_TOKEN kmd-extract-private-key 1)
@@ -169,16 +189,16 @@ jobs:
           --key_store ./icon.keystore.json --key_password gochain \
           --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3)
 
-          ./../algod/scripts/wait_for_transaction.sh $LINK_TXN_ID
+          ./../../algorand/scripts/wait_for_transaction.sh $LINK_TXN_ID
 
-          ALGO_ROUND=$(docker compose exec algod goal node lastround)
+          ALGO_ROUND=$(goal node lastround -d /tmp/testnet/Node)
 
           ADD_ROUND=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) --method setLinkRxHeight \
           --param _link=$(cat cache/algo_btp_addr) --param _height=$ALGO_ROUND \
           --key_store ./icon.keystore.json --key_password gochain \
           --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3)
 
-          ./../algod/scripts/wait_for_transaction.sh $ADD_ROUND
+          ./../../algorand/scripts/wait_for_transaction.sh $ADD_ROUND
 
           ADD_RELAY=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) --method addRelay \
           --param _link=$(cat cache/algo_btp_addr) \
@@ -186,7 +206,7 @@ jobs:
           --key_store ./icon.keystore.json --key_password gochain \
           --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3) \
 
-          ./../algod/scripts/wait_for_transaction.sh $ADD_RELAY
+          ./../../algorand/scripts/wait_for_transaction.sh $ADD_RELAY
 
       - name: Update config file and start relayer
         working-directory: ./cmd/iconbridge
