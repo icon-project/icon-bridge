@@ -32,6 +32,7 @@ type receiver struct {
 
 type ReceiverOptions struct {
 	SyncConcurrency uint64           `json:"syncConcurrency"`
+	AppID           uint64           `json:"appID"`
 	Verifier        *VerifierOptions `json:"verifier"`
 }
 type VerifierOptions struct {
@@ -68,21 +69,26 @@ func NewReceiver(
 		r.opts.SyncConcurrency = MonitorBlockMaxConcurrency
 	}
 
-	blockHash, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(r.opts.Verifier.BlockHash)
-	if err != nil {
-		return nil, err
-	}
-
-	var arr [32]byte
-	copy(arr[:], blockHash)
-
-	r.vr = Verifier{
-		Round:     r.opts.Verifier.Round,
-		BlockHash: arr,
-	}
 	r.cl, err = newClient(algodAccess, r.log)
 	if err != nil {
 		return nil, err
+	}
+	hashStr, err := r.cl.GetBlockHash(context.Background(), r.opts.Verifier.Round-1)
+	if err != nil {
+		return nil, err
+	}
+
+	blockHash, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(hashStr)
+	if err != nil {
+		return nil, err
+	}
+
+	var hashBytes [32]byte
+	copy(hashBytes[:], blockHash)
+
+	r.vr = Verifier{
+		Round:     r.opts.Verifier.Round,
+		BlockHash: hashBytes,
 	}
 	return r, nil
 }
@@ -124,7 +130,6 @@ func (r *receiver) Subscribe(
 			case <-ctx.Done():
 				break receiveLoop
 			default:
-				//Wait for new blocks to be created
 				if r.vr.Round >= latestRound {
 					time.Sleep(500 * time.Millisecond)
 					latestRound, err = r.cl.GetLatestRound(ctx)
@@ -183,8 +188,9 @@ func (r *receiver) getRelayReceipts(block *types.Block, seq *uint64) (
 	var index uint64
 	for _, signedTxnInBlock := range block.Payset {
 		// identify transactions sent from the algorand BMC
-		if signedTxnInBlock.SignedTxnWithAD.SignedTxn.Txn.Header.Sender.String() == testAddress &&
-			signedTxnInBlock.EvalDelta.Logs != nil {
+		if signedTxnInBlock.SignedTxnWithAD.SignedTxn.Txn.ApplicationFields.ApplicationCallTxnFields.ApplicationID ==
+			types.AppIndex(r.opts.AppID) && signedTxnInBlock.EvalDelta.Logs != nil {
+			r.log.Debug("LOG FOUND !!!!!!!!")
 			// there could be multiple logs sent from each transaction
 			for _, txnLog := range signedTxnInBlock.EvalDelta.Logs {
 				bmcMsg, err := extractMsg(txnLog)

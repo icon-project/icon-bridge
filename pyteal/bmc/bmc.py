@@ -39,10 +39,9 @@ def setRelayer(relayer_account: abi.Address):
     )
     
 @router.method
-def sendMessage (to: abi.String, svc: abi.String, sn: abi.Uint64,  *, output: abi.String) -> Expr:
+def sendMessage (to: abi.String, svc: abi.String, sn: abi.Uint64, ) -> Expr:
     return Seq(
-        Assert(is_bsh),
-        output.set("event:btp message")
+        Log(Bytes("hello world"))
     )
 
 @router.method

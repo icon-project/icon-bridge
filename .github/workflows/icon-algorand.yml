@@ -175,14 +175,18 @@ jobs:
           DUMMY_BSH_TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN deploy-contract ../../../pyteal/teal/bsh)
           BMC_APP_ID=$(ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN get-app-id $BMC_TX_ID)
           DUMMY_BSH_APP_ID=$(ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN get-app-id $DUMMY_BSH_TX_ID)
-          echo $BMC_APP_ID
-          echo $DUMMY_BSH_APP_ID
+
+          echo $PRIVATE_KEY > cache/algo_private_key
+          printf '%s' "$BMC_APP_ID" > cache/bmc_app_id
+
+          goal app info --app-id $BMC_APP_ID -d /tmp/testnet/Node |
+          awk -F ':' '/Application account:/ {gsub(/^[[:space:]]+|[[:space:]]+$/,"",$2); \
+          print "btp://0x14.algo/" $2}' > cache/algo_btp_addr
 
       - name: Link Algorand BMC on Icon BMC
         working-directory: ./devnet/docker/icon-algorand
         run: |
           export PATH=$PATH:~/go/bin
-          echo btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8 > cache/algo_btp_addr
 
           LINK_TXN_ID=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) \
           --method addLink --param _link=$(cat cache/algo_btp_addr) \
@@ -191,12 +195,12 @@ jobs:
 
           ./../../algorand/scripts/wait_for_transaction.sh $LINK_TXN_ID
 
-          ALGO_ROUND=$(goal node lastround -d /tmp/testnet/Node)
+          goal node lastround -d /tmp/testnet/Node > cache/algo_last_round
 
           ADD_ROUND=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) --method setLinkRxHeight \
-          --param _link=$(cat cache/algo_btp_addr) --param _height=$ALGO_ROUND \
-          --key_store ./icon.keystore.json --key_password gochain \
-          --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3)
+              --param _link=$(cat cache/algo_btp_addr) --param _height=$(cat cache/algo_last_round) \
+              --key_store ./icon.keystore.json --key_password gochain \
+              --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3)
 
           ./../../algorand/scripts/wait_for_transaction.sh $ADD_ROUND
 
@@ -214,8 +218,20 @@ jobs:
           ICON_ALGO="../../devnet/docker/icon-algorand"
           ICON_BTP="btp://0x2.icon/$(cat "$ICON_ALGO/cache/icon_bmc_addr")"
           ALGO_BTP=$(cat "$ICON_ALGO/cache/algo_btp_addr")
+          BMC_ID=$(cat "$ICON_ALGO/cache/bmc_app_id")
+          ALGO_ROUND=$(cat "$ICON_ALGO/cache/algo_last_round" | tr -d '\n')
 
-          jq --arg ICON_BTP "$ICON_BTP" --arg ALGO_BTP "$ALGO_BTP" '.relays[0].dst.address=$ICON_BTP | .relays[0].src.address=$ALGO_BTP' $ICON_ALGO/a2i.json > a2i_tmp.json 
+          jq --arg ICON_BTP "$ICON_BTP" --arg ALGO_BTP "$ALGO_BTP" --argjson ALGO_ROUND "$ALGO_ROUND" --argjson BMC_ID "$BMC_ID" '.relays[0].dst.address=$ICON_BTP | .relays[0].src.address=$ALGO_BTP | .relays[0].src.options.verifier.round=$ALGO_ROUND | .relays[0].src.options.appID=$BMC_ID' $ICON_ALGO/a2i.json > a2i_tmp.json
+
           mv a2i_tmp.json $ICON_ALGO/a2i.json
 
           go run . -config=$ICON_ALGO/a2i.json &
+
+          sleep 10
+
+      - name: Run integration test
+        working-directory: ./cmd/iconbridge/chain/algo
+        run: |
+          go test -run Test_SendDummyMessage
+          sleep 10
+          cat ../../bmr/bmr.log

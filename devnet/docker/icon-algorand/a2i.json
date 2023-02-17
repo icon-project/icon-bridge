@@ -12,22 +12,22 @@
     {
       "name": "a2i",
       "src": {
-        "address": "btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8",
+        "address": "btp://0x14.algo/MQO6QYXSWOTUHJYXBGP4A52243FIFEVKAAPFU25DNSFCIUMLGOB3HE4EQA",
         "endpoint": [
           "http://localhost:4001",
           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         ],
-        "offset": 27470276,
+        "offset": 0,
         "options": {
           "syncConcurrency": 3,
+          "appID": 25,
           "verifier": {
-            "round": 27470276,
-            "blockHash": "SNF2Z5Z73LATSL5Y2RKBRJY4HPNDRAHPKCGZE4ITUISZ5XZC3XKQ"
+            "round": 2007
           }
         }
       },
       "dst": {
-        "address": "btp://0x2.icon/cx35a6d0538e60b05c7fb4856132950914c440b502",
+        "address": "btp://0x2.icon/cxa9ddac830afb8214cc3d163e6cc4a979a4cf9fac",
         "endpoint": [
           "http://localhost:9080/api/v3"
         ],
