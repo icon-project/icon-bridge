@@ -24,7 +24,7 @@ func Init(t *testing.T) (client *algod.Client, deployer crypto.Account, txParams
 
 	txParams = SuggestedParams(t, client)
 
-	txnIds := TransferAlgos(t, client, txParams, fundingAccount, []types.Address{deployer.Address}, 10000000)
+	txnIds := TransferAlgos(t, client, txParams, fundingAccount, []types.Address{deployer.Address}, 1000000000)
 	WaitForConfirmationsT(t, client, txnIds)
 
 	return
