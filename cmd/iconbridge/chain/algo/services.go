@@ -32,6 +32,14 @@ type BMCMessage struct {
 	Message []byte //  serialized Service Message from BSH
 }
 
+type BMCMessageAlgo struct {
+	Src     string //  an address of BMC (i.e. btp://1234.PARA/0x1234)
+	Dst     string //  an address of destination BMC
+	Svc     string //  service name of BSH
+	Sn      uint64 //  sequence number of BMC
+	Message []byte //  serialized Service Message from BSH
+}
+
 type ServiceMessage struct {
 	ServiceType []byte
 	Payload     []byte

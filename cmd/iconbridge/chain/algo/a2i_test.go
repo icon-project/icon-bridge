@@ -39,8 +39,8 @@ func Test_SendDummyMessage(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to open contract file: %v", err)
 	}
-	abiBmc := &abi.Contract{}
-	if err = json.Unmarshal(rawBmc, abiBmc); err != nil {
+	abiDbsh := &abi.Contract{}
+	if err = json.Unmarshal(rawBmc, abiDbsh); err != nil {
 		t.Errorf("Failed to marshal abi contract: %v", err)
 	}
 
@@ -50,7 +50,9 @@ func Test_SendDummyMessage(t *testing.T) {
 		t.Errorf("Failed to get suggeted params: %v", err)
 	}
 
-	appId, _ := strconv.ParseUint(getFileVar("bmc_app_id"), 10, 64)
+	dbshId, _ := strconv.ParseUint(getFileVar("dbsh_app_id"), 10, 64)
+	bmcId, _ := strconv.ParseUint(getFileVar("bmc_app_id"), 10, 64)
+
 	privateKeyStr := getFileVar("algo_private_key")
 
 	privateKey, err := base64.StdEncoding.DecodeString(privateKeyStr)
@@ -64,24 +66,28 @@ func Test_SendDummyMessage(t *testing.T) {
 	}
 
 	signer := future.BasicAccountTransactionSigner{Account: deployer}
+	sp.Fee = 2000
 
 	mcp := future.AddMethodCallParams{
-		AppID:           appId,
+		AppID:           dbshId,
 		Sender:          deployer.Address,
 		SuggestedParams: sp,
 		OnComplete:      types.NoOpOC,
 		Signer:          signer,
 	}
 
-	var atc = future.AtomicTransactionComposer{}
-	sendMsg, err := getMethod(abiBmc, "sendMessage")
+	mcp.ForeignApps = []uint64{bmcId}
+
+	sendMsgFunc, err := getMethod(abiDbsh, "sendServiceMessage")
 	if err != nil {
 		t.Errorf("Failed to get sendMessage method: %v", err)
 	}
 
-	err = atc.AddMethodCall(combine(mcp, sendMsg, []interface{}{"ICON", "TOKEN_TRANSFER_SERVICE", 3}))
+	var atc = future.AtomicTransactionComposer{}
+
+	err = atc.AddMethodCall(combine(mcp, sendMsgFunc, []interface{}{}))
 	if err != nil {
-		t.Errorf("Failed to add method call: %v", err)
+		t.Errorf("Failed to add sendMessage method call: %v", err)
 	}
 
 	ret, err := atc.Execute(algod, ctx, 5)

@@ -13,7 +13,7 @@ import (
 	"github.com/algorand/go-algorand-sdk/types"
 )
 
-const contractDir = "../../../../pyteal/teal/bmc/"
+const contractDir = "../../../../pyteal/teal/bsh/"
 const waitRounds = 5
 
 type AbiFunc struct {

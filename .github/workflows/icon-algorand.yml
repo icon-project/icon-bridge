@@ -79,6 +79,9 @@ jobs:
           goloop ks gen --out icon.keystore.json
           KS_ADDRESS=$(cat icon.keystore.json | jq -r '.address')
           PASSWORD=$(docker exec goloop cat goloop.keysecret)
+
+          jq --slurpfile new_contents icon.keystore.json '.relays[].dst.key_store = $new_contents[0]' algo-config.json > tmpfile && mv tmpfile algo-config.json
+
           docker exec goloop goloop chain ls | jq -r '.[0] | .nid' > cache/nid
 
           docker exec goloop goloop rpc sendtx transfer \
@@ -168,26 +171,28 @@ jobs:
         working-directory: ./devnet/docker/icon-algorand
         run: |
           export PATH=$PATH:~/go/bin
-          ALGOD_ADDRESS=http://localhost:4001
-          ALGOD_TOKEN=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-          KMD_ADDRESS=http://localhost:4002
-          KMD_TOKEN=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
           kmd -d /tmp/testnet/Node/kmd-v0.5 &
           sleep 5
+          echo http://localhost:4001 >cache/algod_address
+          echo http://localhost:4002 >cache/kmd_address
+          echo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >cache/algo_token
 
-          PRIVATE_KEY=$(KMD_ADDRESS=$KMD_ADDRESS KMD_TOKEN=$KMD_TOKEN kmd-extract-private-key 1)
-          BMC_TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN deploy-contract ../../../pyteal/teal/bmc)
-          DUMMY_BSH_TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN deploy-contract ../../../pyteal/teal/bsh)
-          BMC_APP_ID=$(ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN get-app-id $BMC_TX_ID)
-          DUMMY_BSH_APP_ID=$(ALGOD_ADDRESS=$ALGOD_ADDRESS ALGOD_TOKEN=$ALGOD_TOKEN get-app-id $DUMMY_BSH_TX_ID)
+          PRIVATE_KEY=$(KMD_ADDRESS=$(cat cache/kmd_address) KMD_TOKEN=$(cat cache/algo_token) kmd-extract-private-key 1)
+          BMC_TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) deploy-contract ../../../pyteal/teal/bmc)
+          DUMMY_BSH_TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) deploy-contract ../../../pyteal/teal/bsh)
+          BMC_APP_ID=$(ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) get-app-id $BMC_TX_ID)
+          DUMMY_BSH_APP_ID=$(ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) get-app-id $DUMMY_BSH_TX_ID)
 
-          echo $PRIVATE_KEY > cache/algo_private_key
-          printf '%s' "$BMC_APP_ID" > cache/bmc_app_id
+          echo $DUMMY_BSH_APP_ID
+
+          echo $PRIVATE_KEY >cache/algo_private_key
+          printf '%s' "$BMC_APP_ID" >cache/bmc_app_id
+          printf '%s' "$DUMMY_BSH_APP_ID" >cache/dbsh_app_id
 
           goal app info --app-id $BMC_APP_ID -d /tmp/testnet/Node |
-          awk -F ':' '/Application account:/ {gsub(/^[[:space:]]+|[[:space:]]+$/,"",$2); \
-          print "btp://0x14.algo/" $2}' > cache/algo_btp_addr
+              awk -F ':' '/Application account:/ {gsub(/^[[:space:]]+|[[:space:]]+$/,"",$2); \
+                    print "btp://0x14.algo/" $2}' >cache/algo_btp_addr
 
       - name: Link Algorand BMC on Icon BMC
         working-directory: ./devnet/docker/icon-algorand
@@ -212,32 +217,42 @@ jobs:
 
           ADD_RELAY=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) --method addRelay \
           --param _link=$(cat cache/algo_btp_addr) \
-          --param _addr=$(cat icon.keystore.json | jq .address) \
+          --param _addr=$(cat icon.keystore.json | jq -r .address) \
           --key_store ./icon.keystore.json --key_password gochain \
           --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3) \
 
           ./../../algorand/scripts/wait_for_transaction.sh $ADD_RELAY
 
-      - name: Update config file and start relayer
+      - name: Register Algorand BSH and start relayer
         working-directory: ./cmd/iconbridge
         run: |
+          export PATH=$PATH:~/go/bin
           ICON_ALGO="../../devnet/docker/icon-algorand"
-          ICON_BTP="btp://0x2.icon/$(cat "$ICON_ALGO/cache/icon_bmc_addr")"
+          ICON_BTP="btp://$(cat "$ICON_ALGO/cache/nid").icon/$(cat "$ICON_ALGO/cache/icon_bmc_addr")"
+          echo $ICON_BTP > $ICON_ALGO/cache/icon_btp_addr
           ALGO_BTP=$(cat "$ICON_ALGO/cache/algo_btp_addr")
           BMC_ID=$(cat "$ICON_ALGO/cache/bmc_app_id")
           ALGO_ROUND=$(cat "$ICON_ALGO/cache/algo_last_round" | tr -d '\n')
 
-          jq --arg ICON_BTP "$ICON_BTP" --arg ALGO_BTP "$ALGO_BTP" --argjson ALGO_ROUND "$ALGO_ROUND" --argjson BMC_ID "$BMC_ID" '.relays[0].dst.address=$ICON_BTP | .relays[0].src.address=$ALGO_BTP | .relays[0].src.options.verifier.round=$ALGO_ROUND | .relays[0].src.options.appID=$BMC_ID' $ICON_ALGO/a2i.json > a2i_tmp.json
+          ALGOD_ADDRESS=$(cat $ICON_ALGO/cache/algod_address) ALGOD_TOKEN=$(cat $ICON_ALGO/cache/algo_token) PRIVATE_KEY=$(cat $ICON_ALGO/cache/algo_private_key) register-dummy-bsh ../../pyteal/teal $ICON_ALGO/cache/
 
-          mv a2i_tmp.json $ICON_ALGO/a2i.json
+          jq --arg ICON_BTP "$ICON_BTP" --arg ALGO_BTP "$ALGO_BTP" --argjson ALGO_ROUND "$ALGO_ROUND" --argjson BMC_ID "$BMC_ID" '.relays[0].dst.address=$ICON_BTP | .relays[0].src.address=$ALGO_BTP | .relays[0].src.options.verifier.round=$ALGO_ROUND | .relays[0].src.options.appID=$BMC_ID' $ICON_ALGO/algo-config.json > a2i_tmp.json
+          mv a2i_tmp.json $ICON_ALGO/algo-config.json
 
-          go run . -config=$ICON_ALGO/a2i.json &
-
+          go run . -config=$ICON_ALGO/algo-config.json &
           sleep 10
 
       - name: Run integration test
-        working-directory: ./cmd/iconbridge/chain/algo
+        working-directory: ./devnet/docker/icon-algorand
         run: |
-          go test -run Test_SendDummyMessage
+          export PATH=$PATH:~/go/bin
+          goloop rpc call --to $(echo $(cat cache/icon_dbsh_addr) | cut -d '"' -f 2) \
+                --uri http://localhost:9080/api/v3 \
+                --method getLastReceivedMessage | xxd -r -p
+
+          go test ../../../cmd/iconbridge/chain/algo -run Test_SendDummyMessage
           sleep 10
-          cat ../../bmr/bmr.log
+
+          goloop rpc call --to $(echo $(cat cache/icon_dbsh_addr) | cut -d '"' -f 2) \
+              --uri http://localhost:9080/api/v3 \
+              --method getLastReceivedMessage | xxd -r -p

@@ -37,13 +37,13 @@ func RlpDecodeHex(str string, out interface{}) error {
 	return nil
 }
 
-func RlpEncodeHex(in interface{}) (string, error) {
+func RlpEncodeHex(in interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	err := rlp.Encode(&buf, in)
 	if err != nil {
-		return "", errors.Wrap(err, "rlp.Encode ")
+		return nil, errors.Wrap(err, "rlp.Encode ")
 	}
-	return fmt.Sprintf("0x%x", buf.Bytes()), nil
+	return buf.Bytes(), nil
 }
 
 // Decode receiving rlp encoded msg to identify which service is it requesting

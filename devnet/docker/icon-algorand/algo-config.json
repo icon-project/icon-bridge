@@ -12,7 +12,7 @@
     {
       "name": "a2i",
       "src": {
-        "address": "btp://0x14.algo/MQO6QYXSWOTUHJYXBGP4A52243FIFEVKAAPFU25DNSFCIUMLGOB3HE4EQA",
+        "address": "btp://0x14.algo/3Z2RSO2F5NJ3GWC4TN6ZQVMJ6EGH6ZZCHLF4PAEK2FNE4ZXKO4TTLEY3UQ",
         "endpoint": [
           "http://localhost:4001",
           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -20,14 +20,14 @@
         "offset": 0,
         "options": {
           "syncConcurrency": 3,
-          "appID": 25,
+          "appID": 54,
           "verifier": {
-            "round": 2007
+            "round": 4005
           }
         }
       },
       "dst": {
-        "address": "btp://0x2.icon/cxa9ddac830afb8214cc3d163e6cc4a979a4cf9fac",
+        "address": "btp://0x1b2599.icon/cx23bc2cab4ea3c14b732df1e0d6ddd649f2a2a907",
         "endpoint": [
           "http://localhost:9080/api/v3"
         ],
