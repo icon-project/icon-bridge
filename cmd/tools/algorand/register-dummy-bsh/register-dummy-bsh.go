@@ -3,15 +3,12 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 
-	"github.com/algorand/go-algorand-sdk/abi"
 	"github.com/algorand/go-algorand-sdk/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/crypto"
 	"github.com/algorand/go-algorand-sdk/future"
@@ -19,89 +16,6 @@ import (
 	"github.com/algorand/go-algorand-sdk/types"
 	"github.com/icon-project/icon-bridge/cmd/tools/algorand/helpers"
 )
-
-func initABIContract(client *algod.Client, deployer crypto.Account, contractDir string, appId uint64) (contract *abi.Contract, mcp future.AddMethodCallParams, err error) {
-	b, err := ioutil.ReadFile(contractDir)
-	if err != nil {
-		fmt.Printf("Failed to open contract file: %+v", err)
-		return
-	}
-
-	contract = &abi.Contract{}
-	if err = json.Unmarshal(b, contract); err != nil {
-		fmt.Printf("Failed to marshal contract: %+v", err)
-		return
-	}
-
-	sp, err := client.SuggestedParams().Do(context.Background())
-	if err != nil {
-		fmt.Printf("Failed to get suggeted params: %+v", err)
-		return
-	}
-
-	sp.Fee = 1000
-
-	signer := future.BasicAccountTransactionSigner{Account: deployer}
-
-	mcp = future.AddMethodCallParams{
-		AppID:           appId,
-		Sender:          deployer.Address,
-		SuggestedParams: sp,
-		OnComplete:      types.NoOpOC,
-		Signer:          signer,
-	}
-
-	return
-}
-
-func callAbiMethod(client *algod.Client, contract *abi.Contract, mcp future.AddMethodCallParams, name string, args []interface{}) (ret future.ExecuteResult, err error) {
-	var atc = future.AtomicTransactionComposer{}
-
-	method, err := contract.GetMethodByName(name)
-
-	if err != nil {
-		log.Fatalf("No method named: %s", name)
-	}
-
-	mcp.Method = method
-	mcp.MethodArgs = args
-
-	err = atc.AddMethodCall(mcp)
-
-	if err != nil {
-		fmt.Printf("Failed to add method %s call: %+v \n", name, err)
-		return
-	}
-
-	ret, err = atc.Execute(client, context.Background(), 2)
-
-	if err != nil {
-		fmt.Printf("Failed to execute call: %+v \n", err)
-		return
-	}
-
-	return
-}
-
-func getFileVar(filename string) string {
-	// open file
-	cacheDir := os.Args[2]
-
-	file, err := os.Open(cacheDir + filename)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	defer file.Close()
-	// read file contents as byte slice
-	byteValue, err := ioutil.ReadAll(file)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	// convert byte slice to string
-	return string(byteValue)
-}
 
 func transferAlgos(
 	client *algod.Client,
@@ -158,6 +72,7 @@ func main() {
 	privateKeyStr := helpers.GetEnvVar("PRIVATE_KEY")
 
 	tealDir := os.Args[1]
+	cacheDir := os.Args[2]
 
 	privateKey, err := base64.StdEncoding.DecodeString(privateKeyStr)
 	if err != nil {
@@ -174,13 +89,13 @@ func main() {
 		log.Fatalf("Algod client could not be created: %s\n", err)
 	}
 
-	bmcId, err := strconv.ParseUint(getFileVar("bmc_app_id"), 10, 64)
+	bmcId, err := strconv.ParseUint(helpers.GetFileVar(cacheDir, "bmc_app_id"), 10, 64)
 
 	if err != nil {
 		log.Fatalf("Invalid BMC Id %s\n", err)
 	}
 
-	dbshId, err := strconv.ParseUint(getFileVar("dbsh_app_id"), 10, 64)
+	dbshId, err := strconv.ParseUint(helpers.GetFileVar(cacheDir, "dbsh_app_id"), 10, 64)
 
 	if err != nil {
 		log.Fatalf("Invalid Dummy BSH Id %s\n", err)
@@ -188,7 +103,7 @@ func main() {
 
 	bshAddress := crypto.GetApplicationAddress(dbshId)
 
-	bshContract, bshMcp, err := initABIContract(client, deployer, filepath.Join(tealDir, "bsh", "contract.json"), dbshId)
+	bshContract, bshMcp, err := helpers.InitABIContract(client, deployer, filepath.Join(tealDir, "bsh", "contract.json"), dbshId)
 
 	if err != nil {
 		log.Fatalf("Failed to init BMC ABI contract: %+v", err)
@@ -198,20 +113,20 @@ func main() {
 
 	transferAlgos(client, deployer, bshAddress, 514000)
 
-	_, err = callAbiMethod(client, bshContract, bshMcp, "init", []interface{}{bmcId, getFileVar("icon_btp_addr")})
+	_, err = helpers.CallAbiMethod(client, bshContract, bshMcp, "init", []interface{}{bmcId, helpers.GetFileVar(cacheDir, "icon_btp_addr")})
 
 	if err != nil {
 		log.Fatalf("Failed to call init method for bsh %+v", err)
 	}
 
-	bmcContract, bmcMcp, err := initABIContract(client, deployer, filepath.Join(tealDir, "bmc", "contract.json"), bmcId)
+	bmcContract, bmcMcp, err := helpers.InitABIContract(client, deployer, filepath.Join(tealDir, "bmc", "contract.json"), bmcId)
 
 	if err != nil {
 		log.Fatalf("Failed to init BMC ABI contract: %+v", err)
 	}
 
 	bmcMcp.ForeignAccounts = []string{bshAddress.String()}
-	_, err = callAbiMethod(client, bmcContract, bmcMcp, "registerBSHContract", []interface{}{bshAddress, "dbsh"})
+	_, err = helpers.CallAbiMethod(client, bmcContract, bmcMcp, "registerBSHContract", []interface{}{bshAddress, "dbsh"})
 
 	if err != nil {
 		log.Fatalf("Failed to add method call: %+v", err)

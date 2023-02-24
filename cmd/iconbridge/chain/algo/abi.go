@@ -21,7 +21,7 @@ type AbiFunc struct {
 	args []interface{}
 }
 
-func getMethod(c *abi.Contract, name string) (abi.Method, error) {
+func GetMethod(c *abi.Contract, name string) (abi.Method, error) {
 	m, err := c.GetMethodByName(name)
 	if err != nil {
 		return abi.Method{}, err
@@ -29,7 +29,7 @@ func getMethod(c *abi.Contract, name string) (abi.Method, error) {
 	return m, nil
 }
 
-func combine(mcp future.AddMethodCallParams, m abi.Method,
+func Combine(mcp future.AddMethodCallParams, m abi.Method,
 	a []interface{}) future.AddMethodCallParams {
 	mcp.Method = m
 	mcp.MethodArgs = a
@@ -69,12 +69,12 @@ func (s *sender) initAbi() error {
 func (s *sender) callAbi(ctx context.Context, abiFuncs ...AbiFunc) (future.ExecuteResult, error) {
 	var atc = future.AtomicTransactionComposer{}
 	for _, abiFunc := range abiFuncs {
-		method, err := getMethod(s.bmc, abiFunc.name)
+		method, err := GetMethod(s.bmc, abiFunc.name)
 		if err != nil {
 			return future.ExecuteResult{}, fmt.Errorf("Failed to get %s method from json contract: %w",
 				abiFunc.name, err)
 		}
-		err = atc.AddMethodCall(combine(*s.mcp, method, abiFunc.args))
+		err = atc.AddMethodCall(Combine(*s.mcp, method, abiFunc.args))
 		if err != nil {
 			return future.ExecuteResult{}, fmt.Errorf("Failed to add %s method to atc: %w", abiFunc.name, err)
 		}

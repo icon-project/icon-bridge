@@ -246,19 +246,4 @@ jobs:
         working-directory: ./devnet/docker/icon-algorand
         run: |
           export PATH=$PATH:~/go/bin
-          MSG_BEF_TEST=$(goloop rpc call --to $(echo $(cat cache/icon_dbsh_addr) | cut -d '"' -f 2) \
-                --uri http://localhost:9080/api/v3 \
-                --method getLastReceivedMessage | xxd -r -p)
-
-          go test ../../../cmd/iconbridge/chain/algo -run Test_SendDummyMessage
-          sleep 10
-
-          MSG_AFT_TEST=$(goloop rpc call --to $(echo $(cat cache/icon_dbsh_addr) | cut -d '"' -f 2) \
-              --uri http://localhost:9080/api/v3 \
-              --method getLastReceivedMessage | xxd -r -p)
-
-          if [ $MSG_BEF_TEST -eq $MSG_AFT_TEST ]
-          then
-                echo "Dummy BSH didn't receive the message from Algorand"
-                exit 1
-          fi
+          ./run-integration-test.sh
