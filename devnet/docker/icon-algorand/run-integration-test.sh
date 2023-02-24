@@ -16,3 +16,15 @@ then
       echo "Dummy BSH didn't receive the message from Algorand"
       exit 1
 fi
+
+TXN_ID=$(
+    goloop rpc sendtx call --to $(cat cache/icon_dbsh_addr) \
+        --method sendServiceMessage \
+        --value 0 \
+        --step_limit=3000000000 \
+        --uri http://localhost:9080/api/v3 \
+        --key_store icon.keystore.json --key_password gochain \
+        --nid=$(cat cache/nid)
+)
+
+./../../algorand/scripts/wait_for_transaction.sh $TXN_ID

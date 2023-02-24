@@ -2,13 +2,28 @@ package foundation.icon.btp.dummy;
 
 import java.math.BigInteger;
 
-import score.annotation.External;
-
 import foundation.icon.btp.lib.BSH;
+import foundation.icon.btp.lib.BMCScoreInterface;
+import foundation.icon.score.util.Logger;
+
+import score.annotation.External;
+import score.annotation.EventLog;
+import score.Address;
 
 public class DummyBSH implements BSH {
+    private static final Logger logger = Logger.getLogger(DummyBSH.class);
+    public static final String SERVICE = "dbsh";
+
+    private final String to;
+    private final Address bmc;
+
     private byte[] lastReceivedMessage = "BTP Message".getBytes();
     private String lastReceivedErrorMessage = "BTP Error Message";
+
+    public DummyBSH (String _to, Address _bmc) {
+        bmc = _bmc;
+        to = _to;
+    }
 
     @External(readonly=true)
     public byte[] getLastReceivedMessage() {
@@ -33,4 +48,14 @@ public class DummyBSH implements BSH {
     @External()
     public void handleFeeGathering(String _fa, String _svc) {
     }
+
+    @External()
+    public void sendServiceMessage() {
+        BigInteger sn = BigInteger.valueOf(1);;
+        byte[] dummyMessage = "Hello Algorand".getBytes();
+        BMCScoreInterface bmc = new BMCScoreInterface(this.bmc);
+
+        bmc.sendMessage(to, SERVICE, sn, dummyMessage);
+    }
+
 }

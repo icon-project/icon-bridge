@@ -132,7 +132,9 @@ jobs:
               --uri http://localhost:9080/api/v3 \
               --key_store icon.keystore.json --key_password gochain \
               --nid $(cat cache/nid) --step_limit 10000000000 \
-              --content_type application/java
+              --content_type application/java \
+              --param _bmc=$(cat cache/icon_bmc_addr) \
+              --param _to=0x14.algo
           )
 
           ./../../algorand/scripts/wait_for_transaction.sh $TXN_ID scoreAddress > cache/icon_dbsh_addr
