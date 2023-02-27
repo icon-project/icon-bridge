@@ -43,7 +43,7 @@ func main() {
 			decodedValue, err := base64.StdEncoding.DecodeString(modelTealKeyValue.Value.Bytes)
 
 			if err != nil {
-				log.Fatalf("Failed to decode string to base64: %+v", err)
+				log.Fatalf("Failed to decode base64 string: %+v", err)
 			}
 
 			fmt.Println(decodedValue)
