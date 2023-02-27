@@ -65,10 +65,10 @@ def sendMessage (to: abi.String, sn: abi.Uint64, msg: abi.DynamicBytes) -> Expr:
     )
 
 @router.method
-def handleRelayMessage (bsh_app: abi.Application, svc: abi.String, msg: abi.String) -> Expr:
+def handleRelayMessage (bsh_app: abi.Application, svc: abi.String, msg: abi.DynamicBytes) -> Expr:
     return Seq(
         Assert(is_relayer),
-        
+
         bsh_addr := bsh_app.params().address(),
         Assert(bsh_addr.hasValue()),
         Assert(App.localGet(bsh_addr.value(), Bytes("svc")) == svc.get()),
@@ -76,7 +76,7 @@ def handleRelayMessage (bsh_app: abi.Application, svc: abi.String, msg: abi.Stri
         InnerTxnBuilder.Begin(),
         InnerTxnBuilder.MethodCall(
             app_id=bsh_app.application_id(),
-            method_signature="handleBTPMessage(string)void",
+            method_signature="handleBTPMessage(byte[])void",
             args=[msg],
             extra_fields={
                 TxnField.fee: Int(0)

@@ -133,7 +133,7 @@ func Test_CallSendMessageFromBsh(t *testing.T) {
 }
 
 func Test_CallHandleRelayMessageUsingRelayerAsSender(t *testing.T) {
-	_, err = contracts.CallAbiMethod(client, bmcContract, bmcMcp, "handleRelayMessage", []interface{}{bshAppId, dummyServiceName, dummyBTPMessage})
+	_, err = contracts.CallAbiMethod(client, bmcContract, bmcMcp, "handleRelayMessage", []interface{}{bshAppId, dummyServiceName, []byte(dummyBTPMessage)})
 
 	if err != nil {
 		t.Fatalf("Failed to add call handleRelayMessage method: %+v", err)
