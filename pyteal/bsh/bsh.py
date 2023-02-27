@@ -80,6 +80,8 @@ def sendServiceMessage() -> Expr:
 def handleBTPMessage(msg: abi.String) -> Expr:
     return Seq(
         Assert(is_init),
+        Assert(App.globalGet(global_bmc_id) == Global.caller_app_id()),
+        
         App.globalPut(global_last_received_message, msg.get()),
         Approve()
     )
