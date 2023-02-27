@@ -1,7 +1,7 @@
 name: Icon-Algorand CI
 on:
   push:
-    branches: ["master"]
+    branches: ["feature/integration-test"]
   pull_request:
     branches: ["master"]
 jobs:
@@ -80,12 +80,12 @@ jobs:
           KS_ADDRESS=$(cat icon.keystore.json | jq -r '.address')
           PASSWORD=$(docker exec goloop cat goloop.keysecret)
 
-          jq --slurpfile new_contents icon.keystore.json '.relays[].dst.key_store = $new_contents[0]' algo-config.json > tmpfile && mv tmpfile algo-config.json
+          jq --slurpfile new_contents icon.keystore.json '.relays[0].dst.key_store = $new_contents[0]' algo-config.json > tmpfile && mv tmpfile algo-config.json
 
           docker exec goloop goloop chain ls | jq -r '.[0] | .nid' > cache/nid
 
           docker exec goloop goloop rpc sendtx transfer \
-            --uri http://localhost:9080/api/v3  \
+            --uri http://localhost:9080/api/v3/icon  \
             --nid $(cat cache/nid) \
             --step_limit=3000000000 \
             --key_store goloop.keystore.json --key_password $PASSWORD \
@@ -111,7 +111,7 @@ jobs:
           CONTRACT=../../../javascore/bmc/build/libs/bmc-optimized.jar
 
           DEPLOY_TXN_ID=$(goloop rpc sendtx deploy $CONTRACT \
-          --uri http://localhost:9080/api/v3 \
+          --uri http://localhost:9080/api/v3/icon \
           --key_store ./icon.keystore.json --key_password gochain \
           --nid $(cat cache/nid) \
           --content_type application/java \
@@ -129,7 +129,7 @@ jobs:
 
           TXN_ID=$(
             goloop rpc sendtx deploy $CONTRACT \
-              --uri http://localhost:9080/api/v3 \
+              --uri http://localhost:9080/api/v3/icon \
               --key_store icon.keystore.json --key_password gochain \
               --nid $(cat cache/nid) --step_limit 10000000000 \
               --content_type application/java \
@@ -141,7 +141,7 @@ jobs:
 
           msg=$(
             goloop rpc call --to $(echo $(cat cache/icon_dbsh_addr) | cut -d '"' -f 2) \
-              --uri http://localhost:9080/api/v3 \
+              --uri http://localhost:9080/api/v3/icon \
               --method getLastReceivedMessage
           )
           echo -n $msg | xxd -r -p
@@ -157,7 +157,7 @@ jobs:
                 --param _addr=$(cat cache/icon_dbsh_addr) \
                 --param _svc="dbsh" \
                 --step_limit=3000000000 \
-                --uri http://localhost:9080/api/v3 \
+                --uri http://localhost:9080/api/v3/icon \
                 --key_store icon.keystore.json --key_password gochain \
                 --nid=$(cat cache/nid))
 
@@ -186,7 +186,8 @@ jobs:
           BMC_APP_ID=$(ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) get-app-id $BMC_TX_ID)
           DUMMY_BSH_APP_ID=$(ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) get-app-id $DUMMY_BSH_TX_ID)
 
-          echo $DUMMY_BSH_APP_ID
+          jq --arg PRIVATE_KEY "$PRIVATE_KEY" '.relays[1].dst.key_store.id=$PRIVATE_KEY' algo-config.json >a2i_tmp.json
+          mv a2i_tmp.json algo-config.json
 
           echo $PRIVATE_KEY >cache/algo_private_key
           printf '%s' "$BMC_APP_ID" >cache/bmc_app_id
@@ -204,7 +205,7 @@ jobs:
           LINK_TXN_ID=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) \
           --method addLink --param _link=$(cat cache/algo_btp_addr) \
           --key_store ./icon.keystore.json --key_password gochain \
-          --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3)
+          --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3/icon)
 
           ./../../algorand/scripts/wait_for_transaction.sh $LINK_TXN_ID
 
@@ -213,7 +214,7 @@ jobs:
           ADD_ROUND=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) --method setLinkRxHeight \
               --param _link=$(cat cache/algo_btp_addr) --param _height=$(cat cache/algo_last_round) \
               --key_store ./icon.keystore.json --key_password gochain \
-              --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3)
+              --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3/icon)
 
           ./../../algorand/scripts/wait_for_transaction.sh $ADD_ROUND
 
@@ -221,9 +222,23 @@ jobs:
           --param _link=$(cat cache/algo_btp_addr) \
           --param _addr=$(cat icon.keystore.json | jq -r .address) \
           --key_store ./icon.keystore.json --key_password gochain \
-          --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3) \
+          --nid $(cat cache/nid) --step_limit 3000000000 --uri http://localhost:9080/api/v3/icon) \
 
           ./../../algorand/scripts/wait_for_transaction.sh $ADD_RELAY
+
+      - name: Get Icon Validators Hash
+        working-directory: ./cmd/iconbridge
+        run: |
+          export PATH=$PATH:~/go/bin
+          ICON_ALGO="../../devnet/docker/icon-algorand"
+          ICON_HEIGHT=$(goloop rpc lastblock --uri http://localhost:9080/api/v3/icon | jq .height )
+          ICON_HEIGHT_HEX=$(printf "%x" $((ICON_HEIGHT-1)))
+
+          go build -o ../iconvalidators ./../iconvalidators
+          VALIDATORS=$(URI=http://localhost:9080/api/v3/icon HEIGHT=0x$ICON_HEIGHT_HEX ./../iconvalidators/iconvalidators | jq -r .hash)
+
+          jq --arg VALIDATORS "$VALIDATORS" --argjson ICON_HEIGHT "$((ICON_HEIGHT-1))" '.relays[1].src.options.verifier.validatorsHash=$VALIDATORS | .relays[1].src.options.verifier.blockHeight=$ICON_HEIGHT' $ICON_ALGO/algo-config.json > a2i_tmp.json
+          mv a2i_tmp.json $ICON_ALGO/algo-config.json
 
       - name: Register Algorand BSH and start relayer
         working-directory: ./cmd/iconbridge
@@ -235,12 +250,14 @@ jobs:
           ALGO_BTP=$(cat "$ICON_ALGO/cache/algo_btp_addr")
           BMC_ID=$(cat "$ICON_ALGO/cache/bmc_app_id")
           ALGO_ROUND=$(cat "$ICON_ALGO/cache/algo_last_round" | tr -d '\n')
+          ICON_HEIGHT=$(goloop rpc lastblock --uri http://localhost:9080/api/v3/icon | jq .height)
 
           ALGOD_ADDRESS=$(cat $ICON_ALGO/cache/algod_address) ALGOD_TOKEN=$(cat $ICON_ALGO/cache/algo_token) PRIVATE_KEY=$(cat $ICON_ALGO/cache/algo_private_key) register-dummy-bsh ../../pyteal/teal $ICON_ALGO/cache/
 
           jq --arg ICON_BTP "$ICON_BTP" --arg ALGO_BTP "$ALGO_BTP" --argjson ALGO_ROUND "$ALGO_ROUND" --argjson BMC_ID "$BMC_ID" '.relays[0].dst.address=$ICON_BTP | .relays[0].src.address=$ALGO_BTP | .relays[0].src.options.verifier.round=$ALGO_ROUND | .relays[0].src.options.appID=$BMC_ID' $ICON_ALGO/algo-config.json > a2i_tmp.json
           mv a2i_tmp.json $ICON_ALGO/algo-config.json
 
+          echo '{"tx_seq":0,"rx_seq":0,"rx_height":'$ICON_HEIGHT',"tx_height":'$ALGO_ROUND'}' > chain/algo/linkStatus.json
           go run . -config=$ICON_ALGO/algo-config.json &
           sleep 10
 

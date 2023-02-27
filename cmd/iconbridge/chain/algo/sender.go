@@ -73,10 +73,18 @@ type sender struct {
 }
 
 type relayTx struct {
-	s     *sender
-	round uint64
-	svcs  []AbiFunc
-	txIDs []string
+	s      *sender
+	round  uint64
+	svcs   []AbiFunc
+	txIDs  []string
+	height uint64
+}
+
+type bmcLink struct {
+	TxSeq    uint64 `json:"tx_seq"`
+	RxSeq    uint64 `json:"rx_seq"`
+	RxHeight uint64 `json:"rx_height"`
+	TxHeight uint64 `json:"tx_height"`
 }
 
 func (opts *senderOptions) unmarshal(v map[string]interface{}) error {
@@ -88,23 +96,7 @@ func (opts *senderOptions) unmarshal(v map[string]interface{}) error {
 }
 
 func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
-	res, err := s.callAbi(ctx, AbiFunc{"GetStatus", []interface{}{}})
-	if err != nil {
-		return nil, fmt.Errorf("Error calling Bmc Handle Relay Message: %w", err)
-	}
-	bmcStatus := res.MethodResults[0].ReturnValue
-
-	switch bmcStatus := bmcStatus.(type) {
-	case [4]uint64:
-		ls := &chain.BMCLinkStatus{
-			TxSeq:         bmcStatus[0],
-			RxSeq:         bmcStatus[1],
-			RxHeight:      bmcStatus[2],
-			CurrentHeight: bmcStatus[3],
-		}
-		return ls, nil
-	}
-	return nil, fmt.Errorf("BmcStatus - Couldnt parse abi's return interface")
+	return getStatus()
 }
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
@@ -145,8 +137,9 @@ func (s *sender) Segment(
 		}
 	}
 	newTx := &relayTx{
-		s:    s,
-		svcs: abiFuncs,
+		s:      s,
+		svcs:   abiFuncs,
+		height: msg.Receipts[0].Height,
 	}
 	return newTx, newMsg, nil
 }
@@ -166,8 +159,16 @@ func (tx relayTx) Send(ctx context.Context) (err error) {
 	return nil
 }
 
-// Implement to respect interface, but txn was already confirmed on abi call
+// Increment sequeence number when a new message gets to the Algorand BMC
 func (tx relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) {
+	err = incrementSeq("rx_seq")
+	if err != nil {
+		return 0, err
+	}
+	err = updateHeight("rx_height", tx.height)
+	if err != nil {
+		return 0, err
+	}
 	return tx.round, nil
 }
 

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base32"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -192,7 +191,19 @@ func (r *receiver) getRelayReceipts(block *types.Block, seq *uint64) (
 		for _, innerTxn := range signedTxnInBlock.EvalDelta.InnerTxns {
 			if innerTxn.SignedTxn.Txn.ApplicationFields.ApplicationCallTxnFields.ApplicationID == types.AppIndex(r.opts.AppID) &&
 				len(innerTxn.ApplyData.EvalDelta.Logs) > 0 {
-				r.log.Debug("LOG FOUND !!!!!!!!")
+				r.log.Debug("New message from algorand BMC")
+				err := incrementSeq("tx_seq")
+				if err != nil {
+					r.log.WithFields(log.Fields{"error": err}).Error(
+						"getRelayReceipts: error incrementing tx_seq")
+					return nil, err
+				}
+				err = updateHeight("tx_height", uint64(block.Round))
+				if err != nil {
+					r.log.WithFields(log.Fields{"error": err}).Error(
+						"getRelayReceipts: error updating tx_height")
+					return nil, err
+				}
 				args := innerTxn.SignedTxn.Txn.ApplicationFields.ApplicationArgs
 				event, err := r.getEventFromMsg(innerTxn.ApplyData.EvalDelta.Logs[0], args)
 				if err != nil {
@@ -232,11 +243,16 @@ func (r *receiver) getEventFromMsg(txnLog string, appArgs [][]uint8) (*chain.Eve
 	if btpIndex != -1 {
 		dst = string(appArgs[1])[btpIndex:]
 	}
+	link, err := getStatus()
+	if err != nil {
+		return &chain.Event{}, fmt.Errorf("Failed to get status: %v", err)
+	}
+
 	bmcMsg := BMCMessageAlgo{
 		Src:     r.src.String(),
 		Dst:     strings.TrimRight(dst, "\n"),
 		Svc:     txnLog,
-		Sn:      binary.BigEndian.Uint64(appArgs[2]),
+		Sn:      link.TxSeq,
 		Message: appArgs[3],
 	}
 

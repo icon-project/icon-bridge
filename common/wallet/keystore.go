@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -165,7 +166,7 @@ func DecryptKeyStore(data, pw []byte) (Wallet, error) {
 		}
 		return NewEvmWalletFromPrivateKey(key)
 	case coinTypeAVM:
-		key, err := DecryptNearKeyStore(data, pw)
+		key, err := base64.StdEncoding.DecodeString(ksdata.ID)
 		if err != nil {
 			return nil, err
 		}

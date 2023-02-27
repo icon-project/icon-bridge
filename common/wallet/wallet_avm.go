@@ -51,8 +51,8 @@ func (w *AvmWallet) ECDH(pubkey []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func NewAvmWalletFromPrivateKey(sk *ed25519.PrivateKey) (*AvmWallet, error) {
-	acc, err := crypto.AccountFromPrivateKey(*sk)
+func NewAvmWalletFromPrivateKey(sk []byte) (*AvmWallet, error) {
+	acc, err := crypto.AccountFromPrivateKey(sk)
 	if err != nil {
 		log.Fatalf("Cannot create wallet from SK: %s", err)
 	}

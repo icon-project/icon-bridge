@@ -74,7 +74,7 @@ func createTestSender(algodAccess []string) (chain.Sender, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Marshalling opts: %v", err)
 	}
-	w, err := wallet.NewAvmWalletFromPrivateKey(&account.PrivateKey)
+	w, err := wallet.NewAvmWalletFromPrivateKey(privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("Couldn't create wallet: %v", err)
 	}
