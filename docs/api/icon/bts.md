@@ -107,8 +107,8 @@
             --key_secret <KEYSTORE_SECRET> \
             --nid <NID> \
             --method transfer \
-            --params _to=<BTS> \
-            --params _value=<Amount>
+            --param _to=<BTS> \
+            --param _value=<Amount>
         ```
 
 * ### Wrapped Tokens Approvals
@@ -127,8 +127,8 @@
             --key_secret <KEYSTORE_SECRET> \
             --nid <NID> \
             --method approve \
-            --params spender=<BTS> \
-            --params amount=<Amount>
+            --param spender=<BTS> \
+            --param amount=<Amount>
         ```
 
 * ### Transfer Tokens Cross Chain
@@ -150,9 +150,9 @@
             --key_secret <KEYSTORE_SECRET> \
             --nid <NID> \
             --method transfer \
-            --params _coinName=<Name of Coin> \
-            --params _to=<BTP Address of destination> \
-            --params _value=<Amount>
+            --param _coinName=<Name of Coin> \
+            --param _to=<BTP Address of destination> \
+            --param _value=<Amount>
         ```
 
 * ### Transfer Nativecoin Cross Chain
@@ -172,7 +172,7 @@
             --nid <NID> \
             --method transferNativeCoin \
             --value <Amount> \
-            --params _to=<BTP Address of destination>
+            --param _to=<BTP Address of destination>
         ```
 
 * ### TransferBatch Cross Chain
