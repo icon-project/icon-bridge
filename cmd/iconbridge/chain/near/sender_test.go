@@ -9,9 +9,11 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/tests"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNearSender(t *testing.T) {
@@ -172,6 +174,52 @@ func TestNearSender(t *testing.T) {
 						assert.Equal(f, expected, balance)
 					} else {
 						assert.Error(f, err)
+					}
+				})
+			}
+		})
+	}
+
+	if test, err := tests.GetTest("SenderSegment", t); err == nil {
+		t.Run(test.Description(), func(f *testing.T) {
+			for _, testData := range test.TestDatas() {
+				f.Run(testData.Description, func(f *testing.T) {
+					client := &Client{
+						api:    testData.MockApi,
+						logger: log.New(),
+					}
+
+					input, Ok := (testData.Input).(struct {
+						PrivateKey  string
+						Source      chain.BTPAddress
+						Destination chain.BTPAddress
+						Message     *chain.Message
+						Options     types.SenderOptions
+					})
+					require.True(f, Ok)
+
+					privateKeyBytes := base58.Decode(input.PrivateKey)
+					privateKey := ed25519.PrivateKey(privateKeyBytes)
+					nearWallet, err := wallet.NewNearwalletFromPrivateKey(&privateKey)
+					require.NoError(f, err)
+
+					sender, err := NewSender(SenderConfig{source: input.Source, destination: input.Destination, wallet: nearWallet, options: input.Options}, log.New(), client)
+					require.NoError(f, err)
+
+					relayTx, newMsg, err := sender.Segment(context.Background(), input.Message)
+					require.NoError(f, err)
+
+					if testData.Expected.Success != nil {
+						message := make([]byte, 0)
+
+						if relayTx != nil {
+							message = (relayTx).(*RelayTransaction).message
+						}
+
+						testData.Expected.Success.(func(*testing.T, []byte, *chain.Message))(f, message, newMsg)
+						assert.Nil(f, err)
+					} else {
+						testData.Expected.Fail.(func(*testing.T, error))(f, err)
 					}
 				})
 			}

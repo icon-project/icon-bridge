@@ -347,7 +347,7 @@ func (r *requestAPI) transferNativeIntraChain(senderKey, recepientAddress string
 		},
 	}
 
-	newRelay := near.NewRelayTransaction(context.Background(), senderWallet, recepientAddress, r.cl, actions)
+	newRelay := near.NewRelayTransaction(context.Background(), senderWallet, recepientAddress, r.cl, actions, []byte{})
 	newRelay.Send(context.Background())
 	txH := newRelay.ID().(types.CryptoHash)
 	txHash = hexutil.Encode(txH[:])
@@ -442,7 +442,7 @@ func (r *requestAPI) transactWithContract(senderKey string, contractAddress stri
 		},
 	}
 
-	newRelay := near.NewRelayTransaction(context.Background(), senderWallet, contractAddress, r.cl, actions)
+	newRelay := near.NewRelayTransaction(context.Background(), senderWallet, contractAddress, r.cl, actions, []byte{})
 	newRelay.Send(context.Background())
 	txH := newRelay.ID().(types.CryptoHash)
 	txHash = txH.Base58Encode()

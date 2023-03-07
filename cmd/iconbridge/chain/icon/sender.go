@@ -21,11 +21,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"math/big"
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/common/chainutils"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common"
@@ -147,40 +149,12 @@ func (s *sender) Segment(
 		return nil, msg, nil
 	}
 
-	rm := &chain.RelayMessage{
-		Receipts: make([][]byte, 0),
+	relayMsg, newMsg, err := chainutils.SegmentByTxDataSize(msg, s.opts.TxDataSizeLimit)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	var msgSize uint64
-
-	newMsg = &chain.Message{
-		From:     msg.From,
-		Receipts: msg.Receipts,
-	}
-
-	for i, receipt := range msg.Receipts {
-		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events)
-		if err != nil {
-			return nil, nil, err
-		}
-		rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
-			Index:  receipt.Index,
-			Height: receipt.Height,
-			Events: rlpEvents,
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-		newMsgSize := msgSize + uint64(len(rlpReceipt))
-		if newMsgSize > s.opts.TxDataSizeLimit {
-			newMsg.Receipts = msg.Receipts[i:]
-			break
-		}
-		msgSize = newMsgSize
-		rm.Receipts = append(rm.Receipts, rlpReceipt)
-	}
-
-	message, err := codec.RLP.MarshalToBytes(rm)
+	message, err := codec.RLP.MarshalToBytes(relayMsg)
 	if err != nil {
 		return nil, nil, err
 	}

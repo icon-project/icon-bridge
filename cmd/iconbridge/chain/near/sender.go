@@ -12,13 +12,16 @@ import (
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/errors"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near/types"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/common/chainutils"
 	"github.com/icon-project/icon-bridge/common/codec"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
 )
 
 const (
-	txMaxDataSize        = 64 * 1024
+	txMaxDataSize        = 4 * 1024
+	txOverheadScale      = 0.01 // base64 encoding overhead 0.36, rlp and other fields 0.01
+	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale)
 	functionCallMethod   = "handle_relay_message"
 	gas                  = uint64(300000000000000)
 	defaultSendTxTimeout = 15 * time.Second
@@ -28,7 +31,7 @@ const (
 type SenderConfig struct {
 	source      chain.BTPAddress
 	destination chain.BTPAddress
-	options     json.RawMessage
+	options     types.SenderOptions
 	wallet      wallet.Wallet
 }
 
@@ -38,14 +41,18 @@ type Sender struct {
 	destination chain.BTPAddress
 	wallet      Wallet
 	logger      log.Logger
-	options     struct {
-		BalanceThreshold types.BigInt `json:"balance_threshold"`
-	}
+	options     types.SenderOptions
 }
 
-func senderFactory(source, destination chain.BTPAddress, urls []string, wallet wallet.Wallet, options json.RawMessage, logger log.Logger) (chain.Sender, error) {
+func senderFactory(source, destination chain.BTPAddress, urls []string, wallet wallet.Wallet, opt json.RawMessage, logger log.Logger) (chain.Sender, error) {
+	var options types.SenderOptions
 	clients, err := newClients(urls, logger)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(opt, &options); err != nil {
+		logger.Panicf("fail to unmarshal options:%#v err:%+v", opt, err)
 		return nil, err
 	}
 
@@ -63,11 +70,7 @@ func NewSender(config SenderConfig, logger log.Logger, clients ...IClient) (*Sen
 		logger:      logger,
 		source:      config.source,
 		destination: config.destination,
-	}
-
-	if err := json.Unmarshal(config.options, &s.options); err != nil && config.options != nil {
-		logger.Panicf("fail to unmarshal options:%#v err:%+v", config.options, err)
-		return nil, err
+		options:     config.options,
 	}
 
 	return s, nil
@@ -77,48 +80,28 @@ func (s *Sender) client() IClient {
 	return s.clients[rand.Intn(len(s.clients))]
 }
 
-func (s *Sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.RelayTx, newMsg *chain.Message, err error) {
+func (s *Sender) Segment(
+	ctx context.Context, msg *chain.Message,
+) (tx chain.RelayTx, newMsg *chain.Message, err error) {
 	if ctx.Err() != nil {
 		return nil, nil, ctx.Err()
+	}
+
+	if s.options.TxDataSizeLimit == 0 {
+		limit := defaultTxSizeLimit
+		s.options.TxDataSizeLimit = uint64(limit)
 	}
 
 	if len(msg.Receipts) == 0 {
 		return nil, msg, nil
 	}
 
-	rm := &chain.RelayMessage{
-		Receipts: make([][]byte, 0),
+	relayMsg, newMsg, err := chainutils.SegmentByTxDataSize(msg, s.options.TxDataSizeLimit)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	var msgSize uint64
-
-	newMsg = &chain.Message{
-		From:     msg.From,
-		Receipts: msg.Receipts,
-	}
-	for i, receipt := range msg.Receipts {
-		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events)
-		if err != nil {
-			return nil, nil, err
-		}
-		rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
-			Index:  receipt.Index,
-			Height: receipt.Height,
-			Events: rlpEvents,
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-		newMsgSize := msgSize + uint64(len(rlpReceipt))
-		if newMsgSize > txMaxDataSize {
-			newMsg.Receipts = msg.Receipts[i:]
-			break
-		}
-		msgSize = newMsgSize
-		rm.Receipts = append(rm.Receipts, rlpReceipt)
-	}
-
-	message, err := codec.RLP.MarshalToBytes(rm)
+	message, err := codec.RLP.MarshalToBytes(relayMsg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -157,7 +140,7 @@ func (s *Sender) newRelayTransaction(ctx context.Context, prev string, message [
 			},
 		}
 
-		return NewRelayTransaction(ctx, nearWallet, s.destination.ContractAddress(), s.client(), actions), nil
+		return NewRelayTransaction(ctx, nearWallet, s.destination.ContractAddress(), s.client(), actions, message), nil
 	}
 
 	return nil, fmt.Errorf("failed to cast wallet")
@@ -168,9 +151,10 @@ type RelayTransaction struct {
 	client      IClient
 	wallet      *wallet.NearWallet
 	context     context.Context
+	message     []byte
 }
 
-func NewRelayTransaction(context context.Context, wallet *wallet.NearWallet, destination string, client IClient, actions []types.Action) *RelayTransaction {
+func NewRelayTransaction(context context.Context, wallet *wallet.NearWallet, destination string, client IClient, actions []types.Action, message []byte) *RelayTransaction {
 	transaction := types.Transaction{
 		SignerId:   types.AccountId(wallet.Address()),
 		ReceiverId: types.AccountId(destination),
@@ -179,10 +163,11 @@ func NewRelayTransaction(context context.Context, wallet *wallet.NearWallet, des
 	}
 
 	return &RelayTransaction{
-		Transaction: transaction,
-		client:      client,
-		wallet:      wallet,
-		context:     context,
+		transaction,
+		client,
+		wallet,
+		context,
+		message,
 	}
 }
 
