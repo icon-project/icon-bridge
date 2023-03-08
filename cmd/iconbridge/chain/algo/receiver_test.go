@@ -54,7 +54,7 @@ import (
 // 	_, err = s.(*sender).callAbi(ctx, AbiFunc{"sendMessage",
 // 		[]interface{}{"btp://0x14.algo/0x293b2D1B12393c70fCFcA0D9cb99889fFD4A23a8",
 // 			"btp://0x2.icon/cx04d4cc5ee639aa2fc5f2ededa7b50df6044dd325",
-// 			"tokentransfer", 778, []byte{0x01, 0x02, 0x03}}})
+// 			"token", 778, []byte{0x01, 0x02, 0x03}}})
 
 // 	if err != nil {
 // 		t.Logf("Couldn't call sendMessage. Error: %v", err)

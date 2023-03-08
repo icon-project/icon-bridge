@@ -17,6 +17,8 @@ then
       exit 1
 fi
 
+# TODO: check received message on Algorand after get I2A relayer running.
+
 TXN_ID=$(
     goloop rpc sendtx call --to $(cat cache/icon_dbsh_addr) \
         --method sendServiceMessage \

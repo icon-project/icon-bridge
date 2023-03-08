@@ -103,6 +103,7 @@ jobs:
         run: |
           ./gradlew dummyBSH:optimizedJar
           ./gradlew bmc:optimizedJar
+          ./gradlew wrapped-token:optimizedJar
 
       - name: Deploy BMC on ICON
         working-directory: ./devnet/docker/icon-algorand
@@ -146,7 +147,28 @@ jobs:
           )
           echo -n $msg | xxd -r -p
 
-      - name: Register BSH with BMC
+      - name: Deploy Wrapped Test Token on ICON
+        working-directory: ./devnet/docker/icon-algorand
+        run: |
+          export PATH=$PATH:~/go/bin
+          CONTRACT=../../../javascore/wrapped-token/build/libs/WrappedToken-optimized.jar
+
+          TXN_ID=$(
+            goloop rpc sendtx deploy $CONTRACT \
+              --uri http://localhost:9080/api/v3/icon \
+              --key_store icon.keystore.json --key_password gochain \
+              --nid $(cat cache/nid) --step_limit 10000000000 \
+              --content_type application/java \
+              --param _bmc=$(cat cache/icon_bmc_addr) \
+              --param _to=0x14.algo \
+              --param _name="Wrapped Test Token" \
+              --param _symbol="WTT" \
+              --param _decimals=6
+          )
+
+          ./../../algorand/scripts/wait_for_transaction.sh $TXN_ID scoreAddress > cache/icon_wtt_addr
+
+      - name: Register BSH's with BMC on ICON
         working-directory: ./devnet/docker/icon-algorand
         run: |
           export PATH=$PATH:~/go/bin
@@ -163,13 +185,28 @@ jobs:
 
           ./../../algorand/scripts/wait_for_transaction.sh $TXN_ID
 
+          TXN_ID=$(
+            goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) \
+              --method addService \
+              --value 0 \
+              --param _addr=$(cat cache/icon_wtt_addr) \
+              --param _svc="wtt" \
+              --step_limit=3000000000 \
+              --uri http://localhost:9080/api/v3/icon \
+              --key_store icon.keystore.json --key_password gochain \
+              --nid=$(cat cache/nid)
+          )
+
+          ./../../algorand/scripts/wait_for_transaction.sh $TXN_ID
+
       - name: Build Algorand smart contracts
         working-directory: pyteal
         run: |
           ./build.sh bmc.bmc bmc
           ./build.sh bsh.bsh bsh
+          ./build.sh escrow.escrow escrow
 
-      - name: Deploy BMC and DummyBSH on Algorand
+      - name: Deploy Algorand Contracts
         working-directory: ./devnet/docker/icon-algorand
         run: |
           export PATH=$PATH:~/go/bin
@@ -181,10 +218,14 @@ jobs:
           echo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >cache/algo_token
 
           PRIVATE_KEY=$(KMD_ADDRESS=$(cat cache/kmd_address) KMD_TOKEN=$(cat cache/algo_token) kmd-extract-private-key 1)
+
           BMC_TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) deploy-contract ../../../pyteal/teal/bmc)
           DUMMY_BSH_TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) deploy-contract ../../../pyteal/teal/bsh)
+          ESCROW_TX_ID=$(PRIVATE_KEY=$PRIVATE_KEY ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) deploy-contract ../../../pyteal/teal/escrow)
+
           BMC_APP_ID=$(ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) get-app-id $BMC_TX_ID)
           DUMMY_BSH_APP_ID=$(ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) get-app-id $DUMMY_BSH_TX_ID)
+          ESCROW_APP_ID=$(ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) get-app-id $ESCROW_TX_ID)
 
           jq --arg PRIVATE_KEY "$PRIVATE_KEY" '.relays[1].dst.key_store.id=$PRIVATE_KEY' algo-config.json >a2i_tmp.json
           mv a2i_tmp.json algo-config.json
@@ -192,10 +233,25 @@ jobs:
           echo $PRIVATE_KEY >cache/algo_private_key
           printf '%s' "$BMC_APP_ID" >cache/bmc_app_id
           printf '%s' "$DUMMY_BSH_APP_ID" >cache/dbsh_app_id
+          printf '%s' "$ESCROW_APP_ID" >cache/escrow_app_id
 
           goal app info --app-id $BMC_APP_ID -d /tmp/testnet/Node |
               awk -F ':' '/Application account:/ {gsub(/^[[:space:]]+|[[:space:]]+$/,"",$2); \
                     print "btp://0x14.algo/" $2}' >cache/algo_btp_addr
+
+      - name: Deploy Algorand Test Asset
+        working-directory: ./devnet/docker/icon-algorand
+        run: |
+          export PATH=$PATH:~/go/bin
+
+          MINTER_PRIVATE_KEY=$(KMD_ADDRESS=$(cat cache/kmd_address) KMD_TOKEN=$(cat cache/algo_token) kmd-extract-private-key 2)
+
+          ASA_ID=$(
+            PRIVATE_KEY=$MINTER_PRIVATE_KEY ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) deploy-asset 1000000000000 6 TABC Test AB Coin	http://example.com/ abcd
+          )
+
+          echo $MINTER_PRIVATE_KEY > cache/algo_minter_private_key
+          echo $ASA_ID > cache/algo_test_asset_id
 
       - name: Link Algorand BMC on Icon BMC
         working-directory: ./devnet/docker/icon-algorand
@@ -240,7 +296,7 @@ jobs:
           jq --arg VALIDATORS "$VALIDATORS" --argjson ICON_HEIGHT "$((ICON_HEIGHT-1))" '.relays[1].src.options.verifier.validatorsHash=$VALIDATORS | .relays[1].src.options.verifier.blockHeight=$ICON_HEIGHT' $ICON_ALGO/algo-config.json > a2i_tmp.json
           mv a2i_tmp.json $ICON_ALGO/algo-config.json
 
-      - name: Register Algorand BSH and start relayer
+      - name: Register Algorand BSH's and start relayer
         working-directory: ./cmd/iconbridge
         run: |
           export PATH=$PATH:~/go/bin
@@ -252,7 +308,8 @@ jobs:
           ALGO_ROUND=$(cat "$ICON_ALGO/cache/algo_last_round" | tr -d '\n')
           ICON_HEIGHT=$(goloop rpc lastblock --uri http://localhost:9080/api/v3/icon | jq .height)
 
-          ALGOD_ADDRESS=$(cat $ICON_ALGO/cache/algod_address) ALGOD_TOKEN=$(cat $ICON_ALGO/cache/algo_token) PRIVATE_KEY=$(cat $ICON_ALGO/cache/algo_private_key) register-dummy-bsh ../../pyteal/teal $ICON_ALGO/cache/
+          ALGOD_ADDRESS=$(cat $ICON_ALGO/cache/algod_address) ALGOD_TOKEN=$(cat $ICON_ALGO/cache/algo_token) PRIVATE_KEY=$(cat $ICON_ALGO/cache/algo_private_key) init-and-register-dbsh ../../pyteal/teal bsh $(cat $ICON_ALGO/cache/bmc_app_id) $(cat $ICON_ALGO/cache/dbsh_app_id) $ICON_BTP dbsh
+          ALGOD_ADDRESS=$(cat $ICON_ALGO/cache/algod_address) ALGOD_TOKEN=$(cat $ICON_ALGO/cache/algo_token) PRIVATE_KEY=$(cat $ICON_ALGO/cache/algo_private_key) init-and-register-wtt ../../pyteal/teal escrow $(cat $ICON_ALGO/cache/bmc_app_id) $(cat $ICON_ALGO/cache/escrow_app_id) $(cat $ICON_ALGO/cache/icon_btp_addr) wtt $(cat $ICON_ALGO/cache/algo_test_asset_id)
 
           jq --arg ICON_BTP "$ICON_BTP" --arg ALGO_BTP "$ALGO_BTP" --argjson ALGO_ROUND "$ALGO_ROUND" --argjson BMC_ID "$BMC_ID" '.relays[0].dst.address=$ICON_BTP | .relays[0].src.address=$ALGO_BTP | .relays[0].src.options.verifier.round=$ALGO_ROUND | .relays[0].src.options.appID=$BMC_ID' $ICON_ALGO/algo-config.json > a2i_tmp.json
           mv a2i_tmp.json $ICON_ALGO/algo-config.json
@@ -265,4 +322,5 @@ jobs:
         working-directory: ./devnet/docker/icon-algorand
         run: |
           export PATH=$PATH:~/go/bin
-          ./run-integration-test.sh
+          ./dbsh-integration-test.sh
+          ./a2i-integration-test.sh
