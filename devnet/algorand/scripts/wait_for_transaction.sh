@@ -9,7 +9,7 @@ END_TIME=$(($(date +%s) + 30))
 
 while [ $(date +%s) -lt $END_TIME ]; do
   TXN_RESULT=$(goloop rpc txresult $(echo $TXN_ID | cut -d '"' -f 2) \
-  --uri http://localhost:9080/api/v3 | jq .$FIELD| cut -d '"' -f 2)
+  --uri http://localhost:9080/api/v3/icon | jq .$FIELD| cut -d '"' -f 2)
 
   if [ -n "$TXN_RESULT" ]; then
     break

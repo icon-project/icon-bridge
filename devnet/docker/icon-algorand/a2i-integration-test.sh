@@ -5,7 +5,7 @@ AMOUNT=100
 # Create receiver account on ICON
 goloop ks gen --out receiver.keystore.json
 RECEIVER_ADDRESS=$(cat receiver.keystore.json | jq -r '.address')
-          
+
 # Transfer Asset to ICON
 PRIVATE_KEY=$(cat cache/algo_minter_private_key) ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) algorand-deposit-token ../../../pyteal/teal/escrow $(cat cache/bmc_app_id) $(cat cache/escrow_app_id) $RECEIVER_ADDRESS $(cat cache/algo_test_asset_id) $AMOUNT 
 

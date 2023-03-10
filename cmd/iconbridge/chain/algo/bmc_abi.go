@@ -13,7 +13,7 @@ import (
 	"github.com/algorand/go-algorand-sdk/types"
 )
 
-const contractDir = "../../pyteal/teal/bsh/"
+const contractDir = "../../pyteal/teal/bmc/"
 const waitRounds = 5
 
 type AbiFunc struct {
@@ -56,8 +56,10 @@ func (s *sender) initAbi() error {
 	if err != nil {
 		return fmt.Errorf("Failed to get suggeted params: %w", err)
 	}
+
+	sp.Fee = 1000
 	s.mcp = &future.AddMethodCallParams{
-		AppID:           s.opts.AppId,
+		AppID:           s.opts.BmcId,
 		Sender:          s.wallet.TypedAddress(),
 		SuggestedParams: sp,
 		OnComplete:      types.NoOpOC,
@@ -74,11 +76,13 @@ func (s *sender) callAbi(ctx context.Context, abiFuncs ...AbiFunc) (future.Execu
 			return future.ExecuteResult{}, fmt.Errorf("Failed to get %s method from json contract: %w",
 				abiFunc.name, err)
 		}
+
 		err = atc.AddMethodCall(Combine(*s.mcp, method, abiFunc.args))
 		if err != nil {
 			return future.ExecuteResult{}, fmt.Errorf("Failed to add %s method to atc: %w", abiFunc.name, err)
 		}
 	}
+
 	ret, err := atc.Execute(s.cl.algod, ctx, waitRounds)
 	if err != nil {
 		return future.ExecuteResult{}, fmt.Errorf("Failed to execute atc: %w", err)

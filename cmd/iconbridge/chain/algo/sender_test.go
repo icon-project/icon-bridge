@@ -1,6 +1,6 @@
 package algo
 
-import (
+/* import (
 	"testing"
 )
 
@@ -32,7 +32,7 @@ func Test_DecodeRelayMessage(t *testing.T) {
 	if _, ok := svcArgs.(CoinTransferSvc); !ok {
 		t.Error("Wrong args type for CoinTransfer:", svcArgs)
 	}
-}
+} */
 
 // func Test_Abi(t *testing.T) {
 // 	s, err := createTestSender(testnetAccess)

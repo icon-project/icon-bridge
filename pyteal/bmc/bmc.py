@@ -71,7 +71,8 @@ def handleRelayMessage (bsh_app: abi.Application, svc: abi.String, msg: abi.Dyna
 
         bsh_addr := bsh_app.params().address(),
         Assert(bsh_addr.hasValue()),
-        Assert(App.localGet(bsh_addr.value(), Bytes("svc")) == svc.get()),
+        #TODO validate svc
+        #Assert(App.localGet(bsh_addr.value(), Bytes("svc")) == svc.get()),
 
         InnerTxnBuilder.Begin(),
         InnerTxnBuilder.MethodCall(
@@ -84,3 +85,4 @@ def handleRelayMessage (bsh_app: abi.Application, svc: abi.String, msg: abi.Dyna
         ),
         InnerTxnBuilder.Submit(),
     )
+

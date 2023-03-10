@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/algorand/go-algorand-sdk/future"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
-	"github.com/icon-project/icon-bridge/common/intconv"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
 )
@@ -22,6 +22,8 @@ const (
 	defaultSendTxTimeout = 15 * time.Second
 	defaultReadTimeout   = 50 * time.Second
 	atomicTxnLimit       = 16
+	balanceThreshold     = 1000000000000000
+	serviceMapPath       = "chain/algo/serviceMap.json"
 )
 
 func NewSender(
@@ -53,12 +55,12 @@ func NewSender(
 	if err != nil {
 		return nil, err
 	}
+
 	return s, nil
 }
 
 type senderOptions struct {
-	AppId            uint64         `json:"app_id"`
-	BalanceThreshold intconv.BigInt `json:"balance_threshold"`
+	BmcId uint64 `json:"bmc_id"`
 }
 
 type sender struct {
@@ -87,21 +89,13 @@ type bmcLink struct {
 	TxHeight uint64 `json:"tx_height"`
 }
 
-func (opts *senderOptions) unmarshal(v map[string]interface{}) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(b, opts)
-}
-
 func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 	return getStatus()
 }
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
 	bal, err := s.cl.GetBalance(ctx, s.wallet.Address())
-	return bal, &s.opts.BalanceThreshold.Int, err
+	return bal, big.NewInt(balanceThreshold), err
 }
 
 func (s *sender) Segment(
@@ -114,15 +108,14 @@ func (s *sender) Segment(
 	if len(msg.Receipts) == 0 {
 		return nil, msg, nil
 	}
-
 	newMsg = &chain.Message{
 		From:     msg.From,
 		Receipts: msg.Receipts,
 	}
 
-	abiFuncs := make([]AbiFunc, atomicTxnLimit)
+	abiFuncs := make([]AbiFunc, 0, atomicTxnLimit)
 
-	// egment messages to fit the 16 atc limit and process all events in the same abi call
+	// segment messages to fit the 16 atc limit and process all events in the same abi call
 	for i, receipt := range msg.Receipts {
 		if len(abiFuncs)+len(receipt.Events) >= cap(abiFuncs) {
 			newMsg.Receipts = msg.Receipts[i:]
@@ -133,7 +126,18 @@ func (s *sender) Segment(
 			if err != nil {
 				return nil, nil, fmt.Errorf("Error decoding event message: %w", err)
 			}
-			abiFuncs = append(abiFuncs, AbiFunc{svcName, []interface{}{svcArgs}})
+
+			msgBytes, ok := svcArgs.([]byte)
+			if !ok {
+				return nil, nil, fmt.Errorf("Error decoding event message: %w", err)
+			}
+			appID, err := GetAppIDForService(svcName)
+			if err != nil {
+				return nil, nil, fmt.Errorf("Error getting appID for service: %w", err)
+			}
+
+			abiFuncs = append(abiFuncs, AbiFunc{"handleRelayMessage", []interface{}{appID, svcName, msgBytes}})
+
 		}
 	}
 	newTx := &relayTx{
@@ -145,8 +149,7 @@ func (s *sender) Segment(
 }
 
 func (tx relayTx) Send(ctx context.Context) (err error) {
-	tx.s.cl.Log().WithFields(log.Fields{"prev": tx.s.wallet}).Debug("handleRelayMessage: send tx")
-
+	tx.s.cl.Log().Info("Sending new relay Txn", "tx", tx.svcs)
 	ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeout)
 	defer cancel()
 
@@ -154,6 +157,8 @@ func (tx relayTx) Send(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("Error calling abi to execute relay txn: %w", err)
 	}
+	//log res
+	tx.s.cl.Log().Info("Relay Txn sent", "tx", res)
 	tx.round = res.ConfirmedRound
 	tx.txIDs = res.TxIDs
 	return nil
@@ -174,4 +179,25 @@ func (tx relayTx) Receipt(ctx context.Context) (blockNumber uint64, err error) {
 
 func (tx relayTx) ID() interface{} {
 	return tx.txIDs
+}
+
+func GetAppIDForService(service string) (uint64, error) {
+	fileBytes, err := ioutil.ReadFile(serviceMapPath)
+	if err != nil {
+		return 0, err
+	}
+
+	// Parse the JSON input into a map
+	var svcMap map[string]uint64
+	err = json.Unmarshal(fileBytes, &svcMap)
+	if err != nil {
+		return 0, err
+	}
+
+	appID, ok := svcMap[service]
+	if !ok {
+		return 0, fmt.Errorf("Unrecognized service %s", service)
+	}
+
+	return appID, nil
 }

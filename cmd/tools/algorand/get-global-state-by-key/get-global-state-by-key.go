@@ -22,7 +22,7 @@ func main() {
 	}
 
 	key := os.Args[2]
-	
+
 	client, err := algod.MakeClient(algodAddress, algodToken)
 	if err != nil {
 		log.Fatalf("Failed to create algod client: %v", err)
@@ -46,7 +46,7 @@ func main() {
 				log.Fatalf("Failed to decode base64 string: %+v", err)
 			}
 
-			fmt.Println(decodedValue)
+			fmt.Println(string(decodedValue))
 			return
 		}
 	}
