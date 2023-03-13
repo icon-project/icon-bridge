@@ -4,7 +4,6 @@ from typing import Literal
 global_initialized = Bytes("initialized")
 global_bmc_id = Bytes("bmc_id")
 global_receiver_address = Bytes("receiver_address")
-global_last_received_message = Bytes("last_received_message")
 global_asset_id = Bytes("asset_id")
 
 is_creator = Txn.sender() == Global.creator_address()
@@ -16,7 +15,6 @@ router = Router(
         no_op=OnCompleteAction.create_only(
             Seq(
                 App.globalPut(global_initialized, Int(0)),
-                App.globalPut(global_last_received_message, Bytes("BTP message")),
                 Approve()
             )
         ),
@@ -105,6 +103,18 @@ def handleBTPMessage(msg: abi.DynamicBytes) -> Expr:
         Assert(is_init),
         Assert(App.globalGet(global_bmc_id) == Global.caller_app_id()),
 
-        App.globalPut(global_last_received_message, msg.get()),
+        (amount := abi.Uint64()).set(Btoi(Substring(msg.get(), Int(0), Int(8)))),
+        (receiver_address := abi.DynamicBytes()).set(Substring(msg.get(), Int(8), Int(40))),
+
+        InnerTxnBuilder.Begin(),
+        InnerTxnBuilder.SetFields({
+            TxnField.type_enum: TxnType.AssetTransfer,
+            TxnField.xfer_asset: App.globalGet(global_asset_id),
+            TxnField.asset_receiver: receiver_address.get(),
+            TxnField.asset_amount: amount.get(),
+            TxnField.fee: Int(0)
+        }),
+        InnerTxnBuilder.Submit(),
+
         Approve()
     )

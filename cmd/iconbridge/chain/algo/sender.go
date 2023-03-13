@@ -2,6 +2,7 @@ package algo
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/algorand/go-algorand-sdk/abi"
 	"github.com/algorand/go-algorand-sdk/future"
+	"github.com/algorand/go-algorand-sdk/types"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/log"
@@ -136,7 +138,35 @@ func (s *sender) Segment(
 				return nil, nil, fmt.Errorf("Error getting appID for service: %w", err)
 			}
 
-			abiFuncs = append(abiFuncs, AbiFunc{"handleRelayMessage", []interface{}{appID, svcName, msgBytes}})
+			assetsCount := int(msgBytes[0])
+			offset := 1
+
+			if assetsCount != 0 {
+				assetsBytesLen := 8 * assetsCount
+				for i := 1; i < assetsBytesLen; i += 8 {
+					s.mcp.ForeignAssets = append(s.mcp.ForeignAssets, binary.BigEndian.Uint64(msgBytes[offset:i+8]))
+				}
+				offset += assetsBytesLen
+			} 
+		
+			addressesCount := int(msgBytes[offset])
+			offset += 1
+		
+			if addressesCount != 0 {
+				addressesBytesLen := 32 * addressesCount
+				for i := offset; i < offset + addressesBytesLen; i += 32 {
+					address, err := types.EncodeAddress(msgBytes[i:i+32])
+			
+					if err != nil {
+						return nil, nil, fmt.Errorf("Failed to encode address from bytes: %+v", err)
+					}
+			
+					s.mcp.ForeignAccounts = append(s.mcp.ForeignAccounts, address)
+				}
+				offset += addressesBytesLen
+			}
+		
+			abiFuncs = append(abiFuncs, AbiFunc{"handleRelayMessage", []interface{}{appID, svcName, msgBytes[offset:]}})
 
 		}
 	}

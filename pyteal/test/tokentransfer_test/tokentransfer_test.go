@@ -1,8 +1,8 @@
 package tests
 
 import (
-	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -34,10 +34,10 @@ var escrowMcp future.AddMethodCallParams
 var escrowAddress types.Address
 var err error
 
-const dummyBTPMessage = "Hello Algorand"
 const dummyToAddress = "btp://0x1.icon/0x12333"
 const dummyServiceName = "wtt"
 const dummyIconAddress = "hx3a94e17b282e5a8718c5e4a91010be7901d3b271"
+const dummyTransferAmount = 5000000000
 
 func Test_Init(t *testing.T) {
 	client, deployer, txParams = tools.Init(t)
@@ -122,14 +122,14 @@ func Test_CallSendMessageFromEscrow(t *testing.T) {
 	escrowMcp.Sender = algoMinter.Address
 	escrowMcp.Signer = signer
 	
-	err = atc.AddMethodCall(contracttools.CombineMethod(escrowMcp, contracttools.GetMethod(escrowContract, "deposit"), []interface{}{1, false, iconAddrBytes}))
+	err = atc.AddMethodCall(contracttools.CombineMethod(escrowMcp, contracttools.GetMethod(escrowContract, "deposit"), []interface{}{dummyTransferAmount, false, iconAddrBytes}))
 
 	if err != nil {
 		t.Fatalf("Failed to add method sendServiceMessage call: %+v \n", err)
 		return
 	}
 
-	assetTxn, err := algorand.TransferAssetTx(txParams, algoMinter.Address, escrowAddress, asaId, 1)
+	assetTxn, err := algorand.TransferAssetTx(txParams, algoMinter.Address, escrowAddress, asaId, dummyTransferAmount)
 
 	if err != nil {
 		t.Fatalf("Cannot create asset transfer transaction: %s\n", err)
@@ -162,15 +162,66 @@ func Test_CallSendMessageFromEscrow(t *testing.T) {
 }
 
 func Test_CallHandleRelayMessageUsingRelayerAsSender(t *testing.T) {
-	_, err = contracts.CallAbiMethod(client, bmcContract, bmcMcp, "handleRelayMessage", []interface{}{escrowAppId, dummyServiceName, []byte(dummyBTPMessage)})
+	assetsCount := uint8(1)
+	accountsCount := uint8(1)
+
+	assetId := uint64(asaId)
+	assetIdBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(assetIdBytes, uint64(assetId))
+
+	amount := uint64(dummyTransferAmount)
+	amountbytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(amountbytes, uint64(amount))
+	
+	message := append([]byte{byte(assetsCount)}, assetIdBytes...)
+	message = append(message, []byte{byte(accountsCount)}...)
+	message = append(message, algoMinter.Address[:]...)
+	message = append(message, amountbytes...)
+	message = append(message, algoMinter.Address[:]...)
+
+	
+	assetsCountGet := int(message[0])
+	offset := 1
+
+	if assetsCountGet != 0 {
+		assetsBytesLen := 8 * assetsCountGet
+
+		for i := 1; i < assetsBytesLen; i += 8 {
+			bmcMcp.ForeignAssets = append(bmcMcp.ForeignAssets, binary.BigEndian.Uint64(message[i:i+8]))
+		}
+		offset += assetsBytesLen
+	} 
+
+	addressesCountGet := int(message[offset])
+	offset += 1
+
+	if addressesCountGet != 0 {
+		addressesBytesLen := 32 * addressesCountGet
+
+		for i := offset; i < offset + addressesBytesLen; i += 32 {
+			address, err := types.EncodeAddress(message[i:i+32])
+	
+			if err != nil {
+				t.Fatalf("Failed to encode address from bytes: %+v", err)
+			}
+	
+			bmcMcp.ForeignAccounts = append(bmcMcp.ForeignAccounts, address)
+		}
+		offset += addressesBytesLen
+	}
+
+	_, err = contracts.CallAbiMethod(client, bmcContract, bmcMcp, "handleRelayMessage", []interface{}{escrowAppId, dummyServiceName, message[offset:]})
 
 	if err != nil {
 		t.Fatalf("Failed to add call handleRelayMessage method: %+v", err)
 	}
 
-	lastReceivedMesage := tools.GetGlobalStateByKey(t, client, escrowAppId, "last_received_message")
+	assetInfo, err := client.AccountAssetInformation(algoMinter.Address.String(), asaId).Do(context.Background())
 
-	if !bytes.Equal(lastReceivedMesage, []byte(dummyBTPMessage)) {
-		t.Fatal("Failed to update last_received_message")
+	if err != nil {
+		t.Fatalf("Failed to get Asset information method: %+v", err)
 	}
+
+	log.Println(assetInfo.AssetHolding.Amount)
+	
 }

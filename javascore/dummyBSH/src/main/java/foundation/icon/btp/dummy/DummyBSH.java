@@ -51,11 +51,20 @@ public class DummyBSH implements BSH {
 
     @External()
     public void sendServiceMessage() {
-        BigInteger sn = BigInteger.valueOf(1);;
-        byte[] dummyMessage = "Hello Algorand".getBytes();
-        BMCScoreInterface bmc = new BMCScoreInterface(this.bmc);
+        byte[] referencesCount = new byte[1];
+        referencesCount[0] = 0;
 
-        bmc.sendMessage(to, SERVICE, sn, dummyMessage);
+        BigInteger sn = BigInteger.valueOf(1);
+        byte[] dummyMessage = "Hello Algorand".getBytes();
+
+        byte[] message = new byte[referencesCount.length + referencesCount.length + dummyMessage.length];
+
+        System.arraycopy(referencesCount, 0, message, 0, referencesCount.length);
+        System.arraycopy(referencesCount, 0, message, referencesCount.length, referencesCount.length);
+        System.arraycopy(dummyMessage, 0, message, referencesCount.length + referencesCount.length, dummyMessage.length);
+
+        BMCScoreInterface bmc = new BMCScoreInterface(this.bmc);
+        bmc.sendMessage(to, SERVICE, sn, message);
     }
 
 }

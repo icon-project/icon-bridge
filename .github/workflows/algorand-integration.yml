@@ -80,6 +80,11 @@ jobs:
           distribution: "gradle"
           gradle-version: "7.6"
 
+      - name: Test Javascore
+        working-directory: ./javascore
+        run: |
+          ./gradlew wrapped-token:test
+
       - name: Build ICON smart contracts
         working-directory: ./javascore
         run: |

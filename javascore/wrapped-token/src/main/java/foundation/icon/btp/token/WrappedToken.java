@@ -13,6 +13,7 @@ import score.annotation.External;
 import score.annotation.EventLog;
 import score.Address;
 import score.Context;
+import score.VarDB;
 
 public class WrappedToken extends IRC2Basic implements BSH {
     private static final Logger logger = Logger.getLogger(WrappedToken.class);
@@ -21,14 +22,22 @@ public class WrappedToken extends IRC2Basic implements BSH {
 
     private final String to;
     private final Address bmc;
+    private final BigInteger asaId;
 
     private String lastReceivedErrorMessage = "BTP Error Message";
 
-    public WrappedToken (String _to, Address _bmc, String _name, String _symbol, int _decimals) {
+    private final VarDB<BigInteger> sn = Context.newVarDB("serviceNumber", BigInteger.class);
+
+    public WrappedToken (String _to, Address _bmc, BigInteger _asaId, String _name, String _symbol, int _decimals) {
         super(_name, _symbol, _decimals);
 
         bmc = _bmc;
         to = _to;
+        asaId = _asaId;
+
+        if (sn.get() == null) {
+            sn.set(BigInteger.ZERO);
+        }
     }
 
     @External(readonly=true)
@@ -49,12 +58,14 @@ public class WrappedToken extends IRC2Basic implements BSH {
         boolean isContract = isContractBytes[0] != 0;
 
         byte[] dstBytes = Arrays.copyOfRange(_msg, 9, _msg.length); 
-        String dstString = encodeHexString(dstBytes);
+        String dstString = byteArrayToHex(dstBytes);
         String formattedDstString = isContract ? "cx" + dstString : "hx" + dstString;
         Address dst = Address.fromString(formattedDstString);
 
         Context.require(amount.compareTo(BigInteger.ZERO) >= 0);
         _mint(dst, amount);
+
+        increaseSn();
     }
 
     @External()
@@ -67,17 +78,40 @@ public class WrappedToken extends IRC2Basic implements BSH {
     }
 
     @External()
-    public void sendServiceMessage() {
-        BigInteger sn = BigInteger.valueOf(1);;
-        byte[] dummyMessage = "Hello Algorand".getBytes();
+    public void burn(byte[] algoPubKey, BigInteger _amount) {
+        Context.require(_amount.compareTo(Conversion.maxUint64) < 1, "Amount too big");
+        Context.require(_amount.compareTo(BigInteger.ZERO) > 0, "Amount should be positive");
+
+        _burn(Context.getCaller(), _amount);
+
+        BigInteger sn = increaseSn();
         BMCScoreInterface bmc = new BMCScoreInterface(this.bmc);
 
-        bmc.sendMessage(to, SERVICE, sn, dummyMessage);
-    }
+        byte[] assetsCount = new byte[1];
+        assetsCount[0] = 1;
 
-    @External()
-    public void burn(BigInteger _amount) {
-        _burn(Context.getCaller(), _amount);
+        byte[] assets = Conversion.bigIntToByteArray(asaId);
+        
+        byte[] adressesCount = new byte[1];
+        adressesCount[0] = 1;
+
+        byte[] amountBytes = Conversion.bigIntToByteArray(_amount);
+        byte[] message = new byte[assetsCount.length + assets.length + adressesCount.length + algoPubKey.length + amountBytes.length + algoPubKey.length];
+
+        int offset = 0;
+        System.arraycopy(assetsCount, 0, message, offset, assetsCount.length);
+        offset += assetsCount.length;
+        System.arraycopy(assets, 0, message, offset, assets.length);
+        offset += assets.length;
+        System.arraycopy(adressesCount, 0, message, offset, adressesCount.length);
+        offset += adressesCount.length;
+        System.arraycopy(algoPubKey, 0, message, offset, algoPubKey.length);
+        offset += algoPubKey.length;
+        System.arraycopy(amountBytes, 0, message, offset, amountBytes.length);
+        offset += amountBytes.length;
+        System.arraycopy(algoPubKey, 0, message, offset, algoPubKey.length);
+
+        bmc.sendMessage(to, SERVICE, sn, message);
     }
 
     private String byteToHex(byte num) {
@@ -87,11 +121,17 @@ public class WrappedToken extends IRC2Basic implements BSH {
         return new String(hexDigits);
     }
 
-    private String encodeHexString(byte[] byteArray) {
+    private String byteArrayToHex(byte[] byteArray) {
         StringBuffer hexStringBuffer = new StringBuffer();
         for (int i = 0; i < byteArray.length; i++) {
             hexStringBuffer.append(byteToHex(byteArray[i]));
         }
         return hexStringBuffer.toString();
+    }
+
+    private BigInteger increaseSn() {
+        BigInteger newSn = sn.get().add(BigInteger.ONE);
+        sn.set(newSn);
+        return newSn;
     }
 }

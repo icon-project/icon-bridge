@@ -12,6 +12,20 @@ echo "Getting goloop NID"
 docker exec goloop goloop chain ls | jq -r '.[0] | .nid' >cache/nid
 sleep 2
 
+echo "Setting up environment variables for the Algorand node and key management daemon"
+
+ALGOD_ADDRESS=http://localhost:4001
+ALGOD_TOKEN=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+KMD_ADDRESS=http://localhost:4002
+KMD_TOKEN=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+echo $ALGOD_ADDRESS >cache/algod_address
+echo $KMD_ADDRESS >cache/kmd_address
+echo $ALGOD_TOKEN >cache/algo_token
+
+kmd -d /tmp/testnet/Node/kmd-v0.5 &
+sleep 5
+
 echo "Generating the icon keystore and transferring 2001 to it"
 goloop ks gen --out icon.keystore.json
 KS_ADDRESS=$(cat icon.keystore.json | jq -r '.address')
@@ -25,6 +39,14 @@ docker exec goloop goloop rpc sendtx transfer \
 
 echo "Update the config file with the new keystore"
 jq --slurpfile new_contents icon.keystore.json '.relays[0].dst.key_store = $new_contents[0]' algo-config.json >tmpfile && mv tmpfile algo-config.json
+
+echo "Deploy Algorand Test Asset"
+MINTER_PRIVATE_KEY=$(KMD_ADDRESS=$(cat cache/kmd_address) KMD_TOKEN=$(cat cache/algo_token) kmd-extract-private-key 2)
+ASA_ID=$(
+    PRIVATE_KEY=$MINTER_PRIVATE_KEY ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) deploy-asset 1000000000000 6 TABC Test AB Coin http://example.com/ abcd
+)
+echo $MINTER_PRIVATE_KEY >cache/algo_minter_private_key
+echo $ASA_ID >cache/algo_test_asset_id
 
 echo "Deploying BMC contract to the ICON network"
 CONTRACT=../../../javascore/bmc/build/libs/bmc-optimized.jar
@@ -60,6 +82,7 @@ TXN_ID=$(
         --content_type application/java \
         --param _bmc=$(cat cache/icon_bmc_addr) \
         --param _to=0x14.algo \
+        --param _asaId=$ASA_ID \
         --param _name="Wrapped Test Token" \
         --param _symbol="WTT" \
         --param _decimals=6
@@ -91,20 +114,6 @@ TXN_ID=$(
         --nid=$(cat cache/nid)
 )
 ./../../algorand/scripts/wait_for_transaction.sh $TXN_ID
-
-echo "Setting up environment variables for the Algorand node and key management daemon"
-
-ALGOD_ADDRESS=http://localhost:4001
-ALGOD_TOKEN=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-KMD_ADDRESS=http://localhost:4002
-KMD_TOKEN=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-
-echo $ALGOD_ADDRESS >cache/algod_address
-echo $KMD_ADDRESS >cache/kmd_address
-echo $ALGOD_TOKEN >cache/algo_token
-
-kmd -d /tmp/testnet/Node/kmd-v0.5 &
-sleep 5
 
 echo "Extracting the private key for KMD deployer"
 PRIVATE_KEY=$(KMD_ADDRESS=$KMD_ADDRESS KMD_TOKEN=$KMD_TOKEN kmd-extract-private-key 1)
@@ -138,14 +147,6 @@ echo "Getting algo_btp_addr"
 goal app info --app-id $BMC_APP_ID -d /tmp/testnet/Node |
     awk -F ':' '/Application account:/ {gsub(/^[[:space:]]+|[[:space:]]+$/,"",$2); \
           print "btp://0x14.algo/" $2}' >cache/algo_btp_addr
-
-echo "Deploy Algorand Test Asset"
-MINTER_PRIVATE_KEY=$(KMD_ADDRESS=$(cat cache/kmd_address) KMD_TOKEN=$(cat cache/algo_token) kmd-extract-private-key 2)
-ASA_ID=$(
-    PRIVATE_KEY=$MINTER_PRIVATE_KEY ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) deploy-asset 1000000000000 6 TABC Test AB Coin http://example.com/ abcd
-)
-echo $MINTER_PRIVATE_KEY >cache/algo_minter_private_key
-echo $ASA_ID >cache/algo_test_asset_id
 
 echo "Setting link to algo btp on icon bmc"
 LINK_TXN_ID=$(goloop rpc sendtx call --to $(cat cache/icon_bmc_addr) \

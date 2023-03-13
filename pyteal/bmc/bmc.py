@@ -66,6 +66,8 @@ def sendMessage (to: abi.String, sn: abi.Uint64, msg: abi.DynamicBytes) -> Expr:
 
 @router.method
 def handleRelayMessage (bsh_app: abi.Application, svc: abi.String, msg: abi.DynamicBytes) -> Expr:
+    i = ScratchVar(TealType.uint64)
+
     return Seq(
         Assert(is_relayer),
 
@@ -80,9 +82,15 @@ def handleRelayMessage (bsh_app: abi.Application, svc: abi.String, msg: abi.Dyna
             method_signature="handleBTPMessage(byte[])void",
             args=[msg],
             extra_fields={
-                TxnField.fee: Int(0)
+                TxnField.fee: Int(0),
+                TxnField.assets: Txn.assets,
             }
         ),
+
+        For(i.store(Int(1)), i.load() <= Txn.accounts.length(), i.store(i.load() + Int(1))).Do(
+            InnerTxnBuilder.SetField(TxnField.accounts, [Txn.accounts[i.load()]]),
+        ),
+
         InnerTxnBuilder.Submit(),
     )
 
