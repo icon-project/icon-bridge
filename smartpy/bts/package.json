@@ -1,0 +1,25 @@
+{
+  "name": "create-tezos-app",
+  "version": "1.0.3",
+  "description": "A Tezos Dapp Starter using Typescript and Taquito.",
+  "bin": "./bin/cli.js",
+  "scripts": {
+    "compile": "bash ./compile.sh",
+    "deploy": "npx ts-node scripts/deploy.ts"
+  },
+  "author": "Roshan Parajuli",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0xrpj/create-tezos-dapp"
+  },
+  "dependencies": {
+    "@taquito/signer": "^14.0.0",
+    "@taquito/taquito": "^14.0.0",
+    "dotenv": "^16.0.3",
+    "ts-node": "^10.9.1"
+  },
+  "devDependencies": {
+    "typescript": "^4.8.4"
+  }
+}
