@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "Start a2i integration test"
+
 AMOUNT=100
 SENDER_BALANCE_BEFORE_TEST=$(PRIVATE_KEY=$(cat cache/algo_minter_private_key) ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) get-asset-holding-amount $(cat cache/algo_test_asset_id))
 
@@ -55,3 +57,5 @@ then
       echo "Sender Asset balance after test should be equal sender asset balance before test"
       exit 1
 fi
+
+echo "a2i integration test finish successfully"

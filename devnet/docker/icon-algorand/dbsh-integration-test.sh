@@ -1,3 +1,5 @@
+echo "Start dbsh integration test"
+
 echo "Sending msg from algo to icon"
 
 A2I_BEF_TEST=$(goloop rpc call --to $(echo $(cat cache/icon_dbsh_addr) | cut -d '"' -f 2) \
@@ -47,5 +49,6 @@ then
     exit 1
 fi
 
+echo "dbsh integration test finish successfully"
 
 

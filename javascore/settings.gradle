@@ -6,5 +6,7 @@ include (
         'bts',
         'dummyBSH',
         'wrapped-token',
+        'test-token',
+        'escrow',
         'irc2Tradeable'
 )

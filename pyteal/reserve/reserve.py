@@ -10,7 +10,7 @@ is_creator = Txn.sender() == Global.creator_address()
 is_initialized = App.globalGet(global_initialized) == Int(1)
 
 router = Router(
-    "bsh-handler",
+    "reserve-handler",
     BareCallActions(
         no_op=OnCompleteAction.create_only(
             Seq(
@@ -52,49 +52,11 @@ def init(bmc_app: abi.Application, receiver_address: abi.String, asaId: abi.Uint
             TxnField.asset_receiver: Global.current_application_address()
         }),
         InnerTxnBuilder.Submit(),
+
         App.globalPut(global_asset_id, asaId.get()),
 
         App.globalPut(global_initialized, Int(1)),
         Approve(),
-    )
-
-@router.method
-def deposit(amount: abi.Uint64, isContract: abi.Bool, dst: abi.StaticBytes[Literal[20]]) -> Expr:
-    """
-    This method send BTP message to other chain using BMC smart contract.
-    
-    Args:
-        bmc_app: ID of the BMC application that should process the message.
-        to: BTP Address of destination BMC.
-    """
-
-    return Seq(
-        Assert(is_initialized),
-        
-        Assert(
-          And(
-              Txn.group_index() == Int(0),
-              Gtxn[0].sender() == Gtxn[1].sender(),
-              Gtxn[1].type_enum() == TxnType.AssetTransfer,
-              Gtxn[1].xfer_asset() == App.globalGet(global_asset_id),
-              Gtxn[1].asset_receiver() == Global.current_application_address(),
-              Gtxn[1].asset_amount() == amount.get(),
-          )
-        ),
-
-        (sn := abi.Uint64()).set(Int(1)),
-        (to := abi.String()).set(App.globalGet(global_receiver_address)),
-
-        InnerTxnBuilder.Begin(),
-        InnerTxnBuilder.MethodCall(
-            app_id=App.globalGet(global_bmc_id),
-            method_signature="sendMessage(string,uint64,byte[])void",
-            args=[to, sn, Concat(amount.encode(), isContract.encode(), dst.get())],
-            extra_fields={
-                TxnField.fee: Int(0)
-            }
-        ),
-        InnerTxnBuilder.Submit(),
     )
 
 @router.method

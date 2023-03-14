@@ -6,7 +6,7 @@ global_receiver_address = Bytes("receiver_address")
 global_last_received_message = Bytes("last_received_message")
 
 is_creator = Txn.sender() == Global.creator_address()
-is_init = App.globalGet(global_initialized) == Int(1)
+is_initialized = App.globalGet(global_initialized) == Int(1)
 
 router = Router(
     "bsh-handler",
@@ -59,7 +59,7 @@ def sendServiceMessage() -> Expr:
     """
 
     return Seq(
-        Assert(is_init),
+        Assert(is_initialized),
         (sn := abi.Uint64()).set(Int(1)),
         (msg := abi.String()).set("hello world"),
         (to := abi.String()).set(App.globalGet(global_receiver_address)),
@@ -79,7 +79,7 @@ def sendServiceMessage() -> Expr:
 @router.method
 def handleBTPMessage(msg: abi.DynamicBytes) -> Expr:
     return Seq(
-        Assert(is_init),
+        Assert(is_initialized),
         Assert(App.globalGet(global_bmc_id) == Global.caller_app_id()),
 
         App.globalPut(global_last_received_message, msg.get()),

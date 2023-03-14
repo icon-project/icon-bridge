@@ -91,6 +91,8 @@ jobs:
           ./gradlew dummyBSH:optimizedJar
           ./gradlew bmc:optimizedJar
           ./gradlew wrapped-token:optimizedJar
+          ./gradlew test-token:optimizedJar
+          ./gradlew escrow:optimizedJar
 
       - name: Build Algorand smart contracts
         working-directory: pyteal
@@ -98,6 +100,7 @@ jobs:
           ./build.sh bmc.bmc bmc
           ./build.sh bsh.bsh bsh
           ./build.sh escrow.escrow escrow
+          ./build.sh reserve.reserve reserve
 
       - name: Deploy contracts, setup system and update config file
         working-directory: ./devnet/docker/icon-algorand
@@ -116,3 +119,4 @@ jobs:
           export PATH=$PATH:~/go/bin
           ./dbsh-integration-test.sh
           ./a2i-integration-test.sh
+          ./i2a-integration-test.sh

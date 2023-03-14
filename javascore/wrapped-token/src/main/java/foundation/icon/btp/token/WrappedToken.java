@@ -87,24 +87,20 @@ public class WrappedToken extends IRC2Basic implements BSH {
         BigInteger sn = increaseSn();
         BMCScoreInterface bmc = new BMCScoreInterface(this.bmc);
 
-        byte[] assetsCount = new byte[1];
-        assetsCount[0] = 1;
-
         byte[] assets = Conversion.bigIntToByteArray(asaId);
-        
-        byte[] adressesCount = new byte[1];
-        adressesCount[0] = 1;
-
         byte[] amountBytes = Conversion.bigIntToByteArray(_amount);
-        byte[] message = new byte[assetsCount.length + assets.length + adressesCount.length + algoPubKey.length + amountBytes.length + algoPubKey.length];
+        byte[] message = new byte[2 + assets.length + algoPubKey.length + amountBytes.length + algoPubKey.length];
 
         int offset = 0;
-        System.arraycopy(assetsCount, 0, message, offset, assetsCount.length);
-        offset += assetsCount.length;
+
+        // set assets count
+        message[0] = 1;
+        offset += 1;
         System.arraycopy(assets, 0, message, offset, assets.length);
         offset += assets.length;
-        System.arraycopy(adressesCount, 0, message, offset, adressesCount.length);
-        offset += adressesCount.length;
+        // set accounts count
+        message[offset] = 1;
+        offset += 1;
         System.arraycopy(algoPubKey, 0, message, offset, algoPubKey.length);
         offset += algoPubKey.length;
         System.arraycopy(amountBytes, 0, message, offset, amountBytes.length);

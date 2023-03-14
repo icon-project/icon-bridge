@@ -22,16 +22,12 @@ import (
 )
 
 var client *algod.Client
-var deployer, algoMinter crypto.Account
-var asaId uint64
+var deployer, algoMinter, receiver crypto.Account
 var txParams types.SuggestedParams
-var bmcAppId uint64
-var bmcContract *abi.Contract
-var bmcMcp future.AddMethodCallParams
-var escrowAppId uint64
-var escrowContract *abi.Contract
-var escrowMcp future.AddMethodCallParams
-var escrowAddress types.Address
+var bmcAppId, escrowAppId, reserveAppId, asaId, wtknId uint64
+var bmcContract, escrowContract, reserveContract *abi.Contract
+var bmcMcp, escrowMcp, reserveMcp future.AddMethodCallParams
+var escrowAddress, reserveAddress types.Address
 var err error
 
 const dummyToAddress = "btp://0x1.icon/0x12333"
@@ -43,9 +39,11 @@ func Test_Init(t *testing.T) {
 	client, deployer, txParams = tools.Init(t)
 	
 	algoMinter = tools.GetAccount(t, 1)
+	receiver = tools.GetAccount(t, 2)
 
 	bmcAppId = tools.BmcTestInit(t, client, config.BmcTealDir, deployer, txParams)
 	escrowAppId = tools.EscrowTestInit(t, client, config.EscrowTealDir, deployer, txParams)
+	reserveAppId = tools.ReserveTestInit(t, client, config.ReserveTealDir, deployer, txParams)
 
 	bmcContract, bmcMcp, err = contracts.InitABIContract(client, deployer, filepath.Join(config.BmcTealDir, "contract.json"), bmcAppId)
 
@@ -60,8 +58,19 @@ func Test_Init(t *testing.T) {
 		t.Fatalf("Failed to init Escrow ABI contract: %+v", err)
 	}
 
+	reserveContract, reserveMcp, err = contracts.InitABIContract(client, deployer, filepath.Join(config.ReserveTealDir, "contract.json"), reserveAppId)
+	reserveMcp.ForeignApps = []uint64{bmcAppId}
+
+	if err != nil {
+		t.Fatalf("Failed to init Escrow ABI contract: %+v", err)
+	}
+
 	escrowAddress = crypto.GetApplicationAddress(escrowAppId)
 	txnIds := tools.TransferAlgos(t, client, txParams, deployer, []types.Address{escrowAddress}, 614000)
+	tools.WaitForConfirmationsT(t, client, txnIds)
+
+	reserveAddress = crypto.GetApplicationAddress(reserveAppId)
+	txnIds = tools.TransferAlgos(t, client, txParams, deployer, []types.Address{reserveAddress}, 614000)
 	tools.WaitForConfirmationsT(t, client, txnIds)
 }
 
@@ -78,7 +87,23 @@ func Test_DeployASA(t *testing.T) {
 
 	asaId = res[0].AssetIndex
 	
-	log.Print(asaId)
+	fmt.Printf("Asset ID: %d \n", asaId)
+}
+
+func Test_DeployWrappedToken(t *testing.T) {
+	mintTx, err := algorand.MintTx(txParams, algoMinter.Address, 1000000000000, 0, "WTKN", "Wrapped Token",
+		"http://example.com/", "wtkn")
+	
+	if err != nil {
+		t.Fatalf("Could not generate asset creation transaction: %s", err)
+	}
+
+	mintTxId := tools.SendTransaction(t, client, algoMinter.PrivateKey, mintTx)
+	res := tools.WaitForConfirmationsT(t, client, []string{mintTxId})
+
+	wtknId = res[0].AssetIndex
+	
+	fmt.Printf("Wrapped Token ID: %d \n", wtknId)
 }
 
 func Test_InitEscrow(t *testing.T) {
@@ -90,7 +115,31 @@ func Test_InitEscrow(t *testing.T) {
 	}
 }
 
-func Test_RegisterEscrowContract(t *testing.T) {
+func Test_InitReserve(t *testing.T) {
+	reserveMcp.ForeignAssets = []uint64{wtknId}
+	_, err = contracts.CallAbiMethod(client, reserveContract, reserveMcp, "init", []interface{}{bmcAppId, dummyToAddress, wtknId})
+
+	if err != nil {
+		t.Fatalf("Failed to add method call: %+v", err)
+	}
+
+	assetTxn, err := algorand.TransferAssetTx(txParams, algoMinter.Address, reserveAddress, wtknId, 100000000000)
+	if err != nil {
+		t.Fatalf("Could not generate asset transfer transaction: %s", err)
+	}
+	assetTxId := tools.SendTransaction(t, client, algoMinter.PrivateKey, assetTxn)
+	tools.WaitForConfirmationsT(t, client, []string{assetTxId})
+
+	optInTx, err := algorand.TransferAssetTx(txParams, receiver.Address, receiver.Address, wtknId, 0)
+	if err != nil {
+		t.Fatalf("Could not generate asset optin transaction: %s", err)
+	}
+	optInTxId := tools.SendTransaction(t, client, receiver.PrivateKey, optInTx)
+	tools.WaitForConfirmationsT(t, client, []string{optInTxId})
+
+}
+
+func Test_RegisterEscrow(t *testing.T) {
 	escrowAddress := crypto.GetApplicationAddress(escrowAppId)
 
 	bmcMcp.ForeignAccounts = []string{escrowAddress.String()}
@@ -110,7 +159,24 @@ func Test_RegisterEscrowContract(t *testing.T) {
 	fmt.Printf("%+v\n", info)
 }
 
-func Test_CallSendMessageFromEscrow(t *testing.T) {
+func Test_RegisterReserve(t *testing.T) {
+	bmcMcp.ForeignAccounts = []string{reserveAddress.String()}
+	_, err = contracts.CallAbiMethod(client, bmcContract, bmcMcp, "registerBSHContract", []interface{}{reserveAddress, "i2a"})
+
+	if err != nil {
+		t.Fatalf("Failed to add method call: %+v", err)
+	}
+
+	info, err := client.AccountApplicationInformation(reserveAddress.String(), bmcAppId).Do(context.Background())
+
+	if err != nil {
+		t.Fatalf("Failed to get application information: %+v", err)
+	}
+
+	fmt.Printf("%+v\n", info)
+}
+
+func Test_Lock(t *testing.T) {
   iconAddrBytes, err := hex.DecodeString(dummyIconAddress[2:])
 	if err != nil {
 		t.Fatalf("Failed to decode hex to byte slice: %+v \n", err)
@@ -161,7 +227,7 @@ func Test_CallSendMessageFromEscrow(t *testing.T) {
 	}
 }
 
-func Test_CallHandleRelayMessageUsingRelayerAsSender(t *testing.T) {
+func Test_Realease(t *testing.T) {
 	assetsCount := uint8(1)
 	accountsCount := uint8(1)
 
@@ -224,4 +290,28 @@ func Test_CallHandleRelayMessageUsingRelayerAsSender(t *testing.T) {
 
 	log.Println(assetInfo.AssetHolding.Amount)
 	
+}
+
+func Test_Mint (t *testing.T) {
+	amount := uint64(dummyTransferAmount)
+	amountbytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(amountbytes, uint64(amount))
+	
+	message := append(amountbytes, receiver.Address[:]...)
+
+	bmcMcp.ForeignAccounts = []string{receiver.Address.String()}
+	bmcMcp.ForeignAssets = []uint64{wtknId}
+	_, err = contracts.CallAbiMethod(client, bmcContract, bmcMcp, "handleRelayMessage", []interface{}{reserveAppId, "i2a", message})
+
+	if err != nil {
+		t.Fatalf("Failed to add call handleRelayMessage method: %+v", err)
+	}
+
+	assetInfo, err := client.AccountAssetInformation(receiver.Address.String(), wtknId).Do(context.Background())
+
+	if err != nil {
+		t.Fatalf("Failed to get Asset information method: %+v", err)
+	}
+
+	log.Println(assetInfo.AssetHolding.Amount)	
 }
