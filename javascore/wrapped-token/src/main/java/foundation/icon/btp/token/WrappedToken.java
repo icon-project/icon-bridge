@@ -48,7 +48,8 @@ public class WrappedToken extends IRC2Basic implements BSH {
     @External()
     public void handleBTPMessage(String _from, String _svc, BigInteger _sn, byte[] _msg) {
         // TODO check _from if needed
-
+        
+        Context.require(Context.getCaller().equals(bmc), "Only BMC");
         Context.require(_msg.length == MESSAGE_LENGTH, "Invalid message length");
 
         byte[] amountBytes = Arrays.copyOfRange(_msg, 0, 8); 

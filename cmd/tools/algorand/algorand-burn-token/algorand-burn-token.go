@@ -18,10 +18,10 @@ import (
 func main() {
 	algodAddress := helpers.GetEnvVar("ALGOD_ADDRESS")
 	algodToken := helpers.GetEnvVar("ALGOD_TOKEN")
-	minter := helpers.GetAccountFromPrivateKey()
+	sender := helpers.GetAccountFromPrivateKey()
 	tealDir := os.Args[1]
 	bmcId := helpers.GetUint64FromArgs(2, "bmc id")
-	escrowId := helpers.GetUint64FromArgs(3, "escrow app id")
+	reserveId := helpers.GetUint64FromArgs(3, "reserve app id")
 	dstAddress := os.Args[4]
 
 	iconAddrBytes, err := hex.DecodeString(dstAddress[2:])
@@ -43,10 +43,10 @@ func main() {
 	}
 
 	var atc = future.AtomicTransactionComposer{}
-	signer := future.BasicAccountTransactionSigner{Account: minter}
+	signer := future.BasicAccountTransactionSigner{Account: sender}
 
 
-	contract, mcp, err := helpers.InitABIContract(client, minter, filepath.Join(tealDir, "contract.json"), escrowId)
+	contract, mcp, err := helpers.InitABIContract(client, sender, filepath.Join(tealDir, "contract.json"), reserveId)
 
 	if err != nil {
 		log.Fatalf("Failed to init BMC ABI contract: %+v", err)
@@ -55,18 +55,18 @@ func main() {
 	mcp.ForeignApps = []uint64{bmcId}
 	mcp.SuggestedParams.Fee = 2000
 
-	err = atc.AddMethodCall(helpers.CombineMethod(mcp, helpers.GetMethod(contract, "deposit"), []interface{}{amount, false, iconAddrBytes}))
+	err = atc.AddMethodCall(helpers.CombineMethod(mcp, helpers.GetMethod(contract, "burn"), []interface{}{amount, false, iconAddrBytes}))
 
 	if err != nil {
-		log.Fatalf("Failed to add method sendServiceMessage call: %+v \n", err)
+		log.Fatalf("Failed to add method burn call: %+v \n", err)
 		return
 	}
 
-	escrowAddress := crypto.GetApplicationAddress(escrowId)
+	reserveAddress := crypto.GetApplicationAddress(reserveId)
 
 	assetTxn, err := transaction.MakeAssetTransferTxn(
-		minter.Address.String(),
-		escrowAddress.String(),
+		sender.Address.String(),
+		reserveAddress.String(),
 		"",
 		amount,
 		uint64(txParams.Fee),
@@ -95,6 +95,3 @@ func main() {
 		log.Fatalf("Failed to execute call: %+v \n", err)
 	}
 }
-
-
-

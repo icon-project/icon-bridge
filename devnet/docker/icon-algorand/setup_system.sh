@@ -137,6 +137,7 @@ TXN_ID=$(
         --param _bmc=$(cat cache/icon_bmc_addr) \
         --param _to=0x14.algo \
         --param _asaId=$WTKN_ID \
+        --param _tokenAddress=$(cat cache/icon_test_token_addr)
 )
 ./../../algorand/scripts/wait_for_transaction.sh $TXN_ID scoreAddress > cache/icon_escrow_addr
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
@@ -16,24 +15,13 @@ import (
 func main() {
 	algodAddress := helpers.GetEnvVar("ALGOD_ADDRESS")
 	algodToken := helpers.GetEnvVar("ALGOD_TOKEN")
-	privateKeyStr := helpers.GetEnvVar("PRIVATE_KEY")
-
+	deployer := helpers.GetAccountFromPrivateKey()
 	tealDir := os.Args[1]
 	contractName := os.Args[2]
 	bmcId := helpers.GetUint64FromArgs(3, "bmc id")
 	bshId := helpers.GetUint64FromArgs(4, "bsh id")
 	iconBtpAddress := os.Args[5]
 	serviceName := os.Args[6]
-
-	privateKey, err := base64.StdEncoding.DecodeString(privateKeyStr)
-	if err != nil {
-		log.Fatalf("Cannot base64-decode private key seed: %s\n", err)
-	}
-
-	deployer, err := crypto.AccountFromPrivateKey(privateKey)
-	if err != nil {
-		log.Fatalf("Cannot create deployer account: %s", err)
-	}
 
 	client, err := algod.MakeClient(algodAddress, algodToken)
 	if err != nil {

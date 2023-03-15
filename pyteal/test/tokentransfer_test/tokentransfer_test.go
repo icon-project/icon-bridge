@@ -315,3 +315,64 @@ func Test_Mint (t *testing.T) {
 
 	log.Println(assetInfo.AssetHolding.Amount)	
 }
+
+func Test_Burn(t *testing.T) {
+  iconAddrBytes, err := hex.DecodeString(dummyIconAddress[2:])
+	if err != nil {
+		t.Fatalf("Failed to decode hex to byte slice: %+v \n", err)
+	}
+	
+	var atc = future.AtomicTransactionComposer{}
+	signer := future.BasicAccountTransactionSigner{Account: receiver}
+
+	reserveMcp.Sender = receiver.Address
+	reserveMcp.Signer = signer
+	
+	err = atc.AddMethodCall(contracttools.CombineMethod(reserveMcp, contracttools.GetMethod(reserveContract, "burn"), []interface{}{dummyTransferAmount, false, iconAddrBytes}))
+
+	if err != nil {
+		t.Fatalf("Failed to add method burn call: %+v \n", err)
+		return
+	}
+
+	assetTxn, err := algorand.TransferAssetTx(txParams, receiver.Address, reserveAddress, wtknId, dummyTransferAmount)
+
+	if err != nil {
+		t.Fatalf("Cannot create asset transfer transaction: %s\n", err)
+	}
+
+	assetTxnWithSigner := future.TransactionWithSigner{
+    Txn:    assetTxn,
+    Signer: signer,
+	}
+	
+	atc.AddTransaction(assetTxnWithSigner)
+
+	_, err = atc.Execute(client, context.Background(), config.TransactionWaitRounds)
+
+	if err != nil {
+		t.Fatalf("Failed to execute call: %+v \n", err)
+	}
+
+	assetInfo, err := client.AccountAssetInformation(receiver.Address.String(), wtknId).Do(context.Background())
+
+	if err != nil {
+		t.Fatalf("Failed to get Asset information method: %+v", err)
+	}
+
+	if assetInfo.AssetHolding.Amount != 0 {
+		t.Fatal("Amount should be equal to 0 after burn")
+	}
+
+	round := tools.GetLatestRound(t, client)
+
+	newBlock := tools.GetBlock(t, client, round)
+
+	for _, stxn := range newBlock.Payset {
+		for _, innertxn := range stxn.EvalDelta.InnerTxns {
+			if innertxn.EvalDelta.Logs[0] != "i2a" {
+				t.Fatal("Service name is not valid")
+			}
+		}
+	}
+}

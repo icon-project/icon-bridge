@@ -15,29 +15,26 @@ import score.VarDB;
 public class Escrow implements BSH {
     private static final Logger logger = Logger.getLogger(Escrow.class);
     public static final String SERVICE = "i2a";
+    public static final int MESSAGE_LENGTH = 29;
 
     private final String to;
     private final Address bmc;
     private final BigInteger asaId;
+    private final Address tokenAddress;
 
-    private byte[] lastReceivedMessage = "BTP Message".getBytes();
     private String lastReceivedErrorMessage = "BTP Error Message";
 
     private final VarDB<BigInteger> sn = Context.newVarDB("serviceNumber", BigInteger.class);
 
-    public Escrow (String _to, Address _bmc, BigInteger _asaId) {
+    public Escrow (String _to, Address _bmc, BigInteger _asaId, Address _tokenAddress) {
         bmc = _bmc;
         to = _to;
         asaId = _asaId;
+        tokenAddress = _tokenAddress;
 
         if (sn.get() == null) {
             sn.set(BigInteger.ZERO);
         }
-    }
-
-    @External(readonly=true)
-    public byte[] getLastReceivedMessage() {
-        return lastReceivedMessage;
     }
 
     @External(readonly=true)
@@ -47,7 +44,24 @@ public class Escrow implements BSH {
 
     @External()
     public void handleBTPMessage(String _from, String _svc, BigInteger _sn, byte[] _msg) {
-        this.lastReceivedMessage = _msg;
+        Context.require(Context.getCaller().equals(bmc), "Only BMC");
+        Context.require(_msg.length == MESSAGE_LENGTH, "Invalid message length");
+        
+        byte[] amountBytes = Arrays.copyOfRange(_msg, 0, 8); 
+        BigInteger amount = new BigInteger(1, amountBytes);
+        
+        byte[] isContractBytes = Arrays.copyOfRange(_msg, 8, 9); 
+        boolean isContract = isContractBytes[0] != 0;
+
+        byte[] dstBytes = Arrays.copyOfRange(_msg, 9, _msg.length); 
+        String dstString = byteArrayToHex(dstBytes);
+        String formattedDstString = isContract ? "cx" + dstString : "hx" + dstString;
+        Address dst = Address.fromString(formattedDstString);
+
+        Context.require(amount.compareTo(BigInteger.ZERO) >= 0);
+
+        Context.call(tokenAddress, "transfer", dst, amount);
+
         increaseSn();
     }
 
@@ -89,6 +103,21 @@ public class Escrow implements BSH {
         BigInteger sn = increaseSn();
         
         bmc.sendMessage(to, SERVICE, sn, message);
+    }
+
+    private String byteToHex(byte num) {
+        char[] hexDigits = new char[2];
+        hexDigits[0] = Character.forDigit((num >> 4) & 0xF, 16);
+        hexDigits[1] = Character.forDigit((num & 0xF), 16);
+        return new String(hexDigits);
+    }
+
+    private String byteArrayToHex(byte[] byteArray) {
+        StringBuffer hexStringBuffer = new StringBuffer();
+        for (int i = 0; i < byteArray.length; i++) {
+            hexStringBuffer.append(byteToHex(byteArray[i]));
+        }
+        return hexStringBuffer.toString();
     }
 
     private BigInteger increaseSn() {

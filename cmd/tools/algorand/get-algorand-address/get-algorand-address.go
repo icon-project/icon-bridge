@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	"github.com/icon-project/icon-bridge/cmd/tools/algorand/helpers"
@@ -9,8 +8,5 @@ import (
 
 func main() {
 	deployer := helpers.GetAccountFromPrivateKey()
-
-	encodedString := hex.EncodeToString(deployer.PublicKey)
-
-	fmt.Println(encodedString)
+	fmt.Println(deployer.Address.String())
 }

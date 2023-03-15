@@ -60,6 +60,37 @@ def init(bmc_app: abi.Application, receiver_address: abi.String, asaId: abi.Uint
     )
 
 @router.method
+def burn(amount: abi.Uint64, isContract: abi.Bool, dst: abi.StaticBytes[Literal[20]]) -> Expr:
+    return Seq(
+        Assert(is_initialized),
+        
+        Assert(
+          And(
+              Txn.group_index() == Int(0),
+              Gtxn[0].sender() == Gtxn[1].sender(),
+              Gtxn[1].type_enum() == TxnType.AssetTransfer,
+              Gtxn[1].xfer_asset() == App.globalGet(global_asset_id),
+              Gtxn[1].asset_receiver() == Global.current_application_address(),
+              Gtxn[1].asset_amount() == amount.get(),
+          )
+        ),
+
+        (sn := abi.Uint64()).set(Int(1)),
+        (to := abi.String()).set(App.globalGet(global_receiver_address)),
+
+        InnerTxnBuilder.Begin(),
+        InnerTxnBuilder.MethodCall(
+            app_id=App.globalGet(global_bmc_id),
+            method_signature="sendMessage(string,uint64,byte[])void",
+            args=[to, sn, Concat(amount.encode(), isContract.encode(), dst.get())],
+            extra_fields={
+                TxnField.fee: Int(0)
+            }
+        ),
+        InnerTxnBuilder.Submit(),
+    )
+
+@router.method
 def handleBTPMessage(msg: abi.DynamicBytes) -> Expr:
     return Seq(
         Assert(is_initialized),
