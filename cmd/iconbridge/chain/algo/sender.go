@@ -147,25 +147,25 @@ func (s *sender) Segment(
 					s.mcp.ForeignAssets = append(s.mcp.ForeignAssets, binary.BigEndian.Uint64(msgBytes[offset:i+8]))
 				}
 				offset += assetsBytesLen
-			} 
-		
+			}
+
 			addressesCount := int(msgBytes[offset])
 			offset += 1
-		
+
 			if addressesCount != 0 {
 				addressesBytesLen := 32 * addressesCount
-				for i := offset; i < offset + addressesBytesLen; i += 32 {
-					address, err := types.EncodeAddress(msgBytes[i:i+32])
-			
+				for i := offset; i < offset+addressesBytesLen; i += 32 {
+					address, err := types.EncodeAddress(msgBytes[i : i+32])
+
 					if err != nil {
 						return nil, nil, fmt.Errorf("Failed to encode address from bytes: %+v", err)
 					}
-			
+
 					s.mcp.ForeignAccounts = append(s.mcp.ForeignAccounts, address)
 				}
 				offset += addressesBytesLen
 			}
-		
+
 			abiFuncs = append(abiFuncs, AbiFunc{"handleRelayMessage", []interface{}{appID, svcName, msgBytes[offset:]}})
 
 		}

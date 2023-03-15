@@ -31,7 +31,7 @@ func main() {
 
 	asaId := helpers.GetUint64FromArgs(5, "asset id")
 	amount := helpers.GetUint64FromArgs(6, "amount")
-	
+
 	client, err := algod.MakeClient(algodAddress, algodToken)
 	if err != nil {
 		log.Fatalf("Failed to create algod client: %v", err)
@@ -44,7 +44,6 @@ func main() {
 
 	var atc = future.AtomicTransactionComposer{}
 	signer := future.BasicAccountTransactionSigner{Account: minter}
-
 
 	contract, mcp, err := helpers.InitABIContract(client, minter, filepath.Join(tealDir, "contract.json"), escrowId)
 
@@ -89,12 +88,11 @@ func main() {
 
 	atc.AddTransaction(assetTxnWithSigner)
 
-	_, err = atc.Execute(client, context.Background(), 2)
-	
+	res, err := atc.Execute(client, context.Background(), 2)
+
 	if err != nil {
 		log.Fatalf("Failed to execute call: %+v \n", err)
 	}
+	log.Println("Algorand deposit txn IDs:")
+	log.Println(res.TxIDs)
 }
-
-
-
