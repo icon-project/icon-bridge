@@ -1,0 +1,94 @@
+{
+  "base_dir": "bmr",
+  "log_level": "debug",
+  "console_level": "trace",
+  "log_writer": {
+    "filename": "bmr/bmr.log"
+  },
+  "stat_collector": {
+    "verbose": false
+  },
+  "relays": [
+    {
+      "name": "a2i",
+      "src": {
+        "address": "btp://0x14.algo/OJWFSEGFLJCTNEZPUNHDAKFOXGCS5EVUMVMBU3WK756GIGSLHV2FD5UZGY",
+        "endpoint": [
+          "http://localhost:4001",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "offset": 0,
+        "options": {
+          "syncConcurrency": 3,
+          "appID": 156,
+          "verifier": {
+            "round": 3675
+          }
+        }
+      },
+      "dst": {
+        "address": "btp://0xa2a34.icon/cxc2b5940b153b7f8684d1abe0f64b75cce4346bca",
+        "endpoint": [
+          "http://localhost:9080/api/v3/icon"
+        ],
+        "options": {
+          "step_limit": 13610920010,
+          "tx_data_size_limit": 65536
+        },
+        "key_store": {
+          "address": "hx3e7b235b1222581468f843c197083c566e4baec1",
+          "id": "c3617bb6-68a3-4a73-8020-e968d1726a42",
+          "version": 3,
+          "coinType": "icx",
+          "crypto": {
+            "cipher": "aes-128-ctr",
+            "cipherparams": {
+              "iv": "5e3cdee9142085838f01269e45f7e519"
+            },
+            "ciphertext": "6d515e4e14806bbecec306fde849d1546128422f6416b6907a5b481f7e22c315",
+            "kdf": "scrypt",
+            "kdfparams": {
+              "dklen": 32,
+              "n": 65536,
+              "r": 8,
+              "p": 1,
+              "salt": "f8c70ab52a704cbc"
+            },
+            "mac": "60bf363e57c8caf296c465d81fec4b71fdd8f93861ef839ba3031e93ec96c8fc"
+          }
+        },
+        "key_password": "gochain"
+      }
+    },
+    {
+      "name": "i2a",
+      "src": {
+        "address": "btp://0xa2a34.icon/cxc2b5940b153b7f8684d1abe0f64b75cce4346bca",
+        "endpoint": [
+          "http://localhost:9080/api/v3/icon"
+        ],
+        "offset": 0,
+        "options": {
+          "verifier": {
+            "blockHeight": 12680,
+            "validatorsHash": "0xde697e4c36594deab01950abcab3c3103d68bd841a38f24bc751704a679acbf7"
+          }
+        }
+      },
+      "dst": {
+        "address": "btp://0x14.algo/OJWFSEGFLJCTNEZPUNHDAKFOXGCS5EVUMVMBU3WK756GIGSLHV2FD5UZGY",
+        "endpoint": [
+          "http://localhost:4001",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "options": {
+          "bmc_id": 156
+        },
+        "key_store": {
+          "id": "++5bp6svupNLyaFcpcxn0vrfCWs5zmGbiDTIeXzP7MFSSL7XQK2odtviwVUqS2g3mZ5AYtH45pgGc7nd3k5SlQ==",
+          "coinType": "avm"
+        }
+      }
+    }
+  ]
+}

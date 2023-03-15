@@ -21,11 +21,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 	"math/big"
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon/types"
 
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common"

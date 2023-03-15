@@ -1,0 +1,100 @@
+{
+  "base_dir": "bmr",
+  "log_level": "debug",
+  "console_level": "trace",
+  "log_writer": {
+    "filename": "bmr/bmr.log"
+  },
+  "stat_collector": {
+    "verbose": false
+  },
+  "relays": [
+    {
+      "name": "a2i",
+      "src": {
+        "address": "btp://0x14.algo/IOA4UNYWMGJI37EDXMFBSMOJJEUIA747RWSYT3HLBVU27GXJCMBNG3ZUWU",
+        "endpoint": [
+          "https://testnet-algod.appliedblockchain.com",
+          "bf70e81486190ee3ef8f3bfef0caedebc4ee159f7fae6e46bd7fb2a55ff38989"
+        ],
+        "offset": 0,
+        "options": {
+          "syncConcurrency": 3,
+          "appID": 164086783,
+          "verifier": {
+            "round": 28400303
+          }
+        }
+      },
+      "dst": {
+        "address": "btp://0x2.icon/cx6a6cd6fed6f3d32b4694c9c76d9b7d73038a4568",
+        "endpoint": [
+          "https://lisbon.net.solidwallet.io/api/v3/icon_dex"
+        ],
+        "options": {
+          "step_limit": 13610920010,
+          "tx_data_size_limit": 65536
+        },
+        "key_store": {
+          "address": "hxc72664d9fec606fb0b23bf001b2ab338f89b2d11",
+          "id": "b9e10391-6241-4dd2-8f9e-6b68ad061d95",
+          "version": 3,
+          "coinType": "icx",
+          "crypto": {
+            "cipher": "aes-128-ctr",
+            "cipherparams": {
+              "iv": "2adbb29798656a3fcbe7f60aac144a35"
+            },
+            "ciphertext": "7eb370d0e269aebeda3c5e2344f443db5655a9b5de88662263811894cd44cc4f",
+            "kdf": "scrypt",
+            "kdfparams": {
+              "dklen": 32,
+              "n": 65536,
+              "r": 8,
+              "p": 1,
+              "salt": "bb9d12e104b0998b"
+            },
+            "mac": "5a93a3580545f6e8cf4fc732b2b2a5cf91c8fa9c0ff72be82b78faf72dc95ecc"
+          }
+        },
+        "key_password": "gochain"
+      }
+    },
+    {
+      "name": "i2a",
+      "src": {
+        "address": "btp://0x2.icon/cx6a6cd6fed6f3d32b4694c9c76d9b7d73038a4568",
+        "endpoint": [
+          "https://lisbon.net.solidwallet.io/api/v3/icon_dex"
+        ],
+        "offset": 0,
+        "options": {
+          "verifier": {
+            "blockHeight": 20132042,
+            "validatorsHash": "0x346904208c4234031edf9f43bd946932d409506bdef8a3b23153231a94d0598b"
+          }
+        }
+      },
+      "dst": {
+        "address": "btp://0x14.algo/IOA4UNYWMGJI37EDXMFBSMOJJEUIA747RWSYT3HLBVU27GXJCMBNG3ZUWU",
+        "endpoint": [
+          "https://testnet-algod.appliedblockchain.com",
+          "bf70e81486190ee3ef8f3bfef0caedebc4ee159f7fae6e46bd7fb2a55ff38989"
+        ],
+        "options": {
+          "bmc_id": 164086783,
+          "bsh_map": [
+            {
+              "svc_name": "dbsh",
+              "bsh_id": 61
+            }
+          ]
+        },
+        "key_store": {
+          "id": "u4QY2U/QGLLe1Ptn1ebtszBF9T8qxdl2ZkmZOJ7vXXsGP1LMonSWfXvF57FLJnyaVgc5iD7EWh4+MRQR2Xbh/Q==",
+          "coinType": "avm"
+        }
+      }
+    }
+  ]
+}
