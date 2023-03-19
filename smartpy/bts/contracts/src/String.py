@@ -1,7 +1,5 @@
 import smartpy as sp
 
-
-
 def split_btp_address(base):
     """
     Split the BTP Address format i.e. btp://1234.iconee/0x123456789
