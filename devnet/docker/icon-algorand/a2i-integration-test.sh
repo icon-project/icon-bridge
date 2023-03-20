@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH=$PATH:~/go/bin
 
 echo "Start a2i integration test"
 
@@ -8,7 +9,7 @@ SENDER_BALANCE_BEFORE_TEST=$(PRIVATE_KEY=$(cat cache/algo_minter_private_key) AL
 # Create receiver account on ICON
 goloop ks gen --out receiver.keystore.json
 ICON_RECEIVER_ADDRESS=$(cat receiver.keystore.json | jq -r '.address')
-          
+
 # Transfer Asset to ICON
 PRIVATE_KEY=$(cat cache/algo_minter_private_key) ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) algorand-deposit-token ../../../pyteal/teal/escrow $(cat cache/bmc_app_id) $(cat cache/escrow_app_id) $ICON_RECEIVER_ADDRESS $(cat cache/algo_test_asset_id) $AMOUNT 
 

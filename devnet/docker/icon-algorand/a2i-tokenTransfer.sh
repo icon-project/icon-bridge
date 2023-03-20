@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH=$PATH:~/go/bin
 
 echo "Starting a2i integration test"
 

@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH=$PATH:~/go/bin
 
 echo "Start i2a integration test"
 
