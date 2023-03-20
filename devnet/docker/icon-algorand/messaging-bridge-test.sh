@@ -1,3 +1,6 @@
+#!/bin/bash
+export PATH=$PATH:~/go/bin
+
 echo "Start dbsh integration test"
 
 echo "Sending msg from algo to icon"

@@ -117,6 +117,6 @@ jobs:
         working-directory: ./devnet/docker/icon-algorand
         run: |
           export PATH=$PATH:~/go/bin
-          ./dbsh-integration-test.sh
+          ./messaging-bridge-test.sh
           ./a2i-integration-test.sh
           ./i2a-integration-test.sh
