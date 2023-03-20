@@ -8,7 +8,7 @@ import (
 	"math/big"
 
 	// "io"
-	"log"
+	"github.com/icon-project/icon-bridge/common/log"
 	"time"
 
 	"blockwatch.cc/tzgo/contract"
