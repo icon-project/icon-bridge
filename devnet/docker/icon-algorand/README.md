@@ -23,7 +23,7 @@ goloop image and setting up a new algorand local network.
 Once these are running, the smart contracts for both are built, deployed and registered on the
 opposite chains, creating a valid link between them.
 Throughout the execution of the previous steps, a set of environmental variables will be created,
-which will then be copied to the relayer [config file](devnet/docker/icon-algorand/algo-config.json), allowing it to run accordinglly.
+which will then be copied to the relayer [config file](/devnet/docker/icon-algorand/algo-config.json), allowing it to run accordinglly.
 
 
 ### Local execution
@@ -33,7 +33,7 @@ It's also possible to replicate the same steps locally, which can be much more h
 3. Run [setup_system.sh](devnet/docker/icon-algorand/setup_system.sh) to deploy the contracts and setup the relayer config file.
 4. Go to ``./cmd/iconbridge`` and run ``go run . -config=../../devnet/docker/icon-algorand/algo-config.json``
 to start the relayer.
-5. To execute any of the integration tests, go to ``./devnet/docker/icon-algorand`` and run the
+5. To execute any of the integration tests, go to ``/devnet/docker/icon-algorand`` and run the
 respective script.
 
 
@@ -41,7 +41,7 @@ respective script.
 At last, the relayer can also be ran connected to the respective testnets. Note that first you need
 to obtain a valid testnet node access from algorand and set the env vars ``$ALGO_TEST_ADR`` and ``$ALGO_TEST_TOK``, to the given
 testnet address and token values.
-1. Go to ``./devnet/docker/icon-algorand`` and run [testnet_start_relay.sh](./devnet/docker/icon-algorand/testnet_start_relay.sh) - Beware that this script will create wallet accounts that need to be funded.
+1. Go to ``./devnet/docker/icon-algorand`` and run [testnet_start_relay.sh](/devnet/docker/icon-algorand/testnet_start_relay.sh) - Beware that this script will create wallet accounts that need to be funded.
 on the respective testnet faucets. The algorand one can be accessed [here](https://bank.testnet.algorand.network/).
-2. To execute any of the integration tests, go to ``./devnet/docker/icon-algorand`` and run the
+2. To execute any of the integration tests, go to ``/devnet/docker/icon-algorand`` and run the
 respective script.
