@@ -1,13 +1,15 @@
 package tezos
 
 import (
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"time"
+
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	"github.com/icon-project/icon-bridge/common/log"
+	"github.com/icon-project/icon-bridge/common/wallet"
 
 	// "blockwatch.cc/tzgo/codec"
 	"blockwatch.cc/tzgo/contract"
@@ -40,19 +42,24 @@ type sender struct {
 }
 
 func NewSender(
-	src, dst tezos.Address,
-	urls []string,
+	src, dst chain.BTPAddress,
+	urls []string, w wallet.Wallet,
 	rawOpts json.RawMessage, l log.Logger) (chain.Sender, error) {
 		var err error
+		srcAddr := tezos.MustParseAddress(src.String())
+
+		dstAddr := tezos.MustParseAddress(dst.String())
+
 		s := &sender {
 			log: l,
-			src: src,
-			dst: dst,
+			src: srcAddr,
+			dst: dstAddr,
 		}
+
 		if len(urls) == 0 {
 			return nil, fmt.Errorf("Empty url")
 		}
-		s.cls, err = NewClient(urls[0], src, l)
+		s.cls, err = NewClient(urls[0], srcAddr, l)
 		if err != nil {
 			return nil, err 
 		}
