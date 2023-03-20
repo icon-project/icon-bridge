@@ -1,6 +1,6 @@
 echo "Building Goloop container..."
 cd ./../goloop
-docker build -t icon-algorand_goloop .
+docker build -t icon-algorand_goloop . --no-cache
 
 echo "Running Goloop container..."
 docker run -d \
@@ -28,6 +28,8 @@ cd ../../../javascore
 ./gradlew dummyBSH:optimizedJar
 ./gradlew bmc:optimizedJar
 ./gradlew wrapped-token:optimizedJar
+./gradlew test-token:optimizedJar
+./gradlew escrow:optimizedJar
 
 
 echo "Building Algorand smart contracts..."
@@ -35,3 +37,4 @@ cd ../pyteal
 ./build.sh bmc.bmc bmc
 ./build.sh bsh.bsh bsh
 ./build.sh escrow.escrow escrow
+./build.sh reserve.reserve reserve
