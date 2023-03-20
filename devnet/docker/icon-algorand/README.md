@@ -15,7 +15,7 @@ and testnets respectively.
 
 
 ### Workflow
-In order to showcase a token transfer, the [algorand-integration](.github/workflows/algorand-integration.yml) workflow was created.
+In order to showcase a token transfer, the [algorand-integration](/.github/workflows/algorand-integration.yml) workflow was created.
 It aims to set up local instances of both chains and send messages in both directions asking for
 token transfers.
 It starts by installing the required dependencies, running a container from the icon
