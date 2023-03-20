@@ -22,6 +22,7 @@ import (
 	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"
 	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/near"
 	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/substrate-eth"
+	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/tezos"
 )
 
 var (
