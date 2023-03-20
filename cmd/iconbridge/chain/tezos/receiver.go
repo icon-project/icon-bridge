@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"github.com/icon-project/icon-bridge/common/log"
 	"sync"
 	"strconv"
 	// "blockwatch.cc/tzgo/contract"
@@ -17,19 +17,15 @@ type receiver struct {
 	log log.Logger
 	src tezos.Address
 	dst tezos.Address
-	client Client
+	client *Client
 }
 
-type Receiver struct {
-	log log.Logger
-	src tezos.Address
-	dst tezos.Address
-	Client *Client
-}
+func (r *receiver) Subscribe(
+	ctx context.Context, msgCh chan<- *chain.Message,
+	opts chain.SubscribeOptions) (errCh <-chan error, err error) {
 
-func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, opts chain.SubscribeOptions) (errCh <-chan error, err error) {
-	r.Client.Contract = contract.NewContract(r.src, r.Client.Cl)
-	r.Client.Ctx = ctx
+	r.client.Contract = contract.NewContract(r.src, r.client.Cl)
+	r.client.Ctx = ctx
 
 	opts.Seq++
 
@@ -44,7 +40,7 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 
 	go func() {
 		defer close(_errCh)
-		err := r.Client.MonitorBlock(int64(opts.Height), verifier)
+		err := r.client.MonitorBlock(int64(opts.Height), verifier)
 		
 		if err != nil {
 			_errCh <- err 
@@ -56,7 +52,10 @@ func (r *Receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 	return _errCh, nil
 }
 
-func NewReceiver(src, dst tezos.Address, urls []string, rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error){
+func NewReceiver(
+	src, dst chain.BTPAddress, urls []string,
+	rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error){
+
 	var client *Client
 	var err error
 
@@ -64,23 +63,27 @@ func NewReceiver(src, dst tezos.Address, urls []string, rawOpts json.RawMessage,
 		return nil, fmt.Errorf("Empty urls")
 	}
 
-	client, err = NewClient(urls[0], src, l)
+	srcAddr := tezos.MustParseAddress(src.String())
+
+	dstAddr := tezos.MustParseAddress(dst.String())
+
+	client, err = NewClient(urls[0], srcAddr, l)
 	if err != nil {
 		return nil, err
 	}
 
-	receiver := &Receiver{
+	r := &receiver{
 		log: l,
-		src: src,
-		dst: dst,
-		Client: client,
+		src: srcAddr,
+		dst: dstAddr,
+		client: client,
 	}
 
-	return receiver, nil
+	return r, nil
 }
 
-func (r *Receiver) NewVerifier(previousHeight int64) (vri IVerifier, err error) {
-	header, err := r.Client.GetBlockHeaderByHeight(r.Client.Ctx, r.Client.Cl, previousHeight)
+func (r *receiver) NewVerifier(previousHeight int64) (vri IVerifier, err error) {
+	header, err := r.client.GetBlockHeaderByHeight(r.client.Ctx, r.client.Cl, previousHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +93,7 @@ func (r *Receiver) NewVerifier(previousHeight int64) (vri IVerifier, err error) 
 		return nil, err
 	}
 
-	chainIdHash, err := r.Client.Cl.GetChainId(r.Client.Ctx)
+	chainIdHash, err := r.client.Cl.GetChainId(r.client.Ctx)
 	if err != nil {
 		return nil, err
 	}
