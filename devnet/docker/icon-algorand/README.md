@@ -29,7 +29,7 @@ which will then be copied to the relayer [config file](/devnet/docker/icon-algor
 ### Local execution
 It's also possible to replicate the same steps locally, which can be much more helpful for debugging:
 1. Install Algorand and Pyteal, using the same cmds provided on the workflow file.
-2. Run  [prepare_local_env.sh](devnet/docker/icon-algorand/prepare_local_env.sh) to setup local chain nodes and build the smart contracts.
+2. Run  [local_setup.sh](devnet/docker/icon-algorand/local_setup.sh) to setup local chain nodes and build the smart contracts.
 3. Run [setup_system.sh](devnet/docker/icon-algorand/setup_system.sh) to deploy the contracts and setup the relayer config file.
 4. Go to ``./cmd/iconbridge`` and run ``go run . -config=../../devnet/docker/icon-algorand/algo-config.json``
 to start the relayer.
