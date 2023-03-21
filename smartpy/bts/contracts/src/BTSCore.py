@@ -205,7 +205,71 @@ class BTSCore(sp.Contract):
             _accumulatedFees[i] = Types.Asset(self.data.coinsName[i], aggregationFee[self.data.coinsName[i])
             sp.result(_accumulatedFees)
 
-@sp.add_test(name="Calculator")
+    @sp.entry_point()
+    def transferNativeCoin (self, _to):
+        #TODO: confirm data type for
+        check_transfer_restrictions = sp.contract(sp.string,sp.address,sp.nat, self.data.btsPeriphery_contract_address,"checkTransferRestrictions").open_some()
+        sp.transfer(self.data.nativeCoinName,sp.sender, sp.amount)
+        #  Aggregation Fee will be charged on BSH Contract
+        #  `fixedFee` is introduced as charging fee
+        # charge_amt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
+        charge_amt = sp.amount
+                     * self.data.coinDetails[self.data.nativeCoinName].feeNumerator
+                    //self.FEE_DENOMINATOR
+                    + self.data.coinDetails[self.data.nativeCoinName].fixedFee
+
+        # @dev msg.value is an amount request to transfer (include fee)
+        # Later on, it will be calculated a true amount that should be received at a destination
+        sendServiceMessage(sp.sender, _to, self.data.coinsName[0],sp.amount, charge_amt)
+
+    @sp.entry_point()
+    def transfer(self, coin_name, value, _to):
+    sp.verify(coin_name == self.data.nativeCoinName, message="InvalidWrappedCoin")
+    _fa2_address = self.data.coins[_coinName]
+    sp.verify(_fa2_address != sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc"), message= "CoinNotRegistered")
+    #TODO: confirm data type for
+    check_transfer_restrictions = sp.contract(sp.string,sp.address,sp.nat, self.data.btsPeriphery_contract_address,"checkTransferRestrictions").open_some()
+    sp.transfer(self.data.nativeCoinName,sp.sender, sp.amount)
+    charge_amt = sp.amount
+                     * self.data.coinDetails[self.data.nativeCoinName].feeNumerator
+                    //self.FEE_DENOMINATOR
+                    + self.data.coinDetails[self.data.nativeCoinName].fixedFee
+    #TODO: implement transferFrom function of fa2contract
+    sendServiceMessage(sp.sender, _to, self.data.coinsName[0],sp.amount, charge_amt)
+
+    @sp.entry_point()
+    def transferNativeCoin (self, _to):
+        #TODO: confirm data type for
+        check_transfer_restrictions = sp.contract(sp.string,sp.address,sp.nat, self.data.btsPeriphery_contract_address,"checkTransferRestrictions").open_some()
+        sp.transfer(self.data.nativeCoinName,sp.sender, sp.amount)
+        #  Aggregation Fee will be charged on BSH Contract
+        #  `fixedFee` is introduced as charging fee
+        # charge_amt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
+        charge_amt = sp.amount
+                     * self.data.coinDetails[self.data.nativeCoinName].feeNumerator
+                    //self.FEE_DENOMINATOR
+                    + self.data.coinDetails[self.data.nativeCoinName].fixedFee
+
+        # @dev msg.value is an amount request to transfer (include fee)
+        # Later on, it will be calculated a true amount that should be received at a destination
+        sendServiceMessage(sp.sender, _to, self.data.coinsName[0],sp.amount, charge_amt)
+
+    @sp.entry_point()
+    def transfer(self, coin_name, value, _to):
+        sp.verify(coin_name == self.data.nativeCoinName, message="InvalidWrappedCoin")
+        _fa2_address = self.data.coins[_coinName]
+        sp.verify(_fa2_address != sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc"), message= "CoinNotRegistered")
+        #TODO: confirm data type for
+        check_transfer_restrictions = sp.contract(sp.string,sp.address,sp.nat, self.data.btsPeriphery_contract_address,"checkTransferRestrictions").open_some()
+        sp.transfer(self.data.nativeCoinName,sp.sender, sp.amount)
+        charge_amt = sp.amount
+                        * self.data.coinDetails[self.data.nativeCoinName].feeNumerator
+                        //self.FEE_DENOMINATOR
+                        + self.data.coinDetails[self.data.nativeCoinName].fixedFee
+        #TODO: implement transferFrom function of fa2contract
+        sendServiceMessage(sp.sender, _to, self.data.coinsName[0],sp.amount, charge_amt)
+
+@sp.add_test(name="BTSCore")
 def test():
     c1 = BTSCore(
         ownerManager_address=sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc"),
