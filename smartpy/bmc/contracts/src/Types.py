@@ -40,8 +40,8 @@ class Types:
     )
 
     Link = sp.TRecord(
-        relays=sp.TMap(sp.TNat, sp.TAddress),
-        reachable=sp.TMap(sp.TNat, sp.TString),
+        relays=sp.TSet(sp.TAddress),
+        reachable=sp.TSet(sp.TString),
         rx_seq=sp.TNat,
         tx_seq=sp.TNat,
         block_interval_src=sp.TNat,
