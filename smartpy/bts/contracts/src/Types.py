@@ -65,3 +65,8 @@ class Types:
         net=sp.TString
     )
 
+    Balance = sp.TRecord(
+        locked_balance=sp.TNat,
+        refundable_balance=sp.TNat
+    )
+
