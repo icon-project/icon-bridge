@@ -54,3 +54,34 @@ ALGO_RECEIVER_BALANCE=$(PRIVATE_KEY=$(cat cache/algo_receiver_private_key) ALGOD
 
 echo "Transfer Complete"
 echo "$ALGORAND_RECEIVER_ADDRESS Test Token balance: $ALGO_RECEIVER_BALANCE"
+
+echo "Burn Algorand Wrapped Token"
+echo "Create ICON receiver account"
+goloop ks gen --out receiver.keystore.json
+ICON_RECEIVER_ADDRESS=$(cat receiver.keystore.json | jq -r '.address')
+
+echo "Fund ICON wallet $ICON_RECEIVER_ADDRESS"
+echo "Press enter to start transfer..."
+read
+
+PRIVATE_KEY=$(cat cache/algo_receiver_private_key) ALGOD_ADDRESS=$(cat cache/algod_address) ALGOD_TOKEN=$(cat cache/algo_token) algorand-burn-token ../../../pyteal/teal/reserve $(cat cache/bmc_app_id) $(cat cache/reserve_app_id) $ICON_RECEIVER_ADDRESS $(cat cache/algo_wrapped_token_id) 5000 
+
+echo "Wait 30 seconds for transfer BTP message to ICON"
+sleep 30
+
+echo "Check ICON receiver balance"
+ICON_RECEIVER_BALANCE=$(goloop rpc call \
+--from $(cat icon.keystore.json | jq -r '.address') \
+--to $(cat cache/icon_test_token_addr) \
+--method balanceOf \
+--param _owner=$ICON_RECEIVER_ADDRESS \
+--uri https://lisbon.net.solidwallet.io/api/v3/icon_dex
+)
+
+if [ $(printf "%d\n" $(echo $ICON_RECEIVER_BALANCE | cut -d '"' -f 2)) != 5000 ]
+then
+      echo "ICON receiver balance is not correct"
+      exit 1
+fi
+
+echo "Burn successful"
