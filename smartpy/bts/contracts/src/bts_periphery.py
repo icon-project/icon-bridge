@@ -327,10 +327,10 @@ class BTPPreiphery(sp.Contract):
             # sp.verify(valid_coin == True, "UnregisteredCoin")
 
             # in case of on chain view
-            # check_transfer = sp.view("check_transfer_restrictions", sp.self_address, sp.record(coin_name=assets[i].coin_name,user=to, value=assets[i].value), t=sp.TBool).open_some()
-            # sp.verify(check_transfer == True, "Fail")
+            check_transfer = sp.view("check_transfer_restrictions", sp.self_address, sp.record(coin_name=assets[i].coin_name,user=to, value=assets[i].value), t=sp.TBool).open_some()
+            sp.verify(check_transfer == True, "FailCheckTransfer")
 
-            self.check_transfer_restrictions(sp.record(coin_name=assets[i].coin_name, user=to, value=assets[i].value))
+            # self.check_transfer_restrictions(sp.record(coin_name=assets[i].coin_name, user=to, value=assets[i].value))
 
             # TODO: implement try
 
@@ -395,7 +395,7 @@ class BTPPreiphery(sp.Contract):
         sp.transfer(fa, sp.tez(0), transfer_fees_entry_point)
 
 
-    # @sp.onchain_view()
+    @sp.onchain_view()
     def check_transfer_restrictions(self, params):
         """
 
@@ -409,6 +409,8 @@ class BTPPreiphery(sp.Contract):
 
         sp.verify(self.data.blacklist.contains(params.user) == False, "Blacklisted")
         sp.verify(self.data.token_limit[params.coin_name] >= params.value, "LimitExceed")
+
+        sp.result(True)
 
     def check_parse_address(self, to):
         """
@@ -435,25 +437,25 @@ def test():
 
 
     # counter.add_to_blacklist(["tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"])
-    counter.send_service_message(sp.record(_from=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), to="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW",
-                                           coin_names={0:"Tok1"}, values={0:sp.nat(10)}, fees={0:sp.nat(2)})).run(
-        sender=admin
-    )
-    counter.handle_btp_error(sp.record(svc= "bts", code=sp.nat(2), sn=sp.nat(1), msg="test 1")).run(
-        sender=admin
-    )
-
-    counter.set_token_limit(sp.record(coin_names={0:"Tok2"}, token_limit={0:sp.nat(5)})).run(sender=admin)
-
-    counter.handle_request_service(sp.record(to= sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), assets={0:
-                                             sp.record(coin_name="Tok2", value=sp.nat(4))})).run(
-        sender=admin
-    )
-
-    counter.handle_fee_gathering(sp.record(fa="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts")).run(sender=admin)
-
-    counter.handle_btp_message(sp.record(_from="tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts", sn=sp.nat(4),
-                                         msg=sp.bytes("0x0507070a000000030dae110000") )).run(sender=admin)
+    # counter.send_service_message(sp.record(_from=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), to="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW",
+    #                                        coin_names={0:"Tok1"}, values={0:sp.nat(10)}, fees={0:sp.nat(2)})).run(
+    #     sender=admin
+    # )
+    # counter.handle_btp_error(sp.record(svc= "bts", code=sp.nat(2), sn=sp.nat(1), msg="test 1")).run(
+    #     sender=admin
+    # )
+    #
+    # counter.set_token_limit(sp.record(coin_names={0:"Tok2"}, token_limit={0:sp.nat(5)})).run(sender=admin)
+    #
+    # counter.handle_request_service(sp.record(to= sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), assets={0:
+    #                                          sp.record(coin_name="Tok2", value=sp.nat(4))})).run(
+    #     sender=admin
+    # )
+    #
+    # counter.handle_fee_gathering(sp.record(fa="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts")).run(sender=admin)
+    #
+    # counter.handle_btp_message(sp.record(_from="tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts", sn=sp.nat(4),
+    #                                      msg=sp.bytes("0x0507070a000000030dae110000") )).run(sender=admin)
 
 
 sp.add_compilation_target("bts_periphery", BTPPreiphery(bmc_address=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"),
