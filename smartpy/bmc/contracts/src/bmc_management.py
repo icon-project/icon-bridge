@@ -8,23 +8,45 @@ class BMCManagement(sp.Contract):
     BLOCK_INTERVAL_MSEC = sp.nat(1000)
 
     def __init__(self):
-        self.update_initial_storage(
-            owners=sp.map(l={sp.address("tz1000"): True}, tkey=sp.TAddress, tvalue=sp.TBool),
+        self.init(
+            owners=sp.map(),
             number_of_owners=sp.nat(1),
-            bsh_services=sp.map(tkey=sp.TString, tvalue=sp.TAddress),
-            relay_stats=sp.map(tkey=sp.TAddress, tvalue=types.Types.RelayStats),
-            routes=sp.map(tkey=sp.TString, tvalue=sp.TString),
-            links=sp.map(tkey=sp.TString, tvalue=types.Types.Link),
+            bsh_services=sp.map(),
+            relay_stats=sp.map(),
+            routes=sp.map(),
+            links=sp.map(),
             list_bsh_names=sp.set(),
             list_route_keys=sp.set(),
             list_link_names=sp.set(),
             bmc_periphery=sp.none,
             serial_no=sp.nat(0),
             addrs=sp.set(),
-            get_route_dst_from_net=sp.map(tkey=sp.TString, tvalue=sp.TString),
-            get_link_from_net=sp.map(tkey=sp.TString, tvalue=sp.TString),
-            get_link_from_reachable_net=sp.map(tkey=sp.TString, tvalue=types.Types.Tuple)
+            get_route_dst_from_net=sp.map(),
+            get_link_from_net=sp.map(),
+            get_link_from_reachable_net=sp.map()
         )
+
+        self.init_type(sp.TRecord(
+            owners=sp.TMap(sp.TAddress, sp.TBool),
+            number_of_owners=sp.TNat,
+            bsh_services=sp.TMap(sp.TString, sp.TAddress),
+            relay_stats=sp.TMap(sp.TAddress, types.Types.RelayStats),
+            routes=sp.TMap(sp.TString, sp.TString),
+            links=sp.TMap(sp.TString, types.Types.Link),
+            list_bsh_names=sp.TSet(sp.TString),
+            list_route_keys=sp.TSet(sp.TString),
+            list_link_names=sp.TSet(sp.TString),
+            bmc_periphery=sp.TOption(sp.TAddress),
+            serial_no=sp.TNat,
+            addrs=sp.TSet(sp.TAddress),
+            get_route_dst_from_net=sp.TMap(sp.TString, sp.TString),
+            get_link_from_net=sp.TMap(sp.TString, sp.TString),
+            get_link_from_reachable_net=sp.TMap(sp.TString, types.Types.Tuple)
+        ))
+
+    # to be called after deployment manually
+    def enable(self):
+        self.data.owners[sp.sender] = True
 
     def only_owner(self):
         sp.verify(self.data.owners[sp.sender] == True, "Unauthorized")
@@ -41,7 +63,7 @@ class BMCManagement(sp.Contract):
         """
         sp.set_type(addr, sp.TAddress)
         # self.only_owner()
-        sp.verify(addr != sp.address("tz100000000"), "InvalidAddress")
+        sp.verify(addr != sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc"), "InvalidAddress")
         sp.trace(self.data.bmc_periphery.is_some())
         sp.if self.data.bmc_periphery.is_some():
             sp.verify(addr != self.data.bmc_periphery.open_some("Address not set"), "AlreadyExistsBMCPeriphery")
@@ -93,8 +115,8 @@ class BMCManagement(sp.Contract):
         :return:
         """
         self.only_owner()
-        sp.verify(addr != sp.address("tz100000000"), "InvalidAddress")
-        sp.verify(self.data.bsh_services[svc] == sp.address("tz100000000"), "AlreadyExistsBSH")
+        sp.verify(addr != sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc"), "InvalidAddress")
+        sp.verify(self.data.bsh_services[svc] == sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc"), "AlreadyExistsBSH")
         self.data.bsh_services[svc] = addr
         self.data.list_bsh_names.add(svc)
 
@@ -106,7 +128,7 @@ class BMCManagement(sp.Contract):
         :return:
         """
         self.only_owner()
-        sp.verify(self.data.bsh_services[svc] == sp.address("tz100000000"), "NotExistsBSH")
+        sp.verify(self.data.bsh_services[svc] == sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc"), "NotExistsBSH")
         del self.data.bsh_services[svc]
         self.data.list_bsh_names.remove(svc)
 
@@ -134,13 +156,13 @@ class BMCManagement(sp.Contract):
         sp.set_type(link, sp.TString)
 
         self.only_owner()
-        net, addr= sp.match_pair(strings.split_btp_address(link))
+        net, addr= sp.match_pair(strings.split_btp_address(link, "prev_idx", "result", "my_list", "last", "penultimate"))
 
         with sp.if_(self.data.links.contains(link)):
             sp.verify(self.data.links[link].is_connected == False, "AlreadyExistsLink")
         #TODO:review how to add key in relays map
         self.data.links[link] = sp.record(
-            relays=sp.set([sp.address("tz100000000")]),
+            relays=sp.set([sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc")]),
             reachable=sp.set(["0"]),
             rx_seq=sp.nat(0),
             tx_seq=sp.nat(0),
@@ -156,12 +178,11 @@ class BMCManagement(sp.Contract):
         )
 
         self._propagate_internal("Link", link)
-        links = sp.local("links", self.data.list_link_names.elements(), t=sp.TList(sp.TString))
+        links = self.data.list_link_names
 
         self.data.list_link_names.add(link)
         self.data.get_link_from_net[net] = link
-
-        self._send_internal(link, "Init", links.value)
+        self._send_internal(link, "Init", links.elements())
         sp.trace("in add_link")
 
     @sp.entry_point
@@ -180,7 +201,7 @@ class BMCManagement(sp.Contract):
         with sp.else_():
             sp.failwith("NotExistsLink")
         del self.data.links[link]
-        net, addr= sp.match_pair(strings.split_btp_address(link))
+        net, addr= sp.match_pair(strings.split_btp_address(link, "prev_idx", "result", "my_list", "last", "penultimate"))
         del self.data.get_link_from_net[link]
         self._propagate_internal("Unlink", link)
         self.data.list_link_names.remove(link)
@@ -193,7 +214,6 @@ class BMCManagement(sp.Contract):
         :return: An array of links ( BTP Addresses of the BMCs ).
         """
         sp.result(self.data.list_link_names.elements())
-
 
     @sp.entry_point
     def set_link_rx_height(self, link, height):
@@ -274,35 +294,7 @@ class BMCManagement(sp.Contract):
 
         sp.for item in self.data.list_link_names.elements():
             sp.if self.data.links[item].is_connected:
-                # net, addr = sp.match_pair(strings.split_btp_address(item))
-
-                # split btp address code snippet: because same local value cannot be used multiple times
-                prev_idx1 = sp.local("prev_idx1", 0)
-                result1 = sp.local("result1", [])
-                sp.for idx in sp.range(0, sp.len(item)):
-                    sp.if sp.slice(item, idx, 1).open_some() == "/":
-                        result1.value.push(sp.slice(item, prev_idx1.value, sp.as_nat(idx - prev_idx1.value)).open_some())
-                        prev_idx1.value = idx + 1
-                sp.if sp.len(item) > 0:
-                    result1.value.push(
-                        sp.slice(item, prev_idx1.value, sp.as_nat(sp.len(item) - prev_idx1.value)).open_some())
-
-                inverted_list = sp.local("my_list1", result1.value)
-                last = sp.local("last1", "")
-                penultimate = sp.local("penultimate1", "")
-
-                with sp.match_cons(inverted_list.value) as l:
-                    last.value = l.head
-                    inverted_list.value = l.tail
-                with sp.else_():
-                    sp.failwith("Empty list")
-
-                with sp.match_cons(inverted_list.value) as l:
-                    penultimate.value = l.head
-                with sp.else_():
-                    sp.failwith("Only one element")
-
-                net = last.value
+                net, addr = sp.match_pair(strings.split_btp_address(item, "prev_idx1", "result1", "my_list1", "last1", "penultimate1"))
 
                 # call send_message on BMCPeriphery
                 # TODO: encodeBMCService
@@ -332,33 +324,8 @@ class BMCManagement(sp.Contract):
 
         # net, addr = sp.match_pair(strings.split_btp_address(target))
 
-        # split btp address code snippet: because same local value cannot be used multiple times
-        prev_idx2 = sp.local("prev_idx2", 0)
-        result2 = sp.local("result2", [])
-        sp.for idx in sp.range(0, sp.len(target)):
-            sp.if sp.slice(target, idx, 1).open_some() == "/":
-                result2.value.push(sp.slice(target, prev_idx2.value, sp.as_nat(idx - prev_idx2.value)).open_some())
-                prev_idx2.value = idx + 1
-        sp.if sp.len(target) > 0:
-            result2.value.push(
-                sp.slice(target, prev_idx2.value, sp.as_nat(sp.len(target) - prev_idx2.value)).open_some())
-
-        inverted_list = sp.local("my_list2", result2.value)
-        last = sp.local("last2", "")
-        penultimate = sp.local("penultimate2", "")
-
-        with sp.match_cons(inverted_list.value) as l:
-            last.value = l.head
-            inverted_list.value = l.tail
-        with sp.else_():
-            sp.failwith("Empty list")
-
-        with sp.match_cons(inverted_list.value) as l:
-            penultimate.value = l.head
-        with sp.else_():
-            sp.failwith("Only one element")
-
-        net = last.value
+        net, addr = sp.match_pair(
+            strings.split_btp_address(target, "prev_idx2", "result2", "my_list2", "last2", "penultimate2"))
 
         # call send_message on BMCPeriphery
         # TODO: encodeBMCService
@@ -384,7 +351,7 @@ class BMCManagement(sp.Contract):
 
         self.only_owner()
         sp.verify(sp.len(sp.pack(self.data.routes[dst])) == sp.nat(0), "AlreadyExistRoute")
-        net, addr= sp.match_pair(strings.split_btp_address(dst))
+        net, addr= sp.match_pair(strings.split_btp_address(dst, "prev_idx", "result", "my_list", "last", "penultimate"))
         # TODO: need to verify link is only split never used
         # strings.split_btp_address(link)
 
@@ -404,7 +371,7 @@ class BMCManagement(sp.Contract):
         self.only_owner()
         sp.verify(sp.len(sp.pack(self.data.routes[dst])) != sp.nat(0), "NotExistRoute")
         del self.data.routes[dst]
-        net, addr= sp.match_pair(strings.split_btp_address(dst))
+        net, addr= sp.match_pair(strings.split_btp_address(dst, "prev_idx", "result", "my_list", "last", "penultimate"))
         del self.data.get_route_dst_from_net[net]
         self.data.list_route_keys.remove(dst)
 
@@ -543,12 +510,13 @@ class BMCManagement(sp.Contract):
     @sp.entry_point
     def update_link_reachable(self, prev, to):
         sp.set_type(prev, sp.TString)
-        sp.set_type(to, sp.TSet(sp.TString))
+        sp.set_type(to, sp.TList(sp.TString))
 
         self.only_bmc_periphery()
-        sp.for item in to.elements():
+        sp.for item in to:
             self.data.links[prev].reachable.add(item)
-            net, addr = sp.match_pair(strings.split_btp_address(item))
+            net, addr = sp.match_pair(
+                strings.split_btp_address(item, "prev_idx", "result", "my_list", "last", "penultimate"))
             self.data.get_link_from_reachable_net[net] = sp.record(prev=prev, to=item)
 
     @sp.entry_point
@@ -560,7 +528,8 @@ class BMCManagement(sp.Contract):
         sp.for item in self.data.links[prev].reachable.elements():
             i = sp.local("i", 0)
             sp.if i.value == index:
-                net, addr = sp.match_pair(strings.split_btp_address(item))
+                net, addr = sp.match_pair(
+                    strings.split_btp_address(item, "prev_idx", "result", "my_list", "last", "penultimate"))
 
                 del self.data.get_link_from_reachable_net[net]
                 self.data.links[prev].reachable.remove(item)

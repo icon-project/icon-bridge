@@ -20,7 +20,7 @@ class BMCPreiphery(sp.Contract):
     BMCRevertUnknownHandleBTPMessage = sp.string("UnknownHandleBTPMessage")
 
     def __init__(self, network, bmc_management_addr):
-        self.update_initial_storage(
+        self.init(
             bmc_btp_address=sp.string("btp://") + network + "/" + "jj",
             bmc_management=bmc_management_addr
         )
@@ -55,13 +55,15 @@ class BMCPreiphery(sp.Contract):
         rx_seq = sp.local("rx_seq", link_rx_seq, t=sp.TNat)
         rx_height = sp.local("rx_height", link_rx_height, t=sp.TNat)
 
+        rps = sp.map(tkey=sp.TNat, tvalue=types.Types.ReceiptProof)
         # rsp = decodeReceiptProofs(msg)
-        rps = sp.map({0:sp.record(index=1, events={}, height=3)})
+        # rps = sp.map({sp.nat(0):sp.record(index=1, events=[], height=sp.nat(3))})
         # bmc_msg = sp.local("bmc_msg")
 
         # ev = sp.local("ev")
 
-        sp.for i in sp.range(0, sp.len(rps)):
+        sp.for i in sp.range(sp.nat(0), sp.len(rps)):
+            sp.trace("ll")
             with sp.if_(rps[i].height < rx_height.value):
                 sp.trace("ggg")
                 # sp.continue
@@ -108,7 +110,7 @@ class BMCPreiphery(sp.Contract):
         sp.set_type(prev, sp.TString)
         sp.set_type(msg, types.Types.BMCMessage)
 
-        bsh_addr = sp.local("bsh_addr",sp.TAddress)
+        # bsh_addr = sp.local("bsh_addr",sp.TAddress)
         with sp.if_(msg.svc == "bmc"):
             sm = self.try_decode_bmc_service(msg.message)
             #TODO: implement try catch
@@ -119,7 +121,7 @@ class BMCPreiphery(sp.Contract):
                 sp.for i in sp.range(sp.nat(0), len(gather_fee.svcs)):
                     bsh_addr = sp.view("get_bsh_service_by_name", self.data.bmc_management, gather_fee.svcs[i], t=sp.TAddress)
 
-                    sp.if bsh_addr != "zero_address":
+                    sp.if bsh_addr != sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc"):
                         pass
                         #TODO: call BSH handleFeeGathering
 
@@ -147,7 +149,8 @@ class BMCPreiphery(sp.Contract):
                         sp.transfer(update_link_reachable_args, sp.tez(0), update_link_reachable_entry_point)
 
             sp.if sm.serviceType == "Unlink":
-                to = decodePropagateMessage(sm.payload)
+                # to = decodePropagateMessage(sm.payload)
+                to = "to"
                 link = sp.view("get_link", self.data.bmc_management, prev, t=types.Types.Link).open_some()
 
                 sp.if link.is_connected:
@@ -163,7 +166,8 @@ class BMCPreiphery(sp.Contract):
                             sp.transfer(delete_link_reachable_args, sp.tez(0), delete_link_reachable_entry_point)
 
             sp.if sm.serviceType == "Init":
-                links = decodeInitMessage(sm.payload)
+                # links = decodeInitMessage(sm.payload)
+                links = ["link"]
                 # call update_link_reachable on BMCManagement
                 update_link_reachable_args_type = sp.TRecord(prev=sp.TString, to=sp.TList(sp.TString))
                 update_link_reachable_entry_point = sp.contract(update_link_reachable_args_type,
@@ -174,7 +178,7 @@ class BMCPreiphery(sp.Contract):
         with sp.else_():
             bsh_addr = sp.view("get_bsh_service_by_name", self.data.bmc_management, msg.svc, t=sp.TAddress)
 
-            sp.if bsh_addr == "zero_address":
+            sp.if bsh_addr == sp.addrress("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc"):
                 self._send_error(prev, msg, self.BMC_ERR, self.BMCRevertNotExistsBSH)
                 return
 
@@ -189,12 +193,18 @@ class BMCPreiphery(sp.Contract):
 
 
     def try_decode_btp_message(self, rlp):
+        sp.set_type(rlp, sp.TBytes)
+
         return decodeBMCMessage(rpl)
 
     def try_decode_bmc_service(self, msg):
+        sp.set_type(msg, sp.TBytes)
+
         return decodeBMCService(msg)
 
     def try_decode_gather_fee_message(self, msg):
+        sp.set_type(msg, sp.TBytes)
+
         return decodeGatherFeeMessage(msg)
 
     def _send_message(self, to ,serialized_msg):
@@ -265,9 +275,10 @@ class BMCPreiphery(sp.Contract):
     def get_status(self, _link):
         """
         Get status of BMC
-        :param link: BTP Address of the connected BMC
+        :param _link: BTP Address of the connected BMC
         :return:
         """
+        sp.set_type(_link, sp.TString)
 
         link = sp.view("get_link", self.data.bmc_management, _link, t=types.Types.Link).open_some()
         sp.verify(link.is_connected == True, self.BMCRevertNotExistsLink)

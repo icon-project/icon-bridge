@@ -11,7 +11,7 @@ class Types:
 
     ReceiptProof = sp.TRecord(
         index=sp.TNat,
-        events=sp.TList(MessageEvent),
+        events=sp.TMap(sp.TNat, MessageEvent),
         height=sp.TNat
     )
 
