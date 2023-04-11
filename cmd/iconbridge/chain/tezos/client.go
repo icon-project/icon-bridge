@@ -8,14 +8,17 @@ import (
 	"math/big"
 
 	// "io"
-	"github.com/icon-project/icon-bridge/common/log"
 	"time"
+
+	"github.com/icon-project/icon-bridge/common/log"
 
 	"blockwatch.cc/tzgo/contract"
 	"blockwatch.cc/tzgo/micheline"
 	"blockwatch.cc/tzgo/rpc"
 	"blockwatch.cc/tzgo/signer"
 	"blockwatch.cc/tzgo/tezos"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/tezos/types"
 )
 
 const (
@@ -28,10 +31,12 @@ type IClient interface {
 	// Call(ctx context.Context, callArgs contract.CallArguments, opts *rpc.CallOptions)
 	GetBalance(ctx context.Context, connection *rpc.Client, account tezos.Address, blockLevel int64)
 	GetBlockByHeight(ctx context.Context, connection *rpc.Client, blockLevel int64) (*rpc.Block, error)
+	GetBlockHeightByHash(ctx context.Context, connection *rpc.Client, hash tezos.BlockHash) (int64, error)
 	// GetBlockHeaderByHeight(ctx context.Context, connection *rpc.Client, blockLevel int64)
 	// GetBlockMetadataByHash(ctx context.Context, connection *rpc.Client, blockHash tezos.Hash)
 
-	MonitorBlock(ctx context.Context, client *rpc.Client, connection *contract.Contract, blockLevel int64) (*rpc.Block, error)
+	MonitorBlock(ctx context.Context, client *rpc.Client, connection *contract.Contract, 
+		blockLevel int64, callback func(v *types.BlockNotification) error) (*rpc.Block, error)
 	// MonitorEvent(ctx context.Context, connection *rpc.Client, blockLevel int64)
 
 	GetLastBlock(ctx context.Context, connection *rpc.Client) (*rpc.Block, error)
@@ -51,7 +56,7 @@ type TypesLinkStats struct {
 
 type Client struct {
 	Log log.Logger
-	Ctx context.Context
+	// Ctx context.Context
 	Cl *rpc.Client
 	Contract *contract.Contract
 	blockLevel int64
@@ -103,6 +108,14 @@ func (c *Client) GetBlockByHeight(ctx context.Context, connection *rpc.Client, b
 	return block, nil
 }
 
+func (c *Client) GetBlockHeightByHash(ctx context.Context, connection *rpc.Client, hash tezos.BlockHash) (uint64, error) {
+	block, err := connection.GetBlock(ctx, hash)
+	if err != nil {
+		return 0, err 
+	}
+	return uint64(block.Header.Level), nil 
+}
+
 func (c *Client) GetBlockHeaderByHeight(ctx context.Context, connection *rpc.Client, blockLevel int64)(*rpc.BlockHeader, error){
 	block, err := connection.GetBlockHeader(ctx, rpc.BlockLevel(blockLevel))
 	if err != nil {
@@ -111,21 +124,21 @@ func (c *Client) GetBlockHeaderByHeight(ctx context.Context, connection *rpc.Cli
 	return block, nil
 }
 
-func (c *Client) MonitorBlock(blockLevel int64, verifier IVerifier) (error) {
+func (c *Client) MonitorBlock(ctx context.Context, blockLevel int64, verifier IVerifier, callback func(v []*chain.Receipt) error) (error) {
 	fmt.Println("reached in monitor block")
 	relayTicker := time.NewTicker(DefaultBlockWaitInterval)
 	defer relayTicker.Stop()
 
 	for {
 		select {
-		case <- c.Ctx.Done():
+		case <- ctx.Done():
 			return fmt.Errorf("Context done")
 		case <- relayTicker.C:
 			fmt.Println("*************************************************************")
 			fmt.Print("Trying to fetch block for blockLevel ")
 			fmt.Println(blockLevel)
 
-			block, err := c.GetBlockByHeight(c.Ctx, c.Cl, blockLevel)
+			block, err := c.GetBlockByHeight(ctx, c.Cl, blockLevel)
 			
 			if err != nil {
 				fmt.Println(err)
@@ -136,12 +149,13 @@ func (c *Client) MonitorBlock(blockLevel int64, verifier IVerifier) (error) {
 				continue
 			}
 			
-			header, err := c.GetBlockHeaderByHeight(c.Ctx, c.Cl, blockLevel)
+			header, err := c.GetBlockHeaderByHeight(ctx, c.Cl, blockLevel)
 			if err != nil {
 				return err
 			}
+			fmt.Println(block.Metadata.ProposerConsensusKey)
 
-			err = verifier.Verify(header, &block.Metadata.Baker)
+			err = verifier.Verify(ctx, header, block.Metadata.ProposerConsensusKey, c.Cl, header.Hash)
 
 			if err != nil {
 				fmt.Println(err)
@@ -168,7 +182,18 @@ func (c *Client) MonitorBlock(blockLevel int64, verifier IVerifier) (error) {
 						switch operation.Kind() {
 						case tezos.OpTypeTransaction:
 							tx := operation.(*rpc.Transaction)
-							returnTxMetadata(tx, c.Contract.Address())
+							receipt, err := returnTxMetadata(tx, c.Contract.Address())
+							if err != nil {
+								return err
+							}
+							if len(receipt) != 0 {
+								fmt.Println("callback start")
+								err := callback(receipt)
+								fmt.Println("call back end")
+								if err != nil {
+									return err
+								}
+							}
 						}
 					}
 				}
@@ -178,12 +203,14 @@ func (c *Client) MonitorBlock(blockLevel int64, verifier IVerifier) (error) {
 	}
 }
 
-func returnTxMetadata(tx *rpc.Transaction, contractAddress tezos.Address) error {
+func returnTxMetadata(tx *rpc.Transaction, contractAddress tezos.Address) ([]*chain.Receipt, error) {
 	_, err := fmt.Println(tx.Destination)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	address := tx.Destination
+	
+	var receipts []*chain.Receipt 
 	if address.ContractAddress() == contractAddress.ContractAddress() {
 		fmt.Println("Address matched")
 		fmt.Println("****************")
@@ -201,11 +228,17 @@ func returnTxMetadata(tx *rpc.Transaction, contractAddress tezos.Address) error 
 		fmt.Println("****")
 
 		if tx.Metadata.InternalResults[0].Tag == "TokenMinted" {
-			fmt.Println("Payload is")
-			fmt.Println(tx.Metadata.InternalResults[0].Payload.Int)
+			var events []*chain.Event
+
+			events = append(events, &chain.Event{
+				Message: []byte(tx.Metadata.InternalResults[0].Tag),
+			})
+			receipts = append(receipts, &chain.Receipt{
+				Events: events,
+			})
 		}
 	}
-	return nil
+	return receipts, nil
 }
 
 func (c *Client) GetClient()(*rpc.Client) {
@@ -252,8 +285,6 @@ func NewClient(uri string, src tezos.Address, l log.Logger) (*Client, error){
 
 	return &Client{Log: l, Cl: c, Contract: conn}, nil
 }
-
-
 
 func PrettyEncode(data interface{}) error {
 	var buffer bytes.Buffer
