@@ -46,20 +46,17 @@ func NewSender(
 	urls []string, w wallet.Wallet,
 	rawOpts json.RawMessage, l log.Logger) (chain.Sender, error) {
 		var err error
-		srcAddr := tezos.MustParseAddress(src.String())
-
-		dstAddr := tezos.MustParseAddress(dst.String())
-
+		source := tezos.MustParseAddress(src.String())
+		dest := tezos.MustParseAddress(dst.String())
 		s := &sender {
 			log: l,
-			src: srcAddr,
-			dst: dstAddr,
+			src: source,
+			dst: dest,
 		}
-
 		if len(urls) == 0 {
 			return nil, fmt.Errorf("Empty url")
 		}
-		s.cls, err = NewClient(urls[0], srcAddr, l)
+		s.cls, err = NewClient(urls[0], source, l)
 		if err != nil {
 			return nil, err 
 		}
@@ -137,7 +134,23 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 }
 
 func (s *sender) Status(ctx context.Context) (link *chain.BMCLinkStatus, err error) {
-	return nil, nil
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	status, err := s.cls.GetStatus(ctx, s.cls.Contract)
+	if err != nil {
+		return nil, err
+	}
+
+	ls := &chain.BMCLinkStatus{}
+
+	ls.TxSeq = status.TxSeq.Uint64()
+	ls.RxSeq = status.RxSeq.Uint64()
+	ls.CurrentHeight = status.CurrentHeight.Uint64()
+	ls.RxHeight = status.RxHeight.Uint64()
+
+	return ls, nil
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*relayTx, error) {
@@ -199,5 +212,15 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 }
 
 func (tx *relayTx) Receipt(ctx context.Context) (blockHeight uint64, err error) {
-	return uint64(0), nil
+	if tx.receipt == nil {
+		return 0, fmt.Errorf("couldnot get receipt")
+	}
+
+	blockHash := tx.receipt.Block
+
+	blockHeight, err = tx.cl.GetBlockHeightByHash(ctx, tx.cl.Cl, blockHash)
+	if err != nil {
+		return 0, err
+	}
+	return blockHeight, nil 
 }
