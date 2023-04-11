@@ -5,14 +5,16 @@ import (
 	"sync"
 
 	"strconv"
+	"context"
 
 	"blockwatch.cc/tzgo/rpc"
 	"blockwatch.cc/tzgo/tezos"
+	"blockwatch.cc/tzgo/codec"
 )
 
 type IVerifier interface {
 	Next() int64
-	Verify(header *rpc.BlockHeader, proposer *tezos.Address) error
+	Verify(ctx context.Context, header *rpc.BlockHeader, proposer tezos.Address, c *rpc.Client, hash tezos.BlockHash) error
 	Update(header *rpc.BlockHeader) error
 	ParentHash() tezos.BlockHash
 	IsValidator(proposer tezos.Address, height int64) bool	
@@ -29,52 +31,58 @@ type Verifier struct{
 
 func (vr *Verifier) Next() int64{
 	vr.mu.RLock()
+	defer vr.mu.RUnlock()
 	return vr.next
 }
 
-func (vr *Verifier) Verify(header *rpc.BlockHeader, proposer *tezos.Address) error {
+func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, proposer tezos.Address, c *rpc.Client, hash tezos.BlockHash) error {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
+	fmt.Println("has to reach in verify the second time")
+	fmt.Println(header.Level)
 	blockFittness := header.Fitness
+	fmt.Println(blockFittness)
 	currentFittness, err := strconv.ParseInt(string(blockFittness[1].String()), 16, 64)
 	if err != nil {
 		return err
 	}
 
-	fmt.Print("Current fittness: ")
-	fmt.Println(currentFittness)
-
-	fmt.Print("Parent fittness")
-	fmt.Println(vr.parentFittness)
-
 	if currentFittness < vr.parentFittness {
 		return fmt.Errorf("Invalid block fittness")
 	}
+	fmt.Println("validated the block fittness")
 
 	previousHashInBlock := header.Predecessor
-
-	fmt.Print("Current fittness: ")
 	fmt.Println(previousHashInBlock)
 
-	fmt.Print("Parent fittness")
 	fmt.Println(vr.parentHash)
-
 
 	if previousHashInBlock.String() != vr.parentHash.String() {
 		return fmt.Errorf("Invalid block hash")
 	}
+
+	fmt.Println("here????")
+
+	
 	fmt.Println("Block is verified")
 	fmt.Println("*******         *******")
 	fmt.Println("  *******     *******")
 	fmt.Println("    ******* *******")
 
+	// isValidSignature, err := vr.VerifySignature(ctx, proposer, header.Signature, header.Level, header, c)
 
+	// if !isValidSignature {
+	// 	return fmt.Errorf("Invalid block hash. Signature mismatch")
+	// }
+
+	fmt.Println(true)
 	return nil 
 }
 
 func (vr *Verifier) Update(header *rpc.BlockHeader) error {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
+	fmt.Println("updating????")
 	blockFittness := header.Fitness
 
 	currentFittness, err := strconv.ParseInt(string(blockFittness[1].String()), 16, 64)
@@ -100,4 +108,46 @@ func (vr *Verifier) IsValidator(proposer tezos.Address, height int64) bool {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
 	return true
+}
+
+func (vr *Verifier) VerifySignature(ctx context.Context, proposer tezos.Address, signature tezos.Signature, blockLevel int64, header *rpc.BlockHeader, c *rpc.Client) (bool, error) {
+	exposedPublicKey, err := c.GetManagerKey(ctx, proposer, rpc.BlockLevel(blockLevel))
+	if err != nil {
+		return false, err 
+	}
+
+	blockHeader := codec.BlockHeader{
+		Level: 				int32(header.Level),     
+		Proto: 				byte(header.Proto),
+		Predecessor: 		header.Predecessor,
+		Timestamp: 			header.Timestamp,
+		ValidationPass: 	byte(header.ValidationPass),
+		OperationsHash: 	header.OperationsHash,
+		Fitness: 			header.Fitness,
+		Context: 			header.Context,
+		PayloadHash: 		header.PayloadHash,
+		PayloadRound: 		header.PayloadRound,
+		ProofOfWorkNonce: 	header.ProofOfWorkNonce,
+		LbToggleVote: 		header.LbVote(),
+		// SeedNonceHash: 		block.Metadata.NonceHash,		
+		ChainId: 			&header.ChainId,	
+	}
+
+
+	digestedHash := blockHeader.Digest()
+
+
+	err = exposedPublicKey.Verify(digestedHash[:], header.Signature)
+
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+
+	return true, nil 
+}
+
+type VerifierOptions struct {
+	BlockHeight 		int64 				`json:"blockHeight"`
+	BlockHash 			tezos.BlockHash 	`json:"parentHash"`
 }
