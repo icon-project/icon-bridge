@@ -38,7 +38,7 @@ class BTPPreiphery(sp.Contract):
 
         :return: boolean
         """
-        sp.result(self.data.number_of_pending_requests != 0)
+        sp.result(self.data.number_of_pending_requests != sp.nat(0))
 
     @sp.entry_point
     def add_to_blacklist(self, params):

@@ -26,14 +26,14 @@ def split_btp_address(base):
     with sp.match_cons(inverted_list.value) as l:
         last.value = l.head
         inverted_list.value = l.tail
-    with sp.else_():
-        sp.failwith("Empty list")
+    # with sp.else_():
+    #     sp.failwith("Empty list")
 
 
     with sp.match_cons(inverted_list.value) as l:
         penultimate.value = l.head
-    with sp.else_():
-        sp.failwith("Only one element")
+    # with sp.else_():
+    #     sp.failwith("Only one element")
 
     return sp.pair(last.value, penultimate.value)
 
