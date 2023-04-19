@@ -2,6 +2,7 @@ import smartpy as sp
 
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 strings = sp.io.import_script_from_url("file:./contracts/src/String.py")
+rlp_encode = sp.io.import_script_from_url("file:./contracts/src/RLP_encode_struct.py")
 
 
 class BMCPreiphery(sp.Contract):
@@ -33,12 +34,14 @@ class BMCPreiphery(sp.Contract):
         sp.set_type(prev, sp.TString)
 
         sp.trace(prev)
+        #TODO: check sp. view
+
         # relay = sp.view("get_link_relays", self.data.bmc_management, prev, t=sp.TList(sp.TAddress)).open_some()
         relay = []
         sp.for x in relay:
             sp.if sp.sender == x:
                 return
-        sp.fail_with(self.BMCRevertUnauthorized)
+        sp.failwith(self.BMCRevertUnauthorized)
 
     @sp.entry_point
     def handle_relay_message(self, prev, msg):
@@ -228,7 +231,7 @@ class BMCPreiphery(sp.Contract):
         sp.set_type(err_msg, sp.TString)
 
         if message.sn > sp.nat(0):
-            serialized_msg = encode_bmc_message(sp.record(
+            serialized_msg = rlp_encode.encode_bmc_message(sp.record(
                 src=self.data.bmc_btp_address,
                 dst=message.src,
                 svc=message.svc,
@@ -259,16 +262,14 @@ class BMCPreiphery(sp.Contract):
 
         next_link, dst = sp.match_pair(sp.view("resolve_route", self.data.bmc_management, to, t=sp.TPair(sp.TString, sp.TString)).open_some())
 
-        # need to import encode_bmc_message from library
-        # rlp = encode_bmc_message(sp.record(
-        #         src=self.data.bmc_btp_address,
-        #         dst=dst,
-        #         svc=svc,
-        #         sn=sn,
-        #         message=msg
-        # ))
-        next_link = "next_link"
-        rlp = sp.bytes("0x0dae11")
+        rlp = rlp_encode.encode_bmc_message(sp.record(
+                src=self.data.bmc_btp_address,
+                dst=dst,
+                svc=svc,
+                sn=sn,
+                message=msg
+        ))
+        # next_link = "next_link"
         self._send_message(next_link, rlp)
 
     @sp.onchain_view()
@@ -303,4 +304,4 @@ def test():
     bmc.handle_relay_message(sp.record(prev="demo string", msg=sp.bytes("0x0dae11"))).run(sender=alice)
 
 sp.add_compilation_target("bmc_periphery", BMCPreiphery(network="tezos",
-                                                        bmc_management_addr=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW")))
+                                                        bmc_management_addr=sp.address("KT1GmZEcN82NbZrxXkhazvuX6ybJB12JTJAT")))
