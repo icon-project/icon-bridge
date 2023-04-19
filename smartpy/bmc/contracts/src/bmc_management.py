@@ -557,24 +557,24 @@ class BMCManagement(sp.Contract):
         self.data.relay_stats[relay].block_count += block_count_val
         self.data.relay_stats[relay].msg_count += msg_count_val
 
-    @sp.onchain_view()
+    # @sp.onchain_view()
     def resolve_route(self, dst_net):
         sp.set_type(dst_net, sp.TString)
 
         self.only_bmc_periphery()
         dst = sp.local("dst", self.data.get_route_dst_from_net[dst_net], t=sp.TString)
 
-        with sp.if_(sp.len(sp.pack(dst.value))!= sp.nat(0)):
-            sp.result(sp.pair(self.data.routes[dst.value], dst.value))
-        with sp.else_():
-            dst_link = sp.local("dst_link", self.data.get_link_from_net[dst_net], t=sp.TString)
-            with sp.if_(sp.len(sp.pack(dst_link.value)) != sp.nat(0)):
-                sp.result(sp.pair(dst_link.value, dst_link.value))
-            with sp.else_():
-                res = sp.local("res", self.data.get_link_from_reachable_net[dst_net], t=types.Types.Tuple)
-                sp.verify(sp.len(sp.pack(res.value.to)) > sp.nat(0), "Unreachable: " + dst_net + " is unreachable")
+        sp.if sp.len(sp.pack(dst.value))!= sp.nat(0):
+            return sp.pair(self.data.routes[dst.value], dst.value)
 
-                sp.result(sp.pair(res.value.prev, res.value.to))
+        dst_link = sp.local("dst_link", self.data.get_link_from_net[dst_net], t=sp.TString)
+        sp.if sp.len(sp.pack(dst_link.value)) != sp.nat(0):
+            return sp.pair(dst_link.value, dst_link.value)
+
+        res = sp.local("res", self.data.get_link_from_reachable_net[dst_net], t=types.Types.Tuple)
+        sp.verify(sp.len(sp.pack(res.value.to)) > sp.nat(0), "Unreachable: " + dst_net + " is unreachable")
+
+        return sp.pair(res.value.prev, res.value.to)
 
 
 @sp.add_test(name="BMCM")
