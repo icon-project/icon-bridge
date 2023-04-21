@@ -506,8 +506,7 @@ class BTSCore(sp.Contract):
         sp.set_type(to, sp.TAddress)
         sp.set_type(amount, sp.TNat)
 
-        #TODO: confirm sp.send call
-        sp.send(to, amount, message="PaymentFailed")
+        sp.send(to, sp.utils.nat_to_mutez(amount), message="PaymentFailed")
 
     @sp.entry_point
     def mint(self, to, coin_name, value):
