@@ -38,7 +38,7 @@ class BTSOwnerManager(sp.Contract):
         """
         sp.set_type(owner, sp.TAddress)
 
-        sp.verify(sp.len(self.data.set_of_owners) > 1, message="CannotRemoveMinOwner")
+        sp.verify(sp.len(self.data.set_of_owners.elements()) > 1, message="CannotRemoveMinOwner")
         sp.verify(self.data.owners[owner] == True, message="NotOwner")
 
         del self.data.owners[owner]
