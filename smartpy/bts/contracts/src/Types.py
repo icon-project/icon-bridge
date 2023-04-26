@@ -41,12 +41,11 @@ class Types:
     TransferCoin = sp.TRecord(
         from_addr=sp.TString,
         to=sp.TString,
-        assets=sp.TList(Asset)
+        assets=sp.TMap(sp.TNat, Asset)
     )
 
     PendingTransferCoin = sp.TRecord(
-        # from_addr=sp.TString, (change to original later)
-        from_addr=sp.TAddress,
+        from_addr=sp.TString,
         to=sp.TString,
         coin_names=sp.TMap(sp.TNat, sp.TString),
         amounts=sp.TMap(sp.TNat, sp.TNat),
