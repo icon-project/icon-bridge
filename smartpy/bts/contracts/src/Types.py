@@ -45,7 +45,7 @@ class Types:
     )
 
     PendingTransferCoin = sp.TRecord(
-        from_addr=sp.TString,
+        from_=sp.TString,
         to=sp.TString,
         coin_names=sp.TMap(sp.TNat, sp.TString),
         amounts=sp.TMap(sp.TNat, sp.TNat),
