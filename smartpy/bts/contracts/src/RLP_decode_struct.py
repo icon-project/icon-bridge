@@ -177,3 +177,120 @@ def decode_receipt_proof(self, rlp):
             counter.value = counter.value + 1
             ep.value[counter.value] = sp.record(index=temp_int, eventMptNode=temp_map)
     return sp.record(index=rv_int.value, txReceipts=txReceipts.value, eventMptNode=ep.value)
+
+def decode_transfer_coin_msg(self, rlp):
+    decode_list = sp.build_lambda(Utils.RLP.Decoder.decode_list)
+    rlp_ = decode_list(rlp)
+    decode_string = sp.build_lambda(Utils.RLP.Decoder.decode_string)
+
+    temp_byt = sp.local("byt_transfer", sp.bytes("0x"))
+    rv1_byt = sp.local("rv1_byt", sp.bytes("0x"))
+    rv2_byt = sp.local("rv2_byt", sp.bytes("0x"))
+    counter = sp.local("counter", 0)
+    sp.for i in rlp_.items():
+        sp.if counter.value == 2:
+            temp_byt.value = i.value
+        sp.if counter.value == 0:
+            rv1_byt.value = i.value
+        sp.if counter.value == 1:
+            rv2_byt.value = i.value
+        counter.value = counter.value + 1
+    starts_with = sp.slice(temp_byt.value, 0, 2).open_some()
+    sub_list = sp.local("sub_list", temp_byt.value)
+    sp.if starts_with == sp.bytes("0xb846"):
+        sub_list.value = sp.slice(temp_byt.value, 2, sp.as_nat(sp.len(temp_byt.value) - 2)).open_some()
+    new_sub_list = decode_list(sub_list.value)
+    counter.value = 0
+    new_temp_byt = sp.local("new_temp_byt", sp.bytes("0x"))
+    rv_assets = sp.local("assets", sp.TMap(sp.TNat, sp.TBytes))
+    sp.for x in new_sub_list.items():
+        new_temp_byt.value = x.value
+        sp.if sp.slice(new_temp_byt.value, 0, 2).open_some() == sp.bytes("0xb846"):
+            new_temp_byt.value = sp.slice(new_temp_byt.value, 2, sp.as_nat(sp.len(new_temp_byt.value) - 2)).open_some()
+        temp_byt = sp.local("tempByt2", sp.bytes("0x"))
+        temp_int = sp.local("tempInt", 0)
+        counter.value = 0
+        sp.for i in decode_list(new_temp_byt.value):
+            sp.if counter.value == 1:
+                temp_int = i.value
+            sp.if counter.value == 0:
+                temp_byt = i.value
+            rv_assets.value[counter.value] = sp.record(coinName=temp_int, value=temp_byt)
+            counter.value = counter.value + 1
+    rv1 = decode_string(rv1_byt.value)
+    rv2 = decode_string(rv2_byt.value)
+    return sp.record(from_= rv1, to = rv2 , assets = rv_assets)
+
+def decode_blacklist_msg(self, rlp):
+    decode_list = sp.build_lambda(Utils.RLP.Decoder.decode_list)
+    rlp_ = decode_list(rlp)
+    decode_string = sp.build_lambda(Utils.RLP.Decoder.decode_string)
+
+    temp_byt = sp.local("byt_transfer", sp.bytes("0x"))
+    rv1_byt = sp.local("rv1_byt", sp.bytes("0x"))
+    rv2_byt = sp.local("rv2_byt", sp.bytes("0x"))
+    counter = sp.local("counter", 0)
+    sp.for i in rlp_.items():
+        sp.if counter.value == 2:
+            rv2_byt.value = i.value
+        sp.if counter.value == 0:
+            rv1_byt.value = i.value
+        sp.if counter.value == 1:
+            temp_byt.value = i.value
+        counter.value = counter.value + 1
+    starts_with = sp.slice(temp_byt.value, 0, 2).open_some()
+    sub_list = sp.local("sub_list", temp_byt.value)
+    sp.if starts_with == sp.bytes("0xb846"):
+        sub_list.value = sp.slice(temp_byt.value, 2, sp.as_nat(sp.len(temp_byt.value) - 2)).open_some()
+    new_sub_list = decode_list(sub_list.value)
+    counter.value = 0
+    new_temp_byt = sp.local("new_temp_byt", sp.bytes("0x"))
+    rv_blacklist_address = sp.local("blacklist_data", sp.TMap(sp.TNat, sp.TBytes))
+    sp.for x in new_sub_list.items():
+        new_temp_byt.value = x.value
+        sp.if sp.slice(new_temp_byt.value, 0, 2).open_some() == sp.bytes("0xb846"):
+            new_temp_byt.value = sp.slice(new_temp_byt.value, 2, sp.as_nat(sp.len(new_temp_byt.value) - 2)).open_some()
+        counter.value = 0
+        sp.for j in decode_list(new_temp_byt.value):
+            rv_blacklist_address.value[counter.value] = decode_string(j.value)
+            counter.value = counter.value + 1
+    rv1 = Utils2.Int.of_bytes(rv1_byt.value)
+    rv2 = decode_string(rv2_byt.value)
+    with sp.if_(rv1 == 0):
+        _service_type = sp.variant("ADD_TO_BLACKLIST", rv1)
+    with sp.else_():
+        _service_type = sp.variant("REMOVE_FROM_BLACKLIST", rv1)
+    return sp.record(serviceType = _service_type , addrs = rv_blacklist_address , net = decode_string(rv2))
+
+def decode_token_limit_msg(self, rlp):
+    decode_list = sp.build_lambda(Utils.RLP.Decoder.decode_list)
+    rlp_ = decode_list(rlp)
+    decode_string = sp.build_lambda(Utils.RLP.Decoder.decode_string)
+
+    temp_byt = sp.local("byt_transfer", sp.bytes("0x"))
+    temp_byt1 = sp.local("byt_transfer", sp.bytes("0x"))
+    rv1_byt = sp.local("rv1_byt", sp.bytes("0x"))
+    counter = sp.local("counter", 0)
+    sp.for i in rlp_.items():
+        sp.if counter.value == 0:
+            temp_byt.value = i.value
+        sp.if counter.value == 1:
+            temp_byt1.value = i.value
+        sp.if counter.value == 2:
+            rv1_byt.value = i.value
+        counter.value = counter.value + 1
+    starts_with = sp.slice(temp_byt.value, 0, 2).open_some()
+    sub_list = sp.local("sub_list", temp_byt.value)
+    sp.if starts_with == sp.bytes("0xb846"):
+        sub_list.value = sp.slice(temp_byt.value, 2, sp.as_nat(sp.len(temp_byt.value) - 2)).open_some()
+    new_sub_list = decode_list(sub_list.value)
+    counter.value = 0
+    rv_names = sp.local("names", sp.TMap(sp.TNat, sp.TString))
+    rv_limit = sp.local("limit", sp.TMap(sp.TNat, sp.TInt))
+    sp.for x in new_sub_list.items():
+        rv_names.value[counter.value] = decode_string(x.value)
+
+    new_sub_list1 = decode_list(sub_list.value)
+    sp.for y in new_sub_list1.items():
+        rv_names.value[counter.value] = Utils2.Int.of_bytes(y.value)
+    return sp.record(coinName = rv_names, tokenLimit = rv_limit , net = decode_string(rv1_byt.value))
