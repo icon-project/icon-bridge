@@ -3,6 +3,7 @@ import smartpy as sp
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 strings = sp.io.import_script_from_url("file:./contracts/src/String.py")
 rlp_encode = sp.io.import_script_from_url("file:./contracts/src/RLP_encode_struct.py")
+rlp_decode = sp.io.import_script_from_url("file:./contracts/src/RLP_decode_struct.py")
 parse_addr = sp.io.import_script_from_url("file:./contracts/src/parse_address.py")
 
 class BTPPreiphery(sp.Contract):
@@ -27,7 +28,7 @@ class BTPPreiphery(sp.Contract):
     def only_bmc(self):
         sp.verify(sp.sender == self.data.bmc, "Unauthorized")
 
-    def only_btp_core(self):
+    def only_bts_core(self):
         sp.verify(sp.sender == self.data.bts_core, "Unauthorized")
 
     @sp.onchain_view()
@@ -45,12 +46,12 @@ class BTPPreiphery(sp.Contract):
         :param params: List of addresses to be blacklisted
         :return:
         """
-        sp.set_type(params, sp.TList(sp.TString))
-        # sp.verify(sp.sender == sp.self_address, "Unauthorized")
+        sp.set_type(params, sp.TMap(sp.TNat, sp.TString))
+        sp.verify(sp.sender == sp.self_address, "Unauthorized")
         sp.verify(sp.len(params) <= self.MAX_BATCH_SIZE, "BatchMaxSizeExceed")
 
-        sp.for itm in params:
-            parsed_addr = parse_addr.str_to_addr(itm)
+        sp.for i in sp.range(sp.nat(0), sp.len(params)):
+            parsed_addr = parse_addr.str_to_addr(params.get(i))
             with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
                 self.data.blacklist[parsed_addr] = True
             with sp.else_():
@@ -63,13 +64,13 @@ class BTPPreiphery(sp.Contract):
         :param params: list of address strings
         :return:
         """
-        sp.set_type(params, sp.TList(sp.TString))
+        sp.set_type(params, sp.TMap(sp.TNat, sp.TString))
 
-        # sp.verify(sp.sender == sp.self_address, "Unauthorized")
+        sp.verify(sp.sender == sp.self_address, "Unauthorized")
         sp.verify(sp.len(params) <= self.MAX_BATCH_SIZE, "BatchMaxSizeExceed")
 
-        sp.for itm in params:
-            parsed_addr = parse_addr.str_to_addr(itm)
+        sp.for i in sp.range(sp.nat(0), sp.len(params)):
+            parsed_addr = parse_addr.str_to_addr(params.get(i))
             with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
                 sp.verify(self.data.blacklist.contains(parsed_addr), "UserNotFound")
                 sp.verify(self.data.blacklist.get(parsed_addr) == True, "UserNotBlacklisted")
@@ -87,8 +88,7 @@ class BTPPreiphery(sp.Contract):
         sp.set_type(coin_names, sp.TMap(sp.TNat, sp.TString))
         sp.set_type(token_limit, sp.TMap(sp.TNat, sp.TNat))
 
-        # uncomment later
-        # sp.verify((sp.sender == sp.self_address )| (sp.sender == self.data.bts_core), "Unauthorized")
+        sp.verify((sp.sender == sp.self_address )| (sp.sender == self.data.bts_core), "Unauthorized")
         sp.verify(sp.len(coin_names) == sp.len(token_limit), "InvalidParams")
         sp.verify(sp.len(coin_names) <= self.MAX_BATCH_SIZE, "BatchMaxSizeExceed")
 
@@ -114,7 +114,7 @@ class BTPPreiphery(sp.Contract):
         sp.set_type(values, sp.TMap(sp.TNat, sp.TNat))
         sp.set_type(fees, sp.TMap(sp.TNat, sp.TNat))
 
-        self.only_btp_core()
+        self.only_bts_core()
 
         to_network, to_address = sp.match_pair(strings.split_btp_address(to))
 
@@ -149,7 +149,7 @@ class BTPPreiphery(sp.Contract):
 
         # push pending tx into record list
         self.data.requests[self.data.serial_no] = sp.record(
-            from_addr=start_from, to=to, coin_names=coin_names, amounts=values, fees=fees
+            from_=start_from, to=to, coin_names=coin_names, amounts=values, fees=fees
         )
         self.data.number_of_pending_requests +=sp.nat(1)
         sp.emit(sp.record(from_address=_from, to=to, serial_no=self.data.serial_no, assets_details=assets_details), tag="TransferStart")
@@ -171,75 +171,62 @@ class BTPPreiphery(sp.Contract):
         sp.set_type(sn, sp.TNat)
         sp.set_type(msg, sp.TBytes)
 
-        # self.only_bmc()
-        # TODO: implement try catch
+        self.only_bmc()
 
         sp.verify(svc == self.service_name, "InvalidSvc")
         err_msg = sp.local("error", "")
+        sm = rlp_decode.decode_service_message(msg)
 
-        # byt= sp.pack(sp.record(serviceType=sp.variant("REQUEST_COIN_TRANSFER", 0), data=sp.bytes("0x0dae11")))
-        # sp.trace(byt)
-
-        sm = sp.unpack(msg, t=types.Types.ServiceMessage).open_some()
-        # sm=sp.record(serviceType=sp.variant("REQUEST_COIN_TRANSFER", 0), data=sp.bytes("0x0dae11"))
-        sp.trace(sm.serviceType)
-
-        # service_type = sm.serviceType
-        # service_type = sp.set_type_expr(service_type, types.Types.s_type)
-        # sp.trace(service_type)
-
+        # TODO: implement try in below cases
         with sm.serviceType.match_cases() as arg:
             with arg.match("REQUEST_COIN_TRANSFER") as a1:
-                # TODO: decode tc
-                # tc = sp.unpack(sm.data, t=types.Types.TransferCoin)
-                # parsed_addr = parse_addr.str_to_addr(tc.to)
-                # remove below parsed_addr after tc decode implemented
-                parsed_addr = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
-                with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
-                    pass
-                    # TODO: implement handle request service
+                tc = rlp_decode.decode_transfer_coin_msg(sm.data)
+                parsed_addr = parse_addr.str_to_addr(tc.to)
 
+                with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
+                    contract = sp.self_entry_point(entry_point="handle_request_service")
+                    _param = sp.record(to=tc.to, assets=tc.assets)
+                    sp.transfer(_param, sp.tez(0), contract)
+                    self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), _from, sn, "", self.RC_OK)
+                    sp.emit(sp.record(from_address=_from, to=parsed_addr, serial_no=self.data.serial_no, assets_details=tc.assets), tag="TransferReceived")
+                    # return
                 with sp.else_():
                     err_msg.value = "InvalidAddress"
 
-                self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), _from, sn, "", self.RC_OK)
-                # sp.emit(sp.record(from_address=_from, to=tc.to, serial_no=self.data.serial_no, assets_details=tc.assets))
+                self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), _from, sn, "", self.RC_ERR)
 
             with arg.match("BLACKLIST_MESSAGE") as a2:
-
-                bm = sp.unpack(sm.data, types.Types.BlacklistMessage).open_some()
-                # bm=sp.record(serviceType=sp.variant("ADD_TO_BLACKLIST", 0), addrs={0:"tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"},
-                #              net="Tezos")
+                bm = rlp_decode.decode_blacklist_msg(sm.data)
                 addresses = bm.addrs
 
                 with bm.serviceType.match_cases() as b_agr:
                     with b_agr.match("ADD_TO_BLACKLIST") as b_val_1:
-                        # self.add_to_blacklist(addresses)
+                        contract = sp.self_entry_point(entry_point="add_to_blacklist")
+                        sp.transfer(addresses, sp.tez(0), contract)
                         self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), _from, sn, "AddedToBlacklist", self.RC_OK)
 
                     with b_agr.match("REMOVE_FROM_BLACKLIST") as b_val_2:
-                        # self.remove_from_blacklist(addresses)
+                        contract = sp.self_entry_point(entry_point="remove_from_blacklist")
+                        sp.transfer(addresses, sp.tez(0), contract)
                         self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), _from, sn, "RemovedFromBlacklist", self.RC_OK)
 
             with arg.match("CHANGE_TOKEN_LIMIT") as a3:
-                # TODO: implement decodeTokenLimitMsg
-                tl = sp.unpack(sm.data, t=types.Types.TokenLimitMessage).open_some()
-                # tl = sp.record(coin_name={0:"Tok1"},token_limit={0:5}, net="Tezos")
-                coin_names = sp.map({0: tl.coin_name})
-                token_limits = sp.map({0: tl.token_limit})
+                tl = rlp_decode.decode_token_limit_msg(sm.data)
+                coin_names = tl.coin_name
+                token_limits = tl.token_limit
 
-                # self.set_token_limit(coin_names, token_limits)
+                contract = sp.self_entry_point(entry_point="set_token_limit")
+                _param = sp.record(coin_names=coin_names, token_limit=token_limits)
+                sp.transfer(_param, sp.tez(0), contract)
                 self.send_response_message(sp.variant("CHANGE_TOKEN_LIMIT", 4), _from, sn, "ChangeTokenLimit",self.RC_OK)
 
             with arg.match("RESPONSE_HANDLE_SERVICE") as a4:
-                # TODO: implement decodeResponse
-                response = sp.unpack(sm.data, types.Types.Response).open_some()
-                # response = sp.record(code=2, message="Test")
-
+                sp.verify(sp.len(sp.pack(self.data.requests.get(sn).from_)) != 0, "InvalidSN")
+                response = rlp_decode.decode_response(sm.data)
                 self.handle_response_service(sn, response.code, response.message)
 
             with arg.match("UNKNOWN_TYPE") as a5:
-                sp.emit(sp.record(_from=_from, sn=sn))
+                sp.emit(sp.record(_from=_from, sn=sn), tag= "UnknownResponse")
 
         # using if else
         # with sp.if_(sm.serviceType == types.Types.ServiceType.open_variant("REQUEST_COIN_TRANSFER")):
@@ -273,10 +260,10 @@ class BTPPreiphery(sp.Contract):
         sp.set_type(code, sp.TNat)
         sp.set_type(msg, sp.TString)
 
-        # self.only_bmc()
+        self.only_bmc()
 
         sp.verify(svc == self.service_name, "InvalidSvc")
-        sp.verify(sp.len(sp.pack(self.data.requests[sn].from_addr)) != 0, "InvalidSN")
+        sp.verify(sp.len(sp.pack(self.data.requests[sn].from_)) != 0, "InvalidSN")
 
         emit_msg= sp.concat(["errCode: ", parse_addr.Utils.String.of_int(sp.to_int(code)),", errMsg: ", msg])
         self.handle_response_service(sn, self.RC_ERR, emit_msg)
@@ -293,7 +280,7 @@ class BTPPreiphery(sp.Contract):
         sp.set_type(code, sp.TNat)
         sp.set_type(msg, sp.TString)
 
-        caller = sp.local("caller", parse_addr.str_to_addr(self.data.requests[sn].from_addr), sp.TAddress).value
+        caller = sp.local("caller", parse_addr.str_to_addr(self.data.requests[sn].from_), sp.TAddress).value
         loop = sp.local("loop", sp.len(self.data.requests[sn].coin_names), sp.TNat).value
         sp.verify(loop <= self.MAX_BATCH_SIZE, "BatchMaxSizeExceed")
 
@@ -325,21 +312,19 @@ class BTPPreiphery(sp.Contract):
         sp.set_type(to, sp.TString)
         sp.set_type(assets, sp.TMap(sp.TNat, types.Types.Asset))
 
-        # sp.verify(sp.sender == sp.self_address, "Unauthorized")
+        sp.verify(sp.sender == sp.self_address, "Unauthorized")
         sp.verify(sp.len(assets) <= self.MAX_BATCH_SIZE, "BatchMaxSizeExceed")
 
         parsed_to = parse_addr.str_to_addr(to)
         sp.for i in sp.range(0, sp.len(assets)):
             valid_coin = sp.view("is_valid_coin", self.data.bts_core, assets[i].coin_name, t=sp.TBool).open_some()
-            # sp.verify(valid_coin == True, "UnregisteredCoin")
+            sp.verify(valid_coin == True, "UnregisteredCoin")
 
-            # in case of on chain view
             check_transfer = sp.view("check_transfer_restrictions", sp.self_address, sp.record(
                 coin_name=assets[i].coin_name,user=parsed_to, value=assets[i].value), t=sp.TBool).open_some()
             sp.verify(check_transfer == True, "FailCheckTransfer")
 
-            # TODO: implement try
-
+            # TODO: implement try for mint
             # inter score call
             mint_args_type = sp.TRecord(
                 to=sp.TAddress, coin_name=sp.TString, value=sp.TNat
@@ -390,7 +375,7 @@ class BTPPreiphery(sp.Contract):
         sp.set_type(fa, sp.TString)
         sp.set_type(svc, sp.TString)
 
-        # self.only_bmc()
+        self.only_bmc()
         sp.verify(svc == self.service_name, "InvalidSvc")
 
         strings.split_btp_address(fa)
@@ -418,30 +403,31 @@ class BTPPreiphery(sp.Contract):
 
 @sp.add_test(name="Counter")
 def test():
-    alice = sp.test_account("Alice")
+    bmc = sp.test_account("Alice")
     admin = sp.test_account("Admin")
+    bts_core = sp.test_account("Admin")
 
     scenario = sp.test_scenario()
-    counter = BTPPreiphery(alice.address, admin.address)
+    counter = BTPPreiphery(bmc.address, bts_core.address)
     scenario += counter
 
-    counter.add_to_blacklist(["tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"]).run(sender=alice)
+    counter.add_to_blacklist({0:"tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"}).run(sender=counter.address)
     counter.send_service_message(sp.record(_from=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), to="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW",
                                            coin_names={0:"Tok1"}, values={0:sp.nat(10)}, fees={0:sp.nat(2)})).run(
-        sender=admin
+        sender=bts_core
     )
     counter.handle_btp_error(sp.record(svc= "bts", code=sp.nat(2), sn=sp.nat(1), msg="test 1")).run(
-        sender=admin
+        sender=bmc
     )
 
-    counter.set_token_limit(sp.record(coin_names={0:"Tok2"}, token_limit={0:sp.nat(5)})).run(sender=admin)
+    counter.set_token_limit(sp.record(coin_names={0:"Tok2"}, token_limit={0:sp.nat(5)})).run(sender=counter.address)
 
-    counter.handle_request_service(sp.record(to= "tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc", assets={0:
-                                             sp.record(coin_name="Tok2", value=sp.nat(4))})).run(
-        sender=admin
-    )
+    # counter.handle_request_service(sp.record(to= "tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc", assets={0:
+    #                                          sp.record(coin_name="Tok2", value=sp.nat(4))})).run(
+    #     sender=counter.address
+    # )
 
-    counter.handle_fee_gathering(sp.record(fa="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts")).run(sender=admin)
+    counter.handle_fee_gathering(sp.record(fa="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts")).run(sender=bmc)
 
     # counter.handle_btp_message(sp.record(_from="tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts", sn=sp.nat(4),
     #                                      msg=sp.bytes("0x0507070a000000030dae110000") )).run(sender=admin)
