@@ -9,9 +9,9 @@ rlp_encode = sp.io.import_script_from_url("file:./contracts/src/RLP_encode_struc
 class BMCManagement(sp.Contract):
     BLOCK_INTERVAL_MSEC = sp.nat(1000)
 
-    def __init__(self):
+    def __init__(self, owner_address):
         self.init(
-            owners=sp.map(),
+            owners=sp.map(l={owner_address:True}),
             number_of_owners=sp.nat(1),
             bsh_services=sp.map(),
             relay_stats=sp.map(),
@@ -46,11 +46,6 @@ class BMCManagement(sp.Contract):
             get_link_from_reachable_net=sp.TMap(sp.TString, types.Types.Tuple)
         ))
 
-    # to be called after deployment manually
-    @sp.entry_point
-    def enable(self):
-        self.data.owners[sp.sender] = True
-
     def only_owner(self):
         with sp.if_(self.data.owners.contains(sp.sender)):
             sp.verify(self.data.owners[sp.sender] == True, "Unauthorized")
@@ -68,10 +63,21 @@ class BMCManagement(sp.Contract):
         :return:
         """
         sp.set_type(addr, sp.TAddress)
-        # self.only_owner()
+        self.only_owner()
         sp.if self.data.bmc_periphery.is_some():
             sp.verify(addr != self.data.bmc_periphery.open_some("Address not set"), "AlreadyExistsBMCPeriphery")
         self.data.bmc_periphery = sp.some(addr)
+
+    @sp.entry_point
+    def set_bmc_btp_address(self, network):
+        sp.set_type(network, sp.TString)
+
+        sp.verify(self.data.owners[sp.sender] == True, "Unauthorized")
+        # call set_btp_address on BMCPeriphery
+        set_btp_address_entry_point = sp.contract(sp.TString,
+                                                  self.data.bmc_periphery.open_some("Address not set"),
+                                                  "set_btp_address").open_some()
+        sp.transfer(network, sp.tez(0), set_btp_address_entry_point)
 
     @sp.entry_point
     def add_owner(self, owner):
@@ -81,7 +87,7 @@ class BMCManagement(sp.Contract):
         """
         sp.set_type(owner, sp.TAddress)
 
-        # self.only_owner()
+        self.only_owner()
         sp.verify(self.data.owners.contains(owner) == False, "Already Exists")
         self.data.owners[owner] = True
         self.data.number_of_owners += sp.nat(1)
@@ -119,7 +125,7 @@ class BMCManagement(sp.Contract):
         :return:
         """
         self.only_owner()
-        # sp.verify(addr != sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc"), "InvalidAddress")
+        sp.verify(addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg"), "InvalidAddress")
         sp.verify(self.data.bsh_services.contains(svc) == False, "AlreadyExistsBSH")
         self.data.bsh_services[svc] = addr
         self.data.list_bsh_names.add(svc)
@@ -557,38 +563,39 @@ class BMCManagement(sp.Contract):
         self.data.relay_stats[relay].block_count += block_count_val
         self.data.relay_stats[relay].msg_count += msg_count_val
 
-    # @sp.onchain_view()
+    @sp.onchain_view()
     def resolve_route(self, dst_net):
         sp.set_type(dst_net, sp.TString)
 
         self.only_bmc_periphery()
         dst = sp.local("dst", self.data.get_route_dst_from_net[dst_net], t=sp.TString)
 
-        sp.if sp.len(sp.pack(dst.value))!= sp.nat(0):
-            return sp.pair(self.data.routes[dst.value], dst.value)
+        with sp.if_(sp.len(sp.pack(dst.value))!= sp.nat(0)):
+            sp.result(sp.pair(self.data.routes[dst.value], dst.value))
+        with sp.else_():
+            dst_link = sp.local("dst_link", self.data.get_link_from_net[dst_net], t=sp.TString)
+            with sp.if_(sp.len(sp.pack(dst_link.value)) != sp.nat(0)):
+                sp.result(sp.pair(dst_link.value, dst_link.value))
+            with sp.else_():
+                res = sp.local("res", self.data.get_link_from_reachable_net[dst_net], t=types.Types.Tuple)
+                sp.verify(sp.len(sp.pack(res.value.to)) > sp.nat(0), "Unreachable: " + dst_net + " is unreachable")
 
-        dst_link = sp.local("dst_link", self.data.get_link_from_net[dst_net], t=sp.TString)
-        sp.if sp.len(sp.pack(dst_link.value)) != sp.nat(0):
-            return sp.pair(dst_link.value, dst_link.value)
-
-        res = sp.local("res", self.data.get_link_from_reachable_net[dst_net], t=types.Types.Tuple)
-        sp.verify(sp.len(sp.pack(res.value.to)) > sp.nat(0), "Unreachable: " + dst_net + " is unreachable")
-
-        return sp.pair(res.value.prev, res.value.to)
+                sp.result(sp.pair(res.value.prev, res.value.to))
 
 
 @sp.add_test(name="BMCM")
 def test():
     alice = sp.test_account("Alice")
+    owner = sp.test_account("Owner")
     bmc_periphery = sp.test_account("BMC Periphery")
     # bmc= sp.test_account("BMC")
 
     scenario = sp.test_scenario()
-    bmc_man = BMCManagement()
+    bmc_man = BMCManagement(owner.address)
     scenario += bmc_man
 
-    bmc_man.set_bmc_periphery(bmc_periphery.address).run(sender=alice)
-    bmc_man.add_owner(alice.address).run(sender=alice)
+    bmc_man.set_bmc_periphery(bmc_periphery.address).run(sender=owner)
+    bmc_man.add_owner(alice.address).run(sender=owner)
 
     # bmc_man.remove_owner(alice.address).run(sender=alice)
 
@@ -601,4 +608,4 @@ def test():
                                 _max_aggregation=sp.nat(3), delay_limit=sp.nat(2))).run(sender=alice)
 
 
-sp.add_compilation_target("bmc_management", BMCManagement())
+sp.add_compilation_target("bmc_management", BMCManagement(owner_address=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW")))
