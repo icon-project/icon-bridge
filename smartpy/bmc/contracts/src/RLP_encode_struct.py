@@ -27,3 +27,13 @@ def encode_bmc_message(params):
     rlp_bytes_with_prefix = with_length_prefix(rlp)
     return rlp_bytes_with_prefix
 
+
+def encode_response(params):
+    sp.set_type(params, sp.TRecord(code=sp.TNat, message=sp.TString))
+
+    encode_string_packed = sp.build_lambda(Utils.Bytes.of_string)
+    encode_nat_packed = sp.build_lambda(Utils.Bytes.of_nat)
+    rlp = encode_nat_packed(params.code) + encode_string_packed(params.message)
+    with_length_prefix = sp.build_lambda(Utils.RLP.Encoder.with_length_prefix)
+    rlp_bytes_with_prefix = with_length_prefix(rlp)
+    return rlp_bytes_with_prefix
