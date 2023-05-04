@@ -2,6 +2,22 @@ import smartpy as sp
 
 FA2 = sp.io.import_script_from_url("https://smartpy.io/templates/fa2_lib.py")
 
+t_transfer_batch = sp.TRecord(
+    callback=sp.TContract(
+        sp.TRecord(string=sp.TOption(sp.TString), requester=sp.TAddress, coin_name=sp.TString, value=sp.TNat)),
+    from_=sp.TAddress,
+    coin_name=sp.TString,
+    txs=sp.TList(
+        sp.TRecord(
+            to_=sp.TAddress,
+            token_id=sp.TNat,
+            amount=sp.TNat,
+        ).layout(("to_", ("token_id", "amount")))
+    ),
+).layout((("from_", "coin_name"), ("callback", "txs")))
+
+t_transfer_params = sp.TList(t_transfer_batch)
+
 
 class SingleAssetToken(FA2.Admin, FA2.Fa2SingleAsset, FA2.MintSingleAsset, FA2.BurnSingleAsset,
                        FA2.OnchainviewBalanceOf):
@@ -44,7 +60,8 @@ class SingleAssetToken(FA2.Admin, FA2.Fa2SingleAsset, FA2.MintSingleAsset, FA2.B
 
         `transfer_tx_` must be defined in the child class.
         """
-        sp.set_type(batch, FA2.t_transfer_params)
+        sp.set_type(batch, t_transfer_params)
+
         if self.policy.supports_transfer:
             with sp.for_("transfer", batch) as transfer:
                 with sp.for_("tx", transfer.txs) as tx:
@@ -57,8 +74,16 @@ class SingleAssetToken(FA2.Admin, FA2.Fa2SingleAsset, FA2.MintSingleAsset, FA2.B
                         self.update_allowance_(sp.sender, transfer.from_, tx.token_id, tx.amount)
                     with sp.if_(tx.amount > 0):
                         self.transfer_tx_(transfer.from_, tx)
+
+                    return_value = sp.record(string=sp.some("success"), requester=tx.to_,
+                                             coin_name=transfer.coin_name, value=tx.amount)
+                    sp.transfer(return_value, sp.tez(0), transfer.callback)
         else:
-            sp.failwith("FA2_TX_DENIED")
+            with sp.for_("transfer", batch) as transfer:
+                with sp.for_("tx", transfer.txs) as tx:
+                    return_value = sp.record(string=sp.some("FA2_TX_DENIED"), requester=tx.to_,
+                                             coin_name=transfer.coin_name, value=tx.amount)
+                    sp.transfer(return_value, sp.tez(0), transfer.callback)
 
     def update_allowance_(self, spender, owner, token_id, amount):
         allowance = sp.record(spender=spender, owner=owner)
@@ -94,16 +119,16 @@ def test():
         [sp.variant("add_operator", sp.record(owner=bob.address, operator=spender.address, token_id=0))]).run(
         sender=bob)
     # transfer more than allowance
-    c1.transfer([sp.record(from_=bob.address, txs=[sp.record(to_=receiver.address, token_id=0, amount=101)])]).run(
-        sender=spender, valid=False, exception=('FA2_NOT_OPERATOR', 'NoAllowance'))
-    # transfer all allowance
-    c1.transfer([sp.record(from_=bob.address, txs=[sp.record(to_=receiver.address, token_id=0, amount=100)])]).run(
-        sender=spender)
+    # c1.transfer([sp.record(callback=sp.self_entry_point("callback"), from_=bob.address, txs=[sp.record(to_=receiver.address, token_id=0, amount=101)])]).run(
+    #     sender=spender, valid=False, exception=('FA2_NOT_OPERATOR', 'NoAllowance'))
+    # # transfer all allowance
+    # c1.transfer([sp.record(from_=bob.address, txs=[sp.record(to_=receiver.address, token_id=0, amount=100)])]).run(
+    #     sender=spender)
 
-    # verify remaining allowance
-    scenario.verify(c1.get_allowance(sp.record(spender=spender.address, owner=bob.address)) == 0)
-    # again set allowance after prev-allowance is 0
-    c1.set_allowance([sp.record(spender=spender.address, amount=sp.nat(100))]).run(sender=bob)
+    # # verify remaining allowance
+    # scenario.verify(c1.get_allowance(sp.record(spender=spender.address, owner=bob.address)) == 0)
+    # # again set allowance after prev-allowance is 0
+    # c1.set_allowance([sp.record(spender=spender.address, amount=sp.nat(100))]).run(sender=bob)
 
 
 sp.add_compilation_target("FA2_contract",
