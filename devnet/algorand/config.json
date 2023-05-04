@@ -1,0 +1,10 @@
+{
+  "Version": 25,
+  "GossipFanout": 0,
+  "IncomingConnectionsLimit": 0,
+  "DNSBootstrapID": "",
+  "EndpointAddress": "0.0.0.0:4001",
+  "EnableDeveloperAPI": true,
+  "DisableNetworking": true,
+  "Archival": true
+}

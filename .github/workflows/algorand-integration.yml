@@ -1,0 +1,122 @@
+name: Algorand-Icon-Integration
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+jobs:
+  Algorand-Icon-Integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build the Relayer
+        working-directory: ./cmd/iconbridge
+        run: |
+          go build .
+
+      - name: Build Goloop container
+        working-directory: ./devnet/docker/goloop
+        run: docker build -t icon-algorand_goloop .
+
+      - name: Run Goloop container
+        working-directory: ./devnet/docker/goloop
+        run: |
+          docker run -d \
+            --name goloop \
+            -p 9080:9080 \
+            -e GOLOOP_NODE_DIR=/goloop/data/goloop \
+            -e GOLOOP_LOG_WRITER_FILENAME=/goloop/data/log/goloop.log \
+            -t icon-algorand_goloop
+
+      - name: Install Algod and friends
+        run: |
+          sudo mkdir /tmp/algorand
+          sudo wget -O /tmp/algorand/algorand.tar.gz https://github.com/algorand/go-algorand/releases/download/v3.13.3-stable/node_stable_linux-amd64_3.13.3.tar.gz
+          cd /tmp/algorand
+          sudo tar xf algorand.tar.gz
+          cd bin
+          sudo mv algod goal kmd /usr/local/bin
+
+      - name: Run Algod
+        working-directory: ./devnet/algorand
+        run: |
+          goal network create -r /tmp/testnet -t ./template.json
+          cp ./config.json /tmp/testnet/Node
+          cp ./algod.token /tmp/testnet/Node
+          cp ./kmd_config.json /tmp/testnet/Node/kmd-v0.5/kmd_config.json
+          cp ./kmd.token /tmp/testnet/Node/kmd-v0.5/kmd.token
+          goal network start -r /tmp/testnet
+
+      - name: Run Algorand lifecheck test
+        run: |
+          go test -v pyteal/test/lifecheck_test/lifecheck_test.go
+
+      - name: Install goloop
+        run: |
+          cd /tmp
+          wget https://github.com/icon-project/goloop/archive/refs/tags/v1.3.3.tar.gz
+          tar xf v1.3.3.tar.gz
+          cd goloop-1.3.3/cmd/goloop
+          go install
+          cd /tmp
+          rm -rf goloop-1.3.3 v1.3.3.tar.gz
+
+      - name: Install PyTeal
+        working-directory: ./pyteal
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip
+          pip install pyteal
+
+      - name: Compile golang tools
+        working-directory: cmd/tools/algorand
+        run: ./install-tools.sh
+
+      - name: Set up JDK and Gradle
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+          distribution: "gradle"
+          gradle-version: "7.6"
+
+      - name: Test Javascore
+        working-directory: ./javascore
+        run: |
+          ./gradlew wrapped-token:test
+
+      - name: Build ICON smart contracts
+        working-directory: ./javascore
+        run: |
+          ./gradlew dummyBSH:optimizedJar
+          ./gradlew bmc:optimizedJar
+          ./gradlew wrapped-token:optimizedJar
+          ./gradlew test-token:optimizedJar
+          ./gradlew escrow:optimizedJar
+
+      - name: Build Algorand smart contracts
+        working-directory: pyteal
+        run: |
+          ./build.sh bmc.bmc bmc
+          ./build.sh bsh.bsh bsh
+          ./build.sh escrow.escrow escrow
+          ./build.sh reserve.reserve reserve
+
+      - name: Deploy contracts, setup system and update config file
+        working-directory: ./devnet/docker/icon-algorand
+        run: |
+          ./setup_system.sh
+
+      - name: Start the Relayer
+        working-directory: ./cmd/iconbridge
+        run: |
+          ./iconbridge -config=../../devnet/docker/icon-algorand/algo-config.json &
+          sleep 10
+
+      - name: Run integration test
+        working-directory: ./devnet/docker/icon-algorand
+        run: |
+          export PATH=$PATH:~/go/bin
+          ./messaging-bridge-test.sh
+          ./a2i-integration-test.sh
+          ./i2a-integration-test.sh
