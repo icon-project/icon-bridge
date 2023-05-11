@@ -1,6 +1,6 @@
 import smartpy as sp
 
-FA2 = sp.io.import_script_from_url("https://smartpy.io/templates/fa2_lib.py")
+FA2 = sp.io.import_script_from_url("https://legacy.smartpy.io/templates/fa2_lib.py")
 
 t_transfer_batch = sp.TRecord(
     callback=sp.TContract(
