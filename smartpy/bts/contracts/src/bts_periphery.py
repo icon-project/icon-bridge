@@ -439,5 +439,5 @@ def test():
 
 sp.add_compilation_target("bts_periphery", BTPPreiphery(bmc_address=sp.address("KT1BhqGDND5JC8wSrPSR7hA8LtvhaesqCvAq"),
                                                         bts_core_address=sp.address("KT1Sf2Hrs8hTuhwwywExNTrBt2dND3YGDprR"),
-                                                        helper_contract=sp.address("KT1FfkTSts5DnvyJp2qZbPMeqm2XpMYES7Vr"),
+                                                        helper_contract=sp.address("KT1XfcddzN4hTUVxADLuaawPsiPoZThHrRf6"),
                                                         parse_address=sp.address("KT1EKPrSLWjWViZQogFgbc1QmztkR5UGXEWa")))

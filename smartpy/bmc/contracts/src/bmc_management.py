@@ -563,7 +563,7 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
     def resolve_route(self, dst_net):
         sp.set_type(dst_net, sp.TString)
 
-        self.only_bmc_periphery()
+        # self.only_bmc_periphery()
         dst = sp.local("dst", self.data.get_route_dst_from_net.get(dst_net), t=sp.TString)
 
         with sp.if_(sp.len(sp.pack(dst.value))!= sp.nat(0)):
@@ -606,4 +606,4 @@ def test():
 
 
 sp.add_compilation_target("bmc_management", BMCManagement(owner_address=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"),
-                                                          helper_contract=sp.address("KT1FfkTSts5DnvyJp2qZbPMeqm2XpMYES7Vr")))
+                                                          helper_contract=sp.address("KT1XfcddzN4hTUVxADLuaawPsiPoZThHrRf6")))

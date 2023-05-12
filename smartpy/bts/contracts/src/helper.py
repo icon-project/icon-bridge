@@ -28,7 +28,7 @@ class Helper(sp.Contract):
     @sp.onchain_view()
     def of_nat(self, params):
         sp.set_type(params, sp.TNat)
-        encode_nat_packed = sp.build_lambda(Utils.Bytes.of_string)
+        encode_nat_packed = sp.build_lambda(Utils.Bytes.of_nat)
         sp.result(encode_nat_packed(params))
 
     @sp.onchain_view()
