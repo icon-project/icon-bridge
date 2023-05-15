@@ -2,14 +2,15 @@ package tezos
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
 
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
+	// "github.com/icon-project/icon-bridge/common/wallet"
 
 	// "blockwatch.cc/tzgo/codec"
 	"blockwatch.cc/tzgo/contract"
@@ -17,6 +18,7 @@ import (
 	"blockwatch.cc/tzgo/rpc"
 	"blockwatch.cc/tzgo/signer"
 	"blockwatch.cc/tzgo/tezos"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 )
 
 const (
@@ -46,17 +48,17 @@ func NewSender(
 	urls []string, w wallet.Wallet,
 	rawOpts json.RawMessage, l log.Logger) (chain.Sender, error) {
 		var err error
-		source := tezos.MustParseAddress(src.String())
-		dest := tezos.MustParseAddress(dst.String())
+		srcAddr := tezos.MustParseAddress(src.String())
+		dstAddr := tezos.MustParseAddress(dst.String())
 		s := &sender {
 			log: l,
-			src: source,
-			dst: dest,
+			src: srcAddr,
+			dst: dstAddr,
 		}
 		if len(urls) == 0 {
 			return nil, fmt.Errorf("Empty url")
 		}
-		s.cls, err = NewClient(urls[0], source, l)
+		s.cls, err = NewClient(urls[0], srcAddr, l)
 		if err != nil {
 			return nil, err 
 		}
@@ -95,19 +97,19 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 
 	newMsg = &chain.Message{
 		From: msg.From,
-		Receipts: msg.Receipts,
+		Receipts: msg.Receipts,			
 	}
 
 	for i , receipt := range msg.Receipts{
-		rlpEvents := receipt.Events
+		rlpEvents, err := json.Marshal(receipt.Events) // change to rlp bytes
 
-		chainReceipt := &chain.Receipt{
+		chainReceipt := &chain.RelayReceipt{
 			Index: receipt.Index,
 			Height: receipt.Height,
 			Events: rlpEvents,
 		}
 
-		rlpReceipt, err := json.Marshal(chainReceipt)
+		rlpReceipt, err := json.Marshal(chainReceipt) // change to rlp bytes 
 		if err != nil {
 			return nil, nil, err
 		}
@@ -176,31 +178,33 @@ func (tx *relayTx) ID() interface{}{
 }
 
 func (tx *relayTx) Send(ctx context.Context) (err error) {
+	fmt.Println("reached in sender")
 	_ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeOut)
 	defer cancel()
 
 	prim := micheline.Prim{}
+	messageHex := hex.EncodeToString(tx.Message)
 
-	michJsonStrMsg := "{}" // add message here 
-
-	if err := prim.UnmarshalJSON([]byte(michJsonStrMsg)); err != nil {
+	in := 	"{ \"prim\": \"Pair\", \"args\": [ { \"bytes\": \"" + messageHex + "\" }, { \"string\": \"string\" } ] }"
+	if err := prim.UnmarshalJSON([]byte(in)); err != nil {
 		fmt.Println("couldnot unmarshall empty string")
 		fmt.Println(err)
 		return err
 	}
 
 	args := contract.NewTxArgs()
-	args.WithParameters(micheline.Parameters{Entrypoint: "handleRelayMessage", Value: prim})
+	args.WithParameters(micheline.Parameters{Entrypoint: "handle_relay_message", Value: prim})
 
 	opts := rpc.DefaultOptions
 
-	opts.Signer = signer.NewFromKey(tezos.MustParsePrivateKey("")) // pk 
+	opts.Signer = signer.NewFromKey(tezos.MustParsePrivateKey("edskRz1HoD3cWkmWhCNS5LjBrJNWChGuKWB4HnVoN5UqVsUCpcNJR67ZxKs965u8RgRwptrtGc2ufYZoeECgB77RKm1gTbQ6eB")) // pk 
+	opts.TTL = 3
 
-	from := tezos.MustParseAddress("") // pubk
+	from := tezos.MustParseAddress("tz1ZPVxKiybvbV1GvELRJJpyE1xj1UpNpXMv") // pubk
 
 	argument := args.WithSource(from).WithDestination(tx.cl.Contract.Address())
 
-	receipt, err := tx.cl.HandleRelayMessage(_ctx, argument)
+	receipt, err := tx.cl.HandleRelayMessage(_ctx, argument, &opts)
 
 	if err != nil {
 		return nil
@@ -216,9 +220,12 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockHeight uint64, err error) 
 		return 0, fmt.Errorf("couldnot get receipt")
 	}
 
-	blockHash := tx.receipt.Block
+	_, err = tx.cl.GetOperationByHash(ctx, tx.cl.Cl, tx.receipt.Block, tx.receipt.List, tx.receipt.Pos)
+	if err != nil {
+		return 0, err
+	}
 
-	blockHeight, err = tx.cl.GetBlockHeightByHash(ctx, tx.cl.Cl, blockHash)
+	blockHeight, err = tx.cl.GetBlockHeightByHash(ctx, tx.cl.Cl, tx.receipt.Block)
 	if err != nil {
 		return 0, err
 	}
