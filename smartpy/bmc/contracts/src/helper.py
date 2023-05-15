@@ -26,6 +26,18 @@ class Helper(sp.Contract):
         sp.result(encode_string_packed(params))
 
     @sp.onchain_view()
+    def encode_string(self, params):
+        sp.set_type(params, sp.TString)
+        encode_string_packed = sp.build_lambda(Utils.RLP.Encoder.encode_string)
+        sp.result(encode_string_packed(params))
+
+    @sp.onchain_view()
+    def encode_nat(self, params):
+        sp.set_type(params, sp.TNat)
+        encode_nat_packed = sp.build_lambda(Utils.RLP.Encoder.encode_nat)
+        sp.result(encode_nat_packed(params))
+
+    @sp.onchain_view()
     def of_nat(self, params):
         sp.set_type(params, sp.TNat)
         encode_nat_packed = sp.build_lambda(Utils.Bytes.of_nat)
@@ -36,6 +48,12 @@ class Helper(sp.Contract):
         sp.set_type(params, sp.TBytes)
         encode_length_packed = sp.build_lambda(Utils.RLP.Encoder.with_length_prefix)
         sp.result(encode_length_packed(params))
+
+    @sp.onchain_view()
+    def encode_list(self, params):
+        sp.set_type(params, sp.TList(sp.TBytes))
+        encode_list_packed = sp.build_lambda(Utils.RLP.Encoder.encode_list)
+        sp.result(encode_list_packed(params))
 
 
 @sp.add_test(name="Helper")

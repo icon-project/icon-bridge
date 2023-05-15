@@ -3,7 +3,12 @@ import smartpy as sp
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 strings = sp.io.import_script_from_url("file:./contracts/src/String.py")
 rlp_encode = sp.io.import_script_from_url("file:./contracts/src/RLP_encode_struct.py")
-
+# bmc_periphery_file = sp.io.import_script_from_url(
+#     "file:./contracts/src/bmc_periphery.py")
+# helper_file = sp.io.import_script_from_url(
+#     "file:./contracts/src/helper.py")
+# parse_address_file = sp.io.import_script_from_url(
+#     "file:./contracts/src/parse_address.py")
 
 class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
     BLOCK_INTERVAL_MSEC = sp.nat(1000)
@@ -299,12 +304,12 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
         sp.set_type(service_type, sp.TString)
         sp.set_type(link, sp.TString)
 
-        _bytes = sp.bytes("0x80")  # can be any bytes
-        rlp_bytes = _bytes + sp.view("of_string", self.data.helper, link, t=sp.TBytes).open_some()
-        rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes, t=sp.TBytes).open_some()
-        #encode payload
-        final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes_with_prefix, t=sp.TBytes).open_some()
+        _bytes = sp.bytes("0x")  # can be any bytes
+        rlp_bytes = sp.view("encode_string", self.data.helper, link, t=sp.TBytes).open_some()
+        rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper, [_bytes, rlp_bytes] , t=sp.TBytes).open_some()
 
+        #encode payload
+        final_rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper, [rlp_bytes_with_prefix], t=sp.TBytes).open_some()
         sp.for item in self.data.list_link_names.elements():
             sp.if self.data.links.get(item).is_connected:
                 net, addr = sp.match_pair(strings.split_btp_address(item, "prev_idx1", "result1", "my_list1", "last1", "penultimate1"))
@@ -328,11 +333,11 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
             rlp_bytes.value = self.LIST_SHORT_START
         with sp.else_():
             sp.for item in links:
-                _bytes = sp.bytes("0x80")  # can be any bytes
-                _rlp_bytes = _bytes + sp.view("of_string", self.data.helper, item, t=sp.TBytes).open_some()
-                rlp_bytes.value = sp.view("with_length_prefix", self.data.helper, _rlp_bytes, t=sp.TBytes).open_some()
+                _bytes = sp.bytes("0x")  # can be any bytes
+                _rlp_bytes = _bytes + sp.view("encode_string", self.data.helper, item, t=sp.TBytes).open_some()
+                rlp_bytes.value = sp.view("encode_list", self.data.helper, [rlp_bytes.value, _rlp_bytes], t=sp.TBytes).open_some()
         #encode payload
-        final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes.value, t=sp.TBytes).open_some()
+        # final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes.value, t=sp.TBytes).open_some()
         net, addr = sp.match_pair(
             strings.split_btp_address(target, "prev_idx2", "result2", "my_list2", "last2", "penultimate2"))
 
@@ -342,7 +347,7 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
                                                self.data.bmc_periphery.open_some("Address not set"),
                                                "send_message").open_some()
         send_message_args = sp.record(to=net, svc="bmc", sn=sp.nat(0), msg=self.encode_bmc_service(
-            sp.record(serviceType=service_type, payload=final_rlp_bytes_with_prefix)))
+            sp.record(serviceType=service_type, payload=rlp_bytes.value)))
         sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
 
@@ -584,26 +589,45 @@ def test():
     alice = sp.test_account("Alice")
     owner = sp.test_account("Owner")
     helper = sp.test_account("Helper")
-    bmc_periphery = sp.test_account("BMC Periphery")
+    # bmc_periphery = sp.test_account("BMC Periphery")
     # bmc= sp.test_account("BMC")
 
+
     scenario = sp.test_scenario()
+    # deploy helper
+    # helper_con = helper_file.Helper()
+    # scenario += helper_con
+    #
+    # parse_addr_con = parse_address_file.ParseAddress()
+    # scenario += parse_addr_con
+    #
     bmc_man = BMCManagement(owner.address, helper.address)
     scenario += bmc_man
-
-    bmc_man.set_bmc_periphery(bmc_periphery.address).run(sender=owner)
-    bmc_man.add_owner(alice.address).run(sender=owner)
-
-    # bmc_man.remove_owner(alice.address).run(sender=alice)
-
-    # bmc_man.add_link("btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW").run(sender=alice)
-    # bmc_man.remove_link("btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW").run(sender=alice)
-    # bmc_man.add_link("btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW").run(sender=alice)
-
-    # bmc_man.set_link_rx_height(sp.record(link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", height=sp.nat(2))).run(sender=alice)
-    # bmc_man.set_link(sp.record(_link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", block_interval=sp.nat(2),
-    #                             _max_aggregation=sp.nat(3), delay_limit=sp.nat(2))).run(sender=alice)
-
-
-sp.add_compilation_target("bmc_management", BMCManagement(owner_address=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"),
-                                                          helper_contract=sp.address("KT1XfcddzN4hTUVxADLuaawPsiPoZThHrRf6")))
+    # # deploy bmc periphery
+    # bmc_per = bmc_periphery_file.BMCPreiphery(
+    #     bmc_man.address, helper_con.address, parse_addr_con.address
+    # )
+    #
+    # scenario += bmc_per
+    #
+    # bmc_man.set_bmc_periphery(bmc_per.address).run(sender=owner)
+    # bmc_man.set_bmc_btp_address("tezos.77").run(sender=owner)
+    # # bmc_man.add_owner(alice.address).run(sender=owner)
+    #
+    # # bmc_man.remove_owner(alice.address).run(sender=alice)
+    #
+    # bmc_man.add_route(sp.record(dst = "btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hDEST",
+    # link = "btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW")).run(sender= owner)
+    # bmc_man.add_link("btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW").run(sender=owner)
+    # # decode_string = sp.build_lambda(Utils.RLP.Decoder.without_length_prefix)
+    #
+    # # bmc_man.remove_link("btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW").run(sender=alice)
+    # # bmc_man.add_link("btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW").run(sender=alice)
+    #
+    # # bmc_man.set_link_rx_height(sp.record(link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", height=sp.nat(2))).run(sender=alice)
+    # # bmc_man.set_link(sp.record(_link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", block_interval=sp.nat(2),
+    # #                             _max_aggregation=sp.nat(3), delay_limit=sp.nat(2))).run(sender=alice)
+    #
+    #
+sp.add_compilation_target("bmc_management", BMCManagement(owner_address=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP"),
+                                                          helper_contract=sp.address("KT1Q5erZm7Pp8UJywK1nkiP8QPCRmyUotUMq")))
