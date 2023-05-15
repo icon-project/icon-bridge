@@ -141,7 +141,7 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         send_message_entry_point = sp.contract(send_message_args_type, self.data.bmc, "send_message").open_some()
         send_message_args = sp.record(
             to=to_network, svc=self.service_name, sn=self.data.serial_no,
-            msg=self.encode_service_message(sp.compute(sp.record(serviceType=(sp.variant("REQUEST_COIN_TRANSFER", 0)),
+            msg=self.encode_service_message(sp.compute(sp.record(service_type_value=sp.nat(0),
                                   data=self.encode_transfer_coin_msg(sp.compute(sp.record(from_addr=start_from, to=to_address, assets=assets)))
                                             )
                                     )
@@ -437,7 +437,7 @@ def test():
     #                                      msg=sp.bytes("0x0507070a000000030dae110000") )).run(sender=admin)
 
 
-sp.add_compilation_target("bts_periphery", BTPPreiphery(bmc_address=sp.address("KT1BhqGDND5JC8wSrPSR7hA8LtvhaesqCvAq"),
-                                                        bts_core_address=sp.address("KT1Sf2Hrs8hTuhwwywExNTrBt2dND3YGDprR"),
-                                                        helper_contract=sp.address("KT1XfcddzN4hTUVxADLuaawPsiPoZThHrRf6"),
+sp.add_compilation_target("bts_periphery", BTPPreiphery(bmc_address=sp.address("KT1UrLqhQHDC3mJw9BUrqsiix7JRbxTsvWJu"),
+                                                        bts_core_address=sp.address("KT1JAippuMfS6Bso8DGmigmTdkgEZUxQxYyX"),
+                                                        helper_contract=sp.address("KT1Q5erZm7Pp8UJywK1nkiP8QPCRmyUotUMq"),
                                                         parse_address=sp.address("KT1EKPrSLWjWViZQogFgbc1QmztkR5UGXEWa")))
