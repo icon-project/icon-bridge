@@ -35,8 +35,7 @@ type IClient interface {
 	// GetBlockHeaderByHeight(ctx context.Context, connection *rpc.Client, blockLevel int64)
 	// GetBlockMetadataByHash(ctx context.Context, connection *rpc.Client, blockHash tezos.Hash)
 
-	MonitorBlock(ctx context.Context, client *rpc.Client, connection *contract.Contract, 
-		blockLevel int64, callback func(v *types.BlockNotification) error) (*rpc.Block, error)
+	MonitorBlock(ctx context.Context, client *rpc.Client, connection *contract.Contract, blockLevel int64, callback func(v *types.BlockNotification) error) (*rpc.Block, error)
 	// MonitorEvent(ctx context.Context, connection *rpc.Client, blockLevel int64)
 
 	GetLastBlock(ctx context.Context, connection *rpc.Client) (*rpc.Block, error)
@@ -63,7 +62,7 @@ type Client struct {
 }
 
 func (c *Client) SignTransaction() rpc.CallOptions{
-	pK := tezos.MustParsePrivateKey("")
+	pK := tezos.MustParsePrivateKey("edskRz1HoD3cWkmWhCNS5LjBrJNWChGuKWB4HnVoN5UqVsUCpcNJR67ZxKs965u8RgRwptrtGc2ufYZoeECgB77RKm1gTbQ6eB")
 	opts := rpc.DefaultOptions
 	opts.Signer = signer.NewFromKey(pK)
 	return opts
@@ -187,6 +186,7 @@ func (c *Client) MonitorBlock(ctx context.Context, blockLevel int64, verifier IV
 								return err
 							}
 							if len(receipt) != 0 {
+								fmt.Println("found for block level ", block.Header.Level)
 								fmt.Println("callback start")
 								err := callback(receipt)
 								fmt.Println("call back end")
@@ -227,11 +227,11 @@ func returnTxMetadata(tx *rpc.Transaction, contractAddress tezos.Address) ([]*ch
 		fmt.Println("****")
 		fmt.Println("****")
 
-		if tx.Metadata.InternalResults[0].Tag == "TokenMinted" {
+		if tx.Metadata.InternalResults[0].Tag == "TransferStart" {
 			var events []*chain.Event
 
 			events = append(events, &chain.Event{
-				Message: []byte(tx.Metadata.InternalResults[0].Tag),
+				Message: []byte(tx.Metadata.InternalResults[0].Payload.String),
 			})
 			receipts = append(receipts, &chain.Receipt{
 				Events: events,
@@ -267,8 +267,22 @@ func (c *Client) GetStatus(ctx context.Context, contr *contract.Contract) (Types
 	return stats, nil
 }
 
-func (c *Client) HandleRelayMessage(ctx context.Context, callArgs contract.CallArguments) (*rpc.Receipt, error) {
-	return nil, nil 
+func (c *Client) GetOperationByHash(ctx context.Context, clinet *rpc.Client, blockHash tezos.BlockHash, list int, pos int) (*rpc.Operation, error){
+	operation, err := clinet.GetBlockOperation(ctx, blockHash, list, pos)
+	if err != nil {
+		return nil, err
+	}
+	return operation, nil 
+}
+
+func (c *Client) HandleRelayMessage(ctx context.Context, callArgs contract.CallArguments, opts *rpc.CallOptions) (*rpc.Receipt, error) {
+	fmt.Println("handling relay message")
+	result, err := c.Contract.Call(ctx, callArgs, opts)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return result, nil
 }
 
 func NewClient(uri string, src tezos.Address, l log.Logger) (*Client, error){
@@ -286,6 +300,8 @@ func NewClient(uri string, src tezos.Address, l log.Logger) (*Client, error){
 	return &Client{Log: l, Cl: c, Contract: conn}, nil
 }
 
+
+
 func PrettyEncode(data interface{}) error {
 	var buffer bytes.Buffer
     enc := json.NewEncoder(&buffer)
@@ -296,3 +312,34 @@ func PrettyEncode(data interface{}) error {
 	fmt.Println(buffer.String())
     return nil
 }
+
+func returnTxMetadata2(block *rpc.Block, contractAddress tezos.Address, blockHeight int64, cl *Client) (bool, []*chain.Receipt, error) {
+	blockOperations := block.Operations
+	
+	var tx *rpc.Transaction
+	var receipt []*chain.Receipt
+	for i := 0; i < len(blockOperations); i++ {
+		for j := 0; j < len(blockOperations[i]); j ++{ 
+			for _, operation := range blockOperations[i][j].Contents {
+				switch operation.Kind() {
+				case tezos.OpTypeTransaction:
+					tx = operation.(*rpc.Transaction)
+					r, err := returnTxMetadata(tx, contractAddress)
+					if err != nil {
+						return false, nil, err
+					}
+					receipt = r
+				}
+			}
+		}
+	}
+	// var transaction *rpc.Transaction
+	
+	if len(receipt) == 0 {
+		return false, receipt, nil 
+	} 
+
+	return true, receipt, nil
+}
+
+
