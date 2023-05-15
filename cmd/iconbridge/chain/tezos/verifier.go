@@ -17,7 +17,8 @@ type IVerifier interface {
 	Verify(ctx context.Context, header *rpc.BlockHeader, proposer tezos.Address, c *rpc.Client, hash tezos.BlockHash) error
 	Update(header *rpc.BlockHeader) error
 	ParentHash() tezos.BlockHash
-	IsValidator(proposer tezos.Address, height int64) bool	
+	IsValidator(proposer tezos.Address, height int64) bool
+	Height() int64 
 }
 
 type Verifier struct{
@@ -27,6 +28,7 @@ type Verifier struct{
 	next 			int64
 	parentHash 		tezos.BlockHash
 	parentFittness	int64
+	height 			int64
 }
 
 func (vr *Verifier) Next() int64{
@@ -48,9 +50,9 @@ func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, propose
 	}
 
 	if currentFittness < vr.parentFittness {
-		return fmt.Errorf("Invalid block fittness")
+		return fmt.Errorf("Invalid block fittness", currentFittness)
 	}
-	fmt.Println("validated the block fittness")
+	fmt.Println("validated the block fittness", header.Level)
 
 	previousHashInBlock := header.Predecessor
 	fmt.Println(previousHashInBlock)
@@ -58,10 +60,8 @@ func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, propose
 	fmt.Println(vr.parentHash)
 
 	if previousHashInBlock.String() != vr.parentHash.String() {
-		return fmt.Errorf("Invalid block hash")
+		return fmt.Errorf("Invalid block hash", header.Level)
 	}
-
-	fmt.Println("here????")
 
 	
 	fmt.Println("Block is verified")
@@ -93,6 +93,8 @@ func (vr *Verifier) Update(header *rpc.BlockHeader) error {
 	vr.parentFittness = currentFittness
 
 	vr.parentHash = header.Hash
+	vr.height = header.Level
+	vr.next = header.Level + 1
 	fmt.Println(header.Hash)
 	fmt.Println("updated")
 	return nil 
@@ -102,6 +104,12 @@ func (vr *Verifier) ParentHash() tezos.BlockHash {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
 	return vr.parentHash
+}
+
+func (vr *Verifier) Height() int64 {
+	vr.mu.RLock()
+	defer vr.mu.RUnlock()
+	return vr.height
 }
 
 func (vr *Verifier) IsValidator(proposer tezos.Address, height int64) bool {
