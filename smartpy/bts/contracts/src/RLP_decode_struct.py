@@ -44,7 +44,7 @@ class DecodeLibrary:
                 _service_type.value = sp.variant("CHANGE_TOKEN_LIMIT", temp_int.value)
         sp.if temp_int.value == 5:
             _service_type.value = sp.variant("UNKNOWN_TYPE", temp_int.value)
-        temp_byt.value = sp.view("without_length_prefix", self.data.helper, temp_byt.value, t=sp.TString).open_some()
+        temp_byt.value = sp.view("without_length_prefix", self.data.helper, temp_byt.value, t=sp.TBytes).open_some()
 
         return sp.record(serviceType=_service_type.value,
                          data=temp_byt.value)

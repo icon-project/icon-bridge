@@ -23,7 +23,7 @@ class DecodeLibrary:
             sp.if counter.value == 4:
                 temp_byt.value = k.value
             counter.value = counter.value + 1
-        temp_byt.value = sp.view("without_length_prefix", self.data.helper, temp_byt.value, t=sp.TString).open_some()
+        temp_byt.value = sp.view("without_length_prefix", self.data.helper, temp_byt.value, t=sp.TBytes).open_some()
         return sp.record(src=temp_map_string.get("src"),
                          dst=temp_map_string.get("dst"),
                          svc=temp_map_string.get("svc"),
@@ -87,7 +87,7 @@ class DecodeLibrary:
             sp.if counter.value == 1:
                 temp_byt.value = b.value
             counter.value = counter.value + 1
-        temp_byt.value = sp.view("without_length_prefix", self.data.helper, temp_byt.value, t=sp.TString).open_some()
+        temp_byt.value = sp.view("without_length_prefix", self.data.helper, temp_byt.value, t=sp.TBytes).open_some()
         return sp.record(serviceType=temp_string.value,
                          payload=temp_byt.value)
 
@@ -129,7 +129,7 @@ class DecodeLibrary:
             sp.if counter.value == 1:
                 rv2.value = Utils2.Int.of_bytes(i.value)
             counter.value = counter.value + 1
-        rv3.value = sp.view("without_length_prefix", self.data.helper, rv3.value, t=sp.TString).open_some()
+        rv3.value = sp.view("without_length_prefix", self.data.helper, rv3.value, t=sp.TBytes).open_some()
         return sp.record(next_bmc= rv1.value, seq= rv2.value, message = rv3.value)
 
     def decode_receipt_proof(self, rlp):
