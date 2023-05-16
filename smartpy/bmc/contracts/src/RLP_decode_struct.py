@@ -27,7 +27,7 @@ class DecodeLibrary:
         return sp.record(src=temp_map_string.get("src"),
                          dst=temp_map_string.get("dst"),
                          svc=temp_map_string.get("svc"),
-                         sn=temp_int.value,
+                         sn=sp.to_int(temp_int.value),
                          message=temp_byt.value)
 
 
