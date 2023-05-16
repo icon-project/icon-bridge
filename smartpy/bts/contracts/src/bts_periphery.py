@@ -20,8 +20,8 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
             bts_core=bts_core_address,
             blacklist=sp.map(tkey=sp.TAddress, tvalue=sp.TBool),
             token_limit=sp.map(tkey=sp.TString, tvalue=sp.TNat),
-            requests=sp.big_map(tkey=sp.TNat, tvalue=types.Types.PendingTransferCoin),
-            serial_no = sp.nat(0),
+            requests=sp.big_map(tkey=sp.TInt, tvalue=types.Types.PendingTransferCoin),
+            serial_no = sp.int(0),
             number_of_pending_requests = sp.nat(0),
             helper=helper_contract,
             parse_contract=parse_address
@@ -137,7 +137,7 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
 
         start_from = sp.view("add_to_str", self.data.parse_contract, _from, t=sp.TString).open_some()
 
-        send_message_args_type = sp.TRecord(to=sp.TString, svc=sp.TString, sn=sp.TNat, msg=sp.TBytes)
+        send_message_args_type = sp.TRecord(to=sp.TString, svc=sp.TString, sn=sp.TInt, msg=sp.TBytes)
         send_message_entry_point = sp.contract(send_message_args_type, self.data.bmc, "send_message").open_some()
         send_message_args = sp.record(
             to=to_network, svc=self.service_name, sn=self.data.serial_no,
@@ -158,20 +158,28 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
 
 
     @sp.entry_point
-    def handle_btp_message(self, _from, svc, sn, msg):
+    def handle_btp_message(self, _from, svc, sn, msg, callback, bsh_addr, prev, callback_msg):
         """
         BSH handle BTP message from BMC contract
         :param _from: An originated network address of a request
         :param svc: A service name of BSH contract
         :param sn: A serial number of a service request
         :param msg: An RLP message of a service request/service response
+        :param callback: callback function type in bmc_periphery
+        :param bsh_addr: param for callback function in bmc_periphery
+        :param prev: param for callback function in bmc_periphery
+        :param callback_msg: param for callback function in bmc_periphery
         :return:
         """
 
         sp.set_type(_from, sp.TString)
         sp.set_type(svc, sp.TString)
-        sp.set_type(sn, sp.TNat)
+        sp.set_type(sn, sp.TInt)
         sp.set_type(msg, sp.TBytes)
+        sp.set_type(callback, sp.TContract(sp.TRecord(string=sp.TOption(sp.TString), bsh_addr=sp.TAddress, prev=sp.TString, callback_msg=sp.TRecord(
+        src=sp.TString, dst=sp.TString, svc=sp.TString, sn=sp.TInt, message=sp.TBytes)
+                                                      )))
+        sp.set_type(bsh_addr, sp.TAddress)
 
         self.only_bmc()
 
@@ -230,6 +238,10 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
             with arg.match("UNKNOWN_TYPE") as a5:
                 sp.emit(sp.record(_from=_from, sn=sn), tag= "UnknownResponse")
 
+        return_value = sp.record(string=sp.some("success"), bsh_addr=bsh_addr, prev=prev,
+                                 callback_msg=callback_msg)
+        sp.transfer(return_value, sp.tez(0), callback)
+
         # using if else
         # with sp.if_(sm.serviceType == types.Types.ServiceType.open_variant("REQUEST_COIN_TRANSFER")):
             # tc = sp.unpack(sm.data, t=types.Types.TransferCoin)
@@ -247,20 +259,24 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
 
 
     @sp.entry_point
-    def handle_btp_error(self, svc, sn, code, msg):
+    def handle_btp_error(self, svc, sn, code, msg, callback, bsh_addr):
         """
         BSH handle BTP Error from BMC contract
         :param svc: A service name of BSH contract
         :param sn: A serial number of a service request
         :param code: A response code of a message (RC_OK / RC_ERR)
         :param msg: A response message
+        :param callback: callback function type in bmc_periphery
+        :param bsh_addr: param for callback function in bmc_periphery
         :return:
         """
 
         sp.set_type(svc, sp.TString)
-        sp.set_type(sn, sp.TNat)
+        sp.set_type(sn, sp.TInt)
         sp.set_type(code, sp.TNat)
         sp.set_type(msg, sp.TString)
+        sp.set_type(callback, sp.TContract(sp.TRecord(string=sp.TOption(sp.TString), bsh_addr=sp.TAddress,svc=sp.TString, sn=sp.TInt, code=sp.TNat, msg=sp.TString)))
+        sp.set_type(bsh_addr, sp.TAddress)
 
         self.only_bmc()
 
@@ -270,6 +286,9 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         emit_msg= sp.concat(["errCode: ", sp.view("string_of_int", self.data.parse_contract, sp.to_int(code), t=sp.TString).open_some(),", errMsg: ", msg])
         self.handle_response_service(sn, self.RC_ERR, emit_msg)
 
+        return_value = sp.record(string=sp.some("success"), bsh_addr=bsh_addr, svc=svc, sn=sn, code=code, msg=msg)
+        sp.transfer(return_value, sp.tez(0), callback)
+
     def handle_response_service(self, sn, code, msg):
         """
 
@@ -278,7 +297,7 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         :param msg:
         :return:
         """
-        sp.set_type(sn, sp.TNat)
+        sp.set_type(sn, sp.TInt)
         sp.set_type(code, sp.TNat)
         sp.set_type(msg, sp.TString)
 
@@ -351,17 +370,17 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         """
         sp.set_type(service_type, types.Types.ServiceType)
         sp.set_type(to, sp.TString)
-        sp.set_type(sn, sp.TNat)
+        sp.set_type(sn, sp.TInt)
         sp.set_type(msg, sp.TString)
         sp.set_type(code, sp.TNat)
 
         sp.trace("in send_response_message")
 
         send_message_args_type = sp.TRecord(
-            to=sp.TString, svc=sp.TString, sn=sp.TNat, msg=sp.TBytes
+            to=sp.TString, svc=sp.TString, sn=sp.TInt, msg=sp.TBytes
         )
         send_message_entry_point = sp.contract(send_message_args_type, self.data.bmc, "send_message").open_some()
-        send_message_args = sp.record(to=to, svc=self.service_name, sn=self.data.serial_no,
+        send_message_args = sp.record(to=to, svc=self.service_name, sn=sn,
                                       msg=sp.pack(sp.record(serviceType=service_type, data=sp.pack(sp.record(code=code, message=msg))))
                                       )
         sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
@@ -420,7 +439,7 @@ def test():
     #                                        coin_names={0:"Tok1"}, values={0:sp.nat(10)}, fees={0:sp.nat(2)})).run(
     #     sender=bts_core
     # )
-    # counter.handle_btp_error(sp.record(svc= "bts", code=sp.nat(2), sn=sp.nat(1), msg="test 1")).run(
+    # counter.handle_btp_error(sp.record(svc= "bts", code=sp.nat(2), sn=sp.int(1), msg="test 1")).run(
     #     sender=bmc
     # )
 
@@ -433,7 +452,7 @@ def test():
 
     # counter.handle_fee_gathering(sp.record(fa="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts")).run(sender=bmc)
 
-    # counter.handle_btp_message(sp.record(_from="tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts", sn=sp.nat(4),
+    # counter.handle_btp_message(sp.record(_from="tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts", sn=sp.int(4),
     #                                      msg=sp.bytes("0x0507070a000000030dae110000") )).run(sender=admin)
 
 

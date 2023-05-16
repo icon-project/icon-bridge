@@ -315,11 +315,11 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
                 net, addr = sp.match_pair(strings.split_btp_address(item, "prev_idx1", "result1", "my_list1", "last1", "penultimate1"))
 
                 # call send_message on BMCPeriphery
-                send_message_args_type = sp.TRecord(to=sp.TString, svc=sp.TString, sn=sp.TNat, msg=sp.TBytes)
+                send_message_args_type = sp.TRecord(to=sp.TString, svc=sp.TString, sn=sp.TInt, msg=sp.TBytes)
                 send_message_entry_point = sp.contract(send_message_args_type,
                                                                 self.data.bmc_periphery.open_some("Address not set"),
                                                                 "send_message").open_some()
-                send_message_args = sp.record(to=net, svc="bmc", sn=sp.nat(0), msg=self.encode_bmc_service(
+                send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0), msg=self.encode_bmc_service(
                     sp.record(serviceType=service_type, payload=final_rlp_bytes_with_prefix)))
                 sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
@@ -342,11 +342,11 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
             strings.split_btp_address(target, "prev_idx2", "result2", "my_list2", "last2", "penultimate2"))
 
         # call send_message on BMCPeriphery
-        send_message_args_type = sp.TRecord(to=sp.TString, svc=sp.TString, sn=sp.TNat, msg=sp.TBytes)
+        send_message_args_type = sp.TRecord(to=sp.TString, svc=sp.TString, sn=sp.TInt, msg=sp.TBytes)
         send_message_entry_point = sp.contract(send_message_args_type,
                                                self.data.bmc_periphery.open_some("Address not set"),
                                                "send_message").open_some()
-        send_message_args = sp.record(to=net, svc="bmc", sn=sp.nat(0), msg=self.encode_bmc_service(
+        send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0), msg=self.encode_bmc_service(
             sp.record(serviceType=service_type, payload=rlp_bytes.value)))
         sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
@@ -461,7 +461,7 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
     @sp.onchain_view()
     def get_bsh_service_by_name(self, service_name):
         sp.set_type(service_name, sp.TString)
-        sp.result(self.data.bsh_services.get(service_name))
+        sp.result(self.data.bsh_services.get(service_name, default_value=sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")))
 
     @sp.onchain_view()
     def get_link(self, to):
@@ -568,7 +568,6 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
     def resolve_route(self, dst_net):
         sp.set_type(dst_net, sp.TString)
 
-        # self.only_bmc_periphery()
         dst = sp.local("dst", self.data.get_route_dst_from_net.get(dst_net), t=sp.TString)
 
         with sp.if_(sp.len(sp.pack(dst.value))!= sp.nat(0)):
