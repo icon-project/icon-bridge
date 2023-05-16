@@ -50,6 +50,12 @@ class Helper(sp.Contract):
         sp.result(encode_length_packed(params))
 
     @sp.onchain_view()
+    def without_length_prefix(self, params):
+        sp.set_type(params, sp.TBytes)
+        decode = sp.build_lambda(Utils.RLP.Decoder.without_length_prefix)
+        sp.result(decode(params))
+
+    @sp.onchain_view()
     def encode_list(self, params):
         sp.set_type(params, sp.TList(sp.TBytes))
         encode_list_packed = sp.build_lambda(Utils.RLP.Encoder.encode_list)
