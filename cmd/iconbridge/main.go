@@ -17,6 +17,7 @@ import (
 	"github.com/icon-project/icon-bridge/common/config"
 	"github.com/icon-project/icon-bridge/common/log"
 
+	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/algo"
 	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/bsc"
 	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/hmny"
 	_ "github.com/icon-project/icon-bridge/cmd/iconbridge/chain/icon"

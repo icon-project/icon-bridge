@@ -5,6 +5,7 @@ go 1.13
 require (
 	blockwatch.cc/tzgo v1.16.0 // indirect
 	github.com/MuhammedIrfan/testify-mock v0.0.0-20220912121829-185fc90cd1b6
+	github.com/algorand/go-algorand-sdk v1.22.0
 	github.com/aws/aws-sdk-go v1.44.76
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/bshuster-repo/logrus-logstash-hook v0.4.1

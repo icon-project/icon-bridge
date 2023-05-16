@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ import (
 const (
 	coinTypeICON    = "icx"
 	coinTypeEVM     = "evm"
+	coinTypeAVM     = "avm"
 	cipherAES128CTR = "aes-128-ctr"
 	kdfScrypt       = "scrypt"
 	coinTypeNear    = "near"
@@ -163,6 +165,12 @@ func DecryptKeyStore(data, pw []byte) (Wallet, error) {
 			return nil, err
 		}
 		return NewEvmWalletFromPrivateKey(key)
+	case coinTypeAVM:
+		key, err := base64.StdEncoding.DecodeString(ksdata.ID)
+		if err != nil {
+			return nil, err
+		}
+		return NewAvmWalletFromPrivateKey(key)
 	case coinTypeNear:
 		key, err := DecryptNearKeyStore(data, pw)
 		if err != nil {
