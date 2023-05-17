@@ -34,13 +34,14 @@ type senderOptions struct {
 
 type sender struct {
 	log log.Logger
-	src tezos.Address
+	src chain.BTPAddress
 	dst tezos.Address
 	connection *contract.Contract
 	parameters micheline.Parameters
 	cls *Client
 	blockLevel int64
 	opts senderOptions
+	w tezos.PrivateKey
 }
 
 func NewSender(
@@ -48,17 +49,20 @@ func NewSender(
 	urls []string, w wallet.Wallet,
 	rawOpts json.RawMessage, l log.Logger) (chain.Sender, error) {
 		var err error
-		srcAddr := tezos.MustParseAddress(src.String())
-		dstAddr := tezos.MustParseAddress(dst.String())
+		fmt.Println(src.ContractAddress())
+		fmt.Println(dst.ContractAddress())
+		// srcAddr := tezos.MustParseAddress(src.ContractAddress())
+		dstAddr := tezos.MustParseAddress(dst.ContractAddress())
 		s := &sender {
 			log: l,
-			src: srcAddr,
+			src: src,
 			dst: dstAddr,
+			w: tezos.MustParsePrivateKey("edskRz1HoD3cWkmWhCNS5LjBrJNWChGuKWB4HnVoN5UqVsUCpcNJR67ZxKs965u8RgRwptrtGc2ufYZoeECgB77RKm1gTbQ6eB"),
 		}
 		if len(urls) == 0 {
 			return nil, fmt.Errorf("Empty url")
 		}
-		s.cls, err = NewClient(urls[0], srcAddr, l)
+		s.cls, err = NewClient(urls[0], dstAddr, l)
 		if err != nil {
 			return nil, err 
 		}
@@ -68,7 +72,7 @@ func NewSender(
 }
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error){
-	balance, err = s.cls.GetBalance(ctx, s.cls.Cl, s.src, s.cls.blockLevel)
+	balance, err = s.cls.GetBalance(ctx, s.cls.Cl, s.w.Address(), s.cls.blockLevel)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -140,7 +144,7 @@ func (s *sender) Status(ctx context.Context) (link *chain.BMCLinkStatus, err err
 		return nil, ctx.Err()
 	}
 
-	status, err := s.cls.GetStatus(ctx, s.cls.Contract)
+	status, err := s.cls.GetStatus(ctx, s.cls.Contract, s.src.String())
 	if err != nil {
 		return nil, err
 	}

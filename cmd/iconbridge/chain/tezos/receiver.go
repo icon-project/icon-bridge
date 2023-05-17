@@ -41,7 +41,7 @@ type receiver struct {
 
 func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, opts chain.SubscribeOptions) (errCh <-chan error, err error) {
 	fmt.Println("reached to subscribe")
-	src := tezos.MustParseAddress(string(r.src))
+	src := tezos.MustParseAddress(r.src.ContractAddress())
 	r.client.Contract = contract.NewContract(src, r.client.Cl)
 
 	opts.Seq++
@@ -191,7 +191,7 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, rawOpts json.RawMessa
 		receiver.opts.SyncConcurrency = MonitorBlockMaxConcurrency
 	}
 
-	srcAddr := tezos.MustParseAddress(string(src))
+	srcAddr := tezos.MustParseAddress(src.ContractAddress())
 
 	newClient, err = NewClient(urls[0], srcAddr, receiver.log)
 
@@ -368,7 +368,7 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 				fmt.Println("has it reached to verification")
 				fmt.Println(next.Header.Level)
 
-				err := vr.Verify(ctx, prevHeader, next.Block.Metadata.Baker, r.client.Cl, next.Header.Hash)
+				err := vr.Verify(ctx, prevHeader, next.Block.Metadata.Baker, r.client.Cl, next.Header)
 
 				if err != nil {
 					cursor = vr.Height() + 1
@@ -465,7 +465,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						if vr != nil {
 							fmt.Println("vr is not nil")
 							// header := bn.Header
-							if err := vr.Verify(ctx, lbn.Header, bn.Proposer, r.client.Cl, bn.Header.Hash); err != nil { // change accordingly 
+							if err := vr.Verify(ctx, lbn.Header, bn.Proposer, r.client.Cl, bn.Header); err != nil { // change accordingly 
 								// r.log.WithFields(log.Fields{
 								// 	"height":     lbn.Height,
 								// 	"lbnHash":    lbn.Hash,

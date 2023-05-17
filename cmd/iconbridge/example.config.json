@@ -15,98 +15,82 @@
     },
     "relays": [
         {
-            "name": "h2i",
+            "name": "t2i",
             "src": {
-                "address": "btp://0x6357d2e0.hmny/0x233909bE3797BBd135A837AC945bCdE3cB078969",
-                "endpoint": ["https://rpc.s0.b.hmny.io"],
+                "address": "btp://NetXnHfVqm9iesp.tezos/KT1UrLqhQHDC3mJw9BUrqsiix7JRbxTsvWJu",
+                "endpoint": [
+                    "https://ghostnet.tezos.marigold.dev"
+                ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 24629415,
-                        "commitBitmap": "0xffffff07",
-                        "commitSignature": "0xaa325f4ae32c183e184e4f64603cfbeb44cec12cb7654a180ed83b737d53ff86463f5c6ba20300b70b60266512ee570fba6bcfbc5085a07f39dac5a197e53d2eff450c9d8abdfa685a47a72a8bfb9d541fdf3cf02e8b3e89c4c3fa057d58dc8b"
+                        "blockHeight": 2661055
                     },
                     "syncConcurrency": 100
                 },
-                "offset": 24629946
+                "offset": 2661055
             },
             "dst": {
-                "address": "btp://0x7.icon/cx9e5c0a749ee94c01febe04702184002a76a84f84",
+                "address": "btp://0x2.icon/cx9f3e7e3c6dda6da9ea0c4c4e8f1b5d36b0b70742",
                 "endpoint": [
                     "https://berlin.net.solidwallet.io/api/v3/icon_dex"
                 ],
                 "options": {
-                    "step_limit": 13610920010,
-                    "tx_data_size_limit": 65536
+                    "step_limit": 1000000
                 },
                 "key_store": {
-                    "address": "hxca02e14958183eef1a31d405e6628d25bdb35282",
-                    "id": "f94b9e44-63a8-4b10-a691-a78cf4adb143",
                     "version": 3,
-                    "coinType": "icx",
+                    "id": "8dd706f6-9c0d-4bf2-b607-5c3caa4f9404",
+                    "address": "hx0a1c14557fa891cdba8df495850d61704a2c90d7",
                     "crypto": {
-                        "cipher": "aes-128-ctr",
+                        "ciphertext": "0958c7f79c5e3947f8b7c46f78482c735baa02e0cac339ee100c09c24b99b4f6",
                         "cipherparams": {
-                            "iv": "081fcf6387ff3e72418561c22e203449"
+                            "iv": "3e6334b31b407772682bf909dda25a91"
                         },
-                        "ciphertext": "e959dbe55a64de209c69bb15fb110bb8ffbb6361400b530861eded26f686025d",
+                        "cipher": "aes-128-ctr",
                         "kdf": "scrypt",
                         "kdfparams": {
                             "dklen": 32,
-                            "n": 65536,
+                            "salt": "87ee9d1105fabc001d1d3455d3937c1256d2d604fd910bd0ffe95bb221769694",
+                            "n": 16384,
                             "r": 8,
-                            "p": 1,
-                            "salt": "e55aed7374098c0a"
+                            "p": 1
                         },
-                        "mac": "e05a40a5901fecddfc692653c1a6f1b3ea872b4fad2078f3b2aacb8fbbea7a8e"
-                    }
+                        "mac": "f33f666c2c699dd906fdec3a454c9170c6b68cabcaae4c67e22861acf316127c"
+                    },
+                    "coinType": "icx"
                 },
-                "key_password": "xyz"
+                "key_password": "icon@123"
             }
         },
         {
-            "name": "i2h",
+            "name": "i2t",
             "src": {
-                "address": "btp://0x7.icon/cx9e5c0a749ee94c01febe04702184002a76a84f84",
+                "address": "btp://0x2.icon/cx9f3e7e3c6dda6da9ea0c4c4e8f1b5d36b0b70742",
                 "endpoint": [
                     "https://berlin.net.solidwallet.io/api/v3/icon_dex"
                 ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 50833960,
+                        "blockHeight": 8279323,
                         "validatorsHash": "0x120c4d12ae3770b868e650e950200364fe138b92e872e487f50da4337bcc83c7"
                     }
                 },
-                "offset": 6057269
+                "offset": 8279323
             },
             "dst": {
-                "address": "btp://0x6357d2e0.hmny/0x233909bE3797BBd135A837AC945bCdE3cB078969",
-                "endpoint": ["https://rpc.s0.b.hmny.io"],
+                "address": "btp://NetXnHfVqm9iesp.tezos/KT1UrLqhQHDC3mJw9BUrqsiix7JRbxTsvWJu",
+                "endpoint": [
+                    "https://ghostnet.tezos.marigold.dev"
+                ],
                 "options": {
-                    "gas_limit": 80000000,
+                    "gas_limit": 1040000,
                     "boost_gas_price": 1.5,
                     "tx_data_size_limit": 65536
                 },
                 "key_store": {
-                    "address": "80f1b32f3d656528a9616076e42fcc4d47a5a9a3",
-                    "crypto": {
-                        "cipher": "aes-128-ctr",
-                        "ciphertext": "8d892d72f030610af8df4625abb10fec8aaa62a3d882fde1d8875302f732f99d",
-                        "cipherparams": {
-                            "iv": "01c84057179e9dc95baaabc78e04918c"
-                        },
-                        "kdf": "scrypt",
-                        "kdfparams": {
-                            "dklen": 32,
-                            "n": 262144,
-                            "p": 1,
-                            "r": 8,
-                            "salt": "0c1b6b301a2d2d46f0a17b736b82fb4cdf90bb3a9be4a0671828c00d878a7d77"
-                        },
-                        "mac": "f3ce22f3ba8fa0cd17d25a4be5752f8de53d3e52ec282f1ff050a3b3bcbdf683"
-                    },
-                    "id": "982c4409-864d-408e-a1d0-ec2b47e319ba",
-                    "version": 3,
-                    "coinType": "evm"
+                    "address": "tz1ZPVxKiybvbV1GvELRJJpyE1xj1UpNpXMv",
+                    "secret": "edskRz1HoD3cWkmWhCNS5LjBrJNWChGuKWB4HnVoN5UqVsUCpcNJR67ZxKs965u8RgRwptrtGc2ufYZoeECgB77RKm1gTbQ6eB",
+                    "coinType": "xtz"
                 },
                 "key_password": "xyz"
             }

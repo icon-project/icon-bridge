@@ -154,7 +154,7 @@ func (c *Client) MonitorBlock(ctx context.Context, blockLevel int64, verifier IV
 			}
 			fmt.Println(block.Metadata.ProposerConsensusKey)
 
-			err = verifier.Verify(ctx, header, block.Metadata.ProposerConsensusKey, c.Cl, header.Hash)
+			err = verifier.Verify(ctx, header, block.Metadata.ProposerConsensusKey, c.Cl, header)
 
 			if err != nil {
 				fmt.Println(err)
@@ -253,9 +253,21 @@ func (c *Client) GetBalance(ctx context.Context, connection *rpc.Client, account
 	return balance.Big(), nil 
 }
 
-func (c *Client) GetStatus(ctx context.Context, contr *contract.Contract) (TypesLinkStats, error){
+func (c *Client) GetStatus(ctx context.Context, contr *contract.Contract, link string) (TypesLinkStats, error){
+
+	fmt.Println("reached in get status of tezos")
 	prim := micheline.Prim{}
-	status, err := contr.RunCallback(ctx, "getStatus", prim)
+
+	in := "{ \"prim\": \"Right\", \"args\": [ { \"prim\": \"Right\", \"args\": [ { \"string\": \""+ link + "\" } ] } ] }"
+	fmt.Println(in)
+
+	if err := prim.UnmarshalJSON([]byte(in)); err != nil {
+		fmt.Println("couldnot unmarshall empty string")
+		fmt.Println(err)
+		return *new(TypesLinkStats), err
+	}
+
+	status, err := contr.RunView(ctx, "get_status", prim)
 	if err != nil {
 		return *new(TypesLinkStats), err
 	}

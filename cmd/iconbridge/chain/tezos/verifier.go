@@ -14,7 +14,7 @@ import (
 
 type IVerifier interface {
 	Next() int64
-	Verify(ctx context.Context, header *rpc.BlockHeader, proposer tezos.Address, c *rpc.Client, hash tezos.BlockHash) error
+	Verify(ctx context.Context, header *rpc.BlockHeader, proposer tezos.Address, c *rpc.Client, nextHeader *rpc.BlockHeader) error
 	Update(header *rpc.BlockHeader) error
 	ParentHash() tezos.BlockHash
 	IsValidator(proposer tezos.Address, height int64) bool
@@ -37,13 +37,10 @@ func (vr *Verifier) Next() int64{
 	return vr.next
 }
 
-func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, proposer tezos.Address, c *rpc.Client, hash tezos.BlockHash) error {
+func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, proposer tezos.Address, c *rpc.Client, nextHeader *rpc.BlockHeader) error {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
-	fmt.Println("has to reach in verify the second time")
-	fmt.Println(header.Level)
 	blockFittness := header.Fitness
-	fmt.Println(blockFittness)
 	currentFittness, err := strconv.ParseInt(string(blockFittness[1].String()), 16, 64)
 	if err != nil {
 		return err
@@ -52,28 +49,20 @@ func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, propose
 	if currentFittness < vr.parentFittness {
 		return fmt.Errorf("Invalid block fittness", currentFittness)
 	}
-	fmt.Println("validated the block fittness", header.Level)
-
 	previousHashInBlock := header.Predecessor
-	fmt.Println(previousHashInBlock)
-
-	fmt.Println(vr.parentHash)
 
 	if previousHashInBlock.String() != vr.parentHash.String() {
 		return fmt.Errorf("Invalid block hash", header.Level)
 	}
 
 	
-	fmt.Println("Block is verified")
-	fmt.Println("*******         *******")
-	fmt.Println("  *******     *******")
-	fmt.Println("    ******* *******")
-
 	// isValidSignature, err := vr.VerifySignature(ctx, proposer, header.Signature, header.Level, header, c)
 
 	// if !isValidSignature {
 	// 	return fmt.Errorf("Invalid block hash. Signature mismatch")
 	// }
+
+	fmt.Println(nextHeader.ValidationPass)
 
 	fmt.Println(true)
 	return nil 
