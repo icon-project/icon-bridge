@@ -21,15 +21,25 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
     BMCRevertUnknownHandleBTPError = sp.string("UnknownHandleBTPError")
     BMCRevertUnknownHandleBTPMessage = sp.string("UnknownHandleBTPMessage")
 
-    def __init__(self, bmc_management_addr, helper_contract, parse_address):
+    def __init__(self, bmc_management_addr, helper_contract, parse_address, owner_address):
         self.init(
             helper=helper_contract,
             bmc_btp_address=sp.none,
             bmc_management=bmc_management_addr,
             parse_contract=parse_address,
             handle_btp_message_status=sp.none,
-            handle_btp_error_status=sp.none
+            handle_btp_error_status=sp.none,
+            owner_address = owner_address
         )
+
+    def only_owner(self):
+        sp.verify(sp.sender == self.data.owner_address, "Unauthorized")
+
+    @sp.entry_point
+    def set_bmc_management_addr(self, params):
+        sp.set_type(params, sp.TAddress)
+        self.only_owner()
+        self.data.bmc_management = params
 
     @sp.entry_point
     def set_bmc_btp_address(self, network):
@@ -357,15 +367,17 @@ def test():
     alice = sp.test_account("Alice")
     helper = sp.test_account("Helper")
     parse_contract = sp.test_account("Parser")
+    owner = sp.test_account("Owner")
     bmc_management = sp.test_account("BMC Management")
     # bmc= sp.test_account("BMC")
 
     scenario = sp.test_scenario()
-    bmc = BMCPreiphery(bmc_management.address, helper.address, parse_contract.address)
+    bmc = BMCPreiphery(bmc_management.address, helper.address, parse_contract.address, owner.address)
     scenario += bmc
 
     # bmc.handle_relay_message(sp.record(prev="demo string", msg=sp.bytes("0x0dae11"))).run(sender=alice)
 
 sp.add_compilation_target("bmc_periphery", BMCPreiphery(bmc_management_addr=sp.address("KT1Uiycjx4iXdjKFfR2kAo2NUdEtQ6PmDX4Y"),
                                                         helper_contract=sp.address("KT1Q5erZm7Pp8UJywK1nkiP8QPCRmyUotUMq"),
-                                                        parse_address=sp.address("KT1XgRyjQPfpfwNrvYYpgERpYpCrGh24aoPX")))
+                                                        parse_address=sp.address("KT1XgRyjQPfpfwNrvYYpgERpYpCrGh24aoPX"),
+                                                        owner_address=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP")))
