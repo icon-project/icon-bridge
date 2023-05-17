@@ -14,9 +14,10 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
 
     MAX_BATCH_SIZE = sp.nat(15)
 
-    def __init__(self, bmc_address, bts_core_address, helper_contract, parse_address):
+    def __init__(self, bmc_address, bts_core_address, helper_contract, parse_address, owner_address):
         self.update_initial_storage(
             bmc=bmc_address,
+            owner=owner_address,
             bts_core=bts_core_address,
             blacklist=sp.map(tkey=sp.TAddress, tvalue=sp.TBool),
             token_limit=sp.map(tkey=sp.TString, tvalue=sp.TNat),
@@ -30,8 +31,23 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
     def only_bmc(self):
         sp.verify(sp.sender == self.data.bmc, "Unauthorized")
 
+    def only_owner(self):
+        sp.verify(sp.sender == self.data.owner, "Unauthorized")
+
     def only_bts_core(self):
         sp.verify(sp.sender == self.data.bts_core, "Unauthorized")
+
+    @sp.entry_point
+    def set_bmc_address(self, params):
+        sp.set_type(params, sp.TAddress)
+        self.only_owner()
+        self.data.bmc = params
+
+    @sp.entry_point
+    def set_bts_core_address(self, params):
+        sp.set_type(params, sp.TAddress)
+        self.only_owner()
+        self.data.bts_core = params
 
     @sp.onchain_view()
     def has_pending_request(self):
@@ -429,9 +445,10 @@ def test():
     admin = sp.test_account("Admin")
     bts_core = sp.test_account("BTS")
     helper = sp.test_account("Helper")
+    owner = sp.test_account("Owner")
 
     scenario = sp.test_scenario()
-    counter = BTPPreiphery(bmc.address, bts_core.address, helper.address, admin.address)
+    counter = BTPPreiphery(bmc.address, bts_core.address, helper.address, admin.address, owner.address)
     scenario += counter
 
     # counter.add_to_blacklist({0:"tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"}).run(sender=counter.address)
@@ -459,4 +476,5 @@ def test():
 sp.add_compilation_target("bts_periphery", BTPPreiphery(bmc_address=sp.address("KT1UrLqhQHDC3mJw9BUrqsiix7JRbxTsvWJu"),
                                                         bts_core_address=sp.address("KT1JAippuMfS6Bso8DGmigmTdkgEZUxQxYyX"),
                                                         helper_contract=sp.address("KT1Q5erZm7Pp8UJywK1nkiP8QPCRmyUotUMq"),
-                                                        parse_address=sp.address("KT1EKPrSLWjWViZQogFgbc1QmztkR5UGXEWa")))
+                                                        parse_address=sp.address("KT1EKPrSLWjWViZQogFgbc1QmztkR5UGXEWa"),
+                                                        owner_address = sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP"))    )
