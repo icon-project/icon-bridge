@@ -19,7 +19,7 @@ class Types:
         src=sp.TString,
         dst=sp.TString,
         svc=sp.TString,
-        sn=sp.TNat,
+        sn=sp.TInt,
         message=sp.TBytes
     )
 

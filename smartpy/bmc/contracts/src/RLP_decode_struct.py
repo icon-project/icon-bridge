@@ -27,7 +27,7 @@ class DecodeLibrary:
         return sp.record(src=temp_map_string.get("src"),
                          dst=temp_map_string.get("dst"),
                          svc=temp_map_string.get("svc"),
-                         sn=temp_int.value,
+                         sn=sp.to_int(temp_int.value),
                          message=temp_byt.value)
 
 
@@ -140,7 +140,7 @@ class DecodeLibrary:
         counter = sp.local("counter", 0)
         sp.for i in rlp_.items():
             sp.if counter.value == 1:
-                temp_byt.value = i.value
+                temp_byt.value = sp.view("without_length_prefix", self.data.helper, i.value, t=sp.TBytes).open_some()
             sp.if counter.value == 0:
                 rv_int.value = Utils2.Int.of_bytes(i.value)
             sp.if counter.value == 2:
@@ -158,14 +158,8 @@ class DecodeLibrary:
                                                               seq= sp.TNat,
                                                               message = sp.TBytes)))
         sp.for z in new_sub_list.items():
-            starts_with = sp.slice(z.value, 0, 2).open_some()
-            sub_list.value = z.value
-            sp.if starts_with == sp.bytes("0xb846"):
-                sub_list.value = sp.slice(z.value, 2, sp.as_nat(sp.len(z.value) - 2)).open_some()
-            view_value = sp.view("decode_list", self.data.helper, sub_list.value, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
-            sp.for a in view_value.items():
-                events.value[counter.value] = self.to_message_event(a.value)
-                counter.value = counter.value + 1
+            events.value[counter.value] = self.to_message_event(z.value)
+            counter.value = counter.value + 1
         return sp.record(index = rv_int.value, events = events.value, height = rv_int2.value)
 
 
@@ -191,7 +185,7 @@ class DecodeLibrary:
         new_sub_list = sp.view("decode_list", self.data.helper, sub_list.value, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
         counter.value = 0
         sp.if sp.len(new_sub_list) > 0:
-            sp.for x in rlp_.items():
+            sp.for x in new_sub_list.items():
                 receipt_proofs.value[counter.value] = self.decode_receipt_proof(x.value)
                 counter.value = counter.value + 1
         return receipt_proofs.value

@@ -13,7 +13,7 @@ class EncodeLibrary:
         return rlp_bytes_with_prefix
 
     def encode_bmc_message(self, params):
-        sp.set_type(params, sp.TRecord(src=sp.TString, dst=sp.TString, svc=sp.TString, sn=sp.TNat, message=sp.TBytes))
+        sp.set_type(params, sp.TRecord(src=sp.TString, dst=sp.TString, svc=sp.TString, sn=sp.TInt, message=sp.TBytes))
 
         encode_src = sp.view("encode_string", self.data.helper, params.src, t=sp.TBytes).open_some()
         encode_dst = sp.view("encode_string", self.data.helper, params.dst, t=sp.TBytes).open_some()
