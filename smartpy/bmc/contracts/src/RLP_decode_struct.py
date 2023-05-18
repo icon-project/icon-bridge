@@ -3,6 +3,10 @@ import smartpy as sp
 Utils2 = sp.io.import_script_from_url("https://raw.githubusercontent.com/RomarQ/tezos-sc-utils/main/smartpy/utils.py")
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 
+# contract address to deal with negative values
+#TODO: change to mainnet address
+HELPER_CONTRACT_ADDRESS = sp.address("KT1W6dU9xpKwMwHXopVhW5PB1NdZFmVZPKbK")
+
 class DecodeLibrary:
 
     def decode_bmc_message(self, rlp):
@@ -19,7 +23,8 @@ class DecodeLibrary:
             sp.if counter.value == 2:
                 temp_map_string["svc"] = sp.view("decode_string", self.data.helper, k.value, t=sp.TString).open_some()
             sp.if counter.value == 3:
-                temp_int.value = Utils2.Int.of_bytes(k.value)
+                sn_in_bytes = sp.view("without_length_prefix", self.data.helper, k.value, t=sp.TBytes).open_some()
+                temp_int.value = sp.view("to_int", HELPER_CONTRACT_ADDRESS, sn_in_bytes, t=sp.TInt).open_some()
             sp.if counter.value == 4:
                 temp_byt.value = k.value
             counter.value = counter.value + 1
