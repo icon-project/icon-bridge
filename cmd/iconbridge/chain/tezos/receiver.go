@@ -48,53 +48,9 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 
 	_errCh := make(chan error)
 
-	verifierOpts := &VerifierOptions{
-		BlockHeight: int64(opts.Height),
-	}
-
-	r.opts.Verifier = verifierOpts
-
-	verifier, err := r.NewVerifier(ctx, r.opts.Verifier.BlockHeight) 
-	fmt.Println("returned by the new verifier")
-	if err != nil {
-		_errCh <- err
-		return _errCh, err 
-	}
-
-	if err = r.SyncVerifier(ctx, verifier, r.opts.Verifier.BlockHeight + 1,
-	func (v []*chain.Receipt) error {
-			fmt.Println("has to reach in this callback ")
-			var vCP []*chain.Receipt
-			var events []*chain.Event
-			for _, receipt := range v{
-				for _, event := range receipt.Events {
-					switch {
-						case event.Sequence == opts.Seq:
-							events = append(events, event)
-							opts.Seq++ 
-						case event.Sequence > opts.Seq:
-							return fmt.Errorf("invalid event seq")
-						default:
-							fmt.Println("default?????")
-							events = append(events, event)
-							opts.Seq++ 
-
-
-					}
-				}
-				receipt.Events = events
-				vCP = append(vCP, &chain.Receipt{Events: receipt.Events})
-			} 
-			if len(v) > 0 {
-				msgCh <- &chain.Message{Receipts: vCP}
-			}
-			fmt.Println("returned nill")
-			return nil 
-		}); err != nil {
-			_errCh <- err 
-		}
-
 	fmt.Println("reached to before monitor block")
+	fmt.Println(opts.Height)
+	fmt.Println(r.opts.SyncConcurrency)
 
 	go func() {
 		defer close(_errCh)
@@ -106,17 +62,17 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		}
 		if err := r.receiveLoop(ctx, bn,
 		func (blN *types.BlockNotification) error {
-			fmt.Println("has to reach in this callback ")
+			// fmt.Println("has to reach in this callback ", blN.Height.Uint64())
 
-			if blN.Height.Uint64() != lastHeight + 1{
+			if blN.Height.Uint64() != lastHeight {
 				return fmt.Errorf(
-					"block notification: expected=%d, got %d", lastHeight + 1, blN.Height.Uint64())
+					"block notification: expected=%d, got %d", lastHeight, blN.Height.Uint64())
 			}
 
-			var vCP []*chain.Receipt
-			var events []*chain.Event
-			v := blN.Receipts
-			for _, receipt := range v{
+			// var events []*chain.Event
+			receipts := blN.Receipts
+			for _, receipt := range receipts{
+				events := receipt.Events[:0]
 				for _, event := range receipt.Events {
 					switch {
 						case event.Sequence == opts.Seq:
@@ -124,17 +80,21 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 							opts.Seq++ 
 						case event.Sequence > opts.Seq:
 							return fmt.Errorf("invalid event seq")
+							//TODO to be removed 
 						default:
 							events = append(events, event)
-							opts.Seq++ 
+							opts.Seq++
 					}
 				}
 				receipt.Events = events
-				vCP = append(vCP, &chain.Receipt{Events: receipt.Events})
+				fmt.Println(receipt.Height)
+				fmt.Println("appending")
+				// vCP = append(vCP, &chain.Receipt{Events: receipt.Events})
 			} 
-			if len(v) > 0 {
+			if len(receipts) > 0 {
 				fmt.Println("reached to sending message")
-				msgCh <- &chain.Message{Receipts: vCP}
+				fmt.Println(receipts[0].Height)
+				msgCh <- &chain.Message{Receipts: receipts}
 			}
 			fmt.Println("returned nill")
 			lastHeight++
@@ -169,21 +129,23 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, rawOpts json.RawMessa
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("Empty urls")
 	}
-	verifierOpts := &VerifierOptions{
-		BlockHeight: int64(2468690),
-	}
+	// verifierOpts := &VerifierOptions{
+	// 	BlockHeight: int64(2468690),
+	// }
 
-	receiverOpts := &ReceiverOptions{
-		SyncConcurrency: 50,
-		Verifier: verifierOpts,
-	}
+	// receiverOpts := &ReceiverOptions{
+	// 	SyncConcurrency: 50,
+	// 	Verifier: verifierOpts,
+	// }
 
 	receiver := &receiver{
 		log: l,
 		src: src,
 		dst: dst,
-		opts: *receiverOpts,
 	}
+
+	err = json.Unmarshal(rawOpts, &receiver.opts)
+
 
 	if receiver.opts.SyncConcurrency < 1 {
 		receiver.opts.SyncConcurrency = 1
@@ -534,7 +496,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						close(qch)
 					}
 				default:
-					fmt.Println("reached in default of receive loop")
+					// fmt.Println("reached in default of receive loop")
 					go func(q *bnq) {
 						defer func() {
 							time.Sleep(500 * time.Millisecond)
@@ -557,16 +519,16 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						}
 					
 						if q.v.HasBTPMessage == nil {
-							fmt.Println("height: ", q.v.Height.Int64())
+							// fmt.Println("height: ", q.v.Height.Int64())
 							block, err := r.client.GetBlockByHeight(ctx, r.client.Cl, q.v.Height.Int64())
 
 							if err != nil {
 								return
 							}
 							q.v.Proposer = block.Metadata.Proposer
-							
-
+	
 							hasBTPMessage, receipt, err := returnTxMetadata2(block, r.client.Contract.Address(), q.v.Height.Int64(), r.client)
+							fmt.Println("has btp message", hasBTPMessage, q.v.Height.Uint64())
 
 							if err != nil {
 								q.err = errors.Wrapf(err, "hasBTPMessage: %v", err)
@@ -575,6 +537,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 							q.v.HasBTPMessage = &hasBTPMessage
 
 							if receipt != nil {
+								fmt.Println("should reach here for block", q.v.Height.Uint64())
 								q.v.Receipts = receipt
 							}
 						}

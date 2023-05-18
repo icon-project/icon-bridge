@@ -30,7 +30,7 @@ deploy_smartpy_bmc_management(){
 }
 
 deploy_smartpy_bmc_periphery(){
-    if [ ! -f tz.addr.bmcperipherytbtp ]; then
+    if [ ! -f tz.addr.bmcperipherybtp ]; then
         echo "deploying bmc_periphery"
         cd ~/GoProjects/icon-bridge/smartpy/bmc
         npm run compile bmc_periphery
@@ -43,7 +43,7 @@ deploy_smartpy_bmc_periphery(){
 }
 
 deploy_smartpy_bts_periphery(){
-    if [ ! -f tz.addr.btsperipherybtp ]; then
+    if [ ! -f tz.addr.bts_periphery ]; then
         echo "deploying bts_periphery"
         cd ~/GoProjects/icon-bridge/smartpy/bts
         npm run compile bts_periphery
@@ -54,10 +54,37 @@ deploy_smartpy_bts_periphery(){
     fi
 }
 
+deploy_smartpy_bts_core(){
+    if [ ! -f tz.addr.bts_core ]; then
+        echo "deploying bts_core"
+        cd ~/GoProjects/icon-bridge/smartpy/bts
+        npm run compile bts_core
+        local deploy=$(npm run deploy bts_core @GHOSTNET)
+        sleep 5
+        deploy=${deploy#*::}
+        echo $deploy > tz.addr.bts_core
+    fi
+}
+
+deploy_smartpy_bts_owner_manager(){
+    if [ ! -f tz.addr.btsperipherybtp ]; then
+        echo "deploying bts_owner_manager"
+        cd ~/GoProjects/icon-bridge/smartpy/bts
+        npm run compile bts_owner_manager
+        local deploy=$(npm run deploy bts_owner_manager @GHOSTNET)
+        sleep 5
+        deploy=${deploy#*::}
+        echo $deploy > tz.addr.bts_owner_manager
+    fi 
+}
+
+
+
+
 # bts core
 # bts owner manager
 
 
 
 
-deploy_smartpy_bmc
+deploy_smartpy_bts_owner_manager

@@ -77,30 +77,30 @@ func (r *relay) Start(ctx context.Context) error {
 		From: r.cfg.Src.Address,
 	}
 
-	filterSrcMsg := func(rxHeight, rxSeq uint64) (missingRxSeq uint64) {
-		receipts := srcMsg.Receipts[:0]
-		for _, receipt := range srcMsg.Receipts {
-			if receipt.Height < rxHeight {
-				continue
-			}
-			events := receipt.Events[:0]
-			for _, event := range receipt.Events {
-				if event.Sequence > rxSeq {
-					rxSeq++
-					if event.Sequence != rxSeq {
-						return rxSeq
-					}
-					events = append(events, event)
-				}
-			}
-			receipt.Events = events
-			if len(receipt.Events) > 0 {
-				receipts = append(receipts, receipt)
-			}
-		}
-		srcMsg.Receipts = receipts
-		return 0
-	}
+	// filterSrcMsg := func(rxHeight, rxSeq uint64) (missingRxSeq uint64) {
+	// 	receipts := srcMsg.Receipts[:0]
+	// 	for _, receipt := range srcMsg.Receipts {
+	// 		if receipt.Height < rxHeight {
+	// 			continue
+	// 		}
+	// 		events := receipt.Events[:0]
+	// 		for _, event := range receipt.Events {
+	// 			if event.Sequence > rxSeq {
+	// 				rxSeq++
+	// 				if event.Sequence != rxSeq {
+	// 					return rxSeq
+	// 				}
+	// 				events = append(events, event)
+	// 			}
+	// 		}
+	// 		receipt.Events = events
+	// 		if len(receipt.Events) > 0 {
+	// 			receipts = append(receipts, receipt)
+	// 		}
+	// 	}
+	// 	srcMsg.Receipts = receipts
+	// 	return 0
+	// }
 
 	relayCh := make(chan struct{}, 1)
 	relayTicker := time.NewTicker(relayTickerInterval)
@@ -150,6 +150,7 @@ func (r *relay) Start(ctx context.Context) error {
 			for _, receipt := range msg.Receipts {
 				if len(receipt.Events) > 0 {
 					if seqBegin == 0 {
+						fmt.Println(receipt.Events[0], receipt.Height, receipt.Index)
 						seqBegin = receipt.Events[0].Sequence
 					}
 					seqEnd = receipt.Events[len(receipt.Events)-1].Sequence
@@ -157,11 +158,13 @@ func (r *relay) Start(ctx context.Context) error {
 				}
 			}
 			msg.Receipts = receipts
-
+			fmt.Println("length of msg.Receipts is ", len(msg.Receipts))
 			if len(msg.Receipts) > 0 {
 				r.log.WithFields(log.Fields{
 					"seq": []uint64{seqBegin, seqEnd}}).Debug("srcMsg added")
 				srcMsg.Receipts = append(srcMsg.Receipts, msg.Receipts...)
+				fmt.Println(len(srcMsg.Receipts))
+				fmt.Println(srcMsg.Receipts[0].Height)
 				if len(srcMsg.Receipts) > relayTriggerReceiptsCount {
 					relaySignal()
 				}
@@ -169,26 +172,41 @@ func (r *relay) Start(ctx context.Context) error {
 
 		case <-relayCh:
 
+			fmt.Println("reached in status")
+			fmt.Println(r.cfg.Name)
+
 			link, err = r.dst.Status(ctx)
+			fmt.Println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx")
+			fmt.Println(link)
 			if err != nil {
 				r.log.WithFields(log.Fields{"error": err}).Debug("dst.Status: failed")
 				if errors.Is(err, context.Canceled) {
 					r.log.WithFields(log.Fields{"error": err}).Error("dst.Status: failed, Context Cancelled")
 					return err
 				}
+				fmt.Println("continued from getting status")
 				// TODO decide whether to ignore error or not
 				continue
 			}
 
 			if link.CurrentHeight < txBlockHeight {
+				fmt.Println("continued from here")
 				continue // skip until dst.Status is updated
 			}
 
-			if missing := filterSrcMsg(link.RxHeight, link.RxSeq); missing > 0 {
-				r.log.WithFields(log.Fields{"rxSeq": missing}).Error("missing event sequence")
-				return fmt.Errorf("missing event sequence")
-			}
+			fmt.Println("before filtering the message")
+			fmt.Println(len(srcMsg.Receipts))
 
+			// if missing := filterSrcMsg(link.RxHeight, link.RxSeq); missing > 0 {
+			// 	fmt.Println("did this filter the messages")
+			// 	r.log.WithFields(log.Fields{"rxSeq": missing}).Error("missing event sequence")
+			// 	return fmt.Errorf("missing event sequence")
+			// }
+
+			fmt.Println("reached before sequence")
+			fmt.Println("*****************************************************************")
+			fmt.Println(len(srcMsg.Receipts))
+			// fmt.Println(srcMsg.Receipts[0].Height)
 			tx, newMsg, err := r.dst.Segment(ctx, srcMsg)
 			if err != nil {
 				return err

@@ -12,6 +12,8 @@ import (
 	"github.com/icon-project/icon-bridge/common/wallet"
 	// "github.com/icon-project/icon-bridge/common/wallet"
 
+	"github.com/icon-project/icon-bridge/common/codec"
+
 	// "blockwatch.cc/tzgo/codec"
 	"blockwatch.cc/tzgo/contract"
 	"blockwatch.cc/tzgo/micheline"
@@ -22,7 +24,9 @@ import (
 )
 
 const (
-	txMaxDataSize 			= 32 * 1024 // 8 KB
+	txMaxDataSize 			= 32 * 1024 * 4 // 8 KB
+	txOverheadScale = 0.01
+	defaultTxSizeLimit = txMaxDataSize / (1 + txOverheadScale)
 	defaultSendTxTimeOut 	= 30 * time.Second // 30 seconds is the block time for tezos 
 )
 
@@ -41,7 +45,7 @@ type sender struct {
 	cls *Client
 	blockLevel int64
 	opts senderOptions
-	w tezos.PrivateKey
+	w wallet.Wallet
 }
 
 func NewSender(
@@ -57,7 +61,7 @@ func NewSender(
 			log: l,
 			src: src,
 			dst: dstAddr,
-			w: tezos.MustParsePrivateKey("edskRz1HoD3cWkmWhCNS5LjBrJNWChGuKWB4HnVoN5UqVsUCpcNJR67ZxKs965u8RgRwptrtGc2ufYZoeECgB77RKm1gTbQ6eB"),
+			w: w,
 		}
 		if len(urls) == 0 {
 			return nil, fmt.Errorf("Empty url")
@@ -72,7 +76,8 @@ func NewSender(
 }
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error){
-	balance, err = s.cls.GetBalance(ctx, s.cls.Cl, s.w.Address(), s.cls.blockLevel)
+	address := tezos.MustParseAddress(s.w.Address())
+	balance, err = s.cls.GetBalance(ctx, s.cls.Cl, address, s.cls.blockLevel)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -81,18 +86,20 @@ func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err 
 }
 
 func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.RelayTx, newMsg *chain.Message, err error) {
+
 	if ctx.Err() != nil {
 		return nil, nil, ctx.Err()
 	}
 
 	if s.opts.TxDataSizeLimit == 0{
-		s.opts.TxDataSizeLimit = uint64(txMaxDataSize)
+		limit := defaultTxSizeLimit
+		s.opts.TxDataSizeLimit = uint64(limit)
 	}
-
+	fmt.Println("reached upto here")
 	if len(msg.Receipts) == 0 {
+		fmt.Println("Probably gone from here")
 		return nil, msg, nil
 	}
-
 	rm := &chain.RelayMessage{
 		Receipts: make([][]byte, 0),
 	}
@@ -104,8 +111,9 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		Receipts: msg.Receipts,			
 	}
 
+
 	for i , receipt := range msg.Receipts{
-		rlpEvents, err := json.Marshal(receipt.Events) // change to rlp bytes
+		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events) //json.Marshal(receipt.Events) // change to rlp bytes
 
 		chainReceipt := &chain.RelayReceipt{
 			Index: receipt.Index,
@@ -113,7 +121,7 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 			Events: rlpEvents,
 		}
 
-		rlpReceipt, err := json.Marshal(chainReceipt) // change to rlp bytes 
+		rlpReceipt, err :=  codec.RLP.MarshalToBytes(chainReceipt)//json.Marshal(chainReceipt) // change to rlp bytes 
 		if err != nil {
 			return nil, nil, err
 		}
@@ -126,7 +134,7 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		msgSize = newMsgSize
 		rm.Receipts = append(rm.Receipts, rlpReceipt)
 	}
-	message, err := json.Marshal(rm)
+	message, err := codec.RLP.MarshalToBytes(rm) // json.Marshal(rm)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -160,12 +168,15 @@ func (s *sender) Status(ctx context.Context) (link *chain.BMCLinkStatus, err err
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*relayTx, error) {
+
+	fmt.Println("reached in new relaytx")
 	client := s.cls
 
 	return &relayTx{
 		Prev: prev,
 		Message: message,
 		cl: client,
+		w: s.w,
 	}, nil 
 }
 
@@ -175,6 +186,7 @@ type relayTx struct {
 
 	cl        	*Client
 	receipt 	*rpc.Receipt
+	w wallet.Wallet
 }
 
 func (tx *relayTx) ID() interface{}{
@@ -182,7 +194,7 @@ func (tx *relayTx) ID() interface{}{
 }
 
 func (tx *relayTx) Send(ctx context.Context) (err error) {
-	fmt.Println("reached in sender")
+	fmt.Println("reached in sender of tezos")
 	_ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeOut)
 	defer cancel()
 
@@ -201,13 +213,29 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 
 	opts := rpc.DefaultOptions
 
-	opts.Signer = signer.NewFromKey(tezos.MustParsePrivateKey("edskRz1HoD3cWkmWhCNS5LjBrJNWChGuKWB4HnVoN5UqVsUCpcNJR67ZxKs965u8RgRwptrtGc2ufYZoeECgB77RKm1gTbQ6eB")) // pk 
+	signingWalletData, err := tx.w.Sign([]byte("wallet"))
+	if err != nil {
+		return err 
+	}
+
+	sk := tezos.PrivateKey{}
+
+	err = sk.UnmarshalText(signingWalletData)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(sk.String())
+
+	opts.Signer = signer.NewFromKey(sk) // pk 
 	opts.TTL = 3
 
-	from := tezos.MustParseAddress("tz1ZPVxKiybvbV1GvELRJJpyE1xj1UpNpXMv") // pubk
+	from := tezos.MustParseAddress(tx.w.Address()) // pubk
 
 	argument := args.WithSource(from).WithDestination(tx.cl.Contract.Address())
 
+	fmt.Println("The message is", messageHex)
 	receipt, err := tx.cl.HandleRelayMessage(_ctx, argument, &opts)
 
 	if err != nil {
@@ -234,4 +262,16 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockHeight uint64, err error) 
 		return 0, err
 	}
 	return blockHeight, nil 
+}
+
+func Print(){
+	for i:=0; i<100; i++{
+		fmt.Println("*")
+	}
+}
+
+func PrintPlus(){
+	for i:=0;i<100;i++{
+		fmt.Println("__")
+	}
 }

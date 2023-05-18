@@ -23,16 +23,16 @@
                 ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 2661055
+                        "blockHeight": 2661054
                     },
-                    "syncConcurrency": 100
+                    "syncConcurrency": 10
                 },
-                "offset": 2661055
+                "offset": 2661054
             },
             "dst": {
-                "address": "btp://0x2.icon/cx9f3e7e3c6dda6da9ea0c4c4e8f1b5d36b0b70742",
+                "address": "btp://0x7.icon/cx9f3e7e3c6dda6da9ea0c4c4e8f1b5d36b0b70742",
                 "endpoint": [
-                    "https://berlin.net.solidwallet.io/api/v3/icon_dex"
+                    "https://berlin.net.solidwallet.io/api/v3"
                 ],
                 "options": {
                     "step_limit": 1000000
@@ -71,11 +71,12 @@
                 ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 8279323,
-                        "validatorsHash": "0x120c4d12ae3770b868e650e950200364fe138b92e872e487f50da4337bcc83c7"
-                    }
+                        "blockHeight": 8282502,
+                        "validatorsHash": "0x04b56f3fc8d396cc7eb8124da8a554800b8758c9e2fff0802aa9682948e65447"
+                    },
+                    "syncConcurrency": 10
                 },
-                "offset": 8279323
+                "offset": 8282502
             },
             "dst": {
                 "address": "btp://NetXnHfVqm9iesp.tezos/KT1UrLqhQHDC3mJw9BUrqsiix7JRbxTsvWJu",
@@ -89,7 +90,9 @@
                 },
                 "key_store": {
                     "address": "tz1ZPVxKiybvbV1GvELRJJpyE1xj1UpNpXMv",
-                    "secret": "edskRz1HoD3cWkmWhCNS5LjBrJNWChGuKWB4HnVoN5UqVsUCpcNJR67ZxKs965u8RgRwptrtGc2ufYZoeECgB77RKm1gTbQ6eB",
+                    "crypto": {
+                        "cipher": "edskRz1HoD3cWkmWhCNS5LjBrJNWChGuKWB4HnVoN5UqVsUCpcNJR67ZxKs965u8RgRwptrtGc2ufYZoeECgB77RKm1gTbQ6eB"
+                    },
                     "coinType": "xtz"
                 },
                 "key_password": "xyz"

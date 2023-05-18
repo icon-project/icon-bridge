@@ -113,6 +113,8 @@ func (vr *Verifier) VerifySignature(ctx context.Context, proposer tezos.Address,
 		return false, err 
 	}
 
+	// c.ListBakingRights()
+
 	blockHeader := codec.BlockHeader{
 		Level: 				int32(header.Level),     
 		Proto: 				byte(header.Proto),

@@ -45,7 +45,9 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 
 		w, err := rc.Dst.Wallet()
 		if err != nil {
-			return nil, fmt.Errorf("dst.wallet chain %v err %v", rc.Name, err)
+			fmt.Println(err)
+
+			// return nil, fmt.Errorf("dst.wallet chain %v err %v", rc.Name, err)
 		}
 		chainName := rc.Dst.Address.BlockChain()
 		srvName := "BMR-"
@@ -56,7 +58,7 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 		}
 		l := l.WithFields(log.Fields{
 			log.FieldKeyModule:  rc.Name,
-			log.FieldKeyWallet:  w.Address(),
+			// log.FieldKeyWallet:  w.Address(),
 			log.FieldKeyService: srvName,
 		})
 

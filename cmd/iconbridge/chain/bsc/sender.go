@@ -335,3 +335,9 @@ func revertReason(data []byte) string {
 	length := binary.BigEndian.Uint64(data[24:32])
 	return string(data[32 : 32+length])
 }
+
+func Print(){
+	for i:= 0;i<50;i++{
+		fmt.Println("+")
+	}
+}

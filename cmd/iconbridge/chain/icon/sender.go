@@ -99,6 +99,8 @@ func hexInt2Uint64(hi types.HexInt) uint64 {
 // BMCLinkStatus
 // Returns the BMCLinkStatus for "src" link
 func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
+	fmt.Println("reached in icons status")
+
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -135,6 +137,8 @@ func (s *sender) Status(ctx context.Context) (*chain.BMCLinkStatus, error) {
 func (s *sender) Segment(
 	ctx context.Context, msg *chain.Message,
 ) (tx chain.RelayTx, newMsg *chain.Message, err error) {
+	fmt.Println("reached in segment of icon")
+
 	if ctx.Err() != nil {
 		return nil, nil, ctx.Err()
 	}
@@ -145,6 +149,7 @@ func (s *sender) Segment(
 	}
 
 	if len(msg.Receipts) == 0 {
+		fmt.Println("should not be zeo")
 		return nil, msg, nil
 	}
 
@@ -162,6 +167,7 @@ func (s *sender) Segment(
 	for i, receipt := range msg.Receipts {
 		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events)
 		if err != nil {
+			fmt.Println("shouldnot be error")
 			return nil, nil, err
 		}
 		rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
@@ -170,6 +176,7 @@ func (s *sender) Segment(
 			Events: rlpEvents,
 		})
 		if err != nil {
+			fmt.Println("shouldnot be error again")
 			return nil, nil, err
 		}
 		newMsgSize := msgSize + uint64(len(rlpReceipt))
@@ -183,14 +190,16 @@ func (s *sender) Segment(
 
 	message, err := codec.RLP.MarshalToBytes(rm)
 	if err != nil {
+		fmt.Println("should not be here here also")
 		return nil, nil, err
 	}
 
 	tx, err = s.newRelayTx(ctx, msg.From.String(), message)
 	if err != nil {
+		fmt.Println("shouldnot be error in new tx")
 		return nil, nil, err
 	}
-
+	fmt.Println("should reach here without error")
 	return tx, newMsg, nil
 }
 
@@ -247,9 +256,11 @@ func (tx *relayTx) ID() interface{} {
 func (tx *relayTx) Send(ctx context.Context) error {
 	tx.cl.log.WithFields(log.Fields{
 		"prev": tx.Prev}).Debug("handleRelayMessage: send tx")
-
+fmt.Println("reached in sender of icon")
+Print()
 SignLoop:
 	for {
+		fmt.Println("transaction sign")
 		if err := tx.cl.SignTransaction(tx.w, tx.txParam); err != nil {
 			return err
 		}
@@ -374,4 +385,10 @@ func mapErrorWithTransactionResult(txr *types.TransactionResult, err error) erro
 		}
 	}
 	return err
+}
+
+func Print(){
+	for i:= 0;i<50;i++{
+		fmt.Println("Sender")
+	}
 }
