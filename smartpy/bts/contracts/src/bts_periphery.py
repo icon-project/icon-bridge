@@ -25,7 +25,8 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
             serial_no = sp.int(0),
             number_of_pending_requests = sp.nat(0),
             helper=helper_contract,
-            parse_contract=parse_address
+            parse_contract=parse_address,
+            mint_status=sp.none
         )
 
     def only_bmc(self):
@@ -75,6 +76,26 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
             with sp.else_():
                 sp.failwith("InvalidAddress")
 
+    # made a private function to return the tx status made from handle_btp_message
+    def _add_to_blacklist(self, params):
+        """
+        :param params: List of addresses to be blacklisted
+        :return:
+        """
+        sp.set_type(params, sp.TMap(sp.TNat, sp.TString))
+
+        add_blacklist_status = sp.local("add_blacklist_status", "")
+        with sp.if_(sp.len(params) <= self.MAX_BATCH_SIZE):
+            sp.for i in sp.range(sp.nat(0), sp.len(params)):
+                parsed_addr = sp.view("str_to_addr", self.data.parse_contract, params.get(i), t=sp.TAddress).open_some()
+                with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
+                    self.data.blacklist[parsed_addr] = True
+                    add_blacklist_status.value = "success"
+                with sp.else_():
+                    sp.failwith("InvalidAddress")
+        with sp.else_():
+            add_blacklist_status.value = "error"
+        return add_blacklist_status.value
 
     @sp.entry_point
     def remove_from_blacklist(self, params):
@@ -96,6 +117,29 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
             with sp.else_():
                 sp.failwith("InvalidAddress")
 
+    # made a private function to return the tx status made from handle_btp_message
+    def _remove_from_blacklist(self, params):
+        """
+        :param params: list of address strings
+        :return:
+        """
+        sp.set_type(params, sp.TMap(sp.TNat, sp.TString))
+
+        remove_blacklist_status = sp.local("remove_blacklist_status", "")
+        with sp.if_(sp.len(params) <= self.MAX_BATCH_SIZE):
+            sp.for i in sp.range(sp.nat(0), sp.len(params)):
+                parsed_addr = sp.view("str_to_addr", self.data.parse_contract, params.get(i), t=sp.TAddress).open_some()
+                with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
+                    sp.verify(self.data.blacklist.contains(parsed_addr), "UserNotFound")
+                    sp.verify(self.data.blacklist.get(parsed_addr) == True, "UserNotBlacklisted")
+                    del self.data.blacklist[parsed_addr]
+                    remove_blacklist_status.value = "success"
+                with sp.else_():
+                    sp.failwith("InvalidAddress")
+        with sp.else_():
+            remove_blacklist_status.value = "error"
+        return remove_blacklist_status.value
+
     @sp.entry_point
     def set_token_limit(self, coin_names, token_limit):
         """
@@ -113,6 +157,24 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         sp.for i in sp.range(0, sp.len(coin_names)):
             self.data.token_limit[coin_names[i]] = token_limit.get(i)
 
+    # made a private function to return the tx status made from handle_btp_message
+    def _set_token_limit(self, coin_names, token_limit):
+        """
+        :param coin_names: list of coin names
+        :param token_limit: list of token limits
+        :return:
+        """
+        sp.set_type(coin_names, sp.TMap(sp.TNat, sp.TString))
+        sp.set_type(token_limit, sp.TMap(sp.TNat, sp.TNat))
+
+        set_limit_status = sp.local("set_limit_status", "")
+        with sp.if_((sp.len(coin_names) == sp.len(token_limit)) & (sp.len(coin_names) <= self.MAX_BATCH_SIZE)):
+            sp.for i in sp.range(0, sp.len(coin_names)):
+                self.data.token_limit[coin_names[i]] = token_limit.get(i)
+            set_limit_status.value = "success"
+        with sp.else_():
+            set_limit_status.value = "error"
+        return set_limit_status.value
 
     @sp.entry_point
     def send_service_message(self, _from, to, coin_names, values, fees):
@@ -203,56 +265,78 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         err_msg = sp.local("error", "")
         sm = self.decode_service_message(msg)
 
-        # TODO: implement try in below cases
+        service_type_variant_match = sp.local("serviceType_variant", False, t=sp.TBool)
         with sm.serviceType.match_cases() as arg:
             with arg.match("REQUEST_COIN_TRANSFER") as a1:
+                service_type_variant_match.value = True
                 tc = self.decode_transfer_coin_msg(sm.data)
                 parsed_addr = sp.view("str_to_addr", self.data.parse_contract, tc.to, t=sp.TAddress).open_some()
 
                 with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
-                    contract = sp.self_entry_point(entry_point="handle_request_service")
-                    _param = sp.record(to=tc.to, assets=tc.assets)
-                    sp.transfer(_param, sp.tez(0), contract)
-                    self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), _from, sn, "", self.RC_OK)
-                    sp.emit(sp.record(from_address=_from, to=parsed_addr, serial_no=self.data.serial_no, assets_details=tc.assets), tag="TransferReceived")
-                    # return
+                    handle_request_call = self._handle_request_service(tc.to, tc.assets)
+                    with sp.if_(handle_request_call == "success"):
+                        self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), _from, sn, "", self.RC_OK)
+                        sp.emit(sp.record(from_address=_from, to=parsed_addr, serial_no=self.data.serial_no, assets_details=tc.assets), tag="TransferReceived")
+                    with sp.else_():
+                        err_msg.value = "ErrorInHandleRequestService"
+                        self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), _from, sn, err_msg.value,
+                                                   self.RC_ERR)
                 with sp.else_():
                     err_msg.value = "InvalidAddress"
-
-                self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), _from, sn, "", self.RC_ERR)
+                    self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), _from, sn, err_msg.value, self.RC_ERR)
 
             with arg.match("BLACKLIST_MESSAGE") as a2:
+                service_type_variant_match.value = True
                 bm = self.decode_blacklist_msg(sm.data)
                 addresses = bm.addrs
 
+                blacklist_service_called = sp.local("blacklist_service", False, t=sp.TBool)
                 with bm.serviceType.match_cases() as b_agr:
                     with b_agr.match("ADD_TO_BLACKLIST") as b_val_1:
-                        contract = sp.self_entry_point(entry_point="add_to_blacklist")
-                        sp.transfer(addresses, sp.tez(0), contract)
-                        self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), _from, sn, "AddedToBlacklist", self.RC_OK)
+                        blacklist_service_called.value = True
+
+                        add_blacklist_call = self._add_to_blacklist(addresses)
+                        with sp.if_(add_blacklist_call == "success"):
+                            self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), _from, sn, "AddedToBlacklist", self.RC_OK)
+                        with sp.else_():
+                            self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), _from, sn, "ErrorAddToBlackList", self.RC_ERR)
 
                     with b_agr.match("REMOVE_FROM_BLACKLIST") as b_val_2:
-                        contract = sp.self_entry_point(entry_point="remove_from_blacklist")
-                        sp.transfer(addresses, sp.tez(0), contract)
-                        self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), _from, sn, "RemovedFromBlacklist", self.RC_OK)
+                        blacklist_service_called.value = True
+
+                        remove_blacklist_call = self._remove_from_blacklist(addresses)
+                        with sp.if_(remove_blacklist_call == "success"):
+                            self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), _from, sn, "RemovedFromBlacklist", self.RC_OK)
+                        with sp.else_():
+                            self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), _from, sn, "ErrorRemoveFromBlackList", self.RC_ERR)
+
+                sp.if blacklist_service_called.value == False:
+                    self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), _from, sn, "BlacklistServiceTypeErr", self.RC_ERR)
 
             with arg.match("CHANGE_TOKEN_LIMIT") as a3:
+                service_type_variant_match.value = True
                 tl = self.decode_token_limit_msg(sm.data)
                 coin_names = tl.coin_name
                 token_limits = tl.token_limit
 
-                contract = sp.self_entry_point(entry_point="set_token_limit")
-                _param = sp.record(coin_names=coin_names, token_limit=token_limits)
-                sp.transfer(_param, sp.tez(0), contract)
-                self.send_response_message(sp.variant("CHANGE_TOKEN_LIMIT", 4), _from, sn, "ChangeTokenLimit",self.RC_OK)
+                set_limit_call = self._set_token_limit(coin_names, token_limits)
+                with sp.if_(set_limit_call == "success"):
+                    self.send_response_message(sp.variant("CHANGE_TOKEN_LIMIT", 4), _from, sn, "ChangeTokenLimit", self.RC_OK)
+                with sp.else_():
+                    self.send_response_message(sp.variant("CHANGE_TOKEN_LIMIT", 4), _from, sn, "ErrorChangeTokenLimit", self.RC_ERR)
 
             with arg.match("RESPONSE_HANDLE_SERVICE") as a4:
+                service_type_variant_match.value = True
                 sp.verify(sp.len(sp.pack(self.data.requests.get(sn).from_)) != 0, "InvalidSN")
                 response = self.decode_response(sm.data)
                 self.handle_response_service(sn, response.code, response.message)
 
             with arg.match("UNKNOWN_TYPE") as a5:
+                service_type_variant_match.value = True
                 sp.emit(sp.record(_from=_from, sn=sn), tag= "UnknownResponse")
+
+        sp.if service_type_variant_match.value == False:
+            self.send_response_message(sp.variant("UNKNOWN_TYPE", 5), _from, sn, "Unknown",self.RC_ERR)
 
         return_value = sp.record(string=sp.some("success"), bsh_addr=bsh_addr, prev=prev,
                                  callback_msg=callback_msg)
@@ -340,6 +424,54 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         sp.emit(sp.record(caller=caller, sn=sn, code=code, msg=msg), tag="TransferEnd")
 
     @sp.entry_point
+    def callback_mint(self, string):
+        sp.set_type(string, sp.TOption(sp.TString))
+
+        sp.verify(sp.sender == self.data.bts_core, "Unauthorized")
+        self.data.mint_status = string
+
+        sp.verify(self.data.mint_status.open_some() == "success", "TransferFailed")
+
+    def _handle_request_service(self, to, assets):
+        """
+                Handle a list of minting/transferring coins/tokens
+                :param to: An address to receive coins/tokens
+                :param assets:  A list of requested coin respectively with an amount
+                :return:
+                """
+        sp.set_type(to, sp.TString)
+        sp.set_type(assets, sp.TMap(sp.TNat, types.Types.Asset))
+
+        status = sp.local("status", "")
+        with sp.if_(sp.len(assets) <= self.MAX_BATCH_SIZE):
+            parsed_to = sp.view("str_to_addr", self.data.parse_contract, to, t=sp.TAddress).open_some()
+            sp.for i in sp.range(0, sp.len(assets)):
+                valid_coin = sp.view("is_valid_coin", self.data.bts_core, assets[i].coin_name, t=sp.TBool).open_some()
+                # sp.verify(valid_coin == True, "UnregisteredCoin")
+
+                with sp.if_(valid_coin == True):
+                    check_transfer = sp.view("check_transfer_restrictions", sp.self_address, sp.record(
+                        coin_name=assets[i].coin_name, user=parsed_to, value=assets[i].value), t=sp.TBool).open_some()
+                    sp.verify(check_transfer == True, "FailCheckTransfer")
+
+                    # inter score call
+                    mint_args_type = sp.TRecord(callback=sp.TContract(sp.TOption(sp.TString)),
+                                                to=sp.TAddress, coin_name=sp.TString, value=sp.TNat
+                                                )
+                    mint_args_type_entry_point = sp.contract(mint_args_type, self.data.bts_core, "mint").open_some()
+                    mint_args = sp.record(callback=sp.self_entry_point("callback_mint"),
+                                          to=parsed_to, coin_name=assets[i].coin_name, value=assets[i].value
+                                          )
+                    sp.transfer(mint_args, sp.tez(0), mint_args_type_entry_point)
+                    status.value = "success"
+                with sp.else_():
+                    status.value = "error"
+        with sp.else_():
+            status.value = "error"
+
+        return status.value
+
+    @sp.entry_point
     def handle_request_service(self, to, assets):
         """
         Handle a list of minting/transferring coins/tokens
@@ -362,13 +494,12 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
                 coin_name=assets[i].coin_name,user=parsed_to, value=assets[i].value), t=sp.TBool).open_some()
             sp.verify(check_transfer == True, "FailCheckTransfer")
 
-            # TODO: implement try for mint
             # inter score call
-            mint_args_type = sp.TRecord(
+            mint_args_type = sp.TRecord(callback=sp.TContract(sp.TOption(sp.TString)),
                 to=sp.TAddress, coin_name=sp.TString, value=sp.TNat
             )
             mint_args_type_entry_point = sp.contract(mint_args_type, self.data.bts_core, "mint").open_some()
-            mint_args = sp.record(
+            mint_args = sp.record(callback=sp.self_entry_point("callback_mint"),
                 to=parsed_to, coin_name=assets[i].coin_name, value=assets[i].value
             )
             sp.transfer(mint_args, sp.tez(0), mint_args_type_entry_point)
