@@ -35,7 +35,7 @@ def split_btp_address(base):
     # with sp.else_():
     #     sp.failwith("Only one element")
 
-    return sp.pair(last.value, penultimate.value)
+    return sp.pair(penultimate.value, last.value)
 
 
 

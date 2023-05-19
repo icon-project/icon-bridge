@@ -650,7 +650,7 @@ class BTSCore(sp.Contract):
         self.only_bts_periphery()
         l = sp.local("l", sp.nat(0))
         sp.for item in self.data.coins_name:
-            sp.if self.data.aggregation_fee[item] != sp.nat(0):
+            sp.if self.data.aggregation_fee.get(item, default_value=sp.nat(0)) != sp.nat(0):
                 self.data.charged_coins[l.value] = item
                 self.data.charged_amounts[l.value] = self.data.aggregation_fee.get(item)
                 del self.data.aggregation_fee[item]
