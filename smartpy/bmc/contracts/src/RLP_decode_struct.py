@@ -10,7 +10,15 @@ HELPER_CONTRACT_ADDRESS = sp.address("KT1W6dU9xpKwMwHXopVhW5PB1NdZFmVZPKbK")
 class DecodeLibrary:
 
     def decode_bmc_message(self, rlp):
-        rlp_ = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_bm = sp.local("rlp_bm", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            rlp_bm.value = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, rlp, t=sp.TBytes).open_some()
+            rlp_bm.value = sp.view("decode_list", self.data.helper, decode_len,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_ = rlp_bm.value
         temp_map_string = sp.compute(sp.map(tkey=sp.TString, tvalue=sp.TString))
         temp_int = sp.local("int_value", 0)
         temp_byt = sp.local("byt_value", sp.bytes("0x"))
@@ -39,7 +47,15 @@ class DecodeLibrary:
     def decode_response(self, rlp):
         temp_int = sp.local("int1", 0)
         temp_byt = sp.local("byt1", sp.bytes("0x"))
-        rlp_ = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_dr = sp.local("rlp_dr", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            rlp_dr.value = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, rlp, t=sp.TBytes).open_some()
+            rlp_dr.value = sp.view("decode_list", self.data.helper, decode_len,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_ = rlp_dr.value
         counter = sp.local("counter_response", 0)
         sp.for m in rlp_.items():
             sp.if counter.value == 0:
@@ -51,7 +67,15 @@ class DecodeLibrary:
         return sp.record(code=temp_int.value, message=sp.view("decode_string", self.data.helper, temp_byt.value, t=sp.TString).open_some())
 
     def decode_propagate_message(self, rlp):
-        rlp_ = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_pm = sp.local("rlp_pm", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            rlp_pm.value = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, rlp, t=sp.TBytes).open_some()
+            rlp_pm.value = sp.view("decode_list", self.data.helper, decode_len,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_ = rlp_pm.value
         counter = sp.local("counter_propagate", 0)
         temp_string = sp.local("temp_string", "")
         sp.for d in rlp_.items():
@@ -61,7 +85,15 @@ class DecodeLibrary:
         return temp_string.value
 
     def decode_init_message(self, rlp):
-        rlp_ = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_im = sp.local("rlp_im", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            rlp_im.value = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, rlp, t=sp.TBytes).open_some()
+            rlp_im.value = sp.view("decode_list", self.data.helper, decode_len,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_ = rlp_im.value
         counter = sp.local("counter_init", 0)
         temp_bytes = sp.local("byt_init", sp.bytes("0x"))
         sp.for g in rlp_.items():
@@ -73,7 +105,17 @@ class DecodeLibrary:
         sub_list = sp.local("sub_list_init", temp_bytes.value)
         sp.if starts_with == sp.bytes("0xb846"):
             sub_list.value = sp.slice(temp_bytes.value, 2, sp.as_nat(sp.len(temp_bytes.value) - 2)).open_some()
-        new_sub_list = sp.view("decode_list", self.data.helper, sub_list.value, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        nsl_im = sp.local("nsl_im", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, sub_list.value, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            nsl_im.value = sp.view("decode_list", self.data.helper, sub_list.value,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, sub_list.value, t=sp.TBytes).open_some()
+            nsl_im.value = sp.view("decode_list", self.data.helper, decode_len,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        new_sub_list = nsl_im.value
+
         _links = sp.local("links_init", [], sp.TList(sp.TString))
         counter.value = 0
         sp.for x in new_sub_list.items():
@@ -82,7 +124,15 @@ class DecodeLibrary:
         return _links.value
 
     def decode_bmc_service(self, rlp):
-        rlp_ = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_bs = sp.local("rlp_bs", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            rlp_bs.value = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, rlp, t=sp.TBytes).open_some()
+            rlp_bs.value = sp.view("decode_list", self.data.helper, decode_len,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_ = rlp_bs.value
         temp_string = sp.local("str_value", "")
         temp_byt = sp.local("byt_value_bmc", sp.bytes("0x"))
         counter = sp.local("counter_service", 0)
@@ -97,7 +147,15 @@ class DecodeLibrary:
                          payload=temp_byt.value)
 
     def decode_gather_fee_message(self, rlp):
-        rlp_ = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_gm = sp.local("rlp_gm", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            rlp_gm.value = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, rlp, t=sp.TBytes).open_some()
+            rlp_gm.value = sp.view("decode_list", self.data.helper, decode_len,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_ = rlp_gm.value
         temp_byt = sp.local("byt4", sp.bytes("0x"))
         counter = sp.local("counter_gather", 0)
         temp_str = sp.local("str_gather", "")
@@ -111,7 +169,17 @@ class DecodeLibrary:
         sub_list = sp.local("sub_list", temp_byt.value)
         sp.if starts_with == sp.bytes("0xb846"):
             sub_list.value = sp.slice(temp_byt.value, 2, sp.as_nat(sp.len(temp_byt.value) - 2)).open_some()
-        new_sub_list = sp.view("decode_list", self.data.helper, sub_list.value, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        nsl_gm = sp.local("nsl_gm", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, sub_list.value, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            nsl_gm.value = sp.view("decode_list", self.data.helper, sub_list.value,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, sub_list.value, t=sp.TBytes).open_some()
+            nsl_gm.value = sp.view("decode_list", self.data.helper, decode_len,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        new_sub_list = nsl_gm.value
+
         _svcs = sp.local("_svcs", {}, sp.TMap(sp.TNat, sp.TString))
         counter.value = 0
         sp.for x in new_sub_list.items():
@@ -121,7 +189,15 @@ class DecodeLibrary:
                          svcs=_svcs.value)
 
     def to_message_event(self, rlp):
-        rlp_ = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_me = sp.local("rlp_me", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            rlp_me.value = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, rlp, t=sp.TBytes).open_some()
+            rlp_me.value = sp.view("decode_list", self.data.helper, decode_len,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_ = rlp_me.value
         counter = sp.local("counter_event", 0)
         rv1 = sp.local("rv1_event", "")
         rv2 = sp.local("rv2_event", sp.nat(0))
@@ -138,7 +214,15 @@ class DecodeLibrary:
         return sp.record(next_bmc= rv1.value, seq= rv2.value, message = rv3.value)
 
     def decode_receipt_proof(self, rlp):
-        rlp_ = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_rp = sp.local("rlp_rp", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            rlp_rp.value = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, rlp, t=sp.TBytes).open_some()
+            rlp_rp.value = sp.view("decode_list", self.data.helper, decode_len,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_ = rlp_rp.value
         temp_byt = sp.local("byt_receipt", sp.bytes("0x"))
         rv_int = sp.local("rv_int_receipt", 0)
         rv_int2 = sp.local("rv_int2_receipt", 0)
@@ -156,7 +240,17 @@ class DecodeLibrary:
         sub_list = sp.local("sub_list", temp_byt.value)
         sp.if starts_with == sp.bytes("0xb846"):
             sub_list.value = sp.slice(temp_byt.value, 2, sp.as_nat(sp.len(temp_byt.value) - 2)).open_some()
-        new_sub_list = sp.view("decode_list", self.data.helper, sub_list.value, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+
+        nsl_rp = sp.local("nsl_rp", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, sub_list.value, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            nsl_rp.value = sp.view("decode_list", self.data.helper, sub_list.value,
+                                    t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, sub_list.value, t=sp.TBytes).open_some()
+            nsl_rp.value = sp.view("decode_list", self.data.helper, decode_len,
+                                    t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        new_sub_list = nsl_rp.value
         counter.value = 0
         events = sp.local("events_receipt", sp.map({}, tkey=sp.TNat,
                                                     tvalue=sp.TRecord(next_bmc= sp.TString,
@@ -169,7 +263,14 @@ class DecodeLibrary:
 
 
     def decode_receipt_proofs(self, rlp):
-        rlp_ = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_rps = sp.local("rlp_rps", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            rlp_rps.value = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, rlp, t=sp.TBytes).open_some()
+            rlp_rps.value = sp.view("decode_list", self.data.helper, decode_len, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        rlp_ = rlp_rps.value
         counter = sp.local("counter_receipt_proofs", 0)
         receipt_proofs = sp.local("events_receipt_proofs", sp.map({}, tkey=sp.TNat,
                 tvalue=sp.TRecord(index = sp.TNat,
@@ -187,7 +288,16 @@ class DecodeLibrary:
         sub_list = sp.local("sub_list_proofs", temp_byt.value)
         sp.if starts_with == sp.bytes("0xb846"):
             sub_list.value = sp.slice(temp_byt.value, 2, sp.as_nat(sp.len(temp_byt.value) - 2)).open_some()
-        new_sub_list = sp.view("decode_list", self.data.helper, sub_list.value, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+
+        nsl_rps = sp.local("nsl_rps", sp.map(tkey=sp.TNat))
+        is_list_lambda = sp.view("is_list", self.data.helper, sub_list.value, t=sp.TBool).open_some()
+        with sp.if_(is_list_lambda):
+            nsl_rps.value = sp.view("decode_list", self.data.helper, sub_list.value, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        with sp.else_():
+            decode_len = sp.view("without_length_prefix", self.data.helper, sub_list.value, t=sp.TBytes).open_some()
+            nsl_rps.value = sp.view("decode_list", self.data.helper, decode_len,
+                                   t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+        new_sub_list = nsl_rps.value
         counter.value = 0
         sp.if sp.len(new_sub_list) > 0:
             sp.for x in new_sub_list.items():
