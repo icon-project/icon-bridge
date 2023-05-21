@@ -518,18 +518,20 @@ class BTSCore(sp.Contract):
         sp.send(to, sp.utils.nat_to_mutez(amount), message="PaymentFailed")
 
     @sp.entry_point
-    def mint(self, to, coin_name, value):
+    def mint(self, to, coin_name, value, callback):
         """
         mint the wrapped coin.
 
         :param to: the account receive the minted coin
         :param coin_name: coin name
         :param value: the minted amount
+        :param callback: callback function type in bts_periphery
         :return:
         """
         sp.set_type(to, sp.TAddress)
         sp.set_type(coin_name, sp.TString)
         sp.set_type(value, sp.TNat)
+        sp.set_type(callback, sp.TContract(sp.TOption(sp.TString)))
 
         self.only_bts_periphery()
         with sp.if_(coin_name == self.data.native_coin_name):
@@ -550,6 +552,8 @@ class BTSCore(sp.Contract):
                     transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[coin_name], "transfer").open_some()
                     transfer_args = [sp.record(from_=sp.sender, txs=[sp.record(to_=to, token_id=sp.nat(0), amount=value)])]
                     sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
+
+        sp.transfer(sp.some("success"), sp.tez(0), callback)
 
     @sp.entry_point
     def callback(self, string, requester, coin_name, value):
@@ -646,7 +650,7 @@ class BTSCore(sp.Contract):
         self.only_bts_periphery()
         l = sp.local("l", sp.nat(0))
         sp.for item in self.data.coins_name:
-            sp.if self.data.aggregation_fee[item] != sp.nat(0):
+            sp.if self.data.aggregation_fee.get(item, default_value=sp.nat(0)) != sp.nat(0):
                 self.data.charged_coins[l.value] = item
                 self.data.charged_amounts[l.value] = self.data.aggregation_fee.get(item)
                 del self.data.aggregation_fee[item]

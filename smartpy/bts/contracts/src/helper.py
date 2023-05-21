@@ -20,6 +20,12 @@ class Helper(sp.Contract):
         sp.result(decode_list(params))
 
     @sp.onchain_view()
+    def is_list(self, params):
+        sp.set_type(params, sp.TBytes)
+        is_list = sp.build_lambda(Utils.RLP.Decoder.is_list)
+        sp.result(is_list(params))
+
+    @sp.onchain_view()
     def of_string(self, params):
         sp.set_type(params, sp.TString)
         encode_string_packed = sp.build_lambda(Utils.Bytes.of_string)
