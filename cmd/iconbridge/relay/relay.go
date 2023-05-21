@@ -77,30 +77,36 @@ func (r *relay) Start(ctx context.Context) error {
 		From: r.cfg.Src.Address,
 	}
 
-	// filterSrcMsg := func(rxHeight, rxSeq uint64) (missingRxSeq uint64) {
-	// 	receipts := srcMsg.Receipts[:0]
-	// 	for _, receipt := range srcMsg.Receipts {
-	// 		if receipt.Height < rxHeight {
-	// 			continue
-	// 		}
-	// 		events := receipt.Events[:0]
-	// 		for _, event := range receipt.Events {
-	// 			if event.Sequence > rxSeq {
-	// 				rxSeq++
-	// 				if event.Sequence != rxSeq {
-	// 					return rxSeq
-	// 				}
-	// 				events = append(events, event)
-	// 			}
-	// 		}
-	// 		receipt.Events = events
-	// 		if len(receipt.Events) > 0 {
-	// 			receipts = append(receipts, receipt)
-	// 		}
-	// 	}
-	// 	srcMsg.Receipts = receipts
-	// 	return 0
-	// }
+	filterSrcMsg := func(rxHeight, rxSeq uint64) (missingRxSeq uint64) {
+		fmt.Println("reached to srcMsg. receipts")
+		receipts := srcMsg.Receipts[:0]
+		for _, receipt := range srcMsg.Receipts {
+			fmt.Println("receipt.height", receipt.Height)
+			fmt.Println("rx_height", rxHeight)
+			if receipt.Height < rxHeight {
+				continue
+			}
+			events := receipt.Events[:0]
+			for _, event := range receipt.Events {
+				fmt.Println("event.seq: ", event.Sequence)
+				fmt.Println("rx_seq:", rxSeq)
+				if event.Sequence > rxSeq {
+					rxSeq++
+					if event.Sequence != rxSeq {
+						return rxSeq
+					}
+					events = append(events, event)
+				}
+			}
+			receipt.Events = events
+			if len(receipt.Events) > 0 {
+				receipts = append(receipts, receipt)
+			}
+		}
+		srcMsg.Receipts = receipts
+		fmt.Println(len(srcMsg.Receipts))
+		return 0
+	}
 
 	relayCh := make(chan struct{}, 1)
 	relayTicker := time.NewTicker(relayTickerInterval)
@@ -197,11 +203,11 @@ func (r *relay) Start(ctx context.Context) error {
 			fmt.Println("before filtering the message")
 			fmt.Println(len(srcMsg.Receipts))
 
-			// if missing := filterSrcMsg(link.RxHeight, link.RxSeq); missing > 0 {
-			// 	fmt.Println("did this filter the messages")
-			// 	r.log.WithFields(log.Fields{"rxSeq": missing}).Error("missing event sequence")
-			// 	return fmt.Errorf("missing event sequence")
-			// }
+			if missing := filterSrcMsg(link.RxHeight, link.RxSeq); missing > 0 {
+				fmt.Println("did this filter the messages")
+				r.log.WithFields(log.Fields{"rxSeq": missing}).Error("missing event sequence")
+				return fmt.Errorf("missing event sequence")
+			}
 
 			fmt.Println("reached before sequence")
 			fmt.Println("*****************************************************************")

@@ -122,83 +122,83 @@ func (c *Client) GetBlockHeaderByHeight(ctx context.Context, connection *rpc.Cli
 	return block, nil
 }
 
-func (c *Client) MonitorBlock(ctx context.Context, blockLevel int64, verifier IVerifier, callback func(v []*chain.Receipt) error) error {
-	fmt.Println("reached in monitor block")
-	relayTicker := time.NewTicker(DefaultBlockWaitInterval)
-	defer relayTicker.Stop()
+// func (c *Client) MonitorBlock(ctx context.Context, blockLevel int64, verifier IVerifier, callback func(v []*chain.Receipt) error) error {
+// 	fmt.Println("reached in monitor block")
+// 	relayTicker := time.NewTicker(DefaultBlockWaitInterval)
+// 	defer relayTicker.Stop()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("Context done")
-		case <-relayTicker.C:
-			fmt.Println("*************************************************************")
-			fmt.Print("Trying to fetch block for blockLevel ")
-			fmt.Println(blockLevel)
+// 	for {
+// 		select {
+// 		case <-ctx.Done():
+// 			return fmt.Errorf("Context done")
+// 		case <-relayTicker.C:
+// 			fmt.Println("*************************************************************")
+// 			fmt.Print("Trying to fetch block for blockLevel ")
+// 			fmt.Println(blockLevel)
 
-			block, err := c.GetBlockByHeight(ctx, c.Cl, blockLevel)
+// 			block, err := c.GetBlockByHeight(ctx, c.Cl, blockLevel)
 
-			if err != nil {
-				fmt.Println(err)
-				fmt.Println("reducing the block level")
-				blockLevel--
-				fmt.Print("Trying to Fetch for block level ")
-				fmt.Println(blockLevel)
-				continue
-			}
+// 			if err != nil {
+// 				fmt.Println(err)
+// 				fmt.Println("reducing the block level")
+// 				blockLevel--
+// 				fmt.Print("Trying to Fetch for block level ")
+// 				fmt.Println(blockLevel)
+// 				continue
+// 			}
 
-			header, err := c.GetBlockHeaderByHeight(ctx, c.Cl, blockLevel)
-			if err != nil {
-				return err
-			}
-			fmt.Println(block.Metadata.ProposerConsensusKey)
+// 			header, err := c.GetBlockHeaderByHeight(ctx, c.Cl, blockLevel)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			fmt.Println(block.Metadata.ProposerConsensusKey)
 
-			err = verifier.Verify(ctx, header, block.Metadata.ProposerConsensusKey, c.Cl, header)
+// 			err = verifier.Verify(ctx, header, block.Metadata.ProposerConsensusKey, c.Cl, header)
 
-			if err != nil {
-				fmt.Println(err)
-				return err
-			}
-			c.blockLevel = blockLevel
+// 			if err != nil {
+// 				fmt.Println(err)
+// 				return err
+// 			}
+// 			c.blockLevel = blockLevel
 
-			err = verifier.Update(header)
+// 			// err = verifier.Update(header, )
 
-			if err != nil {
-				fmt.Println(err)
-				return err
-			}
+// 			if err != nil {
+// 				fmt.Println(err)
+// 				return err
+// 			}
 
-			PrettyEncode(header)
+// 			PrettyEncode(header)
 
-			blockOperations := block.Operations
+// 			blockOperations := block.Operations
 
-			for i := 0; i < len(blockOperations); i++ {
-				for j := 0; j < len(blockOperations[i]); j++ {
-					for _, operation := range blockOperations[i][j].Contents {
-						switch operation.Kind() {
-						case tezos.OpTypeTransaction:
-							tx := operation.(*rpc.Transaction)
-							receipt, err := returnTxMetadata(tx, c.Contract.Address())
-							if err != nil {
-								return err
-							}
-							if len(receipt) != 0 {
-								fmt.Println("found for block level ", block.Header.Level)
-								fmt.Println("callback start")
-								err := callback(receipt)
-								fmt.Println("call back end")
-								if err != nil {
-									return err
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		blockLevel++
-	}
-}
+// 			for i := 0; i < len(blockOperations); i++ {
+// 				for j := 0; j < len(blockOperations[i]); j++ {
+// 					for _, operation := range blockOperations[i][j].Contents {
+// 						switch operation.Kind() {
+// 						case tezos.OpTypeTransaction:
+// 							tx := operation.(*rpc.Transaction)
+// 							receipt, err := returnTxMetadata(tx, c.Contract.Address())
+// 							if err != nil {
+// 								return err
+// 							}
+// 							if len(receipt) != 0 {
+// 								fmt.Println("found for block level ", block.Header.Level)
+// 								fmt.Println("callback start")
+// 								err := callback(receipt)
+// 								fmt.Println("call back end")
+// 								if err != nil {
+// 									return err
+// 								}
+// 							}
+// 						}
+// 					}
+// 				}
+// 			}
+// 		}
+// 		blockLevel++
+// 	}
+// }
 
 func returnTxMetadata(tx *rpc.Transaction, contractAddress tezos.Address) ([]*chain.Receipt, error) {
 	// _, err := fmt.Println(tx.Destination)
@@ -286,8 +286,6 @@ func (c *Client) GetStatus(ctx context.Context, contr *contract.Contract, link s
 
 	fmt.Println("reached in get status of tezos")
 	prim := micheline.Prim{}
-	// to be removed later
-	link = "btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"
 
 	in := "{ \"string\": \"" + link + "\" }"
 	fmt.Println(in)
@@ -324,6 +322,7 @@ func (c *Client) GetOperationByHash(ctx context.Context, clinet *rpc.Client, blo
 
 func (c *Client) HandleRelayMessage(ctx context.Context, callArgs contract.CallArguments, opts *rpc.CallOptions) (*rpc.Receipt, error) {
 	fmt.Println("handling relay message")
+	PrintU()
 	result, err := c.Contract.Call(ctx, callArgs, opts)
 	if err != nil {
 		fmt.Println(err)

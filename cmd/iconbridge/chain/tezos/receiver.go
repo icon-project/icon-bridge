@@ -54,7 +54,7 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 
 	go func() {
 		defer close(_errCh)
-		lastHeight := opts.Height
+		lastHeight := opts.Height + 1
 
 		bn := &BnOptions{
 			StartHeight: int64(opts.Height),
@@ -62,7 +62,7 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 		}
 		if err := r.receiveLoop(ctx, bn,
 		func (blN *types.BlockNotification) error {
-			// fmt.Println("has to reach in this callback ", blN.Height.Uint64())
+			fmt.Println("has to reach in this callback ", blN.Height.Uint64())
 
 			if blN.Height.Uint64() != lastHeight {
 				return fmt.Errorf(
@@ -173,6 +173,8 @@ type ReceiverOptions struct {
 func (r *receiver) NewVerifier(ctx context.Context, previousHeight int64) (vri IVerifier, err error) {
 	fmt.Println("reached to verifyer")
 	header, err := r.client.GetBlockHeaderByHeight(ctx, r.client.Cl, previousHeight)
+
+	block, err := r.client.GetBlockByHeight(ctx, r.client.Cl, previousHeight)
 	fmt.Println("reached to after block header ")
 	if err != nil {
 		fmt.Println(err)
@@ -202,9 +204,11 @@ func (r *receiver) NewVerifier(ctx context.Context, previousHeight int64) (vri I
 		parentHash: header.Hash,
 		parentFittness: fittness,
 		chainID: id,
+		c: r.client.Cl,
 	}
-	fmt.Println("returned to the original")
-	fmt.Println(vr.parentHash)
+
+	vr.updateValidatorsAndCycle(ctx, previousHeight, block.Metadata.LevelInfo.Cycle)
+	fmt.Println("cycle is ", vr.cycle)
 	return vr, nil
 }
 
@@ -236,6 +240,7 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 	
 	fmt.Println("reached in sync verifier")
 	var prevHeader *rpc.BlockHeader 
+	var prevBlock *rpc.Block
 
 	cursor := vr.Next()
 
@@ -320,6 +325,7 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 				next := sres[i]
 				if prevHeader == nil {
 					prevHeader = next.Header
+					prevBlock = next.Block
 					continue 
 				}
 				if vr.Next() >= height {
@@ -330,7 +336,7 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 				fmt.Println("has it reached to verification")
 				fmt.Println(next.Header.Level)
 
-				err := vr.Verify(ctx, prevHeader, next.Block.Metadata.Baker, r.client.Cl, next.Header)
+				err := vr.Verify(ctx, prevHeader, prevBlock, next.Block.Metadata.Baker, r.client.Cl, next.Header)
 
 				if err != nil {
 					cursor = vr.Height() + 1
@@ -344,12 +350,13 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 
 				fmt.Println("verified block now updating ")
 
-				err = vr.Update(prevHeader)
+				err = vr.Update(ctx, prevHeader, prevBlock)
 				if err != nil {
 					return errors.Wrapf(err, "syncVerifier: Update: %v", err)
 				}
 
 				prevHeader = next.Header
+				prevBlock = next.Block
 			}
 
 		}
@@ -427,7 +434,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						if vr != nil {
 							fmt.Println("vr is not nil")
 							// header := bn.Header
-							if err := vr.Verify(ctx, lbn.Header, bn.Proposer, r.client.Cl, bn.Header); err != nil { // change accordingly 
+							if err := vr.Verify(ctx, lbn.Header, lbn.Block, bn.Proposer, r.client.Cl, bn.Header); err != nil { // change accordingly 
 								// r.log.WithFields(log.Fields{
 								// 	"height":     lbn.Height,
 								// 	"lbnHash":    lbn.Hash,
@@ -438,7 +445,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 								next--
 								break
 							}
-							if err := vr.Update(lbn.Header); err != nil {
+							if err := vr.Update(ctx, lbn.Header, lbn.Block); err != nil {
 								return errors.Wrapf(err, "receiveLoop: vr.Update: %v", err)
 							}
 						}
@@ -517,10 +524,16 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						q.v.Header = header // change accordingly  
 						q.v.Hash = q.v.Hash	// change accordingly 
 						}
-					
+
+						block, err := r.client.GetBlockByHeight(ctx, r.client.Cl, q.v.Height.Int64())
+						if err != nil {
+							q.err = errors.Wrapf(err, "GetBlockByHeight: %v", err)
+							return 
+						}
+						q.v.Block = block
+						fmt.Println("Getting for header: ", block.Header.Level)
 						if q.v.HasBTPMessage == nil {
 							// fmt.Println("height: ", q.v.Height.Int64())
-							block, err := r.client.GetBlockByHeight(ctx, r.client.Cl, q.v.Height.Int64())
 
 							if err != nil {
 								return

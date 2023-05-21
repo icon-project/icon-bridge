@@ -1,21 +1,22 @@
 package tezos
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
-	"strconv"
 	"context"
+	"strconv"
 
+	"blockwatch.cc/tzgo/codec"
 	"blockwatch.cc/tzgo/rpc"
 	"blockwatch.cc/tzgo/tezos"
-	"blockwatch.cc/tzgo/codec"
 )
 
 type IVerifier interface {
 	Next() int64
-	Verify(ctx context.Context, header *rpc.BlockHeader, proposer tezos.Address, c *rpc.Client, nextHeader *rpc.BlockHeader) error
-	Update(header *rpc.BlockHeader) error
+	Verify(ctx context.Context, header *rpc.BlockHeader, block *rpc.Block, proposer tezos.Address, c *rpc.Client, nextHeader *rpc.BlockHeader) error
+	Update(ctx context.Context, header *rpc.BlockHeader, block *rpc.Block) error
 	ParentHash() tezos.BlockHash
 	IsValidator(proposer tezos.Address, height int64) bool
 	Height() int64 
@@ -24,11 +25,13 @@ type IVerifier interface {
 type Verifier struct{
 	chainID 		uint32
 	mu 				sync.RWMutex
-	validators 		[]tezos.Address
+	validators 		map[tezos.Address]bool
 	next 			int64
 	parentHash 		tezos.BlockHash
 	parentFittness	int64
 	height 			int64
+	cycle 	int64
+	c *rpc.Client
 }
 
 func (vr *Verifier) Next() int64{
@@ -37,7 +40,7 @@ func (vr *Verifier) Next() int64{
 	return vr.next
 }
 
-func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, proposer tezos.Address, c *rpc.Client, nextHeader *rpc.BlockHeader) error {
+func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, block *rpc.Block, proposer tezos.Address, c *rpc.Client, nextHeader *rpc.BlockHeader) error {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
 	blockFittness := header.Fitness
@@ -61,14 +64,17 @@ func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, propose
 	// if !isValidSignature {
 	// 	return fmt.Errorf("Invalid block hash. Signature mismatch")
 	// }
+	
+	// err = vr.verifyEndorsement(block.Operations, vr.c, block.GetLevel())
 
-	fmt.Println(nextHeader.ValidationPass)
+	// if err != nil {
+	// 	return err 
+	// }
 
-	fmt.Println(true)
 	return nil 
 }
 
-func (vr *Verifier) Update(header *rpc.BlockHeader) error {
+func (vr *Verifier) Update(ctx context.Context, header *rpc.BlockHeader, block *rpc.Block) error {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
 	fmt.Println("updating????")
@@ -84,8 +90,15 @@ func (vr *Verifier) Update(header *rpc.BlockHeader) error {
 	vr.parentHash = header.Hash
 	vr.height = header.Level
 	vr.next = header.Level + 1
-	fmt.Println(header.Hash)
-	fmt.Println("updated")
+
+	fmt.Println(vr.cycle)
+	fmt.Println(block.Metadata.LevelInfo.Cycle)
+
+	if vr.cycle != block.Metadata.LevelInfo.Cycle {
+		fmt.Println("reached in updating validators and cycle")
+		vr.updateValidatorsAndCycle(ctx, block.Header.Level, block.Metadata.LevelInfo.Cycle)
+	}
+
 	return nil 
 }
 
@@ -144,6 +157,64 @@ func (vr *Verifier) VerifySignature(ctx context.Context, proposer tezos.Address,
 	}
 
 	return true, nil 
+}
+
+func (vr *Verifier) updateValidatorsAndCycle(ctx context.Context, blockHeight int64, cycle int64) error {
+
+	if true{
+		return nil
+	}
+
+	fmt.Println("reached update validators")
+	validatorsList, err := vr.c.ListEndorsingRights(ctx, rpc.BlockLevel(blockHeight))
+	if err != nil {
+		fmt.Println("error here?", err)
+		return err
+	}
+	// remove all validators 
+	for a := range vr.validators {
+		delete(vr.validators, a)
+	}
+	vr.validators = make(map[tezos.Address]bool)
+	// add new validators 
+	for _, validator := range(validatorsList){
+		vr.validators[validator.Delegate] = true
+	}
+	vr.cycle = cycle
+	fmt.Println("reached to updating cycle")
+	return nil 
+}
+
+func (vr *Verifier) verifyEndorsement(op [][]*rpc.Operation, c *rpc.Client, blockHeight int64) (error) {
+	endorsementPower := 0
+
+	threshold := 7000 * (2 / 3)
+	endorsers := make(map[tezos.Address]bool)
+	for i := 0; i < len(op); i++ {
+		for j := 0; j < len(op[i]); j++ {
+			for _, operation := range op[i][j].Contents {
+				switch operation.Kind() {
+				case tezos.OpTypeEndorsement:
+					tx := operation.(*rpc.Endorsement)
+					if _, isDelegate := vr.validators[tx.Metadata.Delegate]; isDelegate {
+						if _, ok := endorsers[tx.Metadata.Delegate]; !ok {
+							endorsers[tx.Metadata.Delegate] = true
+							endorsementPower += tx.Metadata.EndorsementPower
+						}
+					}else {
+						fmt.Println(vr.validators[tx.Metadata.Delegate])
+					}
+				}
+			}
+		}
+	}
+	fmt.Println(len(endorsers))
+
+	if endorsementPower > threshold && len(endorsers) * 100 / len(vr.validators) > 66 {
+		return nil 
+	} 
+return errors.New("endorsement verification failed")
+
 }
 
 type VerifierOptions struct {

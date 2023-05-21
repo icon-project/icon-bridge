@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
+
 	// "github.com/icon-project/icon-bridge/common/wallet"
 
 	"github.com/icon-project/icon-bridge/common/codec"
@@ -18,71 +20,73 @@ import (
 	"blockwatch.cc/tzgo/contract"
 	"blockwatch.cc/tzgo/micheline"
 	"blockwatch.cc/tzgo/rpc"
-	"blockwatch.cc/tzgo/signer"
 	"blockwatch.cc/tzgo/tezos"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 )
 
 const (
-	txMaxDataSize 			= 32 * 1024 * 4 // 8 KB
-	txOverheadScale = 0.01
-	defaultTxSizeLimit = txMaxDataSize / (1 + txOverheadScale)
-	defaultSendTxTimeOut 	= 30 * time.Second // 30 seconds is the block time for tezos 
+	txMaxDataSize        = 32 * 1024 * 4 // 8 KB
+	txOverheadScale      = 0.01
+	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale)
+	defaultSendTxTimeOut = 30 * time.Second // 30 seconds is the block time for tezos
 )
 
 type senderOptions struct {
-	StepLimit        uint64         `json:"step_limit"`
-	TxDataSizeLimit  uint64         `json:"tx_data_size_limit"`
+	StepLimit        uint64 `json:"step_limit"`
+	TxDataSizeLimit  uint64 `json:"tx_data_size_limit"`
 	BalanceThreshold uint64 `json:"balance_threshold"`
 }
 
 type sender struct {
-	log log.Logger
-	src chain.BTPAddress
-	dst tezos.Address
+	log        log.Logger
+	src        chain.BTPAddress
+	dst        tezos.Address
 	connection *contract.Contract
 	parameters micheline.Parameters
-	cls *Client
+	cls        *Client
 	blockLevel int64
-	opts senderOptions
-	w wallet.Wallet
+	opts       senderOptions
+	w          wallet.Wallet
 }
 
 func NewSender(
 	src, dst chain.BTPAddress,
 	urls []string, w wallet.Wallet,
 	rawOpts json.RawMessage, l log.Logger) (chain.Sender, error) {
-		var err error
-		fmt.Println(src.ContractAddress())
-		fmt.Println(dst.ContractAddress())
-		// srcAddr := tezos.MustParseAddress(src.ContractAddress())
-		dstAddr := tezos.MustParseAddress(dst.ContractAddress())
-		s := &sender {
-			log: l,
-			src: src,
-			dst: dstAddr,
-			w: w,
-		}
-		if len(urls) == 0 {
-			return nil, fmt.Errorf("Empty url")
-		}
-		s.cls, err = NewClient(urls[0], dstAddr, l)
-		if err != nil {
-			return nil, err 
-		}
+	var err error
+	fmt.Println(src.ContractAddress())
+	fmt.Println(dst.ContractAddress())
+	// srcAddr := tezos.MustParseAddress(src.ContractAddress())
+	dstAddr := tezos.MustParseAddress(dst.ContractAddress())
+	s := &sender{
+		log: l,
+		src: src,
+		dst: dstAddr,
+		w:   w,
+	}
+	PrintPlus()
+	fmt.Println(w.Address())
+	if len(urls) == 0 {
+		return nil, fmt.Errorf("Empty url")
+	}
+	s.cls, err = NewClient(urls[0], dstAddr, l)
+	if err != nil {
+		return nil, err
+	}
 
-		return s, nil
+	return s, nil
 
 }
 
-func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error){
+func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
+	fmt.Println("reached in balance of tezos")
 	address := tezos.MustParseAddress(s.w.Address())
 	balance, err = s.cls.GetBalance(ctx, s.cls.Cl, address, s.cls.blockLevel)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return balance, big.NewInt(0), nil 
+	return balance, big.NewInt(0), nil
 }
 
 func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.RelayTx, newMsg *chain.Message, err error) {
@@ -91,7 +95,7 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		return nil, nil, ctx.Err()
 	}
 
-	if s.opts.TxDataSizeLimit == 0{
+	if s.opts.TxDataSizeLimit == 0 {
 		limit := defaultTxSizeLimit
 		s.opts.TxDataSizeLimit = uint64(limit)
 	}
@@ -107,21 +111,27 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 	var msgSize uint64
 
 	newMsg = &chain.Message{
-		From: msg.From,
-		Receipts: msg.Receipts,			
+		From:     msg.From,
+		Receipts: msg.Receipts,
 	}
-
-
-	for i , receipt := range msg.Receipts{
+	
+	for i, receipt := range msg.Receipts {
 		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events) //json.Marshal(receipt.Events) // change to rlp bytes
-
-		chainReceipt := &chain.RelayReceipt{
-			Index: receipt.Index,
-			Height: receipt.Height,
-			Events: rlpEvents,
+		if err != nil {
+			return nil, nil, err
 		}
 
-		rlpReceipt, err :=  codec.RLP.MarshalToBytes(chainReceipt)//json.Marshal(chainReceipt) // change to rlp bytes 
+		Print()
+
+		fmt.Println(receipt.Index)
+		fmt.Println(receipt.Height)
+		fmt.Println(receipt.Events)
+
+		rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
+			Index:  receipt.Index,
+			Height: receipt.Height,
+			Events: rlpEvents,
+		}) //json.Marshal(chainReceipt) // change to rlp bytes
 		if err != nil {
 			return nil, nil, err
 		}
@@ -173,23 +183,23 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*
 	client := s.cls
 
 	return &relayTx{
-		Prev: prev,
+		Prev:    prev,
 		Message: message,
-		cl: client,
-		w: s.w,
-	}, nil 
+		cl:      client,
+		w:       s.w,
+	}, nil
 }
 
 type relayTx struct {
-	Prev    	string `json:"_prev"`
-	Message 	[]byte `json:"_msg"`
+	Prev    string `json:"_prev"`
+	Message []byte `json:"_msg"`
 
-	cl        	*Client
-	receipt 	*rpc.Receipt
-	w wallet.Wallet
+	cl      *Client
+	receipt *rpc.Receipt
+	w       wallet.Wallet
 }
 
-func (tx *relayTx) ID() interface{}{
+func (tx *relayTx) ID() interface{} {
 	return nil
 }
 
@@ -201,7 +211,9 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	prim := micheline.Prim{}
 	messageHex := hex.EncodeToString(tx.Message)
 
-	in := 	"{ \"prim\": \"Pair\", \"args\": [ { \"bytes\": \"" + messageHex + "\" }, { \"string\": \"string\" } ] }"
+	fmt.Println("Previous is: ", tx.Prev)
+
+	in := "{ \"prim\": \"Pair\", \"args\": [ { \"bytes\": \"" + messageHex + "\" }, { \"string\": \"" + tx.Prev + "\" } ] }"
 	if err := prim.UnmarshalJSON([]byte(in)); err != nil {
 		fmt.Println("couldnot unmarshall empty string")
 		fmt.Println(err)
@@ -213,22 +225,13 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 
 	opts := rpc.DefaultOptions
 
-	signingWalletData, err := tx.w.Sign([]byte("wallet"))
-	if err != nil {
-		return err 
+	w, ok := tx.w.(*wallet.TezosWallet)
+	if !ok {
+		return errors.New("not a tezos wallet")
 	}
 
-	sk := tezos.PrivateKey{}
-
-	err = sk.UnmarshalText(signingWalletData)
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(sk.String())
-
-	opts.Signer = signer.NewFromKey(sk) // pk 
+	opts.Signer = w.Signer()
+	fmt.Println("memory signer is : ", opts.Signer)
 	opts.TTL = 3
 
 	from := tezos.MustParseAddress(tx.w.Address()) // pubk
@@ -261,17 +264,17 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockHeight uint64, err error) 
 	if err != nil {
 		return 0, err
 	}
-	return blockHeight, nil 
+	return blockHeight, nil
 }
 
-func Print(){
-	for i:=0; i<100; i++{
+func Print() {
+	for i := 0; i < 100; i++ {
 		fmt.Println("*")
 	}
 }
 
-func PrintPlus(){
-	for i:=0;i<100;i++{
+func PrintPlus() {
+	for i := 0; i < 100; i++ {
 		fmt.Println("__")
 	}
 }

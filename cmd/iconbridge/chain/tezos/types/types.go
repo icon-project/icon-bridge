@@ -16,5 +16,6 @@ type BlockNotification struct {
 	Receipts      	[]*chain.Receipt
 	HasBTPMessage 	*bool
 	Proposer 		tezos.Address
+	Block 			*rpc.Block
 }
 
