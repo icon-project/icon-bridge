@@ -182,7 +182,9 @@ func DecryptKeyStore(data, pw []byte) (Wallet, error) {
 		return NewNearwalletFromPrivateKey(key)
 	case coinTypeXTZ:
 		fmt.Println("coin type is xtz")
+		fmt.Println(ksdata.Crypto.Cipher)
 		key := tezos.MustParsePrivateKey(ksdata.Crypto.Cipher)
+
 		return NewTezosWalletFromPrivateKey(key)
 	default:
 		return nil, errors.Errorf("InvalidCoinType(coin=%s)", ksdata.CoinType)

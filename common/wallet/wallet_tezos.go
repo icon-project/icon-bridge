@@ -1,6 +1,9 @@
 package wallet
 
 import (
+	"errors"
+
+	"blockwatch.cc/tzgo/signer"
 	"blockwatch.cc/tzgo/tezos"
 )
 
@@ -10,15 +13,15 @@ type TezosWallet struct {
 }
 
 func (w *TezosWallet) Address() string {
-	return w.Pkey.Address().ContractAddress()
+	return w.Pkey.Address().String()
 }
 
 func (w *TezosWallet) Sign(data []byte) ([]byte, error) {
-	skData, err := w.Skey.MarshalText()
-	if err != nil {
-		return nil, err
-	}
-	return skData, nil 
+	return nil, errors.New("not allowed, use Signer instead")
+}
+
+func (w *TezosWallet) Signer() *signer.MemorySigner {
+	return signer.NewFromKey(w.Skey)
 }
 
 func (w *TezosWallet) PublicKey() []byte {
