@@ -1,10 +1,10 @@
 package tezos
 
 import (
-	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"math/big"
 	"sort"
 	"strconv"
@@ -18,9 +18,8 @@ import (
 	"blockwatch.cc/tzgo/contract"
 	"blockwatch.cc/tzgo/rpc"
 	"blockwatch.cc/tzgo/tezos"
-	"github.com/pkg/errors"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/tezos/types"
-
+	"github.com/pkg/errors"
 )
 
 const (
@@ -32,10 +31,10 @@ const (
 )
 
 type receiver struct {
-	log log.Logger
-	src chain.BTPAddress
-	dst chain.BTPAddress
-	opts ReceiverOptions
+	log    log.Logger
+	src    chain.BTPAddress
+	dst    chain.BTPAddress
+	opts   ReceiverOptions
 	client *Client
 }
 
@@ -61,52 +60,49 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 			Concurrnecy: r.opts.SyncConcurrency,
 		}
 		if err := r.receiveLoop(ctx, bn,
-		func (blN *types.BlockNotification) error {
-			fmt.Println("has to reach in this callback ", blN.Height.Uint64())
+			func(blN *types.BlockNotification) error {
+				fmt.Println("has to reach in this callback ", blN.Height.Uint64())
 
-			if blN.Height.Uint64() != lastHeight {
-				return fmt.Errorf(
-					"block notification: expected=%d, got %d", lastHeight, blN.Height.Uint64())
-			}
+				if blN.Height.Uint64() != lastHeight {
+					return fmt.Errorf(
+						"block notification: expected=%d, got %d", lastHeight, blN.Height.Uint64())
+				}
 
-			// var events []*chain.Event
-			receipts := blN.Receipts
-			for _, receipt := range receipts{
-				events := receipt.Events[:0]
-				for _, event := range receipt.Events {
-					switch {
+				// var events []*chain.Event
+				receipts := blN.Receipts
+				for _, receipt := range receipts {
+					events := receipt.Events[:0]
+					for _, event := range receipt.Events {
+						switch {
 						case event.Sequence == opts.Seq:
 							events = append(events, event)
-							opts.Seq++ 
+							opts.Seq++
 						case event.Sequence > opts.Seq:
 							return fmt.Errorf("invalid event seq")
-							//TODO to be removed 
-						default:
-							events = append(events, event)
-							opts.Seq++
+							//TODO to be removed
+						}
 					}
+					receipt.Events = events
+					fmt.Println(receipt.Height)
+					fmt.Println("appending")
+					// vCP = append(vCP, &chain.Receipt{Events: receipt.Events})
 				}
-				receipt.Events = events
-				fmt.Println(receipt.Height)
-				fmt.Println("appending")
-				// vCP = append(vCP, &chain.Receipt{Events: receipt.Events})
-			} 
-			if len(receipts) > 0 {
-				fmt.Println("reached to sending message")
-				fmt.Println(receipts[0].Height)
-				msgCh <- &chain.Message{Receipts: receipts}
-			}
-			fmt.Println("returned nill")
-			lastHeight++
-			return nil 
-		}); err != nil {
+				if len(receipts) > 0 {
+					fmt.Println("reached to sending message")
+					fmt.Println(receipts[0].Height)
+					msgCh <- &chain.Message{Receipts: receipts}
+				}
+				fmt.Println("returned nill")
+				lastHeight++
+				return nil
+			}); err != nil {
 			fmt.Println(err)
-			_errCh <- err 
+			_errCh <- err
 		}
 
 		fmt.Println("Printing from inside the receiver")
 	}()
-	
+
 	return _errCh, nil
 }
 
@@ -117,12 +113,11 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 
 // 	for i, receipt := range v.Receipts {
 // 		events := events[:0]
-		
 
 // 		}
 // 	}
 
-func NewReceiver(src, dst chain.BTPAddress, urls []string, rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error){
+func NewReceiver(src, dst chain.BTPAddress, urls []string, rawOpts json.RawMessage, l log.Logger) (chain.Receiver, error) {
 	var newClient *Client
 	var err error
 
@@ -145,7 +140,6 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, rawOpts json.RawMessa
 	}
 
 	err = json.Unmarshal(rawOpts, &receiver.opts)
-
 
 	if receiver.opts.SyncConcurrency < 1 {
 		receiver.opts.SyncConcurrency = 1
@@ -195,16 +189,16 @@ func (r *receiver) NewVerifier(ctx context.Context, previousHeight int64) (vri I
 	id := chainIdHash.Uint32()
 
 	if err != nil {
-		return nil, err 
-	} 
+		return nil, err
+	}
 
 	vr := &Verifier{
-		mu: sync.RWMutex{},
-		next: header.Level + 1,
-		parentHash: header.Hash,
+		mu:             sync.RWMutex{},
+		next:           header.Level + 1,
+		parentHash:     header.Hash,
 		parentFittness: fittness,
-		chainID: id,
-		c: r.client.Cl,
+		chainID:        id,
+		c:              r.client.Cl,
 	}
 
 	vr.updateValidatorsAndCycle(ctx, previousHeight, block.Metadata.LevelInfo.Cycle)
@@ -215,7 +209,7 @@ func (r *receiver) NewVerifier(ctx context.Context, previousHeight int64) (vri I
 func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64, callback func([]*chain.Receipt) error) error {
 	if height == vr.Next() {
 		fmt.Println("returned from here")
-		return nil 
+		return nil
 	}
 
 	if vr.Next() > height {
@@ -225,21 +219,21 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 	type res struct {
 		Height int64
 		Header *rpc.BlockHeader
-		Block *rpc.Block 
-		Votes int64
+		Block  *rpc.Block
+		Votes  int64
 	}
 
 	type req struct {
 		height int64
-		err error 
-		res *res
-		retry int64
+		err    error
+		res    *res
+		retry  int64
 	}
 	fmt.Println("reached before starting to log")
 	// r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Info("syncVerifier: start")
-	
+
 	fmt.Println("reached in sync verifier")
-	var prevHeader *rpc.BlockHeader 
+	var prevHeader *rpc.BlockHeader
 	var prevBlock *rpc.Block
 
 	cursor := vr.Next()
@@ -247,11 +241,11 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 	for cursor <= height {
 		fmt.Println("reached inside for")
 		fmt.Println(r.opts.SyncConcurrency)
-		
+
 		rqch := make(chan *req, r.opts.SyncConcurrency)
 		fmt.Println(len(rqch))
 		fmt.Println(cap(rqch))
-		for i := cursor; len(rqch) < cap(rqch); i++{
+		for i := cursor; len(rqch) < cap(rqch); i++ {
 			rqch <- &req{height: i, retry: 5}
 		}
 		sres := make([]*res, 0, len(rqch))
@@ -261,7 +255,7 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 			case q.err != nil:
 				if q.retry > 0 {
 					q.retry--
-					q.res, q.err = nil, nil 
+					q.res, q.err = nil, nil
 					rqch <- q
 					continue
 				}
@@ -274,7 +268,7 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 				fmt.Println("should reach here in the second loop ")
 				sres = append(sres, q.res)
 				fmt.Println(cap(sres))
-				if len(sres) == cap(sres){
+				if len(sres) == cap(sres) {
 					fmt.Println("closes channel")
 					close(rqch)
 				}
@@ -291,8 +285,7 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 					}
 					q.res.Height = q.height
 					q.res.Header, q.err = r.client.GetBlockHeaderByHeight(ctx, r.client.Cl, q.height)
-					fmt.Println(q.res.Header)
-					if q.err != nil {
+						if q.err != nil {
 						q.err = errors.Wrapf(q.err, "syncVerifier: getBlockHeader: %v", q.err)
 						return
 					}
@@ -301,10 +294,9 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 						q.err = errors.Wrapf(q.err, "syncVerifier: getBlock: %v", q.err)
 						return
 					}
-					fmt.Println(q.res.Block)
 				}(q)
 			}
-		
+
 		}
 		_sres, sres := sres, sres[:0]
 		for _, v := range _sres {
@@ -326,7 +318,7 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 				if prevHeader == nil {
 					prevHeader = next.Header
 					prevBlock = next.Block
-					continue 
+					continue
 				}
 				if vr.Next() >= height {
 					fmt.Println("did it just break")
@@ -340,11 +332,11 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 
 				if err != nil {
 					cursor = vr.Height() + 1
-					prevHeader = nil 
+					prevHeader = nil
 					fmt.Println(cursor)
 					fmt.Println("when some verification is failed prompts it to get the data again from that point")
 					time.Sleep(15 * time.Second)
-					break 
+					break
 					// return errors.Wrapf(err, "syncVerifier: Verify: %v", err)
 				}
 
@@ -360,12 +352,13 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 			}
 
 		}
-			// r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Debug("syncVerifier: syncing")
+		// r.log.WithFields(log.Fields{"height": vr.Next(), "target": height}).Debug("syncVerifier: syncing")
 	}
 	// r.log.WithFields(log.Fields{"height": vr.Next()}).Info("syncVerifier: complete")
 
 	fmt.Println("sync complete")
-	return nil 
+	PrintSync()
+	return nil
 }
 
 type BnOptions struct {
@@ -373,7 +366,7 @@ type BnOptions struct {
 	Concurrnecy uint64
 }
 
-func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback func(v *types.BlockNotification) error) (err error){
+func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback func(v *types.BlockNotification) error) (err error) {
 	fmt.Println("reached to receivelopp")
 	if opts == nil {
 		return errors.New("receiveLoop: invalid options: <nil>")
@@ -381,12 +374,14 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 
 	var vr IVerifier
 
-	if r.opts.Verifier != nil{
+	if r.opts.Verifier != nil {
 		vr, err = r.NewVerifier(ctx, r.opts.Verifier.BlockHeight)
 		if err != nil {
 			return err
 		}
-		err = r.SyncVerifier(ctx, vr, r.opts.Verifier.BlockHeight + 1, func(r []*chain.Receipt) error {return nil})
+
+		fmt.Println("The start height is: ", opts.StartHeight)
+		err = r.SyncVerifier(ctx, vr, opts.StartHeight + 1, func(r []*chain.Receipt) error { return nil })
 		if err != nil {
 			return err
 		}
@@ -405,19 +400,19 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 		}
 		return block.GetLevel()
 	}
-	next, latest := r.opts.Verifier.BlockHeight + 1, latestHeight()
+	next, latest := opts.StartHeight + 1, latestHeight()
 
 	var lbn *types.BlockNotification
 
 	for {
 		select {
-		case <- ctx.Done():
+		case <-ctx.Done():
 			return nil
-		case <- heightTicker.C:
+		case <-heightTicker.C:
 			latest++
-		case <- heightPoller.C:
+		case <-heightPoller.C:
 			if height := latestHeight(); height > 0 {
-				latest = height 
+				latest = height
 				// r.log.WithFields(log.Fields{"latest": latest, "next": next}).Debug("poll height")
 			}
 		case bn := <-bnch:
@@ -432,16 +427,17 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						}
 					} else {
 						if vr != nil {
-							fmt.Println("vr is not nil")
+							fmt.Println("vr is not nil for block heiht ", lbn.Header.Level)
 							// header := bn.Header
-							if err := vr.Verify(ctx, lbn.Header, lbn.Block, bn.Proposer, r.client.Cl, bn.Header); err != nil { // change accordingly 
+							if err := vr.Verify(ctx, lbn.Header, lbn.Block, bn.Proposer, r.client.Cl, bn.Header); err != nil { // change accordingly
 								// r.log.WithFields(log.Fields{
 								// 	"height":     lbn.Height,
 								// 	"lbnHash":    lbn.Hash,
 								// 	"nextHeight": next,
 								// 	"bnHash":     bn.Hash}).Error("verification failed. refetching block ", err)
+								fmt.Println(err)
 								fmt.Println("error in verifying ")
-								time.Sleep(20 * time.Second)
+								time.Sleep(5 * time.Second)
 								next--
 								break
 							}
@@ -463,7 +459,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 				<-bnch
 				//r.log.WithFields(log.Fields{"lenBnch": len(bnch), "height": t.Height}).Info("remove unprocessed block noitification")
 			}
-			
+
 		default:
 			if next >= latest {
 				time.Sleep(10 * time.Second)
@@ -479,7 +475,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 
 			qch := make(chan *bnq, cap(bnch))
 
-			for i:= next; i < latest && len(qch) < cap(qch); i++{
+			for i := next; i < latest && len(qch) < cap(qch); i++ {
 				qch <- &bnq{i, nil, nil, RPCCallRetry}
 			}
 
@@ -490,9 +486,9 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 			bns := make([]*types.BlockNotification, 0, len(qch))
 			for q := range qch {
 				switch {
-				case q.err != nil :
+				case q.err != nil:
 					if q.retry > 0 {
-						q.retry --
+						q.retry--
 						q.v, q.err = nil, nil
 						qch <- q
 						continue
@@ -521,14 +517,14 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 								q.err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
 								return
 							}
-						q.v.Header = header // change accordingly  
-						q.v.Hash = q.v.Hash	// change accordingly 
+							q.v.Header = header // change accordingly
+							q.v.Hash = q.v.Hash // change accordingly
 						}
 
 						block, err := r.client.GetBlockByHeight(ctx, r.client.Cl, q.v.Height.Int64())
 						if err != nil {
 							q.err = errors.Wrapf(err, "GetBlockByHeight: %v", err)
-							return 
+							return
 						}
 						q.v.Block = block
 						fmt.Println("Getting for header: ", block.Header.Level)
@@ -539,7 +535,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 								return
 							}
 							q.v.Proposer = block.Metadata.Proposer
-	
+
 							hasBTPMessage, receipt, err := returnTxMetadata2(block, r.client.Contract.Address(), q.v.Height.Int64(), r.client)
 							fmt.Println("has btp message", hasBTPMessage, q.v.Height.Uint64())
 
@@ -555,12 +551,12 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 							}
 						}
 						if !*q.v.HasBTPMessage {
-							return 
+							return
 						}
 					}(q)
 				}
 			}
-			// filtering nil 
+			// filtering nil
 			_bns_, bns := bns, bns[:0]
 
 			for _, v := range _bns_ {
@@ -574,7 +570,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 					return bns[i].Height.Int64() < bns[j].Height.Int64()
 				})
 				for i, v := range bns {
-					if v.Height.Int64() == next + int64(i) {
+					if v.Height.Int64() == next+int64(i) {
 						bnch <- v
 					}
 				}
@@ -585,3 +581,8 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 	}
 }
 
+func PrintSync() {
+	for i := 0; i < 100; i++ {
+		fmt.Println("realyer synced")
+	}
+}

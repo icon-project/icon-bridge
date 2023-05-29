@@ -17,7 +17,7 @@ export TAG="ICON BSC TESTNET"
 export BSC_BMC_NET="0x61.bsc"
 export ICON_BMC_NET="0x2.icon"
 export SNOW_BMC_NET="0x229.snow"
-export TZ_BMC_NET="0x63.tezos"
+export TZ_BMC_NET="NetXnHfVqm9iesp.tezos"
 export GOLOOP_RPC_NID="0x2"
 export BSC_NID="97"
 export TEZOS_NID="NetXnHfVqm9iesp"
@@ -44,7 +44,7 @@ export ICON_WRAPPED_COIN_DECIMALS=(18 18 18 18 18 18 18)
 
 export TZ_ENDPOINT="https://ghostnet.tezos.marigold.dev"
 export TZ_NATIVE_COIN_SYM=("XTZ")
-export TZ_NATIVE_COIN_NAME=("btp-$TZ_BMC_NET-TZ")
+export TZ_NATIVE_COIN_NAME=("btp-$TZ_BMC_NET-XTZ")
 export TZ_NATIVE_TOKEN_SYM=("BUSD" "USDT" "USDC" "BTCB" "ETH")
 export TZ_NATIVE_TOKEN_NAME=("btp-$TZ_BMC_NET-BUSD" "btp-$TZ_BMC_NET-USDT" "btp-$TZ_BMC_NET-USDC" "btp-$TZ_BMC_NET-BTCB" "btp-$TZ_BMC_NET-ETH")
 export TZ_WRAPPED_COIN_SYM=("ICX" "sICX" "bnUSD" "ICZ")

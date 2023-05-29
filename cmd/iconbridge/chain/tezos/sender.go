@@ -214,6 +214,8 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	fmt.Println("Previous is: ", tx.Prev)
 
 	in := "{ \"prim\": \"Pair\", \"args\": [ { \"bytes\": \"" + messageHex + "\" }, { \"string\": \"" + tx.Prev + "\" } ] }"
+	fmt.Println(in)
+	
 	if err := prim.UnmarshalJSON([]byte(in)); err != nil {
 		fmt.Println("couldnot unmarshall empty string")
 		fmt.Println(err)

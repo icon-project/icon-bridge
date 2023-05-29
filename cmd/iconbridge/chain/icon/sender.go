@@ -19,6 +19,7 @@ package icon
 import (
 	"context"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -200,6 +201,7 @@ func (s *sender) Segment(
 		return nil, nil, err
 	}
 	fmt.Println("should reach here without error")
+	fmt.Println(hex.EncodeToString(message))
 	return tx, newMsg, nil
 }
 

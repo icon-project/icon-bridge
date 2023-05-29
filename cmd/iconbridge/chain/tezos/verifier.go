@@ -52,6 +52,9 @@ func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, block *
 	if currentFittness < vr.parentFittness {
 		return fmt.Errorf("Invalid block fittness", currentFittness)
 	}
+	fmt.Println(header.Level)
+	fmt.Println(header.Predecessor)
+	fmt.Println(vr.parentHash.String())
 	previousHashInBlock := header.Predecessor
 
 	if previousHashInBlock.String() != vr.parentHash.String() {
@@ -77,7 +80,7 @@ func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, block *
 func (vr *Verifier) Update(ctx context.Context, header *rpc.BlockHeader, block *rpc.Block) error {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
-	fmt.Println("updating????")
+	fmt.Println("updating for block ????", header.Level)
 	blockFittness := header.Fitness
 
 	currentFittness, err := strconv.ParseInt(string(blockFittness[1].String()), 16, 64)
@@ -90,9 +93,6 @@ func (vr *Verifier) Update(ctx context.Context, header *rpc.BlockHeader, block *
 	vr.parentHash = header.Hash
 	vr.height = header.Level
 	vr.next = header.Level + 1
-
-	fmt.Println(vr.cycle)
-	fmt.Println(block.Metadata.LevelInfo.Cycle)
 
 	if vr.cycle != block.Metadata.LevelInfo.Cycle {
 		fmt.Println("reached in updating validators and cycle")

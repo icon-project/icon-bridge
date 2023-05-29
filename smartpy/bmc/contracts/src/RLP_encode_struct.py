@@ -18,8 +18,8 @@ class EncodeLibrary:
         encode_src = sp.view("encode_string", self.data.helper, params.src, t=sp.TBytes).open_some()
         encode_dst = sp.view("encode_string", self.data.helper, params.dst, t=sp.TBytes).open_some()
         encode_svc = sp.view("encode_string", self.data.helper, params.svc, t=sp.TBytes).open_some()
-        encode_sn = sp.view("encode_nat", self.data.helper, params.sn, t=sp.TBytes).open_some()
-
+        nat_sn = sp.as_nat(params.sn)
+        encode_sn = sp.view("encode_nat", self.data.helper, nat_sn, t=sp.TBytes).open_some()
         rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper, [encode_src, encode_dst, encode_svc, encode_sn, params.message], t=sp.TBytes).open_some()
         return rlp_bytes_with_prefix
 
