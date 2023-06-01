@@ -245,7 +245,7 @@ func returnTxMetadata3(tx *rpc.Transaction, contractAddress tezos.Address, heigh
 	for i := 0; i < len(tx.Metadata.InternalResults); i++ {
 		fmt.Println("reached in for")
 		internalResults := tx.Metadata.InternalResults[i]
-		if internalResults.Kind.String() == "event" && internalResults.Source.ContractAddress() == "KT1XamvZ9WgAmxq4eBGKi6ZRbLGuGJpYcqaj" {
+		if internalResults.Kind.String() == "event" && internalResults.Source.ContractAddress() == "KT1CYbCyejjPcB7qKhoXqd45UbUMfZRFcbTk" {
 			fmt.Println("Address matched")
 			if internalResults.Tag == "Message" {
 				message := internalResults.Payload.Args[0].Bytes

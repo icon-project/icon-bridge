@@ -45,9 +45,7 @@ const deploy = async () => {
       init: require(`../contracts/build/${file}_storage.json`),
     });
 
-    console.log("Successfully deployed contract");
-    console.log(`>> Transaction hash: ${hash}`);
-    console.log(`>> Contract address: ${contractAddress}`);
+    console.log(`::${contractAddress}`);
   } catch (error) {
     console.log(
       `Oops... Deployment faced an issue.\nHere's the detailed info about the error,\n${error}`

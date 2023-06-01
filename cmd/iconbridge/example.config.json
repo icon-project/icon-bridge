@@ -17,20 +17,20 @@
         {
             "name": "t2i",
             "src": {
-                "address": "btp://NetXnHfVqm9iesp.tezos/KT1ENZvToPx87LhuowJ1VixjjqQhSnYrcYLi",
+                "address": "btp://NetXnHfVqm9iesp.tezos/KT1XQ9qNQgHMGq5h5uvvXaZFtj7vGerQ8yga",
                 "endpoint": [
                     "https://ghostnet.tezos.marigold.dev"
                 ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 2759303
+                        "blockHeight": 2792278
                     },
                     "syncConcurrency": 100
                 },
-                "offset": 2759303
+                "offset": 2792278
             },
             "dst": {
-                "address": "btp://0x7.icon/cxdc28944407659973fe99487d75c5dd32c79be053",
+                "address": "btp://0x7.icon/cx152b8c1fe4f377443df0e643ab066ea219c1086a",
                 "endpoint": [
                     "https://berlin.net.solidwallet.io/api/v3"
                 ],
@@ -65,21 +65,21 @@
         {
             "name": "i2t",
             "src": {
-                "address": "btp://0x7.icon/cxdc28944407659973fe99487d75c5dd32c79be053",
+                "address": "btp://0x7.icon/cx152b8c1fe4f377443df0e643ab066ea219c1086a",
                 "endpoint": [
                     "https://berlin.net.solidwallet.io/api/v3/icon_dex"
                 ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 8714388,
+                        "blockHeight": 8857590,
                         "validatorsHash": "0x04b56f3fc8d396cc7eb8124da8a554800b8758c9e2fff0802aa9682948e65447"
                     },
                     "syncConcurrency": 100
                 },
-                "offset": 8714388
+                "offset": 8857590
             },
             "dst": {
-                "address": "btp://NetXnHfVqm9iesp.tezos/KT1ENZvToPx87LhuowJ1VixjjqQhSnYrcYLi",
+                "address": "btp://NetXnHfVqm9iesp.tezos/KT1XQ9qNQgHMGq5h5uvvXaZFtj7vGerQ8yga",
                 "endpoint": [
                     "https://ghostnet.tezos.marigold.dev"
                 ],
