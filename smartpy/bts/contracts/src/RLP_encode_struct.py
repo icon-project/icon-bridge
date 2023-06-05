@@ -18,20 +18,20 @@ class EncodeLibrary:
         sp.set_type(data, types.Types.TransferCoin)
 
         rlp = sp.local("rlp", sp.bytes("0x"))
+        rlp_list = sp.local("rlp_list", [], t=sp.TList(sp.TBytes))
         temp = sp.local("temp", sp.bytes("0x"))
         coin_name = sp.local("coin_name", sp.bytes("0x"))
-        encode_lis_byte = sp.local("encode_lis_byte", sp.bytes("0x"))
         sp.for i in sp.range(0, sp.len(data.assets)):
             coin_name.value = sp.view("encode_string", self.data.helper, data.assets.get(i, default_value=sp.record(coin_name="",value=sp.nat(0))).coin_name, t=sp.TBytes).open_some()
             temp.value =  sp.view("encode_nat", self.data.helper, data.assets.get(i, default_value=sp.record(coin_name="",value=sp.nat(0))).value, t=sp.TBytes).open_some()
-            encode_lis_byte.value = sp.view("encode_list", self.data.helper, [rlp.value, coin_name.value, temp.value], t=sp.TBytes).open_some()
-            rlp.value = sp.view("encode_list", self.data.helper, [encode_lis_byte.value], t=sp.TBytes).open_some()
+            rlp_list.value.push(sp.view("encode_list", self.data.helper, [coin_name.value, temp.value], t=sp.TBytes).open_some())
             # rlp.value = sp.view("with_length_prefix", self.data.helper, rlp.value,
             #                                       t=sp.TBytes).open_some()
 
+        assets_list = sp.view("encode_list", self.data.helper, rlp_list.value, t=sp.TBytes).open_some()
         from_addr_encoded = sp.view("encode_string", self.data.helper, data.from_addr, t=sp.TBytes).open_some()
         to_addr_encoded = sp.view("encode_string", self.data.helper, data.to, t=sp.TBytes).open_some()
-        rlp.value = sp.view("encode_list", self.data.helper, [from_addr_encoded, to_addr_encoded, rlp.value], t=sp.TBytes).open_some()
+        rlp.value = sp.view("encode_list", self.data.helper, [from_addr_encoded, to_addr_encoded, assets_list], t=sp.TBytes).open_some()
         final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp.value, t=sp.TBytes).open_some()
 
         return final_rlp_bytes_with_prefix
