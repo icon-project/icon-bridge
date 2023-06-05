@@ -110,36 +110,42 @@ class DecodeLibrary:
         counter.value = 0
         new_temp_byt = sp.local("new_temp_byt", sp.bytes("0x"))
         rv_assets = sp.local("assets", {}, sp.TMap(sp.TNat, types.Types.Asset))
+        nsl3_tcm = sp.local("nsl3_bts_tcm", sp.map(tkey=sp.TNat))
+        view_value = sp.local("view_value", sp.map(tkey=sp.TNat))
+        counter_nested = sp.local("counter_nested", sp.nat(0), t=sp.TNat)
+        temp_byt = sp.local("tempByt2", sp.bytes("0x"))
+        temp_byt_nested = sp.local("tempByt2nested", sp.bytes("0x"))
         sp.for x in new_sub_list.items():
             new_temp_byt.value = x.value
             # sp.if sp.slice(new_temp_byt.value, 0, 2).open_some() == sp.bytes("0xb846"):
             #     new_temp_byt.value = sp.slice(new_temp_byt.value, 2, sp.as_nat(sp.len(new_temp_byt.value) - 2)).open_some()
-            temp_byt = sp.local("tempByt2", sp.bytes("0x"))
-            temp_int = sp.local("tempInt", sp.nat(0))
-            counter.value = 0
-            nsl3_tcm = sp.local("nsl3_bts_tcm", sp.map(tkey=sp.TNat))
             is_list_lambda = sp.view("is_list", self.data.helper, new_temp_byt.value,
                                      t=sp.TBool).open_some()
             with sp.if_(is_list_lambda):
                 nsl3_tcm.value = sp.view("decode_list", self.data.helper, new_temp_byt.value,
                                         t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
             with sp.else_():
-                decode_len = sp.view("without_length_prefix", self.data.helper, new_temp_byt.value, t=sp.TBytes).open_some()
+                decode_len = sp.view("without_length_prefix", self.data.helper, new_temp_byt.value,
+                                     t=sp.TBytes).open_some()
                 nsl3_tcm.value = sp.view("decode_list", self.data.helper, decode_len,
-                                        t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
-            view_value = nsl3_tcm.value
-            sp.for i in view_value.items():
-                sp.if counter.value == 1:
+                                         t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
+            view_value.value = nsl3_tcm.value
+            counter_nested.value = sp.nat(0)
+            sp.for i in view_value.value.items():
+                sp.if counter_nested.value == 1:
                     # check_length = sp.view("prefix_length", self.data.helper, i.value, t=sp.TNat).open_some()
                     # with sp.if_ (check_length > 0):
-                    i.value = sp.view("without_length_prefix", self.data.helper, i.value,
-                                               t=sp.TBytes).open_some()
-                    temp_int.value = Utils2.Int.of_bytes(i.value)
-                sp.if counter.value == 0:
+                    temp_byt_nested.value = sp.view("without_length_prefix", self.data.helper, i.value,
+                                                    t=sp.TBytes).open_some()
+                sp.if counter_nested.value == 0:
                     temp_byt.value = i.value
-                rv_assets.value[counter.value] = sp.record(coin_name=sp.view("decode_string", self.data.helper, temp_byt.value, t=sp.TString).open_some()
-                                                           , value=temp_int.value)
-                counter.value = counter.value + 1
+                counter_nested.value += 1
+
+            rv_assets.value[counter.value] = sp.record(coin_name=sp.view("decode_string", self.data.helper, temp_byt.value, t=sp.TString).open_some()
+                                                       , value=Utils2.Int.of_bytes(temp_byt_nested.value))
+
+            counter.value = counter.value + 1
+
         rv1 = sp.view("decode_string", self.data.helper, rv1_byt.value, t=sp.TString).open_some()
         rv2 = sp.view("decode_string", self.data.helper, rv2_byt.value, t=sp.TString).open_some()
         return sp.record(from_= rv1, to = rv2 , assets = rv_assets.value)
