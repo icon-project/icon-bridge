@@ -285,7 +285,7 @@ class BTSCore(sp.Contract):
         accumulated_fees = sp.local("accumulated_fees", sp.map(tkey=sp.TNat, tvalue=types.Types.Asset))
         i = sp.local("i", sp.nat(0))
         sp.for item in self.data.coins_name:
-            accumulated_fees.value[i.value] = sp.record(coin_name=item, value=self.data.aggregation_fee.get(item))
+            accumulated_fees.value[i.value] = sp.record(coin_name=item, value=self.data.aggregation_fee.get(item, default_value=sp.nat(0)))
             i.value += sp.nat(1)
         sp.result(accumulated_fees.value)
 
@@ -651,9 +651,12 @@ class BTSCore(sp.Contract):
         sp.for item in self.data.coins_name:
             sp.if self.data.aggregation_fee.get(item, default_value=sp.nat(0)) != sp.nat(0):
                 self.data.charged_coins[l.value] = item
-                self.data.charged_amounts[l.value] = self.data.aggregation_fee.get(item)
+                self.data.charged_amounts[l.value] = self.data.aggregation_fee.get(item, default_value=sp.nat(0))
                 del self.data.aggregation_fee[item]
-            l.value += sp.nat(1)
+                l.value += sp.nat(1)
+
+        _charged_coins = sp.local("_charged_coins", self.data.charged_coins)
+        _charged_amounts = sp.local("_charged_amounts", self.data.charged_amounts)
 
         # call send_service_message on bts_periphery
         send_service_message_args_type = sp.TRecord(_from=sp.TAddress, to=sp.TString,
@@ -663,8 +666,8 @@ class BTSCore(sp.Contract):
         send_service_message_entry_point = sp.contract(send_service_message_args_type,
                                                        self.data.bts_periphery_address.open_some("Address not set"),
                                                        "send_service_message").open_some()
-        send_service_message_args = sp.record(_from=sp.self_address, to=fa, coin_names=self.data.charged_coins,
-                                              values=self.data.charged_amounts,
+        send_service_message_args = sp.record(_from=sp.self_address, to=fa, coin_names=_charged_coins.value,
+                                              values=_charged_amounts.value,
                                               fees=sp.map({}))
         sp.transfer(send_service_message_args, sp.tez(0), send_service_message_entry_point)
 

@@ -219,13 +219,13 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         assets_details = sp.compute(sp.map(tkey=sp.TNat, tvalue=types.Types.AssetTransferDetail))
         sp.for i in sp.range(sp.nat(0), sp.len(coin_names)):
             assets[i]=sp.record(
-                coin_name=coin_names[i],
-                value=values[i]
+                coin_name=coin_names.get(i, default_value=sp.string("CoinNotFound")),
+                value=values.get(i, default_value=sp.nat(0))
             )
             assets_details[i] = sp.record(
-                coin_name=coin_names[i],
-                value=values[i],
-                fee=fees[i]
+                coin_name=coin_names.get(i, default_value=sp.string("CoinNotFound")),
+                value=values.get(i, default_value=sp.nat(0)),
+                fee=fees.get(i, default_value=sp.nat(0))
             )
 
         self.data.serial_no += 1
@@ -429,8 +429,8 @@ class BTPPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
                 )
                 handle_response_service_entry_point = sp.contract(handle_response_service_args_type, self.data.bts_core, "handle_response_service").open_some("invalid call")
                 handle_response_service_args = sp.record(
-                    requester=caller, coin_name=self.data.requests.get(sn).coin_names.get(i), value=self.data.requests.get(sn).amounts.get(i),
-                    fee=self.data.requests.get(sn).fees.get(i), rsp_code=code
+                    requester=caller, coin_name=self.data.requests.get(sn).coin_names.get(i, default_value=sp.string("CoinNotFound")),
+                    value=self.data.requests.get(sn).amounts.get(i, default_value=sp.nat(0)),fee=self.data.requests.get(sn).fees.get(i, default_value=sp.nat(0)), rsp_code=code
                 )
                 sp.transfer(handle_response_service_args, sp.tez(0), handle_response_service_entry_point)
 
