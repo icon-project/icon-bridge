@@ -1,9 +1,18 @@
 import smartpy as sp
 
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
+helper_file = sp.io.import_script_from_url("file:./contracts/src/helper.py")
 
 
-class EncodeLibrary:
+class EncodeLibrary(sp.Contract):
+
+    def __init__(self, helper_contract):
+        self.init(
+            helper=helper_contract
+        )
+
+
+    @sp.onchain_view()
     def encode_service_message(self, params):
         sp.set_type(params, sp.TRecord(service_type_value = sp.TNat, data = sp.TBytes))
 
@@ -11,9 +20,10 @@ class EncodeLibrary:
         rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper, [encode_service_type, params.data], t=sp.TBytes).open_some()
         final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes_with_prefix, t=sp.TBytes).open_some()
 
-        return final_rlp_bytes_with_prefix
+        sp.result(final_rlp_bytes_with_prefix)
 
 
+    @sp.onchain_view()
     def encode_transfer_coin_msg(self, data):
         sp.set_type(data, types.Types.TransferCoin)
 
@@ -34,8 +44,10 @@ class EncodeLibrary:
         rlp.value = sp.view("encode_list", self.data.helper, [from_addr_encoded, to_addr_encoded, assets_list], t=sp.TBytes).open_some()
         final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp.value, t=sp.TBytes).open_some()
 
-        return final_rlp_bytes_with_prefix
+        sp.result(final_rlp_bytes_with_prefix)
 
+
+    @sp.onchain_view()
     def encode_response(self, params):
         sp.set_type(params, sp.TRecord(code=sp.TNat, message=sp.TString))
 
@@ -45,4 +57,20 @@ class EncodeLibrary:
         rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper, [encode_code, encode_message],
                                         t=sp.TBytes).open_some()
         final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes_with_prefix, t=sp.TBytes).open_some()
-        return final_rlp_bytes_with_prefix
+
+        sp.result(final_rlp_bytes_with_prefix)
+
+
+@sp.add_test(name="Encoder")
+def test():
+    scenario = sp.test_scenario()
+
+    helper = helper_file.Helper()
+    scenario += helper
+
+    c1 = EncodeLibrary(helper.address)
+    scenario += c1
+
+
+sp.add_compilation_target("RLP_encode_struct",
+                          EncodeLibrary(helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6")))

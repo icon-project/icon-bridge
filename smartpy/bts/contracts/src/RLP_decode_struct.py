@@ -2,10 +2,21 @@ import smartpy as sp
 
 Utils2 = sp.io.import_script_from_url("https://raw.githubusercontent.com/RomarQ/tezos-sc-utils/main/smartpy/utils.py")
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
+helper_file = sp.io.import_script_from_url("file:./contracts/src/helper.py")
 
 
-class DecodeLibrary:
+class DecodeLibrary(sp.Contract):
+
+    def __init__(self, helper_contract):
+        self.init(
+            helper=helper_contract,
+        )
+
+
+    @sp.onchain_view()
     def decode_response(self, rlp):
+        sp.set_type(rlp, sp.TBytes)
+
         temp_int = sp.local("int1", 0)
         temp_byt = sp.local("byt1", sp.bytes("0x"))
         rlp_dr = sp.local("rlp_dr_bts", sp.map(tkey=sp.TNat))
@@ -29,9 +40,13 @@ class DecodeLibrary:
                 temp_byt.value = i.value
             counter.value = counter.value + 1
 
-        return sp.record(code=temp_int.value, message=sp.view("decode_string", self.data.helper, temp_byt.value, t=sp.TString).open_some())
+        sp.result(sp.record(code=temp_int.value, message=sp.view("decode_string", self.data.helper, temp_byt.value, t=sp.TString).open_some()))
 
+
+    @sp.onchain_view()
     def decode_service_message(self, rlp):
+        sp.set_type(rlp, sp.TBytes)
+
         rlp_sm = sp.local("rlp_sm_bts", sp.map(tkey=sp.TNat))
         is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
         with sp.if_(is_list_lambda):
@@ -55,7 +70,7 @@ class DecodeLibrary:
                 temp_byt.value = i.value
             counter.value = counter.value + 1
 
-        _service_type = sp.local("_service_type", sp.variant("", 10))
+        _service_type = sp.local("_service_type", sp.variant("ERROR", 10))
         sp.if temp_int.value == 0:
             _service_type.value = sp.variant("REQUEST_COIN_TRANSFER", temp_int.value)
         sp.if temp_int.value == 1:
@@ -70,10 +85,13 @@ class DecodeLibrary:
             _service_type.value = sp.variant("UNKNOWN_TYPE", temp_int.value)
         temp_byt.value = sp.view("without_length_prefix", self.data.helper, temp_byt.value, t=sp.TBytes).open_some()
 
-        return sp.record(serviceType=_service_type.value,
-                         data=temp_byt.value)
+        sp.result(sp.record(serviceType=_service_type.value,
+                         data=temp_byt.value))
 
+    @sp.onchain_view()
     def decode_transfer_coin_msg(self, rlp):
+        sp.set_type(rlp, sp.TBytes)
+
         rlp_tcm = sp.local("rlp_tcm_bts", sp.map(tkey=sp.TNat))
         is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
         with sp.if_(is_list_lambda):
@@ -148,9 +166,13 @@ class DecodeLibrary:
 
         rv1 = sp.view("decode_string", self.data.helper, rv1_byt.value, t=sp.TString).open_some()
         rv2 = sp.view("decode_string", self.data.helper, rv2_byt.value, t=sp.TString).open_some()
-        return sp.record(from_= rv1, to = rv2 , assets = rv_assets.value)
+        sp.result(sp.record(from_= rv1, to = rv2 , assets = rv_assets.value))
 
+
+    @sp.onchain_view()
     def decode_blacklist_msg(self, rlp):
+        sp.set_type(rlp, sp.TBytes)
+
         rlp_bm = sp.local("rlp_bm_bts", sp.map(tkey=sp.TNat))
         is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
         with sp.if_(is_list_lambda):
@@ -213,14 +235,18 @@ class DecodeLibrary:
                               t=sp.TBytes).open_some()
         rv1 = Utils2.Int.of_bytes(rv1_byt.value)
         rv2 = sp.view("decode_string", self.data.helper, rv2_byt.value, t=sp.TString).open_some()
-        _service_type = sp.local("_service_type_blacklist", sp.variant("", 10))
+        _service_type = sp.local("_service_type_blacklist", sp.variant("ERROR", 10))
         with sp.if_(rv1 == 0):
             _service_type.value = sp.variant("ADD_TO_BLACKLIST", rv1)
         with sp.else_():
             _service_type.value = sp.variant("REMOVE_FROM_BLACKLIST", rv1)
-        return sp.record(serviceType = _service_type.value , addrs = rv_blacklist_address.value , net = rv2)
+        sp.result(sp.record(serviceType = _service_type.value , addrs = rv_blacklist_address.value , net = rv2))
 
+
+    @sp.onchain_view()
     def decode_token_limit_msg(self, rlp):
+        sp.set_type(rlp, sp.TBytes)
+
         rlp_tlm = sp.local("rlp_tlm_bts", sp.map(tkey=sp.TNat))
         is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
         with sp.if_(is_list_lambda):
@@ -280,5 +306,21 @@ class DecodeLibrary:
                                   t=sp.TBytes).open_some()
             rv_limit.value[counter.value] = Utils2.Int.of_bytes(limit.value)
             counter.value += 1
-        return sp.record(coin_name = rv_names.value, token_limit = rv_limit.value ,
-                         net = sp.view("decode_string", self.data.helper, rv1_byt.value, t=sp.TString).open_some())
+        sp.result(sp.record(coin_name = rv_names.value, token_limit = rv_limit.value ,
+                         net = sp.view("decode_string", self.data.helper, rv1_byt.value, t=sp.TString).open_some()))
+
+
+@sp.add_test(name="Decoder")
+def test():
+    scenario = sp.test_scenario()
+
+    helper = helper_file.Helper()
+    scenario += helper
+
+    c1 = DecodeLibrary(helper.address)
+    scenario += c1
+
+
+sp.add_compilation_target("RLP_decode_struct",
+                          DecodeLibrary(helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6")))
+
