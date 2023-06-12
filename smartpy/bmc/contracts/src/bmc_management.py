@@ -2,13 +2,13 @@ import smartpy as sp
 
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 strings = sp.io.import_script_from_url("file:./contracts/src/String.py")
-rlp_encode = sp.io.import_script_from_url("file:./contracts/src/RLP_encode_struct.py")
 
 
-class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
+class BMCManagement(sp.Contract):
     BLOCK_INTERVAL_MSEC = sp.nat(1000)
+    LIST_SHORT_START = sp.bytes("0xc0")
 
-    def __init__(self, owner_address, helper_contract):
+    def __init__(self, owner_address, helper_contract, rlp_encode_contract):
         self.init(
             owners=sp.map(l={owner_address:True}),
             number_of_owners=sp.nat(1),
@@ -25,7 +25,8 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
             get_route_dst_from_net=sp.map(),
             get_link_from_net=sp.map(),
             get_link_from_reachable_net=sp.map(),
-            helper=helper_contract
+            helper=helper_contract,
+            rlp_encode_struct=rlp_encode_contract
         )
 
         self.init_type(sp.TRecord(
@@ -44,7 +45,8 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
             get_route_dst_from_net=sp.TMap(sp.TString, sp.TString),
             get_link_from_net=sp.TMap(sp.TString, sp.TString),
             get_link_from_reachable_net=sp.TMap(sp.TString, types.Types.Tuple),
-            helper=sp.TAddress
+            helper=sp.TAddress,
+            rlp_encode_struct=sp.TAddress
         ))
 
     def only_owner(self):
@@ -85,6 +87,12 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
                                                   self.data.bmc_periphery.open_some("Address not set"),
                                                   "set_bmc_btp_address").open_some()
         sp.transfer(network, sp.tez(0), set_btp_address_entry_point)
+
+    @sp.entry_point
+    def set_rlp_encode_address(self, param):
+        sp.set_type(param, sp.TAddress)
+        self.only_owner()
+        self.data.rlp_encode_struct = param
 
     @sp.entry_point
     def add_owner(self, owner):
@@ -302,8 +310,9 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
                 send_message_entry_point = sp.contract(send_message_args_type,
                                                                 self.data.bmc_periphery.open_some("Address not set"),
                                                                 "send_message").open_some()
-                send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0), msg=self.encode_bmc_service(
-                    sp.record(serviceType=service_type, payload=final_rlp_bytes_with_prefix)))
+                send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0), msg=sp.view("encode_bmc_service", self.data.rlp_encode_struct,
+                                                                                           sp.record(serviceType=service_type,payload=final_rlp_bytes_with_prefix),
+                                                                                           t=sp.TBytes).open_some())
                 sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
     def _send_internal(self, target, service_type, links):
@@ -329,8 +338,8 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
         send_message_entry_point = sp.contract(send_message_args_type,
                                                self.data.bmc_periphery.open_some("Address not set"),
                                                "send_message").open_some()
-        send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0), msg=self.encode_bmc_service(
-            sp.record(serviceType=service_type, payload=rlp_bytes.value)))
+        send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0), msg=sp.view("encode_bmc_service", self.data.rlp_encode_struct,
+                                                                                   sp.record(serviceType=service_type, payload=rlp_bytes.value), t=sp.TBytes).open_some())
         sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
 
@@ -568,4 +577,5 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
 
 
 sp.add_compilation_target("bmc_management", BMCManagement(owner_address=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP"),
-                                                          helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6")))
+                                                          helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6"),
+                                                          rlp_encode_contract=sp.address("KT19eEe2CwtzYpuB3A5um6mJRMNMj8ek9BsT")))
