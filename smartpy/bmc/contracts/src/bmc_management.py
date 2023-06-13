@@ -171,7 +171,12 @@ class BMCManagement(sp.Contract):
             i.value += 1
         sp.result(services)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_add_link(self, ep):
+        self.only_owner()
+        sp.set_entry_point("add_link", ep)
+
+    @sp.entry_point(lazify=True)
     def add_link(self, link):
         """
         Initializes status information for the link.
@@ -208,7 +213,12 @@ class BMCManagement(sp.Contract):
         self.data.get_link_from_net[net] = link
         self._send_internal(link, "Init", links)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_remove_link(self, ep):
+        self.only_owner()
+        sp.set_entry_point("remove_link", ep)
+
+    @sp.entry_point(lazify=True)
     def remove_link(self, link):
         """
         Removes the link and status information.
@@ -342,8 +352,12 @@ class BMCManagement(sp.Contract):
                                                                                    sp.record(serviceType=service_type, payload=rlp_bytes.value), t=sp.TBytes).open_some())
         sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
+    @sp.entry_point(lazify=False)
+    def update_add_route(self, ep):
+        self.only_owner()
+        sp.set_entry_point("add_route", ep)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=True)
     def add_route(self, dst, link):
         """
         Add route to the BMC.
@@ -357,14 +371,18 @@ class BMCManagement(sp.Contract):
         self.only_owner()
         sp.verify(self.data.routes.contains(dst) == False, "AlreadyExistRoute")
         net, addr= sp.match_pair(strings.split_btp_address(dst, "prev_idx", "result", "my_list", "last", "penultimate"))
-        # TODO: need to verify link is only split never used
-        # strings.split_btp_address(link)
+        strings.split_btp_address(link, "prev_idx1", "result1", "my_list1", "last1", "penultimate1")
 
         self.data.routes[dst] = link
         self.data.list_route_keys.add(dst)
         self.data.get_route_dst_from_net[net] = dst
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_remove_route(self, ep):
+        self.only_owner()
+        sp.set_entry_point("remove_route", ep)
+
+    @sp.entry_point(lazify=True)
     def remove_route(self, dst):
         """
         Remove route to the BMC.
@@ -394,7 +412,12 @@ class BMCManagement(sp.Contract):
             i.value += 1
         sp.result(_routes)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_add_relay(self, ep):
+        self.only_owner()
+        sp.set_entry_point("add_relay", ep)
+
+    @sp.entry_point(lazify=True)
     def add_relay(self, link, addr):
         """
         Registers relay for the network.
@@ -412,7 +435,12 @@ class BMCManagement(sp.Contract):
         sp.for item in addr.elements():
             self.data.relay_stats[item] = sp.record(addr=item, block_count=sp.nat(0), msg_count=sp.nat(0))
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_remove_relay(self, ep):
+        self.only_owner()
+        sp.set_entry_point("remove_relay", ep)
+
+    @sp.entry_point(lazify=True)
     def remove_relay(self, link, addr):
         """
         Unregisters Relay for the network.
@@ -437,7 +465,6 @@ class BMCManagement(sp.Contract):
         # delete all items from addrs set
         sp.for ele in self.data.addrs.elements():
             self.data.addrs.remove(ele)
-
 
     @sp.onchain_view()
     def get_relays(self, link):
@@ -499,7 +526,12 @@ class BMCManagement(sp.Contract):
         self.only_bmc_periphery()
         self.data.links[prev].rx_seq += val
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_update_link_tx_seq(self, ep):
+        self.only_owner()
+        sp.set_entry_point("update_link_tx_seq", ep)
+
+    @sp.entry_point(lazify=True)
     def update_link_tx_seq(self, prev, serialized_msg):
         sp.set_type(prev, sp.TString)
         sp.set_type(serialized_msg, sp.TBytes)

@@ -60,7 +60,12 @@ class BMCPreiphery(sp.Contract):
         self.only_owner()
         self.data.bmc_management = params
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_set_bmc_btp_address(self, ep):
+        self.only_owner()
+        sp.set_entry_point("set_bmc_btp_address", ep)
+
+    @sp.entry_point(lazify=True)
     def set_bmc_btp_address(self, network):
         sp.set_type(network, sp.TString)
 
@@ -94,7 +99,12 @@ class BMCPreiphery(sp.Contract):
                 valid.value = True
         sp.verify(valid.value, self.BMCRevertUnauthorized)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_callback_btp_message(self, ep):
+        self.only_owner()
+        sp.set_entry_point("callback_btp_message", ep)
+
+    @sp.entry_point(lazify=True)
     def callback_btp_message(self, string, bsh_addr, prev, callback_msg):
         sp.set_type(string, sp.TOption(sp.TString))
         sp.set_type(bsh_addr, sp.TAddress)
@@ -110,7 +120,12 @@ class BMCPreiphery(sp.Contract):
             self._send_error(prev, callback_msg, self.BSH_ERR, self.BMCRevertUnknownHandleBTPMessage)
         self.data.handle_btp_message_status = sp.none
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_callback_btp_error(self, ep):
+        self.only_owner()
+        sp.set_entry_point("callback_btp_error", ep)
+
+    @sp.entry_point(lazify=True)
     def callback_btp_error(self, string, bsh_addr, svc, sn, code, msg):
         sp.set_type(string, sp.TOption(sp.TString))
         sp.set_type(bsh_addr, sp.TAddress)
@@ -130,7 +145,12 @@ class BMCPreiphery(sp.Contract):
             sp.emit(sp.record(svc=svc, sn=sn * -1, code=code, msg=msg, err_code=error_code, err_msg=err_msg), tag="ErrorOnBTPError")
         self.data.handle_btp_error_status = sp.none
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_callback_handle_fee_gathering(self, ep):
+        self.only_owner()
+        sp.set_entry_point("callback_handle_fee_gathering", ep)
+
+    @sp.entry_point(lazify=True)
     def callback_handle_fee_gathering(self, string, bsh_addr):
         sp.set_type(string, sp.TOption(sp.TString))
         sp.set_type(bsh_addr, sp.TAddress)
@@ -143,6 +163,7 @@ class BMCPreiphery(sp.Contract):
 
     @sp.entry_point(lazify=False)
     def update_handle_relay_message(self, ep):
+        self.only_owner()
         sp.set_entry_point("handle_relay_message", ep)
 
     @sp.entry_point(lazify=True)
@@ -359,7 +380,12 @@ class BMCPreiphery(sp.Contract):
                 message=sp.view("encode_response", self.data.rlp_contract, sp.record(code=err_code, message=err_msg), t=sp.TBytes).open_some()), t=sp.TBytes).open_some()
             self._send_message(prev, serialized_msg)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_send_message(self, ep):
+        self.only_owner()
+        sp.set_entry_point("send_message", ep)
+
+    @sp.entry_point(lazify=True)
     def send_message(self, to, svc, sn, msg):
         """
         Send the message to a specific network
