@@ -48,9 +48,7 @@ class BTSCore(sp.Contract):
             transfer_status=sp.none
         )
 
-    #is this necessary? can we check against owners map in line 37?
     def only_owner(self):
-        # call Owner Manager Contract for checking owner
         is_owner = sp.view("is_owner", self.data.bts_owner_manager, sp.sender, t=sp.TBool).open_some(
             "OwnerNotFound")
         sp.verify(is_owner == True, message="Unauthorized")
@@ -102,7 +100,12 @@ class BTSCore(sp.Contract):
         self.data.coin_details[name].fee_numerator = fee_numerator
         self.data.coin_details[name].fixed_fee = fixed_fee
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_register(self, ep):
+        self.only_owner()
+        sp.set_entry_point("register", ep)
+
+    @sp.entry_point(lazify=True)
     def register(self, name, fee_numerator, fixed_fee, addr, token_metadata, metadata):
         """
         Registers a wrapped coin and id number of a supporting coin.
@@ -289,7 +292,12 @@ class BTSCore(sp.Contract):
             i.value += sp.nat(1)
         sp.result(accumulated_fees.value)
 
-    @sp.entry_point(check_no_incoming_transfer=False)
+    @sp.entry_point(lazify=False)
+    def update_transfer_native_coin(self, ep):
+        self.only_owner()
+        sp.set_entry_point("transfer_native_coin", ep)
+
+    @sp.entry_point(check_no_incoming_transfer=False, lazify=True)
     def transfer_native_coin(self, to):
         """
         Allow users to deposit `sp.amount` native coin into a BTSCore contract.
@@ -310,7 +318,12 @@ class BTSCore(sp.Contract):
 
         self._send_service_message(sp.sender, to, self.data.native_coin_name, amount_in_nat.value, charge_amt)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_transfer(self, ep):
+        self.only_owner()
+        sp.set_entry_point("transfer", ep)
+
+    @sp.entry_point(lazify=True)
     def transfer(self, coin_name, value, to):
         """
         Allow users to deposit an amount of wrapped native coin `coin_name` from the `sp.sender` address into the BTSCore contract.
@@ -374,7 +387,12 @@ class BTSCore(sp.Contract):
         send_service_message_args = sp.record(_from = _from, to = to, coin_names = coins.value, values = amounts.value, fees = fees.value)
         sp.transfer(send_service_message_args, sp.tez(0), send_service_message_entry_point)
 
-    @sp.entry_point(check_no_incoming_transfer=False)
+    @sp.entry_point(lazify=False)
+    def update_transfer_batch(self, ep):
+        self.only_owner()
+        sp.set_entry_point("transfer_batch", ep)
+
+    @sp.entry_point(check_no_incoming_transfer=False, lazify=True)
     def transfer_batch(self, coin_names, values, to):
         """
         Allow users to transfer multiple coins/wrapped coins to another chain.
@@ -515,7 +533,12 @@ class BTSCore(sp.Contract):
 
         sp.send(to, sp.utils.nat_to_mutez(amount), message="PaymentFailed")
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_mint(self, ep):
+        self.only_owner()
+        sp.set_entry_point("mint", ep)
+
+    @sp.entry_point(lazify=True)
     def mint(self, to, coin_name, value, callback):
         """
         mint the wrapped coin.
@@ -554,7 +577,7 @@ class BTSCore(sp.Contract):
         sp.transfer(sp.some("success"), sp.tez(0), callback)
 
     @sp.entry_point
-    def callback(self, string, requester, coin_name, value):
+    def transfer_callback(self, string, requester, coin_name, value):
         sp.set_type(string, sp.TOption(sp.TString))
         sp.set_type(requester, sp.TAddress)
         sp.set_type(coin_name, sp.TString)
@@ -572,7 +595,12 @@ class BTSCore(sp.Contract):
                                        ).refundable_balance + value
         self.data.transfer_status = sp.none
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_handle_response_service(self, ep):
+        self.only_owner()
+        sp.set_entry_point("handle_response_service", ep)
+
+    @sp.entry_point(lazify=True)
     def handle_response_service(self, requester, coin_name, value, fee, rsp_code):
         """
         Handle a response of a requested service.
@@ -622,8 +650,10 @@ class BTSCore(sp.Contract):
                                                              ).layout((("from_", "coin_name"), ("callback", "txs"))))
                     transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[coin_name],
                                                        "transfer_bts").open_some()
+                    t = sp.TRecord(string=sp.TOption(sp.TString), requester=sp.TAddress, coin_name=sp.TString, value=sp.TNat)
+                    callback = sp.contract(t, sp.self_address, "transfer_callback")
                     transfer_args = [
-                        sp.record(callback=sp.self_entry_point("callback"), from_=sp.self_address, coin_name=coin_name, txs=[sp.record(to_=requester, token_id=sp.nat(0), amount=value)])]
+                        sp.record(callback=callback.open_some(), from_=sp.self_address, coin_name=coin_name, txs=[sp.record(to_=requester, token_id=sp.nat(0), amount=value)])]
                     sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
 
             sp.if rsp_code == self.RC_OK:
@@ -637,7 +667,12 @@ class BTSCore(sp.Contract):
 
             self.data.aggregation_fee[coin_name] = self.data.aggregation_fee.get(coin_name, default_value=sp.nat(0)) + fee
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_transfer_fees(self, ep):
+        self.only_owner()
+        sp.set_entry_point("transfer_fees", ep)
+
+    @sp.entry_point(lazify=True)
     def transfer_fees(self, fa):
         """
         Handle a request of Fee Gathering. Usage: Copy all charged fees to an array

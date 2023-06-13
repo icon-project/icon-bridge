@@ -74,28 +74,9 @@ class BTPPreiphery(sp.Contract):
     @sp.onchain_view()
     def has_pending_request(self):
         """
-
         :return: boolean
         """
         sp.result(self.data.number_of_pending_requests != sp.nat(0))
-
-    @sp.entry_point
-    def add_to_blacklist(self, params):
-        """
-
-        :param params: List of addresses to be blacklisted
-        :return:
-        """
-        sp.set_type(params, sp.TMap(sp.TNat, sp.TString))
-        sp.verify(sp.sender == sp.self_address, "Unauthorized")
-        sp.verify(sp.len(params) <= self.MAX_BATCH_SIZE, "BatchMaxSizeExceed")
-
-        sp.for i in sp.range(sp.nat(0), sp.len(params)):
-            parsed_addr = sp.view("str_to_addr", self.data.parse_contract, params.get(i), t=sp.TAddress).open_some()
-            with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
-                self.data.blacklist[parsed_addr] = True
-            with sp.else_():
-                sp.failwith("InvalidAddress")
 
     # private function to return the tx status made from handle_btp_message
     def _add_to_blacklist(self, params):
@@ -117,26 +98,6 @@ class BTPPreiphery(sp.Contract):
         with sp.else_():
             add_blacklist_status.value = "error"
         return add_blacklist_status.value
-
-    @sp.entry_point
-    def remove_from_blacklist(self, params):
-        """
-        :param params: list of address strings
-        :return:
-        """
-        sp.set_type(params, sp.TMap(sp.TNat, sp.TString))
-
-        sp.verify(sp.sender == sp.self_address, "Unauthorized")
-        sp.verify(sp.len(params) <= self.MAX_BATCH_SIZE, "BatchMaxSizeExceed")
-
-        sp.for i in sp.range(sp.nat(0), sp.len(params)):
-            parsed_addr = sp.view("str_to_addr", self.data.parse_contract, params.get(i), t=sp.TAddress).open_some()
-            with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
-                sp.verify(self.data.blacklist.contains(parsed_addr), "UserNotFound")
-                sp.verify(self.data.blacklist.get(parsed_addr) == True, "UserNotBlacklisted")
-                del self.data.blacklist[parsed_addr]
-            with sp.else_():
-                sp.failwith("InvalidAddress")
 
     # private function to return the tx status made from handle_btp_message
     def _remove_from_blacklist(self, params):
@@ -198,7 +159,12 @@ class BTPPreiphery(sp.Contract):
             set_limit_status.value = "error"
         return set_limit_status.value
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_send_service_message(self, ep):
+        self.only_owner()
+        sp.set_entry_point("send_service_message", ep)
+
+    @sp.entry_point(lazify=True)
     def send_service_message(self, _from, to, coin_names, values, fees):
         """
         Send service message to BMC
@@ -254,8 +220,12 @@ class BTPPreiphery(sp.Contract):
         self.data.number_of_pending_requests +=sp.nat(1)
         sp.emit(sp.record(from_address=_from, to=to, serial_no=self.data.serial_no, assets_details=assets_details), tag="TransferStart")
 
+    @sp.entry_point(lazify=False)
+    def update_handle_btp_message(self, ep):
+        self.only_owner()
+        sp.set_entry_point("handle_btp_message", ep)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=True)
     def handle_btp_message(self, _from, svc, sn, msg, callback, bsh_addr, prev, callback_msg):
         """
         BSH handle BTP message from BMC contract
@@ -375,7 +345,12 @@ class BTPPreiphery(sp.Contract):
                                  callback_msg=callback_msg)
         sp.transfer(return_value, sp.tez(0), callback)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_handle_btp_error(self, ep):
+        self.only_owner()
+        sp.set_entry_point("handle_btp_error", ep)
+
+    @sp.entry_point(lazify=True)
     def handle_btp_error(self, svc, sn, code, msg, callback, bsh_addr):
         """
         BSH handle BTP Error from BMC contract
@@ -481,7 +456,9 @@ class BTPPreiphery(sp.Contract):
                                                     to=sp.TAddress, coin_name=sp.TString, value=sp.TNat
                                                     )
                         mint_args_type_entry_point = sp.contract(mint_args_type, self.data.bts_core, "mint").open_some()
-                        mint_args = sp.record(callback=sp.self_entry_point("callback_mint"),
+                        t = sp.TOption(sp.TString)
+                        callback = sp.contract(t, sp.self_address, "callback_mint")
+                        mint_args = sp.record(callback=callback.open_some(),
                                               to=parsed_to, coin_name=assets[i].coin_name, value=assets[i].value
                                               )
                         sp.transfer(mint_args, sp.tez(0), mint_args_type_entry_point)
@@ -494,39 +471,6 @@ class BTPPreiphery(sp.Contract):
             status.value = "BatchMaxSizeExceed"
 
         return status.value
-
-    @sp.entry_point
-    def handle_request_service(self, to, assets):
-        """
-        Handle a list of minting/transferring coins/tokens
-        :param to: An address to receive coins/tokens
-        :param assets:  A list of requested coin respectively with an amount
-        :return:
-        """
-        sp.set_type(to, sp.TString)
-        sp.set_type(assets, sp.TMap(sp.TNat, types.Types.Asset))
-
-        sp.verify(sp.sender == sp.self_address, "Unauthorized")
-        sp.verify(sp.len(assets) <= self.MAX_BATCH_SIZE, "BatchMaxSizeExceed")
-
-        parsed_to = sp.view("str_to_addr", self.data.parse_contract, to, t=sp.TAddress).open_some()
-        sp.for i in sp.range(0, sp.len(assets)):
-            valid_coin = sp.view("is_valid_coin", self.data.bts_core, assets[i].coin_name, t=sp.TBool).open_some()
-            sp.verify(valid_coin == True, "UnregisteredCoin")
-
-            check_transfer = sp.view("check_transfer_restrictions", sp.self_address, sp.record(
-                coin_name=assets[i].coin_name,user=parsed_to, value=assets[i].value), t=sp.TBool).open_some()
-            sp.verify(check_transfer == True, "FailCheckTransfer")
-
-            # inter score call
-            mint_args_type = sp.TRecord(to=sp.TAddress, coin_name=sp.TString, value=sp.TNat
-            )
-            mint_args_type_entry_point = sp.contract(mint_args_type, self.data.bts_core, "mint").open_some()
-            mint_args = sp.record(
-                to=parsed_to, coin_name=assets[i].coin_name, value=assets[i].value
-            )
-            sp.transfer(mint_args, sp.tez(0), mint_args_type_entry_point)
-
 
     def send_response_message(self, service_type, service_type_val, to, sn, msg, code):
         """
@@ -598,7 +542,6 @@ class BTPPreiphery(sp.Contract):
             sp.result(True)
         with sp.else_():
             sp.result(False)
-
 
 
 sp.add_compilation_target("bts_periphery", BTPPreiphery(bmc_address=sp.address("KT1UrLqhQHDC3mJw9BUrqsiix7JRbxTsvWJu"),
