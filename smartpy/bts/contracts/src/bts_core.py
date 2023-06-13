@@ -498,9 +498,12 @@ class BTSCore(sp.Contract):
         sp.set_type(coin_name, sp.TString)
         sp.set_type(value, sp.TNat)
 
-        sp.verify(self.data.balances[sp.record(address=sp.sender,coin_name=coin_name)].refundable_balance >= value, message="Imbalance")
-        self.data.balances[sp.record(address=sp.sender,coin_name=coin_name)].refundable_balance = sp.as_nat(self.data.balances[sp.record(address=sp.sender,coin_name=coin_name)].refundable_balance - value)
-        self.refund(sp.sender, coin_name, value)
+        with sp.if_(self.data.balances.contains(sp.record(address=sp.sender,coin_name=coin_name))):
+            sp.verify(self.data.balances[sp.record(address=sp.sender,coin_name=coin_name)].refundable_balance >= value, message="Imbalance")
+            self.data.balances[sp.record(address=sp.sender,coin_name=coin_name)].refundable_balance = sp.as_nat(self.data.balances[sp.record(address=sp.sender,coin_name=coin_name)].refundable_balance - value)
+            self.refund(sp.sender, coin_name, value)
+        with sp.else_():
+            sp.failwith("NoRefundableBalance")
 
     def refund(self, to, coin_name, value):
         """
@@ -571,7 +574,7 @@ class BTSCore(sp.Contract):
                         to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(("to_", ("token_id", "amount"))))
                                                              ).layout(("from_", "txs")))
                     transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[coin_name], "transfer").open_some()
-                    transfer_args = [sp.record(from_=sp.sender, txs=[sp.record(to_=to, token_id=sp.nat(0), amount=value)])]
+                    transfer_args = [sp.record(from_=sp.self_address, txs=[sp.record(to_=to, token_id=sp.nat(0), amount=value)])]
                     sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
 
         sp.transfer(sp.some("success"), sp.tez(0), callback)
