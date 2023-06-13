@@ -22,8 +22,6 @@ class BTSCore(sp.Contract):
     # Nat:(TWO.pow256 - 1)
     UINT_CAP = sp.nat(115792089237316195423570985008687907853269984665640564039457584007913129639935)
 
-    # TODO: change the native coin addr
-
     def __init__(self, _native_coin_name, _fee_numerator, _fixed_fee, owner_manager):
         self.update_initial_storage(
             bts_owner_manager=owner_manager,
@@ -55,14 +53,6 @@ class BTSCore(sp.Contract):
 
     def only_bts_periphery(self):
         sp.verify(sp.sender == self.data.bts_periphery_address.open_some("Address not set"), "Unauthorized")
-
-    @sp.onchain_view()
-    def get_native_coin_name(self):
-        """
-        Get name of nativecoin
-        :return: Name of nativecoin
-        """
-        sp.result(self.data.native_coin_name)
 
     @sp.entry_point
     def update_bts_periphery(self, bts_periphery):
@@ -164,14 +154,6 @@ class BTSCore(sp.Contract):
                                                   "set_token_limit").open_some("ErrorINCALL")
         set_token_limit_args = sp.record(coin_names=token_map, token_limit=val_map)
         sp.transfer(set_token_limit_args, sp.tez(0), set_token_limit_entry_point)
-
-    @sp.onchain_view()
-    def coin_names(self):
-       """
-       Return all supported coins names
-       :return: An array of strings.
-       """
-       sp.result(self.data.coins_name)
 
     @sp.onchain_view()
     def coin_id(self, coin_name):
@@ -314,7 +296,6 @@ class BTSCore(sp.Contract):
         sp.verify(check_transfer == True, "FailCheckTransfer")
 
         charge_amt = amount_in_nat.value * self.data.coin_details[self.data.native_coin_name].fee_numerator / self.FEE_DENOMINATOR + self.data.coin_details[self.data.native_coin_name].fixed_fee
-        #Confirm the type for this calculation
 
         self._send_service_message(sp.sender, to, self.data.native_coin_name, amount_in_nat.value, charge_amt)
 
@@ -424,7 +405,6 @@ class BTSCore(sp.Contract):
         amounts = sp.local("_amounts", {}, t=sp.TMap(sp.TNat, sp.TNat))
         charge_amts = sp.local("_charge_amts", {}, t=sp.TMap(sp.TNat, sp.TNat))
 
-        # coin = sp.TRecord(addr=sp.TAddress, fee_numerator=sp.TNat, fixed_fee=sp.TNat, coin_type=sp.TNat)
         coin_name = sp.local("coin_name", "", t= sp.TString)
         value = sp.local("value", sp.nat(0), t= sp.TNat)
         
@@ -507,7 +487,6 @@ class BTSCore(sp.Contract):
 
     def refund(self, to, coin_name, value):
         """
-
         :param to:
         :param coin_name:
         :param value:
@@ -545,7 +524,6 @@ class BTSCore(sp.Contract):
     def mint(self, to, coin_name, value, callback):
         """
         mint the wrapped coin.
-
         :param to: the account receive the minted coin
         :param coin_name: coin name
         :param value: the minted amount
@@ -576,7 +554,6 @@ class BTSCore(sp.Contract):
                     transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[coin_name], "transfer").open_some()
                     transfer_args = [sp.record(from_=sp.self_address, txs=[sp.record(to_=to, token_id=sp.nat(0), amount=value)])]
                     sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
-
         sp.transfer(sp.some("success"), sp.tez(0), callback)
 
     @sp.entry_point
