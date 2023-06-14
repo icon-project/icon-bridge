@@ -70,7 +70,7 @@ class DecodeLibrary(sp.Contract):
                 temp_byt.value = i.value
             counter.value = counter.value + 1
 
-        _service_type = sp.local("_service_type", sp.variant("ERROR", 10))
+        _service_type = sp.local("_service_type", sp.variant("ERROR", sp.nat(10)))
         sp.if temp_int.value == 0:
             _service_type.value = sp.variant("REQUEST_COIN_TRANSFER", temp_int.value)
         sp.if temp_int.value == 1:
@@ -186,7 +186,7 @@ class DecodeLibrary(sp.Contract):
         temp_byt = sp.local("byt_transfer", sp.bytes("0x"))
         rv1_byt = sp.local("rv1_byt", sp.bytes("0x"))
         rv2_byt = sp.local("rv2_byt", sp.bytes("0x"))
-        counter = sp.local("counter_blacklist", 0)
+        counter = sp.local("counter_blacklist", sp.nat(0))
         sp.for i in rlp_.items():
             sp.if counter.value == 2:
                 rv2_byt.value = i.value
@@ -235,7 +235,7 @@ class DecodeLibrary(sp.Contract):
                               t=sp.TBytes).open_some()
         rv1 = Utils2.Int.of_bytes(rv1_byt.value)
         rv2 = sp.view("decode_string", self.data.helper, rv2_byt.value, t=sp.TString).open_some()
-        _service_type = sp.local("_service_type_blacklist", sp.variant("ERROR", 10))
+        _service_type = sp.local("_service_type_blacklist", sp.variant("ERROR", sp.nat(10)))
         with sp.if_(rv1 == 0):
             _service_type.value = sp.variant("ADD_TO_BLACKLIST", rv1)
         with sp.else_():
@@ -260,7 +260,7 @@ class DecodeLibrary(sp.Contract):
         temp_byt = sp.local("byt_transfer", sp.bytes("0x"))
         temp_byt1 = sp.local("byt_transfer_temp1", sp.bytes("0x"))
         rv1_byt = sp.local("rv1_byt", sp.bytes("0x"))
-        counter = sp.local("counter_token_limit", 0)
+        counter = sp.local("counter_token_limit", sp.nat(0))
         sp.for i in rlp_.items():
             sp.if counter.value == 0:
                 temp_byt.value = i.value

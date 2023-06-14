@@ -256,10 +256,8 @@ class BTPPreiphery(sp.Contract):
             err_msg = sp.local("error", "")
             sm = sp.view("decode_service_message", self.data.rlp_contract, msg, t=types.Types.ServiceMessage).open_some()
 
-            service_type_variant_match = sp.local("serviceType_variant", False, t=sp.TBool)
             with sm.serviceType.match_cases() as arg:
                 with arg.match("REQUEST_COIN_TRANSFER") as a1:
-                    service_type_variant_match.value = True
                     callback_string.value = "success"
                     tc = sp.view("decode_transfer_coin_msg", self.data.rlp_contract, sm.data, t=types.Types.TransferCoin).open_some()
                     parsed_addr = sp.view("str_to_addr", self.data.parse_contract, tc.to, t=sp.TAddress).open_some()
@@ -278,16 +276,12 @@ class BTPPreiphery(sp.Contract):
                         self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), sp.nat(2), _from, sn, err_msg.value, self.RC_ERR)
 
                 with arg.match("BLACKLIST_MESSAGE") as a2:
-                    service_type_variant_match.value = True
                     callback_string.value = "success"
                     bm = sp.view("decode_blacklist_msg", self.data.rlp_contract, sm.data, t=types.Types.BlacklistMessage).open_some()
                     addresses = bm.addrs
 
-                    blacklist_service_called = sp.local("blacklist_service", False, t=sp.TBool)
                     with bm.serviceType.match_cases() as b_agr:
                         with b_agr.match("ADD_TO_BLACKLIST") as b_val_1:
-                            blacklist_service_called.value = True
-
                             add_blacklist_call = self._add_to_blacklist(addresses)
                             with sp.if_(add_blacklist_call == "success"):
                                 self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "AddedToBlacklist", self.RC_OK)
@@ -295,19 +289,16 @@ class BTPPreiphery(sp.Contract):
                                 self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "ErrorAddToBlackList", self.RC_ERR)
 
                         with b_agr.match("REMOVE_FROM_BLACKLIST") as b_val_2:
-                            blacklist_service_called.value = True
-
                             remove_blacklist_call = self._remove_from_blacklist(addresses)
                             with sp.if_(remove_blacklist_call == "success"):
                                 self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "RemovedFromBlacklist", self.RC_OK)
                             with sp.else_():
                                 self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "ErrorRemoveFromBlackList", self.RC_ERR)
 
-                    sp.if blacklist_service_called.value == False:
-                        self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "BlacklistServiceTypeErr", self.RC_ERR)
+                        with b_agr.match("ERROR") as b_val_2:
+                            self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "BlacklistServiceTypeErr", self.RC_ERR)
 
                 with arg.match("CHANGE_TOKEN_LIMIT") as a3:
-                    service_type_variant_match.value = True
                     callback_string.value = "success"
                     tl = sp.view("decode_token_limit_msg", self.data.rlp_contract, sm.data, t=types.Types.TokenLimitMessage).open_some()
                     coin_names = tl.coin_name
@@ -320,7 +311,6 @@ class BTPPreiphery(sp.Contract):
                         self.send_response_message(sp.variant("CHANGE_TOKEN_LIMIT", 4), sp.nat(4), _from, sn, "ErrorChangeTokenLimit", self.RC_ERR)
 
                 with arg.match("RESPONSE_HANDLE_SERVICE") as a4:
-                    service_type_variant_match.value = True
                     with sp.if_(sp.len(sp.pack(self.data.requests.get(sn).from_)) != 0):
                         response = sp.view("decode_response", self.data.rlp_contract, sm.data, t=types.Types.Response).open_some()
                         handle_response = self.handle_response_service(sn, response.code, response.message)
@@ -330,14 +320,14 @@ class BTPPreiphery(sp.Contract):
                             callback_string.value = "fail"
                     with sp.else_():
                         callback_string.value = "InvalidSN"
+
                 with arg.match("UNKNOWN_TYPE") as a5:
-                    service_type_variant_match.value = True
                     callback_string.value = "success"
                     sp.emit(sp.record(_from=_from, sn=sn), tag= "UnknownResponse")
 
-            sp.if service_type_variant_match.value == False:
-                callback_string.value = "success"
-                self.send_response_message(sp.variant("UNKNOWN_TYPE", 5), sp.nat(5), _from, sn, "Unknown",self.RC_ERR)
+                with arg.match("ERROR") as a5:
+                    callback_string.value = "success"
+                    self.send_response_message(sp.variant("UNKNOWN_TYPE", 5), sp.nat(5), _from, sn, "Unknown",self.RC_ERR)
         with sp.else_():
             callback_string.value = "fail"
 

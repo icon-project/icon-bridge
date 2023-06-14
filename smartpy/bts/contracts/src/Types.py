@@ -25,12 +25,14 @@ class Types:
         RESPONSE_HANDLE_SERVICE=sp.TNat,
         BLACKLIST_MESSAGE=sp.TNat,
         CHANGE_TOKEN_LIMIT=sp.TNat,
-        UNKNOWN_TYPE=sp.TNat
+        UNKNOWN_TYPE=sp.TNat,
+        ERROR=sp.TNat
     )
 
     BlacklistService = sp.TVariant(
         ADD_TO_BLACKLIST=sp.TNat,
-        REMOVE_FROM_BLACKLIST=sp.TNat
+        REMOVE_FROM_BLACKLIST=sp.TNat,
+        ERROR=sp.TNat
     )
 
     ServiceMessage = sp.TRecord(
