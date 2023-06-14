@@ -440,4 +440,4 @@ sp.add_compilation_target("bmc_periphery", BMCPreiphery(bmc_management_addr=sp.a
                                                         helper_parse_neg_contract=sp.address("KT1DHptHqSovffZ7qqvSM9dy6uZZ8juV88gP"),
                                                         parse_address=sp.address("KT1XgRyjQPfpfwNrvYYpgERpYpCrGh24aoPX"),
                                                         owner_address=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP"),
-                                                        rlp_contract=sp.address("KT1CC7TVGvvouvPcBe5wK7MYk1y9j7G7VYgz")))
+                                                        rlp_contract=sp.address("KT1KmVm99HRaeikmV9myiEh99G1h3cH4Erqn")))
