@@ -166,7 +166,7 @@ class DecodeLibrary(sp.Contract):
 
         rv1 = sp.view("decode_string", self.data.helper, rv1_byt.value, t=sp.TString).open_some()
         rv2 = sp.view("decode_string", self.data.helper, rv2_byt.value, t=sp.TString).open_some()
-        sp.result(sp.record(from_= rv1, to = rv2 , assets = rv_assets.value))
+        sp.result(sp.record(from_addr= rv1, to = rv2 , assets = rv_assets.value))
 
 
     @sp.onchain_view()
