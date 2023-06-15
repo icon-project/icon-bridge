@@ -73,7 +73,8 @@ class DecodeLibrary(sp.Contract):
                 temp_byt.value = m.value
             counter.value = counter.value + 1
 
-        sp.result(sp.record(code=temp_int.value, message=sp.view("decode_string", self.data.helper, temp_byt.value, t=sp.TString).open_some()))
+        # message in case of error is null which cannot be decoded into string
+        sp.result(sp.record(code=temp_int.value, message="Error"))
 
     @sp.onchain_view()
     def decode_propagate_message(self, rlp):

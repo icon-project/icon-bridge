@@ -352,7 +352,7 @@ class BMCPreiphery(sp.Contract):
                     t = sp.TRecord(string=sp.TOption(sp.TString), bsh_addr=sp.TAddress, svc=sp.TString, sn=sp.TInt, code=sp.TNat, msg=sp.TString)
                     callback = sp.contract(t, sp.self_address, "callback_btp_error")
                     handle_btp_error_args = sp.record(callback=callback.open_some(), bsh_addr=bsh_addr,
-                                                      svc=msg.svc, sn=msg.sn * -1, code=res.code, msg="error")
+                                                      svc=msg.svc, sn=msg.sn * -1, code=res.code, msg=res.message)
                     sp.transfer(handle_btp_error_args, sp.tez(0), handle_btp_error_entry_point)
 
     def _send_message(self, to ,serialized_msg):
