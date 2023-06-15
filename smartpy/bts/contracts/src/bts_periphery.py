@@ -540,4 +540,4 @@ sp.add_compilation_target("bts_periphery", BTPPreiphery(bmc_address=sp.address("
                                                         parse_address=sp.address("KT1EKPrSLWjWViZQogFgbc1QmztkR5UGXEWa"),
                                                         native_coin_name="btp-NetXnHfVqm9iesp.tezos-XTZ",
                                                         owner_address = sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP"),
-                                                        rlp_contract=sp.address("KT1Sm1Yqg8hNoB1SN7q3krSKZHgQxAyhg9hF")))
+                                                        rlp_contract=sp.address("KT19Q5aWgR79HcZKWJwQDJ6TXbdxARMdj4Vv")))
