@@ -432,31 +432,31 @@ class BTPPreiphery(sp.Contract):
         sp.set_type(assets, sp.TMap(sp.TNat, types.Types.Asset))
 
         status = sp.local("status", "error")
+        check_validity = sp.local("check_validity", False)
         with sp.if_(sp.len(assets) <= self.MAX_BATCH_SIZE):
             parsed_to = sp.view("str_to_addr", self.data.parse_contract, to, t=sp.TAddress).open_some()
             sp.for i in sp.range(0, sp.len(assets)):
                 valid_coin = sp.view("is_valid_coin", self.data.bts_core, assets[i].coin_name, t=sp.TBool).open_some()
-
-                with sp.if_(valid_coin == True):
-                    check_transfer = sp.view("check_transfer_restrictions", sp.self_address, sp.record(
-                        coin_name=assets[i].coin_name, user=parsed_to, value=assets[i].value), t=sp.TBool).open_some()
-                    with sp.if_(check_transfer == True):
-                        # inter score call
-                        mint_args_type = sp.TRecord(callback=sp.TContract(sp.TOption(sp.TString)),
-                                                    to=sp.TAddress, coin_name=sp.TString, value=sp.TNat
-                                                    )
-                        mint_args_type_entry_point = sp.contract(mint_args_type, self.data.bts_core, "mint").open_some()
-                        t = sp.TOption(sp.TString)
-                        callback = sp.contract(t, sp.self_address, "callback_mint")
-                        mint_args = sp.record(callback=callback.open_some(),
-                                              to=parsed_to, coin_name=assets[i].coin_name, value=assets[i].value
-                                              )
-                        sp.transfer(mint_args, sp.tez(0), mint_args_type_entry_point)
-                        status.value = "success"
-                    with sp.else_():
-                        status.value = "FailCheckTransfer"
-                with sp.else_():
-                    status.value = "UnregisteredCoin"
+                check_transfer = sp.view("check_transfer_restrictions", sp.self_address, sp.record(
+                    coin_name=assets[i].coin_name, user=parsed_to, value=assets[i].value), t=sp.TBool).open_some()
+                sp.if (check_transfer == True) & (valid_coin == True):
+                    check_validity.value = True
+            sp.if check_validity.value == True:
+                sp.for i in sp.range(0, sp.len(assets)):
+                    # inter score call
+                    mint_args_type = sp.TRecord(callback=sp.TContract(sp.TOption(sp.TString)),
+                                                to=sp.TAddress, coin_name=sp.TString, value=sp.TNat
+                                                )
+                    mint_args_type_entry_point = sp.contract(mint_args_type, self.data.bts_core, "mint").open_some()
+                    t = sp.TOption(sp.TString)
+                    callback = sp.contract(t, sp.self_address, "callback_mint")
+                    mint_args = sp.record(callback=callback.open_some(),
+                                          to=parsed_to, coin_name=assets[i].coin_name, value=assets[i].value
+                                          )
+                    sp.transfer(mint_args, sp.tez(0), mint_args_type_entry_point)
+                    status.value = "success"
+            with sp.else_():
+                status.value = "UnregisteredCoin"
         with sp.else_():
             status.value = "BatchMaxSizeExceed"
 

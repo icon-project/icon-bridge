@@ -42,8 +42,7 @@ class BTSCore(sp.Contract):
                                                               fixed_fee=_fixed_fee,
                                                               coin_type=self.NATIVE_COIN_TYPE)},
                                 tkey=sp.TString, tvalue=Coin),
-            coins_address=sp.map({}, tkey=sp.TAddress, tvalue=sp.TString),
-            transfer_status=sp.none
+            coins_address=sp.map({}, tkey=sp.TAddress, tvalue=sp.TString)
         )
 
     def only_owner(self):
@@ -556,25 +555,6 @@ class BTSCore(sp.Contract):
                     sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
         sp.transfer(sp.some("success"), sp.tez(0), callback)
 
-    @sp.entry_point
-    def transfer_callback(self, string, requester, coin_name, value):
-        sp.set_type(string, sp.TOption(sp.TString))
-        sp.set_type(requester, sp.TAddress)
-        sp.set_type(coin_name, sp.TString)
-        sp.set_type(value, sp.TNat)
-
-        sp.verify(sp.sender == self.data.coins[coin_name], "Unauthorized")
-        self.data.transfer_status = string
-
-        with sp.if_(self.data.transfer_status.open_some() == "success"):
-            pass
-        with sp.else_():
-            self.data.balances[sp.record(address=requester, coin_name=coin_name)].refundable_balance = \
-                self.data.balances.get(sp.record(address=requester, coin_name=coin_name),
-                                       default_value=sp.record(locked_balance=sp.nat(0),refundable_balance=sp.nat(0))
-                                       ).refundable_balance + value
-        self.data.transfer_status = sp.none
-
     @sp.entry_point(lazify=False)
     def update_handle_response_service(self, ep):
         self.only_owner()
@@ -621,20 +601,36 @@ class BTSCore(sp.Contract):
                             sp.record(address=requester, coin_name=coin_name),
                             default_value=sp.record(locked_balance=sp.nat(0), refundable_balance=sp.nat(0))).refundable_balance + value
                 with sp.else_():
-                    # call transfer in FA2
-                    transfer_args_type = sp.TList(sp.TRecord(
-                        callback=sp.TContract(sp.TRecord(string=sp.TOption(sp.TString), requester=sp.TAddress, coin_name=sp.TString, value=sp.TNat)),
-                        from_=sp.TAddress,
-                        coin_name=sp.TString,
-                        txs=sp.TList(sp.TRecord(to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(("to_", ("token_id", "amount"))))
-                                                             ).layout((("from_", "coin_name"), ("callback", "txs"))))
-                    transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[coin_name],
-                                                       "transfer_bts").open_some()
-                    t = sp.TRecord(string=sp.TOption(sp.TString), requester=sp.TAddress, coin_name=sp.TString, value=sp.TNat)
-                    callback = sp.contract(t, sp.self_address, "transfer_callback")
-                    transfer_args = [
-                        sp.record(callback=callback.open_some(), from_=sp.self_address, coin_name=coin_name, txs=[sp.record(to_=requester, token_id=sp.nat(0), amount=value)])]
-                    sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
+                    with sp.if_(self.data.coin_details[coin_name].coin_type == self.NON_NATIVE_TOKEN_TYPE):
+                        # call transfer in NON_NATIVE_TOKEN_TYPE FA2
+                        transfer_args_type = sp.TList(sp.TRecord(from_=sp.TAddress, txs=sp.TList(sp.TRecord(
+                            to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(("to_", ("token_id", "amount"))))
+                                                                 ).layout(("from_", "txs")))
+                        transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[coin_name], "transfer").open_some()
+                        transfer_args = [sp.record(from_=sp.self_address, txs=[
+                            sp.record(to_=requester, token_id=sp.nat(0), amount=value)])]
+                        sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
+                    with sp.else_():
+                        _fa2_address = self.data.coins[coin_name]
+                        transfer_permissions = sp.view("transfer_permissions", _fa2_address, sp.record(
+                            from_=sp.self_address, token_id=sp.nat(0)), t=sp.TBool).open_some()
+
+                        with sp.if_(transfer_permissions):
+                            # call transfer in NATIVE_WRAPPED_COIN_TYPE FA2
+                            transfer_args_type = sp.TList(sp.TRecord(
+                                from_=sp.TAddress,
+                                txs=sp.TList(sp.TRecord(to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(("to_", ("token_id", "amount"))))
+                                                                     ).layout(("from_", "txs")))
+                            transfer_entry_point = sp.contract(transfer_args_type, _fa2_address, "transfer").open_some()
+                            transfer_args = [
+                                sp.record(from_=sp.self_address, txs=[sp.record(to_=requester, token_id=sp.nat(0), amount=value)])]
+                            sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
+                        with sp.else_():
+                            self.data.balances[sp.record(address=requester, coin_name=coin_name)].refundable_balance = \
+                                self.data.balances.get(sp.record(address=requester, coin_name=coin_name),
+                                                       default_value=sp.record(locked_balance=sp.nat(0),
+                                                                               refundable_balance=sp.nat(0))
+                                                       ).refundable_balance + value
 
             sp.if rsp_code == self.RC_OK:
                 fa2_address = self.data.coins[coin_name]
