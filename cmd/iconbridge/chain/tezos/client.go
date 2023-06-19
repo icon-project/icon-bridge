@@ -282,6 +282,15 @@ func (c *Client) GetBalance(ctx context.Context, connection *rpc.Client, account
 	return balance.Big(), nil
 }
 
+func (c *Client) GetBMCManangement(ctx context.Context, contr *contract.Contract, account tezos.Address) (string, error){
+	fmt.Println("reached in getting bmc Management")
+	result, err := contr.RunView(ctx, "get_bmc_periphery", micheline.Prim{})
+	if err != nil {
+		return "", err
+	}
+	return result.String, nil 
+}
+
 func (c *Client) GetStatus(ctx context.Context, contr *contract.Contract, link string) (TypesLinkStats, error) {
 
 	fmt.Println("reached in get status of tezos")
