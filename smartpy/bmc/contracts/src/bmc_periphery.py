@@ -247,10 +247,10 @@ class BMCPreiphery(sp.Contract):
                 self._send_error(prev, msg, self.BMC_ERR, self.BMCRevertParseFailure)
             with sp.else_():
                 sp.if sm.value.serviceType == "FeeGathering":
-                    gather_fee =sp.local("gather_fee", sp.record(fa="", svcs=sp.map({0:""})))
+                    gather_fee =sp.local("gather_fee", sp.record(fa="error", svcs=sp.map({0:""})))
                     gather_fee.value = sp.view("decode_gather_fee_message", self.data.rlp_contract, sm.value.payload, t=types.Types.GatherFeeMessage).open_some()
 
-                    with sp.if_(gather_fee.value.fa == ""):
+                    with sp.if_(gather_fee.value.fa == "error"):
                         self._send_error(prev, msg, self.BMC_ERR, self.BMCRevertParseFailure)
 
                     with sp.else_():
@@ -267,46 +267,6 @@ class BMCPreiphery(sp.Contract):
                                 callback = sp.contract(t, sp.self_address, "callback_handle_fee_gathering")
                                 handle_fee_gathering_args = sp.record(callback=callback.open_some(), bsh_addr=bsh_addr, fa=gather_fee.value.fa, svc=gather_fee.value.svcs[c])
                                 sp.transfer(handle_fee_gathering_args, sp.tez(0), handle_fee_gathering_entry_point)
-
-                sp.if sm.value.serviceType == "Link":
-                    to= sp.view("decode_propagate_message", self.data.rlp_contract, sm.value.payload, t=sp.TString).open_some()
-                    link = sp.view("get_link", self.data.bmc_management, prev, t=types.Types.Link).open_some()
-
-                    check = sp.local("check", False)
-                    sp.if link.is_connected:
-                        sp.for e in link.reachable.elements():
-                            sp.if check.value == False:
-                                sp.if to == e:
-                                    check.value = True
-
-                        sp.if check.value == False:
-                            links = sp.list([to], t=sp.TString)
-
-                            # call update_link_reachable on BMCManagement
-                            update_link_reachable_args_type = sp.TRecord(prev=sp.TString, to=sp.TList(sp.TString))
-                            update_link_reachable_entry_point = sp.contract(update_link_reachable_args_type,
-                                                                            self.data.bmc_management,
-                                                                            "update_link_reachable").open_some()
-                            update_link_reachable_args = sp.record(prev=prev, to=links)
-                            sp.transfer(update_link_reachable_args, sp.tez(0), update_link_reachable_entry_point)
-
-                sp.if sm.value.serviceType == "Unlink":
-                    to = sp.view("decode_propagate_message", self.data.rlp_contract, sm.value.payload, t=sp.TString).open_some()
-                    link = sp.view("get_link", self.data.bmc_management, prev, t=types.Types.Link).open_some()
-
-                    sp.if link.is_connected:
-                        f = sp.local("f", sp.nat(0))
-                        sp.for itm in link.reachable.elements():
-                            sp.if to == itm:
-
-                                # call delete_link_reachable on BMCManagement
-                                delete_link_reachable_args_type = sp.TRecord(prev=sp.TString, index=sp.TNat)
-                                delete_link_reachable_entry_point = sp.contract(delete_link_reachable_args_type,
-                                                                                self.data.bmc_management,
-                                                                                "delete_link_reachable").open_some()
-                                delete_link_reachable_args = sp.record(prev=prev, index=f.value)
-                                sp.transfer(delete_link_reachable_args, sp.tez(0), delete_link_reachable_entry_point)
-                                f.value += sp.nat(1)
 
                 sp.if sm.value.serviceType == "Init":
                     links = sp.view("decode_init_message", self.data.rlp_contract, sm.value.payload, t=sp.TList(sp.TString)).open_some()
@@ -440,4 +400,4 @@ sp.add_compilation_target("bmc_periphery", BMCPreiphery(bmc_management_addr=sp.a
                                                         helper_parse_neg_contract=sp.address("KT1DHptHqSovffZ7qqvSM9dy6uZZ8juV88gP"),
                                                         parse_address=sp.address("KT1XgRyjQPfpfwNrvYYpgERpYpCrGh24aoPX"),
                                                         owner_address=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP"),
-                                                        rlp_contract=sp.address("KT1KmVm99HRaeikmV9myiEh99G1h3cH4Erqn")))
+                                                        rlp_contract=sp.address("KT1A4Ad5jTHaz1W7TvTbqKoBtRa2DnnXbFBn")))
