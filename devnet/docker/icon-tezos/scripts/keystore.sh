@@ -1,4 +1,5 @@
 #!/bin/bash
+source config.sh
 
 ensure_key_secret() {
   if [ $# -lt 1 ] ; then
@@ -52,6 +53,21 @@ ensure_bsc_key_store() {
   echo ${KEY_STORE_PATH}
 }
 
+ensure_tezos_address() {
+  echo ensuring tezos address
+  local KEY_STORE=$1
+  local wallet=$(echo $(octez-client list known addresses | grep $KEY_STORE))
+  wallet=${wallet%:*}
+  ensure_key_secret $CONFIG_DIR/keystore/$wallet
+  if [ $wallet ]; then
+    echo found so deleting
+    octez-client forget address $wallet --force 
+  fi 
+  octez-client gen keys $KEY_STORE
+  wallet_info=$(echo $(octez-client show address $KEY_STORE -S))
+  echo $wallet_info > $CONFIG_DIR/keystore/$KEY_STORE
+}
+
 ensure_empty_key_secret() {
   if [ $# -lt 1 ] ; then
     echo "Usage: ensure_key_secret SECRET_PATH"
@@ -64,3 +80,7 @@ ensure_empty_key_secret() {
   fi
   echo ${KEY_SECRET}
 }
+
+ensure_tezos_address bmcOwner
+ensure_tezos_address bmrOwner 
+ensure_tezos_address btsOwner 
