@@ -12,6 +12,7 @@ import (
 
 	"github.com/icon-project/icon-bridge/common/log"
 
+	"blockwatch.cc/tzgo/codec"
 	"blockwatch.cc/tzgo/contract"
 	"blockwatch.cc/tzgo/micheline"
 	"blockwatch.cc/tzgo/rpc"
@@ -282,13 +283,13 @@ func (c *Client) GetBalance(ctx context.Context, connection *rpc.Client, account
 	return balance.Big(), nil
 }
 
-func (c *Client) GetBMCManangement(ctx context.Context, contr *contract.Contract, account tezos.Address) (string, error){
+func (c *Client) GetBMCManangement(ctx context.Context, contr *contract.Contract, account tezos.Address) (string, error) {
 	fmt.Println("reached in getting bmc Management")
 	result, err := contr.RunView(ctx, "get_bmc_periphery", micheline.Prim{})
 	if err != nil {
 		return "", err
 	}
-	return result.String, nil 
+	return result.String, nil
 }
 
 func (c *Client) GetStatus(ctx context.Context, contr *contract.Contract, link string) (TypesLinkStats, error) {
@@ -332,7 +333,7 @@ func (c *Client) GetOperationByHash(ctx context.Context, clinet *rpc.Client, blo
 func (c *Client) HandleRelayMessage(ctx context.Context, callArgs contract.CallArguments, opts *rpc.CallOptions) (*rpc.Receipt, error) {
 	fmt.Println("handling relay message")
 	PrintU()
-	result, err := c.Contract.Call(ctx, callArgs, opts)
+	result, err := c.CustomCall(ctx, []contract.CallArguments{callArgs}, opts)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("because error")
@@ -340,6 +341,34 @@ func (c *Client) HandleRelayMessage(ctx context.Context, callArgs contract.CallA
 	}
 	fmt.Println(result)
 	return result, nil
+}
+
+func (c *Client) CustomCall(ctx context.Context, args []contract.CallArguments, opts *rpc.CallOptions) (*rpc.Receipt, error) {
+	if opts == nil {
+		opts = &rpc.DefaultOptions
+	}
+
+	// assemble batch transaction
+	op := codec.NewOp().WithTTL(opts.TTL)
+	for _, arg := range args {
+		if arg == nil {
+			continue
+		}
+		op.WithContents(arg.Encode())
+	}
+
+	var limits []tezos.Limits
+	limit := tezos.Limits{
+		GasLimit:     tezos.MumbainetParams.HardGasLimitPerOperation,
+		StorageLimit: tezos.MumbainetParams.HardStorageLimitPerOperation,
+	}
+
+	limits = append(limits, limit)
+
+	op.WithLimits(limits, 0).WithMinFee()
+
+	// prepare, sign and broadcast
+	return c.Cl.Send(ctx, op, opts)
 }
 
 func NewClient(uri string, src tezos.Address, l log.Logger) (*Client, error) {
