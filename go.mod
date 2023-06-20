@@ -3,7 +3,7 @@ module github.com/icon-project/icon-bridge
 go 1.13
 
 require (
-	blockwatch.cc/tzgo v1.16.0 // indirect
+	blockwatch.cc/tzgo v1.17.0
 	github.com/MuhammedIrfan/testify-mock v0.0.0-20220912121829-185fc90cd1b6
 	github.com/algorand/go-algorand-sdk v1.22.0
 	github.com/aws/aws-sdk-go v1.44.76
@@ -35,7 +35,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/vmihailenco/msgpack/v4 v4.3.11
-	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
+	golang.org/x/crypto v0.10.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
 
