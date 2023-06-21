@@ -339,13 +339,18 @@ class DecodeLibrary(sp.Contract):
     def encode_bmc_message(self, params):
         sp.set_type(params, sp.TRecord(src=sp.TString, dst=sp.TString, svc=sp.TString, sn=sp.TInt, message=sp.TBytes))
 
+        rlp = sp.local("rlp_sn", sp.bytes("0x"))
         encode_src = sp.view("encode_string", self.data.helper, params.src, t=sp.TBytes).open_some()
         encode_dst = sp.view("encode_string", self.data.helper, params.dst, t=sp.TBytes).open_some()
         encode_svc = sp.view("encode_string", self.data.helper, params.svc, t=sp.TBytes).open_some()
-        encode_sn = sp.view("to_byte", self.data.helper_parse_negative, params.sn, t=sp.TBytes).open_some()
+        rlp.value = sp.view("to_byte", self.data.helper_parse_negative, params.sn, t=sp.TBytes).open_some()
+
+        sp.if params.sn < sp.int(0):
+            encode_sn = sp.view("with_length_prefix", self.data.helper, rlp.value, t=sp.TBytes).open_some()
+            rlp.value = encode_sn
 
         rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper,
-                                        [encode_src, encode_dst, encode_svc, encode_sn, params.message],
+                                        [encode_src, encode_dst, encode_svc, rlp.value, params.message],
                                         t=sp.TBytes).open_some()
         sp.result(rlp_bytes_with_prefix)
 

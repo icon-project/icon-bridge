@@ -610,4 +610,4 @@ class BMCManagement(sp.Contract):
 
 sp.add_compilation_target("bmc_management", BMCManagement(owner_address=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP"),
                                                           helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6"),
-                                                          rlp_contract=sp.address("KT1A4Ad5jTHaz1W7TvTbqKoBtRa2DnnXbFBn")))
+                                                          rlp_contract=sp.address("KT1VyqgqhrcJZwML1WbgHYeUK6WSGt4qyj8Z")))

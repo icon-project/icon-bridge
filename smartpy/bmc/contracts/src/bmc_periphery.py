@@ -142,7 +142,7 @@ class BMCPreiphery(sp.Contract):
         with sp.else_():
             error_code = self.UNKNOWN_ERR
             err_msg = self.BMCRevertUnknownHandleBTPError
-            sp.emit(sp.record(svc=svc, sn=sn * -1, code=code, msg=msg, err_code=error_code, err_msg=err_msg), tag="ErrorOnBTPError")
+            sp.emit(sp.record(svc=svc, sn=sn, code=code, msg=msg, err_code=error_code, err_msg=err_msg), tag="ErrorOnBTPError")
         self.data.handle_btp_error_status = sp.none
 
     @sp.entry_point(lazify=False)
@@ -395,9 +395,9 @@ class BMCPreiphery(sp.Contract):
         ))
 
 
-sp.add_compilation_target("bmc_periphery", BMCPreiphery(bmc_management_addr=sp.address("KT1Uiycjx4iXdjKFfR2kAo2NUdEtQ6PmDX4Y"),
+sp.add_compilation_target("bmc_periphery", BMCPreiphery(bmc_management_addr=sp.address("KT1G3R9VqESejtsFnvjHSjzXYfuKuHMeaiE3"),
                                                         helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6"),
                                                         helper_parse_neg_contract=sp.address("KT1DHptHqSovffZ7qqvSM9dy6uZZ8juV88gP"),
-                                                        parse_address=sp.address("KT1XgRyjQPfpfwNrvYYpgERpYpCrGh24aoPX"),
+                                                        parse_address=sp.address("KT1VJn3WNXDsyFxeSExjSWKBs9JYqRCJ1LFN"),
                                                         owner_address=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP"),
-                                                        rlp_contract=sp.address("KT1A4Ad5jTHaz1W7TvTbqKoBtRa2DnnXbFBn")))
+                                                        rlp_contract=sp.address("KT1VyqgqhrcJZwML1WbgHYeUK6WSGt4qyj8Z")))
