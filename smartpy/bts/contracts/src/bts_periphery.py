@@ -534,10 +534,10 @@ class BTPPreiphery(sp.Contract):
             sp.result(False)
 
 
-sp.add_compilation_target("bts_periphery", BTPPreiphery(bmc_address=sp.address("KT1UrLqhQHDC3mJw9BUrqsiix7JRbxTsvWJu"),
+sp.add_compilation_target("bts_periphery", BTPPreiphery(bmc_address=sp.address("KT1VFtWq2dZDH1rTfLtgMaASMt4UX78omMs2"),
                                                         bts_core_address=sp.address("KT1JAippuMfS6Bso8DGmigmTdkgEZUxQxYyX"),
                                                         helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6"),
-                                                        parse_address=sp.address("KT1EKPrSLWjWViZQogFgbc1QmztkR5UGXEWa"),
+                                                        parse_address=sp.address("KT1Ha8LzZa7ku1F8eytY7hgNKFJ2BKFRqSDh"),
                                                         native_coin_name="btp-NetXnHfVqm9iesp.tezos-XTZ",
                                                         owner_address = sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP"),
-                                                        rlp_contract=sp.address("KT19Q5aWgR79HcZKWJwQDJ6TXbdxARMdj4Vv")))
+                                                        rlp_contract=sp.address("KT1NAsyT4Xdkg8tFAQnmCbxKYqyMLgoWrTaq")))
