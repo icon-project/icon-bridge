@@ -242,18 +242,18 @@ func returnTxMetadata(tx *rpc.Transaction, contractAddress tezos.Address) ([]*ch
 func returnTxMetadata3(tx *rpc.Transaction, contractAddress tezos.Address, height uint64) (*chain.Receipt, error) {
 	fmt.Println("reache to return tx metadata3", height)
 	receipt := &chain.Receipt{}
+	var events []*chain.Event
 
 	for i := 0; i < len(tx.Metadata.InternalResults); i++ {
 		fmt.Println("reached in for")
 		internalResults := tx.Metadata.InternalResults[i]
-		if internalResults.Kind.String() == "event" && internalResults.Source.ContractAddress() == "KT1CYbCyejjPcB7qKhoXqd45UbUMfZRFcbTk" {
+		if internalResults.Kind.String() == "event" && internalResults.Source.ContractAddress() == "KT1GE5sE73hThhRwaokB3yqxypiVHpoFZcjj" {
 			fmt.Println("Address matched")
 			if internalResults.Tag == "Message" {
 				message := internalResults.Payload.Args[0].Bytes
 				next := internalResults.Payload.Args[1].Args[0].String
 				seq := internalResults.Payload.Args[1].Args[1].Int
 
-				var events []*chain.Event
 				events = append(events, &chain.Event{
 					Message:  message,
 					Next:     chain.BTPAddress(next),
