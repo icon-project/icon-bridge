@@ -2,18 +2,10 @@ import smartpy as sp
 
 Utils2 = sp.io.import_script_from_url("https://raw.githubusercontent.com/RomarQ/tezos-sc-utils/main/smartpy/utils.py")
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
-helper_file = sp.io.import_script_from_url("file:./contracts/src/helper.py")
 
 
-class DecodeLibrary(sp.Contract):
+class DecodeEncodeLibrary:
 
-    def __init__(self, helper_contract, helper_negative_address):
-        self.init(
-            helper=helper_contract,
-            helper_parse_negative=helper_negative_address
-        )
-
-    @sp.onchain_view()
     def decode_bmc_message(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -44,13 +36,12 @@ class DecodeLibrary(sp.Contract):
                 temp_byt.value = k.value
             counter.value = counter.value + 1
         temp_byt.value = sp.view("without_length_prefix", self.data.helper, temp_byt.value, t=sp.TBytes).open_some()
-        sp.result(sp.record(src=temp_map_string.get("src"),
+        return sp.record(src=temp_map_string.get("src"),
                          dst=temp_map_string.get("dst"),
                          svc=temp_map_string.get("svc"),
                          sn=temp_int.value,
-                         message=temp_byt.value))
+                         message=temp_byt.value)
 
-    @sp.onchain_view()
     def decode_response(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -74,9 +65,8 @@ class DecodeLibrary(sp.Contract):
             counter.value = counter.value + 1
 
         # message in case of error is null which cannot be decoded into string
-        sp.result(sp.record(code=temp_int.value, message="Error"))
+        return sp.record(code=temp_int.value, message="Error")
 
-    @sp.onchain_view()
     def decode_propagate_message(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -95,9 +85,8 @@ class DecodeLibrary(sp.Contract):
             sp.if counter.value == 0:
                 temp_string.value = sp.view("decode_string", self.data.helper, d.value, t=sp.TString).open_some()
             counter.value = counter.value + 1
-        sp.result(temp_string.value)
+        return temp_string.value
 
-    @sp.onchain_view()
     def decode_init_message(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -134,9 +123,8 @@ class DecodeLibrary(sp.Contract):
         sp.for x in new_sub_list.items():
             _links.value.push(sp.view("decode_string", self.data.helper, x.value, t=sp.TString).open_some())
             counter.value = counter.value + 1
-        sp.result(_links.value)
+        return _links.value
 
-    @sp.onchain_view()
     def decode_bmc_service(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -159,10 +147,9 @@ class DecodeLibrary(sp.Contract):
                 temp_byt.value = b.value
             counter.value = counter.value + 1
         temp_byt.value = sp.view("without_length_prefix", self.data.helper, temp_byt.value, t=sp.TBytes).open_some()
-        sp.result(sp.record(serviceType=temp_string.value,
-                         payload=temp_byt.value))
+        return sp.record(serviceType=temp_string.value,
+                         payload=temp_byt.value)
 
-    @sp.onchain_view()
     def decode_gather_fee_message(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -201,8 +188,8 @@ class DecodeLibrary(sp.Contract):
         sp.for x in new_sub_list.items():
             _svcs.value[counter.value] = sp.view("decode_string", self.data.helper, x.value, t=sp.TString).open_some()
             counter.value = counter.value + 1
-        sp.result(sp.record(fa=temp_str.value,
-                         svcs=_svcs.value))
+        return sp.record(fa=temp_str.value,
+                         svcs=_svcs.value)
 
     def to_message_event(self, rlp):
         rlp_me = sp.local("rlp_me", sp.map(tkey=sp.TNat))
@@ -275,8 +262,6 @@ class DecodeLibrary(sp.Contract):
             counter.value = counter.value + 1
         return sp.record(index = rv_int.value, events = events.value, height = rv_int2.value)
 
-
-    @sp.onchain_view()
     def decode_receipt_proofs(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -317,10 +302,10 @@ class DecodeLibrary(sp.Contract):
             sp.for x in new_sub_list.items():
                 receipt_proofs.value[counter.value] = self.decode_receipt_proof(x.value)
                 counter.value = counter.value + 1
-        sp.result(receipt_proofs.value)
+        return receipt_proofs.value
 
     # rlp encoding starts here
-    @sp.onchain_view()
+
     def encode_bmc_service(self, params):
         sp.set_type(params, sp.TRecord(serviceType=sp.TString, payload=sp.TBytes))
 
@@ -333,9 +318,8 @@ class DecodeLibrary(sp.Contract):
                                         t=sp.TBytes).open_some()
         rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes_with_prefix,
                                         t=sp.TBytes).open_some()
-        sp.result(rlp_bytes_with_prefix)
+        return rlp_bytes_with_prefix
 
-    @sp.onchain_view()
     def encode_bmc_message(self, params):
         sp.set_type(params, sp.TRecord(src=sp.TString, dst=sp.TString, svc=sp.TString, sn=sp.TInt, message=sp.TBytes))
 
@@ -352,9 +336,8 @@ class DecodeLibrary(sp.Contract):
         rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper,
                                         [encode_src, encode_dst, encode_svc, rlp.value, params.message],
                                         t=sp.TBytes).open_some()
-        sp.result(rlp_bytes_with_prefix)
+        return rlp_bytes_with_prefix
 
-    @sp.onchain_view()
     def encode_response(self, params):
         sp.set_type(params, sp.TRecord(code=sp.TNat, message=sp.TString))
 
@@ -365,19 +348,5 @@ class DecodeLibrary(sp.Contract):
                                         t=sp.TBytes).open_some()
         final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes_with_prefix,
                                               t=sp.TBytes).open_some()
-        sp.result(final_rlp_bytes_with_prefix)
+        return final_rlp_bytes_with_prefix
 
-@sp.add_test(name="Decoder")
-def test():
-    helper_nev= sp.test_account("Helper Negative")
-    scenario = sp.test_scenario()
-
-    helper=helper_file.Helper()
-    scenario += helper
-
-    c1 = DecodeLibrary(helper.address, helper_nev.address)
-    scenario += c1
-
-
-sp.add_compilation_target("RLP_struct", DecodeLibrary(helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6"),
-                                                             helper_negative_address=sp.address("KT1DHptHqSovffZ7qqvSM9dy6uZZ8juV88gP")))
