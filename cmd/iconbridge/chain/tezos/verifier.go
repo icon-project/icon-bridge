@@ -52,9 +52,7 @@ func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, block *
 	if currentFittness < vr.parentFittness {
 		return fmt.Errorf("Invalid block fittness", currentFittness)
 	}
-	fmt.Println(header.Level)
-	fmt.Println(header.Predecessor)
-	fmt.Println(vr.parentHash.String())
+	
 	previousHashInBlock := header.Predecessor
 
 	if previousHashInBlock.String() != vr.parentHash.String() {
@@ -188,7 +186,7 @@ func (vr *Verifier) updateValidatorsAndCycle(ctx context.Context, blockHeight in
 func (vr *Verifier) verifyEndorsement(op [][]*rpc.Operation, c *rpc.Client, blockHeight int64) (error) {
 	endorsementPower := 0
 
-	threshold := 7000 * (2 / 3)
+	threshold := 7000 * float32(2) / float32(3)
 	endorsers := make(map[tezos.Address]bool)
 	for i := 0; i < len(op); i++ {
 		for j := 0; j < len(op[i]); j++ {
@@ -210,7 +208,7 @@ func (vr *Verifier) verifyEndorsement(op [][]*rpc.Operation, c *rpc.Client, bloc
 	}
 	fmt.Println(len(endorsers))
 
-	if endorsementPower > threshold && len(endorsers) * 100 / len(vr.validators) > 66 {
+	if endorsementPower > int(threshold) && len(endorsers) * 100 / len(vr.validators) > 66 {
 		return nil 
 	} 
 return errors.New("endorsement verification failed")
