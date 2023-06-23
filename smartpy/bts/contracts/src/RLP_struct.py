@@ -2,18 +2,10 @@ import smartpy as sp
 
 Utils2 = sp.io.import_script_from_url("https://raw.githubusercontent.com/RomarQ/tezos-sc-utils/main/smartpy/utils.py")
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
-helper_file = sp.io.import_script_from_url("file:./contracts/src/helper.py")
 
 
-class DecodeLibrary(sp.Contract):
+class DecodeEncodeLibrary:
 
-    def __init__(self, helper_contract):
-        self.init(
-            helper=helper_contract,
-        )
-
-
-    @sp.onchain_view()
     def decode_response(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -40,10 +32,8 @@ class DecodeLibrary(sp.Contract):
                 temp_byt.value = i.value
             counter.value = counter.value + 1
 
-        sp.result(sp.record(code=temp_int.value, message=sp.view("decode_string", self.data.helper, temp_byt.value, t=sp.TString).open_some()))
+        return sp.record(code=temp_int.value, message=sp.view("decode_string", self.data.helper, temp_byt.value, t=sp.TString).open_some())
 
-
-    @sp.onchain_view()
     def decode_service_message(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -85,10 +75,9 @@ class DecodeLibrary(sp.Contract):
             _service_type.value = sp.variant("UNKNOWN_TYPE", temp_int.value)
         temp_byt.value = sp.view("without_length_prefix", self.data.helper, temp_byt.value, t=sp.TBytes).open_some()
 
-        sp.result(sp.record(serviceType=_service_type.value,
-                         data=temp_byt.value))
+        return sp.record(serviceType=_service_type.value,
+                         data=temp_byt.value)
 
-    @sp.onchain_view()
     def decode_transfer_coin_msg(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -166,10 +155,8 @@ class DecodeLibrary(sp.Contract):
 
         rv1 = sp.view("decode_string", self.data.helper, rv1_byt.value, t=sp.TString).open_some()
         rv2 = sp.view("decode_string", self.data.helper, rv2_byt.value, t=sp.TString).open_some()
-        sp.result(sp.record(from_addr= rv1, to = rv2 , assets = rv_assets.value))
+        return sp.record(from_addr= rv1, to = rv2 , assets = rv_assets.value)
 
-
-    @sp.onchain_view()
     def decode_blacklist_msg(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -240,10 +227,8 @@ class DecodeLibrary(sp.Contract):
             _service_type.value = sp.variant("ADD_TO_BLACKLIST", rv1)
         with sp.else_():
             _service_type.value = sp.variant("REMOVE_FROM_BLACKLIST", rv1)
-        sp.result(sp.record(serviceType = _service_type.value , addrs = rv_blacklist_address.value , net = rv2))
+        return sp.record(serviceType = _service_type.value , addrs = rv_blacklist_address.value , net = rv2)
 
-
-    @sp.onchain_view()
     def decode_token_limit_msg(self, rlp):
         sp.set_type(rlp, sp.TBytes)
 
@@ -306,11 +291,11 @@ class DecodeLibrary(sp.Contract):
                                   t=sp.TBytes).open_some()
             rv_limit.value[counter.value] = Utils2.Int.of_bytes(limit.value)
             counter.value += 1
-        sp.result(sp.record(coin_name = rv_names.value, token_limit = rv_limit.value ,
-                         net = sp.view("decode_string", self.data.helper, rv1_byt.value, t=sp.TString).open_some()))
+        return sp.record(coin_name = rv_names.value, token_limit = rv_limit.value ,
+                         net = sp.view("decode_string", self.data.helper, rv1_byt.value, t=sp.TString).open_some())
 
     # encoding starts here
-    @sp.onchain_view()
+
     def encode_service_message(self, params):
         sp.set_type(params, sp.TRecord(service_type_value=sp.TNat, data=sp.TBytes))
 
@@ -321,9 +306,8 @@ class DecodeLibrary(sp.Contract):
         final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes_with_prefix,
                                               t=sp.TBytes).open_some()
 
-        sp.result(final_rlp_bytes_with_prefix)
+        return final_rlp_bytes_with_prefix
 
-    @sp.onchain_view()
     def encode_transfer_coin_msg(self, data):
         sp.set_type(data, types.Types.TransferCoin)
 
@@ -350,9 +334,8 @@ class DecodeLibrary(sp.Contract):
         final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp.value,
                                               t=sp.TBytes).open_some()
 
-        sp.result(final_rlp_bytes_with_prefix)
+        return final_rlp_bytes_with_prefix
 
-    @sp.onchain_view()
     def encode_response(self, params):
         sp.set_type(params, sp.TRecord(code=sp.TNat, message=sp.TString))
 
@@ -364,20 +347,4 @@ class DecodeLibrary(sp.Contract):
         final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes_with_prefix,
                                               t=sp.TBytes).open_some()
 
-        sp.result(final_rlp_bytes_with_prefix)
-
-
-@sp.add_test(name="Decoder")
-def test():
-    scenario = sp.test_scenario()
-
-    helper = helper_file.Helper()
-    scenario += helper
-
-    c1 = DecodeLibrary(helper.address)
-    scenario += c1
-
-
-sp.add_compilation_target("RLP_struct",
-                          DecodeLibrary(helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6")))
-
+        return final_rlp_bytes_with_prefix

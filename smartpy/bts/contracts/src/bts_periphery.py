@@ -2,9 +2,10 @@ import smartpy as sp
 
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 strings = sp.io.import_script_from_url("file:./contracts/src/String.py")
+rlp = sp.io.import_script_from_url("file:./contracts/src/RLP_struct.py")
 
 
-class BTPPreiphery(sp.Contract):
+class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
     service_name = sp.string("bts")
 
     RC_OK = sp.nat(0)
@@ -13,7 +14,7 @@ class BTPPreiphery(sp.Contract):
 
     MAX_BATCH_SIZE = sp.nat(15)
 
-    def __init__(self, bmc_address, bts_core_address, helper_contract, parse_address, native_coin_name, owner_address, rlp_contract):
+    def __init__(self, bmc_address, bts_core_address, helper_contract, parse_address, native_coin_name, owner_address):
         self.update_initial_storage(
             bmc=bmc_address,
             owner=owner_address,
@@ -25,8 +26,7 @@ class BTPPreiphery(sp.Contract):
             number_of_pending_requests = sp.nat(0),
             helper=helper_contract,
             parse_contract=parse_address,
-            mint_status=sp.none,
-            rlp_contract=rlp_contract
+            mint_status=sp.none
         )
 
     def only_bmc(self):
@@ -64,12 +64,6 @@ class BTPPreiphery(sp.Contract):
         sp.set_type(params, sp.TAddress)
         self.only_owner()
         self.data.bts_core = params
-
-    @sp.entry_point
-    def set_rlp_contract_address(self, param):
-        sp.set_type(param, sp.TAddress)
-        self.only_owner()
-        self.data.rlp_contract = param
 
     @sp.onchain_view()
     def has_pending_request(self):
@@ -207,9 +201,9 @@ class BTPPreiphery(sp.Contract):
         send_message_entry_point = sp.contract(send_message_args_type, self.data.bmc, "send_message").open_some()
         send_message_args = sp.record(
             to=to_network, svc=self.service_name, sn=self.data.serial_no,
-            msg = sp.view("encode_service_message", self.data.rlp_contract, sp.record(service_type_value=sp.nat(0),
-                            data=sp.view("encode_transfer_coin_msg", self.data.rlp_contract, sp.record(from_addr=start_from, to=to_address, assets=assets),
-                            t=sp.TBytes).open_some()), t=sp.TBytes).open_some())
+            msg = self.encode_service_message(sp.record(service_type_value=sp.nat(0),
+                            data=self.encode_transfer_coin_msg(sp.record(from_addr=start_from, to=to_address, assets=assets))))
+        )
 
         sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
@@ -254,12 +248,12 @@ class BTPPreiphery(sp.Contract):
         callback_string = sp.local("callback_string", "")
         with sp.if_((svc == self.service_name) & (check_caller == "Authorized")):
             err_msg = sp.local("error", "")
-            sm = sp.view("decode_service_message", self.data.rlp_contract, msg, t=types.Types.ServiceMessage).open_some()
+            sm = self.decode_service_message(msg)
 
             with sm.serviceType.match_cases() as arg:
                 with arg.match("REQUEST_COIN_TRANSFER") as a1:
                     callback_string.value = "success"
-                    tc = sp.view("decode_transfer_coin_msg", self.data.rlp_contract, sm.data, t=types.Types.TransferCoin).open_some()
+                    tc = self.decode_transfer_coin_msg(sm.data)
                     parsed_addr = sp.view("str_to_addr", self.data.parse_contract, tc.to, t=sp.TAddress).open_some()
 
                     with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
@@ -277,7 +271,7 @@ class BTPPreiphery(sp.Contract):
 
                 with arg.match("BLACKLIST_MESSAGE") as a2:
                     callback_string.value = "success"
-                    bm = sp.view("decode_blacklist_msg", self.data.rlp_contract, sm.data, t=types.Types.BlacklistMessage).open_some()
+                    bm = self.decode_blacklist_msg(sm.data)
                     addresses = bm.addrs
 
                     with bm.serviceType.match_cases() as b_agr:
@@ -300,7 +294,7 @@ class BTPPreiphery(sp.Contract):
 
                 with arg.match("CHANGE_TOKEN_LIMIT") as a3:
                     callback_string.value = "success"
-                    tl = sp.view("decode_token_limit_msg", self.data.rlp_contract, sm.data, t=types.Types.TokenLimitMessage).open_some()
+                    tl = self.decode_token_limit_msg(sm.data)
                     coin_names = tl.coin_name
                     token_limits = tl.token_limit
 
@@ -312,7 +306,7 @@ class BTPPreiphery(sp.Contract):
 
                 with arg.match("RESPONSE_HANDLE_SERVICE") as a4:
                     with sp.if_(sp.len(sp.pack(self.data.requests.get(sn).from_)) != 0):
-                        response = sp.view("decode_response", self.data.rlp_contract, sm.data, t=types.Types.Response).open_some()
+                        response = self.decode_response(sm.data)
                         handle_response = self.handle_response_service(sn, response.code, response.message)
                         with sp.if_(handle_response == "success"):
                             callback_string.value = "success"
@@ -485,8 +479,8 @@ class BTPPreiphery(sp.Contract):
         )
         send_message_entry_point = sp.contract(send_message_args_type, self.data.bmc, "send_message").open_some()
         send_message_args = sp.record(to=to, svc=self.service_name, sn=sn,
-                                      msg=sp.view("encode_service_message", self.data.rlp_contract, sp.record(service_type_value=service_type_val, data=sp.view("encode_response",
-                                        self.data.rlp_contract, sp.record(code=code, message=msg), t=sp.TBytes).open_some()), t=sp.TBytes).open_some())
+                                      msg=self.encode_service_message(sp.record(service_type_value=service_type_val, data=self.encode_response(
+                                        sp.record(code=code, message=msg)))))
         sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
 
@@ -534,10 +528,10 @@ class BTPPreiphery(sp.Contract):
             sp.result(False)
 
 
-sp.add_compilation_target("bts_periphery", BTPPreiphery(bmc_address=sp.address("KT1VFtWq2dZDH1rTfLtgMaASMt4UX78omMs2"),
+sp.add_compilation_target("bts_periphery", BTSPeriphery(bmc_address=sp.address("KT1VFtWq2dZDH1rTfLtgMaASMt4UX78omMs2"),
                                                         bts_core_address=sp.address("KT1JAippuMfS6Bso8DGmigmTdkgEZUxQxYyX"),
                                                         helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6"),
                                                         parse_address=sp.address("KT1Ha8LzZa7ku1F8eytY7hgNKFJ2BKFRqSDh"),
                                                         native_coin_name="btp-NetXnHfVqm9iesp.tezos-XTZ",
-                                                        owner_address = sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP"),
-                                                        rlp_contract=sp.address("KT1NAsyT4Xdkg8tFAQnmCbxKYqyMLgoWrTaq")))
+                                                        owner_address = sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP")
+                                                        ))
