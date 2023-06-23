@@ -92,7 +92,6 @@ func (r *receiver) Subscribe(ctx context.Context, msgCh chan<- *chain.Message, o
 					fmt.Println(receipts[0].Height)
 					msgCh <- &chain.Message{Receipts: receipts}
 				}
-				fmt.Println("returned nill")
 				lastHeight++
 				return nil
 			}); err != nil {
@@ -285,7 +284,7 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 					}
 					q.res.Height = q.height
 					q.res.Header, q.err = r.client.GetBlockHeaderByHeight(ctx, r.client.Cl, q.height)
-						if q.err != nil {
+					if q.err != nil {
 						q.err = errors.Wrapf(q.err, "syncVerifier: getBlockHeader: %v", q.err)
 						return
 					}
@@ -517,8 +516,8 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 								q.err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
 								return
 							}
-							q.v.Header = header // change accordingly
-							q.v.Hash = q.v.Hash // change accordingly
+							q.v.Header = header    // change accordingly
+							q.v.Hash = header.Hash // change accordingly
 						}
 
 						block, err := r.client.GetBlockByHeight(ctx, r.client.Cl, q.v.Height.Int64())
@@ -528,7 +527,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						}
 						q.v.Block = block
 						fmt.Println("Getting for header: ", block.Header.Level)
-						if q.v.HasBTPMessage == nil {
+						if q.v.HasBTPMessage == nil && q.v.Height.Int64() >= opts.StartHeight {
 							// fmt.Println("height: ", q.v.Height.Int64())
 
 							if err != nil {
@@ -584,5 +583,217 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 func PrintSync() {
 	for i := 0; i < 100; i++ {
 		fmt.Println("realyer synced")
+	}
+}
+
+// merging the syncing and receiving function
+
+func (r *receiver) receiveLoop2(ctx context.Context, opts *BnOptions, callback func(v *types.BlockNotification) error) (err error) {
+	fmt.Println("reached to receivelopp")
+	if opts == nil {
+		return errors.New("receiveLoop: invalid options: <nil>")
+	}
+
+	var vr IVerifier
+
+	if r.opts.Verifier != nil {
+		vr, err = r.NewVerifier(ctx, r.opts.Verifier.BlockHeight)
+		if err != nil {
+			return err
+		}
+
+		// fmt.Println("The start height is: ", opts.StartHeight)
+		// err = r.SyncVerifier(ctx, vr, opts.StartHeight + 1, func(r []*chain.Receipt) error { return nil })
+		// if err != nil {
+		// 	return err
+		// }
+	}
+	bnch := make(chan *types.BlockNotification, r.opts.SyncConcurrency)
+	heightTicker := time.NewTicker(BlockInterval)
+	defer heightTicker.Stop()
+
+	heightPoller := time.NewTicker(BlockHeightPollInterval)
+	defer heightPoller.Stop()
+
+	latestHeight := func() int64 {
+		block, err := r.client.GetLastBlock(ctx, r.client.Cl)
+		if err != nil {
+			return 0
+		}
+		return block.GetLevel()
+	}
+	next, latest := opts.StartHeight+1, latestHeight()
+
+	var lbn *types.BlockNotification
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-heightTicker.C:
+			latest++
+		case <-heightPoller.C:
+			if height := latestHeight(); height > 0 {
+				latest = height
+				// r.log.WithFields(log.Fields{"latest": latest, "next": next}).Debug("poll height")
+			}
+		case bn := <-bnch:
+			// process all notifications
+			for ; bn != nil; next++ {
+				if lbn != nil {
+					if bn.Height.Cmp(lbn.Height) == 0 {
+						if bn.Header.Predecessor != lbn.Header.Predecessor {
+							r.log.WithFields(log.Fields{"lbnParentHash": lbn.Header.Predecessor, "bnParentHash": bn.Header.Predecessor}).Error("verification failed on retry ")
+							break
+						}
+					} else {
+						if vr != nil {
+							if err := vr.Verify(ctx, lbn.Header, lbn.Block, bn.Proposer, r.client.Cl, bn.Header); err != nil { // change accordingly
+								r.log.WithFields(log.Fields{
+									"height":     lbn.Height,
+									"lbnHash":    lbn.Hash,
+									"nextHeight": next,
+									"bnHash":     bn.Hash}).Error("verification failed. refetching block ", err)
+								fmt.Println(err)
+								fmt.Println("error in verifying ")
+								time.Sleep(5 * time.Second)
+								next--
+								break
+							}
+							if err := vr.Update(ctx, lbn.Header, lbn.Block); err != nil {
+								return errors.Wrapf(err, "receiveLoop: vr.Update: %v", err)
+							}
+						}
+						if lbn.Header.Level >= opts.StartHeight {
+							if err := callback(lbn); err != nil {
+								return errors.Wrapf(err, "receiveLoop: callback: %v", err)
+							}
+						}
+					}
+				}
+				if lbn, bn = bn, nil; len(bnch) > 0 {
+					bn = <-bnch
+				}
+			}
+			// remove unprocessed notifications
+			for len(bnch) > 0 {
+				<-bnch
+				//r.log.WithFields(log.Fields{"lenBnch": len(bnch), "height": t.Height}).Info("remove unprocessed block noitification")
+			}
+
+		default:
+			if next >= latest {
+				time.Sleep(10 * time.Second)
+				continue
+			}
+
+			type bnq struct {
+				h     int64
+				v     *types.BlockNotification
+				err   error
+				retry int
+			}
+
+			qch := make(chan *bnq, cap(bnch))
+
+			for i := next; i < latest && len(qch) < cap(qch); i++ {
+				qch <- &bnq{i, nil, nil, RPCCallRetry}
+			}
+
+			if len(qch) == 0 {
+				r.log.Error("Fatal: Zero length of query channel. Avoiding deadlock")
+				continue
+			}
+			bns := make([]*types.BlockNotification, 0, len(qch))
+			for q := range qch {
+				switch {
+				case q.err != nil:
+					if q.retry > 0 {
+						q.retry--
+						q.v, q.err = nil, nil
+						qch <- q
+						continue
+					}
+				case q.v != nil:
+					bns = append(bns, q.v)
+					if len(bns) == cap(bns) {
+						close(qch)
+					}
+				default:
+					go func(q *bnq) {
+						defer func() {
+							time.Sleep(500 * time.Millisecond)
+							qch <- q
+						}()
+
+						if q.v == nil {
+							q.v = &types.BlockNotification{}
+						}
+						q.v.Height = (&big.Int{}).SetInt64(q.h)
+
+						if q.v.Header == nil {
+							header, err := r.client.GetBlockHeaderByHeight(ctx, r.client.Cl, q.v.Height.Int64())
+							if err != nil {
+								q.err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
+								return
+							}
+							q.v.Header = header    // change accordingly
+							q.v.Hash = header.Hash // change accordingly
+						}
+
+						block, err := r.client.GetBlockByHeight(ctx, r.client.Cl, q.v.Height.Int64())
+						if err != nil {
+							q.err = errors.Wrapf(err, "GetBlockByHeight: %v", err)
+							return
+						}
+						q.v.Block = block
+
+						if q.v.HasBTPMessage == nil {
+							if err != nil {
+								return
+							}
+							q.v.Proposer = block.Metadata.Proposer
+
+							hasBTPMessage, receipt, err := returnTxMetadata2(block, r.client.Contract.Address(), q.v.Height.Int64(), r.client)
+
+							if err != nil {
+								q.err = errors.Wrapf(err, "hasBTPMessage: %v", err)
+								return
+							}
+							q.v.HasBTPMessage = &hasBTPMessage
+
+							if receipt != nil {
+								fmt.Println("should reach here for block", q.v.Height.Uint64())
+								q.v.Receipts = receipt
+							}
+						}
+						if !*q.v.HasBTPMessage {
+							return
+						}
+					}(q)
+				}
+			}
+			// filtering nil
+			_bns_, bns := bns, bns[:0]
+
+			for _, v := range _bns_ {
+				if v != nil {
+					bns = append(bns, v)
+				}
+			}
+
+			if len(bns) > 0 {
+				sort.SliceStable(bns, func(i, j int) bool {
+					return bns[i].Height.Int64() < bns[j].Height.Int64()
+				})
+				for i, v := range bns {
+					if v.Height.Int64() == next+int64(i) {
+						bnch <- v
+					}
+				}
+			}
+
+		}
+
 	}
 }
