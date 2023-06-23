@@ -42,7 +42,10 @@ class BTSCore(sp.Contract):
                                                               fixed_fee=_fixed_fee,
                                                               coin_type=self.NATIVE_COIN_TYPE)},
                                 tkey=sp.TString, tvalue=Coin),
-            coins_address=sp.map({}, tkey=sp.TAddress, tvalue=sp.TString)
+            coins_address=sp.map({}, tkey=sp.TAddress, tvalue=sp.TString),
+            callback_coin_name=sp.string(""),
+            callback_value=sp.nat(0),
+            callback_to=sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
         )
 
     def only_owner(self):
@@ -273,12 +276,12 @@ class BTSCore(sp.Contract):
             i.value += sp.nat(1)
         sp.result(accumulated_fees.value)
 
-    @sp.entry_point(lazify=False)
-    def update_transfer_native_coin(self, ep):
-        self.only_owner()
-        sp.set_entry_point("transfer_native_coin", ep)
+    # @sp.entry_point(lazify=False)
+    # def update_transfer_native_coin(self, ep):
+    #     self.only_owner()
+    #     sp.set_entry_point("transfer_native_coin", ep)
 
-    @sp.entry_point(check_no_incoming_transfer=False, lazify=True)
+    @sp.entry_point(check_no_incoming_transfer=False)
     def transfer_native_coin(self, to):
         """
         Allow users to deposit `sp.amount` native coin into a BTSCore contract.
@@ -514,6 +517,37 @@ class BTSCore(sp.Contract):
 
         sp.send(to, sp.utils.nat_to_mutez(amount), message="PaymentFailed")
 
+    @sp.entry_point
+    def callback_balance_of(self, param):
+        t_balance_of_request = sp.TRecord(owner=sp.TAddress, token_id=sp.TNat).layout(("owner", "token_id"))
+        t_balance_of_response = sp.TRecord(request=t_balance_of_request, balance=sp.TNat).layout(("request", "balance"))
+        sp.set_type(param, sp.TList(t_balance_of_response))
+
+        return_string = sp.local("return_string_", sp.string(""))
+        bts_core_balance = sp.local("bts_core_balance", sp.nat(0))
+        sp.for item in param:
+            bts_core_balance.value = item.balance
+            with sp.if_(bts_core_balance.value >= self.data.callback_value):
+                # call transfer in FA2
+                transfer_args_type = sp.TList(sp.TRecord(from_=sp.TAddress, txs=sp.TList(sp.TRecord(
+                    to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(("to_", ("token_id", "amount"))))
+                                                         ).layout(("from_", "txs")))
+                transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[self.data.callback_coin_name], "transfer").open_some()
+                transfer_args = [
+                    sp.record(from_=sp.self_address, txs=[sp.record(to_=self.data.callback_to, token_id=sp.nat(0),
+                                                                    amount=self.data.callback_value)])]
+                sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
+                return_string.value = "success"
+            with sp.else_():
+                return_string.value = "fail"
+
+        self.data.callback_coin_name = sp.string("")
+        self.data.callback_value = sp.nat(0)
+        self.data.callback_to = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
+
+        temp_callback = sp.contract(sp.TOption(sp.TString), self.data.bts_periphery_address.open_some("Address not set"), "callback_mint")
+        sp.transfer(sp.some(return_string.value), sp.tez(0), temp_callback.open_some())
+
     @sp.entry_point(lazify=False)
     def update_mint(self, ep):
         self.only_owner()
@@ -537,6 +571,7 @@ class BTSCore(sp.Contract):
         self.only_bts_periphery()
         with sp.if_(coin_name == self.data.native_coin_name):
             self.payment_transfer(to, value)
+            sp.transfer(sp.some("success"), sp.tez(0), callback)
         with sp.else_():
             with sp.if_(self.data.coin_details[coin_name].coin_type == self.NATIVE_WRAPPED_COIN_TYPE):
                 # call mint in FA2
@@ -544,16 +579,25 @@ class BTSCore(sp.Contract):
                 mint_entry_point = sp.contract(mint_args_type, self.data.coins[coin_name], "mint").open_some()
                 mint_args = [sp.record(to_=to, amount=value)]
                 sp.transfer(mint_args, sp.tez(0), mint_entry_point)
+                sp.transfer(sp.some("success"), sp.tez(0), callback)
             with sp.else_():
                 sp.if self.data.coin_details[coin_name].coin_type == self.NON_NATIVE_TOKEN_TYPE:
-                    # call transfer in FA2
-                    transfer_args_type = sp.TList(sp.TRecord(from_=sp.TAddress, txs=sp.TList(sp.TRecord(
-                        to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(("to_", ("token_id", "amount"))))
-                                                             ).layout(("from_", "txs")))
-                    transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[coin_name], "transfer").open_some()
-                    transfer_args = [sp.record(from_=sp.self_address, txs=[sp.record(to_=to, token_id=sp.nat(0), amount=value)])]
+                    # call balance_of FA2
+                    t_balance_of_request = sp.TRecord(owner=sp.TAddress, token_id=sp.TNat).layout(("owner", "token_id"))
+                    t_balance_of_response = sp.TRecord(request=t_balance_of_request, balance=sp.TNat).layout(("request", "balance"))
+                    t_balance_of_params = sp.TRecord(callback=sp.TContract(sp.TList(t_balance_of_response)),
+                        requests=sp.TList(t_balance_of_request),).layout(("requests", "callback"))
+
+                    transfer_args_type = t_balance_of_params
+                    transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[coin_name],
+                                                       "balance_of").open_some()
+                    _callback = sp.contract(sp.TList(t_balance_of_response), sp.self_address, "callback_balance_of")
+                    transfer_args = sp.record(callback=_callback.open_some(), requests=[sp.record(owner=sp.self_address, token_id=sp.nat(0))])
                     sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
-        sp.transfer(sp.some("success"), sp.tez(0), callback)
+
+                    self.data.callback_coin_name = coin_name
+                    self.data.callback_value = value
+                    self.data.callback_to = to
 
     @sp.entry_point(lazify=False)
     def update_handle_response_service(self, ep):
