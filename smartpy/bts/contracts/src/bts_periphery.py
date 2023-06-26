@@ -248,82 +248,102 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         callback_string = sp.local("callback_string", "")
         with sp.if_((svc == self.service_name) & (check_caller == "Authorized")):
             err_msg = sp.local("error", "")
-            sm = self.decode_service_message(msg)
+            decode_call = self.decode_service_message(msg)
+            with sp.if_(decode_call.status == "Success"):
+                sm = decode_call.rv
 
-            with sm.serviceType.match_cases() as arg:
-                with arg.match("REQUEST_COIN_TRANSFER") as a1:
-                    callback_string.value = "success"
-                    tc = self.decode_transfer_coin_msg(sm.data)
-                    parsed_addr = sp.view("str_to_addr", self.data.parse_contract, tc.to, t=sp.TAddress).open_some()
+                with sm.serviceType.match_cases() as arg:
+                    with arg.match("REQUEST_COIN_TRANSFER") as a1:
+                        callback_string.value = "success"
+                        tc_call = self.decode_transfer_coin_msg(sm.data)
+                        with sp.if_(tc_call.status == "Success"):
+                            tc = tc_call.value
+                            parsed_addr = sp.view("str_to_addr", self.data.parse_contract, tc.to, t=sp.TAddress).open_some()
 
-                    with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
-                        handle_request_call = self._handle_request_service(tc.to, tc.assets)
-                        with sp.if_(handle_request_call == "success"):
-                            self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), sp.nat(2), _from, sn, "", self.RC_OK)
-                            sp.emit(sp.record(from_address=_from, to=parsed_addr, serial_no=self.data.serial_no, assets_details=tc.assets), tag="TransferReceived")
-                        with sp.else_():
-                            err_msg.value = handle_request_call
-                            self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), sp.nat(2), _from, sn, err_msg.value,
-                                                       self.RC_ERR)
-                    with sp.else_():
-                        err_msg.value = "InvalidAddress"
-                        self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), sp.nat(2), _from, sn, err_msg.value, self.RC_ERR)
-
-                with arg.match("BLACKLIST_MESSAGE") as a2:
-                    callback_string.value = "success"
-                    bm = self.decode_blacklist_msg(sm.data)
-                    addresses = bm.addrs
-
-                    with bm.serviceType.match_cases() as b_agr:
-                        with b_agr.match("ADD_TO_BLACKLIST") as b_val_1:
-                            add_blacklist_call = self._add_to_blacklist(addresses)
-                            with sp.if_(add_blacklist_call == "success"):
-                                self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "AddedToBlacklist", self.RC_OK)
+                            with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
+                                handle_request_call = self._handle_request_service(tc.to, tc.assets)
+                                with sp.if_(handle_request_call == "success"):
+                                    self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), sp.nat(2), _from, sn, "", self.RC_OK)
+                                    sp.emit(sp.record(from_address=_from, to=parsed_addr, serial_no=self.data.serial_no, assets_details=tc.assets), tag="TransferReceived")
+                                with sp.else_():
+                                    err_msg.value = handle_request_call
+                                    self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), sp.nat(2), _from, sn, err_msg.value,
+                                                               self.RC_ERR)
                             with sp.else_():
-                                self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "ErrorAddToBlackList", self.RC_ERR)
-
-                        with b_agr.match("REMOVE_FROM_BLACKLIST") as b_val_2:
-                            remove_blacklist_call = self._remove_from_blacklist(addresses)
-                            with sp.if_(remove_blacklist_call == "success"):
-                                self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "RemovedFromBlacklist", self.RC_OK)
-                            with sp.else_():
-                                self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "ErrorRemoveFromBlackList", self.RC_ERR)
-
-                        with b_agr.match("ERROR") as b_val_2:
-                            self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "BlacklistServiceTypeErr", self.RC_ERR)
-
-                with arg.match("CHANGE_TOKEN_LIMIT") as a3:
-                    callback_string.value = "success"
-                    tl = self.decode_token_limit_msg(sm.data)
-                    coin_names = tl.coin_name
-                    token_limits = tl.token_limit
-
-                    set_limit_call = self._set_token_limit(coin_names, token_limits)
-                    with sp.if_(set_limit_call == "success"):
-                        self.send_response_message(sp.variant("CHANGE_TOKEN_LIMIT", 4), sp.nat(4), _from, sn, "ChangeTokenLimit", self.RC_OK)
-                    with sp.else_():
-                        self.send_response_message(sp.variant("CHANGE_TOKEN_LIMIT", 4), sp.nat(4), _from, sn, "ErrorChangeTokenLimit", self.RC_ERR)
-
-                with arg.match("RESPONSE_HANDLE_SERVICE") as a4:
-                    with sp.if_(sp.len(sp.pack(self.data.requests.get(sn).from_)) != 0):
-                        response = self.decode_response(sm.data)
-                        handle_response = self.handle_response_service(sn, response.code, response.message)
-                        with sp.if_(handle_response == "success"):
-                            callback_string.value = "success"
+                                err_msg.value = "InvalidAddress"
+                                self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), sp.nat(2), _from, sn, err_msg.value, self.RC_ERR)
                         with sp.else_():
-                            callback_string.value = "fail"
-                    with sp.else_():
-                        callback_string.value = "InvalidSN"
+                            callback_string.value = "ErrorInDecodingTransferCoin"
 
-                with arg.match("UNKNOWN_TYPE") as a5:
-                    callback_string.value = "success"
-                    sp.emit(sp.record(_from=_from, sn=sn), tag= "UnknownResponse")
+                    with arg.match("BLACKLIST_MESSAGE") as a2:
+                        callback_string.value = "success"
+                        bm_call = self.decode_blacklist_msg(sm.data)
+                        with sp.if_(bm_call.status == "Success"):
+                            bm = bm_call.rv
+                            addresses = bm.addrs
 
-                with arg.match("ERROR") as a5:
-                    callback_string.value = "success"
-                    self.send_response_message(sp.variant("UNKNOWN_TYPE", 5), sp.nat(5), _from, sn, "Unknown",self.RC_ERR)
+                            with bm.serviceType.match_cases() as b_agr:
+                                with b_agr.match("ADD_TO_BLACKLIST") as b_val_1:
+                                    add_blacklist_call = self._add_to_blacklist(addresses)
+                                    with sp.if_(add_blacklist_call == "success"):
+                                        self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "AddedToBlacklist", self.RC_OK)
+                                    with sp.else_():
+                                        self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "ErrorAddToBlackList", self.RC_ERR)
+
+                                with b_agr.match("REMOVE_FROM_BLACKLIST") as b_val_2:
+                                    remove_blacklist_call = self._remove_from_blacklist(addresses)
+                                    with sp.if_(remove_blacklist_call == "success"):
+                                        self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "RemovedFromBlacklist", self.RC_OK)
+                                    with sp.else_():
+                                        self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "ErrorRemoveFromBlackList", self.RC_ERR)
+
+                                with b_agr.match("ERROR") as b_val_2:
+                                    self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn, "BlacklistServiceTypeErr", self.RC_ERR)
+                        with sp.else_():
+                            callback_string.value = "ErrorInDecodingBlacklist"
+
+                    with arg.match("CHANGE_TOKEN_LIMIT") as a3:
+                        callback_string.value = "success"
+                        tl_call = self.decode_token_limit_msg(sm.data)
+                        with sp.if_(tl_call.status == "Success"):
+                            tl = tl_call.rv
+                            coin_names = tl.coin_name
+                            token_limits = tl.token_limit
+
+                            set_limit_call = self._set_token_limit(coin_names, token_limits)
+                            with sp.if_(set_limit_call == "success"):
+                                self.send_response_message(sp.variant("CHANGE_TOKEN_LIMIT", 4), sp.nat(4), _from, sn, "ChangeTokenLimit", self.RC_OK)
+                            with sp.else_():
+                                self.send_response_message(sp.variant("CHANGE_TOKEN_LIMIT", 4), sp.nat(4), _from, sn, "ErrorChangeTokenLimit", self.RC_ERR)
+                        with sp.else_():
+                            callback_string.value = "ErrorInDecodingTokenLimit"
+
+                    with arg.match("RESPONSE_HANDLE_SERVICE") as a4:
+                        with sp.if_(sp.len(sp.pack(self.data.requests.get(sn).from_)) != 0):
+                            fn_call = self.decode_response(sm.data)
+                            response = fn_call.rv
+                            with sp.if_(fn_call.status == "Success"):
+                                handle_response = self.handle_response_service(sn, response.code, response.message)
+                                with sp.if_(handle_response == "success"):
+                                    callback_string.value = "success"
+                                with sp.else_():
+                                    callback_string.value = "fail"
+                            with sp.else_():
+                                callback_string.value = "ErrorInDecoding"
+                        with sp.else_():
+                            callback_string.value = "InvalidSN"
+
+                    with arg.match("UNKNOWN_TYPE") as a5:
+                        callback_string.value = "success"
+                        sp.emit(sp.record(_from=_from, sn=sn), tag= "UnknownResponse")
+
+                    with arg.match("ERROR") as a5:
+                        callback_string.value = "success"
+                        self.send_response_message(sp.variant("UNKNOWN_TYPE", 5), sp.nat(5), _from, sn, "Unknown",self.RC_ERR)
+            with sp.else_():
+                callback_string.value = "ErrorInDecoding"
         with sp.else_():
-            callback_string.value = "fail"
+            callback_string.value = "UnAuthorized"
 
         return_value = sp.record(string=sp.some(callback_string.value), bsh_addr=bsh_addr, prev=prev,
                                  callback_msg=callback_msg)
