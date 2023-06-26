@@ -32,11 +32,6 @@ class SingleAssetToken(FA2.Admin, FA2.Fa2SingleAsset, FA2.MintSingleAsset, FA2.B
     def is_admin(self, address):
         sp.result(address == self.data.administrator)
 
-    @sp.onchain_view()
-    def balance_of(self, param):
-        sp.set_type(param, sp.TRecord(owner=sp.TAddress, token_id=sp.TNat))
-        sp.result(self.balance_(param.owner, param.token_id))
-
     @sp.entry_point
     def set_allowance(self, batch):
         sp.set_type(batch, sp.TList(sp.TRecord(spender=sp.TAddress, amount=sp.TNat)))
