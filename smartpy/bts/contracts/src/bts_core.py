@@ -222,7 +222,7 @@ class BTSCore(sp.Contract):
                                 user_balance=sp.nat(0)))
         with sp.else_():
             fa2_address = self.data.coins.get(params.coin_name)
-            user_balance= sp.view("balance_of", fa2_address, sp.record(owner=params.owner, token_id=sp.nat(0)), t=sp.TNat).open_some("Invalid view")
+            user_balance= sp.view("get_balance_of", fa2_address, [sp.record(owner=params.owner, token_id=sp.nat(0))], t=sp.TNat).open_some("Invalid view")
 
             allowance = sp.view("get_allowance", fa2_address, sp.record(spender=sp.self_address, owner=params.owner), t=sp.TNat).open_some("Invalid view")
             usable_balance = sp.local("usable_balance", allowance, t=sp.TNat)
