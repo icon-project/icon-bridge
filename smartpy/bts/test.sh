@@ -23,7 +23,7 @@ fi
 function processContract {
     CONTRACT_NAME=$1
     TEST_OUT_DIR=$2
-    CONTRACT_IN_TEST="./contracts/tests/${CONTRACT_NAME}_test.py"
+    CONTRACT_IN_TEST="./contracts/tests/${CONTRACT_NAME}.py"
     CONTRACT_OUT="${CONTRACT_NAME}.json"
     STORAGE_OUT="${CONTRACT_NAME}_storage.json"
     CONTRACT_COMPILED="${CONTRACT_NAME}/step_000_cont_0_contract.json"

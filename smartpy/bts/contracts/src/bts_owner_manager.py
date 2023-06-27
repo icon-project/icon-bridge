@@ -65,6 +65,6 @@ def test():
     scenario.verify(c1.is_owner(alice.address) == True)
 
 
-sp.add_compilation_target("bts_owner_manager", BTSOwnerManager(owner=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW")))
+sp.add_compilation_target("bts_owner_manager", BTSOwnerManager(owner=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP")))
 
     

@@ -2,11 +2,10 @@ import smartpy as sp
 
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 strings = sp.io.import_script_from_url("file:./contracts/src/String.py")
-rlp_encode = sp.io.import_script_from_url("file:./contracts/src/RLP_encode_struct.py")
-rlp_decode = sp.io.import_script_from_url("file:./contracts/src/RLP_decode_struct.py")
+rlp = sp.io.import_script_from_url("file:./contracts/src/RLP_struct.py")
 
 
-class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibrary):
+class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
     BMC_ERR = sp.nat(10)
     BSH_ERR = sp.nat(40)
     UNKNOWN_ERR = sp.nat(0)
@@ -21,14 +20,16 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
     BMCRevertUnknownHandleBTPError = sp.string("UnknownHandleBTPError")
     BMCRevertUnknownHandleBTPMessage = sp.string("UnknownHandleBTPMessage")
 
-    def __init__(self, bmc_management_addr, helper_contract, parse_address, owner_address):
+    def __init__(self, bmc_management_addr, helper_contract, helper_parse_neg_contract, parse_address, owner_address):
         self.init(
             helper=helper_contract,
+            helper_parse_negative=helper_parse_neg_contract,
             bmc_btp_address=sp.none,
             bmc_management=bmc_management_addr,
             parse_contract=parse_address,
             handle_btp_message_status=sp.none,
             handle_btp_error_status=sp.none,
+            handle_fee_gathering_status=sp.none,
             owner_address = owner_address
         )
 
@@ -36,12 +37,35 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         sp.verify(sp.sender == self.data.owner_address, "Unauthorized")
 
     @sp.entry_point
+    def set_helper_address(self, address):
+        sp.set_type(address, sp.TAddress)
+        self.only_owner()
+        self.data.helper = address
+
+    @sp.entry_point
+    def set_helper_parse_negative_address(self, address):
+        sp.set_type(address, sp.TAddress)
+        self.only_owner()
+        self.data.helper_parse_negative = address
+
+    @sp.entry_point
+    def set_parse_address(self, address):
+        sp.set_type(address, sp.TAddress)
+        self.only_owner()
+        self.data.parse_contract = address
+
+    @sp.entry_point
     def set_bmc_management_addr(self, params):
         sp.set_type(params, sp.TAddress)
         self.only_owner()
         self.data.bmc_management = params
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_set_bmc_btp_address(self, ep):
+        self.only_owner()
+        sp.set_entry_point("set_bmc_btp_address", ep)
+
+    @sp.entry_point(lazify=True)
     def set_bmc_btp_address(self, network):
         sp.set_type(network, sp.TString)
 
@@ -55,6 +79,10 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
     def get_bmc_btp_address(self):
         sp.result(self.data.bmc_btp_address.open_some("Address not set"))
 
+    @sp.onchain_view()
+    def get_bmc_management_address(self):
+        sp.result(self.data.bmc_management)
+
     def _require_registered_relay(self, prev):
         sp.set_type(prev, sp.TString)
 
@@ -65,8 +93,13 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
                 valid.value = True
         sp.verify(valid.value, self.BMCRevertUnauthorized)
 
-    @sp.entry_point
-    def callback(self, string, bsh_addr, prev, callback_msg):
+    @sp.entry_point(lazify=False)
+    def update_callback_btp_message(self, ep):
+        self.only_owner()
+        sp.set_entry_point("callback_btp_message", ep)
+
+    @sp.entry_point(lazify=True)
+    def callback_btp_message(self, string, bsh_addr, prev, callback_msg):
         sp.set_type(string, sp.TOption(sp.TString))
         sp.set_type(bsh_addr, sp.TAddress)
         sp.set_type(prev, sp.TString)
@@ -79,8 +112,14 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
             pass
         with sp.else_():
             self._send_error(prev, callback_msg, self.BSH_ERR, self.BMCRevertUnknownHandleBTPMessage)
+        self.data.handle_btp_message_status = sp.none
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_callback_btp_error(self, ep):
+        self.only_owner()
+        sp.set_entry_point("callback_btp_error", ep)
+
+    @sp.entry_point(lazify=True)
     def callback_btp_error(self, string, bsh_addr, svc, sn, code, msg):
         sp.set_type(string, sp.TOption(sp.TString))
         sp.set_type(bsh_addr, sp.TAddress)
@@ -97,9 +136,31 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         with sp.else_():
             error_code = self.UNKNOWN_ERR
             err_msg = self.BMCRevertUnknownHandleBTPError
-            sp.emit(sp.record(svc=svc, sn=sn * -1, code=code, msg=msg, err_code=error_code, err_msg=err_msg), tag="ErrorOnBTPError")
+            sp.emit(sp.record(svc=svc, sn=sn, code=code, msg=msg, err_code=error_code, err_msg=err_msg), tag="ErrorOnBTPError")
+        self.data.handle_btp_error_status = sp.none
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_callback_handle_fee_gathering(self, ep):
+        self.only_owner()
+        sp.set_entry_point("callback_handle_fee_gathering", ep)
+
+    @sp.entry_point(lazify=True)
+    def callback_handle_fee_gathering(self, string, bsh_addr):
+        sp.set_type(string, sp.TOption(sp.TString))
+        sp.set_type(bsh_addr, sp.TAddress)
+
+        sp.verify(sp.sender == bsh_addr, "Unauthorized")
+        self.data.handle_fee_gathering_status = string
+        with sp.if_(self.data.handle_fee_gathering_status.open_some() == "success"):
+            pass
+        self.data.handle_fee_gathering_status = sp.none
+
+    @sp.entry_point(lazify=False)
+    def update_handle_relay_message(self, ep):
+        self.only_owner()
+        sp.set_entry_point("handle_relay_message", ep)
+
+    @sp.entry_point(lazify=True)
     def handle_relay_message(self, prev, msg):
         sp.set_type(prev, sp.TString)
         sp.set_type(msg, sp.TBytes)
@@ -111,40 +172,38 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
 
         rx_seq = sp.local("rx_seq", link_rx_seq, t=sp.TNat)
         rx_height = sp.local("rx_height", link_rx_height, t=sp.TNat)
+        rps_decode = self.decode_receipt_proofs(msg)
+        with sp.if_(rps_decode.status == "Success"):
+            rps = rps_decode.receipt_proof
+            bmc_msg = sp.local("bmc_msg", sp.record(src="", dst="", svc="", sn=sp.int(0), message=sp.bytes("0x")), t=types.Types.BMCMessage)
+            ev = sp.local("ev", sp.record(next_bmc="", seq=sp.nat(0), message=sp.bytes("0x")), t=types.Types.MessageEvent)
+            sp.for i in sp.range(sp.nat(0), sp.len(rps)):
+                with sp.if_(rps[i].height < rx_height.value):
+                   pass
+                with sp.else_():
+                    rx_height.value = rps[i].height
+                    sp.for j in sp.range(sp.nat(0), sp.len(rps[i].events)):
+                        ev.value = rps[i].events[j]
+                        sp.verify(ev.value.next_bmc == self.data.bmc_btp_address.open_some("Address not set"), "Invalid Next BMC")
+                        rx_seq.value +=sp.nat(1)
+                        with sp.if_(ev.value.seq < rx_seq.value):
+                            rx_seq.value = sp.as_nat(rx_seq.value-sp.nat(1))
+                        with sp.else_():
+                            sp.if ev.value.seq > rx_seq.value:
+                                sp.failwith(self.BMCRevertInvalidSeqNumber)
 
-        rps = self.decode_receipt_proofs(msg)
-        bmc_msg = sp.local("bmc_msg", sp.record(src="", dst="", svc="", sn=sp.int(0), message=sp.bytes("0x")), t=types.Types.BMCMessage)
-        ev = sp.local("ev", sp.record(next_bmc="", seq=sp.nat(0), message=sp.bytes("0x")), t=types.Types.MessageEvent)
-
-        sp.for i in sp.range(sp.nat(0), sp.len(rps)):
-            sp.trace("ll")
-            with sp.if_(rps[i].height < rx_height.value):
-                sp.trace("ggg")
-                # sp.continue
-
-            rx_height.value = rps[i].height
-            sp.for j in sp.range(sp.nat(0), sp.len(rps[i].events)):
-                ev.value = rps[i].events[j]
-                sp.verify(ev.value.next_bmc == self.data.bmc_btp_address.open_some("Address not set"), "Invalid Next BMC")
-                rx_seq.value +=sp.nat(1)
-                sp.if ev.value.seq < rx_seq.value:
-                    rx_seq.value = sp.as_nat(rx_seq.value-sp.nat(1))
-                    # sp.continue
-
-                sp.if ev.value.seq > rx_seq.value:
-                    sp.failwith(self.BMCRevertInvalidSeqNumber)
-
-                _decoded = self.decode_bmc_message(ev.value.message)
-                bmc_msg.value = _decoded
-
-                sp.if bmc_msg.value.src != "":
-                    with sp.if_(bmc_msg.value.dst == self.data.bmc_btp_address.open_some("Address not set")):
-                        self._handle_message(prev, bmc_msg.value)
-                    with sp.else_():
-                        net, addr = sp.match_pair(strings.split_btp_address(bmc_msg.value.dst, "prev_idx", "result", "my_list", "last", "penultimate"))
-                        # resolve route inside try catch
-                        next_link, prev_link = sp.match_pair(sp.view("resolve_route", self.data.bmc_management, net, t=sp.TPair(sp.TString, sp.TString)).open_some("Invalid Call"))
-                        self._send_message(next_link, ev.value.message)
+                            _decoded = self.decode_bmc_message(ev.value.message)
+                            bmc_msg.value = _decoded.bmc_dec_rv
+                            with sp.if_(_decoded.status == sp.string("Success")):
+                                with sp.if_(bmc_msg.value.dst == self.data.bmc_btp_address.open_some("Address not set")):
+                                    self._handle_message(prev, bmc_msg.value)
+                                with sp.else_():
+                                    net, addr = sp.match_pair(strings.split_btp_address(bmc_msg.value.dst, "prev_idx", "result", "my_list", "last", "penultimate"))
+                                    next_link, prev_link = sp.match_pair(sp.view("resolve_route", self.data.bmc_management, net, t=sp.TPair(sp.TString, sp.TString)).open_some("Invalid Call"))
+                                    with sp.if_(next_link != "Unreachable"):
+                                        self._send_message(next_link, ev.value.message)
+                                    with sp.else_():
+                                        self._send_error(prev, bmc_msg.value, self.BMC_ERR, "Unreachable_"+ net)
 
         # call update_link_rx_seq on BMCManagement
         update_link_rx_seq_args_type = sp.TRecord(prev=sp.TString, val=sp.TNat)
@@ -171,6 +230,7 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         sp.transfer(update_link_rx_height_args, sp.tez(0), update_link_rx_height_entry_point)
 
 
+
     def _handle_message(self, prev, msg):
         sp.set_type(prev, sp.TString)
         sp.set_type(msg, types.Types.BMCMessage)
@@ -178,69 +238,32 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         # bsh_addr = sp.local("bsh_addr",sp.TAddress)
         with sp.if_(msg.svc == "bmc"):
             sm = sp.local("sm", sp.record(serviceType="", payload=sp.bytes("0x")))
-            sm.value = self.decode_bmc_service(msg.message)
-            with sp.if_(sm.value.serviceType == ""):
+            _decoded = self.decode_bmc_service(msg.message)
+            sm.value = _decoded.bmc_service_rv
+            with sp.if_(_decoded.status != "Success"):
                 self._send_error(prev, msg, self.BMC_ERR, self.BMCRevertParseFailure)
             with sp.else_():
                 sp.if sm.value.serviceType == "FeeGathering":
-                    gather_fee =sp.local("gather_fee", sp.record(fa="", svcs=sp.map({0:""})))
-                    gather_fee.value = self.decode_gather_fee_message(sm.value.payload)
+                    gather_fee =sp.local("gather_fee", sp.record(fa="error", svcs=sp.map({0:""})))
+                    _decoded_value = self.decode_gather_fee_message(sm.value.payload)
+                    gather_fee.value = _decoded_value.fee_decode_rv
 
-                    with sp.if_(gather_fee.value.fa == ""):
+                    with sp.if_(_decoded_value.status != "Success"):
                         self._send_error(prev, msg, self.BMC_ERR, self.BMCRevertParseFailure)
-
                     with sp.else_():
                         sp.for c in sp.range(sp.nat(0), sp.len(gather_fee.value.svcs)):
                             bsh_addr = sp.view("get_bsh_service_by_name", self.data.bmc_management, gather_fee.value.svcs[c], t=sp.TAddress).open_some("Invalid Call")
 
                             sp.if bsh_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg"):
                                 # call handle_fee_gathering of bts periphery
-                                handle_fee_gathering_args_type = sp.TRecord(fa=sp.TString, svc=sp.TString)
+                                handle_fee_gathering_args_type = sp.TRecord(callback=sp.TContract(sp.TRecord(string=sp.TOption(sp.TString), bsh_addr=sp.TAddress)), bsh_addr=sp.TAddress, fa=sp.TString, svc=sp.TString)
                                 handle_fee_gathering_entry_point = sp.contract(handle_fee_gathering_args_type,
                                                                                 bsh_addr,
                                                                                 "handle_fee_gathering").open_some()
-                                handle_fee_gathering_args = sp.record(fa=gather_fee.value.fa, svc=gather_fee.value.svcs[c])
+                                t = sp.TRecord(string=sp.TOption(sp.TString), bsh_addr=sp.TAddress)
+                                callback = sp.contract(t, sp.self_address, "callback_handle_fee_gathering")
+                                handle_fee_gathering_args = sp.record(callback=callback.open_some(), bsh_addr=bsh_addr, fa=gather_fee.value.fa, svc=gather_fee.value.svcs[c])
                                 sp.transfer(handle_fee_gathering_args, sp.tez(0), handle_fee_gathering_entry_point)
-
-                sp.if sm.value.serviceType == "Link":
-                    to = self.decode_propagate_message(sm.value.payload)
-                    link = sp.view("get_link", self.data.bmc_management, prev, t=types.Types.Link).open_some()
-
-                    check = sp.local("check", False)
-                    sp.if link.is_connected:
-                        sp.for e in link.reachable.elements():
-                            sp.if to == e:
-                                check.value = True
-                                # sp.break
-
-                        sp.if check.value == False:
-                            links = sp.list([to], t=sp.TString)
-
-                            # call update_link_reachable on BMCManagement
-                            update_link_reachable_args_type = sp.TRecord(prev=sp.TString, to=sp.TList(sp.TString))
-                            update_link_reachable_entry_point = sp.contract(update_link_reachable_args_type,
-                                                                            self.data.bmc_management,
-                                                                            "update_link_reachable").open_some()
-                            update_link_reachable_args = sp.record(prev=prev, to=links)
-                            sp.transfer(update_link_reachable_args, sp.tez(0), update_link_reachable_entry_point)
-
-                sp.if sm.value.serviceType == "Unlink":
-                    to = self.decode_propagate_message(sm.value.payload)
-                    link = sp.view("get_link", self.data.bmc_management, prev, t=types.Types.Link).open_some()
-
-                    sp.if link.is_connected:
-                        f = sp.local("f", sp.nat(0))
-                        sp.for itm in link.reachable.elements():
-                            sp.if to == itm:
-
-                                # call delete_link_reachable on BMCManagement
-                                delete_link_reachable_args_type = sp.TRecord(prev=sp.TString, index=sp.TNat)
-                                delete_link_reachable_entry_point = sp.contract(delete_link_reachable_args_type,
-                                                                                self.data.bmc_management,
-                                                                                "delete_link_reachable").open_some()
-                                delete_link_reachable_args = sp.record(prev=prev, index=f.value)
-                                sp.transfer(delete_link_reachable_args, sp.tez(0), delete_link_reachable_entry_point)
-                                f.value += sp.nat(1)
 
                 sp.if sm.value.serviceType == "Init":
                     links = self.decode_init_message(sm.value.payload)
@@ -249,7 +272,7 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
                     update_link_reachable_entry_point = sp.contract(update_link_reachable_args_type,
                                                                     self.data.bmc_management,
                                                                     "update_link_reachable").open_some()
-                    update_link_reachable_args = sp.record(prev=prev, to=links)
+                    update_link_reachable_args = sp.record(prev=prev, to=links.links_list)
                     sp.transfer(update_link_reachable_args, sp.tez(0), update_link_reachable_entry_point)
         with sp.else_():
             bsh_addr = sp.view("get_bsh_service_by_name", self.data.bmc_management, msg.svc, t=sp.TAddress).open_some("Invalid view")
@@ -267,7 +290,10 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
                     handle_btp_message_entry_point = sp.contract(handle_btp_message_args_type,
                                                                     bsh_addr,
                                                                     "handle_btp_message").open_some()
-                    handle_btp_message_args = sp.record(callback=sp.self_entry_point("callback"), bsh_addr=bsh_addr, prev=prev, callback_msg=msg, _from=net, svc=msg.svc, sn=msg.sn, msg=msg.message)
+                    t = sp.TRecord(string=sp.TOption(sp.TString), bsh_addr=sp.TAddress, prev=sp.TString, callback_msg=types.Types.BMCMessage )
+                    callback = sp.contract(t, sp.self_address, "callback_btp_message")
+
+                    handle_btp_message_args = sp.record(callback=callback.open_some(), bsh_addr=bsh_addr, prev=prev, callback_msg=msg, _from=net, svc=msg.svc, sn=msg.sn, msg=msg.message)
                     sp.transfer(handle_btp_message_args, sp.tez(0), handle_btp_message_entry_point)
 
                 with sp.else_():
@@ -279,7 +305,10 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
                     handle_btp_error_entry_point = sp.contract(handle_btp_error_args_type,
                                                                  bsh_addr,
                                                                  "handle_btp_error").open_some()
-                    handle_btp_error_args = sp.record(callback=sp.self_entry_point("callback_btp_error"), bsh_addr=bsh_addr,
+
+                    t = sp.TRecord(string=sp.TOption(sp.TString), bsh_addr=sp.TAddress, svc=sp.TString, sn=sp.TInt, code=sp.TNat, msg=sp.TString)
+                    callback = sp.contract(t, sp.self_address, "callback_btp_error")
+                    handle_btp_error_args = sp.record(callback=callback.open_some(), bsh_addr=bsh_addr,
                                                       svc=msg.svc, sn=msg.sn * -1, code=res.code, msg=res.message)
                     sp.transfer(handle_btp_error_args, sp.tez(0), handle_btp_error_entry_point)
 
@@ -288,13 +317,10 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
         sp.set_type(serialized_msg, sp.TBytes)
 
         # call update_link_tx_seq on BMCManagement
-        update_link_tx_seq_entry_point = sp.contract(sp.TString,
+        update_link_tx_seq_entry_point = sp.contract(sp.TRecord(prev=sp.TString, serialized_msg=sp.TBytes),
                                                      self.data.bmc_management,
                                                      "update_link_tx_seq").open_some()
-        sp.transfer(to, sp.tez(0), update_link_tx_seq_entry_point)
-
-        sp.emit(sp.record(next=to, seq=sp.view("get_link_tx_seq", self.data.bmc_management, to, t=sp.TNat).open_some(), msg=serialized_msg),
-                tag="Message")
+        sp.transfer(sp.record(prev=to, serialized_msg=serialized_msg), sp.tez(0), update_link_tx_seq_entry_point)
 
     def _send_error(self, prev, message, err_code, err_msg):
         sp.set_type(prev, sp.TString)
@@ -308,11 +334,15 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
                 dst=message.src,
                 svc=message.svc,
                 sn=message.sn * -1,
-                message=self.encode_response(sp.record(code=err_code, message=err_msg))
-            ))
+                message=self.encode_response(sp.record(code=err_code, message=err_msg))))
             self._send_message(prev, serialized_msg)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_send_message(self, ep):
+        self.only_owner()
+        sp.set_entry_point("send_message", ep)
+
+    @sp.entry_point(lazify=True)
     def send_message(self, to, svc, sn, msg):
         """
         Send the message to a specific network
@@ -334,14 +364,13 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
 
         next_link, dst = sp.match_pair(sp.view("resolve_route", self.data.bmc_management, to, t=sp.TPair(sp.TString, sp.TString)).open_some())
 
-        rlp = self.encode_bmc_message(sp.record(
+        _rlp = self.encode_bmc_message(sp.record(
                 src=self.data.bmc_btp_address.open_some("Address not set"),
                 dst=dst,
                 svc=svc,
                 sn=sn,
-                message=msg
-        ))
-        self._send_message(next_link, rlp)
+                message=msg))
+        self._send_message(next_link, _rlp)
 
     @sp.onchain_view()
     def get_status(self, _link):
@@ -362,22 +391,10 @@ class BMCPreiphery(sp.Contract, rlp_decode.DecodeLibrary, rlp_encode.EncodeLibra
             current_height=sp.level #block height
         ))
 
-@sp.add_test(name="BMC")
-def test():
-    alice = sp.test_account("Alice")
-    helper = sp.test_account("Helper")
-    parse_contract = sp.test_account("Parser")
-    owner = sp.test_account("Owner")
-    bmc_management = sp.test_account("BMC Management")
-    # bmc= sp.test_account("BMC")
 
-    scenario = sp.test_scenario()
-    bmc = BMCPreiphery(bmc_management.address, helper.address, parse_contract.address, owner.address)
-    scenario += bmc
-
-    # bmc.handle_relay_message(sp.record(prev="demo string", msg=sp.bytes("0x0dae11"))).run(sender=alice)
-
-sp.add_compilation_target("bmc_periphery", BMCPreiphery(bmc_management_addr=sp.address("KT1Uiycjx4iXdjKFfR2kAo2NUdEtQ6PmDX4Y"),
-                                                        helper_contract=sp.address("KT1Q5erZm7Pp8UJywK1nkiP8QPCRmyUotUMq"),
-                                                        parse_address=sp.address("KT1XgRyjQPfpfwNrvYYpgERpYpCrGh24aoPX"),
-                                                        owner_address=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP")))
+sp.add_compilation_target("bmc_periphery", BMCPreiphery(bmc_management_addr=sp.address("KT1G3R9VqESejtsFnvjHSjzXYfuKuHMeaiE3"),
+                                                        helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6"),
+                                                        helper_parse_neg_contract=sp.address("KT1DHptHqSovffZ7qqvSM9dy6uZZ8juV88gP"),
+                                                        parse_address=sp.address("KT1VJn3WNXDsyFxeSExjSWKBs9JYqRCJ1LFN"),
+                                                        owner_address=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP")
+                                                        ))

@@ -14,6 +14,12 @@ class Helper(sp.Contract):
         sp.result(decode_string(params))
 
     @sp.onchain_view()
+    def prefix_length(self, params):
+        sp.set_type(params, sp.TBytes)
+        prefix_length = sp.build_lambda(Utils.RLP.Decoder.prefix_length)
+        sp.result(prefix_length(params))
+
+    @sp.onchain_view()
     def decode_list(self, params):
         sp.set_type(params, sp.TBytes)
         decode_list = sp.build_lambda(Utils.RLP.Decoder.decode_list)
@@ -66,13 +72,6 @@ class Helper(sp.Contract):
         sp.set_type(params, sp.TList(sp.TBytes))
         encode_list_packed = sp.build_lambda(Utils.RLP.Encoder.encode_list)
         sp.result(encode_list_packed(params))
-
-
-@sp.add_test(name="Helper")
-def test():
-    scenario = sp.test_scenario()
-    helper = Helper()
-    scenario += helper
 
 
 sp.add_compilation_target("helper", Helper())

@@ -6,7 +6,7 @@
   "scripts": {
     "compile": "bash ./compile.sh",
     "deploy": "npx ts-node scripts/deploy.ts",
-    "test": "bash ./test.sh"
+    "test" : "bash ./test.sh"
   },
   "author": "Roshan Parajuli",
   "license": "MIT",

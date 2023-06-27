@@ -16,6 +16,10 @@ Utils2 = sp.io.import_script_from_url("https://raw.githubusercontent.com/RomarQ/
 #             sp.cast(x, sp.bytes)
 #             return (sp.to_int(x))
 #
+#         @sp.onchain_view()
+#           def to_byte(self, x):
+#             return (sp.to_bytes(x))
+#
 #
 # @sp.add_test(name="test")
 # def test():

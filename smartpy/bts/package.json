@@ -5,7 +5,8 @@
   "bin": "./bin/cli.js",
   "scripts": {
     "compile": "bash ./compile.sh",
-    "deploy": "npx ts-node scripts/deploy.ts"
+    "deploy": "npx ts-node scripts/deploy.ts",
+    "test" : "bash ./test.sh"
   },
   "author": "Roshan Parajuli",
   "license": "MIT",

@@ -54,16 +54,16 @@ class ParseAddress(sp.Contract):
             byte_str.value += Utils.Bytes.of_nat(num)
         return byte_str.value
 
-    def base58_encode(self, v, prefix, _byte):
+    def base58_encode(self, byt_array, prefix, _byte):
         """
         Encode data using Base58 with checksum and add an according binary prefix in the end.
-        :param v: Array of bytes
+        :param byt_array: Array of bytes
         :param prefix: Human-readable prefix (use b'') e.g. b'tz', b'KT', etc
         :param local_byte: local variable
 
         :returns: bytes (use string.decode())
         """
-        length_v = sp.to_int(sp.len(v))
+        length_v = sp.to_int(sp.len(byt_array))
         encoding = sp.local("encode", sp.map({}))
         byte_from_tbl = sp.local("byte_from_tbl", sp.bytes("0x"))
         byte_value = _byte
@@ -74,8 +74,8 @@ class ParseAddress(sp.Contract):
                 byte_from_tbl.value = self.tb([sp.as_nat(Utils.Int.of_string(enc["elem1"])),
                                           sp.as_nat(Utils.Int.of_string(enc["elem2"])),
                                           sp.as_nat(Utils.Int.of_string(enc["elem3"]))])
-        sha256_encoding = sp.sha256(sp.sha256(byte_from_tbl.value + v))
-        sha256_encoding = byte_from_tbl.value + v + sp.slice(sha256_encoding, 0, 4).open_some()
+        sha256_encoding = sp.sha256(sp.sha256(byte_from_tbl.value + byt_array))
+        sha256_encoding = byte_from_tbl.value + byt_array + sp.slice(sha256_encoding, 0, 4).open_some()
         acc = sp.local("for_while_loop", Utils.Int.of_bytes(sha256_encoding))
         alphabet = Utils.Bytes.of_string("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
         base = 58

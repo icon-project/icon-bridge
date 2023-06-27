@@ -2,16 +2,12 @@ import smartpy as sp
 
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 strings = sp.io.import_script_from_url("file:./contracts/src/String.py")
-rlp_encode = sp.io.import_script_from_url("file:./contracts/src/RLP_encode_struct.py")
-# bmc_periphery_file = sp.io.import_script_from_url(
-#     "file:./contracts/src/bmc_periphery.py")
-# helper_file = sp.io.import_script_from_url(
-#     "file:./contracts/src/helper.py")
-# parse_address_file = sp.io.import_script_from_url(
-#     "file:./contracts/src/parse_address.py")
+rlp = sp.io.import_script_from_url("file:./contracts/src/RLP_struct.py")
 
-class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
+
+class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
     BLOCK_INTERVAL_MSEC = sp.nat(1000)
+    LIST_SHORT_START = sp.bytes("0xc0")
 
     def __init__(self, owner_address, helper_contract):
         self.init(
@@ -60,6 +56,12 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
 
     def only_bmc_periphery(self):
         sp.verify(sp.sender == self.data.bmc_periphery.open_some("BMCAddressNotSet"), "Unauthorized")
+
+    @sp.entry_point
+    def set_helper_address(self, address):
+        sp.set_type(address, sp.TAddress)
+        self.only_owner()
+        self.data.helper = address
 
     @sp.entry_point
     def set_bmc_periphery(self, addr):
@@ -162,7 +164,12 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
             i.value += 1
         sp.result(services)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_add_link(self, ep):
+        self.only_owner()
+        sp.set_entry_point("add_link", ep)
+
+    @sp.entry_point(lazify=True)
     def add_link(self, link):
         """
         Initializes status information for the link.
@@ -193,14 +200,18 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
         )
 
         self._propagate_internal("Link", link)
-        links = self.data.list_link_names
+        links = sp.compute(self.data.list_link_names.elements())
 
         self.data.list_link_names.add(link)
         self.data.get_link_from_net[net] = link
-        self._send_internal(link, "Init", links.elements())
-        sp.trace("in add_link")
+        self._send_internal(link, "Init", links)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_remove_link(self, ep):
+        self.only_owner()
+        sp.set_entry_point("remove_link", ep)
+
+    @sp.entry_point(lazify=True)
     def remove_link(self, link):
         """
         Removes the link and status information.
@@ -219,7 +230,6 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
         net, addr= sp.match_pair(strings.split_btp_address(link, "prev_idx", "result", "my_list", "last", "penultimate"))
         del self.data.get_link_from_net[net]
         self.data.list_link_names.remove(link)
-        sp.trace("in remove_link")
 
     @sp.onchain_view()
     def get_links(self):
@@ -249,8 +259,6 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
         sp.verify(height > sp.nat(0), "InvalidRxHeight")
         self.data.links[link].rx_height = height
 
-        sp.trace("in set_link_rx_height")
-
     @sp.entry_point
     def set_link(self, _link, block_interval, _max_aggregation, delay_limit):
         """
@@ -276,28 +284,14 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
 
         link = sp.local("link", self.data.links.get(_link), t=types.Types.Link).value
 
-        # not implemented
-        # scale = sp.local("scale", utils.get_scale(link.block_interval_src, link.block_interval_dst), t=sp.TNat)
-        # reset_rotate_height = sp.local("reset_rotate_height", True, t=sp.TBool)
-        # sp.if utils.get_rotate_term(link.max_aggregation, scale.value) == sp.nat(0):
-        #     reset_rotate_height.value = True
-
-        link.block_interval_src = block_interval
+        link.block_interval_dst = block_interval
         link.max_aggregation = _max_aggregation
         link.delay_limit = delay_limit
 
-        # not implemented
-        # scale.value = utils.get_scale(link.block_interval_src, block_interval)
-        # rotate_term = sp.local("rotate_term", utils.get_rotate_term(_max_aggregation, scale.value), t=sp.TNat)
-        # rotate_term = sp.local("rotate_term", sp.nat(6))
-
-        # sp.if reset_rotate_height.value & (rotate_term.value > sp.nat(0)):
         link.rotate_height = sp.level
         link.rx_height = sp.nat(0)
-        # net, addr = sp.match_pair(strings.split_btp_address(_link))
 
         self.data.links[_link] = link
-        sp.trace("in set_links")
 
 
     def _propagate_internal(self, service_type, link):
@@ -320,7 +314,7 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
                                                                 self.data.bmc_periphery.open_some("Address not set"),
                                                                 "send_message").open_some()
                 send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0), msg=self.encode_bmc_service(
-                    sp.record(serviceType=service_type, payload=final_rlp_bytes_with_prefix)))
+                                            sp.record(serviceType=service_type,payload=final_rlp_bytes_with_prefix)))
                 sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
     def _send_internal(self, target, service_type, links):
@@ -347,11 +341,15 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
                                                self.data.bmc_periphery.open_some("Address not set"),
                                                "send_message").open_some()
         send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0), msg=self.encode_bmc_service(
-            sp.record(serviceType=service_type, payload=rlp_bytes.value)))
+                                                                                   sp.record(serviceType=service_type, payload=rlp_bytes.value)))
         sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
+    @sp.entry_point(lazify=False)
+    def update_add_route(self, ep):
+        self.only_owner()
+        sp.set_entry_point("add_route", ep)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=True)
     def add_route(self, dst, link):
         """
         Add route to the BMC.
@@ -365,14 +363,18 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
         self.only_owner()
         sp.verify(self.data.routes.contains(dst) == False, "AlreadyExistRoute")
         net, addr= sp.match_pair(strings.split_btp_address(dst, "prev_idx", "result", "my_list", "last", "penultimate"))
-        # TODO: need to verify link is only split never used
-        # strings.split_btp_address(link)
+        strings.split_btp_address(link, "prev_idx1", "result1", "my_list1", "last1", "penultimate1")
 
         self.data.routes[dst] = link
         self.data.list_route_keys.add(dst)
         self.data.get_route_dst_from_net[net] = dst
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_remove_route(self, ep):
+        self.only_owner()
+        sp.set_entry_point("remove_route", ep)
+
+    @sp.entry_point(lazify=True)
     def remove_route(self, dst):
         """
         Remove route to the BMC.
@@ -402,7 +404,12 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
             i.value += 1
         sp.result(_routes)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_add_relay(self, ep):
+        self.only_owner()
+        sp.set_entry_point("add_relay", ep)
+
+    @sp.entry_point(lazify=True)
     def add_relay(self, link, addr):
         """
         Registers relay for the network.
@@ -420,7 +427,12 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
         sp.for item in addr.elements():
             self.data.relay_stats[item] = sp.record(addr=item, block_count=sp.nat(0), msg_count=sp.nat(0))
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_remove_relay(self, ep):
+        self.only_owner()
+        sp.set_entry_point("remove_relay", ep)
+
+    @sp.entry_point(lazify=True)
     def remove_relay(self, link, addr):
         """
         Unregisters Relay for the network.
@@ -445,7 +457,6 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
         # delete all items from addrs set
         sp.for ele in self.data.addrs.elements():
             self.data.addrs.remove(ele)
-
 
     @sp.onchain_view()
     def get_relays(self, link):
@@ -507,12 +518,20 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
         self.only_bmc_periphery()
         self.data.links[prev].rx_seq += val
 
-    @sp.entry_point
-    def update_link_tx_seq(self, prev):
+    @sp.entry_point(lazify=False)
+    def update_update_link_tx_seq(self, ep):
+        self.only_owner()
+        sp.set_entry_point("update_link_tx_seq", ep)
+
+    @sp.entry_point(lazify=True)
+    def update_link_tx_seq(self, prev, serialized_msg):
         sp.set_type(prev, sp.TString)
+        sp.set_type(serialized_msg, sp.TBytes)
 
         self.only_bmc_periphery()
         self.data.links[prev].tx_seq += sp.nat(1)
+
+        sp.emit(sp.record(next=prev, seq=self.data.links.get(prev).tx_seq, msg=serialized_msg), tag="Message")
 
     @sp.entry_point
     def update_link_rx_height(self, prev, val):
@@ -548,10 +567,6 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
 
                 del self.data.get_link_from_reachable_net[net]
                 self.data.links[prev].reachable.remove(item)
-                # this is not needed when removing from set
-                # self.data.links[prev].reachable[index] = self.data.links[prev].reachable[
-                #     sp.as_nat(sp.len(self.data.links[prev].reachable) - 1)
-                # ]
             i.value += 1
 
     @sp.entry_point
@@ -568,65 +583,23 @@ class BMCManagement(sp.Contract, rlp_encode.EncodeLibrary):
     def resolve_route(self, dst_net):
         sp.set_type(dst_net, sp.TString)
 
-        dst = sp.local("dst", self.data.get_route_dst_from_net.get(dst_net), t=sp.TString)
+        dst = sp.local("dst", self.data.get_route_dst_from_net.get(dst_net, default_value=sp.string("")), t=sp.TString)
 
         with sp.if_(sp.len(sp.pack(dst.value))!= sp.nat(0)):
             sp.result(sp.pair(self.data.routes.get(dst.value), dst.value))
         with sp.else_():
-            dst_link = sp.local("dst_link", self.data.get_link_from_net.get(dst_net), t=sp.TString)
+            dst_link = sp.local("dst_link", self.data.get_link_from_net.get(dst_net, default_value=sp.string("")), t=sp.TString)
             with sp.if_(sp.len(sp.pack(dst_link.value)) != sp.nat(0)):
                 sp.result(sp.pair(dst_link.value, dst_link.value))
             with sp.else_():
-                res = sp.local("res", self.data.get_link_from_reachable_net.get(dst_net), t=types.Types.Tuple)
-                sp.verify(sp.len(sp.pack(res.value.to)) > sp.nat(0), "Unreachable: " + dst_net + " is unreachable")
-
-                sp.result(sp.pair(res.value.prev, res.value.to))
-
-
-@sp.add_test(name="BMCM")
-def test():
-    alice = sp.test_account("Alice")
-    owner = sp.test_account("Owner")
-    helper = sp.test_account("Helper")
-    # bmc_periphery = sp.test_account("BMC Periphery")
-    # bmc= sp.test_account("BMC")
+                res = sp.local("res", self.data.get_link_from_reachable_net.get(dst_net, default_value=sp.record(prev="", to="")), t=types.Types.Tuple)
+                # sp.verify(sp.len(sp.pack(res.value.to)) > sp.nat(0), "Unreachable: " + dst_net + " is unreachable")
+                with sp.if_(sp.len(sp.pack(res.value.to)) > sp.nat(0)):
+                    sp.result(sp.pair(res.value.prev, res.value.to))
+                with sp.else_():
+                    sp.result(sp.pair("Unreachable", "Unreachable: " + dst_net + " is unreachable"))
 
 
-    scenario = sp.test_scenario()
-    # deploy helper
-    # helper_con = helper_file.Helper()
-    # scenario += helper_con
-    #
-    # parse_addr_con = parse_address_file.ParseAddress()
-    # scenario += parse_addr_con
-    #
-    bmc_man = BMCManagement(owner.address, helper.address)
-    scenario += bmc_man
-    # # deploy bmc periphery
-    # bmc_per = bmc_periphery_file.BMCPreiphery(
-    #     bmc_man.address, helper_con.address, parse_addr_con.address
-    # )
-    #
-    # scenario += bmc_per
-    #
-    # bmc_man.set_bmc_periphery(bmc_per.address).run(sender=owner)
-    # bmc_man.set_bmc_btp_address("tezos.77").run(sender=owner)
-    # # bmc_man.add_owner(alice.address).run(sender=owner)
-    #
-    # # bmc_man.remove_owner(alice.address).run(sender=alice)
-    #
-    # bmc_man.add_route(sp.record(dst = "btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hDEST",
-    # link = "btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW")).run(sender= owner)
-    # bmc_man.add_link("btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW").run(sender=owner)
-    # # decode_string = sp.build_lambda(Utils.RLP.Decoder.without_length_prefix)
-    #
-    # # bmc_man.remove_link("btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW").run(sender=alice)
-    # # bmc_man.add_link("btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW").run(sender=alice)
-    #
-    # # bmc_man.set_link_rx_height(sp.record(link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", height=sp.nat(2))).run(sender=alice)
-    # # bmc_man.set_link(sp.record(_link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", block_interval=sp.nat(2),
-    # #                             _max_aggregation=sp.nat(3), delay_limit=sp.nat(2))).run(sender=alice)
-    #
-    #
 sp.add_compilation_target("bmc_management", BMCManagement(owner_address=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP"),
-                                                          helper_contract=sp.address("KT1Q5erZm7Pp8UJywK1nkiP8QPCRmyUotUMq")))
+                                                          helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6")
+                                                          ))
