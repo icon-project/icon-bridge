@@ -327,7 +327,7 @@ func (r *receiver) SyncVerifier(ctx context.Context, vr IVerifier, height int64,
 				fmt.Println("has it reached to verification")
 				fmt.Println(next.Header.Level)
 
-				err := vr.Verify(ctx, prevHeader, prevBlock, next.Block.Metadata.Baker, r.client.Cl, next.Header)
+				err := vr.Verify(ctx, prevHeader, prevBlock, next.Block.Metadata.BakerConsensusKey, r.client.Cl, next.Header)
 
 				if err != nil {
 					cursor = vr.Height() + 1
@@ -428,7 +428,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 						if vr != nil {
 							fmt.Println("vr is not nil for block heiht ", lbn.Header.Level)
 							// header := bn.Header
-							if err := vr.Verify(ctx, lbn.Header, lbn.Block, bn.Proposer, r.client.Cl, bn.Header); err != nil { // change accordingly
+							if err := vr.Verify(ctx, lbn.Header, lbn.Block, bn.Block.Metadata.BakerConsensusKey, r.client.Cl, bn.Header); err != nil { // change accordingly
 								// r.log.WithFields(log.Fields{
 								// 	"height":     lbn.Height,
 								// 	"lbnHash":    lbn.Hash,
@@ -648,7 +648,7 @@ func (r *receiver) receiveLoop2(ctx context.Context, opts *BnOptions, callback f
 						}
 					} else {
 						if vr != nil {
-							if err := vr.Verify(ctx, lbn.Header, lbn.Block, bn.Proposer, r.client.Cl, bn.Header); err != nil { // change accordingly
+							if err := vr.Verify(ctx, lbn.Header, lbn.Block, bn.Block.Metadata.BakerConsensusKey, r.client.Cl, bn.Header); err != nil { // change accordingly
 								r.log.WithFields(log.Fields{
 									"height":     lbn.Height,
 									"lbnHash":    lbn.Hash,

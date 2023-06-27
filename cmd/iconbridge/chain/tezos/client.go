@@ -247,7 +247,7 @@ func returnTxMetadata3(tx *rpc.Transaction, contractAddress tezos.Address, heigh
 	for i := 0; i < len(tx.Metadata.InternalResults); i++ {
 		fmt.Println("reached in for")
 		internalResults := tx.Metadata.InternalResults[i]
-		if internalResults.Kind.String() == "event" && internalResults.Source.ContractAddress() == "KT1GE5sE73hThhRwaokB3yqxypiVHpoFZcjj" {
+		if internalResults.Kind.String() == "event" && internalResults.Source.ContractAddress() == "KT1LCyXGWTv2VctSrFL74h8nMNXMcBRNk6oR" {
 			fmt.Println("Address matched")
 			if internalResults.Tag == "Message" {
 				message := internalResults.Payload.Args[0].Bytes
@@ -333,7 +333,7 @@ func (c *Client) GetOperationByHash(ctx context.Context, clinet *rpc.Client, blo
 func (c *Client) HandleRelayMessage(ctx context.Context, callArgs contract.CallArguments, opts *rpc.CallOptions) (*rpc.Receipt, error) {
 	fmt.Println("handling relay message")
 	PrintU()
-	result, err := c.CustomCall(ctx, []contract.CallArguments{callArgs}, opts)
+	result, err := c.Contract.Call(ctx, callArgs, opts)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("because error")
