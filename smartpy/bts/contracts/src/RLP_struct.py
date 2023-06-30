@@ -183,7 +183,7 @@ class DecodeEncodeLibrary:
         is_error = sp.local("error_in_bts_decode_blacklist_message", sp.string("Success"))
         is_list_lambda = sp.view("is_list", self.data.helper, rlp, t=sp.TBool).open_some()
         _service_type = sp.local("_service_type_blacklist", sp.variant("ERROR", sp.nat(10)))
-        rv_blacklist_address = sp.local("blacklist_data", {}, sp.TMap(sp.TNat, sp.TString))
+        rv_blacklist_address = sp.local("blacklist_data", [], sp.TList(sp.TString))
         with sp.if_(is_list_lambda):
             rlp_bm.value = sp.view("decode_list", self.data.helper, rlp, t=sp.TMap(sp.TNat, sp.TBytes)).open_some()
         with sp.else_():
@@ -241,7 +241,7 @@ class DecodeEncodeLibrary:
                     decode_len = sp.view("without_length_prefix", self.data.helper, new_temp_byt.value, t=sp.TBytes).open_some()
                     addr_string.value = sp.view("decode_string", self.data.helper, decode_len,
                                              t=sp.TString).open_some()
-                    rv_blacklist_address.value[counter.value] = addr_string.value
+                    rv_blacklist_address.value.push(addr_string.value)
                     counter.value = counter.value + 1
                 # check_length = sp.view("prefix_length", self.data.helper, rv1_byt.value, t=sp.TNat).open_some()
                 # with sp.if_(check_length > 0):
@@ -281,6 +281,7 @@ class DecodeEncodeLibrary:
         net = sp.local("network", sp.string(""))
         rv_names = sp.local("names", {}, sp.TMap(sp.TNat, sp.TString))
         rv_limit = sp.local("limit", {}, sp.TMap(sp.TNat, sp.TNat))
+        coin_name_limit = sp.local("coin_name_limit", {}, sp.TMap(sp.TString, sp.TNat))
         with sp.if_(is_error.value == "Success"):
             sp.for i in rlp_.items():
                 sp.if counter.value == 0:
@@ -336,7 +337,9 @@ class DecodeEncodeLibrary:
                                           t=sp.TBytes).open_some()
                         rv_limit.value[counter.value] = Utils2.Int.of_bytes(limit.value)
                         counter.value += 1
-        return sp.record(rv = sp.record(coin_name = rv_names.value, token_limit = rv_limit.value ,
+                sp.for elem in sp.range(sp.nat(0), sp.len(rv_names.value)):
+                    coin_name_limit.value[rv_names.value.get(elem)] = rv_limit.value.get(elem)
+        return sp.record(rv = sp.record(coin_name_limit = coin_name_limit.value,
                          net = net.value), status = is_error.value)
 
     # encoding starts here
@@ -354,18 +357,16 @@ class DecodeEncodeLibrary:
         return final_rlp_bytes_with_prefix
 
     def encode_transfer_coin_msg(self, data):
-        sp.set_type(data, types.Types.TransferCoin)
+        sp.set_type(data, sp.TRecord(from_addr=sp.TString, to=sp.TString,
+        assets=sp.TList(sp.TRecord(coin_name=sp.TString, value=sp.TNat, fee=sp.TNat))))
 
         rlp = sp.local("rlp", sp.bytes("0x"))
         rlp_list = sp.local("rlp_list", [], t=sp.TList(sp.TBytes))
         temp = sp.local("temp", sp.bytes("0x"))
         coin_name = sp.local("coin_name", sp.bytes("0x"))
-        sp.for i in sp.range(0, sp.len(data.assets)):
-            coin_name.value = sp.view("encode_string", self.data.helper, data.assets.get(i, default_value=sp.record(
-                coin_name="", value=sp.nat(0))).coin_name, t=sp.TBytes).open_some()
-            temp.value = sp.view("encode_nat", self.data.helper,
-                                 data.assets.get(i, default_value=sp.record(coin_name="", value=sp.nat(0))).value,
-                                 t=sp.TBytes).open_some()
+        sp.for item in data.assets:
+            coin_name.value = sp.view("encode_string", self.data.helper, item.coin_name, t=sp.TBytes).open_some()
+            temp.value = sp.view("encode_nat", self.data.helper, item.value, t=sp.TBytes).open_some()
             rlp_list.value.push(
                 sp.view("encode_list", self.data.helper, [coin_name.value, temp.value], t=sp.TBytes).open_some())
             # rlp.value = sp.view("with_length_prefix", self.data.helper, rlp.value,
