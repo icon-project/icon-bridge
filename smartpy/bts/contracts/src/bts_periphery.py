@@ -3,7 +3,13 @@ import smartpy as sp
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 strings = sp.io.import_script_from_url("file:./contracts/src/String.py")
 rlp = sp.io.import_script_from_url("file:./contracts/src/RLP_struct.py")
+t_balance_of_request = sp.TRecord(owner=sp.TAddress, token_id=sp.TNat).layout(
+    ("owner", "token_id")
+)
 
+t_balance_of_response = sp.TRecord(
+    request=t_balance_of_request, balance=sp.TNat
+).layout(("request", "balance"))
 
 class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
     service_name = sp.string("bts")
@@ -398,6 +404,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         loop = sp.local("loop", sp.len(self.data.requests.get(sn).coin_details), sp.TNat)
         response_call_status = sp.local("response_call_status", "success")
         check_valid = sp.local("check_valid", True)
+        bts_core_fa2_balance = sp.local("fa2_token_balance_response_service", sp.nat(0))
 
         with sp.if_(loop.value <= self.MAX_BATCH_SIZE):
             sp.for item in self.data.requests.get(sn).coin_details:
@@ -417,11 +424,13 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                 coin_type = sp.view("coin_type", bts_core_address, coin_name, t=sp.TNat).open_some()
                 with sp.if_(coin_type == sp.nat(1)):
                     coin_address = sp.view("coin_id", bts_core_address, coin_name, t=sp.TAddress).open_some()
-                    bts_core_fa2_balance = sp.view("get_balance_of", coin_address,
+                    bts_core_fa2 = sp.view("get_balance_of", coin_address,
                                                    [sp.record(owner=bts_core_address, token_id=sp.nat(0))],
-                                                   t=sp.TNat).open_some("Invalid view")
+                                                   t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+                    sp.for elem in bts_core_fa2:
+                        bts_core_fa2_balance.value = elem.balance
                     # check if bts_core has enough NATIVE_WRAPPED_COIN_TYPE to burn
-                    with sp.if_(bts_core_fa2_balance < value):
+                    with sp.if_(bts_core_fa2_balance.value < value):
                         check_valid.value = False
 
             with sp.if_(check_valid.value == True):
@@ -461,6 +470,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
 
         status = sp.local("status", "success")
         check_validity = sp.local("check_validity", True)
+        bts_core_fa2_balance = sp.local("fa2_token_balance", sp.nat(0))
         bts_core_address = self.data.bts_core
         with sp.if_(sp.len(assets) <= self.MAX_BATCH_SIZE):
             parsed_to = to
@@ -472,17 +482,21 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                     coin_name=coin_name, user=parsed_to, value=transferred_amount), t=sp.TBool).open_some()
 
                 native_coin_name, bts_core_balance = sp.match_pair(sp.view("native_coin_balance_of", bts_core_address,
-                                        sp.unit, t=sp.TPair(sp.TString, sp.TNat)).open_some("Invalid view"))
+                                        sp.unit, t=sp.TPair(sp.TString, sp.TMutez)).open_some("Invalid view"))
                 with sp.if_(native_coin_name == coin_name):
-                    with sp.if_(bts_core_balance < transferred_amount):
+                    with sp.if_(sp.utils.mutez_to_nat(bts_core_balance) < transferred_amount):
                         check_validity.value = False
                 with sp.else_():
-                    coin_address = sp.view("coin_id", bts_core_address, coin_name, t=sp.TAddress).open_some()
-                    bts_core_fa2_balance = sp.view("get_balance_of", coin_address,
-                                           [sp.record(owner=bts_core_address, token_id=sp.nat(0))],
-                                           t=sp.TNat).open_some("Invalid view")
-                    with sp.if_(bts_core_fa2_balance < transferred_amount):
-                        check_validity.value = False
+                    coin_type = sp.view("coin_type", bts_core_address, coin_name, t=sp.TNat).open_some()
+                    with sp.if_((valid_coin == True) & (coin_type == sp.nat(2))):
+                        coin_address = sp.view("coin_id", bts_core_address, coin_name, t=sp.TAddress).open_some()
+                        bts_core_fa2 = sp.view("get_balance_of", coin_address,
+                                               [sp.record(owner=bts_core_address, token_id=sp.nat(0))],
+                                               t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+                        sp.for elem in bts_core_fa2:
+                            bts_core_fa2_balance.value = elem.balance
+                        with sp.if_(bts_core_fa2_balance.value < transferred_amount):
+                            check_validity.value = False
 
                 with sp.if_((check_transfer == False) | (valid_coin == False)) :
                     check_validity.value = False

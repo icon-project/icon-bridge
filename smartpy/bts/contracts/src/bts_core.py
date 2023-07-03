@@ -2,6 +2,13 @@ import smartpy as sp
 
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 FA2_contract = sp.io.import_script_from_url("file:./contracts/src/FA2_contract.py")
+t_balance_of_request = sp.TRecord(owner=sp.TAddress, token_id=sp.TNat).layout(
+    ("owner", "token_id")
+)
+
+t_balance_of_response = sp.TRecord(
+    request=t_balance_of_request, balance=sp.TNat
+).layout(("request", "balance"))
 
 
 class BTSCore(sp.Contract):
@@ -231,19 +238,22 @@ class BTSCore(sp.Contract):
                                 user_balance=sp.nat(0)))
         with sp.else_():
             fa2_address = self.data.coins.get(params.coin_name)
+            user_balance = sp.local("user_balance_onchain_view", sp.nat(0))
             usable_balance = sp.local("usable_balance", sp.nat(0), t=sp.TNat)
-            user_balance= sp.view("get_balance_of", fa2_address, [sp.record(owner=params.owner, token_id=sp.nat(0))],
-                                  t=sp.TNat).open_some("Invalid view")
+            user_balance_of= sp.view("get_balance_of", fa2_address, [sp.record(owner=params.owner, token_id=sp.nat(0))],
+                                  t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+            sp.for elem in user_balance_of:
+                user_balance.value = elem.balance
             sp.if self.data.coin_details.get(params.coin_name).coin_type == self.NATIVE_WRAPPED_COIN_TYPE:
                 allowance = sp.view("get_allowance", fa2_address, sp.record(spender=sp.self_address, owner=params.owner), t=sp.TNat).open_some("Invalid view")
                 usable_balance.value = allowance
-                sp.if allowance > user_balance:
-                    usable_balance.value = user_balance
+                sp.if allowance > user_balance.value:
+                    usable_balance.value = user_balance.value
             # TODO: allowance for NON_NATIVE_TOKEN_TYPE also check allowance for bts core
             sp.result(sp.record(usable_balance=usable_balance.value,
                                 locked_balance=locked_balance.value,
                                 refundable_balance=refundable_balance.value,
-                                user_balance=user_balance))
+                                user_balance=user_balance.value))
 
     @sp.onchain_view()
     def balance_of_batch(self, params):
@@ -591,6 +601,8 @@ class BTSCore(sp.Contract):
 
         self.only_bts_periphery()
         return_flag = sp.local("return_flag", False, t=sp.TBool)
+        bts_core_fa2_balance = sp.local("fa2_token_balance_core", sp.nat(0))
+
         sp.if requester == sp.self_address:
             sp.if rsp_code == self.RC_ERR:
                 self.data.aggregation_fee[coin_name] = self.data.aggregation_fee.get(coin_name,
@@ -616,10 +628,12 @@ class BTSCore(sp.Contract):
                     _fa2_address = self.data.coins[coin_name]
                     with sp.if_(self.data.coin_details[coin_name].coin_type == self.NON_NATIVE_TOKEN_TYPE):
                         # call transfer in NON_NATIVE_TOKEN_TYPE FA2
-                        bts_core_fa2_balance = sp.view("get_balance_of", _fa2_address,
+                        bts_core_fa2 = sp.view("get_balance_of", _fa2_address,
                                                        [sp.record(owner=sp.self_address, token_id=sp.nat(0))],
-                                                       t=sp.TNat).open_some("Invalid view")
-                        with sp.if_(bts_core_fa2_balance >= value):
+                                                       t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+                        sp.for elem in bts_core_fa2:
+                            bts_core_fa2_balance.value = elem.balance
+                        with sp.if_(bts_core_fa2_balance.value >= value):
                             transfer_args_type = sp.TList(sp.TRecord(from_=sp.TAddress, txs=sp.TList(sp.TRecord(
                                 to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(
                                 ("to_", ("token_id", "amount"))))).layout(("from_", "txs"))
