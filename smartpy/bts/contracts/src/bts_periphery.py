@@ -324,7 +324,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                             with sp.if_(fn_call.status == "Success"):
                                 handle_response = self.handle_response_service(sn, response.code, response.message)
                                 with sp.if_(handle_response != "success"):
-                                    callback_string.value = "fail"
+                                    callback_string.value = handle_response
                             with sp.else_():
                                 callback_string.value = "ErrorInDecoding"
                         with sp.else_():
@@ -379,7 +379,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                                                       t=sp.TString).open_some(),", errMsg: ", msg])
             handle_response_serv = self.handle_response_service(sn, self.RC_ERR, emit_msg)
             with sp.if_(handle_response_serv != "success"):
-                handle_btp_error_status.value = "fail"
+                handle_btp_error_status.value = handle_response_serv
         with sp.else_():
             handle_btp_error_status.value = "UnAuthorized"
 
@@ -419,7 +419,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                                                             refundable_balance=sp.TNat, user_balance=sp.TNat)
                                                   ).open_some()
                 # check if caller has enough locked in bts_core
-                with sp.if_(bts_core_balance.locked_balance < amount):
+                with sp.if_((bts_core_balance.locked_balance < amount) & (caller.value != bts_core_address)):
                     check_valid.value = False
                 coin_type = sp.view("coin_type", bts_core_address, coin_name, t=sp.TNat).open_some()
                 with sp.if_(coin_type == sp.nat(1)):
