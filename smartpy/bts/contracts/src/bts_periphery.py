@@ -3,13 +3,8 @@ import smartpy as sp
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 strings = sp.io.import_script_from_url("file:./contracts/src/String.py")
 rlp = sp.io.import_script_from_url("file:./contracts/src/RLP_struct.py")
-t_balance_of_request = sp.TRecord(owner=sp.TAddress, token_id=sp.TNat).layout(
-    ("owner", "token_id")
-)
-
-t_balance_of_response = sp.TRecord(
-    request=t_balance_of_request, balance=sp.TNat
-).layout(("request", "balance"))
+t_balance_of_request = sp.TRecord(owner=sp.TAddress, token_id=sp.TNat).layout(("owner", "token_id"))
+t_balance_of_response = sp.TRecord(request=t_balance_of_request, balance=sp.TNat).layout(("request", "balance"))
 
 class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
     service_name = sp.string("bts")
@@ -214,7 +209,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_entry_point("handle_btp_message", ep)
 
     @sp.entry_point(lazify=True)
-    def handle_btp_message(self, _from, svc, sn, msg, callback, bsh_addr, prev, callback_msg):
+    def handle_btp_message(self, _from, svc, sn, msg, callback, prev, callback_msg):
         """
         BSH handle BTP message from BMC contract
         :param _from: An originated network address of a request
@@ -222,7 +217,6 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         :param sn: A serial number of a service request
         :param msg: An RLP message of a service request/service response
         :param callback: callback function type in bmc_periphery
-        :param bsh_addr: param for callback function in bmc_periphery
         :param prev: param for callback function in bmc_periphery
         :param callback_msg: param for callback function in bmc_periphery
         :return:
@@ -232,11 +226,10 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_type(svc, sp.TString)
         sp.set_type(sn, sp.TInt)
         sp.set_type(msg, sp.TBytes)
-        sp.set_type(callback, sp.TContract(sp.TRecord(string=sp.TOption(sp.TString), bsh_addr=sp.TAddress,
+        sp.set_type(callback, sp.TContract(sp.TRecord(string=sp.TOption(sp.TString),
                                                     prev=sp.TString, callback_msg=sp.TRecord(src=sp.TString,
                                                     dst=sp.TString, svc=sp.TString, sn=sp.TInt, message=sp.TBytes)
-                                                      )))
-        sp.set_type(bsh_addr, sp.TAddress)
+                                                    )))
 
         check_caller = self.only_bmc()
 
@@ -341,7 +334,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         with sp.else_():
             callback_string.value = "UnAuthorized"
 
-        return_value = sp.record(string=sp.some(callback_string.value), bsh_addr=bsh_addr, prev=prev,
+        return_value = sp.record(string=sp.some(callback_string.value), prev=prev,
                                  callback_msg=callback_msg)
         sp.transfer(return_value, sp.tez(0), callback)
 
@@ -351,7 +344,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_entry_point("handle_btp_error", ep)
 
     @sp.entry_point(lazify=True)
-    def handle_btp_error(self, svc, sn, code, msg, callback, bsh_addr):
+    def handle_btp_error(self, svc, sn, code, msg, callback):
         """
         BSH handle BTP Error from BMC contract
         :param svc: A service name of BSH contract
@@ -359,7 +352,6 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         :param code: A response code of a message (RC_OK / RC_ERR)
         :param msg: A response message
         :param callback: callback function type in bmc_periphery
-        :param bsh_addr: param for callback function in bmc_periphery
         :return:
         """
 
@@ -367,9 +359,8 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_type(sn, sp.TInt)
         sp.set_type(code, sp.TNat)
         sp.set_type(msg, sp.TString)
-        sp.set_type(callback, sp.TContract(sp.TRecord(string=sp.TOption(sp.TString), bsh_addr=sp.TAddress,
+        sp.set_type(callback, sp.TContract(sp.TRecord(string=sp.TOption(sp.TString),
                                                       svc=sp.TString, sn=sp.TInt, code=sp.TNat, msg=sp.TString)))
-        sp.set_type(bsh_addr, sp.TAddress)
 
         check_caller = self.only_bmc()
         handle_btp_error_status = sp.local("handle_btp_error_status", "success")
@@ -383,7 +374,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         with sp.else_():
             handle_btp_error_status.value = "UnAuthorized"
 
-        return_value = sp.record(string=sp.some(handle_btp_error_status.value), bsh_addr=bsh_addr, svc=svc, sn=sn,
+        return_value = sp.record(string=sp.some(handle_btp_error_status.value), svc=svc, sn=sn,
                                  code=code, msg=msg)
         sp.transfer(return_value, sp.tez(0), callback)
 
@@ -488,6 +479,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                         check_validity.value = False
                 with sp.else_():
                     coin_type = sp.view("coin_type", bts_core_address, coin_name, t=sp.TNat).open_some()
+                    # check balance_of in case of NON-NATIVE-COIN-TYPE
                     with sp.if_((valid_coin == True) & (coin_type == sp.nat(2))):
                         coin_address = sp.view("coin_id", bts_core_address, coin_name, t=sp.TAddress).open_some()
                         bts_core_fa2 = sp.view("get_balance_of", coin_address,
