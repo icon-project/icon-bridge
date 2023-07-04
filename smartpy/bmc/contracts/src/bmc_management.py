@@ -72,7 +72,7 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         """
         sp.set_type(addr, sp.TAddress)
         self.only_owner()
-        sp.if self.data.bmc_periphery.is_some():
+        with sp.if_(self.data.bmc_periphery.is_some()):
             sp.verify(addr != self.data.bmc_periphery.open_some("Address not set"), "AlreadyExistsBMCPeriphery")
         self.data.bmc_periphery = sp.some(addr)
 
@@ -303,10 +303,12 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper, [_bytes, rlp_bytes] , t=sp.TBytes).open_some()
 
         #encode payload
-        final_rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper, [rlp_bytes_with_prefix], t=sp.TBytes).open_some()
+        final_rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper, [rlp_bytes_with_prefix],
+                                              t=sp.TBytes).open_some()
         sp.for item in self.data.list_link_names.elements():
-            sp.if self.data.links.get(item).is_connected:
-                net, addr = sp.match_pair(strings.split_btp_address(item, "prev_idx1", "result1", "my_list1", "last1", "penultimate1"))
+            with sp.if_(self.data.links.get(item).is_connected):
+                net, addr = sp.match_pair(strings.split_btp_address(item, "prev_idx1", "result1",
+                                                                    "my_list1", "last1", "penultimate1"))
 
                 # call send_message on BMCPeriphery
                 send_message_args_type = sp.TRecord(to=sp.TString, svc=sp.TString, sn=sp.TInt, msg=sp.TBytes)
@@ -329,7 +331,8 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
             sp.for item in links:
                 _bytes = sp.bytes("0x")  # can be any bytes
                 _rlp_bytes = _bytes + sp.view("encode_string", self.data.helper, item, t=sp.TBytes).open_some()
-                rlp_bytes.value = sp.view("encode_list", self.data.helper, [rlp_bytes.value, _rlp_bytes], t=sp.TBytes).open_some()
+                rlp_bytes.value = sp.view("encode_list", self.data.helper, [rlp_bytes.value, _rlp_bytes],
+                                          t=sp.TBytes).open_some()
         #encode payload
         # final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes.value, t=sp.TBytes).open_some()
         net, addr = sp.match_pair(
@@ -340,8 +343,9 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         send_message_entry_point = sp.contract(send_message_args_type,
                                                self.data.bmc_periphery.open_some("Address not set"),
                                                "send_message").open_some()
-        send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0), msg=self.encode_bmc_service(
-                                                                                   sp.record(serviceType=service_type, payload=rlp_bytes.value)))
+        send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0),
+                                        msg=self.encode_bmc_service(sp.record(serviceType=service_type,
+                                                                              payload=rlp_bytes.value)))
         sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
     @sp.entry_point(lazify=False)
@@ -445,11 +449,11 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
 
         self.only_owner()
         sp.verify(self.data.links.contains(link), "NotExistsLink")
-        sp.verify((self.data.links.get(link).is_connected == True) & (sp.len(self.data.links.get(link).relays.elements()) != sp.nat(0)),
-                  "Unauthorized")
+        sp.verify((self.data.links.get(link).is_connected == True) &
+                  (sp.len(self.data.links.get(link).relays.elements()) != sp.nat(0)), "Unauthorized")
 
         sp.for item in self.data.links.get(link).relays.elements():
-            sp.if item != addr:
+            with sp.if_(item != addr):
                 self.data.addrs.add(item)
 
         self.data.links[link].relays = self.data.addrs
@@ -472,7 +476,8 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
     @sp.onchain_view()
     def get_bsh_service_by_name(self, service_name):
         sp.set_type(service_name, sp.TString)
-        sp.result(self.data.bsh_services.get(service_name, default_value=sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")))
+        sp.result(self.data.bsh_services.get(service_name,
+                                             default_value=sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")))
 
     @sp.onchain_view()
     def get_link(self, to):
@@ -561,7 +566,7 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         self.only_bmc_periphery()
         i = sp.local("i", sp.nat(0))
         sp.for item in self.data.links.get(prev).reachable.elements():
-            sp.if i.value == index:
+            with sp.if_(i.value == index):
                 net, addr = sp.match_pair(
                     strings.split_btp_address(item, "prev_idx", "result", "my_list", "last", "penultimate"))
 
@@ -588,11 +593,13 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         with sp.if_(sp.len(sp.pack(dst.value))!= sp.nat(0)):
             sp.result(sp.pair(self.data.routes.get(dst.value), dst.value))
         with sp.else_():
-            dst_link = sp.local("dst_link", self.data.get_link_from_net.get(dst_net, default_value=sp.string("")), t=sp.TString)
+            dst_link = sp.local("dst_link", self.data.get_link_from_net.get(dst_net,
+                                                                            default_value=sp.string("")), t=sp.TString)
             with sp.if_(sp.len(sp.pack(dst_link.value)) != sp.nat(0)):
                 sp.result(sp.pair(dst_link.value, dst_link.value))
             with sp.else_():
-                res = sp.local("res", self.data.get_link_from_reachable_net.get(dst_net, default_value=sp.record(prev="", to="")), t=types.Types.Tuple)
+                res = sp.local("res", self.data.get_link_from_reachable_net.get(dst_net, default_value=
+                sp.record(prev="", to="")), t=types.Types.Tuple)
                 # sp.verify(sp.len(sp.pack(res.value.to)) > sp.nat(0), "Unreachable: " + dst_net + " is unreachable")
                 with sp.if_(sp.len(sp.pack(res.value.to)) > sp.nat(0)):
                     sp.result(sp.pair(res.value.prev, res.value.to))
