@@ -311,7 +311,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                             callback_string.value = "ErrorInDecodingTokenLimit"
 
                     with arg.match("RESPONSE_HANDLE_SERVICE") as a4:
-                        with sp.if_(sp.len(sp.pack(self.data.requests.get(sn).from_)) != 0):
+                        with sp.if_(sp.len(self.data.requests.get(sn).from_) != 0):
                             fn_call = self.decode_response(sm.data)
                             response = fn_call.rv
                             with sp.if_(fn_call.status == "Success"):
@@ -364,8 +364,8 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
 
         check_caller = self.only_bmc()
         handle_btp_error_status = sp.local("handle_btp_error_status", "success")
-        with sp.if_((svc == self.service_name) & (check_caller == "Authorized") & (sp.len(sp.pack(
-                self.data.requests.get(sn).from_)) != 0)):
+        with sp.if_((svc == self.service_name) & (check_caller == "Authorized") & (sp.len(
+                self.data.requests.get(sn).from_) != 0)):
             emit_msg= sp.concat(["errCode: ", sp.view("string_of_int", self.data.parse_contract, sp.to_int(code),
                                                       t=sp.TString).open_some(),", errMsg: ", msg])
             handle_response_serv = self.handle_response_service(sn, self.RC_ERR, emit_msg)
