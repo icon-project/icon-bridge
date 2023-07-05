@@ -80,7 +80,7 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
     def set_bmc_btp_address(self, network):
         sp.set_type(network, sp.TString)
 
-        sp.verify(self.data.owners[sp.sender] == True, "Unauthorized")
+        self.only_owner()
         # call set_btp_address on BMCPeriphery
         set_btp_address_entry_point = sp.contract(sp.TString,
                                                   self.data.bmc_periphery.open_some("Address not set"),
@@ -589,19 +589,17 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_type(dst_net, sp.TString)
 
         dst = sp.local("dst", self.data.get_route_dst_from_net.get(dst_net, default_value=sp.string("")), t=sp.TString)
-
-        with sp.if_(sp.len(sp.pack(dst.value))!= sp.nat(0)):
+        with sp.if_(sp.len(dst.value)!= sp.nat(0)):
             sp.result(sp.pair(self.data.routes.get(dst.value), dst.value))
         with sp.else_():
             dst_link = sp.local("dst_link", self.data.get_link_from_net.get(dst_net,
                                                                             default_value=sp.string("")), t=sp.TString)
-            with sp.if_(sp.len(sp.pack(dst_link.value)) != sp.nat(0)):
+            with sp.if_(sp.len(dst_link.value) != sp.nat(0)):
                 sp.result(sp.pair(dst_link.value, dst_link.value))
             with sp.else_():
                 res = sp.local("res", self.data.get_link_from_reachable_net.get(dst_net, default_value=
                 sp.record(prev="", to="")), t=types.Types.Tuple)
-                # sp.verify(sp.len(sp.pack(res.value.to)) > sp.nat(0), "Unreachable: " + dst_net + " is unreachable")
-                with sp.if_(sp.len(sp.pack(res.value.to)) > sp.nat(0)):
+                with sp.if_(sp.len(res.value.to) > sp.nat(0)):
                     sp.result(sp.pair(res.value.prev, res.value.to))
                 with sp.else_():
                     sp.result(sp.pair("Unreachable", "Unreachable: " + dst_net + " is unreachable"))
