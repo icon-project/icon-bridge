@@ -270,6 +270,10 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
 
             with sp.else_():
                 with sp.if_(msg.sn >= sp.int(0)):
+                    # strings send in split_btp_address are the name of local variables used in
+                    # split_btp_address which should be unique while calling it multiple times
+                    # in a function. But this works in case of loop as it won't be defined multiple
+                    # as its scope exists throughout the loop
                     net, addr = sp.match_pair(strings.split_btp_address(msg.src, "prev_idx", "result",
                                                                         "my_list", "last", "penultimate"))
                     # implemented callback
