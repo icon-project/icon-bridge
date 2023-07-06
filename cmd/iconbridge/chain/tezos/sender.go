@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	txMaxDataSize        = 32 * 1024 * 4 // 8 KB
+	txMaxDataSize        = 1024 // 1 KB
 	txOverheadScale      = 0.01
-	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale)
+	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale) // with the rlp overhead
 	defaultSendTxTimeOut = 30 * time.Second // 30 seconds is the block time for tezos
 )
 
@@ -35,7 +35,7 @@ type senderOptions struct {
 	StepLimit        uint64 `json:"step_limit"`
 	TxDataSizeLimit  uint64 `json:"tx_data_size_limit"`
 	BalanceThreshold uint64 `json:"balance_threshold"`
-	BMCManagment string `json:"bmcManagement"`
+	BMCManagment     string `json:"bmcManagement"`
 }
 
 type sender struct {
@@ -122,7 +122,7 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		From:     msg.From,
 		Receipts: msg.Receipts,
 	}
-	
+
 	for i, receipt := range msg.Receipts {
 		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events) //json.Marshal(receipt.Events) // change to rlp bytes
 		if err != nil {
@@ -223,7 +223,7 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 
 	in := "{ \"prim\": \"Pair\", \"args\": [ { \"bytes\": \"" + messageHex + "\" }, { \"string\": \"" + tx.Prev + "\" } ] }"
 	fmt.Println(in)
-	
+
 	if err := prim.UnmarshalJSON([]byte(in)); err != nil {
 		fmt.Println("couldnot unmarshall empty string")
 		fmt.Println(err)
