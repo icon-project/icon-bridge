@@ -17,21 +17,21 @@
         {
             "name": "t2i",
             "src": {
-                "address": "btp://NetXnHfVqm9iesp.tezos/KT1M8ZMiYHJRFRsRLTsTLvVjQp9JXUy9FMDU",
+                "address": "btp://NetXnHfVqm9iesp.tezos/KT19Q5h8vrGKX7SF5rGU45v25GM8cMCKf9Y4",
                 "endpoint": [
                     "http://localhost:8732"
                 ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 3162000
+                        "blockHeight": 3170453
                     },  
                     "syncConcurrency": 100, 
-                    "bmcManagement": "KT1NEy9DbjpCZW6u59iHiu6iMa2jvCizmtU2"
+                    "bmcManagement": "KT1RPVCXSm1pRUomhYodvSF1nwGQSo2oteUy"
                 },
-                "offset": 3162000
+                "offset": 3170453
             },
             "dst": {
-                "address": "btp://0x7.icon/cxa2905b9177941c92841a80e5efe1ca6f49dcc90e",
+                "address": "btp://0x7.icon/cxf155d986258446ea587a44dc96ecc2b991a273fc",
                 "endpoint": [
                     "https://berlin.net.solidwallet.io/api/v3"
                 ],
@@ -66,21 +66,21 @@
         {
             "name": "i2t",
             "src": {
-                "address": "btp://0x7.icon/cxa2905b9177941c92841a80e5efe1ca6f49dcc90e",
+                "address": "btp://0x7.icon/cxf155d986258446ea587a44dc96ecc2b991a273fc",
                 "endpoint": [
                     "https://berlin.net.solidwallet.io/api/v3/icon_dex"
                 ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 10137924,
+                        "blockHeight": 10489565,
                         "validatorsHash": "0x04b56f3fc8d396cc7eb8124da8a554800b8758c9e2fff0802aa9682948e65447"
                     },
                     "syncConcurrency": 100
                 },
-                "offset": 10137924 
+                "offset": 10489565 
             },
             "dst": {
-                "address": "btp://NetXnHfVqm9iesp.tezos/KT1M8ZMiYHJRFRsRLTsTLvVjQp9JXUy9FMDU",
+                "address": "btp://NetXnHfVqm9iesp.tezos/KT19Q5h8vrGKX7SF5rGU45v25GM8cMCKf9Y4",
                 "endpoint": [
                     "http://localhost:8732"
                 ],
@@ -88,7 +88,7 @@
                     "gas_limit": 1040000,
                     "boost_gas_price": 1.5,
                     "tx_data_size_limit": 65536,
-                    "bmcManagement": "KT1NEy9DbjpCZW6u59iHiu6iMa2jvCizmtU2"
+                    "bmcManagement": "KT1RPVCXSm1pRUomhYodvSF1nwGQSo2oteUy"
                 },
                 "key_store": {
                     "address": "tz1ZPVxKiybvbV1GvELRJJpyE1xj1UpNpXMv",

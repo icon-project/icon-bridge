@@ -574,15 +574,6 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         with sp.else_():
             sp.result(False)
 
-
-sp.add_compilation_target("bts_periphery", BTSPeriphery(bmc_address=sp.address("KT1VFtWq2dZDH1rTfLtgMaASMt4UX78omMs2"),
-                                                        bts_core_address=sp.address("KT1JAippuMfS6Bso8DGmigmTdkgEZUxQxYyX"),
-                                                        helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6"),
-                                                        parse_address=sp.address("KT1Ha8LzZa7ku1F8eytY7hgNKFJ2BKFRqSDh"),
-                                                        native_coin_name="btp-NetXnHfVqm9iesp.tezos-XTZ",
-                                                        owner_address = sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP")
-                                                        ))
-
 sp.add_compilation_target("bts_periphery", BTSPeriphery(bmc_address=sp.address("KT1VFtWq2dZDH1rTfLtgMaASMt4UX78omMs2"),
                                                         bts_core_address=sp.address("KT1JAippuMfS6Bso8DGmigmTdkgEZUxQxYyX"),
                                                         helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6"),

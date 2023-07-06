@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	BlockInterval              = 30 * time.Second
+	BlockInterval              = 15 * time.Second
 	BlockHeightPollInterval    = BlockInterval * 5
 	BlockFinalityConfirmations = 2
 	MonitorBlockMaxConcurrency = 300 // number of concurrent requests to synchronize older blocks from source chain
@@ -194,13 +194,13 @@ func (r *receiver) NewVerifier(ctx context.Context, previousHeight int64) (vri I
 	fmt.Println("blockHeaderhash", block.Header.Hash)
 
 	vr := &Verifier{
-		mu:             sync.RWMutex{},
-		next:           block.Header.Level + 1,
-		parentHash:     block.Hash,
-		parentFittness: fittness,
-		chainID:        id,
-		cl:             r.client,
-		validators: make(map[tezos.Address]bool),
+		mu:                  sync.RWMutex{},
+		next:                block.Header.Level + 1,
+		parentHash:          block.Hash,
+		parentFittness:      fittness,
+		chainID:             id,
+		cl:                  r.client,
+		validators:          make(map[tezos.Address]bool),
 		validatorsPublicKey: make(map[tezos.Address]tezos.Key),
 	}
 
@@ -753,11 +753,10 @@ func (r *receiver) receiveLoop2(ctx context.Context, opts *BnOptions, callback f
 								q.err = errors.Wrapf(err, "GetHeaderByHeight: %v", err)
 								return
 							}
-							q.v.Header = &block.Header    // change accordingly
-							q.v.Hash = block.Hash // change accordingly
+							q.v.Header = &block.Header // change accordingly
+							q.v.Hash = block.Hash      // change accordingly
 							q.v.Block = block
 						}
-
 
 						if q.v.HasBTPMessage == nil && q.v.Height.Int64() > opts.StartHeight {
 							if err != nil {
@@ -765,7 +764,7 @@ func (r *receiver) receiveLoop2(ctx context.Context, opts *BnOptions, callback f
 							}
 							q.v.Proposer = block.Metadata.Proposer
 
-							hasBTPMessage, receipt, err := returnTxMetadata2(block, r.client.Contract.Address(), q.v.Height.Int64(), r.client)
+							hasBTPMessage, receipt, err := filterTransactionOperations(q.v.Block, r.client.Contract.Address(), q.v.Height.Int64(), r.client)
 
 							if err != nil {
 								q.err = errors.Wrapf(err, "hasBTPMessage: %v", err)

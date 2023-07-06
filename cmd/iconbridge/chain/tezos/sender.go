@@ -107,9 +107,8 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		limit := defaultTxSizeLimit
 		s.opts.TxDataSizeLimit = uint64(limit)
 	}
-	fmt.Println("reached upto here")
+	
 	if len(msg.Receipts) == 0 {
-		fmt.Println("Probably gone from here")
 		return nil, msg, nil
 	}
 	rm := &chain.RelayMessage{

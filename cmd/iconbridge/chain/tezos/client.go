@@ -18,7 +18,6 @@ import (
 	"blockwatch.cc/tzgo/contract"
 	"blockwatch.cc/tzgo/micheline"
 	"blockwatch.cc/tzgo/rpc"
-	"blockwatch.cc/tzgo/signer"
 	"blockwatch.cc/tzgo/tezos"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/tezos/types"
@@ -31,19 +30,12 @@ const (
 )
 
 type IClient interface {
-	// Call(ctx context.Context, callArgs contract.CallArguments, opts *rpc.CallOptions)
 	GetBalance(ctx context.Context, connection *rpc.Client, account tezos.Address, blockLevel int64)
 	GetBlockByHeight(ctx context.Context, connection *rpc.Client, blockLevel int64) (*rpc.Block, error)
 	GetBlockHeightByHash(ctx context.Context, connection *rpc.Client, hash tezos.BlockHash) (int64, error)
-	// GetBlockHeaderByHeight(ctx context.Context, connection *rpc.Client, blockLevel int64)
-	// GetBlockMetadataByHash(ctx context.Context, connection *rpc.Client, blockHash tezos.Hash)
-
 	MonitorBlock(ctx context.Context, client *rpc.Client, connection *contract.Contract, blockLevel int64, callback func(v *types.BlockNotification) error) (*rpc.Block, error)
-	// MonitorEvent(ctx context.Context, connection *rpc.Client, blockLevel int64)
-
 	GetLastBlock(ctx context.Context, connection *rpc.Client) (*rpc.Block, error)
 	GetStatus(ctx context.Context, contr *contract.Contract) (TypesLinkStats, error)
-
 	HandleRelayMessage(ctx context.Context, callArgs contract.CallArguments) (*rpc.Receipt, error)
 }
 
@@ -62,36 +54,6 @@ type Client struct {
 	Contract      *contract.Contract
 	blockLevel    int64
 	BmcManagement tezos.Address
-}
-
-func (c *Client) SignTransaction() rpc.CallOptions {
-	pK := tezos.MustParsePrivateKey("edskRz1HoD3cWkmWhCNS5LjBrJNWChGuKWB4HnVoN5UqVsUCpcNJR67ZxKs965u8RgRwptrtGc2ufYZoeECgB77RKm1gTbQ6eB")
-	opts := rpc.DefaultOptions
-	opts.Signer = signer.NewFromKey(pK)
-	return opts
-}
-
-func (c *Client) SendTransaction(ctx context.Context, connection *contract.Contract, parameters micheline.Parameters, sender tezos.Address) (*rpc.Receipt, error) {
-	args := contract.NewTxArgs()
-
-	args.WithParameters(parameters)
-
-	opts := c.SignTransaction()
-
-	argument := args.WithSource(sender).WithDestination(connection.Address())
-
-	result, err := connection.Call(ctx, argument, &opts)
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = PrettyEncode(result)
-
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
 }
 
 func (c *Client) GetLastBlock(ctx context.Context, connection *rpc.Client) (*rpc.Block, error) {
@@ -126,134 +88,13 @@ func (c *Client) GetBlockHeaderByHeight(ctx context.Context, connection *rpc.Cli
 	return block, nil
 }
 
-// func (c *Client) MonitorBlock(ctx context.Context, blockLevel int64, verifier IVerifier, callback func(v []*chain.Receipt) error) error {
-// 	fmt.Println("reached in monitor block")
-// 	relayTicker := time.NewTicker(DefaultBlockWaitInterval)
-// 	defer relayTicker.Stop()
-
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			return fmt.Errorf("Context done")
-// 		case <-relayTicker.C:
-// 			fmt.Println("*************************************************************")
-// 			fmt.Print("Trying to fetch block for blockLevel ")
-// 			fmt.Println(blockLevel)
-
-// 			block, err := c.GetBlockByHeight(ctx, c.Cl, blockLevel)
-
-// 			if err != nil {
-// 				fmt.Println(err)
-// 				fmt.Println("reducing the block level")
-// 				blockLevel--
-// 				fmt.Print("Trying to Fetch for block level ")
-// 				fmt.Println(blockLevel)
-// 				continue
-// 			}
-
-// 			header, err := c.GetBlockHeaderByHeight(ctx, c.Cl, blockLevel)
-// 			if err != nil {
-// 				return err
-// 			}
-// 			fmt.Println(block.Metadata.ProposerConsensusKey)
-
-// 			err = verifier.Verify(ctx, header, block.Metadata.ProposerConsensusKey, c.Cl, header)
-
-// 			if err != nil {
-// 				fmt.Println(err)
-// 				return err
-// 			}
-// 			c.blockLevel = blockLevel
-
-// 			// err = verifier.Update(header, )
-
-// 			if err != nil {
-// 				fmt.Println(err)
-// 				return err
-// 			}
-
-// 			PrettyEncode(header)
-
-// 			blockOperations := block.Operations
-
-// 			for i := 0; i < len(blockOperations); i++ {
-// 				for j := 0; j < len(blockOperations[i]); j++ {
-// 					for _, operation := range blockOperations[i][j].Contents {
-// 						switch operation.Kind() {
-// 						case tezos.OpTypeTransaction:
-// 							tx := operation.(*rpc.Transaction)
-// 							receipt, err := returnTxMetadata(tx, c.Contract.Address())
-// 							if err != nil {
-// 								return err
-// 							}
-// 							if len(receipt) != 0 {
-// 								fmt.Println("found for block level ", block.Header.Level)
-// 								fmt.Println("callback start")
-// 								err := callback(receipt)
-// 								fmt.Println("call back end")
-// 								if err != nil {
-// 									return err
-// 								}
-// 							}
-// 						}
-// 					}
-// 				}
-// 			}
-// 		}
-// 		blockLevel++
-// 	}
-// }
-
-func returnTxMetadata(tx *rpc.Transaction, contractAddress tezos.Address) ([]*chain.Receipt, error) {
-	// _, err := fmt.Println(tx.Destination)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	address := tx.Destination
-
-	var receipts []*chain.Receipt
-	if address.ContractAddress() == contractAddress.ContractAddress() {
-		fmt.Println("Address matched")
-		fmt.Println("****************")
-		fmt.Println("****************")
-		fmt.Println("****")
-		fmt.Println("****")
-		fmt.Println("****")
-		fmt.Println("****************")
-		fmt.Println("****************")
-		fmt.Println("****")
-		fmt.Println("****")
-		fmt.Println("****")
-		fmt.Println("****")
-		fmt.Println("****")
-		fmt.Println("****")
-
-		if tx.Metadata.InternalResults[0].Tag == "TransferStart" {
-			var events []*chain.Event
-
-			events = append(events, &chain.Event{
-				Message: []byte(tx.Metadata.InternalResults[0].Payload.String),
-			})
-			receipts = append(receipts, &chain.Receipt{
-				Events: events,
-			})
-		}
-	}
-	return receipts, nil
-}
-
-func returnTxMetadata3(tx *rpc.Transaction, contractAddress tezos.Address, height uint64) (*chain.Receipt, error) {
-	fmt.Println("reache to return tx metadata3", height)
+func filterMessageEvents(tx *rpc.Transaction, contractAddress tezos.Address, height uint64) (*chain.Receipt, error) {
 	receipt := &chain.Receipt{}
 	var events []*chain.Event
 
 	for i := 0; i < len(tx.Metadata.InternalResults); i++ {
-		fmt.Println("reached in for")
 		internalResults := tx.Metadata.InternalResults[i]
-		fmt.Println("internal results", internalResults.Source.ContractAddress())
-		fmt.Println("bmc address", contractAddress.ContractAddress())
 		if internalResults.Kind.String() == "event" && internalResults.Source.ContractAddress() == contractAddress.ContractAddress() {
-			fmt.Println("Address matched")
 			if internalResults.Tag == "Message" {
 				message := internalResults.Payload.Args[0].Bytes
 				next := internalResults.Payload.Args[1].Args[0].String
@@ -361,7 +202,7 @@ func (c *Client) GetConsensusKey(ctx context.Context, bakerConsensusKey tezos.Ad
 		}
 		break
 	}
-	return exposedPublicKey, nil 
+	return exposedPublicKey, nil
 }
 
 func (c *Client) HandleRelayMessage(ctx context.Context, callArgs contract.CallArguments, opts *rpc.CallOptions) (*rpc.Receipt, error) {
@@ -431,9 +272,8 @@ func PrettyEncode(data interface{}) error {
 	return nil
 }
 
-func returnTxMetadata2(block *rpc.Block, contractAddress tezos.Address, blockHeight int64, cl *Client) (bool, []*chain.Receipt, error) {
+func filterTransactionOperations(block *rpc.Block, contractAddress tezos.Address, blockHeight int64, cl *Client) (bool, []*chain.Receipt, error) {
 	blockOperations := block.Operations
-
 	var tx *rpc.Transaction
 	var receipt []*chain.Receipt
 	for i := 0; i < len(blockOperations); i++ {
@@ -442,7 +282,7 @@ func returnTxMetadata2(block *rpc.Block, contractAddress tezos.Address, blockHei
 				switch operation.Kind() {
 				case tezos.OpTypeTransaction:
 					tx = operation.(*rpc.Transaction)
-					r, err := returnTxMetadata3(tx, cl.BmcManagement, uint64(blockHeight))
+					r, err := filterMessageEvents(tx, cl.BmcManagement, uint64(blockHeight))
 					if err != nil {
 						return false, nil, err
 					}
