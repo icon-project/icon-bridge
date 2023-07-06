@@ -2,11 +2,8 @@ import smartpy as sp
 
 types = sp.io.import_script_from_url("file:./contracts/src/Types.py")
 FA2_contract = sp.io.import_script_from_url("file:./contracts/src/FA2_contract.py")
-
-Coin = sp.TRecord(addr=sp.TAddress,
-                  fee_numerator=sp.TNat,
-                  fixed_fee=sp.TNat,
-                  coin_type=sp.TNat)
+t_balance_of_request = sp.TRecord(owner=sp.TAddress, token_id=sp.TNat).layout(("owner", "token_id"))
+t_balance_of_response = sp.TRecord(request=t_balance_of_request, balance=sp.TNat).layout(("request", "balance"))
 
 class BTSCore(sp.Contract):
     FEE_DENOMINATOR = sp.nat(10000)
@@ -17,6 +14,7 @@ class BTSCore(sp.Contract):
     NON_NATIVE_TOKEN_TYPE = sp.nat(2)
 
     MAX_BATCH_SIZE = sp.nat(15)
+    # TODO: set NATIVE_COIN_ADDRESS to governance address
     NATIVE_COIN_ADDRESS = sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc")
     ZERO_ADDRESS = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
     # Nat:(TWO.pow256 - 1)
@@ -28,12 +26,10 @@ class BTSCore(sp.Contract):
             bts_periphery_address=sp.none,
             native_coin_name=_native_coin_name,
 
-            list_of_owners=sp.list(t=sp.TAddress),
-            charged_amounts=sp.map(tkey=sp.TNat, tvalue=sp.TNat),
+            # charged_amounts=sp.map(tkey=sp.TNat, tvalue=sp.TNat),
             coins_name=sp.list([_native_coin_name], t=sp.TString),
-            charged_coins=sp.map(tkey=sp.TNat, tvalue=sp.TString),
+            # charged_coins=sp.map(tkey=sp.TNat, tvalue=sp.TString),
 
-            owners=sp.map({}, tkey=sp.TAddress, tvalue=sp.TBool),
             aggregation_fee=sp.map({}, tkey=sp.TString, tvalue=sp.TNat),
             balances=sp.big_map(tkey=sp.TRecord(address=sp.TAddress, coin_name=sp.TString), tvalue= types.Types.Balance),
             coins=sp.map({_native_coin_name: self.NATIVE_COIN_ADDRESS}, tkey=sp.TString, tvalue=sp.TAddress),
@@ -41,11 +37,8 @@ class BTSCore(sp.Contract):
                                                               fee_numerator=_fee_numerator,
                                                               fixed_fee=_fixed_fee,
                                                               coin_type=self.NATIVE_COIN_TYPE)},
-                                tkey=sp.TString, tvalue=Coin),
-            coins_address=sp.map({}, tkey=sp.TAddress, tvalue=sp.TString),
-            callback_coin_name=sp.string(""),
-            callback_value=sp.nat(0),
-            callback_to=sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
+                                tkey=sp.TString, tvalue=types.Types.Coin),
+            coins_address=sp.map({self.NATIVE_COIN_ADDRESS: _native_coin_name}, tkey=sp.TAddress, tvalue=sp.TString)
         )
 
     def only_owner(self):
@@ -66,8 +59,9 @@ class BTSCore(sp.Contract):
         sp.set_type(bts_periphery, sp.TAddress)
 
         self.only_owner()
-        sp.if self.data.bts_periphery_address.is_some():
-            has_requests = sp.view("has_pending_request", self.data.bts_periphery_address.open_some("Address not set"), sp.unit, t=sp.TBool).open_some("OwnerNotFound")
+        with sp.if_(self.data.bts_periphery_address.is_some()):
+            has_requests = sp.view("has_pending_request", self.data.bts_periphery_address.open_some("Address not set"),
+                                   sp.unit, t=sp.TBool).open_some("has_pending_request not found")
             sp.verify(has_requests == False, "HasPendingRequest")
         self.data.bts_periphery_address = sp.some(bts_periphery)
 
@@ -115,7 +109,7 @@ class BTSCore(sp.Contract):
         sp.set_type(addr, sp.TAddress)
         sp.set_type(token_metadata, sp.TMap(sp.TString, sp.TBytes))
         sp.set_type(metadata, sp.TBigMap(sp.TString, sp.TBytes))
-
+        # TODO: use symbol and decimals
         self.only_owner()
         sp.verify(name != self.data.native_coin_name, message="ExistNativeCoin")
         sp.verify(self.data.coins.contains(name) == False, message= "ExistCoin")
@@ -123,9 +117,11 @@ class BTSCore(sp.Contract):
         sp.verify(fee_numerator <= self.FEE_DENOMINATOR, message="InvalidSetting")
         sp.verify((fixed_fee >= sp.nat(0)) & (fee_numerator >= sp.nat(0)), message="LessThan0")
         with sp.if_(addr == self.ZERO_ADDRESS):
-            deployed_fa2 = sp.create_contract_operation(contract=FA2_contract.SingleAssetToken(admin=sp.self_address, metadata=metadata,
-                                                              token_metadata=token_metadata
-                                                              ))
+            deployed_fa2 = sp.create_contract_operation(
+                contract=FA2_contract.SingleAssetToken(admin=sp.self_address,
+                                                        metadata=metadata,
+                                                        token_metadata=token_metadata
+                                                        ))
             sp.operations().push(deployed_fa2.operation)
             self.data.coins[name] = deployed_fa2.address
             self.data.coins_name.push(name)
@@ -147,15 +143,14 @@ class BTSCore(sp.Contract):
                 coin_type = self.NON_NATIVE_TOKEN_TYPE
             )
 
-        token_map = sp.map({0:name}, tkey=sp.TNat, tvalue=sp.TString)
-        val_map = sp.map({0:self.UINT_CAP}, tkey=sp.TNat, tvalue=sp.TNat)
+        # token_map = sp.map({0:name}, tkey=sp.TNat, tvalue=sp.TString)
+        token_limit_map = sp.map({name:self.UINT_CAP}, tkey=sp.TString, tvalue=sp.TNat)
 
         # call set_token_limit on bts_periphery
-        set_token_limit_args_type = sp.TRecord(coin_names=sp.TMap(sp.TNat, sp.TString), token_limit=sp.TMap(sp.TNat, sp.TNat))
-        set_token_limit_entry_point = sp.contract(set_token_limit_args_type, self.data.bts_periphery_address.open_some("Address not set"),
-                                                  "set_token_limit").open_some("ErrorINCALL")
-        set_token_limit_args = sp.record(coin_names=token_map, token_limit=val_map)
-        sp.transfer(set_token_limit_args, sp.tez(0), set_token_limit_entry_point)
+        set_token_limit_entry_point = sp.contract(sp.TMap(sp.TString, sp.TNat),
+                                                  self.data.bts_periphery_address.open_some("Address not set"),
+                                                  "set_token_limit").open_some("Error in set_token_limit call")
+        sp.transfer(token_limit_map, sp.tez(0), set_token_limit_entry_point)
 
     @sp.onchain_view()
     def coin_id(self, coin_name):
@@ -169,6 +164,23 @@ class BTSCore(sp.Contract):
         sp.result(self.data.coins.get(coin_name))
 
     @sp.onchain_view()
+    def native_coin_balance_of(self):
+        """
+        Return balance of Native Coin .
+        :return: A Balance of native coin.
+        """
+        sp.result(sp.pair(self.data.native_coin_name, sp.balance))
+
+    @sp.onchain_view()
+    def coin_type(self, coin_name):
+        """
+        Return balance of Native Coin .
+        :return: A Balance of native coin.
+        """
+        sp.set_type(coin_name, sp.TString)
+        sp.result(self.data.coin_details.get(coin_name).coin_type)
+
+    @sp.onchain_view()
     def is_valid_coin(self, coin_name):
         """
         Check Validity of a coin_name
@@ -177,7 +189,7 @@ class BTSCore(sp.Contract):
         """
         sp.set_type(coin_name, sp.TString)
 
-        sp.result((self.data.coins.contains(coin_name))|( coin_name == self.data.native_coin_name))
+        sp.result(self.data.coins.contains(coin_name))
 
     @sp.onchain_view()
     def fee_ratio(self, coin_name):
@@ -209,7 +221,7 @@ class BTSCore(sp.Contract):
         locked_balance = sp.local("locked_balance", sp.nat(0))
         refundable_balance = sp.local("refundable_balance", sp.nat(0))
 
-        sp.if self.data.balances.contains(sp.record(address=params.owner, coin_name=params.coin_name)):
+        with sp.if_(self.data.balances.contains(sp.record(address=params.owner, coin_name=params.coin_name))):
             locked_balance.value = self.data.balances[
                 sp.record(address=params.owner, coin_name=params.coin_name)].locked_balance
             refundable_balance.value = self.data.balances[
@@ -222,17 +234,23 @@ class BTSCore(sp.Contract):
                                 user_balance=sp.nat(0)))
         with sp.else_():
             fa2_address = self.data.coins.get(params.coin_name)
-            user_balance= sp.view("get_balance_of", fa2_address, [sp.record(owner=params.owner, token_id=sp.nat(0))], t=sp.TNat).open_some("Invalid view")
-
-            allowance = sp.view("get_allowance", fa2_address, sp.record(spender=sp.self_address, owner=params.owner), t=sp.TNat).open_some("Invalid view")
-            usable_balance = sp.local("usable_balance", allowance, t=sp.TNat)
-            sp.if allowance > user_balance:
-                usable_balance.value = user_balance
+            user_balance = sp.local("user_balance_onchain_view", sp.nat(0))
+            usable_balance = sp.local("usable_balance", sp.nat(0), t=sp.TNat)
+            user_balance_of= sp.view("get_balance_of", fa2_address, [sp.record(owner=params.owner, token_id=sp.nat(0))],
+                                  t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+            sp.for elem in user_balance_of:
+                user_balance.value = elem.balance
+            with sp.if_(self.data.coin_details.get(params.coin_name).coin_type == self.NATIVE_WRAPPED_COIN_TYPE):
+                allowance = sp.view("get_allowance", fa2_address,
+                        sp.record(spender=sp.self_address, owner=params.owner), t=sp.TNat).open_some("Invalid view")
+                usable_balance.value = allowance
+                with sp.if_(allowance > user_balance.value):
+                    usable_balance.value = user_balance.value
 
             sp.result(sp.record(usable_balance=usable_balance.value,
                                 locked_balance=locked_balance.value,
                                 refundable_balance=refundable_balance.value,
-                                user_balance=user_balance))
+                                user_balance=user_balance.value))
 
     @sp.onchain_view()
     def balance_of_batch(self, params):
@@ -243,24 +261,16 @@ class BTSCore(sp.Contract):
         """
         sp.set_type(params, sp.TRecord(owner=sp.TAddress, coin_names=sp.TList(sp.TString)))
 
+        sp.verify((sp.len(params.coin_names) > sp.nat(0)) & (sp.len(params.coin_names) <= self.MAX_BATCH_SIZE),
+                  message = "BatchMaxSizeExceed")
 
-        sp.verify((sp.len(params.coin_names) > sp.nat(0)) & (sp.len(params.coin_names) <= self.MAX_BATCH_SIZE), message = "BatchMaxSizeExceed")
-        usable_balances =sp.local("usable_balances", {}, t=sp.TMap(sp.TNat, sp.TNat))
-        locked_balances =sp.local("locked_balances", {}, t=sp.TMap(sp.TNat, sp.TNat))
-        refundable_balances =sp.local("refundable_balances", {}, t=sp.TMap(sp.TNat, sp.TNat))
-        user_balances =sp.local("user_balances", {}, t=sp.TMap(sp.TNat, sp.TNat))
-
-        i = sp.local("i", sp.nat(0))
+        balances= sp.local("balances_list", [], t=sp.TList(sp.TRecord(usable_balance=sp.TNat,locked_balance=sp.TNat,
+                                                                    refundable_balance=sp.TNat, user_balance=sp.TNat)))
         sp.for item in params.coin_names:
             balance= sp.view("balance_of", sp.self_address,
                     sp.record(owner=params.owner, coin_name=item)).open_some()
-            usable_balances.value[i.value] = balance.usable_balance
-            locked_balances.value[i.value] = balance.locked_balance
-            refundable_balances.value[i.value] = balance.refundable_balance
-            user_balances.value[i.value] = balance.user_balance
-            i.value += sp.nat(1)
-        sp.result(sp.record(usable_balances=usable_balances.value, locked_balances=locked_balances.value,
-                            refundable_balances=refundable_balances.value, user_balances=user_balances.value))
+            balances.value.push(balance)
+        sp.result(balances.value)
 
     @sp.onchain_view()
     def get_accumulated_fees(self):
@@ -268,20 +278,14 @@ class BTSCore(sp.Contract):
         Return a map with record of accumulated Fees.
         :return: An map of Asset
         """
+        sp.result(self.data.aggregation_fee)
 
-        accumulated_fees = sp.local("accumulated_fees", sp.map(tkey=sp.TNat, tvalue=types.Types.Asset))
-        i = sp.local("i", sp.nat(0))
-        sp.for item in self.data.coins_name:
-            accumulated_fees.value[i.value] = sp.record(coin_name=item, value=self.data.aggregation_fee.get(item, default_value=sp.nat(0)))
-            i.value += sp.nat(1)
-        sp.result(accumulated_fees.value)
+    @sp.entry_point(lazify=False)
+    def update_transfer_native_coin(self, ep):
+        self.only_owner()
+        sp.set_entry_point("transfer_native_coin", ep)
 
-    # @sp.entry_point(lazify=False)
-    # def update_transfer_native_coin(self, ep):
-    #     self.only_owner()
-    #     sp.set_entry_point("transfer_native_coin", ep)
-
-    @sp.entry_point(check_no_incoming_transfer=False)
+    @sp.entry_point(check_no_incoming_transfer=False, lazify=True)
     def transfer_native_coin(self, to):
         """
         Allow users to deposit `sp.amount` native coin into a BTSCore contract.
@@ -292,12 +296,15 @@ class BTSCore(sp.Contract):
 
         amount_in_nat = sp.local("amount_in_nat", sp.utils.mutez_to_nat(sp.amount), t=sp.TNat)
         # call check_transfer_restrictions on bts_periphery
-        check_transfer = sp.view("check_transfer_restrictions", self.data.bts_periphery_address.open_some("Address not set"),
-                                 sp.record(coin_name=self.data.native_coin_name, user=sp.sender, value=amount_in_nat.value),
+        check_transfer = sp.view("check_transfer_restrictions",
+                                 self.data.bts_periphery_address.open_some("Address not set"),
+                                 sp.record(coin_name=self.data.native_coin_name, user=sp.sender,
+                                           value=amount_in_nat.value),
                                  t=sp.TBool).open_some()
         sp.verify(check_transfer == True, "FailCheckTransfer")
 
-        charge_amt = amount_in_nat.value * self.data.coin_details[self.data.native_coin_name].fee_numerator / self.FEE_DENOMINATOR + self.data.coin_details[self.data.native_coin_name].fixed_fee
+        charge_amt = amount_in_nat.value * self.data.coin_details[self.data.native_coin_name].fee_numerator / \
+                     self.FEE_DENOMINATOR + self.data.coin_details[self.data.native_coin_name].fixed_fee
 
         self._send_service_message(sp.sender, to, self.data.native_coin_name, amount_in_nat.value, charge_amt)
 
@@ -309,7 +316,8 @@ class BTSCore(sp.Contract):
     @sp.entry_point(lazify=True)
     def transfer(self, coin_name, value, to):
         """
-        Allow users to deposit an amount of wrapped native coin `coin_name` from the `sp.sender` address into the BTSCore contract.
+        Allow users to deposit an amount of wrapped native coin `coin_name` from the `sp.sender` address into
+        the BTSCore contract.
         :param coin_name: A given name of a wrapped coin
         :param value: An amount request to transfer from a Requester (include fee)
         :param to: Target BTP address.
@@ -324,19 +332,22 @@ class BTSCore(sp.Contract):
         fa2_address = self.data.coins[coin_name]
 
         # call check_transfer_restrictions on bts_periphery
-        check_transfer = sp.view("check_transfer_restrictions", self.data.bts_periphery_address.open_some("Address not set"),
+        check_transfer = sp.view("check_transfer_restrictions",
+                                 self.data.bts_periphery_address.open_some("Address not set"),
                                  sp.record(coin_name=coin_name, user=sp.sender, value=value),
                                  t=sp.TBool).open_some()
         sp.verify(check_transfer == True, "FailCheckTransfer")
 
-        charge_amt = value * self.data.coin_details[coin_name].fee_numerator / self.FEE_DENOMINATOR + self.data.coin_details[coin_name].fixed_fee
+        charge_amt = value * self.data.coin_details[coin_name].fee_numerator / self.FEE_DENOMINATOR +\
+                     self.data.coin_details[coin_name].fixed_fee
         
         # call transfer from in FA2
         transfer_args_type = sp.TList(sp.TRecord(from_=sp.TAddress, txs=sp.TList(sp.TRecord(
             to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(("to_", ("token_id", "amount"))))
                                                  ).layout(("from_", "txs")))
         transfer_entry_point = sp.contract(transfer_args_type, fa2_address, "transfer").open_some()
-        transfer_args = [sp.record(from_=sp.sender, txs=[sp.record(to_=sp.self_address, token_id=sp.nat(0), amount=value)])]
+        transfer_args = [sp.record(from_=sp.sender, txs=[sp.record(to_=sp.self_address, token_id=sp.nat(0),
+                                                                   amount=value)])]
         sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
 
         self._send_service_message(sp.sender, to, coin_name, value, charge_amt)
@@ -359,15 +370,16 @@ class BTSCore(sp.Contract):
 
         sp.verify(value > charge_amt, message = "ValueGreaterThan0")
         self._lock_balance(_from, coin_name, value)
-
-        coins = sp.local("coins", {sp.nat(0) : coin_name}, t=sp.TMap(sp.TNat, sp.TString))
-        amounts = sp.local("amounts", {sp.nat(0) : sp.as_nat(value - charge_amt)}, t=sp.TMap(sp.TNat, sp.TNat))
-        fees = sp.local("fees", {sp.nat(0): charge_amt}, t=sp.TMap(sp.TNat, sp.TNat))
+        coin_details = sp.local("coin_details_", [], t=sp.TList(sp.TRecord(coin_name=sp.TString, value=sp.TNat,
+                                                                           fee=sp.TNat)))
+        coin_details.value.push(sp.record(coin_name=coin_name, value=sp.as_nat(value - charge_amt), fee=charge_amt))
 
         # call send_service_message on bts_periphery
-        send_service_message_args_type = sp.TRecord(_from = sp.TAddress, to = sp.TString, coin_names = sp.TMap(sp.TNat, sp.TString), values = sp.TMap(sp.TNat, sp.TNat), fees = sp.TMap(sp.TNat, sp.TNat))
-        send_service_message_entry_point = sp.contract(send_service_message_args_type, self.data.bts_periphery_address.open_some("Address not set"), "send_service_message").open_some()
-        send_service_message_args = sp.record(_from = _from, to = to, coin_names = coins.value, values = amounts.value, fees = fees.value)
+        send_service_message_args_type = sp.TRecord(_from=sp.TAddress, to=sp.TString, coin_details=sp.TList(
+            sp.TRecord(coin_name=sp.TString, value=sp.TNat, fee=sp.TNat)))
+        send_service_message_entry_point = sp.contract(send_service_message_args_type,
+            self.data.bts_periphery_address.open_some("Address not set"), "send_service_message").open_some()
+        send_service_message_args = sp.record(_from = _from, to = to, coin_details = coin_details.value)
         sp.transfer(send_service_message_args, sp.tez(0), send_service_message_entry_point)
 
     @sp.entry_point(lazify=False)
@@ -376,52 +388,43 @@ class BTSCore(sp.Contract):
         sp.set_entry_point("transfer_batch", ep)
 
     @sp.entry_point(check_no_incoming_transfer=False, lazify=True)
-    def transfer_batch(self, coin_names, values, to):
+    def transfer_batch(self, coin_names_values, to):
         """
         Allow users to transfer multiple coins/wrapped coins to another chain.
         It MUST revert if the balance of the holder for token `_coinName` is lower than the `_value` sent.
         In case of transferring a native coin, it also checks `msg.value`
         The number of requested coins MUST be as the same as the number of requested values
         The requested coins and values MUST be matched respectively
-        :param coin_names: A list of requested transferring wrapped coins
-        :param values: A list of requested transferring values respectively with its coin name
+        :param coin_names_values: A map of requested transferring wrapped coins and values
         :param to: Target BTP address.
         :return:
         """
-        sp.set_type(coin_names, sp.TMap(sp.TNat, sp.TString))
-        sp.set_type(values, sp.TMap(sp.TNat, sp.TNat))
+        sp.set_type(coin_names_values, sp.TMap(sp.TString, sp.TNat))
         sp.set_type(to, sp.TString)
-
-        sp.verify(sp.len(coin_names) == sp.len(values), message ="InvalidRequest")
-        sp.verify(sp.len(coin_names) > sp.nat(0), message = "Zero length arguments")
+        sp.verify(sp.len(coin_names_values) > sp.nat(0), message = "Zero length arguments")
 
         amount_in_nat = sp.local("amount_in_nat", sp.utils.mutez_to_nat(sp.amount), t=sp.TNat)
-        size = sp.local("size", sp.nat(0), t=sp.TNat)
+        size = sp.local("size", sp.len(coin_names_values), t=sp.TNat)
         with sp.if_(amount_in_nat.value != sp.nat(0)):
-            size.value = sp.len(coin_names) + sp.nat(1)
-        with sp.else_():
-            size.value = sp.len(coin_names)
+            size.value = size.value + sp.nat(1)
+
         sp.verify(size.value <= self.MAX_BATCH_SIZE, message ="Batch maxSize Exceeds")
     
-        coins = sp.local("_coins", {}, t=sp.TMap(sp.TNat, sp.TString))
-        amounts = sp.local("_amounts", {}, t=sp.TMap(sp.TNat, sp.TNat))
-        charge_amts = sp.local("_charge_amts", {}, t=sp.TMap(sp.TNat, sp.TNat))
+        batch_coin_details = sp.local("batch_coin_details", [], t=sp.TList(sp.TRecord(coin_name=sp.TString,
+                                                                                      value=sp.TNat, fee=sp.TNat)))
+        charge_amt = sp.local("charge_amt__", sp.nat(0), t=sp.TNat)
+        amount = sp.local("amount__", sp.nat(0), t=sp.TNat)
+        sp.for item in coin_names_values.items():
+            sp.verify(item.key != self.data.native_coin_name, message="InvalidCoin")
+            sp.verify(self.data.coins.contains(item.key), message="CoinNotRegistered")
+            fa2_address = self.data.coins[item.key]
 
-        coin_name = sp.local("coin_name", "", t= sp.TString)
-        value = sp.local("value", sp.nat(0), t= sp.TNat)
-        
-        sp.for i in sp.range(sp.nat(0), sp.len(coin_names)):
-            sp.verify(coin_names[i] != self.data.native_coin_name, message="InvalidCoin")
-            sp.verify(self.data.coins.contains(coin_names[i]), message= "CoinNotRegistered")
-            fa2_address = self.data.coins[coin_names[i]]
-
-            coin_name.value = coin_names[i]
-            value.value = values[i]
-            sp.verify(value.value > sp.nat(0), message ="ZeroOrLess")
+            sp.verify(item.value > sp.nat(0), message="Cannot transfer less than or equal to zero")
 
             # call check_transfer_restrictions on bts_periphery
-            check_transfer = sp.view("check_transfer_restrictions", self.data.bts_periphery_address.open_some("Address not set"),
-                                     sp.record(coin_name=coin_name.value, user=sp.sender, value=value.value),
+            check_transfer = sp.view("check_transfer_restrictions",
+                                     self.data.bts_periphery_address.open_some("Address not set"),
+                                     sp.record(coin_name=item.key, user=sp.sender, value=item.value),
                                      t=sp.TBool).open_some()
             sp.verify(check_transfer == True, "FailCheckTransfer")
 
@@ -431,40 +434,42 @@ class BTSCore(sp.Contract):
                                                      ).layout(("from_", "txs")))
             transfer_entry_point = sp.contract(transfer_args_type, fa2_address, "transfer").open_some()
             transfer_args = [
-                sp.record(from_=sp.sender, txs=[sp.record(to_=sp.self_address, token_id=sp.nat(0), amount=value.value)])]
+                sp.record(from_=sp.sender,
+                          txs=[sp.record(to_=sp.self_address, token_id=sp.nat(0), amount=item.value)])]
             sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
 
-            coin = sp.local("coin", self.data.coin_details[coin_name.value], t=Coin)
-            coins.value[i] = coin_name.value
-            charge_amts.value[i] = value.value * coin.value.fee_numerator / self.FEE_DENOMINATOR + coin.value.fixed_fee
-            amounts.value[i] = sp.as_nat(value.value - charge_amts.value[i])
+            charge_amt.value = item.value * self.data.coin_details[item.key].fee_numerator / self.FEE_DENOMINATOR + \
+                               self.data.coin_details[item.key].fixed_fee
+            amount.value = sp.as_nat(item.value - charge_amt.value)
+            batch_coin_details.value.push(sp.record(coin_name=item.key, value=amount.value, fee=charge_amt.value))
 
-            self._lock_balance(sp.sender, coin_name.value, value.value)
+            self._lock_balance(sp.sender, item.key, item.value)
 
-        sp.if amount_in_nat.value !=sp.nat(0):
+        with sp.if_(amount_in_nat.value !=sp.nat(0)):
             # call check_transfer_restrictions on bts_periphery
-            check_transfer = sp.view("check_transfer_restrictions", self.data.bts_periphery_address.open_some("Address not set"),
-                                     sp.record(coin_name=self.data.native_coin_name, user=sp.sender, value=amount_in_nat.value),
+            check_transfer = sp.view("check_transfer_restrictions",
+                                     self.data.bts_periphery_address.open_some("Address not set"),
+                                     sp.record(coin_name=self.data.native_coin_name, user=sp.sender,
+                                               value=amount_in_nat.value),
                                      t=sp.TBool).open_some()
             sp.verify(check_transfer == True, "FailCheckTransfer")
 
-            coins.value[sp.as_nat(size.value - 1)] = self.data.native_coin_name
-            charge_amts.value[sp.as_nat(size.value - 1)] = amount_in_nat.value * self.data.coin_details[coin_name.value].fee_numerator\
-                                                     / self.FEE_DENOMINATOR + self.data.coin_details[coin_name.value].fixed_fee
-            amounts.value[sp.as_nat(size.value - 1)] = sp.as_nat(sp.utils.mutez_to_nat(sp.amount) - charge_amts.value[sp.as_nat(size.value - 1)])
+            charge_amt.value = amount_in_nat.value * self.data.coin_details[self.data.native_coin_name].fee_numerator \
+                               / self.FEE_DENOMINATOR + self.data.coin_details[self.data.native_coin_name].fixed_fee
+            amount.value = sp.as_nat(amount_in_nat.value - charge_amt.value)
+            batch_coin_details.value.push(sp.record(coin_name=self.data.native_coin_name, value=amount.value,
+                                                    fee=charge_amt.value))
 
             self._lock_balance(sp.sender, self.data.native_coin_name, sp.utils.mutez_to_nat(sp.amount))
 
         # call send_service_message on bts_periphery
         send_service_message_args_type = sp.TRecord(_from=sp.TAddress, to=sp.TString,
-                                                    coin_names=sp.TMap(sp.TNat, sp.TString),
-                                                    values=sp.TMap(sp.TNat, sp.TNat),
-                                                    fees=sp.TMap(sp.TNat, sp.TNat))
+                                                    coin_details=sp.TList(sp.TRecord(coin_name=sp.TString,
+                                                                                      value=sp.TNat, fee=sp.TNat)))
         send_service_message_entry_point = sp.contract(send_service_message_args_type,
                                                        self.data.bts_periphery_address.open_some("Address not set"),
                                                        "send_service_message").open_some()
-        send_service_message_args = sp.record(_from=sp.sender, to=to, coin_names=coins.value, values=amounts.value,
-                                              fees=charge_amts.value)
+        send_service_message_args = sp.record(_from=sp.sender, to=to, coin_details=batch_coin_details.value)
         sp.transfer(send_service_message_args, sp.tez(0), send_service_message_entry_point)
 
     @sp.entry_point
@@ -479,10 +484,11 @@ class BTSCore(sp.Contract):
         """
         sp.set_type(coin_name, sp.TString)
         sp.set_type(value, sp.TNat)
-
-        with sp.if_(self.data.balances.contains(sp.record(address=sp.sender,coin_name=coin_name))):
-            sp.verify(self.data.balances[sp.record(address=sp.sender,coin_name=coin_name)].refundable_balance >= value, message="Imbalance")
-            self.data.balances[sp.record(address=sp.sender,coin_name=coin_name)].refundable_balance = sp.as_nat(self.data.balances[sp.record(address=sp.sender,coin_name=coin_name)].refundable_balance - value)
+        record = sp.record(address=sp.sender,coin_name=coin_name)
+        with sp.if_(self.data.balances.contains(record)):
+            sp.verify(self.data.balances[record].refundable_balance >= value, message="Imbalance")
+            self.data.balances[record].refundable_balance = \
+                sp.as_nat(self.data.balances[record].refundable_balance - value)
             self.refund(sp.sender, coin_name, value)
         with sp.else_():
             sp.failwith("NoRefundableBalance")
@@ -517,87 +523,46 @@ class BTSCore(sp.Contract):
 
         sp.send(to, sp.utils.nat_to_mutez(amount), message="PaymentFailed")
 
-    @sp.entry_point
-    def callback_balance_of(self, param):
-        t_balance_of_request = sp.TRecord(owner=sp.TAddress, token_id=sp.TNat).layout(("owner", "token_id"))
-        t_balance_of_response = sp.TRecord(request=t_balance_of_request, balance=sp.TNat).layout(("request", "balance"))
-        sp.set_type(param, sp.TList(t_balance_of_response))
-
-        return_string = sp.local("return_string_", sp.string(""))
-        bts_core_balance = sp.local("bts_core_balance", sp.nat(0))
-        sp.for item in param:
-            bts_core_balance.value = item.balance
-            with sp.if_(bts_core_balance.value >= self.data.callback_value):
-                # call transfer in FA2
-                transfer_args_type = sp.TList(sp.TRecord(from_=sp.TAddress, txs=sp.TList(sp.TRecord(
-                    to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(("to_", ("token_id", "amount"))))
-                                                         ).layout(("from_", "txs")))
-                transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[self.data.callback_coin_name], "transfer").open_some()
-                transfer_args = [
-                    sp.record(from_=sp.self_address, txs=[sp.record(to_=self.data.callback_to, token_id=sp.nat(0),
-                                                                    amount=self.data.callback_value)])]
-                sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
-                return_string.value = "success"
-            with sp.else_():
-                return_string.value = "fail"
-
-        self.data.callback_coin_name = sp.string("")
-        self.data.callback_value = sp.nat(0)
-        self.data.callback_to = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
-
-        temp_callback = sp.contract(sp.TOption(sp.TString), self.data.bts_periphery_address.open_some("Address not set"), "callback_mint")
-        sp.transfer(sp.some(return_string.value), sp.tez(0), temp_callback.open_some())
-
     @sp.entry_point(lazify=False)
     def update_mint(self, ep):
         self.only_owner()
         sp.set_entry_point("mint", ep)
 
     @sp.entry_point(lazify=True)
-    def mint(self, to, coin_name, value, callback):
+    def mint(self, to, coin_name, value):
         """
         mint the wrapped coin.
         :param to: the account receive the minted coin
         :param coin_name: coin name
         :param value: the minted amount
-        :param callback: callback function type in bts_periphery
         :return:
         """
         sp.set_type(to, sp.TAddress)
         sp.set_type(coin_name, sp.TString)
         sp.set_type(value, sp.TNat)
-        sp.set_type(callback, sp.TContract(sp.TOption(sp.TString)))
 
         self.only_bts_periphery()
         with sp.if_(coin_name == self.data.native_coin_name):
             self.payment_transfer(to, value)
-            sp.transfer(sp.some("success"), sp.tez(0), callback)
         with sp.else_():
-            with sp.if_(self.data.coin_details[coin_name].coin_type == self.NATIVE_WRAPPED_COIN_TYPE):
+            _coin_type = self.data.coin_details[coin_name].coin_type
+            _coin_address = self.data.coins[coin_name]
+            with sp.if_(_coin_type == self.NATIVE_WRAPPED_COIN_TYPE):
                 # call mint in FA2
                 mint_args_type = sp.TList(sp.TRecord(to_=sp.TAddress, amount=sp.TNat).layout(("to_", "amount")))
-                mint_entry_point = sp.contract(mint_args_type, self.data.coins[coin_name], "mint").open_some()
+                mint_entry_point = sp.contract(mint_args_type, _coin_address, "mint").open_some()
                 mint_args = [sp.record(to_=to, amount=value)]
                 sp.transfer(mint_args, sp.tez(0), mint_entry_point)
-                sp.transfer(sp.some("success"), sp.tez(0), callback)
             with sp.else_():
-                sp.if self.data.coin_details[coin_name].coin_type == self.NON_NATIVE_TOKEN_TYPE:
-                    # call balance_of FA2
-                    t_balance_of_request = sp.TRecord(owner=sp.TAddress, token_id=sp.TNat).layout(("owner", "token_id"))
-                    t_balance_of_response = sp.TRecord(request=t_balance_of_request, balance=sp.TNat).layout(("request", "balance"))
-                    t_balance_of_params = sp.TRecord(callback=sp.TContract(sp.TList(t_balance_of_response)),
-                        requests=sp.TList(t_balance_of_request),).layout(("requests", "callback"))
-
-                    transfer_args_type = t_balance_of_params
-                    transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[coin_name],
-                                                       "balance_of").open_some()
-                    _callback = sp.contract(sp.TList(t_balance_of_response), sp.self_address, "callback_balance_of")
-                    transfer_args = sp.record(callback=_callback.open_some(), requests=[sp.record(owner=sp.self_address, token_id=sp.nat(0))])
+                with sp.if_(_coin_type == self.NON_NATIVE_TOKEN_TYPE):
+                    transfer_args_type = sp.TList(sp.TRecord(from_=sp.TAddress, txs=sp.TList(sp.TRecord(
+                        to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout((
+                        "to_", ("token_id", "amount"))))).layout(("from_", "txs"))
+                                                  )
+                    transfer_entry_point = sp.contract(transfer_args_type, _coin_address, "transfer").open_some()
+                    transfer_args = [
+                        sp.record(from_=sp.self_address, txs=[sp.record(to_=to, token_id=sp.nat(0), amount=value)])]
                     sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
-
-                    self.data.callback_coin_name = coin_name
-                    self.data.callback_value = value
-                    self.data.callback_to = to
 
     @sp.entry_point(lazify=False)
     def update_handle_response_service(self, ep):
@@ -623,39 +588,51 @@ class BTSCore(sp.Contract):
 
         self.only_bts_periphery()
         return_flag = sp.local("return_flag", False, t=sp.TBool)
-        sp.if requester == sp.self_address:
-            sp.if rsp_code == self.RC_ERR:
+        bts_core_fa2_balance = sp.local("fa2_token_balance_core", sp.nat(0))
+
+        with sp.if_(requester == sp.self_address):
+            with sp.if_(rsp_code == self.RC_ERR):
                 self.data.aggregation_fee[coin_name] = self.data.aggregation_fee.get(coin_name,
                                                                                      default_value=sp.nat(0)) + value
             return_flag.value = True
 
-        sp.if return_flag.value == False:
+        with sp.if_(return_flag.value == False):
             amount = sp.local("amount", value + fee, t=sp.TNat)
-            sp.if self.data.balances.contains(sp.record(address=requester, coin_name=coin_name)):
-                self.data.balances[sp.record(address=requester, coin_name=coin_name)].locked_balance = \
-                    sp.as_nat(self.data.balances.get(sp.record(address=requester, coin_name=coin_name),
-                                                     default_value=sp.record(locked_balance=sp.nat(0), refundable_balance=sp.nat(0))).locked_balance - amount.value)
+            user= sp.record(address=requester, coin_name=coin_name)
+            _user_balances=self.data.balances.get(user,default_value=sp.record(locked_balance=sp.nat(0),
+                                                                        refundable_balance=sp.nat(0)))
 
-            sp.if rsp_code == self.RC_ERR:
+            self.data.balances[user].locked_balance = sp.as_nat(_user_balances.locked_balance - amount.value)
+
+            with sp.if_(rsp_code == self.RC_ERR):
                 with sp.if_(coin_name == self.data.native_coin_name):
+                    # NATIVE COIN CASE
                     with sp.if_(sp.utils.mutez_to_nat(sp.balance) >= value):
                         self.payment_transfer(requester, value)
                     with sp.else_():
-                        self.data.balances[sp.record(address=requester, coin_name=coin_name)].refundable_balance = self.data.balances.get(
-                            sp.record(address=requester, coin_name=coin_name),
-                            default_value=sp.record(locked_balance=sp.nat(0), refundable_balance=sp.nat(0))).refundable_balance + value
+                        self.data.balances[user].refundable_balance = _user_balances.refundable_balance + value
                 with sp.else_():
+                    _fa2_address = self.data.coins[coin_name]
                     with sp.if_(self.data.coin_details[coin_name].coin_type == self.NON_NATIVE_TOKEN_TYPE):
                         # call transfer in NON_NATIVE_TOKEN_TYPE FA2
-                        transfer_args_type = sp.TList(sp.TRecord(from_=sp.TAddress, txs=sp.TList(sp.TRecord(
-                            to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(("to_", ("token_id", "amount"))))
-                                                                 ).layout(("from_", "txs")))
-                        transfer_entry_point = sp.contract(transfer_args_type, self.data.coins[coin_name], "transfer").open_some()
-                        transfer_args = [sp.record(from_=sp.self_address, txs=[
-                            sp.record(to_=requester, token_id=sp.nat(0), amount=value)])]
-                        sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
+                        bts_core_fa2 = sp.view("get_balance_of", _fa2_address,
+                                                       [sp.record(owner=sp.self_address, token_id=sp.nat(0))],
+                                                       t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+                        sp.for elem in bts_core_fa2:
+                            bts_core_fa2_balance.value = elem.balance
+                        with sp.if_(bts_core_fa2_balance.value >= value):
+                            transfer_args_type = sp.TList(sp.TRecord(from_=sp.TAddress, txs=sp.TList(sp.TRecord(
+                                to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(
+                                ("to_", ("token_id", "amount"))))).layout(("from_", "txs"))
+                                                          )
+                            transfer_entry_point = sp.contract(transfer_args_type, _fa2_address, "transfer").open_some()
+                            transfer_args = [sp.record(from_=sp.self_address, txs=[
+                                sp.record(to_=requester, token_id=sp.nat(0), amount=value)])]
+                            sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
+                        with sp.else_():
+                            self.data.balances[user].refundable_balance = _user_balances.refundable_balance + value
                     with sp.else_():
-                        _fa2_address = self.data.coins[coin_name]
+                        # Case of NATIVE_WRAPPED_COIN_TYPE
                         transfer_permissions = sp.view("transfer_permissions", _fa2_address, sp.record(
                             from_=sp.self_address, token_id=sp.nat(0)), t=sp.TBool).open_some()
 
@@ -663,29 +640,30 @@ class BTSCore(sp.Contract):
                             # call transfer in NATIVE_WRAPPED_COIN_TYPE FA2
                             transfer_args_type = sp.TList(sp.TRecord(
                                 from_=sp.TAddress,
-                                txs=sp.TList(sp.TRecord(to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(("to_", ("token_id", "amount"))))
-                                                                     ).layout(("from_", "txs")))
+                                txs=sp.TList(sp.TRecord(to_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(
+                                    ("to_", ("token_id", "amount"))))).layout(("from_", "txs"))
+                                                          )
                             transfer_entry_point = sp.contract(transfer_args_type, _fa2_address, "transfer").open_some()
                             transfer_args = [
-                                sp.record(from_=sp.self_address, txs=[sp.record(to_=requester, token_id=sp.nat(0), amount=value)])]
+                                sp.record(from_=sp.self_address, txs=[sp.record(to_=requester, token_id=sp.nat(0),
+                                                                                amount=value)])]
                             sp.transfer(transfer_args, sp.tez(0), transfer_entry_point)
                         with sp.else_():
-                            self.data.balances[sp.record(address=requester, coin_name=coin_name)].refundable_balance = \
-                                self.data.balances.get(sp.record(address=requester, coin_name=coin_name),
-                                                       default_value=sp.record(locked_balance=sp.nat(0),
-                                                                               refundable_balance=sp.nat(0))
-                                                       ).refundable_balance + value
+                            self.data.balances[user].refundable_balance = _user_balances.refundable_balance + value
 
-            sp.if rsp_code == self.RC_OK:
+            with sp.if_(rsp_code == self.RC_OK):
                 fa2_address = self.data.coins[coin_name]
-                sp.if (coin_name != self.data.native_coin_name) & (self.data.coin_details[coin_name].coin_type == self.NATIVE_WRAPPED_COIN_TYPE):
+                with sp.if_((coin_name != self.data.native_coin_name) &\
+                        (self.data.coin_details[coin_name].coin_type == self.NATIVE_WRAPPED_COIN_TYPE)):
                     # call burn in FA2
-                    burn_args_type = sp.TList(sp.TRecord(from_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(("from_", ("token_id", "amount"))))
+                    burn_args_type = sp.TList(sp.TRecord(from_=sp.TAddress, token_id=sp.TNat, amount=sp.TNat).layout(
+                        ("from_", ("token_id", "amount"))))
                     burn_entry_point = sp.contract(burn_args_type, fa2_address, "burn").open_some()
                     burn_args = [sp.record(from_=sp.self_address, token_id=sp.nat(0), amount=value)]
                     sp.transfer(burn_args, sp.tez(0), burn_entry_point)
 
-            self.data.aggregation_fee[coin_name] = self.data.aggregation_fee.get(coin_name, default_value=sp.nat(0)) + fee
+            self.data.aggregation_fee[coin_name] = self.data.aggregation_fee.get(coin_name, default_value=sp.nat(0))\
+                                                   + fee
 
     @sp.entry_point(lazify=False)
     def update_transfer_fees(self, ep):
@@ -702,35 +680,25 @@ class BTSCore(sp.Contract):
         sp.set_type(fa, sp.TString)
 
         self.only_bts_periphery()
-        l = sp.local("l", sp.nat(0))
-        sp.for item in self.data.coins_name:
-            sp.if self.data.aggregation_fee.get(item, default_value=sp.nat(0)) != sp.nat(0):
-                self.data.charged_coins[l.value] = item
-                self.data.charged_amounts[l.value] = self.data.aggregation_fee.get(item, default_value=sp.nat(0))
-                del self.data.aggregation_fee[item]
-                l.value += sp.nat(1)
 
-        _charged_coins = sp.local("_charged_coins", self.data.charged_coins)
-        _charged_amounts = sp.local("_charged_amounts", self.data.charged_amounts)
+        transfer_fes_details = sp.local("transfer_fes_details", [], t=sp.TList(sp.TRecord(coin_name=sp.TString,
+                                                                                      value=sp.TNat, fee=sp.TNat)))
+        sp.for item in self.data.coins_name:
+            with sp.if_(self.data.aggregation_fee.get(item, default_value=sp.nat(0)) != sp.nat(0)):
+                transfer_fes_details.value.push(sp.record(coin_name=item, value=self.data.aggregation_fee.get(
+                    item, default_value=sp.nat(0)), fee=sp.nat(0)))
+                del self.data.aggregation_fee[item]
 
         # call send_service_message on bts_periphery
         send_service_message_args_type = sp.TRecord(_from=sp.TAddress, to=sp.TString,
-                                                    coin_names=sp.TMap(sp.TNat, sp.TString),
-                                                    values=sp.TMap(sp.TNat, sp.TNat),
-                                                    fees=sp.TMap(sp.TNat, sp.TNat))
+                                                    coin_details=sp.TList(sp.TRecord(coin_name=sp.TString,
+                                                                                      value=sp.TNat, fee=sp.TNat)))
         send_service_message_entry_point = sp.contract(send_service_message_args_type,
                                                        self.data.bts_periphery_address.open_some("Address not set"),
                                                        "send_service_message").open_some()
-        send_service_message_args = sp.record(_from=sp.self_address, to=fa, coin_names=_charged_coins.value,
-                                              values=_charged_amounts.value,
-                                              fees=sp.map({}))
+        send_service_message_args = sp.record(_from=sp.self_address, to=fa, coin_details=transfer_fes_details.value)
         sp.transfer(send_service_message_args, sp.tez(0), send_service_message_entry_point)
 
-        sp.for i in sp.range(0, sp.len(self.data.charged_coins)):
-            del self.data.charged_coins[i]
-
-        sp.for i in sp.range(0, sp.len(self.data.charged_amounts)):
-            del self.data.charged_amounts[i]
 
     def _lock_balance(self, to, coin_name, value):
         new_balance = self.data.balances.get(sp.record(address=to, coin_name=coin_name),
@@ -739,22 +707,11 @@ class BTSCore(sp.Contract):
         self.data.balances[sp.record(address=to, coin_name=coin_name)] = sp.record(
             locked_balance=new_balance.locked_balance + value, refundable_balance=new_balance.refundable_balance)
 
-    @sp.entry_point    
-    def update_coin_db(self):
-        self.only_owner()
-        self.data.coins[self.data.native_coin_name] = self.NATIVE_COIN_ADDRESS
-        self.data.coins_address[self.NATIVE_COIN_ADDRESS] = self.data.native_coin_name
-        self.data.coin_details[self.data.native_coin_name].addr = self.NATIVE_COIN_ADDRESS
-
-        sp.for item in self.data.coins_name:
-             sp.if item != self.data.native_coin_name:
-                  self.data.coins_address[self.data.coin_details[item].addr] = item
-
     @sp.entry_point
     def set_bts_owner_manager(self, owner_manager):
         sp.set_type(owner_manager, sp.TAddress)
-
-        sp.verify(self.data.owners.get(sp.sender) == True , message= "Unauthorized")
+        self.only_owner()
+        # sp.verify(self.data.owners.get(sp.sender) == True , message= "Unauthorized")
         self.data.bts_owner_manager = owner_manager
 
 

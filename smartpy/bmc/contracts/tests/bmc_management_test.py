@@ -32,190 +32,243 @@ def test():
 
     bmc_periphery_address = bmc_periphery_address.address
 
-    # Test case 1: bmc_periphery
-    sc.h1("Test case 1: set bmc_periphery to a valid address")
+    # Scenario 1: Contract setters
+
+    # Test cases:
+    # 1: set_bmc_periphery address
     sc.verify(bmc_management_contract.data.bmc_periphery.is_some() == False)
     bmc_management_contract.set_bmc_periphery(bmc_periphery_address).run(sender=creator)
-    # sender should be owner
+
+    # 2: sender non-owner
     bmc_management_contract.set_bmc_periphery(bob.address).run(sender=alice, valid=False, exception="Unauthorized")
-    # repeated bmc_periphery should throw error
+
+    # 3: bmc_periphery already set
     bmc_management_contract.set_bmc_periphery(bmc_periphery_address).run(sender=creator, valid=False,
                                                                          exception="AlreadyExistsBMCPeriphery")
-    # Verify that bmc_periphery is set to the valid address
+    # 4: Verify valid bmc_periphery  address
     sc.verify(bmc_management_contract.data.bmc_periphery.is_some() == True)
     sc.verify(bmc_management_contract.data.bmc_periphery.open_some() == bmc_periphery_address)
 
-    # set_bmc_btp_address
+    # # 5: sender non-owner for set_bmc_btp_address
+    # bmc_management_contract.set_bmc_btp_address("tezos.77").run(sender=alice, valid=False, exception="Unauthorized")
+
+    # 6: sender is owner for set_bmc_btp_address
     bmc_management_contract.set_bmc_btp_address("tezos.77").run(sender=creator)
 
-    # Test case 2: add_owner
-    # throw error when adding owner by random address
+    # 7 : setting helper address by non-owner
+    bmc_management_contract.set_helper_address(helper_contract.address).run(sender=jack, valid=False,
+                                                                            exception="Unauthorized")
+
+    # 8 : setting helper address by owner
+    bmc_management_contract.set_helper_address(helper_contract.address).run(sender=creator)
+
+    # 9: verifying address
+    sc.verify(bmc_management_contract.data.helper == helper_contract.address)
+
+    # Scenario 2: add / remove owner
+
+    # Test cases:
+    # 1: set owner by non-owner
     bmc_management_contract.add_owner(alice.address).run(sender=bob, valid=False, exception="Unauthorized")
-    # successfully added new owner
+
+    # 2: set new owner by owner
     bmc_management_contract.add_owner(alice.address).run(sender=creator)
     sc.verify(bmc_management_contract.data.owners[alice.address] == True)
 
-    # Test case 3: remove owner
-    # throw error when removing owner by random address
+    # 3: remove owner by non-owner
     bmc_management_contract.remove_owner(alice.address).run(sender=bob, valid=False, exception="Unauthorized")
-    # working
+
+    # 4: remove owner by owner
     bmc_management_contract.remove_owner(alice.address).run(sender=creator)
     sc.verify(~bmc_management_contract.data.owners.contains(jack.address))
 
-    # Test case 4: is_owner
-    # Add an owner
+    # 5: add owner
     bmc_management_contract.add_owner(creator2.address).run(sender=creator)
-    # Test the is_owner view function
+
+    # 6: verify is_owner
     sc.verify(bmc_management_contract.is_owner(creator2.address) == True)
 
-    # Test case 5: add_service function
-    svc1 = sp.string("service1")
-    svc2 = sp.string("service2")
-    svc3 = sp.string("service3")
-    # add service by random address should fail
-    bmc_management_contract.add_service(sp.record(addr=service1_address.address, svc=svc1)).run(sender=bob, valid=False,
-                                                                                                exception="Unauthorized")
-    # adding service
-    bmc_management_contract.add_service(sp.record(addr=service1_address.address, svc=svc1)).run(sender=creator)
-    # shouldn't add same service twice
-    bmc_management_contract.add_service(sp.record(addr=service1_address.address, svc=svc1)).run(sender=creator,
-                                                                                                valid=False,
-                                                                                                exception="AlreadyExistsBSH")
+    # Scenario 3: add / remove services and get_services
 
-    # Test case 6: remove_service function
-    # remove service by random address should fail
+    # Test cases:
+    svc1 = sp.string("bmc")
+    svc2 = sp.string("bts")
+    # 1: add service by non-owner
+    bmc_management_contract.add_service(
+        sp.record(addr=service1_address.address, svc=svc1)).run(sender=bob, valid=False, exception="Unauthorized")
+    # 2: adding service by owner
+    bmc_management_contract.add_service(sp.record(addr=service1_address.address, svc=svc1)).run(sender=creator)
+
+    # 3: adding same service
+    bmc_management_contract.add_service(
+        sp.record(addr=service1_address.address, svc=svc1)).run(sender=creator, valid=False,
+                                                                exception="AlreadyExistsBSH")
+
+    # 4: remove service by non-owner
     bmc_management_contract.remove_service(svc2).run(sender=bob, valid=False, exception="Unauthorized")
-    # removing unregistered should throw error
-    bmc_management_contract.remove_service(svc3).run(sender=creator, valid=False)
-    # removing service
+
+    # 5: remove unregistered service
+    bmc_management_contract.remove_service(svc2).run(sender=creator, valid=False)
+
+    # 6: removing service
     bmc_management_contract.add_service(sp.record(addr=service2_address.address, svc=svc2)).run(sender=creator)
     bmc_management_contract.remove_service(svc2).run(sender=creator)
 
-    # test case 7: get_services function
+    # 7: verify get_services
     services = bmc_management_contract.get_services()
     sc.verify_equal(services, sp.map({0: sp.record(svc=svc1, addr=service1_address.address)}))
 
-    # test case 8: add_route function
+    # Scenario 4: add / remove route and get_routes
+
+    # Test case:
     dst = "btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258dest"
     next_link = "btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b"
-    # only owner can add routes
+    # 1: adding route by non-owner
     bmc_management_contract.add_route(sp.record(dst=dst, link=next_link)).run(sender=bob, valid=False,
                                                                               exception="Unauthorized")
-    # should work
+
+    # 2: adding route by owner
     bmc_management_contract.add_route(sp.record(dst=dst, link=next_link)).run(sender=creator)
-    # cannot add already existed route
+
+    # 3: adding same routes
     bmc_management_contract.add_route(sp.record(dst=dst, link=next_link)).run(sender=creator, valid=False,
                                                                               exception="AlreadyExistRoute")
 
-    # test case 9: remove_route function
     dst1 = "btp://78.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5DEST1"
     next_link1 = "btp://78.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5LINK1"
-    # only owner can remove routes
+    # 4: removing routes by non-owner
     bmc_management_contract.remove_route(dst).run(sender=bob, valid=False, exception="Unauthorized")
-    # throw error when non-exist route is given & this should throw error but not thrown
+
+    # 5: removing non-exist routes
     bmc_management_contract.remove_route(dst1).run(sender=creator, valid=False, exception="NotExistRoute")
-    # should work
+
+    # 6: removing existed routes by owner
     bmc_management_contract.add_route(sp.record(dst=dst1, link=next_link1)).run(sender=creator)
     bmc_management_contract.remove_route(dst1).run(sender=creator)
 
-    # test case 10: get_routes function
+    # 7: verify get_routes
     get_routes = bmc_management_contract.get_routes()
     sc.verify_equal(get_routes, sp.map({0: sp.record(
         dst=sp.string("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258dest"),
         next=sp.string("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b"))}))
 
-    # test case 11: add_link function
-    # add_link by random address should fail
-    bmc_management_contract.add_link("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b").run(sender=bob,
-                                                                                                      valid=False,
-                                                                                                      exception="Unauthorized")
-    # should work
-    bmc_management_contract.add_link("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b").run(sender=creator)
-    # add_link by of same link should fail
-    bmc_management_contract.add_link("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b").run(sender=creator,
-                                                                                                      valid=False,
-                                                                                                      exception="AlreadyExistsLink")
+    # Scenario 5: add / remove link and get_links
 
-    # test case 12: remove_link function
-    # remove_link by random address should fail
-    bmc_management_contract.remove_link("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258dead").run(sender=bob,
-                                                                                                         valid=False,
-                                                                                                         exception="Unauthorized")
-    # remove_link should throw error when removing non-existing link
-    bmc_management_contract.remove_link("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258dead").run(sender=creator,
-                                                                                                         valid=False,
-                                                                                                         exception="NotExistsLink")
-    # should work
+    # Test case:
+    # 1: adding link by non-owner
+    bmc_management_contract.add_link(
+        "btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b").run(sender=bob, valid=False,
+                                                                         exception="Unauthorized")
+
+    # 2: adding link by owner
+    bmc_management_contract.add_link("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b").run(sender=creator)
+
+    # 3: adding existed link
+    bmc_management_contract.add_link(
+        "btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b").run(sender=creator, valid=False,
+                                                                         exception="AlreadyExistsLink")
+
+    # 4: removing link by non-owner
+    bmc_management_contract.remove_link(
+        "btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258dead").run(sender=bob, valid=False,
+                                                                         exception="Unauthorized")
+
+    # 5: removing non-exist link
+    bmc_management_contract.remove_link(
+        "btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258dead").run(sender=creator, valid=False,
+                                                                         exception="NotExistsLink")
+
+    # 6: removing existed link by owner
     bmc_management_contract.add_link("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258dead").run(sender=creator)
     bmc_management_contract.remove_link("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258dead").run(sender=creator)
 
-    # test case 13: get_links function
+    # 7: verify get_links
     link_to_compare = bmc_management_contract.get_links()
     added_link = sp.list(['btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b'])
     sc.verify_equal(link_to_compare, added_link)
 
-    # test case 14: set_link_rx_height
+    # Scenario 6: set_link_rx_height
+
+    # Test case:
     link = sp.string('btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b')
     height = sp.nat(2)
-    # error when not exist link is given
+    # 1: non-exist link is given
     bmc_management_contract.set_link_rx_height(link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnA",
-                                               height=height).run(sender=creator, valid=False, exception="NotExistsKey")
-    # error when not invalid height is given
+                                               height=height).run(sender=creator,
+                                                                  valid=False, exception="NotExistsKey")
+    # 2: invalid height is given
     bmc_management_contract.set_link_rx_height(link=link, height=sp.nat(0)).run(sender=creator, valid=False,
                                                                                 exception="InvalidRxHeight")
-    # should work
+
+    # 3: set_link_rx_height by non-owner
+    bmc_management_contract.set_link_rx_height(link=link, height=height).run(sender=bob, valid=False,
+                                                                             exception="Unauthorized")
+
+    # 4: set_link_rx_height by owner
     bmc_management_contract.set_link_rx_height(link=link, height=height).run(sender=creator)
+
+    # 5: verify rx_height value
     sc.verify_equal(bmc_management_contract.data.links[link].rx_height, 2)
 
-    # test case 15: set_link function
+    # Scenario 7: set_link
+
+    # Test case:
     block_interval = sp.nat(2)
     _max_aggregation = sp.nat(3)
     delay_limit = sp.nat(2)
-    # only owner should set link
+    # 1: setting link by non-owner
     bmc_management_contract.set_link(
         sp.record(_link=link, block_interval=block_interval, _max_aggregation=_max_aggregation,
                   delay_limit=delay_limit)).run(sender=bob, valid=False, exception="Unauthorized")
-    # error when link doesnt exist
+
+    # 2: setting non-exist link
     bmc_management_contract.set_link(
         sp.record(_link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnZ", block_interval=block_interval,
                   _max_aggregation=_max_aggregation, delay_limit=delay_limit)).run(sender=creator, valid=False,
                                                                                    exception="NotExistsLink")
-    # error when invalid paramters were given
+    # 3: setting link with invalid paramter
     bmc_management_contract.set_link(
-        sp.record(_link=link, block_interval=block_interval, _max_aggregation=sp.nat(0), delay_limit=delay_limit)).run(
+        sp.record(_link=link, block_interval=block_interval, _max_aggregation=sp.nat(0),
+                  delay_limit=delay_limit)).run(
         sender=creator, valid=False, exception="InvalidParam")
     bmc_management_contract.set_link(
         sp.record(_link=link, block_interval=block_interval, _max_aggregation=_max_aggregation,
                   delay_limit=sp.nat(0))).run(sender=creator, valid=False, exception="InvalidParam")
-    # should work
+
+    # 4: setting link with valid paramter by owner
     bmc_management_contract.set_link(
         sp.record(_link=link, block_interval=block_interval, _max_aggregation=_max_aggregation,
                   delay_limit=delay_limit)).run(sender=creator)
 
-    # test case 16: add_relay function
-    # only owner should add relay
+    # Scenario 8: add / remove relay and get_relays
+
+    # Test case:
+    # 1: adding relay by non-owner
     bmc_management_contract.add_relay(
-        sp.record(link=link, addr=sp.set([sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiADD")]))).run(sender=bob,
-                                                                                                     valid=False,
-                                                                                                     exception="Unauthorized")
-    # fail when non-exist link is given
+        sp.record(link=link, addr=sp.set(
+            [sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiADD")]))).run(sender=bob, valid=False,
+                                                                        exception="Unauthorized")
+
+    # 2: adding relay to non-exist link
     bmc_management_contract.add_relay(sp.record(link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUNONLINK",
                                                 addr=sp.set([sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiADD")]))).run(
         sender=creator, valid=False, exception="NotExistsLink")
-    # should work
+
+    # 3: adding relay by owner
     bmc_management_contract.add_relay(
         sp.record(link=link, addr=sp.set([sp.address("tz1XGbmLYhqcigxFuBCJrgyJejnwkySE4Sk9")]))).run(sender=creator)
 
-    # test case 17: remove_relay function
-    # only owner should remove relay
+    # 4: remove relay by non-owner
     bmc_management_contract.remove_relay(
         sp.record(link=link, addr=sp.address("tz1XGbmLYhqcigxFuBCJrgyJejnwkySE4Sk9"))).run(sender=bob, valid=False,
                                                                                            exception="Unauthorized")
-    # fail when non-exist link is given
+
+    # 5: removing relay with non-exist link
     bmc_management_contract.remove_relay(sp.record(link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUNONLINK",
                                                    addr=sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiADD"))).run(
         sender=creator, valid=False, exception="NotExistsLink")
-    # should work
+
+    # 6: removing relay by owner
     next_link1 = sp.string("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a625link1")
     bmc_management_contract.add_link(next_link1).run(sender=creator)
     bmc_management_contract.add_relay(
@@ -224,16 +277,19 @@ def test():
     bmc_management_contract.remove_relay(
         sp.record(link=next_link1, addr=sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxADD1"))).run(sender=creator)
 
-    # test case 18: get_relays function
+    # 7: verify get_relays
     compared_to = sp.list([sp.address("tz1XGbmLYhqcigxFuBCJrgyJejnwkySE4Sk9")])
     get_relays = bmc_management_contract.get_relays(link)
     sc.verify_equal(get_relays, compared_to)
 
-    # test case 19: get_bsh_service_by_name function
+    # Scenario 9: Contract getters
+
+    # Test cases:
+    # 1: verify get_bsh_service_by_name
     get_bsh_service_by_name = bmc_management_contract.get_bsh_service_by_name(svc1)
     sc.verify_equal(get_bsh_service_by_name, service1_address.address)
 
-    # test case 20: get_link function
+    # 2: verify get_link
     get_link = bmc_management_contract.get_link(link)
     data = sp.record(
         relays=sp.set([sp.address("tz1XGbmLYhqcigxFuBCJrgyJejnwkySE4Sk9")]),
@@ -252,114 +308,128 @@ def test():
     )
     sc.verify_equal(get_link, data)
 
-    # test case 21: get_link_rx_seq function
+    # 3: verify get_link_rx_seq
     get_link_rx_seq = bmc_management_contract.get_link_rx_seq(link)
     sc.verify_equal(get_link_rx_seq, 0)
 
-    # test case 22: get_link_tx_seq function
+    # 4: verify get_link_tx_seq
     get_link_tx_seq = bmc_management_contract.get_link_tx_seq(link)
     sc.verify_equal(get_link_tx_seq, 0)
 
-    # test case 23: get_link_rx_height function
+    # 5: verify get_link_rx_height
     get_link_rx_height = bmc_management_contract.get_link_rx_height(link)
     sc.verify_equal(get_link_rx_height, 0)
 
-    # test case 24: get_link_relays function
+    # 6: verify get_link_relays
     get_link_relays = bmc_management_contract.get_link_relays(link)
     sc.verify_equal(get_link_relays, compared_to)
 
-    # test case 25: get_relay_status_by_link function
+    # 7: verify get_relay_status_by_link
     get_link_relays = bmc_management_contract.get_relay_status_by_link(link)
     sc.verify_equal(get_link_relays, sp.map(
         {0: sp.record(addr=sp.address('tz1XGbmLYhqcigxFuBCJrgyJejnwkySE4Sk9'), block_count=0, msg_count=0)}))
 
-    # test case 26: update_link_rx_seq function
-    # only bmc periphery address can run other users should get error
-    bmc_management_contract.update_link_rx_seq(sp.record(prev=next_link1, val=sp.nat(3))).run(sender=creator,
-                                                                                              valid=False,
-                                                                                              exception="Unauthorized")
-    # working
+    # Scenario 10: update_link_rx_seq function
+
+    # Test cases:
+    # 1: update_link_rx_seq by non-owner
+    bmc_management_contract.update_link_rx_seq(
+        sp.record(prev=next_link1, val=sp.nat(3))).run(sender=creator, valid=False, exception="Unauthorized")
+
+    # 2: update_link_rx_seq by owner
     bmc_management_contract.update_link_rx_seq(sp.record(prev=next_link1, val=sp.nat(3))).run(
         sender=bmc_periphery_address)
-    # Check that the value of rx_seq is updated correctly
+
+    # 3: verifying value
     sc.verify_equal(bmc_management_contract.data.links[next_link1].rx_seq, 3)
 
-    # test case 27: update_link_tx_seq function
-    # only bmc periphery address can run other users should get error
+    # Scenario 11: update_link_tx_seq function
+
+    # Test cases:
+    # 1: update_link_tx_seq by non-bmc_periphery
     bmc_management_contract.update_link_tx_seq(sp.record(prev=next_link1, serialized_msg=sp.bytes("0x64"))).run(
         sender=creator, valid=False, exception="Unauthorized")
-    # working
+
+    # 2: update_link_tx_seq by bmc_periphery
     bmc_management_contract.update_link_tx_seq(sp.record(prev=next_link1, serialized_msg=sp.bytes("0x64"))).run(
         sender=bmc_periphery_address)
-    # Check that the value of tx_seq is updated correctly
+
+    # 3: verifying value
     sc.verify_equal(bmc_management_contract.data.links[next_link1].tx_seq, 1)
 
-    # test case 28: update_link_rx_height function
-    # only bmc periphery address can run other users should get error
-    bmc_management_contract.update_link_rx_height(sp.record(prev=next_link1, val=sp.nat(3))).run(sender=creator,
-                                                                                                 valid=False,
-                                                                                                 exception="Unauthorized")
-    # working
+    # Scenario 12: update_link_rx_height function
+
+    # Test cases:
+    # 1: update_link_rx_height by non-bmc_periphery
+    bmc_management_contract.update_link_rx_height(
+        sp.record(prev=next_link1, val=sp.nat(3))).run(sender=creator, valid=False, exception="Unauthorized")
+
+    # 2: update_link_rx_height by bmc_periphery
     bmc_management_contract.update_link_rx_height(sp.record(prev=next_link1, val=sp.nat(4))).run(
         sender=bmc_periphery_address)
-    # Check that the value of rx_seq is updated correctly
+
+    # 3: verifying value
     sc.verify_equal(bmc_management_contract.data.links[next_link1].rx_height, 4)
 
-    # test case 29: update_link_reachable function
+    # Scenario 13: update_link_reachable and delete_link_reachable function
+
+    # Test cases:
     to = sp.list(["btp://net1/addr1", "btp://net2/addr2"])
-    # only bmc periphery address can run other users should get error
+    # 1: update_link_reachable by non-bmc_periphery
     bmc_management_contract.update_link_reachable(sp.record(prev=next_link1, to=to)).run(sender=creator, valid=False,
                                                                                          exception="Unauthorized")
-    # should work
+
+    # 2: update_link_reachable by bmc_periphery
     bmc_management_contract.update_link_reachable(sp.record(prev=next_link1, to=to)).run(sender=bmc_periphery_address)
-    # value checking
+
+    # 3: verifying value
     sc.verify_equal(bmc_management_contract.data.links[next_link1].reachable,
                     sp.set(['btp://net1/addr1', 'btp://net2/addr2']))
 
-    # test case 30: delete_link_reachable function
-    # only bmc periphery address can run other users should get error
-    bmc_management_contract.delete_link_reachable(sp.record(prev=next_link1, index=sp.nat(0))).run(sender=creator,
-                                                                                                   valid=False,
-                                                                                                   exception="Unauthorized")
-    # working
+    # 4: delete_link_reachable by non-bmc_periphery
+    bmc_management_contract.delete_link_reachable(
+        sp.record(prev=next_link1, index=sp.nat(0))).run(sender=creator, valid=False, exception="Unauthorized")
+
+    # 5: delete_link_reachable by bmc_periphery
     bmc_management_contract.delete_link_reachable(sp.record(prev=next_link1, index=sp.nat(0))).run(
         sender=bmc_periphery_address)
-    # value checking
+
+    # 6: verifying value
     sc.verify_equal(bmc_management_contract.data.links[next_link1].reachable, sp.set(['btp://net2/addr2']))
 
-    # test case 31: update_relay_stats function
-    # only bmc periphery address can run other users should get error
+    # # 7: delete non-exist link
+    # next_link2 = sp.string("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a625link2")
+    # bmc_management_contract.delete_link_reachable(sp.record(prev=next_link2, index=sp.nat(0))).run(
+    #     sender=bmc_periphery_address)
+
+    # Scenario 13: update_relay_stats and resolve_route function
+
+    # Test cases:
+    # 1: update_relay_stats by non-bmc_periphery
     bmc_management_contract.update_relay_stats(
         sp.record(relay=sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiADD"), block_count_val=sp.nat(2),
                   msg_count_val=sp.nat(2))).run(sender=creator, valid=False, exception="Unauthorized")
-    # working
+
+    # 2: update_relay_stats by bmc_periphery
     bmc_management_contract.update_relay_stats(
         sp.record(relay=sp.address("tz1XGbmLYhqcigxFuBCJrgyJejnwkySE4Sk9"), block_count_val=sp.nat(2),
                   msg_count_val=sp.nat(2))).run(sender=bmc_periphery_address)
-    # value checking
+
+    # 3: verifying value
     sc.verify_equal(
         bmc_management_contract.data.relay_stats[sp.address("tz1XGbmLYhqcigxFuBCJrgyJejnwkySE4Sk9")].block_count, 2)
     sc.verify_equal(
         bmc_management_contract.data.relay_stats[sp.address("tz1XGbmLYhqcigxFuBCJrgyJejnwkySE4Sk9")].msg_count, 2)
 
-    # test case 32: resolve_route function
+    # 4: verifying value of resolve_route function
     sc.verify_equal(bmc_management_contract.resolve_route(sp.string('0x7.icon')),
                     sp.pair('btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b',
                             'btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258dest'))
 
-    # test case 33: set_helper_address test
-    bmc_management_contract.set_helper_address(sp.address("KT1EXYXNGdbh4uvdKc8hh7ETQXCXPzhelper")).run(sender=jack,
-                                                                                                       valid=False,
-                                                                                                       exception="Unauthorized")
-    bmc_management_contract.set_helper_address(sp.address("KT1EXYXNGdbh4uvdKc8hh7ETQXCXPzhelper")).run(sender=creator)
-    sc.verify(bmc_management_contract.data.helper == sp.address("KT1EXYXNGdbh4uvdKc8hh7ETQXCXPzhelper"))
-
-    # test case 34: set_bmc_periphery test
-    bmc_management_contract.set_bmc_periphery(sp.address("KT1EXYXNGdbh4uvdKc8hh7ETQXCperiphery")).run(sender=jack,
-                                                                                                      valid=False,
-                                                                                                      exception="Unauthorized")
-    bmc_management_contract.set_bmc_periphery(sp.address("KT1EXYXNGdbh4uvdKc8hh7ETQXCperiphery")).run(sender=creator)
-    sc.verify(bmc_management_contract.data.bmc_periphery == sp.some(sp.address("KT1EXYXNGdbh4uvdKc8hh7ETQXCperiphery")))
+    # 4: non-exist link resolve_route
+    sc.verify_equal(bmc_management_contract.resolve_route(sp.string('0x8.icon')),
+                    sp.pair('Unreachable',
+                            'Unreachable: 0x8.icon is unreachable'))
 
 
 def deploy_bmc_management_contract(owner, helper):
