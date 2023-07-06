@@ -154,12 +154,8 @@ func NewReceiver(src, dst chain.BTPAddress,
 }
 
 func (r *Receiver) newVerifier(opts *types.VerifierOptions) (*Verifier, error) {
-	fmt.Println("reached in new Validator of icon")
-	fmt.Println(opts.ValidatorsHash)
 	validators, err := r.Client.GetValidatorsByHash(opts.ValidatorsHash)
-	fmt.Println("validator hash is", validators)
 	if err != nil {
-		fmt.Println("error in validators", err)
 		return nil, err
 	}
 	vr := Verifier{
@@ -178,10 +174,8 @@ func (r *Receiver) newVerifier(opts *types.VerifierOptions) (*Verifier, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("has gotten the headers and votes")
 
 	ok, err := vr.Verify(header, votes)
-	fmt.Println("has verified the header ", ok)
 	if !ok {
 		err = errors.New("verification failed")
 	}
@@ -311,14 +305,12 @@ func handleVerifierBlockRequests(requestCh chan *verifierBlockRequest, client IC
 }
 
 func (r *Receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64, callback func(rs []*chain.Receipt) error) (err error) {
-	fmt.Println("reached in icons reveive loop in reveiveloop")
 	blockReq, logFilter := r.blockReq, r.logFilter // copy
 
 	blockReq.Height, logFilter.seq = types.NewHexInt(int64(startHeight)), startSeq
 
 	var vr IVerifier
 	if r.opts.Verifier != nil {
-		fmt.Println("should reach in not nil case")
 		vr, err = r.newVerifier(r.opts.Verifier)
 		if err != nil {
 			return err

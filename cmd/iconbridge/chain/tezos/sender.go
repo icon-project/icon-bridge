@@ -35,6 +35,7 @@ type senderOptions struct {
 	StepLimit        uint64 `json:"step_limit"`
 	TxDataSizeLimit  uint64 `json:"tx_data_size_limit"`
 	BalanceThreshold uint64 `json:"balance_threshold"`
+	BMCManagment string `json:"bmcManagement"`
 }
 
 type sender struct {
@@ -64,12 +65,19 @@ func NewSender(
 		dst: dstAddr,
 		w:   w,
 	}
+
+	json.Unmarshal(rawOpts, &s.opts)
+
 	PrintPlus()
 	fmt.Println(w.Address())
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("Empty url")
 	}
-	s.cls, err = NewClient(urls[0], dstAddr, l)
+
+	bmcManaement := tezos.MustParseAddress(s.opts.BMCManagment)
+	fmt.Println("bmc Management sender", bmcManaement)
+
+	s.cls, err = NewClient(urls[0], dstAddr, bmcManaement, l)
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"net/http"
 
 	// "io"
 	"time"
@@ -56,9 +58,10 @@ type TypesLinkStats struct {
 type Client struct {
 	Log log.Logger
 	// Ctx context.Context
-	Cl         *rpc.Client
-	Contract   *contract.Contract
-	blockLevel int64
+	Cl            *rpc.Client
+	Contract      *contract.Contract
+	blockLevel    int64
+	BmcManagement tezos.Address
 }
 
 func (c *Client) SignTransaction() rpc.CallOptions {
@@ -247,7 +250,9 @@ func returnTxMetadata3(tx *rpc.Transaction, contractAddress tezos.Address, heigh
 	for i := 0; i < len(tx.Metadata.InternalResults); i++ {
 		fmt.Println("reached in for")
 		internalResults := tx.Metadata.InternalResults[i]
-		if internalResults.Kind.String() == "event" && internalResults.Source.ContractAddress() == "KT1LCyXGWTv2VctSrFL74h8nMNXMcBRNk6oR" {
+		fmt.Println("internal results", internalResults.Source.ContractAddress())
+		fmt.Println("bmc address", contractAddress.ContractAddress())
+		if internalResults.Kind.String() == "event" && internalResults.Source.ContractAddress() == contractAddress.ContractAddress() {
 			fmt.Println("Address matched")
 			if internalResults.Tag == "Message" {
 				message := internalResults.Payload.Args[0].Bytes
@@ -330,6 +335,35 @@ func (c *Client) GetOperationByHash(ctx context.Context, clinet *rpc.Client, blo
 	return operation, nil
 }
 
+func (c *Client) GetConsensusKey(ctx context.Context, bakerConsensusKey tezos.Address) (tezos.Key, error) {
+	fmt.Println("baker consensus key", bakerConsensusKey.String())
+	var exposedPublicKey tezos.Key
+	for i := 0; i < 5; i++ {
+		url := c.Cl.BaseURL.String() + "/chains/main/blocks/head/context/raw/json/contracts/index/" + bakerConsensusKey.String() + "/consensus_key/active"
+
+		resp, err := http.Get(url)
+		if err != nil {
+			return tezos.Key{}, err
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return tezos.Key{}, err
+		}
+		//Convert the body to type string
+		sb := string(body)
+
+		exposedPublicKey, err = tezos.ParseKey(sb[1 : len(sb)-2])
+		if err != nil {
+			fmt.Println("continued to refetch again")
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		break
+	}
+	return exposedPublicKey, nil 
+}
+
 func (c *Client) HandleRelayMessage(ctx context.Context, callArgs contract.CallArguments, opts *rpc.CallOptions) (*rpc.Receipt, error) {
 	fmt.Println("handling relay message")
 	PrintU()
@@ -371,7 +405,7 @@ func (c *Client) CustomCall(ctx context.Context, args []contract.CallArguments, 
 	return c.Cl.Send(ctx, op, opts)
 }
 
-func NewClient(uri string, src tezos.Address, l log.Logger) (*Client, error) {
+func NewClient(uri string, src tezos.Address, bmcManagement tezos.Address, l log.Logger) (*Client, error) {
 
 	fmt.Println("uri is : " + uri)
 
@@ -383,7 +417,7 @@ func NewClient(uri string, src tezos.Address, l log.Logger) (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{Log: l, Cl: c, Contract: conn}, nil
+	return &Client{Log: l, Cl: c, Contract: conn, BmcManagement: bmcManagement}, nil
 }
 
 func PrettyEncode(data interface{}) error {
@@ -408,7 +442,7 @@ func returnTxMetadata2(block *rpc.Block, contractAddress tezos.Address, blockHei
 				switch operation.Kind() {
 				case tezos.OpTypeTransaction:
 					tx = operation.(*rpc.Transaction)
-					r, err := returnTxMetadata3(tx, contractAddress, uint64(blockHeight))
+					r, err := returnTxMetadata3(tx, cl.BmcManagement, uint64(blockHeight))
 					if err != nil {
 						return false, nil, err
 					}

@@ -1,10 +1,7 @@
 package tezos
 
 import (
-	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"sync"
 
 	"context"
@@ -13,27 +10,35 @@ import (
 	"blockwatch.cc/tzgo/codec"
 	"blockwatch.cc/tzgo/rpc"
 	"blockwatch.cc/tzgo/tezos"
+	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/tezos/types"
 )
 
 type IVerifier interface {
 	Next() int64
-	Verify(ctx context.Context, header *rpc.BlockHeader, block *rpc.Block, proposer tezos.Address, c *rpc.Client, nextHeader *rpc.BlockHeader) error
-	Update(ctx context.Context, header *rpc.BlockHeader, block *rpc.Block) error
+	Verify(ctx context.Context, lbn *types.BlockNotification) error
+	Update(ctx context.Context, lbn *types.BlockNotification) error
 	ParentHash() tezos.BlockHash
 	IsValidator(proposer tezos.Address, height int64) bool
 	Height() int64
+	LastVerifiedBn() *types.BlockNotification
 }
 
-type Verifier struct{
-	chainID 		uint32
-	mu 				sync.RWMutex
-	validators 		map[tezos.Address]bool
-	next 			int64
-	parentHash 		tezos.BlockHash
-	parentFittness	int64
-	height 			int64
-	cycle 	int64
-	c *rpc.Client
+const (
+	threshold = 4667
+)
+
+type Verifier struct {
+	chainID             uint32
+	mu                  sync.RWMutex
+	validators          map[tezos.Address]bool
+	validatorsPublicKey map[tezos.Address]tezos.Key
+	next                int64
+	parentHash          tezos.BlockHash
+	parentFittness      int64
+	height              int64
+	cycle               int64
+	lastVerifiedBn      *types.BlockNotification
+	cl                  *Client
 }
 
 func (vr *Verifier) Next() int64 {
@@ -42,44 +47,45 @@ func (vr *Verifier) Next() int64 {
 	return vr.next
 }
 
-func (vr *Verifier) Verify(ctx context.Context, header *rpc.BlockHeader, block *rpc.Block, proposer tezos.Address, c *rpc.Client, nextHeader *rpc.BlockHeader) error {
+func (vr *Verifier) Verify(ctx context.Context, lbn *types.BlockNotification) error {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
-	blockFittness := header.Fitness
+	blockFittness := lbn.Header.Fitness
 	currentFittness, err := strconv.ParseInt(string(blockFittness[1].String()), 16, 64)
 	if err != nil {
 		return err
 	}
 
 	if currentFittness < vr.parentFittness {
-		return fmt.Errorf("Invalid block fittness", currentFittness)
+		return fmt.Errorf("invalid block fittness %d", currentFittness)
 	}
 
-	previousHashInBlock := header.Predecessor
+	previousHashInBlock := lbn.Block.Header.Predecessor
 
 	if previousHashInBlock.String() != vr.parentHash.String() {
-		return fmt.Errorf("Invalid block hash", header.Level)
+		return fmt.Errorf("invalid block hash %d", lbn.Header.Level)
 	}
 
-	isValidSignature, err := vr.VerifySignature(ctx, proposer, header.Signature, header.Level, header, c)
+	isValidSignature, _ := vr.VerifySignature(ctx, lbn)
 
 	if !isValidSignature {
-		return fmt.Errorf("Invalid block hash. Signature mismatch")
+		return fmt.Errorf("invalid block signature. signature mismatch")
 	}
 
-	// err = vr.verifyEndorsement(block.Operations, vr.c, block.GetLevel())
-
-	// if err != nil {
-	// 	return err
-	// }
+	err = vr.verifyEndorsement(lbn.Block, lbn.Header.ChainId)
+	if err != nil {
+		return fmt.Errorf("invlid endorsement")
+	}
 
 	return nil
 }
 
-func (vr *Verifier) Update(ctx context.Context, header *rpc.BlockHeader, block *rpc.Block) error {
+func (vr *Verifier) Update(ctx context.Context, lbn *types.BlockNotification) error {
 	vr.mu.Lock()
 	defer vr.mu.Unlock()
-	fmt.Println("updating for block ????", header.Level)
+
+	header := lbn.Header
+	block := lbn.Block
 	blockFittness := header.Fitness
 
 	currentFittness, err := strconv.ParseInt(string(blockFittness[1].String()), 16, 64)
@@ -88,16 +94,15 @@ func (vr *Verifier) Update(ctx context.Context, header *rpc.BlockHeader, block *
 	}
 
 	vr.parentFittness = currentFittness
-
-	vr.parentHash = header.Hash
+	vr.parentHash = block.Hash
 	vr.height = header.Level
 	vr.next = header.Level + 1
 
 	if vr.cycle != block.Metadata.LevelInfo.Cycle {
-		fmt.Println("reached in updating validators and cycle")
 		vr.updateValidatorsAndCycle(ctx, block.Header.Level, block.Metadata.LevelInfo.Cycle)
 	}
 
+	vr.lastVerifiedBn = lbn
 	return nil
 }
 
@@ -105,6 +110,12 @@ func (vr *Verifier) ParentHash() tezos.BlockHash {
 	vr.mu.RLock()
 	defer vr.mu.RUnlock()
 	return vr.parentHash
+}
+
+func (vr *Verifier) LastVerifiedBn() *types.BlockNotification {
+	vr.mu.RLock()
+	defer vr.mu.RUnlock()
+	return vr.lastVerifiedBn
 }
 
 func (vr *Verifier) Height() int64 {
@@ -119,14 +130,8 @@ func (vr *Verifier) IsValidator(proposer tezos.Address, height int64) bool {
 	return true
 }
 
-func (vr *Verifier) VerifySignature(ctx context.Context, proposer tezos.Address, signature tezos.Signature, blockLevel int64, header *rpc.BlockHeader, c *rpc.Client) (bool, error) {
-	exposedPublicKey, err := vr.GetConsensusKey(ctx, c, proposer)
-	
-	if err != nil {
-		return false, err
-	}
-
-	// c.ListBakingRights()
+func (vr *Verifier) VerifySignature(ctx context.Context, lbn *types.BlockNotification) (bool, error) {
+	header := lbn.Block.Header
 
 	blockHeader := codec.BlockHeader{
 		Level:            int32(header.Level),
@@ -141,51 +146,27 @@ func (vr *Verifier) VerifySignature(ctx context.Context, proposer tezos.Address,
 		PayloadRound:     header.PayloadRound,
 		ProofOfWorkNonce: header.ProofOfWorkNonce,
 		LbToggleVote:     header.LbVote(),
-		// SeedNonceHash: 		block.Metadata.NonceHash,
-		ChainId: &header.ChainId,
+		SeedNonceHash:    lbn.Block.Metadata.NonceHash,
+		ChainId:          &lbn.Block.ChainId,
 	}
 
 	digestedHash := blockHeader.Digest()
 
-	err = exposedPublicKey.Verify(digestedHash[:], header.Signature)
+	err := vr.validatorsPublicKey[lbn.Block.Metadata.Baker].Verify(digestedHash[:], header.Signature)
 
 	if err != nil {
-		fmt.Println(err)
-		return false, err
+		panic("signature failed")
+		// return false, err
 	}
 
 	return true, nil
 }
 
-func (vr *Verifier) GetConsensusKey(ctx context.Context, c *rpc.Client, bakerConsensusKey tezos.Address) (tezos.Key, error){
-	url := c.BaseURL.String() + "/chains/main/blocks/head/context/raw/json/contracts/index/" + bakerConsensusKey.String() + "/consensus_key/active"
-
-	fmt.Println(c.BaseURL)
-
-	resp, err := http.Get(url)
-	fmt.Println(resp.Body)
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return tezos.Key{}, err
-	}
-	//Convert the body to type string
-	sb := string(body)
-
-	exposedPublicKey := tezos.MustParseKey(sb)
-	return exposedPublicKey, nil 
-}
-
 func (vr *Verifier) updateValidatorsAndCycle(ctx context.Context, blockHeight int64, cycle int64) error {
-
-	if true {
-		return nil
-	}
-
-	fmt.Println("reached update validators")
-	validatorsList, err := vr.c.ListEndorsingRights(ctx, rpc.BlockLevel(blockHeight))
+	PrintSync()
+	validatorsList, err := vr.cl.Cl.ListEndorsingRights(ctx, rpc.BlockLevel(blockHeight))
+	var validatorsPublicKey tezos.Key
 	if err != nil {
-		fmt.Println("error here?", err)
 		return err
 	}
 	// remove all validators
@@ -196,41 +177,61 @@ func (vr *Verifier) updateValidatorsAndCycle(ctx context.Context, blockHeight in
 	// add new validators
 	for _, validator := range validatorsList {
 		vr.validators[validator.Delegate] = true
+		validatorsPublicKey, err = vr.cl.GetConsensusKey(ctx, validator.Delegate)
+		if err != nil {
+			return err
+		}
+		vr.validatorsPublicKey[validator.Delegate] = validatorsPublicKey
 	}
 	vr.cycle = cycle
-	fmt.Println("reached to updating cycle")
 	return nil
 }
 
-func (vr *Verifier) verifyEndorsement(op [][]*rpc.Operation, c *rpc.Client, blockHeight int64) error {
+func (vr *Verifier) verifyEndorsement(block *rpc.Block, chainID tezos.ChainIdHash) error {
 	endorsementPower := 0
-
-	threshold := 7000 * float32(2) / float32(3)
 	endorsers := make(map[tezos.Address]bool)
+	op := block.Operations
 	for i := 0; i < len(op); i++ {
 		for j := 0; j < len(op[i]); j++ {
 			for _, operation := range op[i][j].Contents {
+				signature := op[i][j].Signature
+				branch := op[i][j].Branch
 				switch operation.Kind() {
 				case tezos.OpTypeEndorsement:
 					tx := operation.(*rpc.Endorsement)
+
 					if _, isDelegate := vr.validators[tx.Metadata.Delegate]; isDelegate {
+						endorsement := codec.TenderbakeEndorsement{
+							Slot:             int16(tx.Slot),
+							Level:            int32(tx.Level),
+							Round:            int32(tx.Round),
+							BlockPayloadHash: tx.PayloadHash,
+						}
+						digested := codec.NewOp().WithContentsFront(&endorsement).WithChainId(block.ChainId).WithBranch(branch).Digest()
+
+						managerKey := vr.validatorsPublicKey[tx.Metadata.Delegate]
+
+						err := managerKey.Verify(digested[:], signature)
+
+						if err != nil {
+							panic("signature unverified")
+							// return err
+						}
+
 						if _, ok := endorsers[tx.Metadata.Delegate]; !ok {
 							endorsers[tx.Metadata.Delegate] = true
 							endorsementPower += tx.Metadata.EndorsementPower
 						}
-					} else {
-						fmt.Println(vr.validators[tx.Metadata.Delegate])
 					}
 				}
 			}
 		}
 	}
-	fmt.Println(len(endorsers))
-
-	if endorsementPower > int(threshold) && len(endorsers)*100/len(vr.validators) > 66 {
+	if endorsementPower > int(threshold) { // && len(endorsers)*100/len(vr.validators) >= 66 {
 		return nil
 	}
-	return errors.New("endorsement verification failed")
+	panic("threshold didnot meet")
+	// return errors.New("endorsement verification failed")
 
 }
 

@@ -17,5 +17,6 @@ type BlockNotification struct {
 	HasBTPMessage 	*bool
 	Proposer 		tezos.Address
 	Block 			*rpc.Block
+	BakerConsensusKey tezos.Key
 }
 

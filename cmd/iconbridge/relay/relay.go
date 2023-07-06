@@ -78,18 +78,13 @@ func (r *relay) Start(ctx context.Context) error {
 	}
 
 	filterSrcMsg := func(rxHeight, rxSeq uint64) (missingRxSeq uint64) {
-		fmt.Println("reached to srcMsg. receipts")
 		receipts := srcMsg.Receipts[:0]
 		for _, receipt := range srcMsg.Receipts {
-			fmt.Println("receipt.height", receipt.Height)
-			fmt.Println("rx_height", rxHeight)
 			if receipt.Height < rxHeight {
 				continue
 			}
 			events := receipt.Events[:0]
 			for _, event := range receipt.Events {
-				fmt.Println("event.seq: ", event.Sequence)
-				fmt.Println("rx_seq:", rxSeq)
 				if event.Sequence > rxSeq {
 					rxSeq++
 					if event.Sequence != rxSeq {
@@ -104,7 +99,6 @@ func (r *relay) Start(ctx context.Context) error {
 			}
 		}
 		srcMsg.Receipts = receipts
-		fmt.Println(len(srcMsg.Receipts))
 		return 0
 	}
 
@@ -156,7 +150,6 @@ func (r *relay) Start(ctx context.Context) error {
 			for _, receipt := range msg.Receipts {
 				if len(receipt.Events) > 0 {
 					if seqBegin == 0 {
-						fmt.Println(receipt.Events[0], receipt.Height, receipt.Index)
 						seqBegin = receipt.Events[0].Sequence
 					}
 					seqEnd = receipt.Events[len(receipt.Events)-1].Sequence
@@ -164,55 +157,36 @@ func (r *relay) Start(ctx context.Context) error {
 				}
 			}
 			msg.Receipts = receipts
-			fmt.Println("length of msg.Receipts is ", len(msg.Receipts))
 			if len(msg.Receipts) > 0 {
 				r.log.WithFields(log.Fields{
 					"seq": []uint64{seqBegin, seqEnd}}).Debug("srcMsg added")
 				srcMsg.Receipts = append(srcMsg.Receipts, msg.Receipts...)
-				fmt.Println(len(srcMsg.Receipts))
-				fmt.Println(srcMsg.Receipts[0].Height)
 				if len(srcMsg.Receipts) > relayTriggerReceiptsCount {
 					relaySignal()
 				}
 			}
 
 		case <-relayCh:
-
-			fmt.Println("reached in status")
-			fmt.Println(r.cfg.Name)
-
 			link, err = r.dst.Status(ctx)
-			fmt.Println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx")
-			fmt.Println(link)
 			if err != nil {
 				r.log.WithFields(log.Fields{"error": err}).Debug("dst.Status: failed")
 				if errors.Is(err, context.Canceled) {
 					r.log.WithFields(log.Fields{"error": err}).Error("dst.Status: failed, Context Cancelled")
 					return err
 				}
-				fmt.Println("continued from getting status")
 				// TODO decide whether to ignore error or not
 				continue
 			}
 
 			if link.CurrentHeight < txBlockHeight {
-				fmt.Println("continued from here")
 				continue // skip until dst.Status is updated
 			}
 
-			fmt.Println("before filtering the message")
-			fmt.Println(len(srcMsg.Receipts))
-
 			if missing := filterSrcMsg(link.RxHeight, link.RxSeq); missing > 0 {
-				fmt.Println("did this filter the messages")
 				r.log.WithFields(log.Fields{"rxSeq": missing}).Error("missing event sequence")
 				return fmt.Errorf("missing event sequence")
 			}
-
-			fmt.Println("reached before sequence")
-			fmt.Println("*****************************************************************")
-			fmt.Println(len(srcMsg.Receipts))
-			// fmt.Println(srcMsg.Receipts[0].Height)
+			
 			tx, newMsg, err := r.dst.Segment(ctx, srcMsg)
 			if err != nil {
 				return err
