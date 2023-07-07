@@ -235,13 +235,13 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
 
                             with sp.if_(bsh_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
                                 # call handle_fee_gathering of bts periphery
-                                handle_fee_gathering_args_type = sp.TRecord(bsh_addr=sp.TAddress, fa=sp.TString,
+                                handle_fee_gathering_args_type = sp.TRecord(fa=sp.TString,
                                                                             svc=sp.TString)
                                 handle_fee_gathering_entry_point = sp.contract(handle_fee_gathering_args_type,
                                                                                 bsh_addr,
                                                                                 "handle_fee_gathering").open_some()
 
-                                handle_fee_gathering_args = sp.record(bsh_addr=bsh_addr,
+                                handle_fee_gathering_args = sp.record(
                                                                 fa=gather_fee.value.fa, svc=gather_fee.value.svcs[k])
                                 sp.transfer(handle_fee_gathering_args, sp.tez(0), handle_fee_gathering_entry_point)
                     bool_value.value = True
