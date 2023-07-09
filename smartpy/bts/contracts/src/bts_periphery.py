@@ -81,7 +81,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_type(params, sp.TList(sp.TString))
 
         add_blacklist_status = sp.local("add_blacklist_status", "success")
-        addr_list = sp.ocal("addr_list", [], sp.TList(sp.TAddress))
+        addr_list = sp.local("addr_list", [], sp.TList(sp.TAddress))
         with sp.if_(sp.len(params) <= self.MAX_BATCH_SIZE):
             sp.for item in params:
                 parsed_addr = sp.view("str_to_addr", self.data.parse_contract, item, t=sp.TAddress).open_some()
@@ -108,19 +108,19 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_type(params, sp.TList(sp.TString))
 
         remove_blacklist_status = sp.local("remove_blacklist_status", "success")
-        addr_list = sp.ocal("addr_list", [], sp.TList(sp.TAddress))
+        addr_list = sp.local("addr_list", [], sp.TList(sp.TAddress))
 
         with sp.if_(sp.len(params) <= self.MAX_BATCH_SIZE):
             sp.for item in params:
                 parsed_addr = sp.view("str_to_addr", self.data.parse_contract, item, t=sp.TAddress).open_some()
                 with sp.if_(remove_blacklist_status.value == "success"):
-                    with sp.if_(parsed_addr == sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg") |
-                                self.data.blacklist.contains(parsed_addr) == False):
+                    with sp.if_((parsed_addr == sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")) |
+                                (self.data.blacklist.contains(parsed_addr) == False)):
                         remove_blacklist_status.value = "InvalidAddress"
                     with sp.else_():
-                        addr_list.push(parsed_addr)
+                        addr_list.value.push(parsed_addr)
             with sp.if_(remove_blacklist_status.value == "success"):
-                sp.for _item in addr_list:
+                sp.for _item in addr_list.value:
                     del self.data.blacklist[_item]
             with sp.else_():
                 remove_blacklist_status.value = "InvalidAddress"
@@ -412,7 +412,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         bts_core_fa2_balance = sp.local("fa2_token_balance_response_service", sp.nat(0))
 
         bts_core_address = self.data.bts_core
-        with sp.if_((loop.value <= self.MAX_BATCH_SIZE) & (caller.value == bts_core_address)):
+        with sp.if_(loop.value <= self.MAX_BATCH_SIZE):
             sp.for item in self.data.requests.get(sn).coin_details:
                 with sp.if_(check_valid.value == True):
                     coin_name = item.coin_name
@@ -425,7 +425,8 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                                                                 refundable_balance=sp.TNat, user_balance=sp.TNat)
                                                       ).open_some()
                     # check if caller has enough locked in bts_core
-                    with sp.if_(bts_core_balance.locked_balance < amount):
+                    # this case is for transfer fees
+                    with sp.if_((bts_core_balance.locked_balance < amount) & (caller.value != bts_core_address)):
                         check_valid.value = False
 
                     coin_type = sp.view("coin_type", bts_core_address, coin_name, t=sp.TNat).open_some()
