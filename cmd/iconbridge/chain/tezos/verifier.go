@@ -98,9 +98,9 @@ func (vr *Verifier) Update(ctx context.Context, lbn *types.BlockNotification) er
 	vr.height = header.Level
 	vr.next = header.Level + 1
 
-	if vr.cycle != block.Metadata.LevelInfo.Cycle {
-		vr.updateValidatorsAndCycle(ctx, block.Header.Level, block.Metadata.LevelInfo.Cycle)
-	}
+	// if vr.cycle != block.Metadata.LevelInfo.Cycle {
+	// 	vr.updateValidatorsAndCycle(ctx, block.Header.Level, block.Metadata.LevelInfo.Cycle)
+	// }
 
 	vr.lastVerifiedBn = lbn
 	return nil

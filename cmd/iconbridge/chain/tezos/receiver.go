@@ -190,8 +190,8 @@ func (r *receiver) NewVerifier(ctx context.Context, previousHeight int64) (vri I
 		return nil, err
 	}
 
-	fmt.Println("header hash", block.Header.Hash)
-	fmt.Println("blockHeaderhash", block.Header.Hash)
+	// fmt.Println("header hash", block.Header.Hash)
+	// fmt.Println("blockHeaderhash", block.Header.Hash)
 
 	vr := &Verifier{
 		mu:                  sync.RWMutex{},
@@ -204,7 +204,7 @@ func (r *receiver) NewVerifier(ctx context.Context, previousHeight int64) (vri I
 		validatorsPublicKey: make(map[tezos.Address]tezos.Key),
 	}
 
-	vr.updateValidatorsAndCycle(ctx, previousHeight, block.Metadata.LevelInfo.Cycle)
+	// vr.updateValidatorsAndCycle(ctx, previousHeight, block.Metadata.LevelInfo.Cycle)
 	fmt.Println("cycle is ", vr.cycle)
 	return vr, nil
 }
@@ -656,18 +656,18 @@ func (r *receiver) receiveLoop2(ctx context.Context, opts *BnOptions, callback f
 						}
 					} else {
 						if vr != nil {
-							if err := vr.Verify(ctx, lbn); err != nil { // change accordingly
-								r.log.WithFields(log.Fields{
-									"height":     lbn.Height,
-									"lbnHash":    lbn.Hash,
-									"nextHeight": next,
-									"bnHash":     bn.Hash}).Error("verification failed. refetching block ", err)
-								fmt.Println(err)
-								fmt.Println("error in verifying ")
-								time.Sleep(5 * time.Second)
-								next--
-								break
-							}
+							// if err := vr.Verify(ctx, lbn); err != nil { // change accordingly
+							// 	r.log.WithFields(log.Fields{
+							// 		"height":     lbn.Height,
+							// 		"lbnHash":    lbn.Hash,
+							// 		"nextHeight": next,
+							// 		"bnHash":     bn.Hash}).Error("verification failed. refetching block ", err)
+							// 	fmt.Println(err)
+							// 	fmt.Println("error in verifying ")
+							// 	time.Sleep(5 * time.Second)
+							// 	next--
+							// 	break
+							// }
 							if err := vr.Update(ctx, lbn); err != nil {
 								return errors.Wrapf(err, "receiveLoop: vr.Update: %v", err)
 							}

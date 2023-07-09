@@ -19,7 +19,7 @@
             "src": {
                 "address": "btp://NetXnHfVqm9iesp.tezos/KT1VTmeVTccqv3opzkbRVrYwaoSZTTEzfJ8b",
                 "endpoint": [
-                    "https://ghostnet.smartpy.io"
+                    "https://rpc.ghost.tzstats.com"
                 ],
                 "options": {
                     "verifier": {
@@ -82,7 +82,7 @@
             "dst": {
                 "address": "btp://NetXnHfVqm9iesp.tezos/KT1VTmeVTccqv3opzkbRVrYwaoSZTTEzfJ8b",
                 "endpoint": [
-                    "https://ghostnet.smartpy.io"
+                    "https://rpc.ghost.tzstats.com"
                 ],
                 "options": {
                     "gas_limit": 1040000,
