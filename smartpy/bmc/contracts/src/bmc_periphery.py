@@ -66,10 +66,11 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
     def set_bmc_btp_address(self, network):
         sp.set_type(network, sp.TString)
 
+        _self_address = sp.self_address
         sp.verify(sp.sender == self.data.bmc_management, "Unauthorized")
         with sp.if_(self.data.bmc_btp_address == sp.string("")):
             self.data.bmc_btp_address = sp.string("btp://") + network + "/" + \
-                            sp.view("add_to_str", self.data.parse_contract, sp.self_address, t=sp.TString).open_some()
+                            sp.view("add_to_str", self.data.parse_contract, _self_address, t=sp.TString).open_some()
         with sp.else_():
             sp.failwith("Address already set")
 

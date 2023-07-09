@@ -1,13 +1,5 @@
 import subprocess
-
 import smartpy as sp
-
-FA2 = sp.io.import_script_from_url("https://legacy.smartpy.io/templates/fa2_lib.py")
-BMCManagement = sp.io.import_script_from_url("file:./contracts/src/bmc_management.py")
-BMCPeriphery = sp.io.import_script_from_url("file:./contracts/src/bmc_periphery.py")
-BMCHelper = sp.io.import_script_from_url("file:./contracts/src/helper.py")
-ParseAddress = sp.io.import_script_from_url("file:../bts/contracts/src/parse_address.py")
-fa2_dummy_file = sp.io.import_script_from_url("file:./contracts/tests/fa2_dummy.py")
 
 path = {"bts_core": [
     {"types": ['types = sp.io.import_script_from_url("file:../bts/contracts/src/Types.py")',
@@ -15,7 +7,7 @@ path = {"bts_core": [
     {"FA2_contract": [
         'FA2_contract = sp.io.import_script_from_url("file:../bts/contracts/src/FA2_contract.py")',
         'FA2_contract = sp.io.import_script_from_url("file:./contracts/src/FA2_contract.py")']}
-],
+    ],
     "bts_periphery": [
         {"types": ['types = sp.io.import_script_from_url("file:../bts/contracts/src/Types.py")',
                    'types = sp.io.import_script_from_url("file:./contracts/src/Types.py")']},
@@ -25,32 +17,32 @@ path = {"bts_core": [
                  'rlp = sp.io.import_script_from_url("file:./contracts/src/RLP_struct.py")']},
 
     ],
-
     "RLP_struct": [
         {"types": ['types = sp.io.import_script_from_url("file:../bts/contracts/src/Types.py")',
                    'types = sp.io.import_script_from_url("file:./contracts/src/Types.py")']},
-
     ]
 }
 
 path2 = {
-    # "RLP_struct": [
-        # {'yy':
-        #      ['        yy = sp.view("encode_nat", self.data.helper, params.sn, t=sp.TBytes).open_some()',
-        #       '        yy = sp.view("to_byte", self.data.helper_parse_negative, params.sn,'
-        #       ' t=sp.TBytes).open_some()']},
-         # {'xx':
-         #     ['                    xx = Utils2.Int.of_bytes(sn_in_bytes)',
-         #      '                    xx = sp.view("to_int", self.data.helper_parse_negative, sn_in_bytes, t=sp.TInt)'
-         #      '.open_some()']
-         #
-         # }
-    # ],
+    "RLP_struct": [
+        {'_to_byte':
+         ['        _to_byte = sp.view("encode_nat", self.data.helper, sp.as_nat(params.sn), t=sp.TBytes).open_some()',
+          '        _to_byte = sp.view("to_byte", self.data.helper_parse_negative, params.sn,'
+          ' t=sp.TBytes).open_some()'
+          ]
+         },
+        {'_to_int':
+         ['                    _to_int = sp.to_int(Utils2.Int.of_bytes(sn_in_bytes))',
+          '                    _to_int = sp.view("to_int", self.data.helper_parse_negative, sn_in_bytes, t=sp.TInt)'
+          '.open_some()'
+          ]
+         }
+    ],
     "bmc_periphery": [
         {'_self_address':
-             ['        _self_address = "KT1VTmeVTccqv3opzkbRVrYwaoSZTTEzfJ8b"',
-              '        _self_address = sp.self_address'
-              ]
+         ['        _self_address = sp.address("KT1VTmeVTccqv3opzkbRVrYwaoSZTTEzfJ8b")',
+          '        _self_address = sp.self_address'
+          ]
          }
     ]
 }
@@ -80,7 +72,7 @@ def bmc_periphery_contract_deploy_setup():
                 patch_file_path("./contracts/src/" + key + ".py", lis1[0], y[0])
 
 
-def tear_down():
+def tear_down_bts_changes():
     for key, value in path.items():
         for i in value:
             lis1 = []
@@ -90,7 +82,7 @@ def tear_down():
                 patch_file_path("../bts/contracts/src/" + key + ".py", lis1[0], y[1])
 
 
-def tear_down_bmc():
+def tear_down_bmc_changes():
     for key, value in path2.items():
         for i in value:
             lis1 = []
@@ -108,8 +100,18 @@ BTSCore = sp.io.import_script_from_url("file:../bts/contracts/src/bts_core.py")
 BTSOwnerManager = sp.io.import_script_from_url("file:../bts/contracts/src/bts_owner_manager.py")
 BTSPeriphery = sp.io.import_script_from_url("file:../bts/contracts/src/bts_periphery.py")
 
+FA2 = sp.io.import_script_from_url("https://legacy.smartpy.io/templates/fa2_lib.py")
+BMCManagement = sp.io.import_script_from_url("file:./contracts/src/bmc_management.py")
+BMCPeriphery = sp.io.import_script_from_url("file:./contracts/src/bmc_periphery.py")
+BMCHelper = sp.io.import_script_from_url("file:./contracts/src/helper.py")
+ParseAddress = sp.io.import_script_from_url("file:../bts/contracts/src/parse_address.py")
+fa2_dummy_file = sp.io.import_script_from_url("file:./contracts/tests/fa2_dummy.py")
 
-@sp.add_test("BMCManagementTest")
+# revert the path changes made in bts_core for testing
+tear_down_bts_changes()
+
+
+@sp.add_test("IntegrationTest")
 def test():
     sc = sp.test_scenario()
 
@@ -170,9 +172,7 @@ def test():
         sender=owner.address)
 
     # tear down changes after bmc btp address is set
-    tear_down_bmc()
-    # revert the path changes made in bts_core for testing
-    tear_down()
+    tear_down_bmc_changes()
 
     # add_service
     svc1 = sp.string("bts")
@@ -218,62 +218,61 @@ def test():
         "25977616f535a5454457a664a386283626d630089c884496e697482c1c084009f639c")
     bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
 
-    # # 2: Transfer 100 native coin
-    # bts_core.transfer_native_coin("btp://0x7.icon/cx4419cb43f1c53db85c4647e4ef0707880309726d").run(
-    #     sender=alice.address, amount=sp.tez(100))
-    #
-    # # 3: relay msg for transfer end of step 2 with fee gathering
-    # msg_byte = sp.bytes(
-    #     "0xf90218f90215b90212f9020f01b90206f90203f8e0b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b"
-    #     "543156546d65565463637176336f707a6b625256725977616f535a5454457a664a386202b89bf899b8396274703a2f2f3078372e69636"
-    #     "f6e2f637862376465363364623863316661326439646662366335333165366263313934303235373263633233b8406274703a2f2f4e657"
-    #     "4586e486656716d39696573702e74657a6f732f4b543156546d65565463637176336f707a6b625256725977616f535a5454457a664a38"
-    #     "62836274730196d50293d200905472616e736665722053756363657373f9011eb8406274703a2f2f4e6574586e486656716d396965737"
-    #     "02e74657a6f732f4b543156546d65565463637176336f707a6b625256725977616f535a5454457a664a386203b8d9f8d7b8396274703a"
-    #     "2f2f3078372e69636f6e2f637862376465363364623863316661326439646662366335333165366263313934303235373263633233b8"
-    #     "406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b543156546d65565463637176336f707a6b62525672597761"
-    #     "6f535a5454457a664a386283626d6300b853f8518c466565476174686572696e67b842f840b8396274703a2f2f3078372e69636f6e2f"
-    #     "687866383061643730393832643637636437363438396665613966653036343239626362306266646531c4836274738400a01441")
-    #
-    # bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # 2: Transfer 100 native coin
+    bts_core.transfer_native_coin("btp://0x7.icon/cx4419cb43f1c53db85c4647e4ef0707880309726d").run(
+        sender=alice.address, amount=sp.tez(100))
 
-    # # transfer end of fee gathering
-    # msg_byte = sp.bytes("0xf8f2f8f0b8eef8ec01b8e4f8e2f8e0b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f"
-    #                     "4b543156546d65565463637176336f707a6b625256725977616f535a5454457a664a386204b89bf899b8396274703"
-    #                     "a2f2f3078372e69636f6e2f63786237646536336462386331666132643964666236633533316536626331393430323"
-    #                     "5373263633233b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b543156546d655654636"
-    #                     "37176336f707a6b625256725977616f535a5454457a664a3862836274730296d50293d200905472616e73666572205"
-    #                     "37563636573738400a01489")
-    #
-    # bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
-    #
-    # # mint fa2 dummy
-    # fa2_dummy.mint([sp.record(to_=alice.address, amount=sp.nat(200000000))]).run(sender=owner.address)
-    #
-    # # add operator
-    # fa2_dummy.update_operators(
-    #     [sp.variant("add_operator", sp.record(owner=alice.address, operator=bts_core.address, token_id=0))]).run(
-    #     sender=alice.address)
-    #
-    # # register fa2
-    # bts_core.register(
-    #     name=sp.string("test"),
-    #     fee_numerator=sp.nat(100),
-    #     fixed_fee=sp.nat(450),
-    #     addr=fa2_dummy.address,
-    #     token_metadata=sp.map({"token_metadata": sp.bytes("0x0dae11")}),
-    #     metadata=sp.big_map({"metadata": sp.bytes("0x0dae11")})
-    # ).run(sender=owner.address)
-    #
-    # # 4: transfer fa2 token
-    # bts_core.transfer(sp.record(
-    #     coin_name="test", value=50000000, to="btp://0x7.icon/cx4419cb43f1c53db85c4647e4ef0707880309726d")).run(
-    #     sender=alice.address)
+    # 3: relay msg for transfer end of step 2 with fee gathering
+    msg_byte = sp.bytes(
+        "0xf90218f90215b90212f9020f01b90206f90203f8e0b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b"
+        "543156546d65565463637176336f707a6b625256725977616f535a5454457a664a386202b89bf899b8396274703a2f2f3078372e69636"
+        "f6e2f637862376465363364623863316661326439646662366335333165366263313934303235373263633233b8406274703a2f2f4e657"
+        "4586e486656716d39696573702e74657a6f732f4b543156546d65565463637176336f707a6b625256725977616f535a5454457a664a38"
+        "62836274730196d50293d200905472616e736665722053756363657373f9011eb8406274703a2f2f4e6574586e486656716d396965737"
+        "02e74657a6f732f4b543156546d65565463637176336f707a6b625256725977616f535a5454457a664a386203b8d9f8d7b8396274703a"
+        "2f2f3078372e69636f6e2f637862376465363364623863316661326439646662366335333165366263313934303235373263633233b8"
+        "406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b543156546d65565463637176336f707a6b62525672597761"
+        "6f535a5454457a664a386283626d6300b853f8518c466565476174686572696e67b842f840b8396274703a2f2f3078372e69636f6e2f"
+        "687866383061643730393832643637636437363438396665613966653036343239626362306266646531c4836274738400a01441")
+
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+
+    # transfer end of fee gathering
+    msg_byte = sp.bytes("0xf8f2f8f0b8eef8ec01b8e4f8e2f8e0b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f"
+                        "4b543156546d65565463637176336f707a6b625256725977616f535a5454457a664a386204b89bf899b8396274703"
+                        "a2f2f3078372e69636f6e2f63786237646536336462386331666132643964666236633533316536626331393430323"
+                        "5373263633233b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b543156546d655654636"
+                        "37176336f707a6b625256725977616f535a5454457a664a3862836274730296d50293d200905472616e73666572205"
+                        "37563636573738400a01489")
+
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+
+    # mint fa2 dummy
+    fa2_dummy.mint([sp.record(to_=alice.address, amount=sp.nat(200000000))]).run(sender=owner.address)
+
+    # add operator
+    fa2_dummy.update_operators(
+        [sp.variant("add_operator", sp.record(owner=alice.address, operator=bts_core.address, token_id=0))]).run(
+        sender=alice.address)
+
+    # register fa2
+    bts_core.register(
+        name=sp.string("test"),
+        fee_numerator=sp.nat(100),
+        fixed_fee=sp.nat(450),
+        addr=fa2_dummy.address,
+        token_metadata=sp.map({"token_metadata": sp.bytes("0x0dae11")}),
+        metadata=sp.big_map({"metadata": sp.bytes("0x0dae11")})
+    ).run(sender=owner.address)
+
+    # 4: transfer fa2 token
+    bts_core.transfer(sp.record(
+        coin_name="test", value=50000000, to="btp://0x7.icon/cx4419cb43f1c53db85c4647e4ef0707880309726d")).run(
+        sender=alice.address)
 
     # 5: relay msg for transfer end of transfer fa2
     # msg_byte = sp.bytes(
     #     "")
-
 
     # # test 1: Test of add to blacklist function
     # bts_periphery.add_to_blacklist({0: "notaaddress"}).run(sender=bts_periphery.address, valid=False,
