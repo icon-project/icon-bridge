@@ -409,7 +409,6 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         loop = sp.local("loop", sp.len(self.data.requests.get(sn).coin_details), sp.TNat)
         response_call_status = sp.local("response_call_status", "success")
         check_valid = sp.local("check_valid", True)
-        bts_core_fa2_balance = sp.local("fa2_token_balance_response_service", sp.nat(0))
 
         bts_core_address = self.data.bts_core
         with sp.if_(loop.value <= self.MAX_BATCH_SIZE):
@@ -431,8 +430,14 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
 
                     coin_type = sp.view("coin_type", bts_core_address, coin_name, t=sp.TNat).open_some()
                     with sp.if_(coin_type == sp.nat(1)):
+                        # finding the balance of bts core to verify if bts core has enough tokens to burn
+                        bts_core_fa2_balance = sp.view("balance_of", bts_core_address,
+                                                      sp.record(owner=bts_core_address, coin_name=coin_name), t=
+                                                      sp.TRecord(usable_balance=sp.TNat, locked_balance=sp.TNat,
+                                                                refundable_balance=sp.TNat, user_balance=sp.TNat)
+                                                      ).open_some()
                         # check if bts_core has enough NATIVE_WRAPPED_COIN_TYPE to burn
-                        with sp.if_(bts_core_balance.user_balance < value):
+                        with sp.if_(bts_core_fa2_balance.user_balance < value):
                             check_valid.value = False
 
             with sp.if_(check_valid.value == True):
