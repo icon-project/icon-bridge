@@ -1,13 +1,16 @@
 import subprocess
 import smartpy as sp
 
-path = {"bts_core": [
+t_balance_of_request = sp.TRecord(owner=sp.TAddress, token_id=sp.TNat).layout(("owner", "token_id"))
+t_balance_of_response = sp.TRecord(request=t_balance_of_request, balance=sp.TNat).layout(("request", "balance"))
+
+path_bts = {"bts_core": [
     {"types": ['types = sp.io.import_script_from_url("file:../bts/contracts/src/Types.py")',
                'types = sp.io.import_script_from_url("file:./contracts/src/Types.py")']},
     {"FA2_contract": [
         'FA2_contract = sp.io.import_script_from_url("file:../bts/contracts/src/FA2_contract.py")',
         'FA2_contract = sp.io.import_script_from_url("file:./contracts/src/FA2_contract.py")']}
-    ],
+],
     "bts_periphery": [
         {"types": ['types = sp.io.import_script_from_url("file:../bts/contracts/src/Types.py")',
                    'types = sp.io.import_script_from_url("file:./contracts/src/Types.py")']},
@@ -23,29 +26,32 @@ path = {"bts_core": [
     ]
 }
 
-path2 = {
+path_bmc = {
     "RLP_struct": [
         {'_to_byte':
-         ['        _to_byte = sp.view("encode_nat", self.data.helper, sp.as_nat(params.sn), t=sp.TBytes).open_some()',
-          '        _to_byte = sp.view("to_byte", self.data.helper_parse_negative, params.sn,'
-          ' t=sp.TBytes).open_some()'
-          ]
-         },
+            [
+                '        _to_byte = sp.view("encode_nat", self.data.helper, sp.as_nat(params.sn), t=sp.TBytes).open_some()',
+                '        _to_byte = sp.view("to_byte", self.data.helper_parse_negative, params.sn,'
+                ' t=sp.TBytes).open_some()'
+            ]
+        },
         {'_to_int':
-         ['                    _to_int = sp.to_int(Utils2.Int.of_bytes(sn_in_bytes))',
-          '                    _to_int = sp.view("to_int", self.data.helper_parse_negative, sn_in_bytes, t=sp.TInt)'
-          '.open_some()'
-          ]
+             ['                    _to_int = sp.to_int(Utils2.Int.of_bytes(sn_in_bytes))',
+              '                    _to_int = sp.view("to_int", self.data.helper_parse_negative, sn_in_bytes, t=sp.TInt)'
+              '.open_some()'
+              ]
          }
     ],
     "bmc_periphery": [
         {'_self_address':
-         ['        _self_address = sp.address("KT1VTmeVTccqv3opzkbRVrYwaoSZTTEzfJ8b")',
-          '        _self_address = sp.self_address'
-          ]
+             ['        _self_address = sp.address("KT1WKBHLFbgL8QJWGySf5CK2hK3iCLEM9ZiT")',
+              '        _self_address = sp.self_address'
+              ]
          }
     ]
 }
+
+# in cas of new env: change above _self_address to bmc_periphery address of new env
 
 
 def patch_file_path(file_name, old_value, new_value):
@@ -53,7 +59,7 @@ def patch_file_path(file_name, old_value, new_value):
 
 
 def bts_core_contract_deploy_setup():
-    for key, value in path.items():
+    for key, value in path_bts.items():
         for i in value:
             lis1 = []
             for x, y in i.items():
@@ -63,7 +69,7 @@ def bts_core_contract_deploy_setup():
 
 
 def bmc_periphery_contract_deploy_setup():
-    for key, value in path2.items():
+    for key, value in path_bmc.items():
         for i in value:
             lis1 = []
             for x, y in i.items():
@@ -73,7 +79,7 @@ def bmc_periphery_contract_deploy_setup():
 
 
 def tear_down_bts_changes():
-    for key, value in path.items():
+    for key, value in path_bts.items():
         for i in value:
             lis1 = []
             for x, y in i.items():
@@ -83,7 +89,7 @@ def tear_down_bts_changes():
 
 
 def tear_down_bmc_changes():
-    for key, value in path2.items():
+    for key, value in path_bmc.items():
         for i in value:
             lis1 = []
             for x, y in i.items():
@@ -116,21 +122,20 @@ def test():
     sc = sp.test_scenario()
 
     # test account
-    alice = sp.test_account("Alice")
     owner = sp.test_account("Owner")
-    jack = sp.test_account("Jack")
-    bob = sp.test_account("Bob")
-    creator2 = sp.test_account("creator2")
-    service1_address = sp.test_account("service1_address")
-    service2_address = sp.test_account("service2_address")
+    alice = sp.address("tz1ep7ffKsQCNdgnkPDCVnVkgbmFZP8mFN1G")
+    bob = sp.address("tz1euHP1ntD4r3rv8BsE5pXpTRBnUFu69wYP")
+    jack = sp.address("tz1UUvTndciyJJXuPHBEvWxuM9qgECMV31eA")
+    sam = sp.address("tz1MrAHP91XLXJXBoB3WL52zQ8VDcnH5PeMp")
     relay = sp.test_account("Relay")
     helper_parse_neg_contract = sp.test_account("helper_parse_neg_contract")
 
-    # Change icon_bmc_address for new environment
-    icon_bmc_address = "cxb7de63db8c1fa2d9dfb6c531e6bc19402572cc23"
-    icon_bmc_block_height = 10445602
+    # in cas of new env: change icon_bmc_address and its block height of new environment
+    icon_bmc_address = "cx51e0bb85839e0e3fffb4c0140ae0f083e898464d"
+    icon_bmc_block_height = 10660605
 
-    # deploy BMCManagement contract
+    # deploy contracts
+
     helper_contract = deploy_helper_contract()
     sc += helper_contract
 
@@ -161,6 +166,14 @@ def test():
                                                 token_metadata=FA2.make_metadata(name="NativeWrappedCoin", decimals=6,
                                                                                  symbol="wTEZ"))
     sc += fa2_dummy
+
+    fa2_dummy_second = fa2_dummy_file.SingleAssetToken(admin=owner.address,
+                                                       metadata=sp.utils.metadata_of_url(
+                                                           "ipfs://example"),
+                                                       token_metadata=FA2.make_metadata(name="Dummy",
+                                                                                        decimals=6,
+                                                                                        symbol="PEPE"))
+    sc += fa2_dummy_second
 
     # BMC_MANAGEMENT SETTERS
     # set bmc periphery
@@ -209,167 +222,416 @@ def test():
 
     prev = "btp://0x7.icon/" + icon_bmc_address
 
-    # 1: Init message from relay
+    # Tests
+    # Scenario 1: Init message from relay
     msg_byte = sp.bytes(
-        "0xf8e5f8e3b8e1f8df01b8d7f8d5f8d3b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b54315"
-        "6546d65565463637176336f707a6b625256725977616f535a5454457a664a386201b88ef88cb8396274703a2f2f3078372"
-        "e69636f6e2f637862376465363364623863316661326439646662366335333165366263313934303235373263633233b840"
-        "6274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b543156546d65565463637176336f707a6b6252567"
-        "25977616f535a5454457a664a386283626d630089c884496e697482c1c084009f639c")
+        "0xf8e5f8e3b8e1f8df01b8d7f8d5f8d3b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5431574b42484c"
+        "4662674c38514a574779536635434b32684b3369434c454d395a695401b88ef88cb8396274703a2f2f3078372e69636f6e2f63783531"
+        "6530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e6574586e486656"
+        "716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695483626d63"
+        "0089c884496e697482c1c08400a2aba8")
     bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
 
-    # 2: Transfer 100 native coin
-    bts_core.transfer_native_coin("btp://0x7.icon/cx4419cb43f1c53db85c4647e4ef0707880309726d").run(
-        sender=alice.address, amount=sp.tez(100))
-
-    # 3: relay msg for transfer end of step 2 with fee gathering
+    # Scenario 2: Add to blacklist called from icon
+    # add bob and tz1bPkYCh5rTTGL7DuPLB66J8zqnUD8cMRq1
     msg_byte = sp.bytes(
-        "0xf90218f90215b90212f9020f01b90206f90203f8e0b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b"
-        "543156546d65565463637176336f707a6b625256725977616f535a5454457a664a386202b89bf899b8396274703a2f2f3078372e69636"
-        "f6e2f637862376465363364623863316661326439646662366335333165366263313934303235373263633233b8406274703a2f2f4e657"
-        "4586e486656716d39696573702e74657a6f732f4b543156546d65565463637176336f707a6b625256725977616f535a5454457a664a38"
-        "62836274730196d50293d200905472616e736665722053756363657373f9011eb8406274703a2f2f4e6574586e486656716d396965737"
-        "02e74657a6f732f4b543156546d65565463637176336f707a6b625256725977616f535a5454457a664a386203b8d9f8d7b8396274703a"
-        "2f2f3078372e69636f6e2f637862376465363364623863316661326439646662366335333165366263313934303235373263633233b8"
-        "406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b543156546d65565463637176336f707a6b62525672597761"
-        "6f535a5454457a664a386283626d6300b853f8518c466565476174686572696e67b842f840b8396274703a2f2f3078372e69636f6e2f"
-        "687866383061643730393832643637636437363438396665613966653036343239626362306266646531c4836274738400a01441")
+        "0xf9014df9014ab90147f9014401b9013bf90138f90135b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5"
+        "431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695402b8f0f8eeb8396274703a2f2f3078372e69636"
+        "f6e2f637835316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e6"
+        "574586e486656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395"
+        "a69548362747301b86af86803b865f86300f84aa4747a3165754850316e7444347233727638427345357058705452426e55467536397"
+        "75950a4747a3162506b59436835725454474c374475504c4236364a387a716e554438634d527131954e6574586e486656716d3969657"
+        "3702e74657a6f738400a2ac69")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify blacklisted address
+    sc.verify_equal(bts_periphery.data.blacklist, {sp.address("tz1euHP1ntD4r3rv8BsE5pXpTRBnUFu69wYP"): True,
+                                                   sp.address("tz1bPkYCh5rTTGL7DuPLB66J8zqnUD8cMRq1"): True})
 
+    # Scenario 3: Remove from blacklist called from icon
+    # remove bob
+    msg_byte = sp.bytes(
+        "0xf90127f90124b90121f9011e01b90115f90112f9010fb8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b"
+        "5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695403b8caf8c8b8396274703a2f2f3078372e6963"
+        "6f6e2f637835316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e"
+        "6574586e486656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d39"
+        "5a69548362747302b844f84203b83ff83d01e5a4747a3165754850316e7444347233727638427345357058705452426e554675363977"
+        "5950954e6574586e486656716d39696573702e74657a6f738400a2ac8c")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify one blacklisted address is removed
+    sc.verify(bts_periphery.data.blacklist.get(sp.address("tz1bPkYCh5rTTGL7DuPLB66J8zqnUD8cMRq1")) == True)
+
+    # Scenario 4: Transfer native coin from icon to tezos
+    # transferred: ICX: 25*10**18
+    # fee deducted on icon: 4550000000000000000
+    # receiver address: bob
+
+    # register icon native coin
+    bts_core.register(
+        name=sp.string("btp-0x7.icon-ICX"),
+        fee_numerator=sp.nat(100),
+        fixed_fee=sp.nat(4300000000000000000),
+        addr=sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg"),
+        token_metadata=sp.map({"token_metadata": sp.bytes("0x0dae11")}),
+        metadata=sp.big_map({"metadata": sp.bytes("0x0dae11")})
+    ).run(sender=owner.address)
+
+    msg_byte = sp.bytes(
+        "0xf90157f90154b90151f9014e01b90145f90142f9013fb8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5"
+        "431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695404b8faf8f8b8396274703a2f2f3078372e69636f"
+        "6e2f637835316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e657"
+        "4586e486656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a69"
+        "548362747303b874f87200b86ff86daa68783964313831643133663437633561616535353562373039383134633662323239373837393"
+        "7363139a4747a3165754850316e7444347233727638427345357058705452426e5546753639775950dcdb906274702d3078372e69636f"
+        "6e2d49435889011bccfea6b8bd00008400a2acd5")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify native coin balance
+    coin_address = bts_core.data.coins.get("btp-0x7.icon-ICX")
+    user_balance = sp.view("get_balance_of", coin_address,
+                           [sp.record(owner=bob, token_id=sp.nat(0))],
+                           t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+
+    sc.verify_equal(user_balance, [sp.record(request=sp.record(owner=bob,
+                                                               token_id=sp.nat(0)),
+                                             balance=sp.nat(20450000000000000000))])
+
+    # Scenario 5: Transfer ICON IRC2 coin bnUSD4 from icon to tezos without registering on tezos
+    # transferred: bnUSD4: 50*10**18
+    # receiver address: jack
+    msg_byte = sp.bytes(
+        "0xf9015af90157b90154f9015101b90148f90145f90142b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b"
+        "5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695405b8fdf8fbb8396274703a2f2f3078372e6963"
+        "6f6e2f637835316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e"
+        "6574586e486656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d39"
+        "5a69548362747304b877f87500b872f870aa687839643138316431336634376335616165353535623730393831346336623232393738"
+        "373937363139a4747a31555576546e646369794a4a587550484245765778754d39716745434d5633316541dfde936274702d3078372e"
+        "69636f6e2d626e555344348902b5e3af16b18800008400a2ad38")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # no changes happen on tezos so no need to assert
+
+    # Scenario 6: Transfer ICON IRC2 coin bnUSD4 from icon to tezos
+    # transferred: bnUSD4: 50*10**18
+    # receiver address: jack
+    # register icon coin bnUSD4
+    bts_core.register(
+        name=sp.string("btp-0x7.icon-bnUSD4"),
+        fee_numerator=sp.nat(0),
+        fixed_fee=sp.nat(0),
+        addr=sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg"),
+        token_metadata=sp.map({"token_metadata": sp.bytes("0x0dae11")}),
+        metadata=sp.big_map({"metadata": sp.bytes("0x0dae11")})
+    ).run(sender=owner.address)
+
+    msg_byte = sp.bytes(
+        "0xf9015af90157b90154f9015101b90148f90145f90142b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5"
+        "431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695406b8fdf8fbb8396274703a2f2f3078372e69636f"
+        "6e2f637835316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e657"
+        "4586e486656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a69"
+        "548362747305b877f87500b872f870aa68783964313831643133663437633561616535353562373039383134633662323239373837393"
+        "7363139a4747a31555576546e646369794a4a587550484245765778754d39716745434d5633316541dfde936274702d3078372e69636f"
+        "6e2d626e555344348902b5e3af16b18800008400a2b0cd")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify bnUSD4 coin balance
+    coin_address = bts_core.data.coins.get("btp-0x7.icon-bnUSD4")
+    user_balance = sp.view("get_balance_of", coin_address,
+                           [sp.record(owner=jack, token_id=sp.nat(0))],
+                           t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+
+    sc.verify_equal(user_balance, [sp.record(request=sp.record(owner=jack,
+                                                               token_id=sp.nat(0)),
+                                             balance=sp.nat(50000000000000000000))])
+
+    # Scenario 7: Transfer batch from icon to tezos
+    # transferred: icon native coin: 20*10**18 and bnUSD4:14*10**18
+    # receiver address: alice
+    msg_byte = sp.bytes(
+        "0xf90179f90176b90173f9017001b90167f90164f90161b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b"
+        "5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695407b9011bf90118b8396274703a2f2f3078372e"
+        "69636f6e2f637835316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f"
+        "2f4e6574586e486656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c45"
+        "4d395a69548362747306b894f89200b88ff88daa68783964313831643133663437633561616535353562373039383134633662323239"
+        "3738373937363139a4747a3165703766664b7351434e64676e6b504443566e566b67626d465a50386d464e3147f83bdb906274702d30"
+        "78372e69636f6e2d4943588900d71b0fe0a28e0000de936274702d3078372e69636f6e2d626e555344348900c249fdd3277800008400"
+        "a2b1a7")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify native coin balance
+    coin_address = bts_core.data.coins.get("btp-0x7.icon-ICX")
+    user_balance = sp.view("get_balance_of", coin_address,
+                           [sp.record(owner=alice, token_id=sp.nat(0))],
+                           t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+
+    sc.verify_equal(user_balance, [sp.record(request=sp.record(owner=alice,
+                                                               token_id=sp.nat(0)),
+                                             balance=sp.nat(15500000000000000000))])
+
+    # verify bnUSD4 coin balance
+    coin_address = bts_core.data.coins.get("btp-0x7.icon-bnUSD4")
+    user_balance = sp.view("get_balance_of", coin_address,
+                           [sp.record(owner=alice, token_id=sp.nat(0))],
+                           t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+
+    sc.verify_equal(user_balance, [sp.record(request=sp.record(owner=alice,
+                                                               token_id=sp.nat(0)),
+                                             balance=sp.nat(14000000000000000000))])
+
+    # Scenario 8: Transfer batch from icon to tezos
+    # transferred 20 *10**18 bnUSD4
+    # receiver address: alice
+    msg_byte = sp.bytes(
+        "0xf9015af90157b90154f9015101b90148f90145f90142b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b"
+        "5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695408b8fdf8fbb8396274703a2f2f3078372e6963"
+        "6f6e2f637835316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e"
+        "6574586e486656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d39"
+        "5a69548362747307b877f87500b872f870aa687839643138316431336634376335616165353535623730393831346336623232393738"
+        "373937363139a4747a3165703766664b7351434e64676e6b504443566e566b67626d465a50386d464e3147dfde936274702d3078372e"
+        "69636f6e2d626e555344348901158e460913d000008400a2b1de")
     bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
 
-    # transfer end of fee gathering
-    msg_byte = sp.bytes("0xf8f2f8f0b8eef8ec01b8e4f8e2f8e0b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f"
-                        "4b543156546d65565463637176336f707a6b625256725977616f535a5454457a664a386204b89bf899b8396274703"
-                        "a2f2f3078372e69636f6e2f63786237646536336462386331666132643964666236633533316536626331393430323"
-                        "5373263633233b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b543156546d655654636"
-                        "37176336f707a6b625256725977616f535a5454457a664a3862836274730296d50293d200905472616e73666572205"
-                        "37563636573738400a01489")
+    # verify bnUSD4 coin balance
+    # alice had 14*10**18 bnUSD4 initially
+    coin_address = bts_core.data.coins.get("btp-0x7.icon-bnUSD4")
+    user_balance = sp.view("get_balance_of", coin_address,
+                           [sp.record(owner=alice, token_id=sp.nat(0))],
+                           t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+
+    sc.verify_equal(user_balance, [sp.record(request=sp.record(owner=alice,
+                                                               token_id=sp.nat(0)),
+                                             balance=sp.nat(14000000000000000000 + 20000000000000000000))])
+
+    # Scenario 9: Set token limit of bnUSD4 from icon
+    # token limit of bnUSD4: 21 * 10**18
+    msg_byte = sp.bytes(
+        "0xf9011ef9011bb90118f9011501b9010cf90109f90106b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b"
+        "5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695409b8c1f8bfb8396274703a2f2f3078372e6963"
+        "6f6e2f637835316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e"
+        "6574586e486656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d39"
+        "5a69548362747308b83bf83904b7f6d4936274702d3078372e69636f6e2d626e55534434ca8901236efcbcbb340000954e6574586e48"
+        "6656716d39696573702e74657a6f738400a2b1fb")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify token limit
+    sc.verify(bts_periphery.data.token_limit.get("btp-0x7.icon-bnUSD4") == sp.nat(21000000000000000000))
+
+    # Scenario 10: Set token limit of btp-0x7.icon-bnUSD4 and btp-0x7.icon-ICX from icon
+    # token limit of btp-0x7.icon-ICX: 43*10**18
+    # token limit of btp-0x7.icon-bnUSD4: 32*10**18
+    msg_byte = sp.bytes(
+        "0xf9013bf90138b90135f9013201b90129f90126f90123b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b"
+        "5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a69540ab8def8dcb8396274703a2f2f3078372e696"
+        "36f6e2f637835316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f"
+        "4e6574586e486656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454"
+        "d395a69548362747309b858f85604b853f851e5936274702d3078372e69636f6e2d626e55534434906274702d3078372e69636f6e2d"
+        "494358d48901bc16d674ec800000890254beb02d1dcc0000954e6574586e486656716d39696573702e74657a6f738400a2b21a")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify token limits
+    sc.verify(bts_periphery.data.token_limit.get("btp-0x7.icon-ICX") == sp.nat(43000000000000000000))
+    sc.verify(bts_periphery.data.token_limit.get("btp-0x7.icon-bnUSD4") == sp.nat(32000000000000000000))
+
+    # Scenario 11: Transfer btp-0x7.icon-bnUSD4 from icon to tezos
+    # transferred btp-0x7.icon-bnUSD4: 32*10**18
+    # receiver address: sam
+    msg_byte = sp.bytes(
+        "0xf9015af90157b90154f9015101b90148f90145f90142b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b"
+        "5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a69540bb8fdf8fbb8396274703a2f2f3078372e6963"
+        "6f6e2f637835316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e"
+        "6574586e486656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d39"
+        "5a6954836274730ab877f87500b872f870aa687839643138316431336634376335616165353535623730393831346336623232393738"
+        "373937363139a4747a314d724148503931584c584a58426f4233574c35327a51385644636e483550654d70dfde936274702d3078372e"
+        "69636f6e2d626e555344348901bc16d674ec8000008400a2b246")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify bnUSD4 coin balance
+    coin_address = bts_core.data.coins.get("btp-0x7.icon-bnUSD4")
+    user_balance = sp.view("get_balance_of", coin_address,
+                           [sp.record(owner=sam, token_id=sp.nat(0))],
+                           t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+
+    sc.verify_equal(user_balance, [sp.record(request=sp.record(owner=sam,
+                                                               token_id=sp.nat(0)),
+                                             balance=sp.nat(32000000000000000000))])
+
+    # Tezos to icon scenarios
+
+    # Scenario 12: Transfer native coin from tezos to icon
+    # transferred btp-NetXnHfVqm9iesp.tezos-XTZ: 9000000
+    # fee deducted on tezos: 90450
+
+    bts_core.transfer_native_coin("btp://0x7.icon/hx9d181d13f47c5aae555b709814c6b22978797619").run(
+        sender=alice, amount=sp.tez(9000000))
+
+    # relay msg for transfer end
+    msg_byte = sp.bytes(
+        "0xf8f2f8f0b8eef8ec01b8e4f8e2f8e0b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5431574b42484c4"
+        "662674c38514a574779536635434b32684b3369434c454d395a69540eb89bf899b8396274703a2f2f3078372e69636f6e2f6378353165"
+        "30626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e6574586e486656716"
+        "d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a6954836274730396"
+        "d50293d200905472616e7366657220537563636573738400a2b6aa")
 
     bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify aggregation fee
+    sc.verify(bts_core.data.aggregation_fee.get("btp-NetXnHfVqm9iesp.tezos-XTZ") == sp.nat(90450))
 
+    # Scenario 13: Transfer wrapped token of btp-NetXnHfVqm9iesp.tezos-XTZ from icon to tezos
+    # receiver address: tz1MrAHP91XLXJXBoB3WL52zQ8VDcnH5PeMp
+    # received amount: 3*10**6
+
+    msg_byte = sp.bytes("0xf9015ff9015cb90159f9015601b9014df9014af90147b8406274703a2f2f4e6574586e486656716d39696573702"
+                        "e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a69540fb9010"
+                        "1f8ffb8396274703a2f2f3078372e69636f6e2f63783531653062623835383339653065336666666234633031343"
+                        "0616530663038336538393834363464b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4"
+                        "b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a6954836274730bb87bf87900b"
+                        "876f874aa68783964313831643133663437633561616535353562373039383134633662323239373837393736313"
+                        "9a4747a314d724148503931584c584a58426f4233574c35327a51385644636e483550654d70e3e29d6274702d4e6"
+                        "574586e486656716d39696573702e74657a6f732d58545a832dc6c08400a2b839")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+
+    # Scenario 14: Transfer fa2 token from tezos to icon
     # mint fa2 dummy
-    fa2_dummy.mint([sp.record(to_=alice.address, amount=sp.nat(200000000))]).run(sender=owner.address)
+    fa2_dummy.mint([sp.record(to_=alice, amount=sp.nat(1000000000))]).run(sender=owner.address)
 
     # add operator
     fa2_dummy.update_operators(
-        [sp.variant("add_operator", sp.record(owner=alice.address, operator=bts_core.address, token_id=0))]).run(
-        sender=alice.address)
+        [sp.variant("add_operator", sp.record(owner=alice, operator=bts_core.address, token_id=0))]).run(
+        sender=alice)
 
     # register fa2
     bts_core.register(
-        name=sp.string("test"),
-        fee_numerator=sp.nat(100),
-        fixed_fee=sp.nat(450),
+        name=sp.string("btp-0x7.tezos-fa2"),
+        fee_numerator=sp.nat(0),
+        fixed_fee=sp.nat(0),
         addr=fa2_dummy.address,
         token_metadata=sp.map({"token_metadata": sp.bytes("0x0dae11")}),
         metadata=sp.big_map({"metadata": sp.bytes("0x0dae11")})
     ).run(sender=owner.address)
 
-    # 4: transfer fa2 token
+    # transfer fa2 token
     bts_core.transfer(sp.record(
-        coin_name="test", value=50000000, to="btp://0x7.icon/cx4419cb43f1c53db85c4647e4ef0707880309726d")).run(
-        sender=alice.address)
+        coin_name="btp-0x7.tezos-fa2", value=10000000,
+        to="btp://0x7.icon/hx9d181d13f47c5aae555b709814c6b22978797619")).run(sender=alice)
 
-    # 5: relay msg for transfer end of transfer fa2
+    # relay msg for end of transfer fa2
+    msg_byte = sp.bytes(
+        "0xF8f2f8f0b8eef8ec01b8e4f8e2f8e0b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5431574b42484c"
+        "4662674c38514a574779536635434b32684b3369434c454d395a695410b89bf899b8396274703a2f2f3078372e69636f6e2f63783531"
+        "6530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e6574586e486656"
+        "716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695483627473"
+        "0496d50293d200905472616e7366657220537563636573738400a2bada")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify aggregation fee
+    sc.verify(bts_core.data.aggregation_fee.get("btp-0x7.tezos-fa2") == sp.nat(0))
+
+    # Scenario 15: Transfer batch fa2 token and native token from tezos to icon
+    bts_core.transfer_batch(sp.record(coin_names_values={"btp-0x7.tezos-fa2": 20000000},
+                                      to="btp://0x7.icon/hx9d181d13f47c5aae555b709814c6b22978797619")).run(
+        sender=alice, amount=60000000)
+    # relay msg for end of transfer batch
+    msg_byte = sp.bytes(
+        "0xf8f2f8f0b8eef8ec01b8e4f8e2f8e0b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5431574b42484c"
+        "4662674c38514a574779536635434b32684b3369434c454d395a695411b89bf899b8396274703a2f2f3078372e69636f6e2f63783531"
+        "6530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e6574586e486656"
+        "716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695483627473"
+        "0596d50293d200905472616e7366657220537563636573738400a2bc29")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify aggregation fee
+    # existing fee of btp-NetXnHfVqm9iesp.tezos-XTZ: 90450
+    sc.verify(bts_core.data.aggregation_fee.get("btp-0x7.tezos-fa2") == sp.nat(0))
+    sc.verify(bts_core.data.aggregation_fee.get("btp-NetXnHfVqm9iesp.tezos-XTZ") == sp.nat(600450 + 90450))
+
+    # Scenario 16: Transfer native coin from icon to tezos
+    # receiving address: tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP
+    msg_byte = sp.bytes(
+        "0xf90157f90154b90151f9014e01b90145f90142f9013fb8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b"
+        "5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695412b8faf8f8b8396274703a2f2f3078372e6963"
+        "6f6e2f637835316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e"
+        "6574586e486656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d39"
+        "5a6954836274730cb874f87200b86ff86daa687839643138316431336634376335616165353535623730393831346336623232393738"
+        "373937363139a4747a316733704a5a50696678684e3439756b435a6a644551747957675832455264667150dcdb906274702d3078372e"
+        "69636f6e2d49435889011bccfea6b8bd00008400a2bc6f")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+
+    # Scenario 17: Transfer batch native coin and one fa2 tokens from tezos to icon
+    bts_core.transfer_batch(sp.record(coin_names_values={"btp-0x7.tezos-fa2": 10000000},
+                                      to="btp://0x7.icon/hx9d181d13f47c5aae555b709814c6b22978797619")).run(
+        sender=alice, amount=30000000)
+    # relay msg for end of transfer batch
+    msg_byte = sp.bytes(
+        "0xf8f2f8f0b8eef8ec01b8e4f8e2f8e0b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5431574b42484c"
+        "4662674c38514a574779536635434b32684b3369434c454d395a695413b89bf899b8396274703a2f2f3078372e69636f6e2f63783531"
+        "6530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e6574586e486656"
+        "716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695483627473"
+        "0696d50293d200905472616e7366657220537563636573738400a2bdaf")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    # verify aggregation fee
+    # existing fee of btp-NetXnHfVqm9iesp.tezos-XTZ: 690900
+    sc.verify(bts_core.data.aggregation_fee.get("btp-0x7.tezos-fa2") == sp.nat(0))
+    sc.verify(bts_core.data.aggregation_fee.get("btp-NetXnHfVqm9iesp.tezos-XTZ") == sp.nat(690900 + 300450))
+
+    # Scenario 18: Transfer fa2 token not registered on icon from tezos
+    # mint fa2 dummy second
+    fa2_dummy_second.mint([sp.record(to_=bob, amount=sp.nat(1000000000))]).run(sender=owner.address)
+
+    # add operator
+    fa2_dummy_second.update_operators(
+        [sp.variant("add_operator", sp.record(owner=bob, operator=bts_core.address, token_id=0))]).run(
+        sender=bob)
+
+    # register fa2
+    bts_core.register(
+        name=sp.string("btp-0x7.tezos-fa2-second"),
+        fee_numerator=sp.nat(0),
+        fixed_fee=sp.nat(0),
+        addr=fa2_dummy_second.address,
+        token_metadata=sp.map({"token_metadata": sp.bytes("0x0dae11")}),
+        metadata=sp.big_map({"metadata": sp.bytes("0x0dae11")})
+    ).run(sender=owner.address)
+
+    # transfer fa2 token
+    bts_core.transfer(sp.record(
+        coin_name="btp-0x7.tezos-fa2-second", value=10000000,
+        to="btp://0x7.icon/hx9d181d13f47c5aae555b709814c6b22978797619")).run(sender=bob)
+
+    # relay msg for end of transfer fa2
+    msg_byte = sp.bytes(
+        "0xf8e1f8dfb8ddf8db01b8d3f8d1f8cfb8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5431574b42484"
+        "c4662674c38514a574779536635434b32684b3369434c454d395a695414b88af888b8396274703a2f2f3078372e69636f6e2f637835"
+        "316530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e6574586e486"
+        "656716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a69548362"
+        "747381f984c328f8008400a2c0fd")
+    bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+
+    # these case cannot be tested in integration test due to limitation on tezos
+    # # Scenario 12: Transferred btp-0x7.icon-ICX wrapped coin from tezos to icon
+    # coin_address = bts_core.data.coins.get("btp-0x7.icon-ICX")
+    # # contract = sp.contract(sp.TRecord(spender=sp.TAddress, amount=sp.TNat), coin_address, "set_allowance").open_some()
+    #
+    # # set allowance for bts_core
+    # coin_address.set_allowance([sp.record(spender=bts_core.address,
+    #                                       amount=sp.nat(1000000000000000000000))])
+    # sc.verify(sp.view("get_allowance", coin_address, sp.record(spender=bts_core.address, owner=alice),
+    #                   t=sp.TNat).open_some("Invalid view") == sp.nat(0))
+    # # update operator
+    # coin_address.update_operators(
+    #     [sp.variant("add_operator", sp.record(owner=alice, operator=bts_core.address, token_id=0))])
+    #
+    # bts_balance_before = sp.view("get_balance_of", coin_address,
+    #                              [sp.record(owner=bts_core.address, token_id=sp.nat(0))],
+    #                              t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+    #
+    # # transfer wrapped coin
+    # bts_core.transfer(sp.record(coin_name="btp-0x7.icon-ICX", value=sp.nat(13000000000000000000),
+    #                             to=" btp://0x7.icon/hx9d181d13f47c5aae555b709814c6b22978797619")).run(sender=alice)
+    # # transfer end message from relay
     # msg_byte = sp.bytes(
-    #     "")
+    #     "0xf8f2f8f0b8eef8ec01b8e4f8e2f8e0b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5431574b42484c"
+    #     "4662674c38514a574779536635434b32684b3369434c454d395a69540cb89bf899b8396274703a2f2f3078372e69636f6e2f63783531"
+    #     "6530626238353833396530653366666662346330313430616530663038336538393834363464b8406274703a2f2f4e6574586e486656"
+    #     "716d39696573702e74657a6f732f4b5431574b42484c4662674c38514a574779536635434b32684b3369434c454d395a695483627473"
+    #     "0196d50293d200905472616e7366657220537563636573738400a2b2de")
+    # bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg_byte)).run(sender=relay.address)
+    #
+    # bts_balance_after = sp.view("get_balance_of", coin_address,
+    #                             [sp.record(owner=bts_core.address, token_id=sp.nat(0))],
+    #                             t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+    # verify burnt amount
 
-    # # test 1: Test of add to blacklist function
-    # bts_periphery.add_to_blacklist({0: "notaaddress"}).run(sender=bts_periphery.address, valid=False,
-    #                                                        exception="InvalidAddress")
-    # bts_periphery.add_to_blacklist({0: "tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"}).run(sender=bts_periphery.address,
-    #                                                                                 valid=True)
-    # bts_periphery.add_to_blacklist({0: "tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"}).run(sender=bts_periphery.address,
-    #                                                                                 valid=True)
-    # bts_periphery.add_to_blacklist({0: "tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"}).run(sender=alice.address, valid=False,
-    #                                                                                 exception="Unauthorized")
-    # bts_periphery.add_to_blacklist({0: 'tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg'}).run(sender=bts_periphery.address,
-    #                                                                                 valid=False,
-    #                                                                                 exception='InvalidAddress')
-    # sc.verify(bts_periphery.data.blacklist[
-    #               sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW")] == True)
-    #
-    # # # transfer_native_coin
-    # # bts_periphery.set_token_limit(
-    # #     sp.record(
-    # #         coin_names=sp.map({0: "btp-NetXnHfVqm9iesp.tezos-XTZ"}),
-    # #         token_limit=sp.map({0: 115792089237316195423570985008687907853269984665640564039457584007913129639935})
-    # #     )
-    # # ).run(sender = bts_core.address)
-    # # bts_core.transfer_native_coin("btp://0x7.icon/cx4419cb43f1c53db85c4647e4ef0707880309726d").run(sender= sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), amount=sp.tez(30), valid=False, exception="FailCheckTransfer")
-    # # bts_core.transfer_native_coin("btp://0x7.icon/cx4419cb43f1c53db85c4647e4ef0707880309726d").run(
-    # #     sender=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), amount=sp.tez(30))
-    #
-    # # # handle_relay_message
-    # # msg = sp.bytes(
-    # #     "0xf8e1f8dfb8ddf8db01b8d3f8d1f8cfb8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b54314657446a4338435941777268424a6d43355554596d594a544a6457776f3447676203b88af888b8396274703a2f2f3078372e69636f6e2f637833643436306163643535356336373034303566396562323934333833356366643132326662323938b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b54314657446a4338435941777268424a6d43355554596d594a544a6457776f344767628362747381ff84c328f8008400886513")
-    # # prev = sp.string("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b")
-    # # bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg)).run(
-    # #     sender=owner.address)
-    #
-    # # test 2 : Test of remove from blacklist function
-    # bts_periphery.remove_from_blacklist({0: 'notaaddress'}).run(sender=bts_periphery.address, valid=False,
-    #                                                             exception="InvalidAddress")  # invalid address
-    # bts_periphery.remove_from_blacklist({0: 'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(sender=bts_periphery.address,
-    #                                                                                      valid=False,
-    #                                                                                      exception="UserNotFound")  # address not black-listed
-    # bts_periphery.add_to_blacklist({0: 'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(
-    #     sender=bts_periphery.address)  # adding to blacklist
-    # bts_periphery.remove_from_blacklist({0: 'tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(
-    #     sender=bts_periphery.address)  # valid process
-    # bts_periphery.remove_from_blacklist({0: 'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(sender=bts_periphery.address,
-    #                                                                                      valid=False,
-    #                                                                                      exception='UserNotFound')  # cannot remove from blacklist twice
-    # bts_periphery.add_to_blacklist({0: 'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(
-    #     sender=bts_periphery.address)  # adding to blacklist
-    # bts_periphery.remove_from_blacklist({0: 'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(
-    #     sender=bts_periphery.address)  # can only be called from btseperiphery contract
-    # bts_periphery.remove_from_blacklist({0: 'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(sender=alice.address,
-    #                                                                                      valid=False,
-    #                                                                                      exception="Unauthorized")  # can only be called from btseperiphery contract
-    #
-    # # # transfer_native_coin
-    # # bts_periphery.set_token_limit(
-    # #     sp.record(
-    # #         coin_names=sp.map({0: "btp-NetXnHfVqm9iesp.tezos-XTZ"}),
-    # #         token_limit=sp.map({0: 115792089237316195423570985008687907853269984665640564039457584007913129639935})
-    # #     )
-    # # ).run(sender = bts_core.address)
-    # # bts_core.transfer_native_coin("btp://0x7.icon/cx4419cb43f1c53db85c4647e4ef0707880309726d").run(sender= sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), amount=sp.tez(30))
-    #
-    # # # transfer_native_coin
-    # # bts_periphery.set_token_limit(
-    # #     sp.record(
-    # #         coin_names=sp.map({0: "btp-NetXnHfVqm9iesp.tezos-XTZ"}),
-    # #         token_limit=sp.map({0: 5})
-    # #     )
-    # # ).run(sender = bts_core.address)
-    # # bts_core.transfer_native_coin("btp://0x7.icon/cx4419cb43f1c53db85c4647e4ef0707880309726d").run(sender= sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), amount=sp.tez(30),  valid=False, exception="FailCheckTransfer")
-    #
-    # # # bmc_periphery get_status
-    # # sc.verify_equal(bmc_periphery.get_status("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b"), sp.record(current_height = 0, rx_height = 2, rx_seq = 0, tx_seq = 6))
-    #
-    # # test 3 : set token  limit
-    # bts_periphery.set_token_limit(
-    #     sp.record(coin_names={0: "Tok2", 1: 'BB'}, token_limit={0: sp.nat(5), 1: sp.nat(2)})).run(sender=alice.address,
-    #                                                                                               valid=False,
-    #                                                                                               exception='Unauthorized')  # can only be called from btsperiphery contract
-    # bts_periphery.set_token_limit(
-    #     sp.record(coin_names={0: "Tok2", 1: 'BB'}, token_limit={0: sp.nat(5), 1: sp.nat(2)})).run(
-    #     sender=bts_periphery.address)  # set token limit for Tok2 coin to 5 and BB coin to 2
-    # sc.verify(bts_periphery.data.token_limit["Tok2"] == sp.nat(5))  # test of token_limit for tok2 token
-    # bts_periphery.set_token_limit(sp.record(coin_names={0: "Tok2", 1: 'BB'}, token_limit={0: sp.nat(5)})).run(
-    #     valid=False, exception='InvalidParams', sender=bts_periphery.address)  # invalid parameters
-    # # cannot set more than 15 token limit at once
-    # bts_periphery.set_token_limit(
-    #     sp.record(coin_names={0: "Tok2", 1: 'BB'}, token_limit={0: sp.nat(15), 1: sp.nat(22)})).run(
-    #     sender=bts_periphery.address)  # can modify already set data
-    # sc.verify(bts_periphery.data.token_limit["BB"] == sp.nat(22))  # test of token_limit for tok2 token
-    #
-    # # # handle_relay_message
-    # # msg=sp.bytes("0xf90157f90154b90151f9014e01b90145f90142f9013fb8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5431454e5a76546f507838374c68756f774a315669786a6a715168536e597263594c6907b8faf8f8b8396274703a2f2f3078372e69636f6e2f637864633238393434343037363539393733666539393438376437356335646433326337396265303533b8406274703a2f2f4e6574586e486656716d39696573702e74657a6f732f4b5431454e5a76546f507838374c68756f774a315669786a6a715168536e597263594c698362747303b874f87200b86ff86daa687839643138316431336634376335616165353535623730393831346336623232393738373937363139a4747a3165703766664b7351434e64676e6b504443566e566b67626d465a50386d464e3147dcdb906274702d3078372e69636f6e2d4943588900d71b0fe0a28e000084008502ba")
-    # # prev=sp.string("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a6258d67b")
-    # # bmc_periphery.handle_relay_message(sp.record(prev=prev, msg=msg)).run(sender=owner.address)
+    # Scenario 13: Transferred btp-0x7.icon-ICX wrapped coin from tezos to icon
 
 
 def deploy_bmc_management(owner, helper):
