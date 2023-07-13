@@ -26,9 +26,7 @@ class BTSCore(sp.Contract):
             bts_periphery_address=sp.none,
             native_coin_name=_native_coin_name,
 
-            # charged_amounts=sp.map(tkey=sp.TNat, tvalue=sp.TNat),
             coins_name=sp.list([_native_coin_name], t=sp.TString),
-            # charged_coins=sp.map(tkey=sp.TNat, tvalue=sp.TString),
 
             aggregation_fee=sp.map({}, tkey=sp.TString, tvalue=sp.TNat),
             balances=sp.big_map(tkey=sp.TRecord(address=sp.TAddress, coin_name=sp.TString), tvalue= types.Types.Balance),
@@ -49,7 +47,12 @@ class BTSCore(sp.Contract):
     def only_bts_periphery(self):
         sp.verify(sp.sender == self.data.bts_periphery_address.open_some("Address not set"), "Unauthorized")
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_update_bts_periphery(self, ep):
+        self.only_owner()
+        sp.set_entry_point("update_bts_periphery", ep)
+
+    @sp.entry_point(lazify=True)
     def update_bts_periphery(self, bts_periphery):
         """
         update BTS Periphery address.
@@ -117,17 +120,16 @@ class BTSCore(sp.Contract):
         sp.verify(fee_numerator <= self.FEE_DENOMINATOR, message="InvalidSetting")
         sp.verify((fixed_fee >= sp.nat(0)) & (fee_numerator >= sp.nat(0)), message="LessThan0")
         with sp.if_(addr == self.ZERO_ADDRESS):
-            deployed_fa2 = sp.create_contract_operation(
+            deployed_fa2 = sp.create_contract(
                 contract=FA2_contract.SingleAssetToken(admin=sp.self_address,
                                                         metadata=metadata,
                                                         token_metadata=token_metadata
                                                         ))
-            sp.operations().push(deployed_fa2.operation)
-            self.data.coins[name] = deployed_fa2.address
+            self.data.coins[name] = deployed_fa2
             self.data.coins_name.push(name)
-            self.data.coins_address[deployed_fa2.address] = name
+            self.data.coins_address[deployed_fa2] = name
             self.data.coin_details[name] = sp.record(
-                addr = deployed_fa2.address,
+                addr = deployed_fa2,
                 fee_numerator = fee_numerator,
                 fixed_fee = fixed_fee,
                 coin_type = self.NATIVE_WRAPPED_COIN_TYPE
@@ -472,7 +474,12 @@ class BTSCore(sp.Contract):
         send_service_message_args = sp.record(_from=sp.sender, to=to, coin_details=batch_coin_details.value)
         sp.transfer(send_service_message_args, sp.tez(0), send_service_message_entry_point)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_reclaim(self, ep):
+        self.only_owner()
+        sp.set_entry_point("reclaim", ep)
+
+    @sp.entry_point(lazify=True)
     #TODO: implement nonReentrant
     def reclaim(self, coin_name, value):
         """
@@ -710,8 +717,8 @@ class BTSCore(sp.Contract):
     @sp.entry_point
     def set_bts_owner_manager(self, owner_manager):
         sp.set_type(owner_manager, sp.TAddress)
+
         self.only_owner()
-        # sp.verify(self.data.owners.get(sp.sender) == True , message= "Unauthorized")
         self.data.bts_owner_manager = owner_manager
 
 
