@@ -146,7 +146,7 @@ def test():
     sc += parse_address
 
     bmc_periphery = deploy_bmc_periphery(bmc_management.address, helper_contract.address,
-                                         helper_parse_neg_contract.address, parse_address.address, owner.address)
+                                         helper_parse_neg_contract.address, parse_address.address)
     sc += bmc_periphery
 
     bts_owner_manager = deploy_bts_owner_manager_contract(owner.address)
@@ -679,8 +679,8 @@ def deploy_bmc_management(owner, helper):
     return bmc_management
 
 
-def deploy_bmc_periphery(bmc_address, helper, helper_parse_neg_contract, parse, owner):
-    bmc_periphery = BMCPeriphery.BMCPreiphery(bmc_address, helper, helper_parse_neg_contract, parse, owner)
+def deploy_bmc_periphery(bmc_address, helper, helper_parse_neg_contract, parse):
+    bmc_periphery = BMCPeriphery.BMCPreiphery(bmc_address, helper, helper_parse_neg_contract, parse)
     return bmc_periphery
 
 
