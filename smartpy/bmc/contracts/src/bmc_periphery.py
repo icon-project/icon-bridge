@@ -30,7 +30,7 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
         )
 
     def only_owner(self):
-        owner = sp.view("is_owner", self.data.bmc_management, sp.sender, t=sp.TBool)
+        owner = sp.view("is_owner", self.data.bmc_management, sp.sender, t=sp.TBool).open_some()
         sp.verify(owner == True, "Unauthorized")
 
     @sp.entry_point
