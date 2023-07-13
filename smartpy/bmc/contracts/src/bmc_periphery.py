@@ -20,18 +20,18 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
     BMCRevertUnknownHandleBTPError = sp.string("UnknownHandleBTPError")
     BMCRevertUnknownHandleBTPMessage = sp.string("UnknownHandleBTPMessage")
 
-    def __init__(self, bmc_management_addr, helper_contract, helper_parse_neg_contract, parse_address, owner_address):
+    def __init__(self, bmc_management_addr, helper_contract, helper_parse_neg_contract, parse_address):
         self.init(
             helper=helper_contract,
             helper_parse_negative=helper_parse_neg_contract,
             bmc_btp_address=sp.string(""),
             bmc_management=bmc_management_addr,
             parse_contract=parse_address,
-            owner_address = owner_address
         )
 
     def only_owner(self):
-        sp.verify(sp.sender == self.data.owner_address, "Unauthorized")
+        owner = sp.view("is_owner", self.data.bmc_management, sp.sender, t=sp.TBool)
+        sp.verify(owner == True, "Unauthorized")
 
     @sp.entry_point
     def set_helper_address(self, address):
@@ -402,6 +402,4 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
 sp.add_compilation_target("bmc_periphery", BMCPreiphery(bmc_management_addr=sp.address("KT1G3R9VqESejtsFnvjHSjzXYfuKuHMeaiE3"),
                                                         helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6"),
                                                         helper_parse_neg_contract=sp.address("KT1DHptHqSovffZ7qqvSM9dy6uZZ8juV88gP"),
-                                                        parse_address=sp.address("KT1VJn3WNXDsyFxeSExjSWKBs9JYqRCJ1LFN"),
-                                                        owner_address=sp.address("tz1g3pJZPifxhN49ukCZjdEQtyWgX2ERdfqP")
-                                                        ))
+                                                        parse_address=sp.address("KT1VJn3WNXDsyFxeSExjSWKBs9JYqRCJ1LFN")                                                        ))
