@@ -143,45 +143,44 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
         rx_height = sp.local("rx_height", link_rx_height, t=sp.TNat)
         # decode rlp message
         rps_decode = self.decode_receipt_proofs(msg)
-        with sp.if_(rps_decode.status == "Success"):
-            rps = rps_decode.receipt_proof
-            bmc_msg = sp.local("bmc_msg", sp.record(src="", dst="", svc="", sn=sp.int(0), message=sp.bytes("0x")),
-                               t=types.Types.BMCMessage)
-            ev = sp.local("ev", sp.record(next_bmc="", seq=sp.nat(0), message=sp.bytes("0x")),
-                          t=types.Types.MessageEvent)
-            sp.for i in sp.range(sp.nat(0), sp.len(rps)):
-                with sp.if_(rps[i].height < rx_height.value):
-                   pass
-                with sp.else_():
-                    rx_height.value = rps[i].height
-                    sp.for j in sp.range(sp.nat(0), sp.len(rps[i].events)):
-                        #stored events received by decoding in local variable
-                        ev.value = rps[i].events[j]
-                        sp.verify(ev.value.next_bmc == self.data.bmc_btp_address, "Invalid Next BMC")
-                        rx_seq.value += sp.nat(1)
-                        with sp.if_(ev.value.seq < rx_seq.value):
-                            rx_seq.value = sp.as_nat(rx_seq.value-sp.nat(1))
-                        with sp.else_():
-                            with sp.if_(ev.value.seq > rx_seq.value):
-                                sp.failwith(self.BMCRevertInvalidSeqNumber)
+        rps = rps_decode.receipt_proof
+        bmc_msg = sp.local("bmc_msg", sp.record(src="", dst="", svc="", sn=sp.int(0), message=sp.bytes("0x")),
+                           t=types.Types.BMCMessage)
+        ev = sp.local("ev", sp.record(next_bmc="", seq=sp.nat(0), message=sp.bytes("0x")),
+                      t=types.Types.MessageEvent)
+        sp.for i in sp.range(sp.nat(0), sp.len(rps)):
+            with sp.if_(rps[i].height < rx_height.value):
+               pass
+            with sp.else_():
+                rx_height.value = rps[i].height
+                sp.for j in sp.range(sp.nat(0), sp.len(rps[i].events)):
+                    #stored events received by decoding in local variable
+                    ev.value = rps[i].events[j]
+                    sp.verify(ev.value.next_bmc == self.data.bmc_btp_address, "Invalid Next BMC")
+                    rx_seq.value += sp.nat(1)
+                    with sp.if_(ev.value.seq < rx_seq.value):
+                        rx_seq.value = sp.as_nat(rx_seq.value-sp.nat(1))
+                    with sp.else_():
+                        with sp.if_(ev.value.seq > rx_seq.value):
+                            sp.failwith(self.BMCRevertInvalidSeqNumber)
 
-                            _decoded = self.decode_bmc_message(ev.value.message)
-                            bmc_msg.value = _decoded.bmc_dec_rv
-                            with sp.if_(_decoded.status == sp.string("Success")):
-                                with sp.if_(bmc_msg.value.dst == self.data.bmc_btp_address):
-                                    self._handle_message(prev, bmc_msg.value)
+                        _decoded = self.decode_bmc_message(ev.value.message)
+                        bmc_msg.value = _decoded.bmc_dec_rv
+                        with sp.if_(_decoded.status == sp.string("Success")):
+                            with sp.if_(bmc_msg.value.dst == self.data.bmc_btp_address):
+                                self._handle_message(prev, bmc_msg.value)
+                            with sp.else_():
+                                net, addr = sp.match_pair(strings.split_btp_address(bmc_msg.value.dst, "prev_idx",
+                                                                                    "result", "my_list", "last",
+                                                                                    "penultimate"))
+                                next_link, prev_link = sp.match_pair(sp.view("resolve_route",
+                                                    self.data.bmc_management,net, t=sp.TPair(sp.TString,
+                                                    sp.TString)).open_some("Invalid Call"))
+
+                                with sp.if_(next_link != "Unreachable"):
+                                    self._send_message(next_link, ev.value.message)
                                 with sp.else_():
-                                    net, addr = sp.match_pair(strings.split_btp_address(bmc_msg.value.dst, "prev_idx",
-                                                                                        "result", "my_list", "last",
-                                                                                        "penultimate"))
-                                    next_link, prev_link = sp.match_pair(sp.view("resolve_route",
-                                                        self.data.bmc_management,net, t=sp.TPair(sp.TString,
-                                                        sp.TString)).open_some("Invalid Call"))
-
-                                    with sp.if_(next_link != "Unreachable"):
-                                        self._send_message(next_link, ev.value.message)
-                                    with sp.else_():
-                                        self._send_error(prev, bmc_msg.value, self.BMC_ERR, "Unreachable_"+ net)
+                                    self._send_error(prev, bmc_msg.value, self.BMC_ERR, "Unreachable_"+ net)
 
         # call update_link_rx_seq on BMCManagement
         update_link_rx_seq_args_type = sp.TRecord(prev=sp.TString, val=sp.TNat)
