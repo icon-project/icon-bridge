@@ -27,7 +27,7 @@ def test():
     sc += parse_address
 
     bmc_periphery_contract = deploy_bmc_periphery_contract(
-        bmc_management_contract.address, helper_contract.address, helper2.address, parse_address.address, owner.address)
+        bmc_management_contract.address, helper_contract.address, helper2.address, parse_address.address)
     sc += bmc_periphery_contract
 
     # Scenario 1: Contract setters
@@ -84,8 +84,8 @@ def deploy_bmc_management_contract(owner, helper):
     return bmc_management_contract
 
 
-def deploy_bmc_periphery_contract(bmc_address, helper, helper2, parse, owner):
-    bmc_periphery_contract = BMCPeriphery.BMCPreiphery(bmc_address, helper, helper2, parse, owner)
+def deploy_bmc_periphery_contract(bmc_address, helper, helper2, parse):
+    bmc_periphery_contract = BMCPeriphery.BMCPreiphery(bmc_address, helper, helper2, parse)
     return bmc_periphery_contract
 
 

@@ -3,7 +3,7 @@ import smartpy as sp
 BMCManagement = sp.io.import_script_from_url("file:./contracts/src/bmc_management.py")
 BMCPeriphery = sp.io.import_script_from_url("file:./contracts/src/bmc_periphery.py")
 BMCHelper = sp.io.import_script_from_url("file:./contracts/src/helper.py")
-ParseAddress = sp.io.import_script_from_url("file:./contracts/src/parse_address.py")
+ParseAddress = sp.io.import_script_from_url("file:../bts/contracts/src/parse_address.py")
 
 
 @sp.add_test("BMCManagementTest")
@@ -19,6 +19,7 @@ def test():
     creator2 = sp.test_account("creator2")
     service1_address = sp.test_account("service1_address")
     service2_address = sp.test_account("service2_address")
+    ZERO_ADDRESS = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
 
     # deploy BMCManagement contract
     helper_contract = deploy_helper_contract()
@@ -36,7 +37,7 @@ def test():
 
     # Test cases:
     # 1: set_bmc_periphery address
-    sc.verify(bmc_management_contract.data.bmc_periphery.is_some() == False)
+    sc.verify(bmc_management_contract.data.bmc_periphery == ZERO_ADDRESS)
     bmc_management_contract.set_bmc_periphery(bmc_periphery_address).run(sender=creator)
 
     # 2: sender non-owner
@@ -46,8 +47,8 @@ def test():
     bmc_management_contract.set_bmc_periphery(bmc_periphery_address).run(sender=creator, valid=False,
                                                                          exception="AlreadyExistsBMCPeriphery")
     # 4: Verify valid bmc_periphery  address
-    sc.verify(bmc_management_contract.data.bmc_periphery.is_some() == True)
-    sc.verify(bmc_management_contract.data.bmc_periphery.open_some() == bmc_periphery_address)
+    sc.verify(bmc_management_contract.data.bmc_periphery != ZERO_ADDRESS)
+    sc.verify(bmc_management_contract.data.bmc_periphery == bmc_periphery_address)
 
     # # 5: sender non-owner for set_bmc_btp_address
     # bmc_management_contract.set_bmc_btp_address("tezos.77").run(sender=alice, valid=False, exception="Unauthorized")
@@ -116,7 +117,7 @@ def test():
 
     # 7: verify get_services
     services = bmc_management_contract.get_services()
-    sc.verify_equal(services, sp.map({0: sp.record(svc=svc1, addr=service1_address.address)}))
+    sc.verify_equal(services, sp.map({svc1 : service1_address.address}))
 
     # Scenario 4: add / remove route and get_routes
 
@@ -296,7 +297,7 @@ def test():
         reachable=sp.set([]),
         rx_seq=sp.nat(0),
         tx_seq=sp.nat(0),
-        block_interval_src=sp.nat(1000),
+        block_interval_src=sp.nat(30000),
         block_interval_dst=sp.nat(2),
         max_aggregation=sp.nat(3),
         delay_limit=sp.nat(2),
