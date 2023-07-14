@@ -117,7 +117,10 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         :return:
         """
         sp.set_type(owner, sp.TAddress)
-        sp.result(self.data.owners.get(owner))
+        with sp.if_(self.data.owners.contains(owner)):
+            sp.result(self.data.owners.get(owner))
+        with sp.else_():
+            sp.result(False)
 
     @sp.entry_point
     def add_service(self, svc, addr):
