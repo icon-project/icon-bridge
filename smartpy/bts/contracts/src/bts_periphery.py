@@ -54,16 +54,16 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         self.data.parse_contract = address
 
     @sp.entry_point
-    def set_bmc_address(self, params):
-        sp.set_type(params, sp.TAddress)
+    def set_bmc_address(self, address):
+        sp.set_type(address, sp.TAddress)
         self.only_owner()
-        self.data.bmc = params
+        self.data.bmc = address
 
     @sp.entry_point
-    def set_bts_core_address(self, params):
-        sp.set_type(params, sp.TAddress)
+    def set_bts_core_address(self, address):
+        sp.set_type(address, sp.TAddress)
         self.only_owner()
-        self.data.bts_core = params
+        self.data.bts_core = address
 
     @sp.onchain_view()
     def has_pending_request(self):
@@ -135,10 +135,8 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         :return:
         """
         sp.set_type(coin_names_limit, sp.TMap(sp.TString, sp.TNat))
-        # sp.set_type(token_limit, sp.TMap(sp.TNat, sp.TNat))
 
-        sp.verify((sp.sender == sp.self_address )| (sp.sender == self.data.bts_core), "Unauthorized")
-        # sp.verify(sp.len(coin_names_limits) == sp.len(token_limit), "InvalidParams")
+        sp.verify((sp.sender == self.data.bts_core), "Unauthorized")
         sp.verify(sp.len(coin_names_limit) <= self.MAX_BATCH_SIZE, "BatchMaxSizeExceed")
 
         coin_names_limit_items = coin_names_limit.items()
@@ -549,8 +547,12 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                                         sp.record(code=code, message=msg)))))
         sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
+    @sp.entry_point(lazify=False)
+    def update_handle_fee_gathering(self, ep):
+        self.only_owner()
+        sp.set_entry_point("handle_fee_gathering", ep)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=True)
     def handle_fee_gathering(self, fa, svc):
         """
         BSH handle Gather Fee Message request from BMC contract
@@ -563,7 +565,6 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
 
         check_caller = self.only_bmc()
         strings.split_btp_address(fa)
-        # TODO: CHECK VALID ADDRESS
         with sp.if_((svc == self.service_name) & (check_caller == "Authorized")):
 
             # call transfer_fees of BTS_Core
