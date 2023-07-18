@@ -52,10 +52,10 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
         self.data.parse_contract = address
 
     @sp.entry_point
-    def set_bmc_management_addr(self, params):
-        sp.set_type(params, sp.TAddress)
+    def set_bmc_management_addr(self, address):
+        sp.set_type(address, sp.TAddress)
         self.only_owner()
-        self.data.bmc_management = params
+        self.data.bmc_management = address
 
     @sp.entry_point(lazify=False)
     def update_set_bmc_btp_address(self, ep):
@@ -92,7 +92,17 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
                 check_relay.value = True
         sp.verify(check_relay.value, self.BMCRevertUnauthorized)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_callback_btp_message(self, ep):
+        self.only_owner()
+        sp.set_entry_point("callback_btp_message", ep)
+
+    @sp.entry_point(lazify=False)
+    def update_callback_btp_error(self, ep):
+        self.only_owner()
+        sp.set_entry_point("callback_btp_error", ep)
+
+    @sp.entry_point(lazify=True)
     def callback_btp_message(self, string, prev, callback_msg):
         sp.set_type(string, sp.TOption(sp.TString))
         sp.set_type(prev, sp.TString)
@@ -104,7 +114,7 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
         with sp.if_(string.open_some() != "success"):
             self._send_error(prev, callback_msg, self.BSH_ERR, self.BMCRevertUnknownHandleBTPMessage)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=True)
     def callback_btp_error(self, string, svc, sn, code, msg):
         sp.set_type(string, sp.TOption(sp.TString))
         sp.set_type(svc, sp.TString)

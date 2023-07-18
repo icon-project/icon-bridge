@@ -134,7 +134,7 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_type(addr, sp.TAddress)
 
         self.only_owner()
-        sp.verify(addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg"), "InvalidAddress")
+        sp.verify(addr != self.ZERO_ADDRESS, "InvalidAddress")
         sp.verify(self.data.bsh_services.contains(svc) == False, "AlreadyExistsBSH")
         self.data.bsh_services[svc] = addr
 
@@ -253,41 +253,6 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
             sp.failwith("NotExistsKey")
         sp.verify(height > sp.nat(0), "InvalidRxHeight")
         self.data.links[link].rx_height = height
-
-    @sp.entry_point
-    def set_link(self, _link, block_interval, _max_aggregation, delay_limit):
-        """
-
-        :param _link:
-        :param block_interval:
-        :param _max_aggregation:
-        :param delay_limit:
-        :return:
-        """
-        sp.set_type(_link, sp.TString)
-        sp.set_type(block_interval, sp.TNat)
-        sp.set_type(_max_aggregation, sp.TNat)
-        sp.set_type(delay_limit, sp.TNat)
-
-        self.only_owner()
-
-        with sp.if_(self.data.links.contains(_link)):
-            sp.verify(self.data.links.get(_link).is_connected == True, "NotExistsLink")
-        with sp.else_():
-            sp.failwith("NotExistsLink")
-        sp.verify((_max_aggregation >= sp.nat(1)) & (delay_limit >= sp.nat(1)), "InvalidParam")
-
-        link = sp.local("link", self.data.links.get(_link), t=types.Types.Link).value
-
-        link.block_interval_dst = block_interval
-        link.max_aggregation = _max_aggregation
-        link.delay_limit = delay_limit
-
-        link.rotate_height = sp.level
-        link.rx_height = sp.nat(0)
-
-        self.data.links[_link] = link
-
 
     def _propagate_internal(self, service_type, link):
         sp.set_type(service_type, sp.TString)
@@ -468,7 +433,7 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
     def get_bsh_service_by_name(self, service_name):
         sp.set_type(service_name, sp.TString)
         sp.result(self.data.bsh_services.get(service_name,
-                                             default_value=sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")))
+                                             default_value=self.ZERO_ADDRESS))
 
     @sp.onchain_view()
     def get_link(self, to):
@@ -537,7 +502,12 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         self.only_bmc_periphery()
         self.data.links[prev].rx_height += val
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_update_link_reachable(self, ep):
+        self.only_owner()
+        sp.set_entry_point("update_link_reachable", ep)
+
+    @sp.entry_point(lazify=True)
     def update_link_reachable(self, prev, to):
         sp.set_type(prev, sp.TString)
         sp.set_type(to, sp.TList(sp.TString))
@@ -548,22 +518,6 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
             net, addr = sp.match_pair(
                 strings.split_btp_address(item, "prev_idx", "result", "my_list", "last", "penultimate"))
             self.data.get_link_from_reachable_net[net] = sp.record(prev=prev, to=item)
-
-    @sp.entry_point
-    def delete_link_reachable(self, prev, index):
-        sp.set_type(prev, sp.TString)
-        sp.set_type(index, sp.TNat)
-
-        self.only_bmc_periphery()
-        i = sp.local("i", sp.nat(0))
-        sp.for item in self.data.links.get(prev).reachable.elements():
-            with sp.if_(i.value == index):
-                net, addr = sp.match_pair(
-                    strings.split_btp_address(item, "prev_idx", "result", "my_list", "last", "penultimate"))
-
-                del self.data.get_link_from_reachable_net[net]
-                self.data.links[prev].reachable.remove(item)
-            i.value += 1
 
     @sp.entry_point
     def update_relay_stats(self, relay, block_count_val, msg_count_val):
