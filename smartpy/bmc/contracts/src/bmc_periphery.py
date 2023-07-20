@@ -20,6 +20,8 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
     BMCRevertUnknownHandleBTPError = sp.string("UnknownHandleBTPError")
     BMCRevertUnknownHandleBTPMessage = sp.string("UnknownHandleBTPMessage")
 
+    ZERO_ADDRESS = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
+
     def __init__(self, bmc_management_addr, helper_contract, helper_parse_neg_contract, parse_address):
         self.init(
             helper=helper_contract,
@@ -142,6 +144,10 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_type(prev, sp.TString)
         sp.set_type(msg, sp.TBytes)
 
+        _bridge_pause_status = sp.view("bridge_status", self.data.bmc_management, sp.unit, t=sp.TBool).open_some()
+        with sp.if_(_bridge_pause_status == True):
+            sp.failwith("Tezos bridge is paused.")
+
         with sp.if_(self.data.bmc_btp_address == sp.string("")):
             sp.failwith("bmc_btp_address not set")
         self._require_registered_relay(prev)
@@ -243,7 +249,7 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
                             bsh_addr = sp.view("get_bsh_service_by_name", self.data.bmc_management,
                                                gather_fee.value.svcs[k], t=sp.TAddress).open_some("Invalid Call")
 
-                            with sp.if_(bsh_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
+                            with sp.if_(bsh_addr != self.ZERO_ADDRESS):
                                 # call handle_fee_gathering of bts periphery
                                 handle_fee_gathering_args_type = sp.TRecord(fa=sp.TString,
                                                                             svc=sp.TString)
@@ -275,7 +281,7 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
             bsh_addr = sp.view("get_bsh_service_by_name", self.data.bmc_management, msg.svc,
                                t=sp.TAddress).open_some("Invalid view")
 
-            with sp.if_(bsh_addr == sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
+            with sp.if_(bsh_addr == self.ZERO_ADDRESS):
                 self._send_error(prev, msg, self.BMC_ERR, self.BMCRevertNotExistsBSH)
 
             with sp.else_():

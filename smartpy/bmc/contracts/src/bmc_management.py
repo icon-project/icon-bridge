@@ -25,7 +25,8 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
             get_route_dst_from_net=sp.map(),
             get_link_from_net=sp.map(),
             get_link_from_reachable_net=sp.map(),
-            helper=helper_contract
+            helper=helper_contract,
+            is_paused=True
         )
 
         self.init_type(sp.TRecord(
@@ -42,7 +43,8 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
             get_route_dst_from_net=sp.TMap(sp.TString, sp.TString),
             get_link_from_net=sp.TMap(sp.TString, sp.TString),
             get_link_from_reachable_net=sp.TMap(sp.TString, types.Types.Tuple),
-            helper=sp.TAddress
+            helper=sp.TAddress,
+            is_paused=sp.TBool
         ))
 
     def only_owner(self):
@@ -53,6 +55,21 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
 
     def only_bmc_periphery(self):
         sp.verify(sp.sender == self.data.bmc_periphery, "Unauthorized")
+
+    @sp.entry_point
+    def toggle_bridge_on(self):
+        self.only_owner()
+        with sp.if_(self.data.is_paused == False):
+            self.data.is_paused = True
+        with sp.else_():
+            self.data.is_paused = False
+
+    @sp.onchain_view()
+    def bridge_status(self):
+        """
+        :return: boolean
+        """
+        sp.result(self.data.is_paused)
 
     @sp.entry_point
     def set_helper_address(self, address):
