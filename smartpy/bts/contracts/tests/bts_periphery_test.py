@@ -70,14 +70,14 @@ def test():
 
     # 2: set token limit for Tok2 coin to 5 and BB coin to 2 from bts_periphery_contract
     bts_periphery_contract.set_token_limit(sp.map({"Tok2": sp.nat(5), "BB": sp.nat(2)})).run(
-        sender=bts_periphery_contract.address)
+        sender=bts_core_contract.address)
 
     # 3: verifying the value of token limit
     sc.verify(bts_periphery_contract.data.token_limit["Tok2"] == sp.nat(5))
 
     # 4: modify already set data
     bts_periphery_contract.set_token_limit(sp.map({"Tok2": sp.nat(15), "BB": sp.nat(22)})).run(
-        sender=bts_periphery_contract.address)
+        sender=bts_core_contract.address)
 
     # 5: verifying the value of token limit after change
     sc.verify(bts_periphery_contract.data.token_limit["BB"] == sp.nat(22))
