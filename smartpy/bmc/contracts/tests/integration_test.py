@@ -176,6 +176,10 @@ def test():
     sc += fa2_dummy_second
 
     # BMC_MANAGEMENT SETTERS
+
+    # set pause status to false
+    bmc_management.toggle_bridge_on().run(sender=owner.address)
+
     # set bmc periphery
     bmc_management.set_bmc_periphery(bmc_periphery.address).run(
         sender=owner.address)
@@ -213,6 +217,10 @@ def test():
         sender=owner.address)
 
     # BTS_CORE SETTERS
+
+    # set pause status to false
+    bts_core.toggle_bridge_on().run(sender=owner.address)
+
     # update_bts_periphery
     bts_core.update_bts_periphery(bts_periphery.address).run(sender=owner.address)
 

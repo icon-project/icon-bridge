@@ -211,36 +211,6 @@ def test():
     # 5: verify rx_height value
     sc.verify_equal(bmc_management_contract.data.links[link].rx_height, 2)
 
-    # Scenario 7: set_link
-
-    # Test case:
-    block_interval = sp.nat(2)
-    _max_aggregation = sp.nat(3)
-    delay_limit = sp.nat(2)
-    # 1: setting link by non-owner
-    bmc_management_contract.set_link(
-        sp.record(_link=link, block_interval=block_interval, _max_aggregation=_max_aggregation,
-                  delay_limit=delay_limit)).run(sender=bob, valid=False, exception="Unauthorized")
-
-    # 2: setting non-exist link
-    bmc_management_contract.set_link(
-        sp.record(_link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnZ", block_interval=block_interval,
-                  _max_aggregation=_max_aggregation, delay_limit=delay_limit)).run(sender=creator, valid=False,
-                                                                                   exception="NotExistsLink")
-    # 3: setting link with invalid paramter
-    bmc_management_contract.set_link(
-        sp.record(_link=link, block_interval=block_interval, _max_aggregation=sp.nat(0),
-                  delay_limit=delay_limit)).run(
-        sender=creator, valid=False, exception="InvalidParam")
-    bmc_management_contract.set_link(
-        sp.record(_link=link, block_interval=block_interval, _max_aggregation=_max_aggregation,
-                  delay_limit=sp.nat(0))).run(sender=creator, valid=False, exception="InvalidParam")
-
-    # 4: setting link with valid paramter by owner
-    bmc_management_contract.set_link(
-        sp.record(_link=link, block_interval=block_interval, _max_aggregation=_max_aggregation,
-                  delay_limit=delay_limit)).run(sender=creator)
-
     # Scenario 8: add / remove relay and get_relays
 
     # Test case:
@@ -298,12 +268,12 @@ def test():
         rx_seq=sp.nat(0),
         tx_seq=sp.nat(0),
         block_interval_src=sp.nat(30000),
-        block_interval_dst=sp.nat(2),
-        max_aggregation=sp.nat(3),
-        delay_limit=sp.nat(2),
+        block_interval_dst=sp.nat(0),
+        max_aggregation=sp.nat(10),
+        delay_limit=sp.nat(3),
         relay_idx=sp.nat(0),
         rotate_height=sp.nat(0),
-        rx_height=sp.nat(0),
+        rx_height=sp.nat(2),
         rx_height_src=sp.nat(0),
         is_connected=True
     )
@@ -319,7 +289,7 @@ def test():
 
     # 5: verify get_link_rx_height
     get_link_rx_height = bmc_management_contract.get_link_rx_height(link)
-    sc.verify_equal(get_link_rx_height, 0)
+    sc.verify_equal(get_link_rx_height, 2)
 
     # 6: verify get_link_relays
     get_link_relays = bmc_management_contract.get_link_relays(link)
@@ -372,7 +342,7 @@ def test():
     # 3: verifying value
     sc.verify_equal(bmc_management_contract.data.links[next_link1].rx_height, 4)
 
-    # Scenario 13: update_link_reachable and delete_link_reachable function
+    # Scenario 13: update_link_reachable
 
     # Test cases:
     to = sp.list(["btp://net1/addr1", "btp://net2/addr2"])
@@ -386,22 +356,6 @@ def test():
     # 3: verifying value
     sc.verify_equal(bmc_management_contract.data.links[next_link1].reachable,
                     sp.set(['btp://net1/addr1', 'btp://net2/addr2']))
-
-    # 4: delete_link_reachable by non-bmc_periphery
-    bmc_management_contract.delete_link_reachable(
-        sp.record(prev=next_link1, index=sp.nat(0))).run(sender=creator, valid=False, exception="Unauthorized")
-
-    # 5: delete_link_reachable by bmc_periphery
-    bmc_management_contract.delete_link_reachable(sp.record(prev=next_link1, index=sp.nat(0))).run(
-        sender=bmc_periphery_address)
-
-    # 6: verifying value
-    sc.verify_equal(bmc_management_contract.data.links[next_link1].reachable, sp.set(['btp://net2/addr2']))
-
-    # # 7: delete non-exist link
-    # next_link2 = sp.string("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a625link2")
-    # bmc_management_contract.delete_link_reachable(sp.record(prev=next_link2, index=sp.nat(0))).run(
-    #     sender=bmc_periphery_address)
 
     # Scenario 13: update_relay_stats and resolve_route function
 
