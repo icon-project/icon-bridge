@@ -14,6 +14,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
     UINT_CAP = sp.nat(115792089237316195423570985008687907853269984665640564039457584007913129639935)
 
     MAX_BATCH_SIZE = sp.nat(15)
+    ZERO_ADDRESS = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
 
     def __init__(self, bmc_address, bts_core_address, helper_contract, parse_address, native_coin_name, owner_address):
         self.update_initial_storage(
@@ -86,7 +87,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
             sp.for item in params:
                 parsed_addr = sp.view("str_to_addr", self.data.parse_contract, item, t=sp.TAddress).open_some()
                 with sp.if_(add_blacklist_status.value == "success"):
-                    with sp.if_(parsed_addr == sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
+                    with sp.if_(parsed_addr == self.ZERO_ADDRESS):
                         add_blacklist_status.value = "InvalidAddress"
                     with sp.else_():
                         addr_list.value.push(parsed_addr)
@@ -114,7 +115,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
             sp.for item in params:
                 parsed_addr = sp.view("str_to_addr", self.data.parse_contract, item, t=sp.TAddress).open_some()
                 with sp.if_(remove_blacklist_status.value == "success"):
-                    with sp.if_((parsed_addr == sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")) |
+                    with sp.if_((parsed_addr == self.ZERO_ADDRESS) |
                                 (self.data.blacklist.contains(parsed_addr) == False)):
                         remove_blacklist_status.value = "InvalidAddress"
                     with sp.else_():
@@ -258,7 +259,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                             parsed_addr = sp.view("str_to_addr", self.data.parse_contract,
                                                   tc.to, t=sp.TAddress).open_some()
 
-                            with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
+                            with sp.if_(parsed_addr != self.ZERO_ADDRESS):
                                 handle_request_call= self._handle_request_service(parsed_addr, tc.assets)
                                 # first param of send_response_message is service type value
                                 with sp.if_(handle_request_call == "success"):

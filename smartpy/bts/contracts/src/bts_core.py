@@ -36,7 +36,8 @@ class BTSCore(sp.Contract):
                                                               fixed_fee=_fixed_fee,
                                                               coin_type=self.NATIVE_COIN_TYPE)},
                                 tkey=sp.TString, tvalue=types.Types.Coin),
-            coins_address=sp.map({self.NATIVE_COIN_ADDRESS: _native_coin_name}, tkey=sp.TAddress, tvalue=sp.TString)
+            coins_address=sp.map({self.NATIVE_COIN_ADDRESS: _native_coin_name}, tkey=sp.TAddress, tvalue=sp.TString),
+            is_paused=True
         )
 
     def only_owner(self):
@@ -46,6 +47,14 @@ class BTSCore(sp.Contract):
 
     def only_bts_periphery(self):
         sp.verify(sp.sender == self.data.bts_periphery_address.open_some("Address not set"), "Unauthorized")
+
+    @sp.entry_point
+    def toggle_bridge_on(self):
+        self.only_owner()
+        with sp.if_(self.data.is_paused == False):
+            self.data.is_paused = True
+        with sp.else_():
+            self.data.is_paused = False
 
     @sp.entry_point(lazify=False)
     def update_update_bts_periphery(self, ep):
@@ -296,6 +305,9 @@ class BTSCore(sp.Contract):
         """
         sp.set_type(to, sp.TString)
 
+        with sp.if_(self.data.is_paused == True):
+            sp.failwith("Tezos bridge is paused.")
+
         amount_in_nat = sp.local("amount_in_nat", sp.utils.mutez_to_nat(sp.amount), t=sp.TNat)
         # call check_transfer_restrictions on bts_periphery
         check_transfer = sp.view("check_transfer_restrictions",
@@ -328,6 +340,9 @@ class BTSCore(sp.Contract):
         sp.set_type(coin_name, sp.TString)
         sp.set_type(value, sp.TNat)
         sp.set_type(to, sp.TString)
+
+        with sp.if_(self.data.is_paused == True):
+            sp.failwith("Tezos bridge is paused.")
 
         sp.verify(coin_name != self.data.native_coin_name, message="InvalidWrappedCoin")
         sp.verify(self.data.coins.contains(coin_name), message= "CoinNotRegistered")
@@ -403,6 +418,10 @@ class BTSCore(sp.Contract):
         """
         sp.set_type(coin_names_values, sp.TMap(sp.TString, sp.TNat))
         sp.set_type(to, sp.TString)
+
+        with sp.if_(self.data.is_paused == True):
+            sp.failwith("Tezos bridge is paused.")
+
         sp.verify(sp.len(coin_names_values) > sp.nat(0), message = "Zero length arguments")
 
         amount_in_nat = sp.local("amount_in_nat", sp.utils.mutez_to_nat(sp.amount), t=sp.TNat)
@@ -491,6 +510,10 @@ class BTSCore(sp.Contract):
         """
         sp.set_type(coin_name, sp.TString)
         sp.set_type(value, sp.TNat)
+
+        with sp.if_(self.data.is_paused == True):
+            sp.failwith("Tezos bridge is paused.")
+
         record = sp.record(address=sp.sender,coin_name=coin_name)
         with sp.if_(self.data.balances.contains(record)):
             sp.verify(self.data.balances[record].refundable_balance >= value, message="Imbalance")
