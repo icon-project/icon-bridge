@@ -14,8 +14,7 @@ class BTSCore(sp.Contract):
     NON_NATIVE_TOKEN_TYPE = sp.nat(2)
 
     MAX_BATCH_SIZE = sp.nat(15)
-    # TODO: set NATIVE_COIN_ADDRESS to governance address
-    NATIVE_COIN_ADDRESS = sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc")
+    NATIVE_COIN_ADDRESS = sp.address("tz1burnburnburnburnburnburnburjAYjjX")
     ZERO_ADDRESS = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
     # Nat:(TWO.pow256 - 1)
     UINT_CAP = sp.nat(115792089237316195423570985008687907853269984665640564039457584007913129639935)
@@ -121,7 +120,6 @@ class BTSCore(sp.Contract):
         sp.set_type(addr, sp.TAddress)
         sp.set_type(token_metadata, sp.TMap(sp.TString, sp.TBytes))
         sp.set_type(metadata, sp.TBigMap(sp.TString, sp.TBytes))
-        # TODO: use symbol and decimals
         self.only_owner()
         sp.verify(name != self.data.native_coin_name, message="ExistNativeCoin")
         sp.verify(self.data.coins.contains(name) == False, message= "ExistCoin")
