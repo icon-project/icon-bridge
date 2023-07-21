@@ -38,6 +38,7 @@ type Verifier struct {
 	height              int64
 	cycle               int64
 	lastVerifiedBn      *types.BlockNotification
+	updatedBn           *types.BlockNotification
 	cl                  *Client
 }
 
@@ -102,7 +103,13 @@ func (vr *Verifier) Update(ctx context.Context, lbn *types.BlockNotification) er
 	// 	vr.updateValidatorsAndCycle(ctx, block.Header.Level, block.Metadata.LevelInfo.Cycle)
 	// }
 
-	vr.lastVerifiedBn = lbn
+	if vr.updatedBn == nil {
+		fmt.Println("should return from here first")
+		vr.updatedBn = lbn
+		return nil
+	}
+	vr.lastVerifiedBn = vr.updatedBn
+	vr.updatedBn = lbn
 	return nil
 }
 

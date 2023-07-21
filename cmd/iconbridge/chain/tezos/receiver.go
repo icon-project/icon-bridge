@@ -677,9 +677,10 @@ func (r *receiver) receiveLoop2(ctx context.Context, opts *BnOptions, callback f
 								r.log.WithFields(log.Fields{"height": vr.Next()}).Info("syncVerifier: complete")
 								RelaySyncStatusLog = true
 							}
-
-							if err := callback(vr.LastVerifiedBn()); err != nil {
-								return errors.Wrapf(err, "receiveLoop: callback: %v", err)
+							if vr.LastVerifiedBn() != nil {
+								if err := callback(vr.LastVerifiedBn()); err != nil {
+									return errors.Wrapf(err, "receiveLoop: callback: %v", err)
+								}
 							}
 						} else {
 							r.log.WithFields(log.Fields{"height": vr.Next(), "target": opts.StartHeight}).Debug("syncVerifier: syncing")

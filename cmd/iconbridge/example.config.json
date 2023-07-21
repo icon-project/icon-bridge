@@ -23,12 +23,12 @@
                 ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 3170705
+                        "blockHeight": 3289000
                     },  
                     "syncConcurrency": 100, 
                     "bmcManagement": "KT1HHnV7zzxUkDMXTaNveLQHntLfSWNqJsZk"
                 },
-                "offset": 3170705
+                "offset": 3289000
             },
             "dst": {
                 "address": "btp://0x7.icon/cxb7de63db8c1fa2d9dfb6c531e6bc19402572cc23",
