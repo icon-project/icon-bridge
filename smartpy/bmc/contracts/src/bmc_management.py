@@ -13,7 +13,6 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
     def __init__(self, owner_address, helper_contract):
         self.init(
             owners=sp.map(l={owner_address:True}),
-            number_of_owners=sp.nat(1),
             bsh_services=sp.map(),
             relay_stats=sp.map(),
             routes=sp.map(),
@@ -31,7 +30,6 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
 
         self.init_type(sp.TRecord(
             owners=sp.TMap(sp.TAddress, sp.TBool),
-            number_of_owners=sp.TNat,
             bsh_services=sp.TMap(sp.TString, sp.TAddress),
             relay_stats=sp.TMap(sp.TAddress, types.Types.RelayStats),
             routes=sp.TMap(sp.TString, sp.TString),
