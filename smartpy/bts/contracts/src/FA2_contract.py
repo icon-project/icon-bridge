@@ -32,11 +32,6 @@ class SingleAssetToken(FA2.Admin, FA2.Fa2SingleAsset, FA2.MintSingleAsset, FA2.B
     def is_admin(self, address):
         sp.result(address == self.data.administrator)
 
-    @sp.onchain_view()
-    def balance_of(self, param):
-        sp.set_type(param, sp.TRecord(owner=sp.TAddress, token_id=sp.TNat))
-        sp.result(self.balance_(param.owner, param.token_id))
-
     @sp.entry_point
     def set_allowance(self, batch):
         sp.set_type(batch, sp.TList(sp.TRecord(spender=sp.TAddress, amount=sp.TNat)))
@@ -52,38 +47,18 @@ class SingleAssetToken(FA2.Admin, FA2.Fa2SingleAsset, FA2.MintSingleAsset, FA2.B
         sp.set_type(allowance, sp.TRecord(spender=sp.TAddress, owner=sp.TAddress))
         sp.result(self.data.allowances.get(allowance, default_value=0))
 
-    @sp.entry_point
-    def transfer_bts(self, batch):
-        """Accept a list of transfer operations between a source and multiple
-        destinations.
-        Custom version with allowance system with callback implementation.
+    @sp.onchain_view()
+    def transfer_permissions(self, params):
+        sp.set_type(params, sp.TRecord(from_=sp.TAddress, token_id=sp.TNat))
 
-        `transfer_tx_` must be defined in the child class.
-        """
-        sp.set_type(batch, t_transfer_params)
-
-        if self.policy.supports_transfer:
-            with sp.for_("transfer", batch) as transfer:
-                with sp.for_("tx", transfer.txs) as tx:
-                    # The ordering of sp.verify is important: 1) token_undefined, 2) transfer permission 3) balance
-                    sp.verify(self.is_defined(tx.token_id), "FA2_TOKEN_UNDEFINED")
-                    self.policy.check_tx_transfer_permissions(
-                        self, transfer.from_, tx.to_, tx.token_id
-                    )
-                    with sp.if_(sp.sender != transfer.from_):
-                        self.update_allowance_(sp.sender, transfer.from_, tx.token_id, tx.amount)
-                    with sp.if_(tx.amount > 0):
-                        self.transfer_tx_(transfer.from_, tx)
-
-                    return_value = sp.record(string=sp.some("success"), requester=tx.to_,
-                                             coin_name=transfer.coin_name, value=tx.amount)
-                    sp.transfer(return_value, sp.tez(0), transfer.callback)
-        else:
-            with sp.for_("transfer", batch) as transfer:
-                with sp.for_("tx", transfer.txs) as tx:
-                    return_value = sp.record(string=sp.some("FA2_TX_DENIED"), requester=tx.to_,
-                                             coin_name=transfer.coin_name, value=tx.amount)
-                    sp.transfer(return_value, sp.tez(0), transfer.callback)
+        with sp.if_((self.policy.supports_transfer) & (self.is_defined(params.token_id))):
+            with sp.if_((sp.sender == params.from_) | (self.data.operators.contains(
+                    sp.record(owner=params.from_, operator=sp.sender, token_id=params.token_id)))):
+                sp.result(True)
+            with sp.else_():
+                sp.result(False)
+        with sp.else_():
+            sp.result(False)
 
     @sp.entry_point
     def transfer(self, batch):

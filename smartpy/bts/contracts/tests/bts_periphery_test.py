@@ -1,9 +1,10 @@
 import smartpy as sp
+
 BTSPeriphery = sp.io.import_script_from_url("file:./contracts/src/bts_periphery.py")
 BTSCore = sp.io.import_script_from_url("file:./contracts/src/bts_core.py")
 BTSOwnerManager = sp.io.import_script_from_url("file:./contracts/src/bts_owner_manager.py")
 ParseAddress = sp.io.import_script_from_url("file:./contracts/src/parse_address.py")
-Helper= sp.io.import_script_from_url("file:./contracts/src/helper.py")
+Helper = sp.io.import_script_from_url("file:./contracts/src/helper.py")
 
 
 @sp.add_test("BTSPeripheryTest")
@@ -11,162 +12,114 @@ def test():
     sc = sp.test_scenario()
 
     # test account
-    alice=sp.test_account("Alice")
-    bmc_address = sp.test_account('bmc')
-    admin=sp.test_account('admin')
-    helper = sp.test_account("Helper")
-    
+    admin = sp.test_account('admin')
 
-    def deploy_btsperiphery_contract():
-     btsperiphery_contract = BTSPeriphery.BTPPreiphery(bmc_address.address,btscore_contract.address,btshelpercontract.address,btsparsecontract.address,'NativeCoin',admin.address)
-     return btsperiphery_contract
-    
-    def deploy_parsecontract():
-       btsparsecontract = ParseAddress.ParseAddress()
-       return btsparsecontract
-    
+    def deploy_bts_periphery_contract(core_address, helper, parse):
+        bmc = sp.test_account("bmc")
+        _bts_periphery_contract = BTSPeriphery.BTSPeriphery(
+            bmc_address=bmc.address, bts_core_address=core_address, helper_contract=helper, parse_address=parse,
+            native_coin_name='NativeCoin', owner_address=admin.address)
+        return _bts_periphery_contract
+
+    def deploy_parse_contract():
+        _bts_parse_contract = ParseAddress.ParseAddress()
+        return _bts_parse_contract
+
     def deploy_helper():
-       btshelper = Helper.Helper()
-       return btshelper
-    
-       
-    
-    def deploy_btscore_contract():
-        btscore_contract= BTSCore.BTSCore(
-         owner_manager= bts_OwnerManager_contract.address,
-         _native_coin_name="Tok1",
-         _fee_numerator=sp.nat(1000),
-         _fixed_fee=sp.nat(10))
-        return btscore_contract
-    
-    def deploy_btsOwnerManager_Contract():
-     bts_OwnerManager_Contract = BTSOwnerManager.BTSOwnerManager(sp.address("tz1XGbmLYhqcigxFuBCJrgyJejnwkySE4Sk9"))
-     return bts_OwnerManager_Contract
-    
-    bts_OwnerManager_contract = deploy_btsOwnerManager_Contract()
-    sc+= bts_OwnerManager_contract
+        _bts_helper = Helper.Helper()
+        return _bts_helper
 
-    btscore_contract = deploy_btscore_contract()
-    sc+= btscore_contract
+    def deploy_bts_core_contract(_bts_owner_manager_contract):
+        _bts_core_contract = BTSCore.BTSCore(
+            owner_manager=_bts_owner_manager_contract,
+            _native_coin_name="Tok1",
+            _fee_numerator=sp.nat(1000),
+            _fixed_fee=sp.nat(10))
+        return _bts_core_contract
 
-    btshelpercontract = deploy_helper()
-    sc+= btshelpercontract
+    def deploy_bts_owner_manager_contract():
+        _bts_owner_manager_contract = BTSOwnerManager.BTSOwnerManager(admin.address)
+        return _bts_owner_manager_contract
 
-    btsparsecontract = deploy_parsecontract()
-    sc+= btsparsecontract
-    
-    # deploy btsperiphery contract
-    btsperiphery_contract = deploy_btsperiphery_contract()
-    sc += btsperiphery_contract
-    
-    btscore_contract.update_bts_periphery(btsperiphery_contract.address).run(sender=sp.address("tz1XGbmLYhqcigxFuBCJrgyJejnwkySE4Sk9"))
+    bts_owner_manager_contract = deploy_bts_owner_manager_contract()
+    sc += bts_owner_manager_contract
 
+    bts_core_contract = deploy_bts_core_contract(bts_owner_manager_contract.address)
+    sc += bts_core_contract
 
-    
+    bts_helper_contract = deploy_helper()
+    sc += bts_helper_contract
 
-    #test 1: Test of add to blacklist function
-    btsperiphery_contract.add_to_blacklist({0:"notaaddress"}).run(sender=btsperiphery_contract.address,valid=False, exception="InvalidAddress") # invalid address 
-    btsperiphery_contract.add_to_blacklist({0:"tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"}).run(sender=btsperiphery_contract.address,valid=True) #add a address to blacklist
-    btsperiphery_contract.add_to_blacklist({0:"tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"}).run(sender=btsperiphery_contract.address,valid=True)  # can be called twice 
-    btsperiphery_contract.add_to_blacklist({0:"tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"}) .run(sender=admin.address,valid=False,exception ="Unauthorized")# only btsperiphery contract call this function
-    btsperiphery_contract.add_to_blacklist({0:'tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg'}).run(sender=btsperiphery_contract.address,valid=False,exception='InvalidAddress')#invalid address
-    sc.verify(btsperiphery_contract.data.blacklist[sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW")] == True) # checking the blacklist[] map
-   
+    bts_parse_contract = deploy_parse_contract()
+    sc += bts_parse_contract
 
-    #test 2 : Test of remove from blacklist function
-    btsperiphery_contract.remove_from_blacklist({0:'notaaddress'}).run(sender=btsperiphery_contract.address,valid=False, exception="InvalidAddress") # invalid address 
-    btsperiphery_contract.remove_from_blacklist({0:'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(sender=btsperiphery_contract.address,valid=False, exception="UserNotFound") # address not black-listed
-    btsperiphery_contract.add_to_blacklist({0:'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(sender=btsperiphery_contract.address) # adding to blacklist
-    btsperiphery_contract.remove_from_blacklist({0:'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(sender=btsperiphery_contract.address) # valid process
-    btsperiphery_contract.remove_from_blacklist({0:'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(sender=btsperiphery_contract.address,valid=False ,exception ='UserNotFound') # cannot remove from blacklist twice
-    btsperiphery_contract.add_to_blacklist({0:'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(sender=btsperiphery_contract.address) # adding to blacklist
-    btsperiphery_contract.remove_from_blacklist({0:'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(sender=btsperiphery_contract.address) # can only be called from btseperiphery contract
-    btsperiphery_contract.remove_from_blacklist({0:'tz1d2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'}).run(sender=admin.address, valid=False, exception ="Unauthorized") # can only be called from btseperiphery contract
+    # deploy bts_periphery contract
+    bts_periphery_contract = deploy_bts_periphery_contract(bts_core_contract.address, bts_helper_contract.address,
+                                                           bts_parse_contract.address)
+    sc += bts_periphery_contract
 
+    bts_core_contract.update_bts_periphery(bts_periphery_contract.address).run(sender=admin.address)
 
-    #test 3 : set token  limit
-    btsperiphery_contract.set_token_limit(sp.record(coin_names = {0:"Tok2" , 1:'BB'} ,token_limit ={0:sp.nat(5),1:sp.nat(2)})).run(sender=admin.address,valid=False,exception='Unauthorized') #can only be called from btsperiphery contract
-    btsperiphery_contract.set_token_limit(sp.record(coin_names = {0:"Tok2" , 1:'BB'} ,token_limit ={0:sp.nat(5),1:sp.nat(2)})).run(sender=btsperiphery_contract.address) #set token limit for Tok2 coin to 5 and BB coin to 2
-    sc.verify(btsperiphery_contract.data.token_limit["Tok2"] == sp.nat(5))#test of token_limit for tok2 token
-    btsperiphery_contract.set_token_limit(sp.record(coin_names = {0:"Tok2" , 1:'BB'} ,token_limit ={0:sp.nat(5)} )).run(valid=False,exception='InvalidParams',sender=btsperiphery_contract.address) #invalid parameters
-    #cannot set more than 15 token limit at once
-    btsperiphery_contract.set_token_limit(sp.record(coin_names = {0:"Tok2" , 1:'BB'} ,token_limit ={0:sp.nat(15),1:sp.nat(22)})).run(sender=btsperiphery_contract.address) #can modify already set data
-    sc.verify(btsperiphery_contract.data.token_limit["BB"] == sp.nat(22))#test of token_limit for tok2 token
+    # Scenario 1: set token  limit
 
+    # Test cases:
+    # 1: set_token_limit from non-bts_periphery contract
+    bts_periphery_contract.set_token_limit(sp.map({"Tok2": sp.nat(5), "BB": sp.nat(2)})).run(sender=admin.address,
+                                                                                             valid=False,
+                                                                                             exception='Unauthorized')
 
-    #test 4 :send service message
+    # 2: set token limit for Tok2 coin to 5 and BB coin to 2 from bts_periphery_contract
+    bts_periphery_contract.set_token_limit(sp.map({"Tok2": sp.nat(5), "BB": sp.nat(2)})).run(
+        sender=bts_core_contract.address)
 
-    btsperiphery_contract.send_service_message(sp.record(_from=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), to="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW",coin_names={0:"Tok1"}, values={0:sp.nat(10)}, fees={0:sp.nat(2)})).run(sender=btscore_contract.address )
-    btsperiphery_contract.send_service_message(sp.record(_from=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), to="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW",coin_names={0:"Tok1"}, values={0:sp.nat(10)}, fees={0:sp.nat(2)})).run( sender=btscore_contract.address ) # test of function
-    btsperiphery_contract.send_service_message(sp.record(_from=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"), to="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW",coin_names={0:"Tok1"}, values={0:sp.nat(10)}, fees={0:sp.nat(2)})).run( sender= admin,valid=False, exception='Unauthorized' ) # only message from bts-core is authorized
-    sc.show(btsperiphery_contract.data.requests[1])#test to verify if request message is correct
-    sc.verify_equal(btsperiphery_contract.data.requests[1] ,sp.record(amounts = {0 : 10}, coin_names = {0 : 'Tok1'}, fees = {0 : 2}, from_ = 'tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW', to = 'btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW')) # request data verified
-    sc.verify(btsperiphery_contract.data.number_of_pending_requests == 2)#2 pending request
-    sc.verify(btsperiphery_contract.data.serial_no == 2) #serial no of request increased to 2
+    # 3: verifying the value of token limit
+    sc.verify(bts_periphery_contract.data.token_limit["Tok2"] == sp.nat(5))
 
+    # 4: modify already set data
+    bts_periphery_contract.set_token_limit(sp.map({"Tok2": sp.nat(15), "BB": sp.nat(22)})).run(
+        sender=bts_core_contract.address)
 
-    #Test 5: handle btp message
-   #  btsperiphery_contract.handle_btp_message(sp.record(_from="tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts", sn=sp.nat(4),msg=sp.bytes("0xf8cfb83d6274703a2f2f30783232382e6172637469632f307831313131313131313131313131313131313131313131313131313131313131313131313131313131b8396274703a2f2f3078312e69636f6e2f637830303030303030303030303030303030303030303030303030303030303030303030303030303036836274730ab84ef84cb83d6274703a2f2f30783232382e6172637469632f307861313434326339303132304138393163336465393739336361433730393638436162313133323335cc8b627470206d657373616765") )).run(sender=bmc_address) #test of handle_btp_message function
-   #  btsperiphery_contract.handle_btp_message(sp.record(_from="tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="btc", sn=sp.nat(4),msg=sp.bytes("0xf8cfb83d6274703a2f2f30783232382e6172637469632f307831313131313131313131313131313131313131313131313131313131313131313131313131313131b8396274703a2f2f3078312e69636f6e2f637830303030303030303030303030303030303030303030303030303030303030303030303030303036836274730ab84ef84cb83d6274703a2f2f30783232382e6172637469632f307861313434326339303132304138393163336465393739336361433730393638436162313133323335cc8b627470206d657373616765") )).run(sender=bmc_address,valid=False, exception='InvalidSvc') #svc name must match hardcoded service name "btc"
-   #  btsperiphery_contract.handle_btp_message(sp.record(_from="tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="btc", sn=sp.nat(4),msg=sp.bytes("0xf8cfb83d6274703a2f2f30783232382e6172637469632f307831313131313131313131313131313131313131313131313131313131313131313131313131313131b8396274703a2f2f3078312e69636f6e2f637830303030303030303030303030303030303030303030303030303030303030303030303030303036836274730ab84ef84cb83d6274703a2f2f30783232382e6172637469632f307861313434326339303132304138393163336465393739336361433730393638436162313133323335cc8b627470206d657373616765") )).run(sender=btsperiphery_contract.address,valid=False, exception='Unauthorized') #can only be called from bmc contract
+    # 5: verifying the value of token limit after change
+    sc.verify(bts_periphery_contract.data.token_limit["BB"] == sp.nat(22))
 
+    # Scenario 2: send service message
 
+    # Test cases:
+    # 1 : send_service_message called by bts-core
+    bts_periphery_contract.send_service_message(
+        sp.record(
+            _from=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"),
+            to="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW",
+            coin_details=[
+                sp.record(coin_name="Tok1", value=sp.nat(10), fee=sp.nat(2))
+            ]
+        )).run(sender=bts_core_contract.address).run(sender=bts_core_contract.address)
 
+    # 2 : send_service_message called by non-bts-core
+    bts_periphery_contract.send_service_message(
+        sp.record(
+            _from=sp.address("tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW"),
+            to="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW",
+            coin_details=[
+                sp.record(coin_name="Tok1", value=sp.nat(10), fee=sp.nat(2))
+            ]
+        )).run(sender=admin, valid=False, exception='Unauthorized')
 
-    
+    # 3: verify if request message is correct
+    sc.show(bts_periphery_contract.data.requests[1])
+    sc.verify_equal(
+        bts_periphery_contract.data.requests[1],
+        sp.record(
+            coin_details=[
+                sp.record(
+                    coin_name='Tok1',
+                    value=10,
+                    fee=2
+                )
+            ],
+            from_='tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW',
+            to='btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW'))
 
-
-
-   
-
-
-    #Test : handle btp error
-   #  sc.verify(btsperiphery_contract.data.number_of_pending_requests == 2)#pending request is 2 here
-   #  btsperiphery_contract.handle_btp_error(sp.record(svc= "bts", code=sp.nat(2), sn=sp.nat(1), msg="test 1")).run(sender=bmc_address)
-   #  btsperiphery_contract.handle_btp_error(sp.record(svc= "btc", code=sp.nat(2), sn=sp.nat(1), msg="test 1")).run(sender=bmc_address,valid=False,exception='InvalidSvc') #Invalid Svc
-   #  btsperiphery_contract.handle_btp_error(sp.record(svc= "bts", code=sp.nat(2), sn=sp.nat(111), msg="test 1")).run(sender=bmc_address,valid=False,exception='Missing item in map') # Invalid sn , sn must be serial number of service request
-   #  btsperiphery_contract.handle_btp_error(sp.record(svc= "bts", code=sp.nat(2), sn=sp.nat(1), msg="test 1")).run(sender=btsperiphery_contract.address,valid=False,exception='Unauthorized')#Only bmc contract can call this fucntion
-   #  sc.verify(btsperiphery_contract.data.number_of_pending_requests == 0) #pending request decreased
-
-
-    #Test : handle request service
-    btsperiphery_contract.handle_request_service(sp.record(to= "tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc", assets={0: sp.record(coin_name="BB", value=sp.nat(4))})).run(sender=btsperiphery_contract.address,valid=False,exception='UnregisteredCoin')
-
-
-    #Test : handle fee gathering 
-   #  btsperiphery_contract.handle_fee_gathering(sp.record(fa="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts")).run(sender=bmc_address) # handle_fee_gathering function call
-   #  btsperiphery_contract.handle_fee_gathering(sp.record(fa="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="btc")).run(sender=bmc_address, valid=False, exception='InvalidSvc') # svc must match hardcoded service name 'bts'
-   #  btsperiphery_contract.handle_fee_gathering(sp.record(fa="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnW", svc="bts")).run(sender=btsperiphery_contract.address, valid=False, exception='Unauthorized') # can only be called from bmc contract
-    
-
-
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   
-
-
-
-
-
-
-
-    
-
-
+    # 4: verify request data
+    sc.verify(bts_periphery_contract.data.number_of_pending_requests == 1)
+    sc.verify(bts_periphery_contract.data.serial_no == 1)

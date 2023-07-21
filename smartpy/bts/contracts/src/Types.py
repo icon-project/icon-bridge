@@ -3,6 +3,12 @@ import smartpy as sp
 
 class Types:
 
+    Coin = sp.TRecord(addr=sp.TAddress,
+                      fee_numerator=sp.TNat,
+                      fixed_fee=sp.TNat,
+                      coin_type=sp.TNat
+                      )
+
     Asset = sp.TRecord(
         coin_name=sp.TString,
         value=sp.TNat
@@ -25,12 +31,14 @@ class Types:
         RESPONSE_HANDLE_SERVICE=sp.TNat,
         BLACKLIST_MESSAGE=sp.TNat,
         CHANGE_TOKEN_LIMIT=sp.TNat,
-        UNKNOWN_TYPE=sp.TNat
+        UNKNOWN_TYPE=sp.TNat,
+        ERROR=sp.TNat
     )
 
     BlacklistService = sp.TVariant(
         ADD_TO_BLACKLIST=sp.TNat,
-        REMOVE_FROM_BLACKLIST=sp.TNat
+        REMOVE_FROM_BLACKLIST=sp.TNat,
+        ERROR=sp.TNat
     )
 
     ServiceMessage = sp.TRecord(
@@ -41,15 +49,13 @@ class Types:
     TransferCoin = sp.TRecord(
         from_addr=sp.TString,
         to=sp.TString,
-        assets=sp.TMap(sp.TNat, Asset)
+        assets=sp.TList(Asset)
     )
 
     PendingTransferCoin = sp.TRecord(
         from_=sp.TString,
         to=sp.TString,
-        coin_names=sp.TMap(sp.TNat, sp.TString),
-        amounts=sp.TMap(sp.TNat, sp.TNat),
-        fees=sp.TMap(sp.TNat, sp.TNat)
+        coin_details=sp.TList(sp.TRecord(coin_name=sp.TString, value=sp.TNat, fee=sp.TNat))
     )
 
     BlacklistMessage = sp.TRecord(
