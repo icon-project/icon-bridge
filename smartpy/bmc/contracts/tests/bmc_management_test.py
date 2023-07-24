@@ -3,7 +3,7 @@ import smartpy as sp
 BMCManagement = sp.io.import_script_from_url("file:./contracts/src/bmc_management.py")
 BMCPeriphery = sp.io.import_script_from_url("file:./contracts/src/bmc_periphery.py")
 BMCHelper = sp.io.import_script_from_url("file:./contracts/src/helper.py")
-ParseAddress = sp.io.import_script_from_url("file:./contracts/src/parse_address.py")
+ParseAddress = sp.io.import_script_from_url("file:../bts/contracts/src/parse_address.py")
 
 
 @sp.add_test("BMCManagementTest")
@@ -19,6 +19,7 @@ def test():
     creator2 = sp.test_account("creator2")
     service1_address = sp.test_account("service1_address")
     service2_address = sp.test_account("service2_address")
+    ZERO_ADDRESS = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
 
     # deploy BMCManagement contract
     helper_contract = deploy_helper_contract()
@@ -36,7 +37,7 @@ def test():
 
     # Test cases:
     # 1: set_bmc_periphery address
-    sc.verify(bmc_management_contract.data.bmc_periphery.is_some() == False)
+    sc.verify(bmc_management_contract.data.bmc_periphery == ZERO_ADDRESS)
     bmc_management_contract.set_bmc_periphery(bmc_periphery_address).run(sender=creator)
 
     # 2: sender non-owner
@@ -46,8 +47,8 @@ def test():
     bmc_management_contract.set_bmc_periphery(bmc_periphery_address).run(sender=creator, valid=False,
                                                                          exception="AlreadyExistsBMCPeriphery")
     # 4: Verify valid bmc_periphery  address
-    sc.verify(bmc_management_contract.data.bmc_periphery.is_some() == True)
-    sc.verify(bmc_management_contract.data.bmc_periphery.open_some() == bmc_periphery_address)
+    sc.verify(bmc_management_contract.data.bmc_periphery != ZERO_ADDRESS)
+    sc.verify(bmc_management_contract.data.bmc_periphery == bmc_periphery_address)
 
     # # 5: sender non-owner for set_bmc_btp_address
     # bmc_management_contract.set_bmc_btp_address("tezos.77").run(sender=alice, valid=False, exception="Unauthorized")
@@ -116,7 +117,7 @@ def test():
 
     # 7: verify get_services
     services = bmc_management_contract.get_services()
-    sc.verify_equal(services, sp.map({0: sp.record(svc=svc1, addr=service1_address.address)}))
+    sc.verify_equal(services, sp.map({svc1 : service1_address.address}))
 
     # Scenario 4: add / remove route and get_routes
 
@@ -210,36 +211,6 @@ def test():
     # 5: verify rx_height value
     sc.verify_equal(bmc_management_contract.data.links[link].rx_height, 2)
 
-    # Scenario 7: set_link
-
-    # Test case:
-    block_interval = sp.nat(2)
-    _max_aggregation = sp.nat(3)
-    delay_limit = sp.nat(2)
-    # 1: setting link by non-owner
-    bmc_management_contract.set_link(
-        sp.record(_link=link, block_interval=block_interval, _max_aggregation=_max_aggregation,
-                  delay_limit=delay_limit)).run(sender=bob, valid=False, exception="Unauthorized")
-
-    # 2: setting non-exist link
-    bmc_management_contract.set_link(
-        sp.record(_link="btp://77.tezos/tz1e2HPzZWBsuExFSM4XDBtQiFnaUB5hiPnZ", block_interval=block_interval,
-                  _max_aggregation=_max_aggregation, delay_limit=delay_limit)).run(sender=creator, valid=False,
-                                                                                   exception="NotExistsLink")
-    # 3: setting link with invalid paramter
-    bmc_management_contract.set_link(
-        sp.record(_link=link, block_interval=block_interval, _max_aggregation=sp.nat(0),
-                  delay_limit=delay_limit)).run(
-        sender=creator, valid=False, exception="InvalidParam")
-    bmc_management_contract.set_link(
-        sp.record(_link=link, block_interval=block_interval, _max_aggregation=_max_aggregation,
-                  delay_limit=sp.nat(0))).run(sender=creator, valid=False, exception="InvalidParam")
-
-    # 4: setting link with valid paramter by owner
-    bmc_management_contract.set_link(
-        sp.record(_link=link, block_interval=block_interval, _max_aggregation=_max_aggregation,
-                  delay_limit=delay_limit)).run(sender=creator)
-
     # Scenario 8: add / remove relay and get_relays
 
     # Test case:
@@ -296,13 +267,13 @@ def test():
         reachable=sp.set([]),
         rx_seq=sp.nat(0),
         tx_seq=sp.nat(0),
-        block_interval_src=sp.nat(1000),
-        block_interval_dst=sp.nat(2),
-        max_aggregation=sp.nat(3),
-        delay_limit=sp.nat(2),
+        block_interval_src=sp.nat(30000),
+        block_interval_dst=sp.nat(0),
+        max_aggregation=sp.nat(10),
+        delay_limit=sp.nat(3),
         relay_idx=sp.nat(0),
         rotate_height=sp.nat(0),
-        rx_height=sp.nat(0),
+        rx_height=sp.nat(2),
         rx_height_src=sp.nat(0),
         is_connected=True
     )
@@ -318,7 +289,7 @@ def test():
 
     # 5: verify get_link_rx_height
     get_link_rx_height = bmc_management_contract.get_link_rx_height(link)
-    sc.verify_equal(get_link_rx_height, 0)
+    sc.verify_equal(get_link_rx_height, 2)
 
     # 6: verify get_link_relays
     get_link_relays = bmc_management_contract.get_link_relays(link)
@@ -371,7 +342,7 @@ def test():
     # 3: verifying value
     sc.verify_equal(bmc_management_contract.data.links[next_link1].rx_height, 4)
 
-    # Scenario 13: update_link_reachable and delete_link_reachable function
+    # Scenario 13: update_link_reachable
 
     # Test cases:
     to = sp.list(["btp://net1/addr1", "btp://net2/addr2"])
@@ -385,22 +356,6 @@ def test():
     # 3: verifying value
     sc.verify_equal(bmc_management_contract.data.links[next_link1].reachable,
                     sp.set(['btp://net1/addr1', 'btp://net2/addr2']))
-
-    # 4: delete_link_reachable by non-bmc_periphery
-    bmc_management_contract.delete_link_reachable(
-        sp.record(prev=next_link1, index=sp.nat(0))).run(sender=creator, valid=False, exception="Unauthorized")
-
-    # 5: delete_link_reachable by bmc_periphery
-    bmc_management_contract.delete_link_reachable(sp.record(prev=next_link1, index=sp.nat(0))).run(
-        sender=bmc_periphery_address)
-
-    # 6: verifying value
-    sc.verify_equal(bmc_management_contract.data.links[next_link1].reachable, sp.set(['btp://net2/addr2']))
-
-    # # 7: delete non-exist link
-    # next_link2 = sp.string("btp://0x7.icon/cxff8a87fde8971a1d10d93dfed3416b0a625link2")
-    # bmc_management_contract.delete_link_reachable(sp.record(prev=next_link2, index=sp.nat(0))).run(
-    #     sender=bmc_periphery_address)
 
     # Scenario 13: update_relay_stats and resolve_route function
 

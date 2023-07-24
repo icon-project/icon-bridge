@@ -6,46 +6,43 @@ rlp = sp.io.import_script_from_url("file:./contracts/src/RLP_struct.py")
 
 
 class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
-    BLOCK_INTERVAL_MSEC = sp.nat(1000)
+    BLOCK_INTERVAL_MSEC = sp.nat(30000)
     LIST_SHORT_START = sp.bytes("0xc0")
+    ZERO_ADDRESS = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
 
     def __init__(self, owner_address, helper_contract):
         self.init(
             owners=sp.map(l={owner_address:True}),
-            number_of_owners=sp.nat(1),
             bsh_services=sp.map(),
             relay_stats=sp.map(),
             routes=sp.map(),
             links=sp.map(),
-            list_bsh_names=sp.set(),
             list_route_keys=sp.set(),
             list_link_names=sp.set(),
-            bmc_periphery=sp.none,
+            bmc_periphery=self.ZERO_ADDRESS,
             serial_no=sp.nat(0),
-            addrs=sp.set(),
             get_route_dst_from_net=sp.map(),
             get_link_from_net=sp.map(),
             get_link_from_reachable_net=sp.map(),
-            helper=helper_contract
+            helper=helper_contract,
+            is_paused=True
         )
 
         self.init_type(sp.TRecord(
             owners=sp.TMap(sp.TAddress, sp.TBool),
-            number_of_owners=sp.TNat,
             bsh_services=sp.TMap(sp.TString, sp.TAddress),
             relay_stats=sp.TMap(sp.TAddress, types.Types.RelayStats),
             routes=sp.TMap(sp.TString, sp.TString),
             links=sp.TMap(sp.TString, types.Types.Link),
-            list_bsh_names=sp.TSet(sp.TString),
             list_route_keys=sp.TSet(sp.TString),
             list_link_names=sp.TSet(sp.TString),
-            bmc_periphery=sp.TOption(sp.TAddress),
+            bmc_periphery=sp.TAddress,
             serial_no=sp.TNat,
-            addrs=sp.TSet(sp.TAddress),
             get_route_dst_from_net=sp.TMap(sp.TString, sp.TString),
             get_link_from_net=sp.TMap(sp.TString, sp.TString),
             get_link_from_reachable_net=sp.TMap(sp.TString, types.Types.Tuple),
-            helper=sp.TAddress
+            helper=sp.TAddress,
+            is_paused=sp.TBool
         ))
 
     def only_owner(self):
@@ -55,7 +52,22 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
             sp.failwith("Unauthorized")
 
     def only_bmc_periphery(self):
-        sp.verify(sp.sender == self.data.bmc_periphery.open_some("BMCAddressNotSet"), "Unauthorized")
+        sp.verify(sp.sender == self.data.bmc_periphery, "Unauthorized")
+
+    @sp.entry_point
+    def toggle_bridge_on(self):
+        self.only_owner()
+        with sp.if_(self.data.is_paused == False):
+            self.data.is_paused = True
+        with sp.else_():
+            self.data.is_paused = False
+
+    @sp.onchain_view()
+    def bridge_status(self):
+        """
+        :return: boolean
+        """
+        sp.result(self.data.is_paused)
 
     @sp.entry_point
     def set_helper_address(self, address):
@@ -66,15 +78,15 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
     @sp.entry_point
     def set_bmc_periphery(self, addr):
         """
-
         :param addr: address of bmc_periphery
         :return:
         """
         sp.set_type(addr, sp.TAddress)
+
         self.only_owner()
-        with sp.if_(self.data.bmc_periphery.is_some()):
-            sp.verify(addr != self.data.bmc_periphery.open_some("Address not set"), "AlreadyExistsBMCPeriphery")
-        self.data.bmc_periphery = sp.some(addr)
+        sp.verify(addr != self.ZERO_ADDRESS, "Invalid Address")
+        sp.verify(addr != self.data.bmc_periphery, "AlreadyExistsBMCPeriphery")
+        self.data.bmc_periphery = addr
 
     @sp.entry_point
     def set_bmc_btp_address(self, network):
@@ -83,7 +95,7 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         self.only_owner()
         # call set_btp_address on BMCPeriphery
         set_btp_address_entry_point = sp.contract(sp.TString,
-                                                  self.data.bmc_periphery.open_some("Address not set"),
+                                                  self.data.bmc_periphery,
                                                   "set_bmc_btp_address").open_some()
         sp.transfer(network, sp.tez(0), set_btp_address_entry_point)
 
@@ -98,7 +110,6 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         self.only_owner()
         sp.verify(self.data.owners.contains(owner) == False, "Already Exists")
         self.data.owners[owner] = True
-        self.data.number_of_owners += sp.nat(1)
 
     @sp.entry_point
     def remove_owner(self, owner):
@@ -110,19 +121,21 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_type(owner, sp.TAddress)
 
         self.only_owner()
-        sp.verify(self.data.number_of_owners > sp.nat(1), "LastOwner")
+        sp.verify(sp.len(self.data.owners) > sp.nat(1), "LastOwner")
         sp.verify(self.data.owners[owner] == True, "NotExistsPermission")
         del self.data.owners[owner]
-        self.data.number_of_owners = sp.as_nat(self.data.number_of_owners - sp.nat(1))
 
     @sp.onchain_view()
     def is_owner(self, owner):
         """
-
         :param owner: address to check
         :return:
         """
-        sp.result(self.data.owners.get(owner))
+        sp.set_type(owner, sp.TAddress)
+        with sp.if_(self.data.owners.contains(owner)):
+            sp.result(self.data.owners.get(owner))
+        with sp.else_():
+            sp.result(False)
 
     @sp.entry_point
     def add_service(self, svc, addr):
@@ -132,11 +145,13 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         :param addr: Service's contract address
         :return:
         """
+        sp.set_type(svc, sp.TString)
+        sp.set_type(addr, sp.TAddress)
+
         self.only_owner()
-        sp.verify(addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg"), "InvalidAddress")
+        sp.verify(addr != self.ZERO_ADDRESS, "InvalidAddress")
         sp.verify(self.data.bsh_services.contains(svc) == False, "AlreadyExistsBSH")
         self.data.bsh_services[svc] = addr
-        self.data.list_bsh_names.add(svc)
 
     @sp.entry_point
     def remove_service(self, svc):
@@ -145,10 +160,11 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         :param svc: Name of the service
         :return:
         """
+        sp.set_type(svc, sp.TString)
+
         self.only_owner()
         sp.verify(self.data.bsh_services.contains(svc), "NotExistsBSH")
         del self.data.bsh_services[svc]
-        self.data.list_bsh_names.remove(svc)
 
     @sp.onchain_view()
     def get_services(self):
@@ -156,13 +172,7 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         Get registered services.
         :return: An array of Service.
         """
-
-        services = sp.compute(sp.map(tkey=sp.TNat, tvalue=types.Types.Service))
-        i = sp.local("i", sp.nat(0))
-        sp.for item in self.data.list_bsh_names.elements():
-            services[i.value] = sp.record(svc=item, addr=self.data.bsh_services.get(item))
-            i.value += 1
-        sp.result(services)
+        sp.result(self.data.bsh_services)
 
     @sp.entry_point(lazify=False)
     def update_add_link(self, ep):
@@ -225,10 +235,11 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
             sp.verify(self.data.links.get(link).is_connected == True, "NotExistsLink")
         with sp.else_():
             sp.failwith("NotExistsLink")
-        self._propagate_internal("Unlink", link)
+
         del self.data.links[link]
         net, addr= sp.match_pair(strings.split_btp_address(link, "prev_idx", "result", "my_list", "last", "penultimate"))
         del self.data.get_link_from_net[net]
+        self._propagate_internal("Unlink", link)
         self.data.list_link_names.remove(link)
 
     @sp.onchain_view()
@@ -242,7 +253,6 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
     @sp.entry_point
     def set_link_rx_height(self, link, height):
         """
-
         :param link:
         :param height:
         :return:
@@ -259,41 +269,6 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.verify(height > sp.nat(0), "InvalidRxHeight")
         self.data.links[link].rx_height = height
 
-    @sp.entry_point
-    def set_link(self, _link, block_interval, _max_aggregation, delay_limit):
-        """
-
-        :param _link:
-        :param block_interval:
-        :param _max_aggregation:
-        :param delay_limit:
-        :return:
-        """
-        sp.set_type(_link, sp.TString)
-        sp.set_type(block_interval, sp.TNat)
-        sp.set_type(_max_aggregation, sp.TNat)
-        sp.set_type(delay_limit, sp.TNat)
-
-        self.only_owner()
-
-        with sp.if_(self.data.links.contains(_link)):
-            sp.verify(self.data.links.get(_link).is_connected == True, "NotExistsLink")
-        with sp.else_():
-            sp.failwith("NotExistsLink")
-        sp.verify((_max_aggregation >= sp.nat(1)) & (delay_limit >= sp.nat(1)), "InvalidParam")
-
-        link = sp.local("link", self.data.links.get(_link), t=types.Types.Link).value
-
-        link.block_interval_dst = block_interval
-        link.max_aggregation = _max_aggregation
-        link.delay_limit = delay_limit
-
-        link.rotate_height = sp.level
-        link.rx_height = sp.nat(0)
-
-        self.data.links[_link] = link
-
-
     def _propagate_internal(self, service_type, link):
         sp.set_type(service_type, sp.TString)
         sp.set_type(link, sp.TString)
@@ -306,18 +281,19 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         final_rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper, [rlp_bytes_with_prefix],
                                               t=sp.TBytes).open_some()
         sp.for item in self.data.list_link_names.elements():
-            with sp.if_(self.data.links.get(item).is_connected):
-                net, addr = sp.match_pair(strings.split_btp_address(item, "prev_idx1", "result1",
-                                                                    "my_list1", "last1", "penultimate1"))
+            with sp.if_(self.data.links.contains(item)):
+                with sp.if_(self.data.links.get(item).is_connected):
+                    net, addr = sp.match_pair(strings.split_btp_address(item, "prev_idx1", "result1",
+                                                                        "my_list1", "last1", "penultimate1"))
 
-                # call send_message on BMCPeriphery
-                send_message_args_type = sp.TRecord(to=sp.TString, svc=sp.TString, sn=sp.TInt, msg=sp.TBytes)
-                send_message_entry_point = sp.contract(send_message_args_type,
-                                                                self.data.bmc_periphery.open_some("Address not set"),
-                                                                "send_message").open_some()
-                send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0), msg=self.encode_bmc_service(
-                                            sp.record(serviceType=service_type,payload=final_rlp_bytes_with_prefix)))
-                sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
+                    # call send_message on BMCPeriphery
+                    send_message_args_type = sp.TRecord(to=sp.TString, svc=sp.TString, sn=sp.TInt, msg=sp.TBytes)
+                    send_message_entry_point = sp.contract(send_message_args_type,
+                                                                    self.data.bmc_periphery,
+                                                                    "send_message").open_some()
+                    send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0), msg=self.encode_bmc_service(
+                                                sp.record(serviceType=service_type,payload=final_rlp_bytes_with_prefix)))
+                    sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
     def _send_internal(self, target, service_type, links):
         sp.set_type(target, sp.TString)
@@ -334,14 +310,13 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
                 rlp_bytes.value = sp.view("encode_list", self.data.helper, [rlp_bytes.value, _rlp_bytes],
                                           t=sp.TBytes).open_some()
         #encode payload
-        # final_rlp_bytes_with_prefix = sp.view("with_length_prefix", self.data.helper, rlp_bytes.value, t=sp.TBytes).open_some()
         net, addr = sp.match_pair(
             strings.split_btp_address(target, "prev_idx2", "result2", "my_list2", "last2", "penultimate2"))
 
         # call send_message on BMCPeriphery
         send_message_args_type = sp.TRecord(to=sp.TString, svc=sp.TString, sn=sp.TInt, msg=sp.TBytes)
         send_message_entry_point = sp.contract(send_message_args_type,
-                                               self.data.bmc_periphery.open_some("Address not set"),
+                                               self.data.bmc_periphery,
                                                "send_message").open_some()
         send_message_args = sp.record(to=net, svc="bmc", sn=sp.int(0),
                                         msg=self.encode_bmc_service(sp.record(serviceType=service_type,
@@ -451,16 +426,12 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.verify(self.data.links.contains(link), "NotExistsLink")
         sp.verify((self.data.links.get(link).is_connected == True) &
                   (sp.len(self.data.links.get(link).relays.elements()) != sp.nat(0)), "Unauthorized")
-
+        addr_set = sp.local("addr_set", sp.set(), t=sp.TSet(sp.TAddress))
         sp.for item in self.data.links.get(link).relays.elements():
             with sp.if_(item != addr):
-                self.data.addrs.add(item)
+                addr_set.value.add(item)
 
-        self.data.links[link].relays = self.data.addrs
-
-        # delete all items from addrs set
-        sp.for ele in self.data.addrs.elements():
-            self.data.addrs.remove(ele)
+        self.data.links[link].relays = addr_set.value
 
     @sp.onchain_view()
     def get_relays(self, link):
@@ -477,7 +448,7 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
     def get_bsh_service_by_name(self, service_name):
         sp.set_type(service_name, sp.TString)
         sp.result(self.data.bsh_services.get(service_name,
-                                             default_value=sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")))
+                                             default_value=self.ZERO_ADDRESS))
 
     @sp.onchain_view()
     def get_link(self, to):
@@ -546,7 +517,12 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
         self.only_bmc_periphery()
         self.data.links[prev].rx_height += val
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_update_link_reachable(self, ep):
+        self.only_owner()
+        sp.set_entry_point("update_link_reachable", ep)
+
+    @sp.entry_point(lazify=True)
     def update_link_reachable(self, prev, to):
         sp.set_type(prev, sp.TString)
         sp.set_type(to, sp.TList(sp.TString))
@@ -557,22 +533,6 @@ class BMCManagement(sp.Contract, rlp.DecodeEncodeLibrary):
             net, addr = sp.match_pair(
                 strings.split_btp_address(item, "prev_idx", "result", "my_list", "last", "penultimate"))
             self.data.get_link_from_reachable_net[net] = sp.record(prev=prev, to=item)
-
-    @sp.entry_point
-    def delete_link_reachable(self, prev, index):
-        sp.set_type(prev, sp.TString)
-        sp.set_type(index, sp.TNat)
-
-        self.only_bmc_periphery()
-        i = sp.local("i", sp.nat(0))
-        sp.for item in self.data.links.get(prev).reachable.elements():
-            with sp.if_(i.value == index):
-                net, addr = sp.match_pair(
-                    strings.split_btp_address(item, "prev_idx", "result", "my_list", "last", "penultimate"))
-
-                del self.data.get_link_from_reachable_net[net]
-                self.data.links[prev].reachable.remove(item)
-            i.value += 1
 
     @sp.entry_point
     def update_relay_stats(self, relay, block_count_val, msg_count_val):

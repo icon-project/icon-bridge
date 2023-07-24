@@ -14,6 +14,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
     UINT_CAP = sp.nat(115792089237316195423570985008687907853269984665640564039457584007913129639935)
 
     MAX_BATCH_SIZE = sp.nat(15)
+    ZERO_ADDRESS = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
 
     def __init__(self, bmc_address, bts_core_address, helper_contract, parse_address, native_coin_name, owner_address):
         self.update_initial_storage(
@@ -54,16 +55,16 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         self.data.parse_contract = address
 
     @sp.entry_point
-    def set_bmc_address(self, params):
-        sp.set_type(params, sp.TAddress)
+    def set_bmc_address(self, address):
+        sp.set_type(address, sp.TAddress)
         self.only_owner()
-        self.data.bmc = params
+        self.data.bmc = address
 
     @sp.entry_point
-    def set_bts_core_address(self, params):
-        sp.set_type(params, sp.TAddress)
+    def set_bts_core_address(self, address):
+        sp.set_type(address, sp.TAddress)
         self.only_owner()
-        self.data.bts_core = params
+        self.data.bts_core = address
 
     @sp.onchain_view()
     def has_pending_request(self):
@@ -81,13 +82,20 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_type(params, sp.TList(sp.TString))
 
         add_blacklist_status = sp.local("add_blacklist_status", "success")
+        addr_list = sp.local("addr_list", [], sp.TList(sp.TAddress))
         with sp.if_(sp.len(params) <= self.MAX_BATCH_SIZE):
             sp.for item in params:
                 parsed_addr = sp.view("str_to_addr", self.data.parse_contract, item, t=sp.TAddress).open_some()
-                with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
-                    self.data.blacklist[parsed_addr] = True
-                with sp.else_():
-                    add_blacklist_status.value = "InvalidAddress"
+                with sp.if_(add_blacklist_status.value == "success"):
+                    with sp.if_(parsed_addr == self.ZERO_ADDRESS):
+                        add_blacklist_status.value = "InvalidAddress"
+                    with sp.else_():
+                        addr_list.value.push(parsed_addr)
+            with sp.if_(add_blacklist_status.value == "success"):
+                sp.for _item in addr_list.value:
+                    self.data.blacklist[_item] = True
+            with sp.else_():
+                add_blacklist_status.value = "InvalidAddress"
         with sp.else_():
             add_blacklist_status.value = "error"
         return add_blacklist_status.value
@@ -101,16 +109,22 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         sp.set_type(params, sp.TList(sp.TString))
 
         remove_blacklist_status = sp.local("remove_blacklist_status", "success")
+        addr_list = sp.local("addr_list", [], sp.TList(sp.TAddress))
+
         with sp.if_(sp.len(params) <= self.MAX_BATCH_SIZE):
             sp.for item in params:
                 parsed_addr = sp.view("str_to_addr", self.data.parse_contract, item, t=sp.TAddress).open_some()
-                with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
-                    with sp.if_(self.data.blacklist.contains(parsed_addr)):
-                        del self.data.blacklist[parsed_addr]
+                with sp.if_(remove_blacklist_status.value == "success"):
+                    with sp.if_((parsed_addr == self.ZERO_ADDRESS) |
+                                (self.data.blacklist.contains(parsed_addr) == False)):
+                        remove_blacklist_status.value = "InvalidAddress"
                     with sp.else_():
-                        remove_blacklist_status.value = "UserNotBlacklisted"
-                with sp.else_():
-                    remove_blacklist_status.value = "InvalidAddress"
+                        addr_list.value.push(parsed_addr)
+            with sp.if_(remove_blacklist_status.value == "success"):
+                sp.for _item in addr_list.value:
+                    del self.data.blacklist[_item]
+            with sp.else_():
+                remove_blacklist_status.value = "InvalidAddress"
         with sp.else_():
             remove_blacklist_status.value = "error"
         return remove_blacklist_status.value
@@ -122,10 +136,8 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         :return:
         """
         sp.set_type(coin_names_limit, sp.TMap(sp.TString, sp.TNat))
-        # sp.set_type(token_limit, sp.TMap(sp.TNat, sp.TNat))
 
-        sp.verify((sp.sender == sp.self_address )| (sp.sender == self.data.bts_core), "Unauthorized")
-        # sp.verify(sp.len(coin_names_limits) == sp.len(token_limit), "InvalidParams")
+        sp.verify((sp.sender == self.data.bts_core), "Unauthorized")
         sp.verify(sp.len(coin_names_limit) <= self.MAX_BATCH_SIZE, "BatchMaxSizeExceed")
 
         coin_names_limit_items = coin_names_limit.items()
@@ -247,18 +259,19 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                             parsed_addr = sp.view("str_to_addr", self.data.parse_contract,
                                                   tc.to, t=sp.TAddress).open_some()
 
-                            with sp.if_(parsed_addr != sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")):
+                            with sp.if_(parsed_addr != self.ZERO_ADDRESS):
                                 handle_request_call= self._handle_request_service(parsed_addr, tc.assets)
+                                # first param of send_response_message is service type value
                                 with sp.if_(handle_request_call == "success"):
-                                    self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), sp.nat(2),
+                                    self.send_response_message(sp.nat(2),
                                                                _from, sn, "", self.RC_OK)
                                     sp.emit(sp.record(from_address=_from, to=parsed_addr, serial_no=self.data.serial_no,
                                                       assets_details=tc.assets), tag="TransferReceived")
                                 with sp.else_():
-                                    self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), sp.nat(2),
+                                    self.send_response_message(sp.nat(2),
                                                                _from, sn, handle_request_call, self.RC_ERR)
                             with sp.else_():
-                                self.send_response_message(sp.variant("RESPONSE_HANDLE_SERVICE", 2), sp.nat(2), _from,
+                                self.send_response_message(sp.nat(2), _from,
                                                            sn, "InvalidAddress", self.RC_ERR)
                         with sp.else_():
                             callback_string.value = "ErrorInDecodingTransferCoin"
@@ -273,23 +286,23 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                                 with b_agr.match("ADD_TO_BLACKLIST") as b_val_1:
                                     add_blacklist_call = self._add_to_blacklist(addresses)
                                     with sp.if_(add_blacklist_call == "success"):
-                                        self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from,
+                                        self.send_response_message(sp.nat(3), _from,
                                                                    sn, "AddedToBlacklist", self.RC_OK)
                                     with sp.else_():
-                                        self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from,
+                                        self.send_response_message(sp.nat(3), _from,
                                                                    sn, "ErrorAddToBlackList", self.RC_ERR)
 
                                 with b_agr.match("REMOVE_FROM_BLACKLIST") as b_val_2:
                                     remove_blacklist_call = self._remove_from_blacklist(addresses)
                                     with sp.if_(remove_blacklist_call == "success"):
-                                        self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from,
+                                        self.send_response_message(sp.nat(3), _from,
                                                                    sn, "RemovedFromBlacklist", self.RC_OK)
                                     with sp.else_():
-                                        self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from,
+                                        self.send_response_message(sp.nat(3), _from,
                                                                    sn, "ErrorRemoveFromBlackList", self.RC_ERR)
 
                                 with b_agr.match("ERROR") as b_val_2:
-                                    self.send_response_message(sp.variant("BLACKLIST_MESSAGE", 3), sp.nat(3), _from, sn,
+                                    self.send_response_message(sp.nat(3), _from, sn,
                                                                "BlacklistServiceTypeErr", self.RC_ERR)
                         with sp.else_():
                             callback_string.value = "ErrorInDecodingBlacklist"
@@ -302,10 +315,10 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
 
                             set_limit_call = self._set_token_limit(coin_name_limit)
                             with sp.if_(set_limit_call == "success"):
-                                self.send_response_message(sp.variant("CHANGE_TOKEN_LIMIT", 4), sp.nat(4), _from, sn,
+                                self.send_response_message(sp.nat(4), _from, sn,
                                                            "ChangeTokenLimit", self.RC_OK)
                             with sp.else_():
-                                self.send_response_message(sp.variant("CHANGE_TOKEN_LIMIT", 4), sp.nat(4), _from, sn,
+                                self.send_response_message(sp.nat(4), _from, sn,
                                                            "ErrorChangeTokenLimit", self.RC_ERR)
                         with sp.else_():
                             callback_string.value = "ErrorInDecodingTokenLimit"
@@ -327,7 +340,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                         sp.emit(sp.record(_from=_from, sn=sn), tag= "UnknownResponse")
 
                     with arg.match("ERROR") as a5:
-                        self.send_response_message(sp.variant("UNKNOWN_TYPE", 5), sp.nat(5), _from, sn,
+                        self.send_response_message(sp.nat(5), _from, sn,
                                                    "Unknown",self.RC_ERR)
             with sp.else_():
                 callback_string.value = "ErrorInDecoding"
@@ -395,34 +408,36 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         loop = sp.local("loop", sp.len(self.data.requests.get(sn).coin_details), sp.TNat)
         response_call_status = sp.local("response_call_status", "success")
         check_valid = sp.local("check_valid", True)
-        bts_core_fa2_balance = sp.local("fa2_token_balance_response_service", sp.nat(0))
 
+        bts_core_address = self.data.bts_core
         with sp.if_(loop.value <= self.MAX_BATCH_SIZE):
             sp.for item in self.data.requests.get(sn).coin_details:
-                bts_core_address = self.data.bts_core
-                coin_name = item.coin_name
-                value = item.value
-                fee = item.fee
-                amount = value + fee
-                bts_core_balance = sp.view("balance_of", bts_core_address,
-                                                  sp.record(owner=caller.value, coin_name=coin_name), t=
-                                                  sp.TRecord(usable_balance=sp.TNat, locked_balance=sp.TNat,
-                                                            refundable_balance=sp.TNat, user_balance=sp.TNat)
-                                                  ).open_some()
-                # check if caller has enough locked in bts_core
-                with sp.if_((bts_core_balance.locked_balance < amount) & (caller.value != bts_core_address)):
-                    check_valid.value = False
-                coin_type = sp.view("coin_type", bts_core_address, coin_name, t=sp.TNat).open_some()
-                with sp.if_(coin_type == sp.nat(1)):
-                    coin_address = sp.view("coin_id", bts_core_address, coin_name, t=sp.TAddress).open_some()
-                    bts_core_fa2 = sp.view("get_balance_of", coin_address,
-                                                   [sp.record(owner=bts_core_address, token_id=sp.nat(0))],
-                                                   t=sp.TList(t_balance_of_response)).open_some("Invalid view")
-                    sp.for elem in bts_core_fa2:
-                        bts_core_fa2_balance.value = elem.balance
-                    # check if bts_core has enough NATIVE_WRAPPED_COIN_TYPE to burn
-                    with sp.if_(bts_core_fa2_balance.value < value):
+                with sp.if_(check_valid.value == True):
+                    coin_name = item.coin_name
+                    value = item.value
+                    fee = item.fee
+                    amount = value + fee
+                    bts_core_balance = sp.view("balance_of", bts_core_address,
+                                                      sp.record(owner=caller.value, coin_name=coin_name), t=
+                                                      sp.TRecord(usable_balance=sp.TNat, locked_balance=sp.TNat,
+                                                                refundable_balance=sp.TNat, user_balance=sp.TNat)
+                                                      ).open_some()
+                    # check if caller has enough locked in bts_core
+                    # this case is for transfer fees
+                    with sp.if_((bts_core_balance.locked_balance < amount) & (caller.value != bts_core_address)):
                         check_valid.value = False
+
+                    coin_type = sp.view("coin_type", bts_core_address, coin_name, t=sp.TNat).open_some()
+                    with sp.if_(coin_type == sp.nat(1)):
+                        # finding the balance of bts core to verify if bts core has enough tokens to burn
+                        bts_core_fa2_balance = sp.view("balance_of", bts_core_address,
+                                                      sp.record(owner=bts_core_address, coin_name=coin_name), t=
+                                                      sp.TRecord(usable_balance=sp.TNat, locked_balance=sp.TNat,
+                                                                refundable_balance=sp.TNat, user_balance=sp.TNat)
+                                                      ).open_some()
+                        # check if bts_core has enough NATIVE_WRAPPED_COIN_TYPE to burn
+                        with sp.if_(bts_core_fa2_balance.user_balance < value):
+                            check_valid.value = False
 
             with sp.if_(check_valid.value == True):
                 sp.for _item in self.data.requests.get(sn).coin_details:
@@ -469,26 +484,27 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                 coin_name = assets[i].coin_name
                 transferred_amount = assets[i].value
                 valid_coin = sp.view("is_valid_coin", bts_core_address, coin_name, t=sp.TBool).open_some()
-                check_transfer = sp.view("check_transfer_restrictions", sp.self_address, sp.record(
-                    coin_name=coin_name, user=parsed_to, value=transferred_amount), t=sp.TBool).open_some()
-
-                native_coin_name, bts_core_balance = sp.match_pair(sp.view("native_coin_balance_of", bts_core_address,
-                                        sp.unit, t=sp.TPair(sp.TString, sp.TMutez)).open_some("Invalid view"))
-                with sp.if_(native_coin_name == coin_name):
-                    with sp.if_(sp.utils.mutez_to_nat(bts_core_balance) < transferred_amount):
-                        check_validity.value = False
-                with sp.else_():
-                    coin_type = sp.view("coin_type", bts_core_address, coin_name, t=sp.TNat).open_some()
-                    # check balance_of in case of NON-NATIVE-COIN-TYPE
-                    with sp.if_((valid_coin == True) & (coin_type == sp.nat(2))):
-                        coin_address = sp.view("coin_id", bts_core_address, coin_name, t=sp.TAddress).open_some()
-                        bts_core_fa2 = sp.view("get_balance_of", coin_address,
-                                               [sp.record(owner=bts_core_address, token_id=sp.nat(0))],
-                                               t=sp.TList(t_balance_of_response)).open_some("Invalid view")
-                        sp.for elem in bts_core_fa2:
-                            bts_core_fa2_balance.value = elem.balance
-                        with sp.if_(bts_core_fa2_balance.value < transferred_amount):
-                            check_validity.value = False
+                with sp.if_(valid_coin == True):
+                    check_transfer = sp.view("check_transfer_restrictions", sp.self_address, sp.record(
+                        coin_name=coin_name, user=parsed_to, value=transferred_amount), t=sp.TBool).open_some()
+                    with sp.if_(check_transfer == True):
+                        native_coin_name, bts_core_balance = sp.match_pair(sp.view("native_coin_balance_of", bts_core_address,
+                                                sp.unit, t=sp.TPair(sp.TString, sp.TMutez)).open_some("Invalid view"))
+                        with sp.if_(native_coin_name == coin_name):
+                            with sp.if_(sp.utils.mutez_to_nat(bts_core_balance) < transferred_amount):
+                                check_validity.value = False
+                        with sp.else_():
+                            coin_type = sp.view("coin_type", bts_core_address, coin_name, t=sp.TNat).open_some()
+                            # check balance_of in case of NON-NATIVE-COIN-TYPE
+                            with sp.if_(coin_type == sp.nat(2)):
+                                coin_address = sp.view("coin_id", bts_core_address, coin_name, t=sp.TAddress).open_some()
+                                bts_core_fa2 = sp.view("get_balance_of", coin_address,
+                                                       [sp.record(owner=bts_core_address, token_id=sp.nat(0))],
+                                                       t=sp.TList(t_balance_of_response)).open_some("Invalid view")
+                                sp.for elem in bts_core_fa2:
+                                    bts_core_fa2_balance.value = elem.balance
+                                with sp.if_(bts_core_fa2_balance.value < transferred_amount):
+                                    check_validity.value = False
 
                 with sp.if_((check_transfer == False) | (valid_coin == False)) :
                     check_validity.value = False
@@ -506,10 +522,9 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
 
         return status.value
 
-    def send_response_message(self, service_type, service_type_val, to, sn, msg, code):
+    def send_response_message(self, service_type_val, to, sn, msg, code):
         """
 
-        :param service_type:
         :param service_type_val: value of service_type variant
         :param to:
         :param sn:
@@ -517,7 +532,6 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         :param code:
         :return:
         """
-        sp.set_type(service_type, types.Types.ServiceType)
         sp.set_type(service_type_val, sp.TNat)
         sp.set_type(to, sp.TString)
         sp.set_type(sn, sp.TInt)
@@ -534,24 +548,25 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
                                         sp.record(code=code, message=msg)))))
         sp.transfer(send_message_args, sp.tez(0), send_message_entry_point)
 
+    @sp.entry_point(lazify=False)
+    def update_handle_fee_gathering(self, ep):
+        self.only_owner()
+        sp.set_entry_point("handle_fee_gathering", ep)
 
-    @sp.entry_point
-    def handle_fee_gathering(self, fa, svc, bsh_addr):
+    @sp.entry_point(lazify=True)
+    def handle_fee_gathering(self, fa, svc):
         """
         BSH handle Gather Fee Message request from BMC contract
         :param fa: A BTP address of fee aggregator
         :param svc: A name of the service
-        :param callback: callback function type in bmc_periphery
-        :param bsh_addr: address of bts_periphery
         :return:
         """
         sp.set_type(fa, sp.TString)
         sp.set_type(svc, sp.TString)
-        sp.set_type(bsh_addr, sp.TAddress)
 
         check_caller = self.only_bmc()
+        strings.split_btp_address(fa)
         with sp.if_((svc == self.service_name) & (check_caller == "Authorized")):
-            strings.split_btp_address(fa)
 
             # call transfer_fees of BTS_Core
             transfer_fees_args_type = sp.TString

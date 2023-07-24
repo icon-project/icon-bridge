@@ -14,8 +14,7 @@ class BTSCore(sp.Contract):
     NON_NATIVE_TOKEN_TYPE = sp.nat(2)
 
     MAX_BATCH_SIZE = sp.nat(15)
-    # TODO: set NATIVE_COIN_ADDRESS to governance address
-    NATIVE_COIN_ADDRESS = sp.address("tz1VA29GwaSA814BVM7AzeqVzxztEjjxiMEc")
+    NATIVE_COIN_ADDRESS = sp.address("tz1burnburnburnburnburnburnburjAYjjX")
     ZERO_ADDRESS = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
     # Nat:(TWO.pow256 - 1)
     UINT_CAP = sp.nat(115792089237316195423570985008687907853269984665640564039457584007913129639935)
@@ -26,9 +25,7 @@ class BTSCore(sp.Contract):
             bts_periphery_address=sp.none,
             native_coin_name=_native_coin_name,
 
-            # charged_amounts=sp.map(tkey=sp.TNat, tvalue=sp.TNat),
             coins_name=sp.list([_native_coin_name], t=sp.TString),
-            # charged_coins=sp.map(tkey=sp.TNat, tvalue=sp.TString),
 
             aggregation_fee=sp.map({}, tkey=sp.TString, tvalue=sp.TNat),
             balances=sp.big_map(tkey=sp.TRecord(address=sp.TAddress, coin_name=sp.TString), tvalue= types.Types.Balance),
@@ -38,7 +35,8 @@ class BTSCore(sp.Contract):
                                                               fixed_fee=_fixed_fee,
                                                               coin_type=self.NATIVE_COIN_TYPE)},
                                 tkey=sp.TString, tvalue=types.Types.Coin),
-            coins_address=sp.map({self.NATIVE_COIN_ADDRESS: _native_coin_name}, tkey=sp.TAddress, tvalue=sp.TString)
+            coins_address=sp.map({self.NATIVE_COIN_ADDRESS: _native_coin_name}, tkey=sp.TAddress, tvalue=sp.TString),
+            is_paused=True
         )
 
     def only_owner(self):
@@ -50,6 +48,19 @@ class BTSCore(sp.Contract):
         sp.verify(sp.sender == self.data.bts_periphery_address.open_some("Address not set"), "Unauthorized")
 
     @sp.entry_point
+    def toggle_bridge_on(self):
+        self.only_owner()
+        with sp.if_(self.data.is_paused == False):
+            self.data.is_paused = True
+        with sp.else_():
+            self.data.is_paused = False
+
+    @sp.entry_point(lazify=False)
+    def update_update_bts_periphery(self, ep):
+        self.only_owner()
+        sp.set_entry_point("update_bts_periphery", ep)
+
+    @sp.entry_point(lazify=True)
     def update_bts_periphery(self, bts_periphery):
         """
         update BTS Periphery address.
@@ -109,7 +120,6 @@ class BTSCore(sp.Contract):
         sp.set_type(addr, sp.TAddress)
         sp.set_type(token_metadata, sp.TMap(sp.TString, sp.TBytes))
         sp.set_type(metadata, sp.TBigMap(sp.TString, sp.TBytes))
-        # TODO: use symbol and decimals
         self.only_owner()
         sp.verify(name != self.data.native_coin_name, message="ExistNativeCoin")
         sp.verify(self.data.coins.contains(name) == False, message= "ExistCoin")
@@ -117,17 +127,16 @@ class BTSCore(sp.Contract):
         sp.verify(fee_numerator <= self.FEE_DENOMINATOR, message="InvalidSetting")
         sp.verify((fixed_fee >= sp.nat(0)) & (fee_numerator >= sp.nat(0)), message="LessThan0")
         with sp.if_(addr == self.ZERO_ADDRESS):
-            deployed_fa2 = sp.create_contract_operation(
+            deployed_fa2 = sp.create_contract(
                 contract=FA2_contract.SingleAssetToken(admin=sp.self_address,
                                                         metadata=metadata,
                                                         token_metadata=token_metadata
                                                         ))
-            sp.operations().push(deployed_fa2.operation)
-            self.data.coins[name] = deployed_fa2.address
+            self.data.coins[name] = deployed_fa2
             self.data.coins_name.push(name)
-            self.data.coins_address[deployed_fa2.address] = name
+            self.data.coins_address[deployed_fa2] = name
             self.data.coin_details[name] = sp.record(
-                addr = deployed_fa2.address,
+                addr = deployed_fa2,
                 fee_numerator = fee_numerator,
                 fixed_fee = fixed_fee,
                 coin_type = self.NATIVE_WRAPPED_COIN_TYPE
@@ -294,6 +303,9 @@ class BTSCore(sp.Contract):
         """
         sp.set_type(to, sp.TString)
 
+        with sp.if_(self.data.is_paused == True):
+            sp.failwith("Tezos bridge is paused.")
+
         amount_in_nat = sp.local("amount_in_nat", sp.utils.mutez_to_nat(sp.amount), t=sp.TNat)
         # call check_transfer_restrictions on bts_periphery
         check_transfer = sp.view("check_transfer_restrictions",
@@ -326,6 +338,9 @@ class BTSCore(sp.Contract):
         sp.set_type(coin_name, sp.TString)
         sp.set_type(value, sp.TNat)
         sp.set_type(to, sp.TString)
+
+        with sp.if_(self.data.is_paused == True):
+            sp.failwith("Tezos bridge is paused.")
 
         sp.verify(coin_name != self.data.native_coin_name, message="InvalidWrappedCoin")
         sp.verify(self.data.coins.contains(coin_name), message= "CoinNotRegistered")
@@ -401,6 +416,10 @@ class BTSCore(sp.Contract):
         """
         sp.set_type(coin_names_values, sp.TMap(sp.TString, sp.TNat))
         sp.set_type(to, sp.TString)
+
+        with sp.if_(self.data.is_paused == True):
+            sp.failwith("Tezos bridge is paused.")
+
         sp.verify(sp.len(coin_names_values) > sp.nat(0), message = "Zero length arguments")
 
         amount_in_nat = sp.local("amount_in_nat", sp.utils.mutez_to_nat(sp.amount), t=sp.TNat)
@@ -472,7 +491,12 @@ class BTSCore(sp.Contract):
         send_service_message_args = sp.record(_from=sp.sender, to=to, coin_details=batch_coin_details.value)
         sp.transfer(send_service_message_args, sp.tez(0), send_service_message_entry_point)
 
-    @sp.entry_point
+    @sp.entry_point(lazify=False)
+    def update_reclaim(self, ep):
+        self.only_owner()
+        sp.set_entry_point("reclaim", ep)
+
+    @sp.entry_point(lazify=True)
     #TODO: implement nonReentrant
     def reclaim(self, coin_name, value):
         """
@@ -484,6 +508,10 @@ class BTSCore(sp.Contract):
         """
         sp.set_type(coin_name, sp.TString)
         sp.set_type(value, sp.TNat)
+
+        with sp.if_(self.data.is_paused == True):
+            sp.failwith("Tezos bridge is paused.")
+
         record = sp.record(address=sp.sender,coin_name=coin_name)
         with sp.if_(self.data.balances.contains(record)):
             sp.verify(self.data.balances[record].refundable_balance >= value, message="Imbalance")
@@ -710,8 +738,8 @@ class BTSCore(sp.Contract):
     @sp.entry_point
     def set_bts_owner_manager(self, owner_manager):
         sp.set_type(owner_manager, sp.TAddress)
+
         self.only_owner()
-        # sp.verify(self.data.owners.get(sp.sender) == True , message= "Unauthorized")
         self.data.bts_owner_manager = owner_manager
 
 
