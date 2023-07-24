@@ -764,8 +764,8 @@ func (r *receiver) receiveLoop2(ctx context.Context, opts *BnOptions, callback f
 								return
 							}
 							q.v.Proposer = block.Metadata.Proposer
-
-							hasBTPMessage, receipt, err := filterTransactionOperations(q.v.Block, r.client.Contract.Address(), q.v.Height.Int64(), r.client)
+							
+							hasBTPMessage, receipt, err := filterTransactionOperations(q.v.Block, r.client.Contract.Address(), q.v.Height.Int64(), r.client, r.dst.String())
 
 							if err != nil {
 								q.err = errors.Wrapf(err, "hasBTPMessage: %v", err)

@@ -6,7 +6,7 @@
 # source keystore.sh
 
 export CONFIG_DIR=~/GoProjects/icon-bridge/smartpy  
-export TEZOS_SETTER=~/tezos-addresses
+export TEZOS_SETTER=~/GoProjects/icon-bridge/tezos-addresses
 export TEZOS_BMC_NID=NetXnHfVqm9iesp.tezos
 export ICON_BMC_NID=0x7.icon
 export TZ_COIN_SYMBOL=XTZ
@@ -146,13 +146,13 @@ configure_dotenv() {
     local secret_deployer=$(echo "secret_deployer=$(echo $env)")
     
     cd $(echo $TEZOS_SETTER)
+    go mod tidy
     if [ -f .env ]; then
         echo ".env exists so removing"
         rm .env
     fi
     touch .env
     local output=.env
-
 
 
     local TZ_NETWORK=$(echo "TZ_NETWORK=$(echo $TEZOS_BMC_NID)")
@@ -214,11 +214,70 @@ run_tezos_setters(){
     go run main.go
 }
 
-# bts core
-# bts owner manager
+
+configure_javascore_addLink() {
+  echo "BMC: Add Link to BSC BMC:"
+  cd $CONFIG_DIR/bmc
+  if [ ! -f icon.configure.addLink ]; then
+    goloop rpc sendtx call --to $(cat icon.addr.bmc) \
+      --method addLink \
+      --param _link=$(cat tz.addr.bmcperipherybtp) \
+      --key_store ~/GoProjects/icon-bridge/wallet.json \
+      --key_password icon@123 \
+      --nid 0x7 \
+      --step_limit 1000000000 \
+      --uri https://berlin.net.solidwallet.io/api/v3 | jq -r . > addLink.icon
+      
+    sleep 3
+    echo "addedLink" > icon.configure.addLink
+  fi
+}
+
+configure_javascore_setLinkHeight() {
+  echo "BMC: SetLinkHeight"
+  cd $CONFIG_DIR/bmc
+  if [ ! -f icon.configure.setLink ]; then
+    goloop rpc sendtx call --to $(cat icon.addr.bmc) \
+      --method setLinkRxHeight \
+      --param _link=$(cat tz.addr.bmcperipherybtp) \
+      --param _height=$(cat tz.chain.height) \
+      --key_store ~/GoProjects/icon-bridge/wallet.json \
+      --key_password icon@123 \
+      --nid 0x7 \
+      --step_limit 1000000000 \
+      --uri https://berlin.net.solidwallet.io/api/v3 | jq -r . > setLinkRxHeight.icon
+      
+    sleep 3
+    echo "setLink" > icon.configure.setLink
+  fi
+}
+
+configure_bmc_javascore_addRelay() {
+  echo "Adding bsc Relay"
+  local icon_bmr_owner=$(cat ~/GoProjects/icon-bridge/wallet.json | jq -r .address)
+  echo $icon_bmr_owner
+  sleep 5
+  echo "Starting"
+  cd $CONFIG_DIR/bmc
+  if [ ! -f icon.configure.addRelay ]; then
+    goloop rpc sendtx call --to $(cat icon.addr.bmc) \
+      --method addRelay \
+      --param _link=$(cat tz.addr.bmcperipherybtp) \
+      --param _addr=${icon_bmr_owner} \
+      --key_store ~/GoProjects/icon-bridge/wallet.json \
+      --key_password icon@123 \
+      --nid 0x7 \
+      --step_limit 1000000000 \
+      --uri https://berlin.net.solidwallet.io/api/v3 | jq -r . > addRelay.icon
+
+    sleep 3
+    echo "addRelay" > icon.configure.addRelay
+  fi
+}
 
 
-# ensure_tezos_keystore
+
+# tezos configuration
 deploy_smartpy_bmc_management
 deploy_smartpy_bmc_periphery
 deploy_smartpy_bts_periphery
@@ -226,3 +285,9 @@ deploy_smartpy_bts_core
 deploy_smartpy_bts_owner_manager
 configure_dotenv
 run_tezos_setters
+
+# icon configuration of tezos
+configure_javascore_addLink
+configure_javascore_setLinkHeight
+configure_bmc_javascore_addRelay
+

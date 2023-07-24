@@ -88,7 +88,7 @@ func (c *Client) GetBlockHeaderByHeight(ctx context.Context, connection *rpc.Cli
 	return block, nil
 }
 
-func filterMessageEvents(tx *rpc.Transaction, contractAddress tezos.Address, height uint64) (*chain.Receipt, error) {
+func filterMessageEvents(tx *rpc.Transaction, contractAddress tezos.Address, height uint64, dst string) (*chain.Receipt, error) {
 	receipt := &chain.Receipt{}
 	var events []*chain.Event
 
@@ -100,16 +100,19 @@ func filterMessageEvents(tx *rpc.Transaction, contractAddress tezos.Address, hei
 				next := internalResults.Payload.Args[1].Args[0].String
 				seq := internalResults.Payload.Args[1].Args[1].Int
 
-				events = append(events, &chain.Event{
-					Message:  message,
-					Next:     chain.BTPAddress(next),
-					Sequence: seq.Uint64(),
-				})
+				if next == dst {
+					fmt.Println("found it")
+					events = append(events, &chain.Event{
+						Message:  message,
+						Next:     chain.BTPAddress(next),
+						Sequence: seq.Uint64(),
+					})
 
-				receipt.Index = uint64(i)
-				receipt.Height = height
-				receipt.Events = events
-				fmt.Println(message, next, seq)
+					receipt.Index = uint64(i)
+					receipt.Height = height
+					receipt.Events = events
+					fmt.Println(message, next, seq)
+				}
 			}
 
 		}
@@ -272,7 +275,7 @@ func PrettyEncode(data interface{}) error {
 	return nil
 }
 
-func filterTransactionOperations(block *rpc.Block, contractAddress tezos.Address, blockHeight int64, cl *Client) (bool, []*chain.Receipt, error) {
+func filterTransactionOperations(block *rpc.Block, contractAddress tezos.Address, blockHeight int64, cl *Client, dst string) (bool, []*chain.Receipt, error) {
 	blockOperations := block.Operations
 	var tx *rpc.Transaction
 	var receipt []*chain.Receipt
@@ -282,7 +285,7 @@ func filterTransactionOperations(block *rpc.Block, contractAddress tezos.Address
 				switch operation.Kind() {
 				case tezos.OpTypeTransaction:
 					tx = operation.(*rpc.Transaction)
-					r, err := filterMessageEvents(tx, cl.BmcManagement, uint64(blockHeight))
+					r, err := filterMessageEvents(tx, cl.BmcManagement, uint64(blockHeight), dst)
 					if err != nil {
 						return false, nil, err
 					}
