@@ -42,7 +42,7 @@ class BMCPreiphery(sp.Contract, rlp.DecodeEncodeLibrary):
         self.data.helper = address
 
     @sp.entry_point
-    def set_helper_parse_negative_address(self, address):
+    def set_parse_negative_addr(self, address):
         sp.set_type(address, sp.TAddress)
         self.only_owner()
         self.data.helper_parse_negative = address
