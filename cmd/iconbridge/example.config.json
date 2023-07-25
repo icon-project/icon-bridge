@@ -17,21 +17,21 @@
         {
             "name": "t2i",
             "src": {
-                "address": "btp://NetXnHfVqm9iesp.tezos/KT19HT12Fn5iR9UXSddFDceFQPTYwiGKSg3o",
+                "address": "btp://NetXnHfVqm9iesp.tezos/KT1Wjpoh4jPanEMVh4qeSXbDecvjhxLhx8Ug",
                 "endpoint": [
                     "https://rpc.ghost.tzstats.com/"
                 ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 3348770
+                        "blockHeight": 3349666
                     },  
                     "syncConcurrency": 100, 
-                    "bmcManagement": "KT1KX1JQQiJB1nmZdkfrhn9gdoZrKtHukKTq"
+                    "bmcManagement": "KT1Ghih7orJHyUCQzRbKPEPixYw5YBvF7wHs"
                 },
-                "offset": 3348770
+                "offset": 3349666
             },
             "dst": {
-                "address": "btp://0x2.icon/cx1543786ea1dbdd74d09e91d80e23ed0d23dcf34c",
+                "address": "btp://0x2.icon/cxcecf7a9edbba4da6fead6e4530b5a204af614867",
                 "endpoint": [
                     "https://lisbon.net.solidwallet.io/api/v3/icon_dex"
                 ],
@@ -66,21 +66,21 @@
         {
             "name": "i2t",
             "src": {
-                "address": "btp://0x2.icon/cx1543786ea1dbdd74d09e91d80e23ed0d23dcf34c",
+                "address": "btp://0x2.icon/cxcecf7a9edbba4da6fead6e4530b5a204af614867",
                 "endpoint": [
                     "https://lisbon.net.solidwallet.io/api/v3/icon_dex"
                 ],
                 "options": {
                     "verifier": {
-                        "blockHeight": 25615863,
+                        "blockHeight": 25618358,
                         "validatorsHash": "0x0dda3ad92691fbe592a26ce6ed4c3f6d872e1864fe7867a5e4115a3c9b943886"
                     },
                     "syncConcurrency": 100
                 },
-                "offset": 25615863 
+                "offset": 25618358 
             },
             "dst": {
-                "address": "btp://NetXnHfVqm9iesp.tezos/KT19HT12Fn5iR9UXSddFDceFQPTYwiGKSg3o",
+                "address": "btp://NetXnHfVqm9iesp.tezos/KT1Wjpoh4jPanEMVh4qeSXbDecvjhxLhx8Ug",
                 "endpoint": [
                     "https://rpc.ghost.tzstats.com/"
                 ],
@@ -88,7 +88,7 @@
                     "gas_limit": 1040000,
                     "boost_gas_price": 1.5,
                     "tx_data_size_limit": 65536,
-                    "bmcManagement": "KT1KX1JQQiJB1nmZdkfrhn9gdoZrKtHukKTq"
+                    "bmcManagement": "KT1Ghih7orJHyUCQzRbKPEPixYw5YBvF7wHs"
                 },
                 "key_store": {
                     "address": "tz1ZPVxKiybvbV1GvELRJJpyE1xj1UpNpXMv",
