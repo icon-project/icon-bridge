@@ -134,7 +134,7 @@ configure_dotenv() {
     local bmc_management=$(echo $(cat tz.addr.bmc_management))
     local bmc_height=$(echo $(cat tz.chain.height))
     local icon_bmc_height=$(echo $(cat iconbmcheight))
-    local icon_bmc=$(echo $(cat iconbmc))
+    local icon_bmc=$(echo $(cat icon.addr.bmc))
     echo $bmc_periphery
 
     cd $(echo $CONFIG_DIR/bts)
