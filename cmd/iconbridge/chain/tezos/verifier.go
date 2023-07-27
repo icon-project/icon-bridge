@@ -70,12 +70,14 @@ func (vr *Verifier) Verify(ctx context.Context, lbn *types.BlockNotification) er
 	isValidSignature, _ := vr.VerifySignature(ctx, lbn)
 
 	if !isValidSignature {
-		return fmt.Errorf("invalid block signature. signature mismatch")
+		panic("invalid signature")
+		// return fmt.Errorf("invalid block signature. signature mismatch")
 	}
 
 	err = vr.verifyEndorsement(lbn.Block, lbn.Header.ChainId)
 	if err != nil {
-		return fmt.Errorf("invlid endorsement")
+		panic("endorsement unverified")
+		// return fmt.Errorf("invlid endorsement")
 	}
 
 	return nil
@@ -99,9 +101,9 @@ func (vr *Verifier) Update(ctx context.Context, lbn *types.BlockNotification) er
 	vr.height = header.Level
 	vr.next = header.Level + 1
 
-	// if vr.cycle != block.Metadata.LevelInfo.Cycle {
-	// 	vr.updateValidatorsAndCycle(ctx, block.Header.Level, block.Metadata.LevelInfo.Cycle)
-	// }
+	if vr.cycle != block.Metadata.LevelInfo.Cycle {
+		vr.updateValidatorsAndCycle(ctx, block.Header.Level, block.Metadata.LevelInfo.Cycle)
+	}
 
 	if vr.updatedBn == nil {
 		fmt.Println("should return from here first")
@@ -159,23 +161,29 @@ func (vr *Verifier) VerifySignature(ctx context.Context, lbn *types.BlockNotific
 
 	digestedHash := blockHeader.Digest()
 
+	fmt.Println(lbn.Block.Metadata.Baker)
 	err := vr.validatorsPublicKey[lbn.Block.Metadata.Baker].Verify(digestedHash[:], header.Signature)
 
 	if err != nil {
 		panic("signature failed")
 		// return false, err
 	}
-
 	return true, nil
 }
 
 func (vr *Verifier) updateValidatorsAndCycle(ctx context.Context, blockHeight int64, cycle int64) error {
 	PrintSync()
 	validatorsList, err := vr.cl.Cl.ListEndorsingRights(ctx, rpc.BlockLevel(blockHeight))
-	var validatorsPublicKey tezos.Key
 	if err != nil {
 		return err
 	}
+
+	bakersList, err := vr.cl.Cl.ListBakingRightsCycle(ctx, rpc.BlockLevel(blockHeight), cycle, 1)
+	if err != nil {
+		return err
+	}
+
+	var validatorsPublicKey tezos.Key
 	// remove all validators
 	for a := range vr.validators {
 		delete(vr.validators, a)
@@ -190,6 +198,19 @@ func (vr *Verifier) updateValidatorsAndCycle(ctx context.Context, blockHeight in
 		}
 		vr.validatorsPublicKey[validator.Delegate] = validatorsPublicKey
 	}
+
+	for _, validator := range bakersList {
+		if !vr.validators[validator.Delegate] {
+			fmt.Println("also added the unlisted bakers")
+			vr.validators[validator.Delegate] = true
+			validatorsPublicKey, err = vr.cl.GetConsensusKey(ctx, validator.Delegate)
+			if err != nil {
+				return err
+			}
+			vr.validatorsPublicKey[validator.Delegate] = validatorsPublicKey
+		}
+	}
+
 	vr.cycle = cycle
 	return nil
 }

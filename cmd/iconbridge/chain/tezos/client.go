@@ -250,9 +250,6 @@ func (c *Client) CustomCall(ctx context.Context, args []contract.CallArguments, 
 }
 
 func NewClient(uri string, src tezos.Address, bmcManagement tezos.Address, l log.Logger) (*Client, error) {
-
-	fmt.Println("uri is : " + uri)
-
 	c, err := rpc.NewClient(uri, nil)
 
 	conn := contract.NewContract(src, c)

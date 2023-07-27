@@ -149,8 +149,6 @@ func NewReceiver(src, dst chain.BTPAddress, urls []string, rawOpts json.RawMessa
 	srcAddr := tezos.MustParseAddress(src.ContractAddress())
 	bmcManagement := tezos.MustParseAddress(receiver.opts.BMCManagment)
 
-	fmt.Println("bmcManagement receiver", bmcManagement)
-
 	newClient, err = NewClient(urls[0], srcAddr, bmcManagement, receiver.log)
 
 	if err != nil {
@@ -204,8 +202,7 @@ func (r *receiver) NewVerifier(ctx context.Context, previousHeight int64) (vri I
 		validatorsPublicKey: make(map[tezos.Address]tezos.Key),
 	}
 
-	// vr.updateValidatorsAndCycle(ctx, previousHeight, block.Metadata.LevelInfo.Cycle)
-	fmt.Println("cycle is ", vr.cycle)
+	vr.updateValidatorsAndCycle(ctx, previousHeight, block.Metadata.LevelInfo.Cycle)
 	return vr, nil
 }
 
@@ -656,18 +653,18 @@ func (r *receiver) receiveLoop2(ctx context.Context, opts *BnOptions, callback f
 						}
 					} else {
 						if vr != nil {
-							// if err := vr.Verify(ctx, lbn); err != nil { // change accordingly
-							// 	r.log.WithFields(log.Fields{
-							// 		"height":     lbn.Height,
-							// 		"lbnHash":    lbn.Hash,
-							// 		"nextHeight": next,
-							// 		"bnHash":     bn.Hash}).Error("verification failed. refetching block ", err)
-							// 	fmt.Println(err)
-							// 	fmt.Println("error in verifying ")
-							// 	time.Sleep(5 * time.Second)
-							// 	next--
-							// 	break
-							// }
+							if err := vr.Verify(ctx, lbn); err != nil { // change accordingly
+								r.log.WithFields(log.Fields{
+									"height":     lbn.Height,
+									"lbnHash":    lbn.Hash,
+									"nextHeight": next,
+									"bnHash":     bn.Hash}).Error("verification failed. refetching block ", err)
+								fmt.Println(err)
+								fmt.Println("error in verifying ")
+								time.Sleep(5 * time.Second)
+								next--
+								break
+							}
 							if err := vr.Update(ctx, lbn); err != nil {
 								return errors.Wrapf(err, "receiveLoop: vr.Update: %v", err)
 							}
