@@ -652,6 +652,7 @@ ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.fa.wallet.json $CONFIG_DIR/_ixh/
 # ensure_tezos_keystore
 fund_it_flag
 
+build_javascores
 deploy_javascore_bmc
 deploy_javascore_bts 0 0 18
 deploy_javascore_token
@@ -664,7 +665,6 @@ configure_javascore_bts_setICXFee 0 0
 
 
 
-# build_javascores
 # # tezos configuration
 deploy_smartpy_bmc_management
 deploy_smartpy_bmc_periphery
