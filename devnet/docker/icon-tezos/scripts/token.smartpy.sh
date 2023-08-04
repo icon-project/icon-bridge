@@ -402,7 +402,6 @@ deploy_javascore_bmc() {
   if [ ! -f icon.addr.bmcbtp ]; then
     echo "deploying javascore BMC"
     extract_chain_height_and_validator
-    cd _ixh
     goloop rpc sendtx deploy $CONTRACTS_DIR/javascore/bmc.jar \
       --content_type application/java \
       --param _net=$ICON_BMC_NID \
