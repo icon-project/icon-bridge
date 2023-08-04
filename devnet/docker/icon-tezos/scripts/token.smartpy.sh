@@ -9,11 +9,11 @@ export ICON_NET_ID=0x7
 export ICON_NET_URI=https://berlin.net.solidwallet.io/api/v3
 
 export BASE_DIR=$(echo $(pwd))/../../../..
-export CONFIG_DIR=$BASE_DIR/icon-bridge/devnet/docker/icon-tezos
-export TEZOS_SETTER=$BASE_DIR/icon-bridge/tezos-addresses
-export JAVASCORE_DIR=$BASE_DIR/icon-bridge/javascore
-export SMARTPY_DIR=$BASE_DIR/icon-bridge/smartpy
-export CONTRACTS_DIR=$BASE_DIR/icon-bridge
+export CONFIG_DIR=$BASE_DIR/devnet/docker/icon-tezos
+export TEZOS_SETTER=$BASE_DIR/tezos-addresses
+export JAVASCORE_DIR=$BASE_DIR/javascore
+export SMARTPY_DIR=$BASE_DIR/smartpy
+export CONTRACTS_DIR=$BASE_DIR
 export TEZOS_BMC_NID=NetXnHfVqm9iesp.tezos
 export ICON_BMC_NID=0x7.icon
 export TZ_COIN_SYMBOL=XTZ
