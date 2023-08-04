@@ -2,17 +2,18 @@
 ## smarpy service methods - start ###
 
 # source utils.sh
-source ~/GoProjects/icon-bridge/devnet/docker/icon-bsc/scripts/rpc.sh
+# source ~/GoProjects/icon-bridge/devnet/docker/icon-bsc/scripts/rpc.sh
 # source keystore.sh
 
 export ICON_NET_ID=0x7
 export ICON_NET_URI=https://berlin.net.solidwallet.io/api/v3
 
-export CONFIG_DIR=~/GoProjects/icon-bridge/devnet/docker/icon-tezos
-export TEZOS_SETTER=~/GoProjects/icon-bridge/tezos-addresses
-export JAVASCORE_DIR=~/GoProjects/icon-bridge/javascore
-export SMARTPY_DIR=~/GoProjects/icon-bridge/smartpy
-export CONTRACTS_DIR=~/GoProjects/icon-bridge
+export BASE_DIR=$(echo $(pwd))/../../../..
+export CONFIG_DIR=$BASE_DIR/icon-bridge/devnet/docker/icon-tezos
+export TEZOS_SETTER=$BASE_DIR/icon-bridge/tezos-addresses
+export JAVASCORE_DIR=$BASE_DIR/icon-bridge/javascore
+export SMARTPY_DIR=$BASE_DIR/icon-bridge/smartpy
+export CONTRACTS_DIR=$BASE_DIR/icon-bridge
 export TEZOS_BMC_NID=NetXnHfVqm9iesp.tezos
 export ICON_BMC_NID=0x7.icon
 export TZ_COIN_SYMBOL=XTZ
