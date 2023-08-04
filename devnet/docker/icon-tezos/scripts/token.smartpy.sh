@@ -377,6 +377,7 @@ build_javascores(){
     rm -rf $JAVASCORE_DIR/java-score-examples
   fi
 
+  cd $JAVASCORE_DIR
   cp bmc/build/libs/bmc-optimized.jar $JAVASCORE_DIR/bmc.jar
   cp bts/build/libs/bts-optimized.jar $JAVASCORE_DIR/bts.jar
   cp lib/irc2Tradeable-0.1.0-optimized.jar $JAVASCORE_DIR/irc2Tradeable.jar
