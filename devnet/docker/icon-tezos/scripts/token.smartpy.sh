@@ -34,7 +34,7 @@ tz_lastBlock() {
 }
 
 extract_chainHeight() {
-    # cd $CONFIG_DIR
+    cd $CONFIG_DIR/_ixh
     local tz_block_height=$(tz_lastBlock | jq -r .level)
     echo $tz_block_height > tz.chain.height
 }
