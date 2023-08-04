@@ -177,7 +177,6 @@ deploy_smartpy_bts_core(){
     cd $(echo $SMARTPY_DIR/bts)
     if [ ! -f $CONDIG_DIR/_ixh/tz.addr.bts_core ]; then
         echo "deploying bts_core"
-        cd ~/GoProjects/icon-bridge/smartpy/bts
         npm run compile bts_core
         local deploy=$(npm run deploy bts_core @GHOSTNET)
         sleep 5
@@ -190,7 +189,6 @@ deploy_smartpy_bts_owner_manager(){
     cd $(echo $SMARTPY_DIR/bts)
     if [ ! -f $CONDIG_DIR/_ixh/tz.addr.bts_owner_manager ]; then
         echo "deploying bts_owner_manager"
-        cd ~/GoProjects/icon-bridge/smartpy/bts
         npm run compile bts_owner_manager
         local deploy=$(npm run deploy bts_owner_manager @GHOSTNET)
         sleep 5
@@ -656,7 +654,7 @@ fund_it_flag
 build_javascores
 deploy_javascore_bmc
 deploy_javascore_bts 0 0 18
-deploy_javascore_token
+deploy_javascore_token 
 
 configure_javascore_add_bmc_owner
 configure_javascore_add_bts
