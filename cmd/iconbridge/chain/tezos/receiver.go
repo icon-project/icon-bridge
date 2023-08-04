@@ -639,7 +639,7 @@ func (r *receiver) receiveLoop2(ctx context.Context, opts *BnOptions, callback f
 			latest++
 		case <-heightPoller.C:
 			if height := latestHeight(); height > 0 {
-				latest = height
+				latest = height - 5
 				r.log.WithFields(log.Fields{"latest": latest, "next": next}).Debug("poll height")
 			}
 		case bn := <-bnch:

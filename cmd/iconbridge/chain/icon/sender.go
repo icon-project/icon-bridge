@@ -44,7 +44,7 @@ const (
 	defaultTxSizeLimit            = txMaxDataSize / (1 + txOverheadScale)
 	defaultGetRelayResultInterval = time.Second
 	defaultRelayReSendInterval    = time.Second
-	defaultStepLimit              = 13610920010
+	defaultStepLimit              = 300000000
 )
 
 // NewSender ...
