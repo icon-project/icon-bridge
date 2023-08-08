@@ -6,7 +6,8 @@
 # source keystore.sh
 
 export ICON_NET_ID=0x7
-export ICON_NET_URI=https://berlin.net.solidwallet.io/api/v3
+export ICON_NET_URI=https://berlin.net.solidwallet.io/api/v3/
+export TZ_NET_URI=https://rpc.ghost.tzstats.com/
 
 export BASE_DIR=$(echo $(pwd))/../../../..
 export CONFIG_DIR=$BASE_DIR/devnet/docker/icon-tezos
@@ -137,6 +138,7 @@ deploy_smartpy_bmc_management(){
     if [ ! -f $CONDIG_DIR/_ixh/tz.addr.bmcmanagementbtp ]; then
         echo "deploying bmc_management"
         extract_chainHeight
+        cd $SMARTPY_DIR/bmc
         npm run compile bmc_management
         local deploy=$(npm run deploy bmc_management @GHOSTNET)
         sleep 5
@@ -393,6 +395,9 @@ extract_chain_height_and_validator() {
     cd $CONFIG_DIR/_ixh
     local icon_block_height=$(goloop_lastblock | jq -r .height)
     echo $icon_block_height > icon.chain.height
+
+    local validator=$(HEIGHT=0x1 URI=$ICON_NET_URI $BASE_DIR/cmd/iconvalidators/./iconvalidators | jq -r .hash)
+    echo $validator > icon.chain.validators
 }
 
 deploy_javascore_bmc() {
@@ -643,38 +648,121 @@ function decimal2Hex() {
     echo "0x$(tr [A-Z] [a-z] <<< "$hex")"
 }
 
-ensure_config_dir
-ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bts.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bts.wallet.secret
-ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bmc.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bmc.wallet.secret
-ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bmr.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bmr.wallet.secret
-ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.fa.wallet.json $CONFIG_DIR/_ixh/keystore/icon.fa.wallet.secret
-# ensure_tezos_keystore
-fund_it_flag
 
-build_javascores
-deploy_javascore_bmc
-deploy_javascore_bts 0 0 18
-deploy_javascore_token 
+configure_relay_config() {
+  jq -n '
+    .base_dir = $base_dir |
+    .log_level = "debug" |
+    .console_level = "trace" |
+    .log_writer.filename = $log_writer_filename |
+    .relays = [ $b2i_relay, $i2b_relay ]' \
+    --arg base_dir "bmr" \
+    --arg log_writer_filename "bmr/bmr.log" \
+    --argjson b2i_relay "$(
+      jq -n '
+            .name = "t2i" |
+            .src.address = $src_address |
+            .src.endpoint = [ $src_endpoint ] |
+            .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
+            .src.options.syncConcurrency = 100 |
+            .src.options.bmcManagement = $bmc_management |
+            .src.offset = $src_offset |
+            .dst.address = $dst_address |
+            .dst.endpoint = [ $dst_endpoint ] |
+            .dst.options = $dst_options |
+            .dst.key_store = $dst_key_store |
+            .dst.key_store.coinType = $dst_key_store_cointype |
+            .dst.key_password = $dst_key_password ' \
+        --arg src_address "$(cat $CONFIG_DIR/_ixh/tz.addr.bmcperipherybtp)" \
+        --arg src_endpoint "$TZ_NET_URI" \
+        --argjson src_offset $(cat $CONFIG_DIR/_ixh/tz.chain.height) \
+        --argjson src_options_verifier_blockHeight $(cat $CONFIG_DIR/_ixh/tz.chain.height) \
+        --arg bmc_management "$(cat $CONFIG_DIR/_ixh/tz.addr.bmc_management)" \
+        --arg dst_address "$(cat $CONFIG_DIR/_ixh/icon.addr.bmcbtp)" \
+        --arg dst_endpoint "$ICON_NET_URI" \
+        --argfile dst_key_store "$CONFIG_DIR/_ixh/keystore/icon.bmr.wallet.json" \
+        --arg dst_key_store_cointype "icx" \
+        --arg dst_key_password "$(cat $CONFIG_DIR/_ixh/keystore/icon.bmr.wallet.secret)" \
+        --argjson dst_options '{"step_limit":2500000000, "tx_data_size_limit":8192,"balance_threshold":"10000000000000000000"}'
+    )" \
+    --argjson i2b_relay "$(
+      jq -n '
+            .name = "i2t" |
+            .src.address = $src_address |
+            .src.endpoint = [ $src_endpoint ] |
+            .src.offset = $src_offset |
+            .src.options.verifier.blockHeight = $src_options_verifier_blockHeight |
+            .src.options.verifier.validatorsHash = $src_options_verifier_validatorsHash |
+            .src.options.syncConcurrency = 100 |
+            .dst.address = $dst_address |
+            .dst.endpoint = [ $dst_endpoint ] |
+            .dst.options = $dst_options |
+            .dst.options.bmcManagement = $bmc_management |
+            .dst.tx_data_size_limit = $dst_tx_data_size_limit |
+            .dst.key_store.address = $dst_key_store |
+            .dst.key_store.coinType = $dst_key_store_cointype |
+            .dst.key_store.crypto.cipher = $secret |
+            .dst.key_password = $dst_key_password ' \
+        --arg src_address "$(cat $CONFIG_DIR/_ixh/icon.addr.bmcbtp)" \
+        --arg src_endpoint "$ICON_NET_URI" \
+        --argjson src_offset $(cat $CONFIG_DIR/_ixh/icon.chain.height) \
+        --argjson src_options_verifier_blockHeight $(cat $CONFIG_DIR/_ixh/icon.chain.height) \
+        --arg src_options_verifier_validatorsHash "$(cat $CONFIG_DIR/_ixh/icon.chain.validators)" \
+        --arg dst_address "$(cat $CONFIG_DIR/_ixh/tz.addr.bmcperipherybtp)" \
+        --arg dst_endpoint "$TZ_NET_URI" \
+        --arg dst_key_store "$RELAYER_ADDRESS" \
+        --arg dst_key_store_cointype "xtz" \
+        --arg secret "edskRz1HoD3cWkmWhCNS5LjBrJNWChGuKWB4HnVoN5UqVsUCpcNJR67ZxKs965u8RgRwptrtGc2ufYZoeECgB77RKm1gTbQ6eB" \
+        --arg dst_key_password "xyz" \
+        --argjson dst_tx_data_size_limit 8192 \
+        --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":"100000000000000000000","boost_gas_price":1.0}' \
+        --arg bmc_management "$(cat $CONFIG_DIR/_ixh/tz.addr.bmc_management)"
+    )"
+}
 
-configure_javascore_add_bmc_owner
-configure_javascore_add_bts
-configure_javascore_add_bts_owner
-configure_javascore_bmc_setFeeAggregator
-configure_javascore_bts_setICXFee 0 0
+start_relay() {
+  cd $BASE_DIR/cmd/iconbridge
+  go run main.go -config $CONFIG_DIR/_ixh/relay.config.json
+}
+
+# ensure_config_dir
+# ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bts.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bts.wallet.secret
+# ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bmc.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bmc.wallet.secret
+# ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bmr.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bmr.wallet.secret
+# ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.fa.wallet.json $CONFIG_DIR/_ixh/keystore/icon.fa.wallet.secret
+# # ensure_tezos_keystore
+# fund_it_flag
+
+# build_javascores
+# deploy_javascore_bmc
+# deploy_javascore_bts 0 0 18
+# # deploy_javascore_token 
+
+# configure_javascore_add_bmc_owner
+# configure_javascore_add_bts
+# configure_javascore_add_bts_owner
+# configure_javascore_bmc_setFeeAggregator
+# configure_javascore_bts_setICXFee 0 0
 
 
 
-# # tezos configuration
-deploy_smartpy_bmc_management
-deploy_smartpy_bmc_periphery
-deploy_smartpy_bts_periphery
-deploy_smartpy_bts_core
-deploy_smartpy_bts_owner_manager
-configure_dotenv
-run_tezos_setters
+# # # tezos configuration
+# deploy_smartpy_bmc_management
+# deploy_smartpy_bmc_periphery
+# deploy_smartpy_bts_periphery
+# deploy_smartpy_bts_core
+# deploy_smartpy_bts_owner_manager
+# configure_dotenv
+# run_tezos_setters
 
-# # # icon configuration of tezos
-configure_javascore_addLink
-configure_javascore_setLinkHeight
-configure_bmc_javascore_addRelay
+# # # # icon configuration of tezos
+# configure_javascore_addLink
+# configure_javascore_setLinkHeight
+# configure_bmc_javascore_addRelay
+
+
+configure_relay_config > $CONFIG_DIR/_ixh/relay.config.json
+start_relay
+
+
 
