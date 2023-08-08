@@ -31,7 +31,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&cfgFile, "example.config", "example.config.json", "multi-relay config.json file")
+	flag.StringVar(&cfgFile, "config", "", "multi-relay config.json file")
 }
 
 type Config struct {
