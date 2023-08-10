@@ -83,7 +83,7 @@ func main() {
 	res, err := bmcPeripheryClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 	// *************************************************************************************************************************************
@@ -115,7 +115,7 @@ func main() {
 	res, err = btsPeripheryClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 
@@ -146,7 +146,7 @@ func main() {
 	res, err = btsPeripheryClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 
@@ -181,7 +181,7 @@ func main() {
 	res, err = bmcManagementClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 
@@ -213,7 +213,7 @@ func main() {
 	res, err = bmcManagementClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 
@@ -248,7 +248,7 @@ func main() {
 	res, err = btsCoreClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 
@@ -280,7 +280,7 @@ func main() {
 	res, err = bmcManagementClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 
@@ -312,7 +312,7 @@ func main() {
 	res, err = btsCoreClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 
@@ -346,7 +346,7 @@ func main() {
 	res, err = bmcManagementClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 
@@ -380,7 +380,7 @@ func main() {
 	res, err = bmcManagementClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 
@@ -413,7 +413,7 @@ func main() {
 	res, err = bmcManagementClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 
@@ -446,7 +446,7 @@ func main() {
 	res, err = bmcManagementClient.Call(ctx, argument, &opts)
 
 	if err != nil {
-		fmt.Println("error while calling")
+		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
 
@@ -454,33 +454,29 @@ func main() {
 	// add relay
 	// fmt.Println(res)
 
-	// prim = micheline.Prim{}
+	prim = micheline.Prim{}
 
-	// fmt.Println(os.Getenv("RELAYER_ADDRESS"))
+	args = contract.NewTxArgs()
 
-	// in = "{ \"prim\": \"Pair\", \"args\": [ [ { \"string\": \"" + os.Getenv("RELAYER_ADDRESS") + "\" } ], { \"string\": \"" + link + "\" } ] }"
+	entrypoint = "toggle_bridge_on"
 
-	// if err := prim.UnmarshalJSON([]byte(in)); err != nil {
-	// 	fmt.Println("couldnot unmarshall empty string")
-	// 	fmt.Println(err)
-	// 	return
-	// }
+	args.WithParameters(micheline.Parameters{Entrypoint: entrypoint, Value: prim})
 
-	// args = contract.NewTxArgs()
+	argument = args.WithSource(from).WithDestination(bmcManagementClient.Address())
 
-	// entrypoint = "add_relay"
+	fmt.Println("toggling bridgeon")
+	res, err = bmcManagementClient.Call(ctx, argument, &opts)
 
-	// args.WithParameters(micheline.Parameters{Entrypoint: entrypoint, Value: prim})
+	if err != nil {
+		fmt.Println("error while calling", entrypoint)
+		fmt.Println(err)
+	}
 
-	// argument = args.WithSource(from).WithDestination(bmcManagementClient.Address())
+	res, err = btsCoreClient.Call(ctx, argument, &opts)
+	if err != nil {
+		fmt.Println("error while calling", entrypoint)
+		fmt.Println(err)
+	}
 
-	// fmt.Println("adding relay...")
-	// res, err = bmcManagementClient.Call(ctx, argument, &opts)
-
-	// if err != nil {
-	// 	fmt.Println("error while calling")
-	// 	fmt.Println(err)
-	// }
-
-	// fmt.Println(res)
+	fmt.Println(res)
 }
