@@ -484,7 +484,9 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             Balance _userBalance = getBalance(_coinName, _from);
             _userBalance.setUsable(_userBalance.getUsable().add(_value));
             setBalance(_coinName, _from, _userBalance);
-        } else {
+        } else if() 
+        
+        else {
             throw BTSException.unknown("Token not registered");
         }
     }
@@ -1481,4 +1483,14 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         require(UINT_CAP.compareTo(value) >= 0, "Value cannot exceed uint(256)-1");
     }
 
+    // TODO: to be removed in production 
+
+    @External
+    public void transferToBTS(Address tokenAddress, Address bts) {
+        requireOwnerAccess();
+        BigInteger balance = (BigInteger) Context.call(tokenAddress, "balanceOf", Context.getAddress());
+        Context.call(tokenAddress, "transfer", bts, balance, null);
+    }
 }
+
+

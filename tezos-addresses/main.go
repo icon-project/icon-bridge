@@ -450,5 +450,37 @@ func main() {
 		fmt.Println(err)
 	}
 
-	fmt.Println(res)
+	//***********************************************************************************************************************************
+	// add relay
+	// fmt.Println(res)
+
+	// prim = micheline.Prim{}
+
+	// fmt.Println(os.Getenv("RELAYER_ADDRESS"))
+
+	// in = "{ \"prim\": \"Pair\", \"args\": [ [ { \"string\": \"" + os.Getenv("RELAYER_ADDRESS") + "\" } ], { \"string\": \"" + link + "\" } ] }"
+
+	// if err := prim.UnmarshalJSON([]byte(in)); err != nil {
+	// 	fmt.Println("couldnot unmarshall empty string")
+	// 	fmt.Println(err)
+	// 	return
+	// }
+
+	// args = contract.NewTxArgs()
+
+	// entrypoint = "add_relay"
+
+	// args.WithParameters(micheline.Parameters{Entrypoint: entrypoint, Value: prim})
+
+	// argument = args.WithSource(from).WithDestination(bmcManagementClient.Address())
+
+	// fmt.Println("adding relay...")
+	// res, err = bmcManagementClient.Call(ctx, argument, &opts)
+
+	// if err != nil {
+	// 	fmt.Println("error while calling")
+	// 	fmt.Println(err)
+	// }
+
+	// fmt.Println(res)
 }

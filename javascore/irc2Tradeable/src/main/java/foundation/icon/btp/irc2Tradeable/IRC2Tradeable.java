@@ -35,6 +35,7 @@ public class IRC2Tradeable extends IRC2Basic implements OwnerManager {
 
     public IRC2Tradeable(String _name, String _symbol, int _decimals) {
         super(_name, _symbol, _decimals);
+        addOwner(Context.getOrigin());
     }
 
     @External
