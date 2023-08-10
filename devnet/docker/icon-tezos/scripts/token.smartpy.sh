@@ -366,6 +366,7 @@ build_javascores(){
   cd $JAVASCORE_DIR
   ./gradlew bmc:optimizedJar
   ./gradlew bts:optimizedJar
+  ./gradlew irc2Tradeable:optimizedJar
 
   # irc2-token
   if [ ! -f irc2.jar ]; then 
@@ -380,7 +381,7 @@ build_javascores(){
   cd $JAVASCORE_DIR
   cp bmc/build/libs/bmc-optimized.jar $JAVASCORE_DIR/bmc.jar
   cp bts/build/libs/bts-optimized.jar $JAVASCORE_DIR/bts.jar
-  cp lib/irc2Tradeable-0.1.0-optimized.jar $JAVASCORE_DIR/irc2Tradeable.jar
+  cp irc2Tradeable/build/libs/irc2Tradeable-0.1.0-optimized.jar $JAVASCORE_DIR/irc2Tradeable.jar
 }
 
 
