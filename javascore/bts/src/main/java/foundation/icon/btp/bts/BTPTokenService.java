@@ -484,9 +484,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             Balance _userBalance = getBalance(_coinName, _from);
             _userBalance.setUsable(_userBalance.getUsable().add(_value));
             setBalance(_coinName, _from, _userBalance);
-        } else if() 
-        
-        else {
+        } else {
             throw BTSException.unknown("Token not registered");
         }
     }
