@@ -47,6 +47,26 @@ class SingleAssetToken(FA2.Admin, FA2.Fa2SingleAsset, FA2.MintSingleAsset, FA2.B
         sp.set_type(allowance, sp.TRecord(spender=sp.TAddress, owner=sp.TAddress))
         sp.result(self.data.allowances.get(allowance, default_value=0))
 
+    @sp.entry_point
+    def increase_allowance(self, batch):
+        sp.set_type(batch, sp.TList(sp.TRecord(spender=sp.TAddress, amount=sp.TNat)))
+
+        with sp.for_("params", batch) as params:
+            allowance = sp.compute(sp.record(spender=params.spender, owner=sp.sender))
+            current_allowance = self.data.allowances.get(allowance, default_value=0)
+            self.data.allowances[allowance] = current_allowance + params.amount
+
+    @sp.entry_point
+    def decrease_allowance(self, batch):
+        sp.set_type(batch, sp.TList(sp.TRecord(spender=sp.TAddress, amount=sp.TNat)))
+
+        with sp.for_("params", batch) as params:
+            allowance = sp.compute(sp.record(spender=params.spender, owner=sp.sender))
+            current_allowance = self.data.allowances.get(allowance, default_value=0)
+
+            self.data.allowances[allowance] = sp.as_nat(current_allowance - params.amount,
+                                                        message="Allowance cannot be negative.")
+
     @sp.onchain_view()
     def transfer_permissions(self, params):
         sp.set_type(params, sp.TRecord(from_=sp.TAddress, token_id=sp.TNat))
@@ -113,6 +133,19 @@ def test():
                                                                                    exception="FA2_UnsafeAllowanceChange")
 
     scenario.verify(c1.get_allowance(sp.record(spender=spender.address, owner=bob.address)) == 100)
+    # increase allowance
+    c1.increase_allowance([sp.record(spender=spender.address, amount=sp.nat(100))]).run(sender=bob)
+    # verify new allowance
+    scenario.verify(c1.get_allowance(sp.record(spender=spender.address, owner=bob.address)) == 200)
+    # decrease allowance
+    c1.decrease_allowance([sp.record(spender=spender.address, amount=sp.nat(20))]).run(sender=bob)
+    # verify new allowance
+    scenario.verify(c1.get_allowance(sp.record(spender=spender.address, owner=bob.address)) == 180)
+    # decrease allowance
+    c1.decrease_allowance([sp.record(spender=spender.address, amount=sp.nat(180))]).run(sender=bob)
+    # verify new allowance
+    scenario.verify(c1.get_allowance(sp.record(spender=spender.address, owner=bob.address)) == 0)
+
     c1.update_operators(
         [sp.variant("add_operator", sp.record(owner=bob.address, operator=spender.address, token_id=0))]).run(
         sender=bob)
