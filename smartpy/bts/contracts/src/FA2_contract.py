@@ -1,6 +1,7 @@
 import smartpy as sp
 
 FA2 = sp.io.import_script_from_url("https://legacy.smartpy.io/templates/fa2_lib.py")
+ZERO_ADDRESS = sp.address("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg")
 
 t_transfer_batch = sp.TRecord(
     callback=sp.TContract(
@@ -33,14 +34,17 @@ class SingleAssetToken(FA2.Admin, FA2.Fa2SingleAsset, FA2.MintSingleAsset, FA2.B
         sp.result(address == self.data.administrator)
 
     @sp.entry_point
-    def set_allowance(self, batch):
-        sp.set_type(batch, sp.TList(sp.TRecord(spender=sp.TAddress, amount=sp.TNat)))
+    def set_allowance(self, param):
+        sp.set_type(param, sp.TRecord(spender=sp.TAddress, amount=sp.TNat))
 
-        with sp.for_("params", batch) as params:
-            allowance = sp.compute(sp.record(spender=params.spender, owner=sp.sender))
-            current_allowance = self.data.allowances.get(allowance, default_value=0)
-            sp.verify((params.amount == 0) | (current_allowance == 0), "FA2_UnsafeAllowanceChange")
-            self.data.allowances[allowance] = params.amount
+        sp.verify(param.spender != ZERO_ADDRESS, "Spender cannot be negative.")
+        allowance = sp.compute(sp.record(spender=param.spender, owner=sp.sender))
+        current_allowance = self.data.allowances.get(allowance, default_value=0)
+        sp.verify((param.amount == 0) | (current_allowance == 0), "FA2_UnsafeAllowanceChange")
+        self.data.allowances[allowance] = param.amount
+
+        sp.emit(sp.record(owner=sp.sender, spender=param.spender, amount=param.amount),
+                tag="AllowanceSet")
 
     @sp.onchain_view()
     def get_allowance(self, allowance):
@@ -48,24 +52,29 @@ class SingleAssetToken(FA2.Admin, FA2.Fa2SingleAsset, FA2.MintSingleAsset, FA2.B
         sp.result(self.data.allowances.get(allowance, default_value=0))
 
     @sp.entry_point
-    def increase_allowance(self, batch):
-        sp.set_type(batch, sp.TList(sp.TRecord(spender=sp.TAddress, amount=sp.TNat)))
+    def increase_allowance(self, param):
+        sp.set_type(param, sp.TRecord(spender=sp.TAddress, amount=sp.TNat))
 
-        with sp.for_("params", batch) as params:
-            allowance = sp.compute(sp.record(spender=params.spender, owner=sp.sender))
-            current_allowance = self.data.allowances.get(allowance, default_value=0)
-            self.data.allowances[allowance] = current_allowance + params.amount
+        sp.verify(param.spender != ZERO_ADDRESS, "Spender cannot be negative.")
+        allowance = sp.compute(sp.record(spender=param.spender, owner=sp.sender))
+        current_allowance = self.data.allowances.get(allowance, default_value=0)
+        self.data.allowances[allowance] = current_allowance + param.amount
+
+        sp.emit(sp.record(owner=sp.sender, spender=param.spender, amount=param.amount),
+                tag="AllowanceIncreased")
 
     @sp.entry_point
-    def decrease_allowance(self, batch):
-        sp.set_type(batch, sp.TList(sp.TRecord(spender=sp.TAddress, amount=sp.TNat)))
+    def decrease_allowance(self, param):
+        sp.set_type(param, sp.TRecord(spender=sp.TAddress, amount=sp.TNat))
 
-        with sp.for_("params", batch) as params:
-            allowance = sp.compute(sp.record(spender=params.spender, owner=sp.sender))
-            current_allowance = self.data.allowances.get(allowance, default_value=0)
-
-            self.data.allowances[allowance] = sp.as_nat(current_allowance - params.amount,
+        sp.verify(param.spender != ZERO_ADDRESS, "Spender cannot be negative.")
+        allowance = sp.compute(sp.record(spender=param.spender, owner=sp.sender))
+        current_allowance = self.data.allowances.get(allowance, default_value=0)
+        self.data.allowances[allowance] = sp.as_nat(current_allowance - param.amount,
                                                         message="Allowance cannot be negative.")
+
+        sp.emit(sp.record(owner=sp.sender, spender=param.spender, amount=param.amount),
+                tag="AllowanceDecreased")
 
     @sp.onchain_view()
     def transfer_permissions(self, params):
@@ -128,21 +137,23 @@ def test():
 
     scenario.verify(c1.get_allowance(sp.record(spender=spender.address, owner=bob.address)) == 0)
     # set allowance
-    c1.set_allowance([sp.record(spender=spender.address, amount=sp.nat(100))]).run(sender=bob)
-    c1.set_allowance([sp.record(spender=spender.address, amount=sp.nat(100))]).run(sender=bob, valid=False,
-                                                                                   exception="FA2_UnsafeAllowanceChange")
+    c1.set_allowance(sp.record(spender=spender.address, amount=sp.nat(100))).run(sender=bob)
+    c1.set_allowance(sp.record(spender=ZERO_ADDRESS, amount=sp.nat(100))).run(sender=bob, valid=False,
+                                                                              exception="Spender cannot be negative.")
+    c1.set_allowance(sp.record(spender=spender.address, amount=sp.nat(100))).run(sender=bob, valid=False,
+                                                                                 exception="FA2_UnsafeAllowanceChange")
 
     scenario.verify(c1.get_allowance(sp.record(spender=spender.address, owner=bob.address)) == 100)
     # increase allowance
-    c1.increase_allowance([sp.record(spender=spender.address, amount=sp.nat(100))]).run(sender=bob)
+    c1.increase_allowance(sp.record(spender=spender.address, amount=sp.nat(100))).run(sender=bob)
     # verify new allowance
     scenario.verify(c1.get_allowance(sp.record(spender=spender.address, owner=bob.address)) == 200)
     # decrease allowance
-    c1.decrease_allowance([sp.record(spender=spender.address, amount=sp.nat(20))]).run(sender=bob)
+    c1.decrease_allowance(sp.record(spender=spender.address, amount=sp.nat(20))).run(sender=bob)
     # verify new allowance
     scenario.verify(c1.get_allowance(sp.record(spender=spender.address, owner=bob.address)) == 180)
     # decrease allowance
-    c1.decrease_allowance([sp.record(spender=spender.address, amount=sp.nat(180))]).run(sender=bob)
+    c1.decrease_allowance(sp.record(spender=spender.address, amount=sp.nat(180))).run(sender=bob)
     # verify new allowance
     scenario.verify(c1.get_allowance(sp.record(spender=spender.address, owner=bob.address)) == 0)
 
