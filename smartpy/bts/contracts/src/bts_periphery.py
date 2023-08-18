@@ -589,6 +589,7 @@ class BTSPeriphery(sp.Contract, rlp.DecodeEncodeLibrary):
         with sp.else_():
             sp.result(False)
 
+
 sp.add_compilation_target("bts_periphery", BTSPeriphery(bmc_address=sp.address("KT1VFtWq2dZDH1rTfLtgMaASMt4UX78omMs2"),
                                                         bts_core_address=sp.address("KT1JAippuMfS6Bso8DGmigmTdkgEZUxQxYyX"),
                                                         helper_contract=sp.address("KT1HwFJmndBWRn3CLbvhUjdupfEomdykL5a6"),

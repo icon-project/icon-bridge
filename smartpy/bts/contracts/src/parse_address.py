@@ -106,6 +106,7 @@ class ParseAddress(sp.Contract):
             decimal = sp.local("decimal", 0)
             base = sp.len(alphabet)
             element_list_2 = sp.range(0, sp.len(string_in_bytes), 1)
+            
             sp.for elem in element_list_2:
                 decimal.value = decimal.value * base + temp_map.value[sp.slice(string_in_bytes, elem, 1).open_some()]
             byt_value = Utils.Bytes.of_nat(sp.as_nat(sp.to_int(decimal.value)))
