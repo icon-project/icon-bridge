@@ -121,7 +121,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     @External(readonly = true)
     public String name() {
-        return "BTP Token Service";
+        return "BTP Token Service-Tezos";
     }
 
     /**

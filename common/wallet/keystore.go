@@ -151,7 +151,6 @@ func ReadAddressFromKeyStore(data []byte) (*common.Address, error) {
 func DecryptKeyStore(data, pw []byte) (Wallet, error) {
 	ksdata, err := NewKeyStoreData(data)
 	if err != nil {
-		fmt.Println("from new key store data")
 		return nil, err
 	}
 
@@ -181,8 +180,6 @@ func DecryptKeyStore(data, pw []byte) (Wallet, error) {
 		}
 		return NewNearwalletFromPrivateKey(key)
 	case coinTypeXTZ:
-		fmt.Println("coin type is xtz")
-		fmt.Println(ksdata.Crypto.Cipher)
 		key := tezos.MustParsePrivateKey(ksdata.Crypto.Cipher)
 
 		return NewTezosWalletFromPrivateKey(key)

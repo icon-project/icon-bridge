@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"reflect"
 
 	// "github.com/btcsuite/btcutil/base58"
@@ -47,7 +46,6 @@ func (a *Address) UnmarshalJSON(b []byte) error {
 
 func (a *Address) SetString(s string) error {
 	var isContract = false
-	fmt.Println("reached to set string")
 	if len(s) >= 2 {
 		var err error
 		var bytes []byte
@@ -55,7 +53,6 @@ func (a *Address) SetString(s string) error {
 		switch {
 		case prefix == "tz" || prefix == "KT":
 			isContract = prefix == "KT"
-			fmt.Println("returned from here")
 			// bytes, _, err = base58.CheckDecode(s[2:])
 			return nil
 		case prefix == "cx" || prefix == "hx" || prefix == "0x":

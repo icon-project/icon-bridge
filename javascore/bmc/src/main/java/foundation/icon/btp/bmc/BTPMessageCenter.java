@@ -105,7 +105,7 @@ public class BTPMessageCenter implements BMC, BMCEvent, ICONSpecific, OwnerManag
 
     @External(readonly = true)
     public String name() {
-        return "BTP Message Center";
+        return "BTP Message Center-Tezos";
     }
 
     @External(readonly = true)
