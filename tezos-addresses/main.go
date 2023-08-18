@@ -454,7 +454,7 @@ func main() {
 	// register native coin
 	// fmt.Println(res)
 
-	register(btsCoreClient.Address(), os.Getenv("ICON_NATIVE_COIN_NAME"), opts)
+	// register(btsCoreClient.Address(), os.Getenv("ICON_NATIVE_COIN_NAME"), opts)
 
 	//***********************************************************************************************************************************
 	// add relay
