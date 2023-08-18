@@ -782,7 +782,7 @@ fund_it_flag
 
 build_javascores
 deploy_javascore_bmc
-deploy_javascore_bts 0 0 18
+deploy_javascore_bts $ICON_FIXED_FEE $ICON_NUMERATOR $ICON_DECIMALS
 # deploy_javascore_token 
 
 configure_javascore_add_bmc_owner
