@@ -24,8 +24,8 @@ export TZ_NUMERATOR=0
 export TZ_DECIMALS=6
 export ICON_NATIVE_COIN_NAME=btp-$ICON_NET_ID.icon-ICX
 export ICON_SYMBOL=ICX
-export ICON_FIXED_FEE=4300000000000000000
-export ICON_NUMERATOR=100
+export ICON_FIXED_FEE=0
+export ICON_NUMERATOR=0
 export ICON_DECIMALS=18
 export FEE_GATHERING_INTERVAL=43200
 export RELAYER_ADDRESS=tz1ZPVxKiybvbV1GvELRJJpyE1xj1UpNpXMv
@@ -789,7 +789,7 @@ configure_javascore_add_bmc_owner
 configure_javascore_add_bts
 configure_javascore_add_bts_owner
 configure_javascore_bmc_setFeeAggregator
-configure_javascore_bts_setICXFee 0 0
+configure_javascore_bts_setICXFee $ICON_FIXED_FEE $ICON_NUMERATOR
 # configure_javascore_register_native_token $TZ_NATIVE_COIN_NAME $TZ_COIN_SYMBOL $TZ_FIXED_FEE $TZ_NUMERATOR $TZ_DECIMALS   
 
 
