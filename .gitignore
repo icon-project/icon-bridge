@@ -27,3 +27,4 @@ devnet/docker/icon-algorand/local/
 devnet/docker/icon-algorand/cache/
 devnet/docker/icon-algorand/iconvalidators
 devnet/docker/icon-algorand/*keystore.json
+javascore/wallet1.json

@@ -121,7 +121,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     @External(readonly = true)
     public String name() {
-        return "BTP Token Service";
+        return "BTP Token Service-Tezos";
     }
 
     /**
@@ -289,7 +289,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         List<String> blacklist = new ArrayList<>();
 
         for (String addr: _addresses) {
-            addr = lowercase(addr);
+            addr = trimWhitespace(addr);
             if (! isUserBlackListed(_net, addr) && addr.length() > 0) {
                 if (_net.equals(net) && !isValidIconAddress(addr)) {
                     continue;
@@ -1456,8 +1456,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         return newSn;
     }
 
-    private String lowercase(String word) {
-        return word.trim().toLowerCase();
+    private String trimWhitespace(String word) {
+        return word.trim();
     }
 
     private String[] getLinks() {

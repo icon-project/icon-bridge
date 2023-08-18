@@ -190,7 +190,6 @@ func (s *sender) Segment(
 	if err != nil {
 		return nil, nil, err
 	}
-
 	return tx, newMsg, nil
 }
 
@@ -247,7 +246,6 @@ func (tx *relayTx) ID() interface{} {
 func (tx *relayTx) Send(ctx context.Context) error {
 	tx.cl.log.WithFields(log.Fields{
 		"prev": tx.Prev}).Debug("handleRelayMessage: send tx")
-
 SignLoop:
 	for {
 		if err := tx.cl.SignTransaction(tx.w, tx.txParam); err != nil {

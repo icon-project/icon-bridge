@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"reflect"
 
+	// "github.com/btcsuite/btcutil/base58"
 	"github.com/icon-project/icon-bridge/common/codec"
 	"github.com/icon-project/icon-bridge/common/crypto"
 	"github.com/icon-project/icon-bridge/common/errors"
@@ -46,22 +47,25 @@ func (a *Address) UnmarshalJSON(b []byte) error {
 func (a *Address) SetString(s string) error {
 	var isContract = false
 	if len(s) >= 2 {
+		var err error
+		var bytes []byte
+		prefix := s[0:2]
 		switch {
-		case s[0:2] == "cx":
-			isContract = true
+		case prefix == "tz" || prefix == "KT":
+			isContract = prefix == "KT"
+			// bytes, _, err = base58.CheckDecode(s[2:])
+			return nil
+		case prefix == "cx" || prefix == "hx" || prefix == "0x":
+			isContract = prefix == "cx"
 			s = s[2:]
-		case s[0:2] == "hx":
-			s = s[2:]
-		case s[0:2] == "0x":
-			s = s[2:]
+			if len(s)%2 == 1 {
+				s = "0" + s
+			}
+			bytes, err = hex.DecodeString(s)
 		}
-	}
-	if len(s)%2 == 1 {
-		s = "0" + s
-	}
-	if bytes, err := hex.DecodeString(s); err != nil {
-		return err
-	} else {
+		if err != nil {
+			return err
+		}
 		if err := a.SetTypeAndID(isContract, bytes); err != nil {
 			return err
 		}

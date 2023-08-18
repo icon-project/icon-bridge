@@ -37,13 +37,13 @@ function processContract {
         echo "Fatal: $CONTRACT_IN not found. Running from wrong dir?" && exit
     fi
 
-#    echo ">>> [1 / 3] Testing ${CONTRACT_NAME} ... "
-#    $SMART_PY_CLI test $CONTRACT_IN $OUT_DIR --html
+    echo ">>> [1 / 3] Testing ${CONTRACT_NAME} ... "
+    $SMART_PY_CLI test $CONTRACT_IN $OUT_DIR --html
 
-    echo ">>> [1 / 2] Compiling ${CONTRACT_NAME} ..."
+    echo ">>> [2 / 3] Compiling ${CONTRACT_NAME} ..."
     $SMART_PY_CLI compile $CONTRACT_IN $OUT_DIR --html
 
-    echo ">>> [2 / 2] Extracting Michelson contract ... "
+    echo ">>> [3 / 3] Extracting Michelson contract ... "
     cp $OUT_DIR/$CONTRACT_COMPILED ./contracts/build/$CONTRACT_OUT
     cp $OUT_DIR/$STORAGE_COMPILED ./contracts/build/$STORAGE_OUT
 
@@ -53,7 +53,7 @@ function processContract {
 export PYTHONPATH=$PWD
 
 
-echo "> [1 / 2] Compiling Contracts."
+echo "> [1 / 2] Unit Testing and Compiling Contracts."
 # Use if you want to pass a contract or more as arguments. 
 for n in $(seq 1 $#); do
   processContract $1 $OUT_DIR
