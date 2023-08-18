@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -101,7 +100,6 @@ func filterMessageEvents(tx *rpc.Transaction, contractAddress tezos.Address, hei
 				seq := internalResults.Payload.Args[1].Args[1].Int
 
 				if next == dst {
-					fmt.Println("found it")
 					events = append(events, &chain.Event{
 						Message:  message,
 						Next:     chain.BTPAddress(next),
@@ -111,7 +109,6 @@ func filterMessageEvents(tx *rpc.Transaction, contractAddress tezos.Address, hei
 					receipt.Index = uint64(i)
 					receipt.Height = height
 					receipt.Events = events
-					fmt.Println(message, next, seq)
 				}
 			}
 
@@ -133,7 +130,6 @@ func (c *Client) GetBalance(ctx context.Context, connection *rpc.Client, account
 }
 
 func (c *Client) GetBMCManangement(ctx context.Context, contr *contract.Contract, account tezos.Address) (string, error) {
-	fmt.Println("reached in getting bmc Management")
 	result, err := contr.RunView(ctx, "get_bmc_periphery", micheline.Prim{})
 	if err != nil {
 		return "", err
@@ -142,23 +138,16 @@ func (c *Client) GetBMCManangement(ctx context.Context, contr *contract.Contract
 }
 
 func (c *Client) GetStatus(ctx context.Context, contr *contract.Contract, link string) (TypesLinkStats, error) {
-
-	fmt.Println("reached in get status of tezos")
 	prim := micheline.Prim{}
 
 	in := "{ \"string\": \"" + link + "\" }"
-	fmt.Println(in)
-	fmt.Println(contr.Address().ContractAddress())
 
 	if err := prim.UnmarshalJSON([]byte(in)); err != nil {
-		fmt.Println("couldnot unmarshall empty string")
-		fmt.Println(err)
 		return *new(TypesLinkStats), err
 	}
 
 	result, err := contr.RunView(ctx, "get_status", prim)
 	if err != nil {
-		fmt.Println(err)
 		return *new(TypesLinkStats), err
 	}
 	linkStats := &TypesLinkStats{}
@@ -180,7 +169,6 @@ func (c *Client) GetOperationByHash(ctx context.Context, clinet *rpc.Client, blo
 }
 
 func (c *Client) GetConsensusKey(ctx context.Context, bakerConsensusKey tezos.Address) (tezos.Key, error) {
-	fmt.Println("baker consensus key", bakerConsensusKey.String())
 	var exposedPublicKey tezos.Key
 	for i := 0; i < 5; i++ {
 		url := c.Cl.BaseURL.String() + "/chains/main/blocks/head/context/raw/json/contracts/index/" + bakerConsensusKey.String() + "/consensus_key/active"
@@ -199,7 +187,6 @@ func (c *Client) GetConsensusKey(ctx context.Context, bakerConsensusKey tezos.Ad
 
 		exposedPublicKey, err = tezos.ParseKey(sb[1 : len(sb)-2])
 		if err != nil {
-			fmt.Println("continued to refetch again")
 			time.Sleep(2 * time.Second)
 			continue
 		}
@@ -209,15 +196,10 @@ func (c *Client) GetConsensusKey(ctx context.Context, bakerConsensusKey tezos.Ad
 }
 
 func (c *Client) HandleRelayMessage(ctx context.Context, callArgs contract.CallArguments, opts *rpc.CallOptions) (*rpc.Receipt, error) {
-	fmt.Println("handling relay message")
-	PrintU()
 	result, err := c.Contract.Call(ctx, callArgs, opts)
 	if err != nil {
-		fmt.Println(err)
-		fmt.Println("because error")
 		return nil, err
 	}
-	fmt.Println(result)
 	return result, nil
 }
 
@@ -268,7 +250,6 @@ func PrettyEncode(data interface{}) error {
 	if err := enc.Encode(data); err != nil {
 		return err
 	}
-	fmt.Println(buffer.String())
 	return nil
 }
 
@@ -287,7 +268,6 @@ func filterTransactionOperations(block *rpc.Block, contractAddress tezos.Address
 						return false, nil, err
 					}
 					if len(r.Events) != 0 {
-						fmt.Println("r is not nil for ", uint64(blockHeight))
 						receipt = append(receipt, r)
 					}
 				}
@@ -299,12 +279,5 @@ func filterTransactionOperations(block *rpc.Block, contractAddress tezos.Address
 	if len(receipt) == 0 {
 		return false, nil, nil
 	}
-	fmt.Println("found Message")
 	return true, receipt, nil
-}
-
-func PrintU() {
-	for i := 0; i < 100; i++ {
-		fmt.Println("U")
-	}
 }

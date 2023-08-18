@@ -26,7 +26,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	c, err := rpc.NewClient("https://ghostnet.tezos.marigold.dev", nil)
+	c, err := rpc.NewClient(os.Getenv("TEZOS_ENDPOINT"), nil)
 	fmt.Println("new client")
 
 	fmt.Println(c.ChainId)
@@ -451,10 +451,24 @@ func main() {
 	}
 
 	//***********************************************************************************************************************************
+	// register native coin
+	// fmt.Println(res)
+
+	register(btsCoreClient.Address(), os.Getenv("ICON_NATIVE_COIN_NAME"), opts)
+
+	//***********************************************************************************************************************************
 	// add relay
 	// fmt.Println(res)
 
 	prim = micheline.Prim{}
+
+	in = "{\"prim\": \"Unit\"}"
+
+	if err := prim.UnmarshalJSON([]byte(in)); err != nil {
+		fmt.Println("couldnot unmarshall empty string")
+		fmt.Println(err)
+		return
+	}
 
 	args = contract.NewTxArgs()
 
@@ -465,6 +479,7 @@ func main() {
 	argument = args.WithSource(from).WithDestination(bmcManagementClient.Address())
 
 	fmt.Println("toggling bridgeon")
+	opts.IgnoreLimits = false
 	res, err = bmcManagementClient.Call(ctx, argument, &opts)
 
 	if err != nil {
@@ -480,3 +495,63 @@ func main() {
 
 	fmt.Println(res)
 }
+
+func register(btsCore tezos.Address, coinName string, opts rpc.CallOptions) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c, err := rpc.NewClient("https://ghostnet.smartpy.io", nil)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = c.Init(ctx)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	c.Listen()
+
+	con := contract.NewContract(btsCore, c)
+
+	if err = con.Resolve(ctx); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var prim micheline.Prim
+
+	
+	in := "{\"prim\": \"Pair\", \"args\": [{\"prim\": \"Pair\",\"args\": [{\"string\": \"" + "tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg" + "\"},{\"prim\": \"Pair\",\"args\": [{\"int\": \"0\"},{\"int\": \"0\"}]}]},{\"prim\": \"Pair\",\"args\": [[],{\"prim\": \"Pair\",\"args\": [{\"string\": \"" + coinName + "1" + "\"},[]]}]}]}"
+	
+	if err := prim.UnmarshalJSON([]byte(in)); err != nil {
+		fmt.Println("couldnot unmarshall empty string")
+		fmt.Println(err)
+		return
+	}
+
+	args := contract.NewTxArgs()
+
+	args.WithParameters(micheline.Parameters{Entrypoint: "register", Value: prim})
+
+	from := tezos.MustParseAddress("tz1ZPVxKiybvbV1GvELRJJpyE1xj1UpNpXMv")
+
+	argument := args.WithSource(from).WithDestination(btsCore)
+
+	// ags := con.AsFA1()
+	opts.IgnoreLimits = true
+	opts.MaxFee = 10000000
+	res, err := con.Call(ctx, argument, &opts)
+
+	if err != nil {
+		fmt.Println("error while calling")
+		fmt.Println(err)
+	}
+
+	fmt.Println(res)
+}
+

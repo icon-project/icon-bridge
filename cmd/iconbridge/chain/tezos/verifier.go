@@ -11,6 +11,7 @@ import (
 	"blockwatch.cc/tzgo/rpc"
 	"blockwatch.cc/tzgo/tezos"
 	"github.com/icon-project/icon-bridge/cmd/iconbridge/chain/tezos/types"
+	"github.com/pkg/errors"
 )
 
 type IVerifier interface {
@@ -70,14 +71,12 @@ func (vr *Verifier) Verify(ctx context.Context, lbn *types.BlockNotification) er
 	isValidSignature, _ := vr.VerifySignature(ctx, lbn)
 
 	if !isValidSignature {
-		panic("invalid signature")
-		// return fmt.Errorf("invalid block signature. signature mismatch")
+		return fmt.Errorf("invalid block signature. signature mismatch")
 	}
 
 	err = vr.verifyEndorsement(lbn.Block, lbn.Header.ChainId)
 	if err != nil {
-		panic("endorsement unverified")
-		// return fmt.Errorf("invlid endorsement")
+		return fmt.Errorf("invalid endorsement")
 	}
 
 	return nil
@@ -101,12 +100,11 @@ func (vr *Verifier) Update(ctx context.Context, lbn *types.BlockNotification) er
 	vr.height = header.Level
 	vr.next = header.Level + 1
 
-	// if vr.cycle != block.Metadata.LevelInfo.Cycle {
-	// 	vr.updateValidatorsAndCycle(ctx, block.Header.Level, block.Metadata.LevelInfo.Cycle)
-	// }
+	if vr.cycle != block.Metadata.LevelInfo.Cycle {
+		vr.updateValidatorsAndCycle(ctx, block.Header.Level, block.Metadata.LevelInfo.Cycle)
+	}
 
 	if vr.updatedBn == nil {
-		fmt.Println("should return from here first")
 		vr.updatedBn = lbn
 		return nil
 	}
@@ -161,18 +159,15 @@ func (vr *Verifier) VerifySignature(ctx context.Context, lbn *types.BlockNotific
 
 	digestedHash := blockHeader.Digest()
 
-	fmt.Println(lbn.Block.Metadata.Baker)
 	err := vr.validatorsPublicKey[lbn.Block.Metadata.Baker].Verify(digestedHash[:], header.Signature)
 
 	if err != nil {
-		panic("signature failed")
-		// return false, err
+		return false, err
 	}
 	return true, nil
 }
 
 func (vr *Verifier) updateValidatorsAndCycle(ctx context.Context, blockHeight int64, cycle int64) error {
-	PrintSync()
 	validatorsList, err := vr.cl.Cl.ListEndorsingRights(ctx, rpc.BlockLevel(blockHeight))
 	if err != nil {
 		return err
@@ -201,7 +196,6 @@ func (vr *Verifier) updateValidatorsAndCycle(ctx context.Context, blockHeight in
 
 	for _, validator := range bakersList {
 		if !vr.validators[validator.Delegate] {
-			fmt.Println("also added the unlisted bakers")
 			vr.validators[validator.Delegate] = true
 			validatorsPublicKey, err = vr.cl.GetConsensusKey(ctx, validator.Delegate)
 			if err != nil {
@@ -242,8 +236,7 @@ func (vr *Verifier) verifyEndorsement(block *rpc.Block, chainID tezos.ChainIdHas
 						err := managerKey.Verify(digested[:], signature)
 
 						if err != nil {
-							panic("signature unverified")
-							// return err
+							return err
 						}
 
 						if _, ok := endorsers[tx.Metadata.Delegate]; !ok {
@@ -255,11 +248,10 @@ func (vr *Verifier) verifyEndorsement(block *rpc.Block, chainID tezos.ChainIdHas
 			}
 		}
 	}
-	if endorsementPower > int(threshold) { // && len(endorsers)*100/len(vr.validators) >= 66 {
+	if endorsementPower > int(threshold) {
 		return nil
 	}
-	panic("threshold didnot meet")
-	// return errors.New("endorsement verification failed")
+	return errors.New("endorsement verification failed")
 
 }
 

@@ -11,12 +11,8 @@ import (
 
 	"github.com/icon-project/icon-bridge/common/log"
 	"github.com/icon-project/icon-bridge/common/wallet"
-
-	// "github.com/icon-project/icon-bridge/common/wallet"
-
 	"github.com/icon-project/icon-bridge/common/codec"
 
-	// "blockwatch.cc/tzgo/codec"
 	"blockwatch.cc/tzgo/contract"
 	"blockwatch.cc/tzgo/micheline"
 	"blockwatch.cc/tzgo/rpc"
@@ -28,7 +24,7 @@ const (
 	txMaxDataSize        = 1024 // 1 KB
 	txOverheadScale      = 0.01
 	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale) // with the rlp overhead
-	defaultSendTxTimeOut = 30 * time.Second // 30 seconds is the block time for tezos
+	defaultSendTxTimeOut = 30 * time.Second                      // 30 seconds is the block time for tezos
 )
 
 type senderOptions struct {
@@ -55,8 +51,6 @@ func NewSender(
 	urls []string, w wallet.Wallet,
 	rawOpts json.RawMessage, l log.Logger) (chain.Sender, error) {
 	var err error
-	fmt.Println(src.ContractAddress())
-	fmt.Println(dst.ContractAddress())
 	// srcAddr := tezos.MustParseAddress(src.ContractAddress())
 	dstAddr := tezos.MustParseAddress(dst.ContractAddress())
 	s := &sender{
@@ -68,14 +62,11 @@ func NewSender(
 
 	json.Unmarshal(rawOpts, &s.opts)
 
-	PrintPlus()
-	fmt.Println(w.Address())
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("Empty url")
 	}
 
 	bmcManaement := tezos.MustParseAddress(s.opts.BMCManagment)
-	fmt.Println("bmc Management sender", bmcManaement)
 
 	s.cls, err = NewClient(urls[0], dstAddr, bmcManaement, l)
 	if err != nil {
@@ -87,7 +78,6 @@ func NewSender(
 }
 
 func (s *sender) Balance(ctx context.Context) (balance, threshold *big.Int, err error) {
-	fmt.Println("reached in balance of tezos")
 	address := tezos.MustParseAddress(s.w.Address())
 	balance, err = s.cls.GetBalance(ctx, s.cls.Cl, address, s.cls.blockLevel)
 	if err != nil {
@@ -107,7 +97,7 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		limit := defaultTxSizeLimit
 		s.opts.TxDataSizeLimit = uint64(limit)
 	}
-	
+
 	if len(msg.Receipts) == 0 {
 		return nil, msg, nil
 	}
@@ -127,12 +117,6 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		if err != nil {
 			return nil, nil, err
 		}
-
-		Print()
-
-		fmt.Println(receipt.Index)
-		fmt.Println(receipt.Height)
-		fmt.Println(receipt.Events)
 
 		rlpReceipt, err := codec.RLP.MarshalToBytes(&chain.RelayReceipt{
 			Index:  receipt.Index,
@@ -185,8 +169,6 @@ func (s *sender) Status(ctx context.Context) (link *chain.BMCLinkStatus, err err
 }
 
 func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*relayTx, error) {
-
-	fmt.Println("reached in new relaytx")
 	client := s.cls
 
 	return &relayTx{
@@ -211,21 +193,15 @@ func (tx *relayTx) ID() interface{} {
 }
 
 func (tx *relayTx) Send(ctx context.Context) (err error) {
-	fmt.Println("reached in sender of tezos")
 	_ctx, cancel := context.WithTimeout(ctx, defaultSendTxTimeOut)
 	defer cancel()
 
 	prim := micheline.Prim{}
 	messageHex := hex.EncodeToString(tx.Message)
 
-	fmt.Println("Previous is: ", tx.Prev)
-
 	in := "{ \"prim\": \"Pair\", \"args\": [ { \"bytes\": \"" + messageHex + "\" }, { \"string\": \"" + tx.Prev + "\" } ] }"
-	fmt.Println(in)
 
 	if err := prim.UnmarshalJSON([]byte(in)); err != nil {
-		fmt.Println("couldnot unmarshall empty string")
-		fmt.Println(err)
 		return err
 	}
 
@@ -240,14 +216,12 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	}
 
 	opts.Signer = w.Signer()
-	fmt.Println("memory signer is : ", opts.Signer)
 	opts.TTL = 3
 
 	from := tezos.MustParseAddress(tx.w.Address()) // pubk
 
 	argument := args.WithSource(from).WithDestination(tx.cl.Contract.Address())
 
-	fmt.Println("The message is", messageHex)
 	receipt, err := tx.cl.HandleRelayMessage(_ctx, argument, &opts)
 
 	if err != nil {
@@ -274,16 +248,4 @@ func (tx *relayTx) Receipt(ctx context.Context) (blockHeight uint64, err error) 
 		return 0, err
 	}
 	return blockHeight, nil
-}
-
-func Print() {
-	for i := 0; i < 100; i++ {
-		fmt.Println("*")
-	}
-}
-
-func PrintPlus() {
-	for i := 0; i < 100; i++ {
-		fmt.Println("__")
-	}
 }
