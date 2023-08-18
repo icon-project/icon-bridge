@@ -772,41 +772,41 @@ start_relay() {
 }
 
 
-# ensure_config_dir
-# ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bts.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bts.wallet.secret
-# ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bmc.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bmc.wallet.secret
-# ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bmr.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bmr.wallet.secret
-# ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.fa.wallet.json $CONFIG_DIR/_ixh/keystore/icon.fa.wallet.secret
-# ensure_tezos_keystore
-# fund_it_flag
+ensure_config_dir
+ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bts.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bts.wallet.secret
+ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bmc.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bmc.wallet.secret
+ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.bmr.wallet.json $CONFIG_DIR/_ixh/keystore/icon.bmr.wallet.secret
+ensure_key_store $CONFIG_DIR/_ixh/keystore/icon.fa.wallet.json $CONFIG_DIR/_ixh/keystore/icon.fa.wallet.secret
+ensure_tezos_keystore
+fund_it_flag
 
-# build_javascores
-# deploy_javascore_bmc
-# deploy_javascore_bts 0 0 18
-# # deploy_javascore_token 
+build_javascores
+deploy_javascore_bmc
+deploy_javascore_bts 0 0 18
+# deploy_javascore_token 
 
-# configure_javascore_add_bmc_owner
-# configure_javascore_add_bts
-# configure_javascore_add_bts_owner
-# configure_javascore_bmc_setFeeAggregator
-# configure_javascore_bts_setICXFee 0 0
+configure_javascore_add_bmc_owner
+configure_javascore_add_bts
+configure_javascore_add_bts_owner
+configure_javascore_bmc_setFeeAggregator
+configure_javascore_bts_setICXFee 0 0
 # configure_javascore_register_native_token $TZ_NATIVE_COIN_NAME $TZ_COIN_SYMBOL $TZ_FIXED_FEE $TZ_NUMERATOR $TZ_DECIMALS   
 
 
 
-# # # # tezos configuration
-# deploy_smartpy_bmc_management
-# deploy_smartpy_bmc_periphery
-# deploy_smartpy_bts_periphery
-# deploy_smartpy_bts_core
-# deploy_smartpy_bts_owner_manager
-# configure_dotenv
-# run_tezos_setters
+# # # tezos configuration
+deploy_smartpy_bmc_management
+deploy_smartpy_bmc_periphery
+deploy_smartpy_bts_periphery
+deploy_smartpy_bts_core
+deploy_smartpy_bts_owner_manager
+configure_dotenv
+run_tezos_setters
 
-# # # # icon configuration of tezos
-# configure_javascore_addLink
-# configure_javascore_setLinkHeight
-# configure_bmc_javascore_addRelay
+# # # icon configuration of tezos
+configure_javascore_addLink
+configure_javascore_setLinkHeight
+configure_bmc_javascore_addRelay
 
 
 configure_relay_config > $CONFIG_DIR/_ixh/relay.config.json
