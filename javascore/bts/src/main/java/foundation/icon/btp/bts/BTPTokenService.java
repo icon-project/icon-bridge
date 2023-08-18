@@ -108,6 +108,18 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             sn.set(BigInteger.ZERO);
         }
 
+        List<Address> addrList = new ArrayList<Address>();
+        addrList.add(Address.fromString("cx8a3abea4033ffa4e8553b593b6d4db41e8578956"));
+        addrList.add(Address.fromString("cx13cc93a9ed547c17ace46916dd115b7ea6aadcea")); 
+        
+        // coinDb.set("btp-NetXnHfVqm9iesp.tezos-bnXTZ",
+        //         new Coin(addrList.get(1), "btp-NetXnHfVqm9iesp.tezos-bnXTZ", "XTZ", 6, BigInteger.ZERO, BigInteger.ZERO, NATIVE_WRAPPED_COIN_TYPE));
+        coinAddressName.set(addrList.get(1), "btp-NetXnHfVqm9iesp.tezos-bnXTZ");
+
+        // coinDb.set("btp-NetXnHfVqm9iesp.tezos-XTZ",
+        //         new Coin(addrList.get(0), "btp-NetXnHfVqm9iesp.tezos-XTZ", "XTZ", 6, BigInteger.ZERO, BigInteger.ZERO, NATIVE_WRAPPED_COIN_TYPE));
+        coinAddressName.set(addrList.get(0), "btp-NetXnHfVqm9iesp.tezos-XTZ");
+
         if (coinDb.get(_name) == null) {
             require(_feeNumerator.compareTo(BigInteger.ZERO) >= 0 &&
                             _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
@@ -289,7 +301,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         List<String> blacklist = new ArrayList<>();
 
         for (String addr: _addresses) {
-            addr = lowercase(addr);
+            addr = trimWhitespace(addr);
             if (! isUserBlackListed(_net, addr) && addr.length() > 0) {
                 if (_net.equals(net) && !isValidIconAddress(addr)) {
                     continue;
@@ -1456,8 +1468,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         return newSn;
     }
 
-    private String lowercase(String word) {
-        return word.trim().toLowerCase();
+    private String trimWhitespace(String word) {
+        return word.trim();
     }
 
     private String[] getLinks() {

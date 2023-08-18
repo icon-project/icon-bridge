@@ -46,8 +46,8 @@ public class BlacklistDB {
         return null;
     }
 
-    private String lowercase(String user) {
-        return user.trim().toLowerCase();
+    private String trimWhitespace(String user) {
+        return user.trim();
     }
 
     public Integer indexOf(String net, String user) {
@@ -65,13 +65,13 @@ public class BlacklistDB {
     public boolean contains(String net, String user) {
         var a = blacklistIndex.at(net);
         if (a != null) {
-            return a.get(lowercase(user)) != null;
+            return a.get(trimWhitespace(user)) != null;
         }
         return false;
     }
 
     public void addToBlacklist(String net, String user) {
-        user = lowercase(user);
+        user = trimWhitespace(user);
         if (!contains(net, user)) {
             blacklistedUsers.at(net).add(user);
             int size = length(net);
@@ -80,7 +80,7 @@ public class BlacklistDB {
     }
 
     public String removeFromBlacklist(String net, String user) {
-        user = lowercase(user);
+        user = trimWhitespace(user);
         Integer valueIdx = indexOf(net, user);
         var netUsers = blacklistedUsers.at(net);
         var netIndex = blacklistIndex.at(net);
