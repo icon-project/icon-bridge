@@ -478,15 +478,16 @@ func main() {
 
 	argument = args.WithSource(from).WithDestination(bmcManagementClient.Address())
 
-	fmt.Println("toggling bridgeon")
+	fmt.Println("toggling bridge on bmc management")
 	opts.IgnoreLimits = false
 	res, err = bmcManagementClient.Call(ctx, argument, &opts)
+	fmt.Println(res)
 
 	if err != nil {
 		fmt.Println("error while calling", entrypoint)
 		fmt.Println(err)
 	}
-
+	fmt.Println("toggling bridge on bts core")
 	res, err = btsCoreClient.Call(ctx, argument, &opts)
 	if err != nil {
 		fmt.Println("error while calling", entrypoint)
@@ -525,9 +526,8 @@ func register(btsCore tezos.Address, coinName string, opts rpc.CallOptions) {
 
 	var prim micheline.Prim
 
-	
 	in := "{\"prim\": \"Pair\", \"args\": [{\"prim\": \"Pair\",\"args\": [{\"string\": \"" + "tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg" + "\"},{\"prim\": \"Pair\",\"args\": [{\"int\": \"0\"},{\"int\": \"0\"}]}]},{\"prim\": \"Pair\",\"args\": [[],{\"prim\": \"Pair\",\"args\": [{\"string\": \"" + coinName + "1" + "\"},[]]}]}]}"
-	
+
 	if err := prim.UnmarshalJSON([]byte(in)); err != nil {
 		fmt.Println("couldnot unmarshall empty string")
 		fmt.Println(err)
@@ -554,4 +554,3 @@ func register(btsCore tezos.Address, coinName string, opts rpc.CallOptions) {
 
 	fmt.Println(res)
 }
-

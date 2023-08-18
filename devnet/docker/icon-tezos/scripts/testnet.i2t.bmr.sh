@@ -28,7 +28,6 @@ export ICON_FIXED_FEE=0
 export ICON_NUMERATOR=0
 export ICON_DECIMALS=18
 export FEE_GATHERING_INTERVAL=43200
-export RELAYER_ADDRESS=tz1ZPVxKiybvbV1GvELRJJpyE1xj1UpNpXMv
 export ICON_ZERO_ADDRESS=cx0000000000000000000000000000000000000000
 
 tz_lastBlock() {
@@ -151,7 +150,7 @@ fund_it_flag() {
 
 deploy_smartpy_bmc_management(){
     cd $(echo $SMARTPY_DIR/bmc)
-    if [ ! -f $CONDIG_DIR/_ixh/tz.addr.bmcmanagementbtp ]; then
+    if [ ! -f $CONFIG_DIR/_ixh/tz.addr.bmcmanagementbtp ]; then
         echo "deploying bmc_management"
         extract_chainHeight
         cd $SMARTPY_DIR/bmc
@@ -167,7 +166,7 @@ deploy_smartpy_bmc_management(){
 
 deploy_smartpy_bmc_periphery(){
     cd $(echo $SMARTPY_DIR/bmc)
-    if [ ! -f $CONDIG_DIR/_ixh/tz.addr.bmcperipherybtp ]; then
+    if [ ! -f $CONFIG_DIR/_ixh/tz.addr.bmcperipherybtp ]; then
         echo "deploying bmc_periphery"
         npm run compile bmc_periphery
         local deploy=$(npm run deploy bmc_periphery @GHOSTNET)
@@ -181,7 +180,7 @@ deploy_smartpy_bmc_periphery(){
 
 deploy_smartpy_bts_periphery(){
     cd $(echo $SMARTPY_DIR/bts)
-    if [ ! -f $CONDIG_DIR/_ixh/tz.addr.bts_periphery ]; then
+    if [ ! -f $CONFIG_DIR/_ixh/tz.addr.bts_periphery ]; then
         echo "deploying bts_periphery"
         npm run compile bts_periphery
         local deploy=$(npm run deploy bts_periphery @GHOSTNET)
@@ -193,7 +192,7 @@ deploy_smartpy_bts_periphery(){
 
 deploy_smartpy_bts_core(){
     cd $(echo $SMARTPY_DIR/bts)
-    if [ ! -f $CONDIG_DIR/_ixh/tz.addr.bts_core ]; then
+    if [ ! -f $CONFIG_DIR/_ixh/tz.addr.bts_core ]; then
         echo "deploying bts_core"
         npm run compile bts_core
         local deploy=$(npm run deploy bts_core @GHOSTNET)
@@ -205,7 +204,7 @@ deploy_smartpy_bts_core(){
 
 deploy_smartpy_bts_owner_manager(){
     cd $(echo $SMARTPY_DIR/bts)
-    if [ ! -f $CONDIG_DIR/_ixh/tz.addr.bts_owner_manager ]; then
+    if [ ! -f $CONFIG_DIR/_ixh/tz.addr.bts_owner_manager ]; then
         echo "deploying bts_owner_manager"
         npm run compile bts_owner_manager
         local deploy=$(npm run deploy bts_owner_manager @GHOSTNET)
