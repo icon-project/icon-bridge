@@ -91,14 +91,9 @@ func (vr *Verifier) Verify(blockHeader *types.BlockHeader, votes []byte) (ok boo
 
 	numVotes := 0
 	validators := make(map[common.Address]struct{})
-	// fmt.Printf("height: %d, votesHash: %v\n", blockHeader.Height, blockHeader.VotesHash)
-	// fmt.Printf("nextValidatorsHash: %v\n", nextValidatorsHash)
-	// fmt.Print("listValidators:")
 	for _, val := range listValidators {
-		// fmt.Printf("%v, ", &val)
 		validators[val] = struct{}{}
 	}
-	// fmt.Println()
 
 	for _, item := range cvl.Items {
 		vote.Timestamp = item.Timestamp
@@ -107,7 +102,6 @@ func (vr *Verifier) Verify(blockHeader *types.BlockHeader, votes []byte) (ok boo
 			continue // skip error
 		}
 		address := common.NewAccountAddressFromPublicKey(pub)
-		// fmt.Printf("cvl.Items.address(%d):%v\n", i, address)
 		if address == nil {
 			continue
 		}
@@ -119,7 +113,6 @@ func (vr *Verifier) Verify(blockHeader *types.BlockHeader, votes []byte) (ok boo
 			return true, nil
 		}
 	}
-	// fmt.Println("VotesCount:", numVotes)
 	return true, nil
 
 	// return false, fmt.Errorf("insufficient votes")
