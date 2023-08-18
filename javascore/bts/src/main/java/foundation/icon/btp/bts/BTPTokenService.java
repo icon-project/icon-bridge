@@ -108,18 +108,6 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             sn.set(BigInteger.ZERO);
         }
 
-        List<Address> addrList = new ArrayList<Address>();
-        addrList.add(Address.fromString("cx8a3abea4033ffa4e8553b593b6d4db41e8578956"));
-        addrList.add(Address.fromString("cx13cc93a9ed547c17ace46916dd115b7ea6aadcea")); 
-        
-        // coinDb.set("btp-NetXnHfVqm9iesp.tezos-bnXTZ",
-        //         new Coin(addrList.get(1), "btp-NetXnHfVqm9iesp.tezos-bnXTZ", "XTZ", 6, BigInteger.ZERO, BigInteger.ZERO, NATIVE_WRAPPED_COIN_TYPE));
-        coinAddressName.set(addrList.get(1), "btp-NetXnHfVqm9iesp.tezos-bnXTZ");
-
-        // coinDb.set("btp-NetXnHfVqm9iesp.tezos-XTZ",
-        //         new Coin(addrList.get(0), "btp-NetXnHfVqm9iesp.tezos-XTZ", "XTZ", 6, BigInteger.ZERO, BigInteger.ZERO, NATIVE_WRAPPED_COIN_TYPE));
-        coinAddressName.set(addrList.get(0), "btp-NetXnHfVqm9iesp.tezos-XTZ");
-
         if (coinDb.get(_name) == null) {
             require(_feeNumerator.compareTo(BigInteger.ZERO) >= 0 &&
                             _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
@@ -1493,14 +1481,4 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         require(UINT_CAP.compareTo(value) >= 0, "Value cannot exceed uint(256)-1");
     }
 
-    // TODO: to be removed in production 
-
-    @External
-    public void transferToBTS(Address tokenAddress, Address bts) {
-        requireOwnerAccess();
-        BigInteger balance = (BigInteger) Context.call(tokenAddress, "balanceOf", Context.getAddress());
-        Context.call(tokenAddress, "transfer", bts, balance, null);
-    }
 }
-
-
