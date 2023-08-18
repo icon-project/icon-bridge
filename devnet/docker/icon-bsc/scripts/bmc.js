@@ -26,10 +26,21 @@ module.exports = async function (callback) {
         break
       case "addRelay":
         console.log("Add relay ", argv.link)
-        let relays = [argv.addr]
+        let relays=argv.addr.split(',').map(item => item.trim());
         tx = await bmcManagement.addRelay(argv.link, relays)
         //console.log(await bmcManagement.getRelays(argv.link))
         console.log(tx)
+        break;
+      case "removeRelay":
+        console.log("Add relay ", argv.link)
+        let relay = argv.addr
+        tx = await bmcManagement.removeRelay(argv.link, relay)
+        // console.log(await bmcManagement.getRelays(argv.link))
+        console.log(tx)
+        break;
+      case "getRelays":
+        console.log("Relays for link ", argv.link)
+        console.log(await bmcManagement.getRelays(argv.link))
         break;
       case "addOwner":
         console.log("Add bmc owner ", argv.addr)
