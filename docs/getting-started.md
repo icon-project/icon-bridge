@@ -25,6 +25,7 @@ Get familiar with some terminologies used in icon-bridge [here.](terminologies.m
 | /docker | Scripts to create docker containers (Some of it Obsolete) |
 | /javascore | javascore smart contracts |
 | /solidity | solidity smart contracts |
+| /smartpy  | tezos smart contracts |
 
 >TLDR version of deployment is available [here](#tdlr)
 
