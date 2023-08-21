@@ -21,10 +21,11 @@ import (
 )
 
 const (
-	txMaxDataSize        = 512 // 1 KB
+	txMaxDataSize        = 1024 // 1 KB
 	txOverheadScale      = 0.01
 	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale) // with the rlp overhead
 	defaultSendTxTimeOut = 30 * time.Second                      // 30 seconds is the block time for tezos
+	maxEventPropagation = 5
 )
 
 var (
@@ -117,7 +118,22 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		Receipts: msg.Receipts,
 	}
 
+	var newEvent []*chain.Event
+	var newReceipt *chain.Receipt
+	var newReceipts []*chain.Receipt
+
 	for i, receipt := range msg.Receipts {
+		fmt.Println("from segment of tezos: ", receipt.Events[0].Message)
+		fmt.Println("from segment of tezos: ", receipt.Events[0].Sequence)
+		fmt.Println("from segment of tezos: ", receipt.Events[0].Next)	
+		fmt.Println("len of events", len(receipt.Events))
+		fmt.Println("msg.receipts", len(msg.Receipts))
+
+		if len(receipt.Events) > maxEventPropagation {
+			newEvent = receipt.Events[maxEventPropagation:]
+			receipt.Events = receipt.Events[:maxEventPropagation]
+		}
+
 		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events) //json.Marshal(receipt.Events) // change to rlp bytes
 		if err != nil {
 			return nil, nil, err
@@ -132,13 +148,28 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 			return nil, nil, err
 		}
 
+		fmt.Println("Message size is initially", msgSize)
+
 		newMsgSize := msgSize + uint64(len(rlpReceipt))
+		fmt.Println(newMsgSize)
 		if newMsgSize > s.opts.TxDataSizeLimit {
+			fmt.Println("limit is", s.opts.TxDataSizeLimit)
+			fmt.Println("The value of i is", i)
 			newMsg.Receipts = msg.Receipts[i:]
 			break
 		}
 		msgSize = newMsgSize
+		fmt.Println("message size", msgSize)
 		rm.Receipts = append(rm.Receipts, rlpReceipt)
+
+		if newEvent != nil {
+			newReceipt = receipt
+			newReceipt.Events = newEvent
+			newReceipts = append(newReceipts, newReceipt)
+			newReceipts = append(newReceipts, msg.Receipts...)
+			msg.Receipts = newReceipts
+			break
+		}
 	}
 	message, err := codec.RLP.MarshalToBytes(rm) // json.Marshal(rm)
 	if err != nil {
