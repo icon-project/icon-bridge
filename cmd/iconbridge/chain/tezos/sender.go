@@ -123,12 +123,6 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 	var newReceipts []*chain.Receipt
 
 	for i, receipt := range msg.Receipts {
-		fmt.Println("from segment of tezos: ", receipt.Events[0].Message)
-		fmt.Println("from segment of tezos: ", receipt.Events[0].Sequence)
-		fmt.Println("from segment of tezos: ", receipt.Events[0].Next)	
-		fmt.Println("len of events", len(receipt.Events))
-		fmt.Println("msg.receipts", len(msg.Receipts))
-
 		if len(receipt.Events) > maxEventPropagation {
 			newEvent = receipt.Events[maxEventPropagation:]
 			receipt.Events = receipt.Events[:maxEventPropagation]
@@ -148,18 +142,12 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 			return nil, nil, err
 		}
 
-		fmt.Println("Message size is initially", msgSize)
-
 		newMsgSize := msgSize + uint64(len(rlpReceipt))
-		fmt.Println(newMsgSize)
 		if newMsgSize > s.opts.TxDataSizeLimit {
-			fmt.Println("limit is", s.opts.TxDataSizeLimit)
-			fmt.Println("The value of i is", i)
 			newMsg.Receipts = msg.Receipts[i:]
 			break
 		}
 		msgSize = newMsgSize
-		fmt.Println("message size", msgSize)
 		rm.Receipts = append(rm.Receipts, rlpReceipt)
 
 		if newEvent != nil {
@@ -237,8 +225,6 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	prim := micheline.Prim{}
 	messageHex := hex.EncodeToString(tx.Message)
 
-	fmt.Println("starting ma status flag is ", statusFlag)
-
 	status, err := tx.cl.GetStatus(ctx, tx.cl.Contract, tx.link)
 	if err != nil {
 		return err
@@ -264,10 +250,6 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 		return nil
 	} 
 
-	fmt.Println("status flag", statusFlag)
-
-	fmt.Println(messageHex)
-
 	in := "{ \"prim\": \"Pair\", \"args\": [ { \"bytes\": \"" + messageHex + "\" }, { \"string\": \"" + tx.Prev + "\" } ] }"
 
 	if err := prim.UnmarshalJSON([]byte(in)); err != nil {
@@ -292,7 +274,8 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	argument := args.WithSource(from).WithDestination(tx.cl.Contract.Address())
 
 	receipt, err := tx.cl.HandleRelayMessage(_ctx, argument, &opts)
-
+	tx.cl.Log.WithFields(log.Fields{
+					"tx":  messageHex}).Debug("handleRelayMessage: tx sent")
 	if err != nil {
 		return err
 	}
