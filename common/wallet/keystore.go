@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 
+	"blockwatch.cc/tzgo/tezos"
 	"github.com/gofrs/uuid"
 	"golang.org/x/crypto/scrypt"
 	"golang.org/x/crypto/sha3"
@@ -26,6 +27,7 @@ const (
 	cipherAES128CTR = "aes-128-ctr"
 	kdfScrypt       = "scrypt"
 	coinTypeNear    = "near"
+	coinTypeXTZ = "xtz"
 )
 
 type AES128CTRParams struct {
@@ -177,6 +179,10 @@ func DecryptKeyStore(data, pw []byte) (Wallet, error) {
 			return nil, err
 		}
 		return NewNearwalletFromPrivateKey(key)
+	case coinTypeXTZ:
+		key := tezos.MustParsePrivateKey(ksdata.Crypto.Cipher)
+
+		return NewTezosWalletFromPrivateKey(key)
 	default:
 		return nil, errors.Errorf("InvalidCoinType(coin=%s)", ksdata.CoinType)
 	}

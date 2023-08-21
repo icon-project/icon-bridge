@@ -56,7 +56,7 @@ func NewMultiRelay(cfg *Config, l log.Logger) (Relay, error) {
 		}
 		l := l.WithFields(log.Fields{
 			log.FieldKeyModule:  rc.Name,
-			log.FieldKeyWallet:  w.Address(),
+			// log.FieldKeyWallet:  w.Address(),
 			log.FieldKeyService: srvName,
 		})
 

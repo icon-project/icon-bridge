@@ -174,6 +174,7 @@ func (r *Receiver) newVerifier(opts *types.VerifierOptions) (*Verifier, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	ok, err := vr.Verify(header, votes)
 	if !ok {
 		err = errors.New("verification failed")
@@ -304,7 +305,6 @@ func handleVerifierBlockRequests(requestCh chan *verifierBlockRequest, client IC
 }
 
 func (r *Receiver) receiveLoop(ctx context.Context, startHeight, startSeq uint64, callback func(rs []*chain.Receipt) error) (err error) {
-
 	blockReq, logFilter := r.blockReq, r.logFilter // copy
 
 	blockReq.Height, logFilter.seq = types.NewHexInt(int64(startHeight)), startSeq
@@ -378,7 +378,7 @@ loop:
 				}
 			}(ctxMonitorBlock, cancelMonitorBlock)
 
-			// sync verifier
+			// sync verifier disabled
 			if vr != nil {
 				if err := r.syncVerifier(vr, next); err != nil {
 					return errors.Wrapf(err, "sync verifier: %v", err)

@@ -14,7 +14,7 @@ import (
 const (
 	relayTickerInterval                  = 5 * time.Second
 	relayBalanceCheckInterval            = 60 * time.Second
-	relayTriggerReceiptsCount            = 20
+	relayTriggerReceiptsCount            = 5
 	relayTxSendWaitInterval              = time.Second / 2
 	relayTxReceiptWaitInterval           = time.Second
 	relayInsufficientBalanceWaitInterval = 30 * time.Second
@@ -157,7 +157,6 @@ func (r *relay) Start(ctx context.Context) error {
 				}
 			}
 			msg.Receipts = receipts
-
 			if len(msg.Receipts) > 0 {
 				r.log.WithFields(log.Fields{
 					"seq": []uint64{seqBegin, seqEnd}}).Debug("srcMsg added")
@@ -168,7 +167,6 @@ func (r *relay) Start(ctx context.Context) error {
 			}
 
 		case <-relayCh:
-
 			link, err = r.dst.Status(ctx)
 			if err != nil {
 				r.log.WithFields(log.Fields{"error": err}).Debug("dst.Status: failed")
@@ -188,7 +186,7 @@ func (r *relay) Start(ctx context.Context) error {
 				r.log.WithFields(log.Fields{"rxSeq": missing}).Error("missing event sequence")
 				return fmt.Errorf("missing event sequence")
 			}
-
+			
 			tx, newMsg, err := r.dst.Segment(ctx, srcMsg)
 			if err != nil {
 				return err

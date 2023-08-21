@@ -1,0 +1,15 @@
+version: '3.3'
+services:
+  bmr:
+    image: i2tbmr2:latest
+    container_name: bmr
+    network_mode: host
+    restart: unless-stopped
+    # ports:
+    #   - 6060:6060 # golang pprof
+    entrypoint: ["/bin/iconbridge", "-config", "/config.json"]
+    volumes:
+      - /home/sheldor/GoProjects/icon-bridge/devnet/docker/icon-tezos/_ixh/relay.config.json:/config.json
+        #environment:
+            #AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+            #AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
