@@ -164,7 +164,8 @@ class DecodeEncodeLibrary:
             with sp.if_ (counter.value == 0):
                 next_bmc.value = sp.view("decode_string", self.data.helper, i.value, t=sp.TString).open_some()
             with sp.if_ (counter.value == 1):
-                seq.value = Utils2.Int.of_bytes(i.value)
+                wl_prefix_seq = sp.view("without_length_prefix", self.data.helper, i.value, t=sp.TBytes).open_some()
+                seq.value = Utils2.Int.of_bytes(wl_prefix_seq)
             counter.value = counter.value + 1
         return sp.record(event_rv=sp.record(next_bmc= next_bmc.value, seq= seq.value, message = message.value))
 
@@ -261,9 +262,9 @@ class DecodeEncodeLibrary:
         _to_byte = sp.view("to_byte", self.data.helper_parse_negative, params.sn, t=sp.TBytes).open_some()
         rlp.value = _to_byte
 
-        with sp.if_ (params.sn < sp.int(0)):
-            encode_sn = sp.view("with_length_prefix", self.data.helper, rlp.value, t=sp.TBytes).open_some()
-            rlp.value = encode_sn
+        # with sp.if_ (params.sn < sp.int(0)):
+        encode_sn = sp.view("with_length_prefix", self.data.helper, rlp.value, t=sp.TBytes).open_some()
+        rlp.value = encode_sn
 
         rlp_bytes_with_prefix = sp.view("encode_list", self.data.helper,
                                         [encode_src, encode_dst, encode_svc, rlp.value, params.message],

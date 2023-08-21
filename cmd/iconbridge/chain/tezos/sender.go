@@ -25,6 +25,12 @@ const (
 	txOverheadScale      = 0.01
 	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale) // with the rlp overhead
 	defaultSendTxTimeOut = 30 * time.Second                      // 30 seconds is the block time for tezos
+	maxEventPropagation = 5
+)
+
+var (
+	originalRxSeq = big.NewInt(0)
+	statusFlag = false 
 )
 
 type senderOptions struct {
@@ -112,7 +118,16 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		Receipts: msg.Receipts,
 	}
 
+	var newEvent []*chain.Event
+	var newReceipt *chain.Receipt
+	var newReceipts []*chain.Receipt
+
 	for i, receipt := range msg.Receipts {
+		if len(receipt.Events) > maxEventPropagation {
+			newEvent = receipt.Events[maxEventPropagation:]
+			receipt.Events = receipt.Events[:maxEventPropagation]
+		}
+
 		rlpEvents, err := codec.RLP.MarshalToBytes(receipt.Events) //json.Marshal(receipt.Events) // change to rlp bytes
 		if err != nil {
 			return nil, nil, err
@@ -134,6 +149,15 @@ func (s *sender) Segment(ctx context.Context, msg *chain.Message) (tx chain.Rela
 		}
 		msgSize = newMsgSize
 		rm.Receipts = append(rm.Receipts, rlpReceipt)
+
+		if newEvent != nil {
+			newReceipt = receipt
+			newReceipt.Events = newEvent
+			newReceipts = append(newReceipts, newReceipt)
+			newReceipts = append(newReceipts, msg.Receipts...)
+			msg.Receipts = newReceipts
+			break
+		}
 	}
 	message, err := codec.RLP.MarshalToBytes(rm) // json.Marshal(rm)
 	if err != nil {
@@ -176,6 +200,7 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*
 		Message: message,
 		cl:      client,
 		w:       s.w,
+		link:	s.src.String(),
 	}, nil
 }
 
@@ -186,6 +211,7 @@ type relayTx struct {
 	cl      *Client
 	receipt *rpc.Receipt
 	w       wallet.Wallet
+	link 	string
 }
 
 func (tx *relayTx) ID() interface{} {
@@ -198,6 +224,31 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 
 	prim := micheline.Prim{}
 	messageHex := hex.EncodeToString(tx.Message)
+
+	status, err := tx.cl.GetStatus(ctx, tx.cl.Contract, tx.link)
+	if err != nil {
+		return err
+	}
+
+	if !statusFlag {
+		originalRxSeq = status.RxSeq
+		statusFlag = true
+	}
+
+	if status.RxSeq.Cmp(originalRxSeq) > 0 {
+		statusFlag = false
+		hash, err := tx.cl.GetBlockByHeight(ctx, tx.cl.Cl, status.CurrentHeight.Int64())
+		if err != nil {
+			return err
+		}
+
+		tx.receipt = &rpc.Receipt{
+			Pos: 0,
+			List: 0,
+			Block: hash.Hash,
+		}
+		return nil
+	} 
 
 	in := "{ \"prim\": \"Pair\", \"args\": [ { \"bytes\": \"" + messageHex + "\" }, { \"string\": \"" + tx.Prev + "\" } ] }"
 
@@ -223,13 +274,14 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	argument := args.WithSource(from).WithDestination(tx.cl.Contract.Address())
 
 	receipt, err := tx.cl.HandleRelayMessage(_ctx, argument, &opts)
-
+	tx.cl.Log.WithFields(log.Fields{
+					"tx":  messageHex}).Debug("handleRelayMessage: tx sent")
 	if err != nil {
-		return nil
+		return err
 	}
 
 	tx.receipt = receipt
-
+	statusFlag = false 
 	return nil
 }
 

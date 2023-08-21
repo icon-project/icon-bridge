@@ -757,7 +757,7 @@ configure_relay_config() {
         --arg dst_endpoint "$TZ_NET_URI" \
         --arg dst_key_store "$(echo $(cat $CONFIG_DIR/_ixh/keystore/tz.bmr.wallet))" \
         --arg secret "$(echo $(cat $CONFIG_DIR/_ixh/keystore/tz.bmr.wallet.secret))" \
-        --arg secret "edskRz1HoD3cWkmWhCNS5LjBrJNWChGuKWB4HnVoN5UqVsUCpcNJR67ZxKs965u8RgRwptrtGc2ufYZoeECgB77RKm1gTbQ6eB" \
+        --arg dst_key_store_cointype "xtz" \
         --arg dst_key_password "xyz" \
         --argjson dst_tx_data_size_limit 8192 \
         --argjson dst_options '{"gas_limit":24000000,"tx_data_size_limit":8192,"balance_threshold":"100000000000000000000","boost_gas_price":1.0}' \

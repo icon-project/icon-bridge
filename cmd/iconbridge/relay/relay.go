@@ -14,7 +14,7 @@ import (
 const (
 	relayTickerInterval                  = 5 * time.Second
 	relayBalanceCheckInterval            = 60 * time.Second
-	relayTriggerReceiptsCount            = 20
+	relayTriggerReceiptsCount            = 5
 	relayTxSendWaitInterval              = time.Second / 2
 	relayTxReceiptWaitInterval           = time.Second
 	relayInsufficientBalanceWaitInterval = 30 * time.Second

@@ -255,7 +255,6 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 									"lbnHash":    lbn.Hash,
 									"nextHeight": next,
 									"bnHash":     bn.Hash}).Error("verification failed. refetching block ", err)
-								time.Sleep(5 * time.Second)
 								next--
 								break
 							}
@@ -290,7 +289,7 @@ func (r *receiver) receiveLoop(ctx context.Context, opts *BnOptions, callback fu
 
 		default:
 			if next >= latest {
-				time.Sleep(10 * time.Second)
+				time.Sleep(10 * time.Millisecond)
 				continue
 			}
 
