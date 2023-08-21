@@ -21,10 +21,15 @@ import (
 )
 
 const (
-	txMaxDataSize        = 1024 // 1 KB
+	txMaxDataSize        = 512 // 1 KB
 	txOverheadScale      = 0.01
 	defaultTxSizeLimit   = txMaxDataSize / (1 + txOverheadScale) // with the rlp overhead
 	defaultSendTxTimeOut = 30 * time.Second                      // 30 seconds is the block time for tezos
+)
+
+var (
+	originalRxSeq = big.NewInt(0)
+	statusFlag = false 
 )
 
 type senderOptions struct {
@@ -176,6 +181,7 @@ func (s *sender) newRelayTx(ctx context.Context, prev string, message []byte) (*
 		Message: message,
 		cl:      client,
 		w:       s.w,
+		link:	s.src.String(),
 	}, nil
 }
 
@@ -186,6 +192,7 @@ type relayTx struct {
 	cl      *Client
 	receipt *rpc.Receipt
 	w       wallet.Wallet
+	link 	string
 }
 
 func (tx *relayTx) ID() interface{} {
@@ -198,6 +205,37 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 
 	prim := micheline.Prim{}
 	messageHex := hex.EncodeToString(tx.Message)
+
+	fmt.Println("starting ma status flag is ", statusFlag)
+
+	status, err := tx.cl.GetStatus(ctx, tx.cl.Contract, tx.link)
+	if err != nil {
+		return err
+	}
+
+	if !statusFlag {
+		originalRxSeq = status.RxSeq
+		statusFlag = true
+	}
+
+	if status.RxSeq.Cmp(originalRxSeq) > 0 {
+		statusFlag = false
+		hash, err := tx.cl.GetBlockByHeight(ctx, tx.cl.Cl, status.CurrentHeight.Int64())
+		if err != nil {
+			return err
+		}
+
+		tx.receipt = &rpc.Receipt{
+			Pos: 0,
+			List: 0,
+			Block: hash.Hash,
+		}
+		return nil
+	} 
+
+	fmt.Println("status flag", statusFlag)
+
+	fmt.Println(messageHex)
 
 	in := "{ \"prim\": \"Pair\", \"args\": [ { \"bytes\": \"" + messageHex + "\" }, { \"string\": \"" + tx.Prev + "\" } ] }"
 
@@ -225,11 +263,11 @@ func (tx *relayTx) Send(ctx context.Context) (err error) {
 	receipt, err := tx.cl.HandleRelayMessage(_ctx, argument, &opts)
 
 	if err != nil {
-		return nil
+		return err
 	}
 
 	tx.receipt = receipt
-
+	statusFlag = false 
 	return nil
 }
 
