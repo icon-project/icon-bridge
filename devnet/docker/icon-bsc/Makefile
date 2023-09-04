@@ -54,7 +54,7 @@ stoprelayimg:
 	./build.sh stoprelayimg	
 
 buildimglocal:
-	./build.sh buildimg
+	./build.sh buildimglocal
 
 runimglocal:
 	./build.sh runimglocal

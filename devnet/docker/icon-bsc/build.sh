@@ -214,7 +214,7 @@ deploy_smart_contracts_on_localnet() {
     cd scripts
     if [ ! -f config_testnet.sh ]; then
         cp config.sh config_testnet.sh
-        cp config_local.sh config.sh
+        cp config/icon-bsc.config.localnet.sh config.sh
     fi
     ./deploysc.sh
     if [ -f config_testnet.sh ]; then
