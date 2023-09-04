@@ -32,7 +32,7 @@ module.exports = async function (callback) {
         console.log(tx)
         break;
       case "removeRelay":
-        console.log("Add relay ", argv.link)
+        console.log("Remove relay ", argv.link)
         let relay = argv.addr
         tx = await bmcManagement.removeRelay(argv.link, relay)
         // console.log(await bmcManagement.getRelays(argv.link))
