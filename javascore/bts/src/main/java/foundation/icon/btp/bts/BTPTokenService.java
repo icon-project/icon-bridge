@@ -60,7 +60,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     public static final int NON_NATIVE_TOKEN_TYPE = 2;
 
     public static final Address ZERO_SCORE_ADDRESS = Address.fromString("cx0000000000000000000000000000000000000000");
-    public static final BigInteger UINT_CAP = new BigInteger("115792089237316195423570985008687907853269984665640564039457584007913129639935"); //BigInteger.TWO.pow(256).subtract(BigInteger.ONE);
+    public static final BigInteger UINT_CAP = new BigInteger(
+            "115792089237316195423570985008687907853269984665640564039457584007913129639935"); // BigInteger.TWO.pow(256).subtract(BigInteger.ONE);
 
     private final Address bmc;
     private final String net;
@@ -69,7 +70,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     private final OwnerManager ownerManager = new OwnerManagerImpl("owners");
 
-    private final EnumerableSet<String > coinNames = new EnumerableSet<>("coinNames", String.class);
+    private final EnumerableSet<String> coinNames = new EnumerableSet<>("coinNames", String.class);
     private final DictDB<String, Address> coinAddresses = Context.newDictDB("coinAddresses", Address.class);
     private final DictDB<Address, String> coinAddressName = Context.newDictDB("coinAddressNames", String.class);
 
@@ -77,9 +78,9 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     private final DictDB<String, BigInteger> feeBalances = Context.newDictDB("feeBalances", BigInteger.class);
     private final DictDB<BigInteger, TransferTransaction> transactions = Context.newDictDB("transactions",
             TransferTransaction.class);
-    private final DictDB<BigInteger, BlacklistTransaction> blacklistTxn  = Context.newDictDB("blacklistTransaction",
+    private final DictDB<BigInteger, BlacklistTransaction> blacklistTxn = Context.newDictDB("blacklistTransaction",
             BlacklistTransaction.class);
-    private final DictDB<BigInteger, TokenLimitTransaction> tokenLimitTxn  = Context.newDictDB("tokenLimitTransaction",
+    private final DictDB<BigInteger, TokenLimitTransaction> tokenLimitTxn = Context.newDictDB("tokenLimitTransaction",
             TokenLimitTransaction.class);
     private final BranchDB<String, DictDB<String, Boolean>> tokenLimitStatus = Context.newBranchDB("tokenLimitStatus",
             Boolean.class);
@@ -110,7 +111,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         if (coinDb.get(_name) == null) {
             require(_feeNumerator.compareTo(BigInteger.ZERO) >= 0 &&
-                            _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
+                    _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
                     "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
             require(_fixedFee.compareTo(BigInteger.ZERO) >= 0, "Fixed fee cannot be less than zero");
 
@@ -126,7 +127,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     /**
      * To change the Coin Fee setting( Fixed fee and fee percentage)
-     *  Fee Numerator can range from 0 to 10000. (10000 means 100%)
+     * Fee Numerator can range from 0 to 10000. (10000 means 100%)
+     * 
      * @param _name         name of the Coin
      * @param _feeNumerator fee numerator to calculate the fee percentage, Set Zero
      *                      to retain existing value
@@ -139,7 +141,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
                 _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
                 "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
         Context.require(_fixedFee.compareTo(BigInteger.ZERO) >= 0, "Fixed fee cannot be less than zero");
-        require( isRegistered(_name), "Not supported Coin");
+        require(isRegistered(_name), "Not supported Coin");
         Coin _coin = coinDb.get(_name);
         if (_coin == null) {
             throw BTSException.unknown("Coin Not Registered");
@@ -153,16 +155,14 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External(readonly = true)
     public Map<String, BigInteger> feeRatio(String _name) {
         Coin coinDetail = coinDb.get(_name);
-        if ( coinDetail != null ) {
+        if (coinDetail != null) {
             return Map.of(
                     "fixedFee", coinDetail.getFixedFee(),
-                    "feeNumerator", coinDetail.getFeeNumerator()
-            );
+                    "feeNumerator", coinDetail.getFeeNumerator());
         }
         return Map.of(
                 "fixedFee", BigInteger.ZERO,
-                "feeNumerator", BigInteger.ZERO
-        );
+                "feeNumerator", BigInteger.ZERO);
     }
 
     /**
@@ -170,12 +170,13 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      * Deploys a IRC2Tradeable Contract if token does not exist
      * Can't register tokens with same name
      *
-     * @param _name A coin name
-     * @param _symbol Symbol of that coin
-     * @param _decimals Number of decimals
+     * @param _name         A coin name
+     * @param _symbol       Symbol of that coin
+     * @param _decimals     Number of decimals
      * @param _feeNumerator Fee numerator for coin
-     * @param _fixedFee Fixed fee for coin
-     * @param _addr Contract address of token (pass null or zero score address for wrapped tokens)
+     * @param _fixedFee     Fixed fee for coin
+     * @param _addr         Contract address of token (pass null or zero score
+     *                      address for wrapped tokens)
      */
     @External
     public void register(String _name, String _symbol, int _decimals, BigInteger _feeNumerator, BigInteger _fixedFee,
@@ -185,10 +186,9 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         require(!isRegistered(_name), "already existed");
 
         Context.require(_feeNumerator.compareTo(BigInteger.ZERO) >= 0 &&
-                        _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
+                _feeNumerator.compareTo(FEE_DENOMINATOR) < 0,
                 "The feeNumerator should be less than FEE_DENOMINATOR and feeNumerator should be greater than 1");
         Context.require(_fixedFee.compareTo(BigInteger.ZERO) >= 0, "Fixed fee cannot be less than zero");
-
 
         coinNames.add(_name);
         if (_addr == null || _addr.equals(ZERO_SCORE_ADDRESS)) {
@@ -213,7 +213,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      * Sends Token Limit BTP Message to connected chains
      * Size of array should be same
      * Order of coin name and token limit in param is same
-     * @param _coinNames Array of name of the coins
+     * 
+     * @param _coinNames   Array of name of the coins
      * @param _tokenLimits Maximum allowable limit for all tokens in above parameter
      */
     @External
@@ -242,7 +243,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             BTPAddress linkAddr = BTPAddress.valueOf(link);
             String net = linkAddr.net();
             networks[i] = net;
-            for (String name: _coinNames) {
+            for (String name : _coinNames) {
                 tokenLimitStatus.at(net).set(name, false);
             }
             TokenLimitRequest request = new TokenLimitRequest(_coinNames, _tokenLimits, net);
@@ -275,7 +276,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      * Sends Blacklist BTP Message to connected chains
      * No BTP Message if blacklisted only on ICON
      * Save address in lowercase string
-     * @param _net chain to blacklist on
+     * 
+     * @param _net       chain to blacklist on
      * @param _addresses list of addresses to blacklist
      */
     @External
@@ -288,9 +290,9 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         List<String> blacklist = new ArrayList<>();
 
-        for (String addr: _addresses) {
+        for (String addr : _addresses) {
             addr = lowercase(addr);
-            if (! isUserBlackListed(_net, addr) && addr.length() > 0) {
+            if (!isUserBlackListed(_net, addr) && addr.length() > 0) {
                 if (_net.equals(net) && !isValidIconAddress(addr)) {
                     continue;
                 }
@@ -299,7 +301,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             }
         }
 
-        if (blacklist.size() == 0 || net.equals(_net))  {
+        if (blacklist.size() == 0 || net.equals(_net)) {
             return;
         }
 
@@ -321,7 +323,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     /**
      * Remove users from blacklist on certain networks
      * Sends Blacklist BTP Message to connected chains
-     * @param _net chain name
+     * 
+     * @param _net       chain name
      * @param _addresses list of addresses to remove from blacklist
      */
     @External
@@ -334,8 +337,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         List<String> blacklist = new ArrayList<>();
 
-        for (String addr: _addresses) {
-            if ( isUserBlackListed(_net, addr)) {
+        for (String addr : _addresses) {
+            if (isUserBlackListed(_net, addr)) {
                 blacklist.add(addr);
                 blacklistDB.removeFromBlacklist(_net, addr);
             }
@@ -353,7 +356,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         BigInteger sn = increaseSn();
         BlacklistTransaction request = new BlacklistTransaction(
-                BlacklistTransaction.REMOVE_FROM_BLACKLIST,addresses, _net);
+                BlacklistTransaction.REMOVE_FROM_BLACKLIST, addresses, _net);
 
         blacklistTxn.set(sn, request);
 
@@ -404,23 +407,23 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     /**
      * Usable => Amount transferred/approved to BTS by owner
-     * Tradeable Usable =>  minimumOf(availableBalance, approvedBalance)
+     * Tradeable Usable => minimumOf(availableBalance, approvedBalance)
      *
      * Locked:
-     * IRC Locked: usable <- usable-value,  locked_amount<- locked_amount + value
+     * IRC Locked: usable <- usable-value, locked_amount<- locked_amount + value
      * Tradeable IRC Locked: same
      *
      * Refundable:
      * IRC refund:
-     *     locked <- locked-value
-     *     if failure:
-     *         refundable = refundable + value
-     *         if canRefund():
-     *             refundable = refundable - value
+     * locked <- locked-value
+     * if failure:
+     * refundable = refundable + value
+     * if canRefund():
+     * refundable = refundable - value
      *
      * Userbalance:
-     * IRC          :  account_balance
-     * TradeableIRC :  account_balance
+     * IRC : account_balance
+     * TradeableIRC : account_balance
      */
     @External(readonly = true)
     public Map<String, BigInteger> balanceOf(Address _owner, String _coinName) {
@@ -459,7 +462,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @External(readonly = true)
     public Map<String, BigInteger> getAccumulatedFees() {
         Map<String, BigInteger> fees = new HashMap<>();
-        for (String coinName: coinNames()) {
+        for (String coinName : coinNames()) {
             fees.put(coinName, feeBalances.getOrDefault(coinName, BigInteger.ZERO));
         }
         return fees;
@@ -470,13 +473,14 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      * Called when IRC2 Tokens are transferred to BTS, not manually called by user.
      * Adds transferred amount to usable balance
      * Only for registered tokens
-     * @param _from From address
+     * 
+     * @param _from  From address
      * @param _value Amount to send to BTS
-     * @param _data data if any
+     * @param _data  data if any
      */
     @External
     public void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
-        require( _value.compareTo(BigInteger.ZERO) >= 0, "value should be positive");
+        require(_value.compareTo(BigInteger.ZERO) >= 0, "value should be positive");
         checkUintLimit(_value);
         String _coinName = coinAddressName.get(Context.getCaller());
         if (_coinName != null && !Context.getAddress().equals(_from)) {
@@ -491,13 +495,14 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     /**
      * Reclaim tokens/nativecoin if failed to mint on destination chain.
-     * Reclaim IRC2 Tokens sent to BTS, which are not yet transferred to destination chain.
+     * Reclaim IRC2 Tokens sent to BTS, which are not yet transferred to destination
+     * chain.
      * Transfers amount of that coin back to user.
      * If amount in BTS > _value, remaining amount set to refundable.
      * Refundable amount can be claimed anytime
      *
      * @param _coinName A given name of coin
-     * @param _value An amount to re-claim
+     * @param _value    An amount to re-claim
      */
     @External
     public void reclaim(String _coinName, BigInteger _value) {
@@ -514,7 +519,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         if (_value.compareTo(balance.getRefundable()) > 0) {
             usable = balance.getUsable().subtract(_value.subtract(balance.getRefundable()));
-        } else  { 
+        } else {
             refundable = balance.getRefundable().subtract(_value);
             usable = balance.getUsable();
         }
@@ -535,11 +540,15 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      * Checks for blacklist and token limit
      * Sends BTP Message for cross-chain transfer of ICX
      * lock ICX on BTS, mint equivalent on destination chain
-     * @param _to BTP Address of destination chain that a user expects to receive an equivalent amount of tokens.
+     * 
+     * @param _to BTP Address of destination chain that a user expects to receive an
+     *            equivalent amount of tokens.
      */
     @Payable
     @External
     public void transferNativeCoin(String _to) {
+        Context.require(_to.length() < 100, "Length Check");
+
         BigInteger value = Context.getValue();
         checkUintLimit(value);
         BTPAddress to = BTPAddress.valueOf(_to);
@@ -557,9 +566,11 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      * subtract value from usable balance
      * lock tokens on BTS, mint equivalent on destination chain
      *
-     * @param _coinName A given name of coin that is to be transferred to destination chain
-     * @param _value Transferring amount.
-     * @param _to BTP Address of destination chain that a user expects to receive an equivalent amount of tokens.
+     * @param _coinName A given name of coin that is to be transferred to
+     *                  destination chain
+     * @param _value    Transferring amount.
+     * @param _to       BTP Address of destination chain that a user expects to
+     *                  receive an equivalent amount of tokens.
      */
     @External
     public void transfer(String _coinName, BigInteger _value, String _to) {
@@ -567,6 +578,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         require(_value != null && _value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
         checkUintLimit(_value);
         require(isRegistered(_coinName), "Not supported Token");
+        Context.require(_to.length() < 100, "Length Check");
 
         Address owner = Context.getCaller();
         BTPAddress to = BTPAddress.valueOf(_to);
@@ -581,13 +593,16 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      * Checks for blacklist and token limit
      * locks value of all tokens/nativecoin on BTS, mints on destination
      *
-     * @param _coinNames    Given names of each coin that is equivalent to retrieve a wrapped Token Contract's address, i.e. list["Token A"] = 0x12345678
-     * @param _values       Transferring amounts per coin
-     * @param _to           Target BTP Address of destination to recieve coins at.
+     * @param _coinNames Given names of each coin that is equivalent to retrieve a
+     *                   wrapped Token Contract's address, i.e. list["Token A"] =
+     *                   0x12345678
+     * @param _values    Transferring amounts per coin
+     * @param _to        Target BTP Address of destination to recieve coins at.
      */
     @Payable
     @External
     public void transferBatch(String[] _coinNames, BigInteger[] _values, String _to) {
+        Context.require(_to.length() < 100, "Length Check");
         int len = _coinNames.length;
         require(len > 0, "Zero length arguments");
         require(_coinNames.length == _values.length, "Invalid arguments");
@@ -604,13 +619,13 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             values.add(icxValue);
         }
 
-        require(BATCH_LIMIT_SIZE >= tempLen, "Cannot transfer over "+ BATCH_LIMIT_SIZE + " tokens at once");
+        require(BATCH_LIMIT_SIZE >= tempLen, "Cannot transfer over " + BATCH_LIMIT_SIZE + " tokens at once");
 
         Address owner = Context.getCaller();
         BTPAddress to = BTPAddress.valueOf(_to);
         checkBlacklist(net, owner.toString(), to.account());
         checkBlacklist(to.net(), owner.toString(), to.account());
-        
+
         for (int i = 0; i < len; i++) {
             String coinName = _coinNames[i];
             BigInteger value = _values[i];
@@ -626,7 +641,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         sendRequest(owner, to, coinNameList, values);
     }
-    
+
     @EventLog(indexed = 1)
     public void TransferStart(Address _from, String _to, BigInteger _sn, byte[] _assetDetails) {
     }
@@ -644,13 +659,16 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     @EventLog(indexed = 1)
-    public void AddedToBlacklist(BigInteger sn, byte[] bytes) { }
+    public void AddedToBlacklist(BigInteger sn, byte[] bytes) {
+    }
 
     @EventLog(indexed = 1)
-    public void RemovedFromBlacklist(BigInteger sn, byte[] bytes) { }
+    public void RemovedFromBlacklist(BigInteger sn, byte[] bytes) {
+    }
 
     @EventLog(indexed = 1)
-    public void TokenLimitSet(BigInteger sn, byte[] bytes) { }
+    public void TokenLimitSet(BigInteger sn, byte[] bytes) {
+    }
 
     @External(readonly = true)
     public TransferTransaction getTransaction(BigInteger _sn) {
@@ -738,16 +756,17 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     /**
      * Handles token transfer request/response, blacklist, token limit
      * Token transfer from other chain (Handle request)
-     * Token transfer from ICON (Handle successful/unsuccessful response incoming from destination chain)
+     * Token transfer from ICON (Handle successful/unsuccessful response incoming
+     * from destination chain)
      * locking/unlocking of tokens/ICX
      * set to refundable on unsuccessful response
      * handles add/remove from blacklist based on response
      * checks networks where token limit has been added
      *
      * @param _from BTP Address of source
-     * @param _svc Service Type
-     * @param _sn Serial Number
-     * @param _msg BTS Message in bytes
+     * @param _svc  Service Type
+     * @param _sn   Serial Number
+     * @param _msg  BTS Message in bytes
      */
     @External
     public void handleBTPMessage(String _from, String _svc, BigInteger _sn, byte[] _msg) {
@@ -787,11 +806,11 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      * Called if BTP Message couldn't be resolved on destination chain
      * Handled for token transfers, token limit and blacklist error response
      *
-     * @param _src BTP Address of source
-     * @param _svc Service type
-     * @param _sn Serial Number
+     * @param _src  BTP Address of source
+     * @param _svc  Service type
+     * @param _sn   Serial Number
      * @param _code BTP Transaction code
-     * @param _msg error message if any
+     * @param _msg  error message if any
      */
     @External
     public void handleBTPError(String _src, String _svc, BigInteger _sn, long _code, String _msg) {
@@ -823,8 +842,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
                 handleAddToBlacklistFailResponse(bTxn);
             } else if (service == BlacklistTransaction.REMOVE_FROM_BLACKLIST) {
                 handleRemoveFromBlacklistFailResponse(bTxn);
-            }
-            else {
+            } else {
                 throw BTSException.unknown("BLACKLIST HANDLE ERROR");
             }
             return;
@@ -835,7 +853,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      * Sends fee accumulated on BTS Contract to fee gathering address defined on BMC
      * Called once after a certain block height by BMC
      *
-     * @param _fa Fee Aggregator Adddress
+     * @param _fa  Fee Aggregator Adddress
      * @param _svc Service Type
      */
     @External
@@ -1083,7 +1101,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     private void handleAddToBlacklistFailResponse(BlacklistTransaction txn) {
         String[] addresses = txn.getAddress();
         String net = txn.getNet();
-        for(String addr: addresses) {
+        for (String addr : addresses) {
             removeFromBlacklistInternal(net, addr);
         }
     }
@@ -1091,7 +1109,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     private void handleRemoveFromBlacklistFailResponse(BlacklistTransaction txn) {
         String[] addresses = txn.getAddress();
         String net = txn.getNet();
-        for(String addr : addresses) {
+        for (String addr : addresses) {
             addToBlacklistInternal(net, addr);
         }
     }
@@ -1124,7 +1142,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     private String[] removeFromArray(String[] arr, String element) {
         boolean inArray = isInArray(arr, element);
-        if ( inArray ) {
+        if (inArray) {
             int size = arr.length;
             String[] newArr = new String[size - 1];
             for (int i = 0, k = 0; i < size; i++) {
@@ -1318,6 +1336,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
     /**
      * Add _addr as owner
+     * 
      * @param _addr Admin/Owner address to access on BMC
      */
     @External
@@ -1335,6 +1354,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      * Remove _addr from owners list
      * Only current owners can call this method
      * Contract deployer cannot be removed as owner
+     * 
      * @param _addr Address to remove as owner
      */
     @External
@@ -1387,7 +1407,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         checkTransferRestrictions(net, coinName, from, to.account(), value);
     }
 
-    private void checkTransferRestrictions(String _net, String _tokenName, String _from, String _to, BigInteger _value) {
+    private void checkTransferRestrictions(String _net, String _tokenName, String _from, String _to,
+            BigInteger _value) {
         if (restriction.get() != null && restriction.get()) {
             validateRestriction(_net, _tokenName, _from, _to, _value);
         }
@@ -1412,7 +1433,6 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             }
         }
     }
-
 
     private void validateRestriction(String _net, String _token, String _from, String _to, BigInteger _value) {
         if (isUserBlackListed(_net, _from)) {
