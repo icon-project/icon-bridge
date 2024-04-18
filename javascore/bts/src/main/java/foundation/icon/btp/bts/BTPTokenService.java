@@ -501,7 +501,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
             // icon bridge migration checks
             requireNotEth(_coinName);
-            Coin coin = coinDb.get(name);
+            Coin coin = coinDb.get(_coinName);
             require(coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE, "Cannnot transfer icon tokens anymore.");
 
             Context.require(coinAddresses.get(_coinName) != null, "CoinNotExists");
