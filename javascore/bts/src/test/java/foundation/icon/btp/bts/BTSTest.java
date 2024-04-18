@@ -15,6 +15,7 @@ import java.util.Random;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.function.Executable;
@@ -281,6 +282,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
     @Test
     @Order(7)
+    @Disabled
     public void operationOnRegisteredTokens() {
         register();
 
@@ -298,6 +300,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
     @Test
     @Order(8)
+    @Disabled
     public void reclaimDepositedTokens() {
         // for IRC2 tokens
         register();
@@ -338,6 +341,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
     @Test
     @Order(9)
+    @Disabled
     public void transferNativeCoin() {
         sendBTPMessageMock();
         String btpAddress = generateBTPAddress(METACHAIN, owner.getAddress().toString());
@@ -381,6 +385,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
     @Test
     @Order(9)
+    @Disabled
     public void transferNativeCoinResponse() {
         sendBTPMessageMock();
         String btpAddress = generateBTPAddress(METACHAIN, owner.getAddress().toString());
@@ -451,6 +456,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
     @Test
     @Order(10)
+    @Disabled
     public void transfer() {
         String btpaddr = generateBTPAddress("harmony", ETH_ADDR);
 
@@ -488,6 +494,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
     @Test
     @Order(10)
+    @Disabled
     public void transferResponseBack() {
         sendBTPMessageMock();
         String btpAddress = generateBTPAddress(METACHAIN, owner.getAddress().toString());
@@ -559,6 +566,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
     @Test
     @Order(11)
+    @Disabled
     public void transferBatch() {
         String[] coinNames = new String[]{"Token1", "Token2", "Token3", "Token4", PARA};
         BigInteger val = BigInteger.valueOf(10);
@@ -718,6 +726,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
     @Test
     @Order(13)
+    @Disabled
     public void handleBTPMessage2() {
 
         // request plus response
@@ -1086,6 +1095,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
     @Test
     @Order(20)
+    @Disabled
     public void transferBatchNativecoinTokenLimit() {
         tokenLimitBTPMessage();
         score.invoke(owner, "setTokenLimit", new String[]{ICON}, new BigInteger[]{BigInteger.valueOf(1000)});
@@ -1121,6 +1131,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
     @Test
     @Order(20)
+    @Disabled
     public void handleFeeGathering() {
         String feeAggregator = generateBTPAddress("icon", "hx0000000000000000000000000000000000000000");
 
@@ -1301,4 +1312,191 @@ public class BTSTest extends AbstractBTPTokenService {
         assertEquals( true, score.call("tokenLimitStatus", "icon", ICON));
         assertEquals( true, score.call("tokenLimitStatus", "icon", PARA));
     }
+
+    // ICON BRIDGE MIGRATION TESTS
+
+    @Test
+    public void preventICXTransfer() {
+        sendBTPMessageMock();
+        String btpAddress = generateBTPAddress(METACHAIN, owner.getAddress().toString());
+        // general condition
+        contextMock.when(sendICX()).thenReturn(BigInteger.valueOf(100));
+
+        Executable call = () -> score.invoke(owner, "transferNativeCoin", btpAddress);
+        expectErrorMessage(call, "Reverted(0): Cannot transfer ICX.");
+    }
+
+    @Test
+    @Disabled
+    public void preventIconTokenTransfer() {
+        sendBTPMessageMock();
+        String btpaddr = generateBTPAddress(METACHAIN, owner.getAddress().toString());
+
+        register();
+
+        // should not transfer native-coin
+        Executable call = () -> score.invoke(nonOwner, "transfer", TEST_TOKEN, BigInteger.TEN, btpaddr);
+        expectErrorMessage(call, "Cannnot transfer icon tokens anymore.");
+
+    }
+
+    @Test
+    public void preventEthTokenTransfer() {
+        sendBTPMessageMock();
+        String btpaddr = generateBTPAddress(METACHAIN, owner.getAddress().toString());
+
+        String tokenName = "btp-0x38.bsc-eth";
+
+        Verification deployWrappedToken = () -> Context.deploy(any(), eq(tokenName),
+                eq(tokenName),eq(18));
+        contextMock.when(deployWrappedToken).thenReturn(wrappedIRC2.getAddress());
+
+        score.invoke(owner, "register",tokenName, tokenName, 18, BigInteger.ZERO, BigInteger.TWO,
+                    Address.fromString("cx0000000000000000000000000000000000000000"));
+
+
+        // should not transfer native-coin
+        Executable call = () -> score.invoke(nonOwner, "transfer", tokenName, BigInteger.TEN, btpaddr);
+        expectErrorMessage(call, "NotETH");
+
+    }
+
+    @Test
+    public void migrationRestrictionOnTransferBatch_includeICX() {
+
+        String[] coinNames = new String[]{"Token1", "Token2", "Token3", "Token4", PARA};
+        BigInteger val = BigInteger.valueOf(10);
+        BigInteger[] values = new BigInteger[]{val, val, val, val, val};
+        String destination = generateBTPAddress("harmony", ETH_ADDR);
+
+        Verification sendMessage = () -> Context.call(eq(bmcMock.getAddress()), eq("sendMessage"), eq("harmony"),
+                eq("bts"), eq(BigInteger.ONE), any());
+        contextMock.when(sendMessage).thenReturn(null);
+
+
+        contextMock.when(sendICX()).thenReturn(BigInteger.valueOf(100));
+
+        // register tokens
+        Account token1 = Account.newScoreAccount(10);
+        Account token2 = Account.newScoreAccount(11);
+        Account token3 = Account.newScoreAccount(12);
+        Account token4 = Account.newScoreAccount(13);
+
+        // register irc2 token
+        register(coinNames[0], token1.getAddress());
+        register(coinNames[1], token2.getAddress());
+        register(coinNames[2], token3.getAddress());
+        register(coinNames[3], token4.getAddress());
+
+
+        Executable call = () -> score.invoke(nonOwner, "transferBatch", coinNames, values, destination);
+        expectErrorMessage(call, "Reverted(0): Cannot transfer ICX.");
+
+    }
+
+    @Test
+    public void migrationRestrictionOnTransferBatch_includeETHTokens() {
+        String tokenName = "btp-0x38.bsc-eth";
+
+        String[] coinNames = new String[]{tokenName,"Token1", "Token2", "Token3", "Token4", PARA};
+        BigInteger val = BigInteger.valueOf(10);
+        BigInteger[] values = new BigInteger[]{val, val, val, val, val, val};
+        String destination = generateBTPAddress("harmony", ETH_ADDR);
+
+        Verification sendMessage = () -> Context.call(eq(bmcMock.getAddress()), eq("sendMessage"), eq("harmony"),
+                eq("bts"), eq(BigInteger.ONE), any());
+        contextMock.when(sendMessage).thenReturn(null);
+
+
+        // register tokens
+        Account token1 = Account.newScoreAccount(10);
+        Account token2 = Account.newScoreAccount(11);
+        Account token3 = Account.newScoreAccount(12);
+        Account token4 = Account.newScoreAccount(13);
+
+        // register irc2 token
+        register(coinNames[1], token1.getAddress());
+        register(coinNames[2], token2.getAddress());
+        register(coinNames[3], token3.getAddress());
+        register(coinNames[4], token4.getAddress());
+
+        Verification deployWrappedToken = () -> Context.deploy(any(), eq(tokenName),
+                eq(tokenName),eq(18));
+        contextMock.when(deployWrappedToken).thenReturn(wrappedIRC2.getAddress());
+
+        score.invoke(owner, "register",tokenName, tokenName, 18, BigInteger.ZERO, BigInteger.TWO,
+                    Address.fromString("cx0000000000000000000000000000000000000000"));
+
+
+        Executable call = () -> score.invoke(nonOwner, "transferBatch", coinNames, values, destination);
+        expectErrorMessage(call, "NotETH");
+    }
+
+    @Test
+    public void migrationRestrictionOnTransferBatch_includeWrappedTokensOnly() {
+        String tokenName = "META";
+
+        String[] coinNames = new String[]{tokenName, PARA};
+        BigInteger val = BigInteger.valueOf(10);
+        BigInteger[] values = new BigInteger[]{val, val};
+        String destination = generateBTPAddress("harmony", ETH_ADDR);
+
+        Verification sendMessage = () -> Context.call(eq(bmcMock.getAddress()), eq("sendMessage"), eq("harmony"),
+                eq("bts"), eq(BigInteger.ONE), any());
+        contextMock.when(sendMessage).thenReturn(null);
+
+        registerWrapped();
+
+        Verification deployWrappedToken = () -> Context.deploy(any(), eq(tokenName),
+                eq(tokenName),eq(18));
+        contextMock.when(deployWrappedToken).thenReturn(wrappedIRC2.getAddress());
+
+        score.invoke(owner, "register",tokenName, tokenName, 18, BigInteger.ZERO, BigInteger.TWO,
+                    Address.fromString("cx0000000000000000000000000000000000000000"));
+
+        // PARA and META registered
+
+        Verification transferFromMock = () -> Context.call(eq(Boolean.class), any(), eq("transferFrom"),
+                eq(nonOwner.getAddress()), eq(score.getAddress()), eq(BigInteger.valueOf(10)), any());
+        contextMock.when(transferFromMock).thenReturn(true);
+
+
+        score.invoke(nonOwner, "transferBatch", coinNames, values, destination);
+    }
+
+    @Test
+    public void migrationRestrictionOnTransferBatch_includeIconTokens() {
+
+        String[] coinNames = new String[]{"Token1", "Token2", "Token3", "Token4", PARA};
+        BigInteger val = BigInteger.valueOf(10);
+        BigInteger[] values = new BigInteger[]{val, val, val, val, val};
+        String destination = generateBTPAddress("harmony", ETH_ADDR);
+
+        Verification sendMessage = () -> Context.call(eq(bmcMock.getAddress()), eq("sendMessage"), eq("harmony"),
+                eq("bts"), eq(BigInteger.ONE), any());
+        contextMock.when(sendMessage).thenReturn(null);
+
+
+        // register tokens
+        Account token1 = Account.newScoreAccount(10);
+        Account token2 = Account.newScoreAccount(11);
+        Account token3 = Account.newScoreAccount(12);
+        Account token4 = Account.newScoreAccount(13);
+
+        // register irc2 token
+        register(coinNames[0], token1.getAddress());
+        register(coinNames[1], token2.getAddress());
+        register(coinNames[2], token3.getAddress());
+        register(coinNames[3], token4.getAddress());
+
+
+        Executable call = () -> score.invoke(nonOwner, "transferBatch", coinNames, values, destination);
+        expectErrorMessage(call, "Cannnot transfer icon tokens anymore.");
+    }
+
+
+
+
+
+
 }

@@ -15,13 +15,13 @@ import "./interfaces/IERC20Tradable.sol";
 import "./interfaces/IBTSOwnerManager.sol";
 
 /**
-   @title BTSCore contract
+   @title BTSCoreV5 contract
    @dev This contract is used to handle coin transferring service
    Note: The coin of following contract can be:
    Native Coin : The native coin of this chain
    Wrapped Native Coin : A tokenized ERC20 version of another native coin like ICX
 */
-contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
+contract BTSCoreV5 is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
     using SafeMathUpgradeable for uint256;
     using String for string;
 
@@ -359,36 +359,38 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
        @param _to  An address that a user expects to receive an amount of tokens.
     */
     function transferNativeCoin(string calldata _to) external payable override {
+        revert("NotSupported");
 
-        require(_to.length() < 100, "LengthCheck");
+        // for icon-bridgey migration
+        // require(_to.length() < 100, "LengthCheck");
 
-        btsPeriphery.checkTransferRestrictions(
-            nativeCoinName,
-            msg.sender,
-            msg.value
-        );
-        //  Aggregation Fee will be charged on BSH Contract
-        //  A new charging fee has been proposed. `fixedFee` is introduced
-        //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
-        //  Thus, it's likely that _chargeAmt is always greater than 0
-        //  require(_chargeAmt > 0) can be omitted
-        //  If msg.value less than _chargeAmt, it likely fails when calculating
-        //  _amount = _value - _chargeAmt
-        uint256 _chargeAmt = msg
-        .value
-        .mul(coinDetails[nativeCoinName].feeNumerator)
-        .div(FEE_DENOMINATOR)
-        .add(coinDetails[nativeCoinName].fixedFee);
+        // btsPeriphery.checkTransferRestrictions(
+        //     nativeCoinName,
+        //     msg.sender,
+        //     msg.value
+        // );
+        // //  Aggregation Fee will be charged on BSH Contract
+        // //  A new charging fee has been proposed. `fixedFee` is introduced
+        // //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
+        // //  Thus, it's likely that _chargeAmt is always greater than 0
+        // //  require(_chargeAmt > 0) can be omitted
+        // //  If msg.value less than _chargeAmt, it likely fails when calculating
+        // //  _amount = _value - _chargeAmt
+        // uint256 _chargeAmt = msg
+        // .value
+        // .mul(coinDetails[nativeCoinName].feeNumerator)
+        // .div(FEE_DENOMINATOR)
+        // .add(coinDetails[nativeCoinName].fixedFee);
 
-        //  @dev msg.value is an amount request to transfer (include fee)
-        //  Later on, it will be calculated a true amount that should be received at a destination
-        _sendServiceMessage(
-            msg.sender,
-            _to,
-            coinsName[0],
-            msg.value,
-            _chargeAmt
-        );
+        // //  @dev msg.value is an amount request to transfer (include fee)
+        // //  Later on, it will be calculated a true amount that should be received at a destination
+        // _sendServiceMessage(
+        //     msg.sender,
+        //     _to,
+        //     coinsName[0],
+        //     msg.value,
+        //     _chargeAmt
+        // );
     }
 
     /**
@@ -408,6 +410,10 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         require(_to.length() < 100, "LengthCheck");
         address _erc20Address = coins[_coinName];
         require(_erc20Address != address(0), "CoinNotRegistered");
+
+        // for icon bridge migration
+        Coin memory coin = coinDetails[_coinName];
+        require(coin.coinType == NATIVE_WRAPPED_COIN_TYPE, "CannotTransferViaBridge");
 
         btsPeriphery.checkTransferRestrictions(
             _coinName,
@@ -480,6 +486,19 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
     }
 
     /**
+        @notice ETH on ICON will be able be transferred from ICON to BSC via ICON Bridge
+        This function call will help to move all the ETH locked in BTSCore to another contract, 
+        which communicates with ETH contract on ICON
+        @param _to Contract to transfer ETH to
+     */
+    function moveLockedEth(address _to) external onlyOwner {
+        string memory ethName = "btp-0x38.bsc-eth";
+        address ethAddr = coins[ethName];
+        uint256 balance = IERC20Tradable(ethAddr).balanceOf(address(this));
+        IERC20(ethAddr).transfer(_to, balance);
+    }
+
+    /**
        @notice Allow users to transfer multiple coins/wrapped coins to another chain
        @dev Caller must set to approve that the wrapped tokens can be transferred out of the `msg.sender` account by BTSCore contract.
        It MUST revert if the balance of the holder for token `_coinName` is lower than the `_value` sent.
@@ -495,89 +514,92 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         uint256[] memory _values,
         string calldata _to
     ) external payable override {
-        require(_to.length() < 100, "LengthCheck");
-        require(_coinNames.length == _values.length, "InvalidRequest");
-        require(_coinNames.length > 0, "Zero length arguments");
-        uint256 size = msg.value != 0
-        ? _coinNames.length.add(1)
-        : _coinNames.length;
-        require(size <= MAX_BATCH_SIZE, "Batch maxSize Exceeds");
-        string[] memory _coins = new string[](size);
-        uint256[] memory _amounts = new uint256[](size);
-        uint256[] memory _chargeAmts = new uint256[](size);
-        Coin memory _coin;
-        string memory coinName;
-        uint value;
+        revert("NotSupported");
 
-        for (uint256 i = 0; i < _coinNames.length; i++) {
-            address _erc20Addresses = coins[_coinNames[i]];
-            //  Does not need to check if _coinNames[i] == native_coin
-            //  If _coinNames[i] is a native_coin, coins[_coinNames[i]] = 0
-            require(_erc20Addresses != address(0), "CoinNotRegistered");
-            coinName = _coinNames[i];
-            value = _values[i];
-            require(value > 0, "ZeroOrLess");
+        // for icon-bridge migration
+        // require(_to.length() < 100, "LengthCheck");
+        // require(_coinNames.length == _values.length, "InvalidRequest");
+        // require(_coinNames.length > 0, "Zero length arguments");
+        // uint256 size = msg.value != 0
+        // ? _coinNames.length.add(1)
+        // : _coinNames.length;
+        // require(size <= MAX_BATCH_SIZE, "Batch maxSize Exceeds");
+        // string[] memory _coins = new string[](size);
+        // uint256[] memory _amounts = new uint256[](size);
+        // uint256[] memory _chargeAmts = new uint256[](size);
+        // Coin memory _coin;
+        // string memory coinName;
+        // uint value;
 
-            btsPeriphery.checkTransferRestrictions(
-                coinName,
-                msg.sender,
-                value
-            );
+        // for (uint256 i = 0; i < _coinNames.length; i++) {
+        //     address _erc20Addresses = coins[_coinNames[i]];
+        //     //  Does not need to check if _coinNames[i] == native_coin
+        //     //  If _coinNames[i] is a native_coin, coins[_coinNames[i]] = 0
+        //     require(_erc20Addresses != address(0), "CoinNotRegistered");
+        //     coinName = _coinNames[i];
+        //     value = _values[i];
+        //     require(value > 0, "ZeroOrLess");
 
-            IERC20Tradable(_erc20Addresses).transferFrom(
-                msg.sender,
-                address(this),
-                value
-            );
+        //     btsPeriphery.checkTransferRestrictions(
+        //         coinName,
+        //         msg.sender,
+        //         value
+        //     );
 
-            _coin = coinDetails[coinName];
-            //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
-            //  Thus, it's likely that _chargeAmt is always greater than 0
-            //  require(_chargeAmt > 0) can be omitted
-            _coins[i] = coinName;
-            _chargeAmts[i] = value
-            .mul(_coin.feeNumerator)
-            .div(FEE_DENOMINATOR)
-            .add(_coin.fixedFee);
-            _amounts[i] = value.sub(_chargeAmts[i]);
+        //     IERC20Tradable(_erc20Addresses).transferFrom(
+        //         msg.sender,
+        //         address(this),
+        //         value
+        //     );
 
-            //  Lock this requested _value as a record of a pending transferring transaction
-            //  @dev Note that: _value is a requested amount to transfer from a Requester including charged fee
-            //  The true amount to receive at a destination receiver is calculated by
-            //  _amounts[i] = _values[i].sub(_chargeAmts[i]);
-            lockBalance(msg.sender, coinName, value);
-        }
+        //     _coin = coinDetails[coinName];
+        //     //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
+        //     //  Thus, it's likely that _chargeAmt is always greater than 0
+        //     //  require(_chargeAmt > 0) can be omitted
+        //     _coins[i] = coinName;
+        //     _chargeAmts[i] = value
+        //     .mul(_coin.feeNumerator)
+        //     .div(FEE_DENOMINATOR)
+        //     .add(_coin.fixedFee);
+        //     _amounts[i] = value.sub(_chargeAmts[i]);
 
-        if (msg.value != 0) {
-            //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
-            //  Thus, it's likely that _chargeAmt is always greater than 0
-            //  require(_chargeAmt > 0) can be omitted
-            btsPeriphery.checkTransferRestrictions(
-                nativeCoinName,
-                msg.sender,
-                msg.value
-            );
+        //     //  Lock this requested _value as a record of a pending transferring transaction
+        //     //  @dev Note that: _value is a requested amount to transfer from a Requester including charged fee
+        //     //  The true amount to receive at a destination receiver is calculated by
+        //     //  _amounts[i] = _values[i].sub(_chargeAmts[i]);
+        //     lockBalance(msg.sender, coinName, value);
+        // }
+
+        // if (msg.value != 0) {
+        //     //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
+        //     //  Thus, it's likely that _chargeAmt is always greater than 0
+        //     //  require(_chargeAmt > 0) can be omitted
+        //     btsPeriphery.checkTransferRestrictions(
+        //         nativeCoinName,
+        //         msg.sender,
+        //         msg.value
+        //     );
 
 
-            _coins[size - 1] = nativeCoinName;
-            // push native_coin at the end of request
-            _chargeAmts[size - 1] = msg
-            .value
-            .mul(coinDetails[nativeCoinName].feeNumerator)
-            .div(FEE_DENOMINATOR)
-            .add(coinDetails[nativeCoinName].fixedFee);
-            _amounts[size - 1] = msg.value.sub(_chargeAmts[size - 1]);
-            lockBalance(msg.sender, nativeCoinName, msg.value);
-        }
+        //     _coins[size - 1] = nativeCoinName;
+        //     // push native_coin at the end of request
+        //     _chargeAmts[size - 1] = msg
+        //     .value
+        //     .mul(coinDetails[nativeCoinName].feeNumerator)
+        //     .div(FEE_DENOMINATOR)
+        //     .add(coinDetails[nativeCoinName].fixedFee);
+        //     _amounts[size - 1] = msg.value.sub(_chargeAmts[size - 1]);
+        //     lockBalance(msg.sender, nativeCoinName, msg.value);
+        // }
 
-        //  @dev `_amounts` is true amounts to receive at a destination after deducting charged fees
-        btsPeriphery.sendServiceMessage(
-            msg.sender,
-            _to,
-            _coins,
-            _amounts,
-            _chargeAmts
-        );
+        // //  @dev `_amounts` is true amounts to receive at a destination after deducting charged fees
+        // btsPeriphery.sendServiceMessage(
+        //     msg.sender,
+        //     _to,
+        //     _coins,
+        //     _amounts,
+        //     _chargeAmts
+        // );
     }
 
     /**
