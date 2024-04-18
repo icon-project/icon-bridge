@@ -1540,7 +1540,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     private void requireNotEth(String name) {
-        String ethName = "btp-0x38.bsc-eth";
+        String ethName = "btp-0x38.bsc-ETH";
         require(!name.equals(ethName), "NotETH");
     }
 }

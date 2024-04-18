@@ -1345,7 +1345,7 @@ public class BTSTest extends AbstractBTPTokenService {
         sendBTPMessageMock();
         String btpaddr = generateBTPAddress(METACHAIN, owner.getAddress().toString());
 
-        String tokenName = "btp-0x38.bsc-eth";
+        String tokenName = "btp-0x38.bsc-ETH";
 
         Verification deployWrappedToken = () -> Context.deploy(any(), eq(tokenName),
                 eq(tokenName),eq(18));
@@ -1396,7 +1396,7 @@ public class BTSTest extends AbstractBTPTokenService {
 
     @Test
     public void migrationRestrictionOnTransferBatch_includeETHTokens() {
-        String tokenName = "btp-0x38.bsc-eth";
+        String tokenName = "btp-0x38.bsc-ETH";
 
         String[] coinNames = new String[]{tokenName,"Token1", "Token2", "Token3", "Token4", PARA};
         BigInteger val = BigInteger.valueOf(10);

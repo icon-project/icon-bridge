@@ -492,7 +492,7 @@ contract BTSCoreV5 is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         @param _to Contract to transfer ETH to
      */
     function moveLockedEth(address _to) external onlyOwner {
-        string memory ethName = "btp-0x38.bsc-eth";
+        string memory ethName = "btp-0x38.bsc-ETH";
         address ethAddr = coins[ethName];
         uint256 balance = IERC20Tradable(ethAddr).balanceOf(address(this));
         IERC20(ethAddr).transfer(_to, balance);
