@@ -673,8 +673,6 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
             checkTokenLimit(coinName, value);
         }
 
-        System.out.println("yaha aayo?");
-
         transferFromBatch(owner, Context.getAddress(), _coinNames, _values);
 
         sendRequest(owner, to, coinNameList, values);
