@@ -1,4 +1,4 @@
-const BTSCore = artifacts.require("BTSCore");
+const BTSCore = artifacts.require("BTSCoreV5");
 const BTSOwnerManager = artifacts.require("BTSOwnerManager");
 module.exports = async function (callback) {
     try {
@@ -25,6 +25,11 @@ module.exports = async function (callback) {
             break;
         case "updateCoinDb":
             tx = await btsCore.updateCoinDb()
+            console.log(tx)
+            break;
+        case "moveLockedEth":
+            console.log("Move Locked Eth ", argv.addr)
+            tx = await btsCore.moveLockedEth(argv.addr)
             console.log(tx)
             break;
         case "addOwner":

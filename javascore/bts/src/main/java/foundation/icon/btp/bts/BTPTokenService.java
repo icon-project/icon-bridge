@@ -271,6 +271,20 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     }
 
     /**
+     * Transfer ownership of token contract to somewhere else
+     * 
+     * @param _name Reegistered name of the token
+     * @param to    New owner
+     */
+    @External
+    public void transferOwnership(String _name, Address to) {
+        requireOwnerAccess();
+        Address tokenAddr = coinAddresses.get(_name);
+        Context.require(tokenAddr != null, "Token not registered");
+        Context.call(ZERO_SCORE_ADDRESS, "setScoreOwner", tokenAddr, to);
+    }
+
+    /**
      * Add users to blacklist on certain networks
      * Maintains information of all addresses blacklisted on all chains
      * Sends Blacklist BTP Message to connected chains
@@ -484,6 +498,12 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         checkUintLimit(_value);
         String _coinName = coinAddressName.get(Context.getCaller());
         if (_coinName != null && !Context.getAddress().equals(_from)) {
+
+            // icon bridge migration checks
+            requireNotEth(_coinName);
+            Coin coin = coinDb.get(_coinName);
+            require(coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE, "Cannnot transfer icon tokens anymore.");
+
             Context.require(coinAddresses.get(_coinName) != null, "CoinNotExists");
             Balance _userBalance = getBalance(_coinName, _from);
             _userBalance.setUsable(_userBalance.getUsable().add(_value));
@@ -547,6 +567,10 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @Payable
     @External
     public void transferNativeCoin(String _to) {
+
+        // icon bridge migration checks
+        Context.revert("Cannot transfer ICX.");
+
         Context.require(_to.length() < 100, "Length Check");
 
         BigInteger value = Context.getValue();
@@ -579,6 +603,11 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         checkUintLimit(_value);
         require(isRegistered(_coinName), "Not supported Token");
         Context.require(_to.length() < 100, "Length Check");
+
+        // icon bridge migration checks
+        requireNotEth(_coinName);
+        Coin coin = coinDb.get(_coinName);
+        require(coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE, "Cannnot transfer icon tokens anymore.");
 
         Address owner = Context.getCaller();
         BTPAddress to = BTPAddress.valueOf(_to);
@@ -613,6 +642,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
 
         int tempLen = len;
         if (icxValue != null && icxValue.compareTo(BigInteger.ZERO) > 0) {
+            Context.revert("Cannot transfer ICX.");
             tempLen = tempLen + 1;
             checkTokenLimit(name, icxValue);
             coinNameList.add(name);
@@ -629,6 +659,12 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         for (int i = 0; i < len; i++) {
             String coinName = _coinNames[i];
             BigInteger value = _values[i];
+
+            // icon bridge migration checks
+            requireNotEth(coinName);
+            Coin coin = coinDb.get(coinName);
+            require(coin.getCoinType() == NATIVE_WRAPPED_COIN_TYPE, "Cannnot transfer icon tokens anymore.");
+
             require(!name.equals(coinName) && this.coinNames.contains(coinName), "Not supported Token");
             require(value != null && value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
             checkUintLimit(value);
@@ -1501,4 +1537,8 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         require(UINT_CAP.compareTo(value) >= 0, "Value cannot exceed uint(256)-1");
     }
 
+    private void requireNotEth(String name) {
+        String ethName = "btp-0x38.bsc-ETH";
+        require(!name.equals(ethName), "NotETH");
+    }
 }
