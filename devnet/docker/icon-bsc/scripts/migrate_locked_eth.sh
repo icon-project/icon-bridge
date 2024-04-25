@@ -14,7 +14,7 @@ moveLockedEth() {
   echo "transferring all locked ETH to  ${ADDR}"
   cd $CONTRACTS_DIR/solidity/bmc
   tx=$(truffle exec --network bsc "$SCRIPTS_DIR"/bts.js \
-    --method addOwner --addr "${ADDR}")
+    --method moveLockedEth --addr "${ADDR}")
   echo "$tx" >$CONFIG_DIR/tx/moveLockedEth.bts.bsc
 }
 
