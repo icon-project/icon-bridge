@@ -8,8 +8,6 @@
     ICON Bridge is an early iteration of ICON's cutting-edge interoperability product, BTP, which allows cross-chain transfers and integration with any blockchain that suppots smart contracts.    
 </h3>
 <p align="center">
-    <a href="https://twitter.com/iconfoundation_"><img src="https://img.shields.io/twitter/follow/iconfoundation_?style=social"></a>
-    &nbsp;
    <a href="https://twitter.com/helloiconworld"><img src="https://img.shields.io/twitter/follow/helloiconworld?style=social"></a>
 </p>
 
