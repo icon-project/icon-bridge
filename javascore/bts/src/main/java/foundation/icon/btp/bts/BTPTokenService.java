@@ -494,6 +494,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      */
     @External
     public void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
+        Context.revert("Not supported");
         require(_value.compareTo(BigInteger.ZERO) >= 0, "value should be positive");
         checkUintLimit(_value);
         String _coinName = coinAddressName.get(Context.getCaller());
@@ -526,6 +527,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      */
     @External
     public void reclaim(String _coinName, BigInteger _value) {
+        Context.revert("Not supported");
         require(_value.compareTo(BigInteger.ZERO) > 0, "_value must be positive");
         checkUintLimit(_value);
 
@@ -553,6 +555,34 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
         } else {
             _transferBatch(Context.getAddress(), owner, List.of(_coinName), List.of(_value));
         }
+    }
+
+    @External
+    public void withdrawAllTokens() {
+        requireOwnerAccess();
+        Address _to = Context.getCaller();
+        for (String coinName : coinNames()) {
+            if (name.equals(coinName)) {
+                Context.transfer(_to, Context.getBalance(Context.getAddress()));
+            } else {
+                BigInteger balance = Context.call(BigInteger.class, this.getCoinAddress(coinName), "balanceOf", Context.getAddress());
+                if(balance.compareTo(BigInteger.ZERO) == 0) continue;
+                transfer(_to, coinName, balance);
+            }
+        }
+    }
+
+    @External
+    public void withdrawToken(String _coinName) {
+        requireOwnerAccess();
+        Address _to = Context.getCaller();
+        if(name.equals(_coinName)) {
+            Context.transfer(_to, Context.getBalance(Context.getAddress()));
+            return;
+        }
+        BigInteger balance = Context.call(BigInteger.class, this.getCoinAddress(_coinName), "balanceOf", Context.getAddress());
+        if(balance.compareTo(BigInteger.ZERO) == 0) return;
+        transfer(_to, _coinName, balance);
     }
 
     /**
@@ -598,6 +628,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
      */
     @External
     public void transfer(String _coinName, BigInteger _value, String _to) {
+        Context.revert("Not supported");
         require(!_coinName.equals(name), "Only for IRC2 Token");
         require(_value != null && _value.compareTo(BigInteger.ZERO) > 0, "Invalid amount");
         checkUintLimit(_value);
@@ -631,6 +662,7 @@ public class BTPTokenService implements BTS, BTSEvents, BSH, OwnerManager {
     @Payable
     @External
     public void transferBatch(String[] _coinNames, BigInteger[] _values, String _to) {
+        Context.revert("Not supported");
         Context.require(_to.length() < 100, "Length Check");
         int len = _coinNames.length;
         require(len > 0, "Zero length arguments");
