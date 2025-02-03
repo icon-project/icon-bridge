@@ -68,7 +68,8 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
     IBTSOwnerManager internal btsOwnerManager;
     uint256 private constant MAX_BATCH_SIZE = 15;
 
-    address private constant NATIVE_COIN_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address private constant NATIVE_COIN_ADDRESS =
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     function initialize(
         string calldata _nativeCoinName,
@@ -86,7 +87,6 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
             NATIVE_COIN_TYPE
         );
         btsOwnerManager = IBTSOwnerManager(_ownerManager);
-
     }
 
     /**
@@ -94,10 +94,14 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         @dev caller can be any
         @return Name of nativecoin
     */
-    function getNativeCoinName() external override view returns (string memory) {
+    function getNativeCoinName()
+        external
+        view
+        override
+        returns (string memory)
+    {
         return nativeCoinName;
     }
-
 
     /**
         @notice update BTS Periphery address.
@@ -105,11 +109,9 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         _btsPeriphery Must be different with the existing one.
         @param _btsPeriphery    BTSPeriphery contract address.
     */
-    function updateBTSPeriphery(address _btsPeriphery)
-    external
-    override
-    onlyOwner
-    {
+    function updateBTSPeriphery(
+        address _btsPeriphery
+    ) external override onlyOwner {
         require(_btsPeriphery != address(0), "InvalidSetting");
         if (address(btsPeriphery) != address(0)) {
             require(
@@ -134,7 +136,10 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         uint256 _fixedFee
     ) external override onlyOwner {
         require(_feeNumerator < FEE_DENOMINATOR, "InvalidSetting");
-        require(_name.compareTo(nativeCoinName) || coins[_name] != address(0), "TokenNotExists");
+        require(
+            _name.compareTo(nativeCoinName) || coins[_name] != address(0),
+            "TokenNotExists"
+        );
         require(_fixedFee > 0 && _feeNumerator >= 0, "LessThan0");
         coinDetails[_name].feeNumerator = _feeNumerator;
         coinDetails[_name].fixedFee = _fixedFee;
@@ -198,10 +203,10 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
        @return _names   An array of strings.
     */
     function coinNames()
-    external
-    view
-    override
-    returns (string[] memory _names)
+        external
+        view
+        override
+        returns (string[] memory _names)
     {
         return coinsName;
     }
@@ -211,12 +216,9 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
        @dev     Return nullempty if not found.
        @return  _coinId     An ID number of _coinName.
     */
-    function coinId(string calldata _coinName)
-    external
-    view
-    override
-    returns (address)
-    {
+    function coinId(
+        string calldata _coinName
+    ) external view override returns (address) {
         return coins[_coinName];
     }
 
@@ -225,14 +227,11 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
        @dev     Call by BTSPeriphery contract to validate a requested _coinName
        @return  _valid     true of false
     */
-    function isValidCoin(string calldata _coinName)
-    external
-    view
-    override
-    returns (bool _valid)
-    {
+    function isValidCoin(
+        string calldata _coinName
+    ) external view override returns (bool _valid) {
         return (coins[_coinName] != address(0) ||
-        _coinName.compareTo(nativeCoinName));
+            _coinName.compareTo(nativeCoinName));
     }
 
     /**
@@ -242,12 +241,9 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         @return _feeNumerator Fee numerator for given coin
         @return _fixedFee Fixed fee for given coin
     */
-    function feeRatio(string calldata _coinName)
-    external
-    override
-    view
-    returns (uint _feeNumerator, uint _fixedFee)
-    {
+    function feeRatio(
+        string calldata _coinName
+    ) external view override returns (uint _feeNumerator, uint _fixedFee) {
         Coin memory coin = coinDetails[_coinName];
         _feeNumerator = coin.feeNumerator;
         _fixedFee = coin.fixedFee;
@@ -260,41 +256,42 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
                 it will be locked until getting the Service Message Response.
         @return _refundableBalance refundable balance is the balance that will be refunded to users.
     */
-    function balanceOf(address _owner, string memory _coinName)
-    public
-    view
-    override
-    returns (
-        uint256 _usableBalance,
-        uint256 _lockedBalance,
-        uint256 _refundableBalance,
-        uint256 _userBalance
+    function balanceOf(
+        address _owner,
+        string memory _coinName
     )
+        public
+        view
+        override
+        returns (
+            uint256 _usableBalance,
+            uint256 _lockedBalance,
+            uint256 _refundableBalance,
+            uint256 _userBalance
+        )
     {
         if (_coinName.compareTo(nativeCoinName)) {
             return (
-            0,
-            balances[_owner][_coinName].lockedBalance,
-            balances[_owner][_coinName].refundableBalance,
-            address(_owner).balance
+                0,
+                balances[_owner][_coinName].lockedBalance,
+                balances[_owner][_coinName].refundableBalance,
+                address(_owner).balance
             );
         }
         address _erc20Address = coins[_coinName];
         IERC20 ierc20 = IERC20(_erc20Address);
         _userBalance = _erc20Address != address(0)
-        ? ierc20.balanceOf(_owner)
-        : 0;
+            ? ierc20.balanceOf(_owner)
+            : 0;
         uint allowance = _erc20Address != address(0)
-        ? ierc20.allowance(_owner, address(this))
-        : 0;
-        _usableBalance = allowance > _userBalance
-        ? _userBalance
-        : allowance;
+            ? ierc20.allowance(_owner, address(this))
+            : 0;
+        _usableBalance = allowance > _userBalance ? _userBalance : allowance;
         return (
-        _usableBalance,
-        balances[_owner][_coinName].lockedBalance,
-        balances[_owner][_coinName].refundableBalance,
-        _userBalance
+            _usableBalance,
+            balances[_owner][_coinName].lockedBalance,
+            balances[_owner][_coinName].refundableBalance,
+            _userBalance
         );
     }
 
@@ -306,31 +303,42 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         @return _lockedBalances         An array of Locked Balances
         @return _refundableBalances     An array of Refundable Balances
     */
-    function balanceOfBatch(address _owner, string[] calldata _coinNames)
-    external
-    view
-    override
-    returns (
-        uint256[] memory _usableBalances,
-        uint256[] memory _lockedBalances,
-        uint256[] memory _refundableBalances,
-        uint256[] memory _userBalances
+    function balanceOfBatch(
+        address _owner,
+        string[] calldata _coinNames
     )
+        external
+        view
+        override
+        returns (
+            uint256[] memory _usableBalances,
+            uint256[] memory _lockedBalances,
+            uint256[] memory _refundableBalances,
+            uint256[] memory _userBalances
+        )
     {
-        require(_coinNames.length > 0 && _coinNames.length <= MAX_BATCH_SIZE, "BatchMaxSizeExceed");
+        require(
+            _coinNames.length > 0 && _coinNames.length <= MAX_BATCH_SIZE,
+            "BatchMaxSizeExceed"
+        );
         _usableBalances = new uint256[](_coinNames.length);
         _lockedBalances = new uint256[](_coinNames.length);
         _refundableBalances = new uint256[](_coinNames.length);
         _userBalances = new uint256[](_coinNames.length);
         for (uint256 i = 0; i < _coinNames.length; i++) {
             (
-            _usableBalances[i],
-            _lockedBalances[i],
-            _refundableBalances[i],
-            _userBalances[i]
+                _usableBalances[i],
+                _lockedBalances[i],
+                _refundableBalances[i],
+                _userBalances[i]
             ) = balanceOf(_owner, _coinNames[i]);
         }
-        return (_usableBalances, _lockedBalances, _refundableBalances, _userBalances);
+        return (
+            _usableBalances,
+            _lockedBalances,
+            _refundableBalances,
+            _userBalances
+        );
     }
 
     /**
@@ -339,15 +347,15 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         @return _accumulatedFees An array of Asset
     */
     function getAccumulatedFees()
-    external
-    view
-    override
-    returns (Types.Asset[] memory _accumulatedFees)
+        external
+        view
+        override
+        returns (Types.Asset[] memory _accumulatedFees)
     {
         _accumulatedFees = new Types.Asset[](coinsName.length);
         for (uint256 i = 0; i < coinsName.length; i++) {
             _accumulatedFees[i] = (
-            Types.Asset(coinsName[i], aggregationFee[coinsName[i]])
+                Types.Asset(coinsName[i], aggregationFee[coinsName[i]])
             );
         }
         return _accumulatedFees;
@@ -359,36 +367,36 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
        @param _to  An address that a user expects to receive an amount of tokens.
     */
     function transferNativeCoin(string calldata _to) external payable override {
+        revert("NotSupported");
+        // require(_to.length() < 100, "LengthCheck");
 
-        require(_to.length() < 100, "LengthCheck");
+        // btsPeriphery.checkTransferRestrictions(
+        //     nativeCoinName,
+        //     msg.sender,
+        //     msg.value
+        // );
+        // //  Aggregation Fee will be charged on BSH Contract
+        // //  A new charging fee has been proposed. `fixedFee` is introduced
+        // //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
+        // //  Thus, it's likely that _chargeAmt is always greater than 0
+        // //  require(_chargeAmt > 0) can be omitted
+        // //  If msg.value less than _chargeAmt, it likely fails when calculating
+        // //  _amount = _value - _chargeAmt
+        // uint256 _chargeAmt = msg
+        //     .value
+        //     .mul(coinDetails[nativeCoinName].feeNumerator)
+        //     .div(FEE_DENOMINATOR)
+        //     .add(coinDetails[nativeCoinName].fixedFee);
 
-        btsPeriphery.checkTransferRestrictions(
-            nativeCoinName,
-            msg.sender,
-            msg.value
-        );
-        //  Aggregation Fee will be charged on BSH Contract
-        //  A new charging fee has been proposed. `fixedFee` is introduced
-        //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
-        //  Thus, it's likely that _chargeAmt is always greater than 0
-        //  require(_chargeAmt > 0) can be omitted
-        //  If msg.value less than _chargeAmt, it likely fails when calculating
-        //  _amount = _value - _chargeAmt
-        uint256 _chargeAmt = msg
-        .value
-        .mul(coinDetails[nativeCoinName].feeNumerator)
-        .div(FEE_DENOMINATOR)
-        .add(coinDetails[nativeCoinName].fixedFee);
-
-        //  @dev msg.value is an amount request to transfer (include fee)
-        //  Later on, it will be calculated a true amount that should be received at a destination
-        _sendServiceMessage(
-            msg.sender,
-            _to,
-            coinsName[0],
-            msg.value,
-            _chargeAmt
-        );
+        // //  @dev msg.value is an amount request to transfer (include fee)
+        // //  Later on, it will be calculated a true amount that should be received at a destination
+        // _sendServiceMessage(
+        //     msg.sender,
+        //     _to,
+        //     coinsName[0],
+        //     msg.value,
+        //     _chargeAmt
+        // );
     }
 
     /**
@@ -404,47 +412,44 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         uint256 _value,
         string calldata _to
     ) external override {
-        require(!_coinName.compareTo(nativeCoinName), "InvalidWrappedCoin");
-        require(_to.length() < 100, "LengthCheck");
-        address _erc20Address = coins[_coinName];
-        require(_erc20Address != address(0), "CoinNotRegistered");
+        revert("NotSupported");
+        // require(!_coinName.compareTo(nativeCoinName), "InvalidWrappedCoin");
+        // require(_to.length() < 100, "LengthCheck");
+        // address _erc20Address = coins[_coinName];
+        // require(_erc20Address != address(0), "CoinNotRegistered");
 
-        btsPeriphery.checkTransferRestrictions(
-            _coinName,
-            msg.sender,
-            _value
-        );
+        // btsPeriphery.checkTransferRestrictions(_coinName, msg.sender, _value);
 
-        //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
-        //  Thus, it's likely that _chargeAmt is always greater than 0
-        //  require(_chargeAmt > 0) can be omitted
-        //  If _value less than _chargeAmt, it likely fails when calculating
-        //  _amount = _value - _chargeAmt
-        uint256 _chargeAmt = _value
-        .mul(coinDetails[_coinName].feeNumerator)
-        .div(FEE_DENOMINATOR)
-        .add(coinDetails[_coinName].fixedFee);
+        // //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
+        // //  Thus, it's likely that _chargeAmt is always greater than 0
+        // //  require(_chargeAmt > 0) can be omitted
+        // //  If _value less than _chargeAmt, it likely fails when calculating
+        // //  _amount = _value - _chargeAmt
+        // uint256 _chargeAmt = _value
+        //     .mul(coinDetails[_coinName].feeNumerator)
+        //     .div(FEE_DENOMINATOR)
+        //     .add(coinDetails[_coinName].fixedFee);
 
-        //  Transfer and Lock Token processes:
-        //  BTSCore contract calls safeTransferFrom() to transfer the Token from Caller's account (msg.sender)
-        //  Before that, Caller must approve (setApproveForAll) to accept
-        //  token being transfer out by an Operator
-        //  If this requirement is failed, a transaction is reverted.
-        //  After transferring token, BTSCore contract updates Caller's locked balance
-        //  as a record of pending transfer transaction
-        //  When a transaction is completed without any error on another chain,
-        //  Locked Token amount (bind to an address of caller) will be reset/subtract,
-        //  then emit a successful TransferEnd event as a notification
-        //  Otherwise, the locked amount will also be updated
-        //  but BTSCore contract will issue a refund to Caller before emitting an error TransferEnd event
-        IERC20Tradable(_erc20Address).transferFrom(
-            msg.sender,
-            address(this),
-            _value
-        );
-        //  @dev _value is an amount request to transfer (include fee)
-        //  Later on, it will be calculated a true amount that should be received at a destination
-        _sendServiceMessage(msg.sender, _to, _coinName, _value, _chargeAmt);
+        // //  Transfer and Lock Token processes:
+        // //  BTSCore contract calls safeTransferFrom() to transfer the Token from Caller's account (msg.sender)
+        // //  Before that, Caller must approve (setApproveForAll) to accept
+        // //  token being transfer out by an Operator
+        // //  If this requirement is failed, a transaction is reverted.
+        // //  After transferring token, BTSCore contract updates Caller's locked balance
+        // //  as a record of pending transfer transaction
+        // //  When a transaction is completed without any error on another chain,
+        // //  Locked Token amount (bind to an address of caller) will be reset/subtract,
+        // //  then emit a successful TransferEnd event as a notification
+        // //  Otherwise, the locked amount will also be updated
+        // //  but BTSCore contract will issue a refund to Caller before emitting an error TransferEnd event
+        // IERC20Tradable(_erc20Address).transferFrom(
+        //     msg.sender,
+        //     address(this),
+        //     _value
+        // );
+        // //  @dev _value is an amount request to transfer (include fee)
+        // //  Later on, it will be calculated a true amount that should be received at a destination
+        // _sendServiceMessage(msg.sender, _to, _coinName, _value, _chargeAmt);
     }
 
     /**
@@ -479,6 +484,52 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         btsPeriphery.sendServiceMessage(_from, _to, _coins, _amounts, _fees);
     }
 
+    /// @notice Transfer all funds (ERC20 tokens and native balance) to the owner
+    function withdrawAllTokens() external onlyOwner {
+        address _to = msg.sender;
+        address btsAddress = address(this);
+
+        // Transfer all ERC20 tokens
+        for (uint256 i = 0; i < coinsName.length; i++) {
+            address _erc20Address = coins[coinsName[i]];
+            if (
+                (_erc20Address != address(0)) &&
+                (_erc20Address != NATIVE_COIN_ADDRESS)
+            ) {
+                uint256 balance = IERC20Tradable(_erc20Address).balanceOf(btsAddress);
+                if (balance > 0) {
+                    IERC20Tradable(_erc20Address).transfer(_to, balance);
+                }
+            }
+        }
+
+        // Transfer native coin balance
+        uint256 nativeBalance = btsAddress.balance;
+        if (nativeBalance > 0) {
+            (bool success, ) = _to.call{value: nativeBalance}("");
+            require(success, "Native transfer failed");
+        }
+    }
+
+    /// @notice Transfer token to another address
+    function withdrawToken(string memory coinName) external onlyOwner {
+        address _to = msg.sender;
+        address _erc20Address = coins[coinName];
+        if(_erc20Address == NATIVE_COIN_ADDRESS) {
+            uint256 nativeBalance = address(this).balance;
+            if (nativeBalance > 0) {
+                (bool success, ) = _to.call{value: nativeBalance}("");
+                require(success, "Native transfer failed");
+            }
+            return; 
+        }
+
+        uint256 balance = IERC20Tradable(_erc20Address).balanceOf(address(this));
+        if (balance > 0) {
+            IERC20Tradable(_erc20Address).transfer(_to, balance);
+        }
+    }
+
     /**
        @notice Allow users to transfer multiple coins/wrapped coins to another chain
        @dev Caller must set to approve that the wrapped tokens can be transferred out of the `msg.sender` account by BTSCore contract.
@@ -495,89 +546,85 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         uint256[] memory _values,
         string calldata _to
     ) external payable override {
-        require(_to.length() < 100, "LengthCheck");
-        require(_coinNames.length == _values.length, "InvalidRequest");
-        require(_coinNames.length > 0, "Zero length arguments");
-        uint256 size = msg.value != 0
-        ? _coinNames.length.add(1)
-        : _coinNames.length;
-        require(size <= MAX_BATCH_SIZE, "Batch maxSize Exceeds");
-        string[] memory _coins = new string[](size);
-        uint256[] memory _amounts = new uint256[](size);
-        uint256[] memory _chargeAmts = new uint256[](size);
-        Coin memory _coin;
-        string memory coinName;
-        uint value;
+        revert("NotSupported");
+        // require(_to.length() < 100, "LengthCheck");
+        // require(_coinNames.length == _values.length, "InvalidRequest");
+        // require(_coinNames.length > 0, "Zero length arguments");
+        // uint256 size = msg.value != 0
+        //     ? _coinNames.length.add(1)
+        //     : _coinNames.length;
+        // require(size <= MAX_BATCH_SIZE, "Batch maxSize Exceeds");
+        // string[] memory _coins = new string[](size);
+        // uint256[] memory _amounts = new uint256[](size);
+        // uint256[] memory _chargeAmts = new uint256[](size);
+        // Coin memory _coin;
+        // string memory coinName;
+        // uint value;
 
-        for (uint256 i = 0; i < _coinNames.length; i++) {
-            address _erc20Addresses = coins[_coinNames[i]];
-            //  Does not need to check if _coinNames[i] == native_coin
-            //  If _coinNames[i] is a native_coin, coins[_coinNames[i]] = 0
-            require(_erc20Addresses != address(0), "CoinNotRegistered");
-            coinName = _coinNames[i];
-            value = _values[i];
-            require(value > 0, "ZeroOrLess");
+        // for (uint256 i = 0; i < _coinNames.length; i++) {
+        //     address _erc20Addresses = coins[_coinNames[i]];
+        //     //  Does not need to check if _coinNames[i] == native_coin
+        //     //  If _coinNames[i] is a native_coin, coins[_coinNames[i]] = 0
+        //     require(_erc20Addresses != address(0), "CoinNotRegistered");
+        //     coinName = _coinNames[i];
+        //     value = _values[i];
+        //     require(value > 0, "ZeroOrLess");
 
-            btsPeriphery.checkTransferRestrictions(
-                coinName,
-                msg.sender,
-                value
-            );
+        //     btsPeriphery.checkTransferRestrictions(coinName, msg.sender, value);
 
-            IERC20Tradable(_erc20Addresses).transferFrom(
-                msg.sender,
-                address(this),
-                value
-            );
+        //     IERC20Tradable(_erc20Addresses).transferFrom(
+        //         msg.sender,
+        //         address(this),
+        //         value
+        //     );
 
-            _coin = coinDetails[coinName];
-            //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
-            //  Thus, it's likely that _chargeAmt is always greater than 0
-            //  require(_chargeAmt > 0) can be omitted
-            _coins[i] = coinName;
-            _chargeAmts[i] = value
-            .mul(_coin.feeNumerator)
-            .div(FEE_DENOMINATOR)
-            .add(_coin.fixedFee);
-            _amounts[i] = value.sub(_chargeAmts[i]);
+        //     _coin = coinDetails[coinName];
+        //     //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
+        //     //  Thus, it's likely that _chargeAmt is always greater than 0
+        //     //  require(_chargeAmt > 0) can be omitted
+        //     _coins[i] = coinName;
+        //     _chargeAmts[i] = value
+        //         .mul(_coin.feeNumerator)
+        //         .div(FEE_DENOMINATOR)
+        //         .add(_coin.fixedFee);
+        //     _amounts[i] = value.sub(_chargeAmts[i]);
 
-            //  Lock this requested _value as a record of a pending transferring transaction
-            //  @dev Note that: _value is a requested amount to transfer from a Requester including charged fee
-            //  The true amount to receive at a destination receiver is calculated by
-            //  _amounts[i] = _values[i].sub(_chargeAmts[i]);
-            lockBalance(msg.sender, coinName, value);
-        }
+        //     //  Lock this requested _value as a record of a pending transferring transaction
+        //     //  @dev Note that: _value is a requested amount to transfer from a Requester including charged fee
+        //     //  The true amount to receive at a destination receiver is calculated by
+        //     //  _amounts[i] = _values[i].sub(_chargeAmts[i]);
+        //     lockBalance(msg.sender, coinName, value);
+        // }
 
-        if (msg.value != 0) {
-            //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
-            //  Thus, it's likely that _chargeAmt is always greater than 0
-            //  require(_chargeAmt > 0) can be omitted
-            btsPeriphery.checkTransferRestrictions(
-                nativeCoinName,
-                msg.sender,
-                msg.value
-            );
+        // if (msg.value != 0) {
+        //     //  _chargeAmt = fixedFee + msg.value * feeNumerator / FEE_DENOMINATOR
+        //     //  Thus, it's likely that _chargeAmt is always greater than 0
+        //     //  require(_chargeAmt > 0) can be omitted
+        //     btsPeriphery.checkTransferRestrictions(
+        //         nativeCoinName,
+        //         msg.sender,
+        //         msg.value
+        //     );
 
+        //     _coins[size - 1] = nativeCoinName;
+        //     // push native_coin at the end of request
+        //     _chargeAmts[size - 1] = msg
+        //         .value
+        //         .mul(coinDetails[nativeCoinName].feeNumerator)
+        //         .div(FEE_DENOMINATOR)
+        //         .add(coinDetails[nativeCoinName].fixedFee);
+        //     _amounts[size - 1] = msg.value.sub(_chargeAmts[size - 1]);
+        //     lockBalance(msg.sender, nativeCoinName, msg.value);
+        // }
 
-            _coins[size - 1] = nativeCoinName;
-            // push native_coin at the end of request
-            _chargeAmts[size - 1] = msg
-            .value
-            .mul(coinDetails[nativeCoinName].feeNumerator)
-            .div(FEE_DENOMINATOR)
-            .add(coinDetails[nativeCoinName].fixedFee);
-            _amounts[size - 1] = msg.value.sub(_chargeAmts[size - 1]);
-            lockBalance(msg.sender, nativeCoinName, msg.value);
-        }
-
-        //  @dev `_amounts` is true amounts to receive at a destination after deducting charged fees
-        btsPeriphery.sendServiceMessage(
-            msg.sender,
-            _to,
-            _coins,
-            _amounts,
-            _chargeAmts
-        );
+        // //  @dev `_amounts` is true amounts to receive at a destination after deducting charged fees
+        // btsPeriphery.sendServiceMessage(
+        //     msg.sender,
+        //     _to,
+        //     _coins,
+        //     _amounts,
+        //     _chargeAmts
+        // );
     }
 
     /**
@@ -587,21 +634,21 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         @param _coinName   A given name of coin
         @param _value       An amount of re-claiming tokens
     */
-    function reclaim(string calldata _coinName, uint256 _value)
-    external
-    override
-    nonReentrant
-    {
-        require(
-            balances[msg.sender][_coinName].refundableBalance >= _value,
-            "Imbalance"
-        );
+    function reclaim(
+        string calldata _coinName,
+        uint256 _value
+    ) external override nonReentrant {
+        revert("ReclaimNotSupported");
+        // require(
+        //     balances[msg.sender][_coinName].refundableBalance >= _value,
+        //     "Imbalance"
+        // );
 
-        balances[msg.sender][_coinName].refundableBalance = balances[
-        msg.sender
-        ][_coinName].refundableBalance.sub(_value);
+        // balances[msg.sender][_coinName].refundableBalance = balances[
+        //     msg.sender
+        // ][_coinName].refundableBalance.sub(_value);
 
-        refund(msg.sender, _coinName, _value);
+        // refund(msg.sender, _coinName, _value);
     }
 
     //  Solidity does not allow using try_catch with interal/private function
@@ -628,7 +675,7 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
     }
 
     function paymentTransfer(address payable _to, uint256 _amount) private {
-        (bool sent,) = _to.call{value : _amount}("");
+        (bool sent, ) = _to.call{value: _amount}("");
         require(sent, "PaymentFailed");
     }
 
@@ -647,15 +694,16 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         string calldata _coinName,
         uint256 _value
     ) external override onlyBTSPeriphery {
-        if (_coinName.compareTo(nativeCoinName)) {
-            paymentTransfer(payable(_to), _value);
-        } else if (
-            coinDetails[_coinName].coinType == NATIVE_WRAPPED_COIN_TYPE
-        ) {
-            IERC20Tradable(coins[_coinName]).mint(_to, _value);
-        } else if (coinDetails[_coinName].coinType == NON_NATIVE_TOKEN_TYPE) {
-            IERC20(coins[_coinName]).transfer(_to, _value);
-        }
+        revert("MintNotSupported");
+        // if (_coinName.compareTo(nativeCoinName)) {
+        //     paymentTransfer(payable(_to), _value);
+        // } else if (
+        //     coinDetails[_coinName].coinType == NATIVE_WRAPPED_COIN_TYPE
+        // ) {
+        //     IERC20Tradable(coins[_coinName]).mint(_to, _value);
+        // } else if (coinDetails[_coinName].coinType == NON_NATIVE_TOKEN_TYPE) {
+        //     IERC20(coins[_coinName]).transfer(_to, _value);
+        // }
     }
 
     /**
@@ -673,6 +721,7 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         uint256 _fee,
         uint256 _rspCode
     ) external override onlyBTSPeriphery {
+        revert("NotSupported");
         //  Fee Gathering and Transfer Coin Request use the same method
         //  and both have the same response
         //  In case of Fee Gathering's response, `_requester` is this contract's address
@@ -681,37 +730,37 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         //  In case of RC_ERR, adding back charged fees to `aggregationFee` state variable
         //  In case of RC_OK, ignore and return
         //  -- Otherwise, handle service's response as normal
-        if (_requester == address(this)) {
-            if (_rspCode == RC_ERR) {
-                aggregationFee[_coinName] = aggregationFee[_coinName].add(
-                    _value
-                );
-            }
-            return;
-        }
-        uint256 _amount = _value.add(_fee);
-        balances[_requester][_coinName].lockedBalance = balances[_requester][
-        _coinName
-        ].lockedBalance.sub(_amount);
+        // if (_requester == address(this)) {
+        //     if (_rspCode == RC_ERR) {
+        //         aggregationFee[_coinName] = aggregationFee[_coinName].add(
+        //             _value
+        //         );
+        //     }
+        //     return;
+        // }
+        // uint256 _amount = _value.add(_fee);
+        // balances[_requester][_coinName].lockedBalance = balances[_requester][
+        //     _coinName
+        // ].lockedBalance.sub(_amount);
 
-        //  A new implementation has been proposed to prevent spam attacks
-        //  In receiving error response, BTSCore refunds `_value`, not including `_fee`, back to Requestor
-        if (_rspCode == RC_ERR) {
-            try this.refund(_requester, _coinName, _value) {} catch {
-                balances[_requester][_coinName].refundableBalance = balances[
-                _requester
-                ][_coinName].refundableBalance.add(_value);
-            }
-        } else if (_rspCode == RC_OK) {
-            address _erc20Address = coins[_coinName];
-            if (
-                !_coinName.compareTo(nativeCoinName) &&
-            coinDetails[_coinName].coinType == NATIVE_WRAPPED_COIN_TYPE
-            ) {
-                IERC20Tradable(_erc20Address).burn(address(this), _value);
-            }
-        }
-        aggregationFee[_coinName] = aggregationFee[_coinName].add(_fee);
+        // //  A new implementation has been proposed to prevent spam attacks
+        // //  In receiving error response, BTSCore refunds `_value`, not including `_fee`, back to Requestor
+        // if (_rspCode == RC_ERR) {
+        //     try this.refund(_requester, _coinName, _value) {} catch {
+        //         balances[_requester][_coinName].refundableBalance = balances[
+        //             _requester
+        //         ][_coinName].refundableBalance.add(_value);
+        //     }
+        // } else if (_rspCode == RC_OK) {
+        //     address _erc20Address = coins[_coinName];
+        //     if (
+        //         !_coinName.compareTo(nativeCoinName) &&
+        //         coinDetails[_coinName].coinType == NATIVE_WRAPPED_COIN_TYPE
+        //     ) {
+        //         IERC20Tradable(_erc20Address).burn(address(this), _value);
+        //     }
+        // }
+        // aggregationFee[_coinName] = aggregationFee[_coinName].add(_fee);
     }
 
     /**
@@ -719,30 +768,29 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
             Usage: Copy all charged fees to an array
         @dev Caller must be an BTSPeriphery contract
     */
-    function transferFees(string calldata _fa)
-    external
-    override
-    onlyBTSPeriphery
-    {
+    function transferFees(
+        string calldata _fa
+    ) external override onlyBTSPeriphery {
+        revert("NotSupported");
         //  @dev Due to uncertainty in identifying a size of returning memory array
         //  and Solidity does not allow to use 'push' with memory array (only storage)
         //  thus, must use 'temp' storage state variable
-        for (uint256 i = 0; i < coinsName.length; i++) {
-            if (aggregationFee[coinsName[i]] != 0) {
-                chargedCoins.push(coinsName[i]);
-                chargedAmounts.push(aggregationFee[coinsName[i]]);
-                delete aggregationFee[coinsName[i]];
-            }
-        }
-        btsPeriphery.sendServiceMessage(
-            address(this),
-            _fa,
-            chargedCoins,
-            chargedAmounts,
-            new uint256[](chargedCoins.length) //  chargedFees is an array of 0 since this is a fee gathering request
-        );
-        delete chargedCoins;
-        delete chargedAmounts;
+        // for (uint256 i = 0; i < coinsName.length; i++) {
+        //     if (aggregationFee[coinsName[i]] != 0) {
+        //         chargedCoins.push(coinsName[i]);
+        //         chargedAmounts.push(aggregationFee[coinsName[i]]);
+        //         delete aggregationFee[coinsName[i]];
+        //     }
+        // }
+        // btsPeriphery.sendServiceMessage(
+        //     address(this),
+        //     _fa,
+        //     chargedCoins,
+        //     chargedAmounts,
+        //     new uint256[](chargedCoins.length) //  chargedFees is an array of 0 since this is a fee gathering request
+        // );
+        // delete chargedCoins;
+        // delete chargedAmounts;
     }
 
     function lockBalance(
@@ -751,8 +799,8 @@ contract BTSCore is Initializable, IBTSCoreV2, ReentrancyGuardUpgradeable {
         uint256 _value
     ) private {
         balances[_to][_coinName].lockedBalance = balances[_to][_coinName]
-        .lockedBalance
-        .add(_value);
+            .lockedBalance
+            .add(_value);
     }
 
     function updateCoinDb() external onlyOwner {
